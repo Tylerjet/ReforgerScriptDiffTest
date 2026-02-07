@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------------------------
-[BaseContainerProps()]
+[BaseContainerProps(), SCR_BaseGroupCommandTitleField("m_sCommandName")]
 class SCR_EmoteBaseCommand : SCR_BaseRadialCommand
 {
 	[Attribute(defvalue: "1", desc: "Unequip items in hand before doing emote?")]
@@ -48,7 +48,7 @@ class SCR_EmoteBaseCommand : SCR_BaseRadialCommand
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool CanBePerformed()
+	override bool CanBePerformed(notnull SCR_ChimeraCharacter user)
 	{
 		IEntity playerControlledEntity = GetGame().GetPlayerController().GetControlledEntity();
 		

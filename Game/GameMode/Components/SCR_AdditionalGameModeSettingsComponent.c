@@ -7,14 +7,43 @@ class SCR_AdditionalGameModeSettingsComponent : SCR_BaseGameModeComponent
 {
 	protected static SCR_AdditionalGameModeSettingsComponent s_Instance;
 	
-	[Attribute("1", desc: "If true team kill punishment is enabled, otherwise it is disabled", category: "Teamkilling"), RplProp()]
+	[Attribute("1", desc: "If true team kill punishment is enabled, otherwise it is disabled", category: "Teamkilling"), RplProp(onRplName: "OnAdditionalSettingsChanged")]
 	protected bool m_bEnableTeamKillPunishment;
 	
-	[Attribute("1", desc: "If true allows for vehicles (and potential other entities) to be refunded at depods.", category: "Entity Refund"), RplProp()]
+	[Attribute("1", desc: "If true allows for vehicles (and potential other entities) to be refunded at depods.", category: "Entity Refund"), RplProp(onRplName: "OnAdditionalSettingsChanged")]
 	protected bool m_bAllowEntityRefundingAction;
 	
 	[Attribute("#AR-Editor_Action_Disabled_By_GM", desc: "Shown on the entity action why refunding is disabled. The action is simply hidden if this is empty.", category: "Entity Refund")]
 	protected LocalizedString m_sEntityRefundingDisabledReason;
+
+	[Attribute("1", desc: "If true it will show additional information in form of ui element that shows ballistic data (f.e. in mortars).", category: "Entity Refund"), RplProp(onRplName: "OnAdditionalSettingsChanged")]
+	protected bool m_bProjectileBallisticInfoVisibility;
+
+	protected ref ScriptInvokerVoid m_OnChangeAdditionalSettingsInvoker;
+
+	//------------------------------------------------------------------------------------------------
+	bool GetProjectileBallisticInfoVisibility()
+	{
+		return m_bProjectileBallisticInfoVisibility;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerVoid GetOnChangeAdditionalSettingsInvoker()
+	{
+		if (!m_OnChangeAdditionalSettingsInvoker)
+			m_OnChangeAdditionalSettingsInvoker = new ScriptInvokerVoid();
+
+		return m_OnChangeAdditionalSettingsInvoker;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnAdditionalSettingsChanged()
+	{
+		if (!m_OnChangeAdditionalSettingsInvoker)
+			return;
+
+		m_OnChangeAdditionalSettingsInvoker.Invoke();
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	static SCR_AdditionalGameModeSettingsComponent GetInstance()
@@ -41,6 +70,7 @@ class SCR_AdditionalGameModeSettingsComponent : SCR_BaseGameModeComponent
 				SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_TEAMKILL_PUNISHMENT_DISABLED, playerID);
 		}
 			
+		OnAdditionalSettingsChanged();
 		Replication.BumpMe();
 	}
 	
@@ -70,6 +100,7 @@ class SCR_AdditionalGameModeSettingsComponent : SCR_BaseGameModeComponent
 				SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_REFUND_ENTITY_AT_DEPOTS_DISABLED, playerID);
 		}
 			
+		OnAdditionalSettingsChanged();
 		Replication.BumpMe();
 	}
 	
@@ -85,6 +116,21 @@ class SCR_AdditionalGameModeSettingsComponent : SCR_BaseGameModeComponent
 	string GetEntityRefundingDisabledReason()
 	{
 		return m_sEntityRefundingDisabledReason;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Set if game should show ui elements that provide projectile ballistic data.
+	//! \param[in] shouldShow Set if such ui elements should be visible
+	//! \param[in] playerID Optional, will send a notification when a player (GM) changes this setting. No notifications are send if playerID is -1
+	void SetProjectileBallisticInfoVisibility_S(bool shouldShow, int playerID = -1)
+	{
+		if (m_bProjectileBallisticInfoVisibility == shouldShow || !GetGameMode().IsMaster())
+			return;
+		
+		m_bProjectileBallisticInfoVisibility = shouldShow;
+
+		OnAdditionalSettingsChanged();
+		Replication.BumpMe();
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -54,19 +54,19 @@ class SCR_AIUnEquipItems : AITaskScripted
 	}
 	
 	// -----------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}
 
 	// -----------------------------------------------------------------------------------------------
-	override bool CanReturnRunning()
+	static override bool CanReturnRunning()
 	{
 		return true;
 	}
 	
 	// -----------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Scripted Node: UnEquip any generic item or gadget that is currently being held by the character.";
 	}

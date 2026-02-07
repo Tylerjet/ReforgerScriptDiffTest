@@ -116,7 +116,7 @@ class SCR_AddonManager : GenericEntity
 	
 	// Connected to WorkshopApi.OnItemsChecked, which automatically runs at start up.
 	protected bool m_bAddonsChecked			= false;
-	protected ref SCR_WorkshopCallbackBase m_CallbackCheckAddons;
+	protected ref SCR_BackendCallback m_CallbackCheckAddons;
 	protected ref SCR_ScriptPlatformRequestCallback m_CallbackGetPrivilege;
 	protected bool m_bInitFinished 			= false;
 
@@ -456,10 +456,6 @@ class SCR_AddonManager : GenericEntity
 			// Downloading was not finished 
 			if (item.GetDownloadingRevision())
 				return SCR_ERevisionAvailability.ERA_DOWNLOAD_NOT_FINISHED;
-			
-			// No current version but item has offline flag
-			if (item.GetStateFlags() & EWorkshopItemState.EWSTATE_OFFLINE)
-				Print("ItemAvailability() - Can't find item offline although offline flag is present " + item.Name() + " current revision", LogLevel.WARNING);
 			
 			return SCR_ERevisionAvailability.ERA_UNKNOWN_AVAILABILITY;
 		}

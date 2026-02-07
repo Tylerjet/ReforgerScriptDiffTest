@@ -33,6 +33,7 @@ class Vehicle : BaseVehicle
 	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 	// TODO: Module variable should be protected and have getter instead, also _p is wrong prefix
 	SCR_VehicleFactionAffiliationComponent m_pFactionComponent;
+	SCR_VehiclePerceivableComponent m_pPerceivableComponent;
 	//---- REFACTOR NOTE END ----
 	protected VehicleControllerComponent m_VehicleController;
 	protected SCR_ResourceComponent m_ResourceComponent;
@@ -147,6 +148,7 @@ class Vehicle : BaseVehicle
 	{
 		m_VehicleController = VehicleControllerComponent.Cast(FindComponent(VehicleControllerComponent));
 		m_pFactionComponent = SCR_VehicleFactionAffiliationComponent.Cast(FindComponent(SCR_VehicleFactionAffiliationComponent));
+		m_pPerceivableComponent = SCR_VehiclePerceivableComponent.Cast(FindComponent(SCR_VehiclePerceivableComponent));
 		UpdateResourceComponent();
 	}
 }

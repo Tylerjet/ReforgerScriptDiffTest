@@ -24,13 +24,19 @@ class SCR_ScenarioFrameworkTriggerEntity : SCR_BaseTriggerEntity
 	protected ref array<ref SCR_ScenarioFrameworkPrefabFilter> m_aPrefabFilter;
 
 	[Attribute(desc: "Here you can input custom trigger conditions that you can create by extending the SCR_CustomTriggerConditions", uiwidget: UIWidgets.Object)]
-	protected ref array<ref SCR_CustomTriggerConditions> m_aCustomTriggerConditions;
+	protected ref array<ref SCR_ScenarioFrameworkActivationConditionBase> m_aCustomTriggerConditions;
+	
+	[Attribute(defvalue: SCR_EScenarioFrameworkLogicOperators.AND.ToString(), UIWidgets.ComboBox, "Which Boolean Logic will be used for Custom Trigger Conditions.", "", enums: SCR_EScenarioFrameworkLogicOperatorHelper.GetParamInfo(), category: "Trigger")]
+	SCR_EScenarioFrameworkLogicOperators m_eCustomTriggerConditionLogic;
 	
 	[Attribute(defvalue: "1", UIWidgets.CheckBox, desc: "If you set some vehicle to be detected by the trigger, it will also search the inventory for vehicle prefabs/classes that are set", category: "Trigger")]
 	protected bool m_bSearchVehicleInventory;
 
 	[Attribute(defvalue: "1", UIWidgets.CheckBox, desc: "Activate the trigger once or everytime the activation condition is true?", category: "Trigger")]
 	protected bool m_bOnce;
+	
+	[Attribute(defvalue: "0", desc: "Activate the trigger once it is empty", category: "Trigger")]
+	protected bool m_bActivateOnEmpty;
 
 	[Attribute(defvalue: "0", UIWidgets.Slider, desc: "Minimum players needed to activate this trigger when PLAYER Activation presence is selected", params: "0 1 0.01", precision: 2, category: "Trigger")]
 	protected float m_fMinimumPlayersNeededPercentage;
@@ -95,6 +101,16 @@ class SCR_ScenarioFrameworkTriggerEntity : SCR_BaseTriggerEntity
 			AddClassType(className.ToType());
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Adds specific entity name to be searched in the trigger
+	void AddSpecificEntityNameFilter(notnull array<string> aEntityName)
+	{
+		foreach (ResourceName entityName : aEntityName)
+		{
+			AddFilterName(entityName);
+		}
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Sets specific prefab filters to be searched in the trigger
@@ -122,6 +138,13 @@ class SCR_ScenarioFrameworkTriggerEntity : SCR_BaseTriggerEntity
 	void SetOnce(bool bOnce)
 	{
 		m_bOnce = bOnce;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] activateOnEmpty Sets if trigger can be finished when it is empty
+	void SetActivateOnEmpty(bool activateOnEmpty)
+	{
+		m_bActivateOnEmpty = activateOnEmpty;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -174,14 +197,26 @@ class SCR_ScenarioFrameworkTriggerEntity : SCR_BaseTriggerEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Sets custom trigger conditions
-	void SetCustomTriggerConditions(array<ref SCR_CustomTriggerConditions> triggerConditions)
+	//! \param[in] triggerConditions Sets custom trigger conditions for trigger activation.
+	void SetCustomTriggerConditions(notnull array<ref SCR_ScenarioFrameworkActivationConditionBase> triggerConditions)
 	{
 		m_aCustomTriggerConditions = triggerConditions;
-		foreach (SCR_CustomTriggerConditions condition : triggerConditions)
+		SCR_CustomTriggerConditions triggerCondition;
+		foreach (SCR_ScenarioFrameworkActivationConditionBase condition : triggerConditions)
 		{
-			condition.Init(this);
+			triggerCondition = SCR_CustomTriggerConditions.Cast(condition);
+			if (!triggerCondition)
+				continue;
+			
+			triggerCondition.Prepare(this);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Sets Custom Trigger Condition Logic
+	void SetCustomTriggerConditionLogic(SCR_EScenarioFrameworkLogicOperators customTriggerConditionLogic)
+	{
+		m_eCustomTriggerConditionLogic = customTriggerConditionLogic;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -645,10 +680,10 @@ class SCR_ScenarioFrameworkTriggerEntity : SCR_BaseTriggerEntity
 	//! This method handles custom conditions
 	protected void CustomTriggerConditions()
 	{
-		foreach (SCR_CustomTriggerConditions condition : m_aCustomTriggerConditions)
-		{
-			condition.CustomTriggerConditions(this)
-		}
+		if (m_aCustomTriggerConditions.IsEmpty())
+			return;
+		
+		SetTriggerConditionsStatus(SCR_ScenarioFrameworkActivationConditionBase.EvaluateEmptyOrConditions(m_eCustomTriggerConditionLogic, m_aCustomTriggerConditions, this));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -694,12 +729,12 @@ class SCR_ScenarioFrameworkTriggerEntity : SCR_BaseTriggerEntity
 			m_bTimerActive = true;
 			m_fTempWaitTime = m_fActivationCountdownTimer;
 			// Call later in this case will be more efficient than handling it via EOnFrame
-			SCR_ScenarioFrameworkSystem.GetCallQueue().CallLater(UpdateTimer, 1000, true);
+			SCR_ScenarioFrameworkSystem.GetCallQueuePausable().CallLater(UpdateTimer, 1000, true);
 		}
 
 		if (GetCountInsideTrigger() == 0)
 		{
-			SCR_ScenarioFrameworkSystem.GetCallQueue().Remove(UpdateTimer);
+			SCR_ScenarioFrameworkSystem.GetCallQueuePausable().Remove(UpdateTimer);
 			m_fTempWaitTime = m_fActivationCountdownTimer;
 			m_bTimerActive = false;
 		}
@@ -731,12 +766,20 @@ class SCR_ScenarioFrameworkTriggerEntity : SCR_BaseTriggerEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] bIsEmpty Checks if query is empty, if true, returns without further action processing the trigger.
+	//! \param[in] bIsEmpty Checks if query is empty, if true, checks if it should finish it and returns without further action processing the trigger.
 	override event protected void OnQueryFinished(bool bIsEmpty)
 	{
 		super.OnQueryFinished(bIsEmpty);
 
 		if (bIsEmpty)
+		{
+			if (m_bActivateOnEmpty && m_bInitSequenceDone)
+				FinishTrigger(this);
+			
+			return;
+		}
+		
+		if (m_bActivateOnEmpty)
 			return;
 
 		if (!IsMaster())
@@ -746,7 +789,10 @@ class SCR_ScenarioFrameworkTriggerEntity : SCR_BaseTriggerEntity
 			return;
 
 		ActivationPresenceConditions();
-		CustomTriggerConditions();
+		
+		if (m_bTriggerConditionsStatus)
+			CustomTriggerConditions();
+		
 		HandleTimer();
 
 		if (m_bEnableAudio)
@@ -762,7 +808,7 @@ class SCR_ScenarioFrameworkTriggerEntity : SCR_BaseTriggerEntity
 	{
 		//This method is triggered when the trigger is deactivated but the said entity is still inside.
 		//We need to perform this method after the entity leaves the trigger.
-		SCR_ScenarioFrameworkSystem.GetCallQueue().CallLater(OnDeactivateCalledLater, 100, false, ent);
+		SCR_ScenarioFrameworkSystem.GetCallQueuePausable().CallLater(OnDeactivateCalledLater, 100, false, ent);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -927,9 +973,14 @@ class SCR_ScenarioFrameworkTriggerEntity : SCR_BaseTriggerEntity
 		if (world)
 			m_MusicManager = world.GetMusicManager();
 		
-		foreach (SCR_CustomTriggerConditions condition : m_aCustomTriggerConditions)
+		SCR_CustomTriggerConditions triggerCondition;
+		foreach (SCR_ScenarioFrameworkActivationConditionBase condition : m_aCustomTriggerConditions)
 		{
-			condition.Init(this);
+			triggerCondition = SCR_CustomTriggerConditions.Cast(condition);
+			if (!triggerCondition)
+				continue;
+			
+			triggerCondition.Prepare(this);
 		}
 
 		PrefabFilter prefabFilter;
@@ -944,6 +995,11 @@ class SCR_ScenarioFrameworkTriggerEntity : SCR_BaseTriggerEntity
 		foreach (ResourceName className : m_aSpecificClassNames)
 		{
 			AddClassType(className.ToType());
+		}
+		
+		foreach (string entityName : m_aSpecificEntityNames)
+		{
+			AddFilterName(entityName);
 		}
 		
 		SetOwnerFaction(m_sOwnerFactionKey);

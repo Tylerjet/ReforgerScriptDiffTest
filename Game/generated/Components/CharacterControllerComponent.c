@@ -216,6 +216,8 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	proto external bool IsFreeLookEnabled();
 	proto external bool IsTrackIREnabled();
 	proto external bool IsFocusMode();
+	proto external bool IsOpeningVehicleDoor();
+	proto external bool IsClosingVehicleDoor();
 	proto external bool GetWeaponADSInput();
 	proto external bool IsChangingItem();
 	proto external bool IsFalling();
@@ -244,7 +246,11 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	proto external bool ReloadWeapon();
 	// mag or projectile
 	proto external bool ReloadWeaponWith(IEntity ammunitionEntity, bool bForceDetach = false);
-	//------------------------------------------------------------------------
+	/*!
+	Returns the current controller state.
+	Differs from IsUnconscious which also considers the animation status.
+	E.g.: When waking up, the GetLifeState will be ALIVE, But the IsUnconscious will return true for as long as the wake-up animation is playing.
+	*/
 	proto external ECharacterLifeState GetLifeState();
 	proto external void SetUnconscious(bool enabled);
 	proto external bool IsUnconscious();
@@ -385,6 +391,9 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	proto external bool GetMeleeAttackInput();
 	//! Returns true if freelook is enforced by game logic.
 	proto external bool IsFreeLookEnforced();
+	//! Overrides max speed of the character to be a fraction (given by the parameter) of current max speed.
+	//! If value < 0, it doesn't override it. if value > 1, it will use the normal max speed.
+	proto external void OverrideMaxSpeed(float fraction);
 	/*! Returns whether a position is in the character's view
 	\param pos World Position to check is within view
 	\param angMax Maximum(exclusive) angular offset in Degrees to consider the position within view
@@ -410,6 +419,7 @@ class CharacterControllerComponent: PrimaryControllerComponent
 
 	event void OnInspectionModeChanged(bool newState);
 	event void UpdateDrowning(float timeSlice, vector waterLevel);
+	event bool IsUsingBinoculars();
 	/*!
 	When this character gets hit, this function gets called.
 	float damageValue: Raw damage of the hit (no damage multipliers have been applied). Can be negative for "healing" damage.
@@ -462,6 +472,9 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	or 0 if no adjustment is to be made.
 	*/
 	event float GetInspectTargetLookAt(out vector targetAngles);
+	//! This is called when a climb or jump is requested by input.
+	//! If it returns false, the character will not attempt to jump/climb.
+	event bool CanJumpClimb();
 	/*Should return true if during CharacterHeadingAnimComponent aligning, the aiming angles should influence aiming angles.*/
 	event bool ShouldAligningAdjustAimingAngles();
 	event bool ShouldGadgetBeDropped(IEntity gadget);

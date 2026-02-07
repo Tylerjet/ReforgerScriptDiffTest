@@ -67,10 +67,11 @@ class SCR_PlayerLoadoutData
 		int clothingCount;
 		snapshot.SerializeInt(clothingCount);
 		instance.Clothings.Clear();
-		
+
+		SCR_ClothingLoadoutData clothingData;
 		for (int i = 0; i < clothingCount; ++i)
 		{
-			SCR_ClothingLoadoutData clothingData();
+			clothingData = new SCR_ClothingLoadoutData();
 			
 			snapshot.SerializeInt(clothingData.SlotIdx);
 			
@@ -84,10 +85,11 @@ class SCR_PlayerLoadoutData
 		int weaponCount;
 		snapshot.SerializeInt(weaponCount);
 		instance.Weapons.Clear();
-		
+
+		SCR_WeaponLoadoutData weaponData;
 		for (int i = 0; i < weaponCount; ++i)
 		{
-			SCR_WeaponLoadoutData weaponData();
+			weaponData = new SCR_WeaponLoadoutData();
 			
 			snapshot.SerializeInt(weaponData.SlotIdx);
 			

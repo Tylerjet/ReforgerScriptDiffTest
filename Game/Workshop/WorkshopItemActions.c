@@ -125,7 +125,7 @@ class SCR_WorkshopItemActionDownloadDependenciesLatest : SCR_WorkshopItemActionC
 //! Action for reporting an item
 class SCR_WorkshopItemActionReportBase : SCR_WorkshopItemAction
 {
-	ref SCR_WorkshopCallbackBase m_Callback;	
+	ref SCR_BackendCallback m_Callback;	
 	
 	//-----------------------------------------------------------------------------------------------
 	protected bool OnActivateInternal();
@@ -133,10 +133,10 @@ class SCR_WorkshopItemActionReportBase : SCR_WorkshopItemAction
 	//-----------------------------------------------------------------------------------------------
 	protected override bool OnActivate()
 	{
-		m_Callback = new SCR_WorkshopCallbackBase();
-		m_Callback.m_OnTimeout.Insert(Callback_OnTimeout);
-		m_Callback.m_OnError.Insert(Callback_OnError);
-		m_Callback.m_OnSuccess.Insert(Callback_OnSuccess);
+		m_Callback = new SCR_BackendCallback();
+		m_Callback.GetEventOnTimeOut().Insert(Callback_OnTimeout);
+		m_Callback.GetEventOnFail().Insert(Callback_OnError);
+		m_Callback.GetEventOnSuccess().Insert(Callback_OnSuccess);
 		
 		bool success = OnActivateInternal();	
 		return success;

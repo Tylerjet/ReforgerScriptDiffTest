@@ -202,7 +202,7 @@ class SCR_MPDestructionManager : GenericEntity
 			if (!destructible)
 				continue;
 			
-			destructible.DeleteDestructible();
+			destructible.DeleteDestructibleDelayed();
 		}
 		
 		// Now pass data from server destructibles to local ones

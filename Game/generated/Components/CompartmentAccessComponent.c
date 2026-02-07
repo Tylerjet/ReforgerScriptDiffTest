@@ -27,21 +27,31 @@ class CompartmentAccessComponent: GameComponent
 	proto external bool IsInCompartmentADS();
 	//! Returns true if \param targetEntity is accessible for getting in (e.g. not upside down)
 	proto external bool IsTargetVehicleAccessible(IEntity targetEntity);
-	// If force teleport, doorInfoIndex is ignored. closeDoor is still respected.
+	//! If force teleport, doorInfoIndex is ignored. closeDoor is still respected.
 	proto external bool GetInVehicle(IEntity vehicle, BaseCompartmentSlot compartment, bool forceTeleport, int doorInfoIndex, ECloseDoorAfterActions closeDoor, bool performWhenPaused);
-	// If force teleport, doorInfoIndex is used for the teleport position and closeDoor is ignored.
+	//! If force teleport, doorInfoIndex is used for the teleport position and closeDoor is ignored.
 	proto external bool GetOutVehicle(EGetOutType type, int doorInfoIndex, ECloseDoorAfterActions closeDoor, bool performWhenPaused);
-	// Uses teleport - character is teleported to targetTransform, and door state will not be changed.
+	//! Uses teleport - character is teleported to targetTransform, and door state will not be changed.
 	proto external bool GetOutVehicle_NoDoor(vector targetTransform[4], bool sendIntoRagdoll, bool performWhenPaused);
-	// Kick another character out.
+	//! Kick another character out.
 	proto external void KickFromVehicle(int doorInfoIndex);
-	// Open door only
+	//! Open door only
 	proto external bool OpenDoor(IEntity vehicle, ECharacterDoorAnimType doorAnimType, int doorInfoIndex);
+	//! Checks if the door at doorIndex belongs to another vehicle.
+	//! \param[in] vehicle Expected owner vehicle
+	//! \param[in] doorIndex Valid door index
+	proto external bool IsDoorFromAnotherVehicle(IEntity vehicle, int doorIndex);
+	//! Checks if the door at doorIndex belongs to another vehicle.
+	//! \param[in] vehicle Expected owner vehicle
+	//! \param[in] doorIndex Valid door index
+	[Obsolete("Use IsDoorFromAnotherVehicle(vehicle, doorIndex).")]
 	proto external bool AreDoorsFromDifferentVehicle(IEntity vehicle, int doorIndex);
-	// Close door only
+	//! Close door only
 	proto external bool CloseDoor(IEntity vehicle, ECharacterDoorAnimType doorAnimType, int doorInfoIndex);
-	// Interrupt the get in/get out process
+	//! Interrupt the get in/get out process
 	proto external void InterruptVehicleActionQueue(bool interruptCurrentAction, bool forced, bool replicate);
+	//! Turn out/in from/to compartment if it has the option for it
+	proto external bool TurnOut(bool turnOut);
 	//! Returns true if \param targetEntity can be entered at this time
 	proto external bool CanGetInVehicle(IEntity targetEntity);
 	//! Returns the entity owning the component

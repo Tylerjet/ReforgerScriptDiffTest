@@ -61,7 +61,7 @@ class SCR_EditorSettingsSubMenu: SCR_SettingsSubMenuBase
 		else 
 		{
 			Print("Editor setting 'VerticalOrientation' not found", LogLevel.WARNING);
-		}	
+		}
 
 		m_wHorizontalCameraSpeedCheckbox = SCR_SelectionWidgetComponent.GetSelectionComponent("HorizontalCameraSpeed", m_wRoot);
 		if (m_wHorizontalCameraSpeedCheckbox)
@@ -144,6 +144,15 @@ class SCR_EditorSettingsSubMenu: SCR_SettingsSubMenuBase
 			Print("Editor setting 'm_bCameraRotateWithModifier' not found", LogLevel.WARNING);
 		}
 		
+		SCR_SelectionWidgetComponent showIdentityTooltip = SCR_SelectionWidgetComponent.GetSelectionComponent("ShowBioTooltip", m_wRoot);
+		if (showIdentityTooltip)
+		{
+			bool state;
+			editorSettings.Get("m_bShowIdentityBioTooltip", state);
+			
+			showIdentityTooltip.SetCurrentItem(state, false, false);
+			showIdentityTooltip.m_OnChanged.Insert(SetShowIdentityTooltip);
+		}
 		
 		//Workbench only
 		#ifndef WORKBENCH
@@ -246,6 +255,18 @@ class SCR_EditorSettingsSubMenu: SCR_SettingsSubMenuBase
 		if (!settings) return;
 		settings.Set("m_bCameraRotateWithModifier", state);
 		
+		GetGame().UserSettingsChanged();
+	}
+	
+	//------------------------------------------------------------------------------------------------	
+	protected void SetShowIdentityTooltip(SCR_SelectionWidgetComponent checkBox, bool state)
+	{
+		BaseContainer editorSettings = GetGame().GetGameUserSettings().GetModule("SCR_EditorSettings");
+		if (!editorSettings) 
+			return;
+		
+		editorSettings.Set("m_bShowIdentityBioTooltip", state);
+
 		GetGame().UserSettingsChanged();
 	}
 	

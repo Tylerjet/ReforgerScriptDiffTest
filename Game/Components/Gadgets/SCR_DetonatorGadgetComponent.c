@@ -223,7 +223,7 @@ class SCR_DetonatorGadgetComponent : SCR_GadgetComponent
 		vector myPos = GetOwner().GetOrigin();
 		SCR_ExplosiveTriggerComponent trigger;
 		SCR_ExplosiveChargeComponent explosiveChargeComp;
-		bool isAuthority = m_RplComp && !m_RplComp.Role();
+		bool isAuthority = m_RplComp && m_RplComp.Role() == RplRole.Authority;
 		for (int i = m_iNumberOfConnectedCharges -1; i >= 0; i--)
 		{
 			explosiveChargeComp = SCR_ExplosiveChargeComponent.Cast(Replication.FindItem(m_aConnectedCharges[i]));
@@ -295,7 +295,7 @@ class SCR_DetonatorGadgetComponent : SCR_GadgetComponent
 		m_iNumberOfConnectedCharges++;
 		UpdateWiresVisibility(true);
 
-		if (shouldReplicate && m_RplComp && !m_RplComp.Role())
+		if (shouldReplicate && m_RplComp && m_RplComp.Role() == RplRole.Authority)
 			Replication.BumpMe();
 	}
 
@@ -311,7 +311,7 @@ class SCR_DetonatorGadgetComponent : SCR_GadgetComponent
 		m_iNumberOfConnectedCharges--;
 		UpdateWiresVisibility(m_iNumberOfConnectedCharges);
 
-		if (shouldReplicate && m_RplComp && !m_RplComp.Role())
+		if (shouldReplicate && m_RplComp && m_RplComp.Role() == RplRole.Authority)
 			Replication.BumpMe();
 	}
 
@@ -326,7 +326,7 @@ class SCR_DetonatorGadgetComponent : SCR_GadgetComponent
 		ConnectNewCharge(replaceWith, false);
 		RemoveChargeFromTheList(chargeCompToReplace, false);
 
-		if (m_RplComp && !m_RplComp.Role())
+		if (m_RplComp && m_RplComp.Role() == RplRole.Authority)
 			Replication.BumpMe();
 	}
 

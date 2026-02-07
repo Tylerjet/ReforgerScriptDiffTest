@@ -27,12 +27,42 @@ class SCR_SuppressWaypoint : SCR_TimedWaypoint
 
 class SCR_SuppressWaypointState : SCR_AIWaypointState
 {
+	protected SCR_AISuppressActivity m_SuppressActivity;
+	
+	//--------------------------------
 	override void OnSelected()
 	{
 		super.OnSelected();
 		
-		m_Utility.SetStateAllActionsOfType(SCR_AISuppressActivity, EAIActionState.FAILED);
+		SCR_AIWaypoint wp = SCR_AIWaypoint.Cast(m_Waypoint);
+		if (wp)
+		{
+			wp.GetOnWaypointPropertiesChanged().Remove(OnWaypointPropertiesChanged);
+			wp.GetOnWaypointPropertiesChanged().Insert(OnWaypointPropertiesChanged);
+		}
 		
+		TryCancelSuppressActivity();
+		AddSuppressActivity();
+	}
+	
+	//--------------------------------	
+	override void OnDeselected()
+	{
+		super.OnDeselected();
+		
+		TryCancelSuppressActivity();
+	}
+	
+	//--------------------------------
+	void OnWaypointPropertiesChanged()
+	{
+		TryCancelSuppressActivity();
+		AddSuppressActivity();
+	}
+	
+	//--------------------------------	
+	protected void AddSuppressActivity()
+	{
 		float suppressHeight = 1.0;
 		SCR_SuppressWaypoint suppressWp = SCR_SuppressWaypoint.Cast(m_Waypoint);
 		if (suppressWp)
@@ -48,5 +78,20 @@ class SCR_SuppressWaypointState : SCR_AIWaypointState
 		
 		SCR_AISuppressActivity activity = new SCR_AISuppressActivity(m_Utility, m_Waypoint, volume, priorityLevel: priorityLevel);
 		m_Utility.AddAction(activity);
+		
+		m_SuppressActivity = activity;
+	}
+	
+	//--------------------------------
+	protected void TryCancelSuppressActivity()
+	{
+		if (!m_SuppressActivity)
+			return;
+		
+		if (m_SuppressActivity.GetActionState() == EAIActionState.FAILED)
+			return;
+		
+		m_SuppressActivity.SetFailReason(EAIActionFailReason.CANCELLED);
+		m_SuppressActivity.Fail();
 	}
 }

@@ -48,7 +48,7 @@ class SCR_MainMenuEntity : GenericEntity
 				
 		if (showWarningScreen && !isDevVersion)
 			ShowWarningScreen();
-		else
+		else if (!SplashScreen.IsOpen())
 			ShowMainMenu();
 		
 		// Reset scenario loading time

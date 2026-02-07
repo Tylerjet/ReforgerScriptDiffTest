@@ -47,6 +47,12 @@ class SplashScreen: BaseLoadingAnim
 		
 		s_iSplashShown++;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	static bool IsOpen()
+	{
+		return s_bOpened;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	override void Show()
@@ -71,7 +77,7 @@ class SplashScreen: BaseLoadingAnim
 		s_bOpened = false;
 		
 		if (m_PreloadScreenComponent)
-			m_PreloadScreenComponent.OnHide();		
+			m_PreloadScreenComponent.OnHideInternal();		
 
 		//WidgetManager.SetCursor(0);		// Show cursor
 		super.Hide();

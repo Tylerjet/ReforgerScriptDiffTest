@@ -1,35 +1,84 @@
-class SCR_CampaignRadioRegisteringComponentClass : ScriptComponentClass
+class SCR_CampaignRadioRegisteringComponentClass : SCR_MilitaryBaseLogicComponentClass
 {
 }
 
-class SCR_CampaignRadioRegisteringComponent : ScriptComponent
+class SCR_CampaignRadioRegisteringComponent : SCR_MilitaryBaseLogicComponent
 {
-	//------------------------------------------------------------------------------------------------
-	override void OnPostInit(IEntity owner)
-	{
-		super.OnPostInit(owner);
+	protected static const string RADIO_CHATTER_SIGNAL_NAME = "RadioChatter";
+	protected static const string ESTABLISH_ACTION_SIGNAL_NAME = "EstablishAction";
 
-		if (!GetGame().InPlayMode())
+	//------------------------------------------------------------------------------------------------
+	override void OnCapturingFactionChanged(FactionKey faction)
+	{
+		super.OnCapturingFactionChanged(faction);
+
+		// SFX not needed for headless
+		if (System.IsConsoleApp())
 			return;
 
-		SetEventMask(owner, EntityEvent.INIT);
+		// Play or stop radio tuning SFX
+		SignalsManagerComponent comp = SignalsManagerComponent.Cast(GetOwner().FindComponent(SignalsManagerComponent));
+
+		if (!comp)
+			return;
+
+		if (faction.IsEmpty())
+			comp.SetSignalValue(comp.AddOrFindSignal(ESTABLISH_ACTION_SIGNAL_NAME), 0);
+		else
+			comp.SetSignalValue(comp.AddOrFindSignal(ESTABLISH_ACTION_SIGNAL_NAME), 1);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void EOnInit(IEntity owner)
+	//! \param[in] faction
+	override void OnBaseFactionChanged(Faction faction)
 	{
-		super.EOnInit(owner);
+		super.OnBaseFactionChanged(faction);
 
-		IEntity parent = owner.GetParent();
+		SetRadioChatterSignal(faction);
+	}
 
-		if (!parent)
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] base
+	override void OnBaseRegistered(notnull SCR_MilitaryBaseComponent base)
+	{
+		super.OnBaseRegistered(base);
+
+		SCR_CampaignMilitaryBaseComponent campaignBase = SCR_CampaignMilitaryBaseComponent.Cast(base);
+
+		if (!campaignBase)
 			return;
 
-		SCR_CampaignMilitaryBaseComponent base = SCR_CampaignMilitaryBaseComponent.Cast(parent.FindComponent(SCR_CampaignMilitaryBaseComponent));
+		SetRadioChatterSignal(base.GetFaction());
+	}
 
-		if (!base)
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] faction
+	void SetRadioChatterSignal(Faction faction)
+	{
+		// SFX not needed for headless
+		if (System.IsConsoleApp())
 			return;
 
-		base.RegisterHQRadio(owner);
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+
+		if (!campaign)
+			return;
+
+		SignalsManagerComponent comp = SignalsManagerComponent.Cast(GetOwner().FindComponent(SignalsManagerComponent));
+
+		if (!comp)
+			return;
+
+		if (!faction || faction.GetFactionKey() == campaign.GetFactionKeyByEnum(SCR_ECampaignFaction.INDFOR))
+		{
+			comp.SetSignalValue(comp.AddOrFindSignal(RADIO_CHATTER_SIGNAL_NAME), 0);
+		}
+		else
+		{
+			if (faction.GetFactionKey() == campaign.GetFactionKeyByEnum(SCR_ECampaignFaction.BLUFOR))
+				comp.SetSignalValue(comp.AddOrFindSignal(RADIO_CHATTER_SIGNAL_NAME), 1);
+			else
+				comp.SetSignalValue(comp.AddOrFindSignal(RADIO_CHATTER_SIGNAL_NAME), 2);
+		}
 	}
 }

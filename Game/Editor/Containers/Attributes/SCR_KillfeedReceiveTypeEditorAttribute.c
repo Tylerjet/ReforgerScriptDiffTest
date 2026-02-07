@@ -1,6 +1,7 @@
 [BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
 class SCR_KillfeedReceiveTypeEditorAttribute : SCR_BaseFloatValueHolderEditorAttribute
 {	
+	//------------------------------------------------------------------------------------------------
 	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)
 	{		
 		BaseGameMode gamemode = BaseGameMode.Cast(item);
@@ -25,6 +26,7 @@ class SCR_KillfeedReceiveTypeEditorAttribute : SCR_BaseFloatValueHolderEditorAtt
 		return null;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override int GetEntries(notnull array<ref SCR_BaseEditorAttributeEntry> outEntries)
 	{
 		FillValues();
@@ -32,6 +34,7 @@ class SCR_KillfeedReceiveTypeEditorAttribute : SCR_BaseFloatValueHolderEditorAtt
 		return outEntries.Count();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void FillValues()
 	{
 		BaseGameMode gameMode = GetGame().GetGameMode();
@@ -57,6 +60,7 @@ class SCR_KillfeedReceiveTypeEditorAttribute : SCR_BaseFloatValueHolderEditorAtt
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)
 	{
 		if (!var) 

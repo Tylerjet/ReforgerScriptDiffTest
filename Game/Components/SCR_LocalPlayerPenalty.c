@@ -46,18 +46,8 @@ class SCR_LocalPlayerPenalty : Managed
 		if (instigator.GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER || (m_iFriendlyAIKillPenalty == 0 && m_iFriendlyPlayerKillPenalty == 0))
 			return;
 		
-		//~ Check if teamkill punishment is enabled
-		SCR_AdditionalGameModeSettingsComponent additionalGameModeSettings = SCR_AdditionalGameModeSettingsComponent.GetInstance();
-		if (additionalGameModeSettings && !additionalGameModeSettings.IsTeamKillingPunished())
-			return;
-		
-		//~ Not a teamkill by player
-		if (!instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_FRIENDLY_PLAYER))
-			return;
-		
-		//~ GM or admin are never punished for teamkilling
-		SCR_ECharacterControlType killerControlType = instigatorContextData.GetKillerCharacterControlType();
-		if (killerControlType == SCR_ECharacterControlType.UNLIMITED_EDITOR || killerControlType == SCR_ECharacterControlType.POSSESSED_AI)
+		//~ Kill is not a teamkill and is not a warcrime
+		if (!instigatorContextData.DoesPlayerKillCountAsTeamKill() && !instigatorContextData.IsEnemyKillPunished(SCR_EDisguisedKillingPunishment.WARCRIME))
 			return;
 		
 		SCR_ECharacterControlType victimControlType = instigatorContextData.GetVictimCharacterControlType();

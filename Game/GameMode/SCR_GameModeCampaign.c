@@ -20,10 +20,10 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 
 	[Attribute("1000", desc: "Supplies will be autoreplenished in bases until this limit is reached.", params: "0 inf 1", category: "Campaign")]
 	protected int m_iSuppliesReplenishThreshold;
-	
+
 	[Attribute("200", desc: "Supplies will be autoreplenished in bases quickly until this limit is reached (HQs are not affected).", params: "0 inf 1", category: "Campaign")]
 	protected int m_iQuickSuppliesReplenishThreshold;
-	
+
 	[Attribute("2", desc: "Supplies income will be multiplied by this number unless the quick replenish threshold has been reached.", params: "1 inf 0.05", category: "Campaign")]
 	protected float m_fQuickSuppliesReplenishMultiplier;
 
@@ -38,7 +38,7 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 
 	[Attribute("4", desc: "How many extra supplies are periodically replenished in non-HQ bases per base connected via radio.", params: "0 inf 1", category: "Campaign")]
 	protected int m_iRegularSuppliesIncomeExtra;
-	
+
 	[Attribute("600", desc: "The amount of supplies in HQs.", params: "0 inf 1", category: "Campaign")]
 	protected int m_iHQStartingSupplies;
 
@@ -164,13 +164,13 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	{
 		return m_iSuppliesReplenishThreshold;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	int GetQuickSuppliesReplenishThreshold()
 	{
 		return m_iQuickSuppliesReplenishThreshold;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	float GetQuickSuppliesReplenishMultiplier()
 	{
@@ -315,12 +315,27 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	{
 		// Sync respawn radios & control points amount
 		writer.WriteInt(m_BaseManager.GetTargetActiveBasesCount());
+		
+		int controlPointsHeldBLUFOR;
+		int controlPointsHeldOPFOR;
+		
+		RplId primaryTargetBLUFOR;
+		RplId primaryTargetOPFOR;
 
-		int controlPointsHeldBLUFOR = GetFactionByEnum(SCR_ECampaignFaction.BLUFOR).GetControlPointsHeld();
-		int controlPointsHeldOPFOR = GetFactionByEnum(SCR_ECampaignFaction.OPFOR).GetControlPointsHeld();
+		SCR_CampaignFaction factionBLUFOR = GetFactionByEnum(SCR_ECampaignFaction.BLUFOR);
+		SCR_CampaignFaction factionOPFOR = GetFactionByEnum(SCR_ECampaignFaction.OPFOR);
 
-		RplId primaryTargetBLUFOR = Replication.FindId(GetFactionByEnum(SCR_ECampaignFaction.BLUFOR).GetPrimaryTarget());
-		RplId primaryTargetOPFOR = Replication.FindId(GetFactionByEnum(SCR_ECampaignFaction.OPFOR).GetPrimaryTarget());
+		if (factionBLUFOR)
+		{
+			controlPointsHeldBLUFOR = factionBLUFOR.GetControlPointsHeld();
+			primaryTargetBLUFOR = Replication.FindId(factionBLUFOR.GetPrimaryTarget());
+		}
+		
+		if (factionOPFOR)
+		{
+			controlPointsHeldOPFOR = factionOPFOR.GetControlPointsHeld();
+			primaryTargetOPFOR = Replication.FindId(factionOPFOR.GetPrimaryTarget());
+		}
 
 		writer.WriteInt(controlPointsHeldBLUFOR);
 		writer.WriteInt(controlPointsHeldOPFOR);
@@ -419,25 +434,25 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 
 		faction.SetPrimaryTarget(SCR_CampaignMilitaryBaseComponent.Cast(Replication.FindItem(targetId)));
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void BroadcastMHQFeedback(SCR_EMobileAssemblyStatus msgID, int playerID, int factionID)
 	{
 		Rpc(RpcDo_BroadcastMHQFeedback, msgID, playerID, factionID);
-		
+
 		if (RplSession.Mode() != RplMode.Dedicated)
-			RpcDo_BroadcastMHQFeedback(msgID, playerID, factionID);	
+			RpcDo_BroadcastMHQFeedback(msgID, playerID, factionID);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	void RpcDo_BroadcastMHQFeedback(SCR_EMobileAssemblyStatus msgID, int playerID, int factionID)
 	{
 		SCR_CampaignFeedbackComponent comp = SCR_CampaignFeedbackComponent.GetInstance();
-		
+
 		if (!comp)
 			return;
-		
+
 		comp.MobileAssemblyFeedback(msgID, playerID, factionID)
 	}
 
@@ -562,7 +577,6 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 		{
 			int basesCount = m_BaseManager.GetTargetActiveBasesCount();
 
-			Math.Randomize(-1);
 			m_iCallsignOffset = Math.RandomIntInclusive(0, Math.Ceil(basesCount * 0.5));
 		}
 
@@ -582,7 +596,7 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 
 		SCR_CharacterRankComponent.s_OnRankChanged.Insert(OnRankChanged);
 		SCR_AmbientVehicleSystem vehiclesManager = SCR_AmbientVehicleSystem.GetInstance();
-		
+
 		if (vehiclesManager)
 			vehiclesManager.GetOnVehicleSpawned().Insert(OnAmbientVehicleSpawned);
 
@@ -596,10 +610,10 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	void OnStarted()
 	{
 		SCR_RadioCoverageSystem coverageSystem = SCR_RadioCoverageSystem.GetInstance();
-		
+
 		if (coverageSystem)
 			coverageSystem.TogglePeriodicUpdates(false);
-		
+
 		SCR_SpawnPoint.Event_SpawnPointFactionAssigned.Insert(OnSpawnPointFactionAssigned);
 
 		if (m_OnStarted)
@@ -899,10 +913,10 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	void LoadRemnantsStates(notnull array<ref SCR_CampaignRemnantInfoStruct> entries)
 	{
 		SCR_AmbientPatrolSystem manager = SCR_AmbientPatrolSystem.GetInstance();
-		
+
 		if (!manager)
 			return;
-		
+
 		array<SCR_AmbientPatrolSpawnPointComponent> patrols = {};
 		manager.GetPatrols(patrols);
 		ChimeraWorld world = GetWorld();
@@ -1163,7 +1177,7 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 				continue;
 
 			damageManager = DamageManagerComponent.Cast(hitZone.GetHitZoneContainer());
-			
+
 			SCR_DamageContext damageContext = new SCR_DamageContext(EDamageType.TRUE, hitZone.GetMaxHealth() * 0.75, transform, damageManager.GetOwner(), hitZone, Instigator.CreateInstigator(null), null, -1, -1);
 			if (damageManager)
 				helicopterDamageManager.HandleDamage(damageContext);
@@ -1321,11 +1335,11 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 				else if (radioSpawnpoint)
 				{
 					SCR_BaseDeployableSpawnPointComponent comp = radioSpawnpoint.GetDeployableSpawnPointComponent();
-				
+
 					if (comp)
 					{
 						int playerId = comp.GetItemOwnerID();
-						
+
 						// Don't award XP if player respawns on their own spawnpoint
 						if (playerId != GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(entity))
 							compXP.AwardXP(playerId, SCR_EXPRewards.SPAWN_PROVIDER);
@@ -1341,18 +1355,18 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 		{
 			SCR_CampaignMilitaryBaseComponent spawnPointParentBase;
 			IEntity parent = spawnPointData.GetSpawnPoint();
-			
+
 			//~ Check if spawn target is a base
 			while (parent)
 			{
 				spawnPointParentBase = SCR_CampaignMilitaryBaseComponent.Cast(parent.FindComponent(SCR_CampaignMilitaryBaseComponent));
-	
+
 				if (spawnPointParentBase)
 					break;
-	
+
 				parent = parent.GetParent();
 			}
-			
+
 			//~ If spawned on base
 			if (spawnPointParentBase)
 			{
@@ -1362,7 +1376,7 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 					campaignNetworkComponent.RespawnLocationPopup(spawnPointParentBase.GetCallsign());
 			}
 		}
-		
+
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1392,7 +1406,7 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 			return;
 
 		SCR_CampaignNetworkComponent campaignNetworkComponent = SCR_CampaignNetworkComponent.Cast(pc.FindComponent(SCR_CampaignNetworkComponent));
-		
+
 		if (campaignNetworkComponent)
 		{
 			campaignNetworkComponent.OnPlayerAliveStateChanged(false);
@@ -1467,14 +1481,14 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 
 		if (m_iSuicideRespawnDelay == 0)
 			return;
-		
+
 		PlayerController pc = GetGame().GetPlayerManager().GetPlayerController(playerId);
 
 		// Do not process suicide if player was unconscious upon death
 		if (pc)
 		{
 			SCR_CampaignFeedbackComponent comp = SCR_CampaignFeedbackComponent.Cast(pc.FindComponent(SCR_CampaignFeedbackComponent));
-			
+
 			if (comp && !comp.IsConscious())
 				return;
 		}
@@ -1523,7 +1537,7 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Disable spawning with custom loadout on bases with no armories
+	//! Disable spawning on contested bases and with custom loadout on bases with no armories
 	/*!
 		Authority:
 			Override and implement logic for whether provided player can spawn.
@@ -1531,57 +1545,61 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 			\param handlerComponent The spawn handler component handling this spawn.
 			\param data The request payload.
 			\param[out] result Reason why respawn is disabled. Note that if returns true the reason will always be OK
-			\return True when spawn is allowed, false otherwise. 
+			\return True when spawn is allowed, false otherwise.
 	*/
 	override bool CanPlayerSpawn_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, SCR_SpawnData data, out SCR_ESpawnResult result = SCR_ESpawnResult.SPAWN_NOT_ALLOWED)
 	{
 		if (!super.CanPlayerSpawn_S(requestComponent, handlerComponent, data, result))
 			return false;
-		
+
 		SCR_SpawnPointSpawnData spawnpointSpawnData = SCR_SpawnPointSpawnData.Cast(data);
-		
+
 		if (!spawnpointSpawnData)
 			return true;
+
+		SCR_SpawnPoint spawnpoint = spawnpointSpawnData.GetSpawnPoint();
+		SCR_CampaignSpawnPointGroup spawnpointCampaign = SCR_CampaignSpawnPointGroup.Cast(spawnpoint);
+		SCR_CampaignMilitaryBaseComponent base;
+
+		if (spawnpointCampaign)
+		{
+			IEntity spawnpointParent = spawnpointCampaign.GetParent();
+
+			if (spawnpointParent)
+			{
+				base = SCR_CampaignMilitaryBaseComponent.Cast(spawnpointParent.FindComponent(SCR_CampaignMilitaryBaseComponent));
+				PlayerController pc = requestComponent.GetPlayerController();
+
+				if (base && pc && base.GetCapturingFaction() && base.GetCapturingFaction() != SCR_FactionManager.SGetPlayerFaction(pc.GetPlayerId()))
+				{
+					result = SCR_ESpawnResult.NOT_ALLOWED_BASE_UNDER_ATTACK;
+					return false;
+				}
+			}
+		}
 
 		SCR_PlayerLoadoutComponent loadoutComp = SCR_PlayerLoadoutComponent.Cast(requestComponent.GetPlayerController().FindComponent(SCR_PlayerLoadoutComponent));
 
 		if (!loadoutComp)
 			return true;
-		
+
 		SCR_PlayerArsenalLoadout loadout = SCR_PlayerArsenalLoadout.Cast(loadoutComp.GetLoadout());
-		
-		if (!loadout)
+
+		if (!loadout || !spawnpoint)
 			return true;
-		
-		SCR_SpawnPoint spawnpoint = spawnpointSpawnData.GetSpawnPoint();
-		
-		if (!spawnpoint)
-			return true;
-		
+
 		// Spawning on MHQ with custom loadouts is not allowed
 		if (spawnpoint.FindComponent(SCR_CampaignMobileAssemblyStandaloneComponent))
 		{
 			result = SCR_ESpawnResult.NOT_ALLOWED_CUSTOM_LOADOUT;
 			return false;
 		}
-		
-		SCR_CampaignSpawnPointGroup spawnpointCampaign = SCR_CampaignSpawnPointGroup.Cast(spawnpoint);
-		
-		if (!spawnpointCampaign)
-			return true;
-		
-		IEntity spawnpointParent = spawnpointCampaign.GetParent();
-		
-		if (!spawnpointParent)
-			return true;
-		
-		SCR_CampaignMilitaryBaseComponent base = SCR_CampaignMilitaryBaseComponent.Cast(spawnpointParent.FindComponent(SCR_CampaignMilitaryBaseComponent));
-		
+
 		if (!base)
 			return true;
-		
-		SCR_ServicePointComponent armory = base.GetServiceByType(SCR_EServicePointType.ARMORY);
-		
+
+		SCR_ServicePointDelegateComponent armory = base.GetServiceDelegateByType(SCR_EServicePointType.ARMORY);
+
 		if (armory)
 			return true;
 
@@ -1597,48 +1615,48 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 
 		if (IsProxy())
 			return;
-		
+
 		Instigator instigator = instigatorContextData.GetInstigator();
-		
+
 		// Ignore AI or NONE instigators
  		if (instigator.GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER)
 			return;
-		
-		//~ Only handle cases were the player kills a character (No Suicide or friendly fire)
-		if (!instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER))
+
+		//~ Only handle cases were the player kills a character (No Suicide or friendly fire) and the player is not a possessed AI
+		if (!instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER) || !instigatorContextData.HasAnyKillerCharacterControlType(SCR_ECharacterControlType.PLAYER))
 			return;
-		
+
 		SCR_XPHandlerComponent compXP = SCR_XPHandlerComponent.Cast(FindComponent(SCR_XPHandlerComponent));
 		if (!compXP)
 			return;
-		
+
 		//~ Victim is not a character (Safty check)
 		SCR_ChimeraCharacter victimCharacter = SCR_ChimeraCharacter.Cast(instigatorContextData.GetVictimEntity());
 		if (!victimCharacter)
 			return;
-		
+
 		vector victimPos = victimCharacter.GetOrigin();
-		
+
 		//~ Get nearest base
 		SCR_CampaignMilitaryBaseComponent nearestBase = m_BaseManager.FindClosestBase(victimPos);
 		if (!nearestBase)
 			return;
-		
+
 		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 		if (!factionManager)
 			return;
 
 		int killerId = instigator.GetInstigatorPlayerID();
-		
+
 		//~ Get killer faction to check if the closest base has the same faction as the killer
 		Faction factionKiller = factionManager.GetPlayerFaction(killerId);
 		if (!factionKiller)
 			return;
-		
+
 		//this awards additional XP to base defenders, so if the instigator is not in his own base, there should be no reward
 		if (nearestBase.GetFaction() != factionKiller)
 			return;
-		
+
 		//~ Not in defending range
 		if (vector.DistanceXZ(victimPos, nearestBase.GetOwner().GetOrigin()) > nearestBase.GetRadius())
 			return;
@@ -1729,17 +1747,17 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	{
 		if (IsProxy())
 			return;
-		
+
 		SCR_AIGroup aiGroup = SCR_AIGroup.Cast(spawnedEntity);
 		if (aiGroup)
-		{			
+		{
 			SCR_CampaignMilitaryBaseManager militaryBaseManager = GetBaseManager();
 			if (!militaryBaseManager)
 				return;
-			
+
 			militaryBaseManager.OnDefenderGroupSpawned(service, aiGroup);
 		}
-		
+
 		if (!spawnedEntity.IsInherited(Vehicle))
 			return;
 

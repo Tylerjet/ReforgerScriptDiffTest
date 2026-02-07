@@ -159,5 +159,5 @@ class SCR_AICombatMoveLogic_HideFromUnknownFire : AITaskScripted
 	//protected static ref TStringArray s_aVarsOut = { PORT_COMPLETE_ACTION };
 	//override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }

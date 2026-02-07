@@ -62,6 +62,13 @@ class CharacterCamera1stPersonTurret extends CharacterCamera1stPerson
 
 		m_CharacterHeadAimingComponent.SetPitchLimitReductionMultiplier(1.25); // Pitch reduction to avoid neckhole
 	}
+	
+	//-----------------------------------------------------------------------------
+	override void OnDeactivate(ScriptedCameraItem pNextCamera)
+	{
+		m_CharacterHeadAimingComponent.ResetLimitAnglesOverride();
+	}
+	
 	//-----------------------------------------------------------------------------
 	static float UpdateAngleWithTarget(out float pAngle, out float pAngleAdd, out float addVelocity, vector limits, float pDt, float target, float change, bool freeLook)
 	{
@@ -98,7 +105,7 @@ class CharacterCamera1stPersonTurret extends CharacterCamera1stPerson
 		CharacterControllerComponent charController = m_OwnerCharacter.GetCharacterController();
 
 		//! apply to rotation matrix
-		m_vLastCameraAngles = m_pControlledTurret.GetAimingDirectionWorld().VectorToAngles();
+		m_vLastCameraAngles = m_pControlledTurret.GetAimingDirection().VectorToAngles();
 		if (charController.IsFreeLookEnabled() || m_pTurretController.GetCanAimOnlyInADS() || charController.IsTrackIREnabled())
 		{
 			float downLimit = m_pCompartment.GetFreelookAimLimitOverrideDown();
@@ -138,15 +145,10 @@ class CharacterCamera1stPersonTurret extends CharacterCamera1stPerson
 			offset += neckOffset;
 
 			m_vLastCameraAngles[1] = 0; // Ignore gun elevation
-			m_vLastCameraAngles += lookAnglesOverriden;
+			m_vLastCameraAngles = lookAnglesOverriden;
 		}
-		
-		// character matrix
-		vector charMat[4];
-		m_OwnerCharacter.GetWorldTransform(charMat);
-		vector charAngles = Math3D.MatrixToAngles(charMat);
 
-		Math3D.AnglesToMatrix(m_vLastCameraAngles - charAngles, pOutResult.m_CameraTM);
+		Math3D.AnglesToMatrix(m_vLastCameraAngles, pOutResult.m_CameraTM);
 		
 		//! lerp eye position to prevent nosiating shake when character walks around deployed turret
 		m_vPrevEyePosition = vector.Lerp(m_vPrevEyePosition, m_OwnerCharacter.EyePositionModel(), 0.25);

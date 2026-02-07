@@ -20,20 +20,20 @@ class SCR_AIActivateAllBirds: AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
 	{
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Active All Birds: Broadcast to all clients if they should activete/deactivete their individual birds";
 	}
 	
 	//------------------------------------------------------------------------------------------------
 		
-	override protected bool CanReturnRunning()
+	static override protected bool CanReturnRunning()
 	{
 		return false;
 	}

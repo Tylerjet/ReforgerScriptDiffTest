@@ -1,88 +1,59 @@
-#define DEBUG
-#define ENABLE_BASE_DESTRUCTION
-//------------------------------------------------------------------------------------------------
 [EntityEditorProps(category: "GameScripted/Debris", description: "Entity used to represent small chunks of debris. Automatically managed.", dynamicBox: true)]
-class SCR_DebrisSmallEntityClass: GenericEntityClass
+class SCR_DebrisSmallEntityClass: SCR_BaseDebrisSmallEntityClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Entity used to represent small debris in the world. Is managed automatically and will never
 //! allow the user to exceed the specified maximum amount. If new spawn is requested, priority
 //! is evaluated. If the new debris has higher priority than any of the debris spawned before,
 //! it will be replaced by the new one.
-class SCR_DebrisSmallEntity : GenericEntity
+class SCR_DebrisSmallEntity : SCR_BaseDebrisSmallEntity
 {
 #ifdef ENABLE_BASE_DESTRUCTION
 	//! The maximum limit of small debris in the scene at any given time. This limit is never exceeded.
 	private static int s_iDebrisMaximumCount = 1000;
+
 	//! List of all the small debris in the world.
 	private static ref array<SCR_DebrisSmallEntity> s_aDebrisSmallList = null;
-	
-	//! Whether this debris has reached end of its lifetime and should be deleted
-	private bool m_bDelete = false;
+
 	//! The priority of this debris. Higher priority debris will replace lower priority if limit is reached.
-	private int m_iPriority = 0;
-	//! The lifetime in seconds. 
-	private float m_fLifeTime = 0.0;
-	//! Entity age in seconds. After this time is bigger thatn m_fLifeTime, debris will despawn.
-	private float m_fAgeTime = 0.0;
+	private int m_iPriority;
+
 	//! The maximum distance from the camera in metres. If camera is beyond this distance, debris will despawn.
-	private float m_fMaxDistance = 0.0;
-	//! The physics attached to this debris.
-	private Physics m_RigidBody = null;
-	//! Material type of item for sound
-	private SCR_EMaterialSoundTypeDebris m_eMaterialSoundType
+	private float m_fMaxDistance;
+
 	//! Position of last played sound
-	private vector m_vSoundPositionLast;
-	//! Minimal distance from last played sound
-	private static const float MINIMAL_DISTANCE_SQ = 0.25;
-	//! Minimum entity lifetime to play sound
-	private static const float MINIMAL_AGE = 0.25;
-	//! Stores last sound
-	private AudioHandle m_AudioHandle = AudioHandle.Invalid;
+	protected vector m_vSoundPositionLast;
+	
 	//! Sound threshold
-	private float m_fSoundThreshold;
-	//! Kinetic energy delta needed to trigger impact sound
-	private static const int KINETIC_ENERGY_THRESHOLD = 12;
-	#ifdef ENABLE_DIAG
-	//! Cash contact velocity change
-	private float m_fdVelocity;
-	//!
-	private ref DebugTextWorldSpace m_Text;
-	//! Peak value
-	private float m_fTextMax;
-	//! Peak value age
-	private float m_fTextAgeTime;
-	#endif
+	protected float m_fSoundThreshold;
+	
+	//! Stores last sound
+	protected AudioHandle m_AudioHandle = AudioHandle.Invalid;
+	
+	//! Material type of item for sound
+	protected SCR_EMaterialSoundTypeDebris m_eMaterialSoundType;
+
+	//! Entity spawned only outside
+	protected bool m_bExteriorSource;
 	
 	//! Count of debris spawned this frame
-	static private int m_iSpawnedThisFrame = 0;
-	//! Max debris per frame m_iSpawnedThisFrame
-	static private int m_iDebrisPerFrameLimit = 128;
-		
-	//------------------------------------------------------------------------------------------------
-	//! Get whether game is in play state or not.
-	//! \return true if play mode, false otherwise
-	private bool IsGamePlaying()
-	{
-		if (GetGame().GetWorldEntity())
-			return true;
-		return false;
-	}
-	
+	static private int s_iSpawnedThisFrame;
+
+	//! Max debris per frame s_iSpawnedThisFrame
+	static private int s_iDebrisPerFrameLimit = 128;
+			
 	//------------------------------------------------------------------------------------------------
 	//! Register debris into the list.
-	private void RegisterDebris()
+	protected void RegisterDebris()
 	{
 		if (!IsGamePlaying())
 			return;
 		
 		// If array is not created, create it
 		if (!s_aDebrisSmallList)
-		{
-			s_aDebrisSmallList = new array<SCR_DebrisSmallEntity>();
-		}
+			s_aDebrisSmallList = {};
+
 		// Insert element into the list
 		if (s_aDebrisSmallList)
 		{
@@ -116,15 +87,7 @@ class SCR_DebrisSmallEntity : GenericEntity
 			}
 		}
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	private static float GetDistanceToCamera(BaseWorld world, vector position)
-	{
-		vector cameraMat[4];
-		world.GetCurrentCamera(cameraMat);
-		return vector.Distance(cameraMat[3], position);
-	}
-	
+		
 	//------------------------------------------------------------------------------------------------				
 	override void EOnContact(IEntity owner, IEntity other, Contact contact)
 	{
@@ -138,19 +101,18 @@ class SCR_DebrisSmallEntity : GenericEntity
 			PlaySound(contact.Position, spdDiff);
 		
 		// Sound debug
-		#ifdef ENABLE_DIAG 
+#ifdef ENABLE_DIAG
 		m_fdVelocity = spdDiff;
-		#endif
+#endif // ENABLE_DIAG
 		
 		if (spdDiff < 20)
 			return;
-		
 		
 		DeleteDebris();
 	}
 		
 	//------------------------------------------------------------------------------------------------
-	private void PlaySound(vector pos, float dVelocity)
+	void PlaySound(vector pos, float dVelocity)
 	{		
 		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
 		if (!soundManagerEntity)
@@ -164,6 +126,13 @@ class SCR_DebrisSmallEntity : GenericEntity
 		if (!audioSourceConfiguration)
 			return;
 		
+		// Override InteriorSignal flag
+		if (m_bExteriorSource)
+			audioSourceConfiguration.m_eFlags = SCR_Enum.SetFlag(audioSourceConfiguration.m_eFlags, EAudioSourceConfigurationFlag.ExteriorSource);
+		else
+			audioSourceConfiguration.m_eFlags = SCR_Enum.RemoveFlag(audioSourceConfiguration.m_eFlags, EAudioSourceConfigurationFlag.ExteriorSource);
+		
+		
 		audioSourceConfiguration.m_sSoundEventName = SCR_SoundEvent.SOUND_MPD_ + typename.EnumToString(SCR_EMaterialSoundTypeDebris, m_eMaterialSoundType);					
 		SCR_AudioSource audioSource = soundManagerEntity.CreateAudioSource(this, audioSourceConfiguration);
 		if (!audioSource)
@@ -174,7 +143,7 @@ class SCR_DebrisSmallEntity : GenericEntity
 		
 		// Set signals
 		audioSource.SetSignalValue(SCR_AudioSource.COLLISION_D_V_SIGNAL_NAME, dVelocity - m_fSoundThreshold);
-		audioSource.SetSignalValue(SCR_AudioSource.ENTITY_SIZE_SIGNAL_NAME, m_RigidBody.GetMass());
+		audioSource.SetSignalValue(SCR_AudioSource.ENTITY_SIZE_SIGNAL_NAME, GetPhysics().GetMass());
 				
 		// Get sound position
 		vector mat[4];
@@ -189,70 +158,28 @@ class SCR_DebrisSmallEntity : GenericEntity
 		m_vSoundPositionLast = pos;
 		
 		// Sound Debug
-		#ifdef ENABLE_DIAG 
-		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_SOUNDS_MPDESTRUCTION_SHOW_IMPULSEVALUES))
-		{
-			m_Text = DebugTextWorldSpace.Create(GetWorld(), dVelocity.ToString(1, 2) + "/" + m_fSoundThreshold.ToString(1, 2) + "/" + m_RigidBody.GetMass().ToString(), DebugTextFlags.FACE_CAMERA, pos[0], pos[1], pos[2], 20, COLOR_BLUE);
-			m_fTextAgeTime = m_fAgeTime + 1;
-		}
-		#endif
+#ifdef ENABLE_DIAG
+		SoundDebugPlaySound(m_fSoundThreshold, dVelocity, pos);
+#endif // ENABLE_DIAG
 	}
 	
 	//------------------------------------------------------------------------------------------------	
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
-		// Get debris age
-		m_fAgeTime += timeSlice;
-		
-		// Delete this debris. (automatically unregisters)
-		if (m_fAgeTime >= m_fLifeTime)
-		{
-			DeleteDebris();
-		}
+		super.EOnFrame(owner, timeSlice);
 		
 		// Check if within camera range, set to delete if not.
 		if (!m_bDelete)
 		{
-			float distance = GetDistanceToCamera(owner.GetWorld(), owner.GetOrigin());
+			const float distance = GetDistanceToCamera(owner.GetWorld(), owner.GetOrigin());
 			if (distance >= m_fMaxDistance)
 				DeleteDebris();
 		}
 		
-		// If debris should be deleted then delete it.
-		if (m_bDelete)
-		{
-			if (m_RigidBody)
-			{
-				m_RigidBody.Destroy();
-				m_RigidBody = null;
-			}
-			
-			delete this;
-		}
-		
-		//Sound debug
-		#ifdef ENABLE_DIAG 
-		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_SOUNDS_MPDESTRUCTION_SHOW_IMPULSEVALUES))
-		{
-			// Get center of entity
-			vector minsDebug;
-			vector maxsDebug;
-			owner.GetWorldBounds(minsDebug, maxsDebug);			
-			vector centerDebug;
-			for (int i = 0; i < 3; i++)
-			{
-				centerDebug[i] = minsDebug[i] + Math.AbsFloat(((maxsDebug[i] - minsDebug[i]) * 0.5));
-			}
-			
-			// Hold peak velue for 1s
-			if (m_fAgeTime - m_fTextAgeTime > 1 || m_fdVelocity > m_fTextMax)
-			{
-				m_Text = DebugTextWorldSpace.Create(GetWorld(), m_fdVelocity.ToString(1, 2) + "/" + m_fSoundThreshold.ToString(1, 2) + "/" + m_RigidBody.GetMass().ToString(), DebugTextFlags.FACE_CAMERA, centerDebug[0], centerDebug[1], centerDebug[2], 20);
-				m_fTextMax = m_fdVelocity;
-				m_fTextAgeTime = m_fAgeTime;
-			}
-		}
-		#endif	
+		// Sound debug
+#ifdef ENABLE_DIAG
+		SoundDebugOnFrame(m_fSoundThreshold);
+#endif // ENABLE_DIAG
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -265,9 +192,9 @@ class SCR_DebrisSmallEntity : GenericEntity
 	//! \param linearVelocity Linear velocity of the debris (in m/s)
 	//! \param angularVelocity Angular velocity of the debris (in deg/s)
 	//! \param remap The materials to be remapped to, see SetObject() for more info
-	static SCR_DebrisSmallEntity SpawnDebris(BaseWorld world, vector mat[4], ResourceName model, float mass = 10, float lifeTime = 10.0, float maxDistance = 256.0, int priority = 1, vector linearVelocity = "0 0 0", vector angularVelocity = "0 0 0", string remap = "", bool isStatic = false, SCR_EMaterialSoundTypeDebris materialSoundType = 0)
+	static SCR_DebrisSmallEntity SpawnDebris(BaseWorld world, vector mat[4], ResourceName model, float mass = 10, float lifeTime = 10.0, float maxDistance = 256.0, int priority = 1, vector linearVelocity = "0 0 0", vector angularVelocity = "0 0 0", string remap = "", bool isStatic = false, SCR_EMaterialSoundTypeDebris materialSoundType = 0, bool exteriorSource = false)
 	{
-		if (m_iSpawnedThisFrame >= m_iDebrisPerFrameLimit)
+		if (s_iSpawnedThisFrame >= s_iDebrisPerFrameLimit)
 			return null;
 		
 		// Check if model is valid
@@ -282,7 +209,7 @@ class SCR_DebrisSmallEntity : GenericEntity
 		
 		// See if this is first entity or not, if so, create the list
 		if (!s_aDebrisSmallList)
-			s_aDebrisSmallList = new array<SCR_DebrisSmallEntity>();
+			s_aDebrisSmallList = {};
 		
 		// If the list exists, check count. If over limit, replate debris with lower priority by this one.
 		if (s_aDebrisSmallList)
@@ -291,13 +218,13 @@ class SCR_DebrisSmallEntity : GenericEntity
 			// Over the limit
 			if (count >= s_iDebrisMaximumCount)
 			{
-				for (int i = 0; i < s_aDebrisSmallList.Count(); i++)
-				{
-					if (s_aDebrisSmallList[i])
+				foreach(SCR_DebrisSmallEntity debrisSmallEntity : s_aDebrisSmallList)
+				{	
+					if (debrisSmallEntity)
 					{
-						if (s_aDebrisSmallList[i].m_iPriority < priority)
+						if (debrisSmallEntity.m_iPriority < priority)
 						{
-							entity = s_aDebrisSmallList[i];
+							entity = debrisSmallEntity;
 							break;
 						}
 					}
@@ -305,11 +232,9 @@ class SCR_DebrisSmallEntity : GenericEntity
 				// TODO: Try out if this impacts performance or not (or how heavily)
 				if (entity)
 				{
-					if (entity.m_RigidBody)
-					{
-						entity.m_RigidBody.Destroy();
-						entity.m_RigidBody = null;
-					}
+					Physics entityPhysics = entity.GetPhysics();
+					if (entityPhysics)
+						entityPhysics.Destroy();
 				}
 			}
 			// Below the limit, spawn new one.
@@ -323,7 +248,7 @@ class SCR_DebrisSmallEntity : GenericEntity
 		if (!entity)
 			return null; 
 		
-		m_iSpawnedThisFrame++;
+		s_iSpawnedThisFrame++;
 		// Set newly spawned entity (or the one being reused)'s data to the new
 		entity.SetTransform(mat);
 		Resource resource = Resource.Load(model);
@@ -342,42 +267,52 @@ class SCR_DebrisSmallEntity : GenericEntity
 		entity.m_fMaxDistance = maxDistance;
 		entity.m_eMaterialSoundType = materialSoundType;
 		
-		// Get sound threshold	
+		// Store sound parameters	
 		entity.m_fSoundThreshold =  Math.Sqrt(2 * KINETIC_ENERGY_THRESHOLD / mass);
 		
-		// Set debris init position	for sound	
-		vector mins;
-		vector maxs;
-		entity.GetWorldBounds(mins, maxs);	
-				
-		entity.m_vSoundPositionLast = vector.Lerp(mins, maxs, 0.5);
+		vector mins, maxs;
+		entity.GetWorldBounds(mins, maxs);			
+		entity.m_vSoundPositionLast = vector.Lerp(mins, maxs, 0.5);	
+					
+		entity.m_bExteriorSource = exteriorSource;
 		
 		// Set physics
-		if (!entity.m_RigidBody)
+		Physics entityPhysics = entity.GetPhysics();
+		if (!entityPhysics)
 		{
 			if (isStatic)
-				entity.m_RigidBody = Physics.CreateStatic(entity, -1);
+			{
+				entityPhysics = Physics.CreateStatic(entity, -1);
+			}
 			else
 			{
-				entity.m_RigidBody = Physics.CreateDynamic(entity, mass, -1);
-				if (entity.m_RigidBody)
+				entityPhysics = Physics.CreateDynamic(entity, mass, -1);
+				if (entityPhysics)
 				{
-					entity.m_RigidBody.SetVelocity(linearVelocity);
-					entity.m_RigidBody.SetAngularVelocity(angularVelocity * Math.DEG2RAD);
-				}
+					//hotfix for debris getting stuck in terrain causing low fps
+					vector entityOrigin = entity.GetOrigin();
+					float terrainYMins = GetGame().GetWorld().GetSurfaceY(mins[0], mins[2]);	
+					float terrainYMaxs = GetGame().GetWorld().GetSurfaceY(maxs[0], maxs[2]);
 				
-				//hotfix for debris getting stuck in terrain causing low fps
-				vector entityOrigin = entity.GetOrigin();
-				float terrainY = GetGame().GetWorld().GetSurfaceY(entityOrigin[0], entityOrigin[2]);		
-				if (mins[1] < terrainY && maxs[1] > terrainY)
-				{
-					float newHeight = terrainY - mins[1] + entityOrigin[1] + 0.001;
-					entity.SetOrigin({entityOrigin[0], newHeight, entityOrigin[2]});
+					if ((mins[1] < terrainYMins || mins[1] < terrainYMaxs) && (maxs[1] > terrainYMins || maxs[1] > terrainYMaxs))
+					{
+						float highestTerrainY;
+						if (terrainYMaxs > terrainYMins)
+							highestTerrainY = terrainYMaxs;
+						else
+							highestTerrainY = terrainYMins;
+				
+						float newHeight = highestTerrainY - mins[1] + entityOrigin[1] + 0.1;
+						entity.SetOrigin({entityOrigin[0], newHeight, entityOrigin[2]});
+					}
+					
+					entityPhysics.SetVelocity(linearVelocity);
+					entityPhysics.SetAngularVelocity(angularVelocity * Math.DEG2RAD);
 				}
 			}
-			
-			if (entity.m_RigidBody)
-				entity.m_RigidBody.SetInteractionLayer(EPhysicsLayerDefs.Debris);
+
+			if (entityPhysics)
+				entityPhysics.SetInteractionLayer(EPhysicsLayerDefs.Debris);
 		}
 		
 		return entity;
@@ -406,17 +341,16 @@ class SCR_DebrisSmallEntity : GenericEntity
 		
 	//------------------------------------------------------------------------------------------------
 	//! Delete debris - unregisters it from the list and makes it scale down and delete.
-	void DeleteDebris()
+	override void DeleteDebris()
 	{
 		UnregisterDebris();
-		m_bDelete = true;
-		ClearEventMask(EntityEvent.CONTACT);
+		super.DeleteDebris();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void EOnPostFrame(IEntity owner, float timeSlice)
 	{
-		m_iSpawnedThisFrame = 0;
+		s_iSpawnedThisFrame = 0;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -429,8 +363,7 @@ class SCR_DebrisSmallEntity : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	void SCR_DebrisSmallEntity(IEntitySource src, IEntity parent)
 	{	
-		SetEventMask(EntityEvent.INIT | EntityEvent.FRAME | EntityEvent.POSTFRAME | EntityEvent.CONTACT);
-		SetFlags(EntityFlags.ACTIVE, true);		
+		SetEventMask(EntityEvent.INIT | EntityEvent.POSTFRAME | EntityEvent.CONTACT);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -438,5 +371,5 @@ class SCR_DebrisSmallEntity : GenericEntity
 	{
 		UnregisterDebris();
 	}
-#endif
-};
+#endif // ENABLE_BASE_DESTRUCTION
+}

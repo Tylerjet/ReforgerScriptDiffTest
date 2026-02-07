@@ -208,9 +208,9 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 
 		int XPToAdd = Math.Round(XP * multiplier * comp.GetXPMultiplier());
 
-		int XPToAddBySkill = 0;
+		const int XPToAddBySkill = 0; // TODO: check for good const usage
 		bool profileUsed = false;
-		int skillLevel = 0;
+		const int skillLevel = 0; // TODO: check for good const usage
 		/***** Replaced by SCR_PlayerData
 		//****
 		// Handle skill XP

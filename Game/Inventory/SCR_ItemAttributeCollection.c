@@ -52,7 +52,7 @@ class SCR_ItemAttributeCollection: ItemAttributeCollection
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	bool IsVisible()
+	bool IsVisible(InventoryItemComponent inventoryItem)
 	{
 		return m_bVisible;
 	}

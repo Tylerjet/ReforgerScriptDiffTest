@@ -40,6 +40,8 @@ sealed class Physics: NativeComponent
 	proto external void SetGeomInteractionLayer(int index, int mask);
 	//! Returns interaction layer mask of the physics body.
 	proto external int GetInteractionLayer();
+	//! Returns true if the physics body has enabled interaction with other body's layer mask
+	proto external bool HasInteractionEnabled(int mask);
 	//! Returns interaction layer mask of the geometry element.
 	proto external int GetGeomInteractionLayer(int index);
 	/*!

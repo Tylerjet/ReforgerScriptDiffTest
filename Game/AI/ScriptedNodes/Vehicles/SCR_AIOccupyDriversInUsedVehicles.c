@@ -289,7 +289,7 @@ class SCR_AIOccupyDriversInUsedVehicles : AITaskScripted
 	}
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
 	{
 		return true;
 	};
@@ -301,13 +301,13 @@ class SCR_AIOccupyDriversInUsedVehicles : AITaskScripted
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------
-	override string GetOnHoverDescription()
+	static override string GetOnHoverDescription()
 	{
 		return "OccupyDriversInUsedVehicles: goes over the array of known vehicles and tries to occupy the drivers with alive group members. Is running while seats are not occupied.\nReturns bool if we can occupy (at least one) driver.";
 	};
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------
-	override bool CanReturnRunning()
+	static override bool CanReturnRunning()
 	{
 		return true;
 	};

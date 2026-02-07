@@ -11,7 +11,6 @@ class SCR_JointDummyHolderEntityClass: GenericEntityClass
 class SCR_JointDummyHolderEntity: GenericEntity 
 {
 	vector m_FixedMat[4];
-	Physics m_Physics = null;
 	
 	//------------------------------------------------------------------------------------------------
 	void SetDummyTransform(vector mat[4])
@@ -26,12 +25,13 @@ class SCR_JointDummyHolderEntity: GenericEntity
 	//------------------------------------------------------------------------------------------------
 	override event void EOnSimulate(IEntity owner, float timeSlice) //!EntityEvent.SIMULATE
 	{
-		if (!m_Physics)
+		Physics physics = owner.GetPhysics();
+		if (!physics)
 			return;
 		
 		SetTransform(m_FixedMat);
-		m_Physics.SetAngularVelocity(vector.Zero);
-		m_Physics.SetVelocity(vector.Zero);
+		physics.SetAngularVelocity(vector.Zero);
+		physics.SetVelocity(vector.Zero);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -51,11 +51,11 @@ class SCR_JointDummyHolderEntity: GenericEntity
 		
 		// Note: If using static geometry, the joint gets reoriented!
 		//m_Physics = Physics.CreateStaticEx(this, geoms);
-		m_Physics = Physics.CreateDynamicEx(this, vector.Zero, 999999, geoms);
-		m_Physics.SetLinearFactor(vector.Zero);
-		m_Physics.SetDamping(1000, 1000);
-		m_Physics.SetAngularVelocity(vector.Zero);
-		m_Physics.SetVelocity(vector.Zero);
+		Physics physics = Physics.CreateDynamicEx(this, vector.Zero, 999999, geoms);
+		physics.SetLinearFactor(vector.Zero);
+		physics.SetDamping(1000, 1000);
+		physics.SetAngularVelocity(vector.Zero);
+		physics.SetVelocity(vector.Zero);
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -33,7 +33,7 @@ class SCR_CampaignBuildingLimitCylinderManualCameraComponent : SCR_LimitCylinder
 		if (!buildingComponent)
 			return false;
 		
-		SCR_FreeRoamBuildingClientTriggerEntity areaTrigger = buildingComponent.GetTrigger();
+		ScriptedGameTriggerEntity areaTrigger = buildingComponent.GetTrigger();
 		if (!areaTrigger)
 			return false;
 		

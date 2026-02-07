@@ -1,30 +1,30 @@
-#define DEBUG_NEARBY_CONTEXT_DISPLAY
+//#define DEBUG_NEARBY_CONTEXT_DISPLAY
 
 class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 {
 	[Attribute("5", UIWidgets.Slider, "Maximum amount of individual cached Widgets per kind.")]
 	protected int m_iMaxPrecachedWidgets;
 
-	[Attribute("{A604FB23656D64C7}UI/layouts/HUD/InteractionSystem/ContextBlipElement.layout", UIWidgets.ResourceNamePicker, "Layout", "layout", category: "NearbyContextDisplay")]
-	ResourceName m_sIconLayoutPath;
-	
 	[Attribute("{BF5FA7B21D658280}UI/layouts/HUD/InteractionSystem/ContextBasicInteractionBlip.layout", UIWidgets.ResourceNamePicker, "Layout", "layout", category: "NearbyContextDisplay")]
-	ResourceName m_sDefaultInteractionLayoutPath;
+	ResourceName m_sIconLayoutPath;
 
 	[Attribute("", UIWidgets.ResourceNamePicker, "edds", "edds")]
 	protected ResourceName m_sDefaultIconImage;
 
 	[Attribute("", desc: "SCR_NearbyContextCachingConfig Config that hold all the Widgets that will be cached.", params:"conf class=SCR_NearbyContextCachingConfig")]
 	protected ResourceName m_sCachingConfigResource;
-	
+
 	[Attribute("0.2", desc: "Minimum Opacity of the Blip Widget when calculating Opacity based on distance to Camera.")]
 	protected float m_fMinWidgetAlpha;
+
+	[Attribute("", desc: "each ID must be unique")]
+	protected ref array<ref SCR_NearbyContextColorsComponentInteract> m_aNearbyWidgetColors;
 
 	protected ref SCR_NearbyContextCachingConfig m_CachingConfig;
 
 	//! Interaction handler attached to parent entity.
 	protected SCR_InteractionHandlerComponent m_InteractionHandlerComponent;
-	
+
 	protected ChimeraCharacter m_Character;
 
 	//! Array of widgets that are filled and re-used as deemed neccessary.
@@ -49,7 +49,10 @@ class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 
 	//! Holds all the different cached Widgets with the Layout GUID as key
 	protected ref map<string, ref array<Widget>> m_mCachedWidgets = new map<string, ref array<Widget>>();
-	
+
+	//! Holds all the different cached id with the enum as key
+	protected ref map<SCR_ENearbyInteractionContextColors, ref SCR_NearbyContextColorsComponentInteract> m_mCachedActionColors;
+
 	protected ref TraceParam m_RaycastParam = new TraceParam();
 
 	//------------------------------------------------------------------------------------------------
@@ -84,9 +87,9 @@ class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 		}
 
 		m_sDefaultMapKey = m_sIconLayoutPath;
-		
+
 		m_RaycastParam.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
-		
+
 		// For better performance the Cached Widgets are only checked ervery 10 seconds instead of on each update.
 		GetGame().GetCallqueue().CallLater(ClearCachedWidgets, 10000, true);
 	}
@@ -131,6 +134,16 @@ class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 
 			CacheWidget(layout, precacheAmount);
 		}
+
+		if (m_aNearbyWidgetColors)
+		{
+			m_mCachedActionColors = new map<SCR_ENearbyInteractionContextColors, ref SCR_NearbyContextColorsComponentInteract>();
+			foreach (SCR_NearbyContextColorsComponentInteract colorset : m_aNearbyWidgetColors)
+			{
+				if (!m_mCachedActionColors.Contains(colorset.m_eId))
+					m_mCachedActionColors.Insert(colorset.m_eId, colorset);
+			}
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -172,8 +185,14 @@ class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 
 		// Fetch nearby contexts
 		array<UserActionContext> contexts = {};
-		int count = m_InteractionHandlerComponent.GetNearbyAvailableContextList(contexts);
+		m_InteractionHandlerComponent.GetNearbyAvailableContextList(contexts);
 		
+		#ifdef DEBUG_ACTIONICONS
+		array<UserActionContext> debugContexts = {};
+		m_InteractionHandlerComponent.GetNearbyUnavailableContextList(debugContexts);
+		contexts.InsertAll(debugContexts);
+		#endif
+
 		// Get required data
 		BaseWorld world = owner.GetWorld();
 		int cameraIndex = world.GetCurrentCameraId();
@@ -196,7 +215,7 @@ class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 
 			#ifdef DEBUG_NEARBY_CONTEXT_DISPLAY
 			if (camera.GetProjType() == CameraType.NONE)
-				Print(string.Format("%1 [DisplayUpdate] None Projection", this));
+				PrintFormat("%1 [DisplayUpdate] None Projection", this);
 			#endif
 
 			if (camera && camera.GetProjType() != CameraType.NONE)
@@ -223,7 +242,11 @@ class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 		}
 
 		bool isOverrideEnabled = m_InteractionHandlerComponent.GetManualCollectionOverride();
-		
+		SCR_NearbyContextColorsComponentInteract nearbyColors;
+		SCR_HealSupportStationAction medAction;
+		array<BaseUserAction> outActions = {};
+		IEntity entAction;
+
 		// Iterate through every available context and assign a Widget to it
 		foreach (UserActionContext ctx : contexts)
 		{
@@ -234,14 +257,31 @@ class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 			vector position = ctx.GetOrigin();
 			float posX, posY;
 			GetWorldToScreenPosition(world, cameraIndex, position, posX, posY);
+			
+			if (ctx.GetActionsList(outActions) < 1)
+				continue;
+			
+			entAction = outActions[0].GetOwner();
+			if (!entAction)
+				continue;
+			
+			#ifdef DEBUG_ACTIONICONS
+			foreach(BaseUserAction baseAction: outActions)
+			{
+				SCR_ActionUIInfo actionUIInfo = SCR_ActionUIInfo.Cast(baseAction.GetUIInfo());
+		
+				if (!actionUIInfo)
+					Print("DEBUG_ACTIONICONS:: No icons found for "+ baseAction);
+			}
+			#endif
 
 			// Just ignore actions out of reach or out of screen, we will fade them out anyway
 			if (IsOnScreen(resX, resY, posX, posY) && IsInLineOfSight(position, mat, threshold))
 			{
 				// Only do the raycast if there is no collection override and the context has UseRaycast enabled
-				if (!isOverrideEnabled && ctx.ShouldCheckLineOfSight() && IsObstructed(position, referencePos, world))
+				if (!isOverrideEnabled && ctx.ShouldCheckLineOfSight() && IsObstructed(position, referencePos, world, entAction))
 					continue;
-				
+
 				//Get the widget array from map using the layout as key
 				SCR_ActionContextUIInfo info = SCR_ActionContextUIInfo.Cast(ctx.GetUIInfo());
 				Widget widget;
@@ -320,13 +360,21 @@ class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 					float distance = Math.Sqrt(distanceSq);
 
 					SetWidgetAlpha(widget, distance, distanceLimit);
-					
-					SCR_NearbyContextWidgetComponentBase widgetComp = SCR_NearbyContextWidgetComponentBase.Cast(widget.FindHandler(SCR_NearbyContextWidgetComponentBase));
+					widget.SetZOrder(-(int)distance);
+
+					SCR_NearbyContextWidgetComponentInteract widgetComp = SCR_NearbyContextWidgetComponentInteract.Cast(widget.FindHandler(SCR_NearbyContextWidgetComponentInteract));
 					if (!widgetComp)
 						continue;
-
+					
 					if (widgetComp.GetAssignedContext() != ctx)
+					{
 						widgetComp.OnAssigned(info, ctx);
+
+						if (!widgetComp.HasColorData())
+							widgetComp.SetColorsData(m_mCachedActionColors);
+						
+						widgetComp.UpdateColors(ctx);
+					}
 
 					widgetComp.ChangeVisibility(visible);
 				}
@@ -420,27 +468,40 @@ class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 			m_mCachedWidgets.Set(mapKey, cachedWidgets);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Use a Raycast to check if the givin position is in line of sight
 	//! \param[in] Position to which we cast the raycast
 	//! \param[in] Position where the raycast should start
 	//! \param[in] current world
+	//! \param[in] Entity Owner of the Action
 	//! \return true if raycast collided with something, false otherwise
-	protected bool IsObstructed(vector contextPos, vector cameraPos, BaseWorld world)
+	protected bool IsObstructed(vector contextPos, vector cameraPos, BaseWorld world, notnull IEntity entAction)
 	{
 		m_RaycastParam.Start = cameraPos;
 		m_RaycastParam.End = contextPos;
-
-		return world.TraceMove(m_RaycastParam, IsCharacter) < m_InteractionHandlerComponent.GetRaycastThreshold();
+		
+		if (world.TraceMove(m_RaycastParam, IsCharacter) < m_InteractionHandlerComponent.GetRaycastThreshold())
+		{
+			if (!m_RaycastParam.TraceEnt)
+				return true;
+			
+			IEntity parentEntityRay = m_RaycastParam.TraceEnt.GetRootParent();
+			IEntity parentEntityAct = entAction.GetRootParent();
+			
+			if (parentEntityRay != parentEntityAct)
+				return true;
+		}
+		
+		return false;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Callback method for TraceMove, to check if hit entity is a Character
 	//! \param entity
 	//! \return true if entity is a character, false otherwise
 	protected static bool IsCharacter(notnull IEntity entity)
-	{		
+	{
 		return ChimeraCharacter.Cast(entity) == null;
 	}
 
@@ -488,7 +549,7 @@ class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 
 		return false;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Performs a dot product check against threshold whether point is in line of sight of provided transformation.
 	//! \param[in] vector point Point to perform check for
@@ -539,7 +600,7 @@ class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 		float xDistance = Math.AbsFloat(posX - resX * 0.5) / resX * aspectRatio;
 		float yDistance = Math.AbsFloat(posY - resY * 0.5) / resY;
 
-		// calculate last unknown lenght
+		// calculate last unknown length
 		return Math.Sqrt(Math.Pow(xDistance, 2) + Math.Pow(yDistance, 2));
 	}
 }

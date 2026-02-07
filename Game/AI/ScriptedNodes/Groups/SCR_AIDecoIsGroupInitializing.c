@@ -9,5 +9,5 @@ class SCR_AIDecoIsGroupInitializing : DecoratorScripted
 	}
 	
 	//------------------------------------------------------------
-	override string GetOnHoverDescription() { return "Tests SCR_AIGroup.IsInitializing"; }
+	static override string GetOnHoverDescription() { return "Tests SCR_AIGroup.IsInitializing"; }
 }

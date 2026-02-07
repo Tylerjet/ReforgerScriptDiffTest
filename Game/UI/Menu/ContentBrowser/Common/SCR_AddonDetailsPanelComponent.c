@@ -53,6 +53,7 @@ class SCR_AddonDetailsPanelComponent : SCR_ContentDetailsPanelBase
 		UpdateInfo();
 		UpdateTypes();
 		UpdateImage();
+		UpdateMANWVisuals();
 		UpdateDependencies();
 		UpdateErrorMessage();
 	}	
@@ -62,6 +63,29 @@ class SCR_AddonDetailsPanelComponent : SCR_ContentDetailsPanelBase
 	{
 		if (m_BackendImageComponent)
 			m_BackendImageComponent.SetWorkshopItemAndImage(m_Item, m_Item.GetThumbnail());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateMANWVisuals()
+	{
+		if (!m_Item.GetWorkshopItem())
+		{
+			m_CommonWidgets.m_wMANWLogo.SetVisible(false);
+			return;
+		}
+		
+		array<WorkshopTag> items = {};
+		m_Item.GetWorkshopItem().GetTags(items);
+		foreach(WorkshopTag item: items)
+		{
+			if (item.Name() == "MANW_2025")
+			{
+				m_CommonWidgets.m_wMANWLogo.SetVisible(true);
+				return;
+			}
+		}
+		
+		m_CommonWidgets.m_wMANWLogo.SetVisible(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -213,7 +237,7 @@ class SCR_AddonDetailsPanelComponent : SCR_ContentDetailsPanelBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void Callback_OnChanged(SCR_WorkshopItem item)
+	protected void Callback_OnChanged()
 	{
 		UpdateAllWidgets();
 	}
@@ -245,8 +269,6 @@ class SCR_AddonDetailsPanelComponent : SCR_ContentDetailsPanelBase
 			m_Item.m_OnChanged.Insert(Callback_OnChanged);
 			m_Item.m_OnGetAsset.Insert(OnGetAsset);
 			m_Item.m_OnDependenciesLoaded.Insert(UpdateDependencies);
-			if (!m_Item.GetDetailsLoaded())
-				m_Item.LoadDetails();
 		}
 
 		UpdateAllWidgets();

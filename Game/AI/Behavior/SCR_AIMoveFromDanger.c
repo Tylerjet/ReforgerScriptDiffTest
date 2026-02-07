@@ -17,6 +17,12 @@ class SCR_AIMoveFromDangerBehavior : SCR_AIBehaviorBase
 		m_MovementType.Init(this, EMovementType.RUN); // Don't use sprint! Character can't reload during sprint, it makes it broken.
 	}
 	
+	//---------------------------------------------------------------------------------------------------------------------------------
+	override int GetCause()
+	{
+		return SCR_EAIBehaviorCause.DANGER_HIGH;
+	}
+	
 	//-----------------------------------------------------------------------------------------------------
 	void SCR_AIMoveFromDangerBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector dangerPos, IEntity dangerEntity)
 	{
@@ -119,45 +125,6 @@ class SCR_AIMoveFromGrenadeBehavior : SCR_AIMoveFromDangerBehavior
 		
 		m_bUseCombatMove = true;
 	}
-	
-	void CreateObserveUnknownBehavior()
-	{
-		if (m_vObserveReactionPosition == vector.Zero || m_Utility.m_CombatComponent.GetCurrentTarget() != null)
-			return;
-				
-		vector myOrigin = m_Utility.m_OwnerEntity.GetOrigin();
-								
-		// Stare at grenade origin
-		bool addObserveBehavior = false;
-		SCR_AIMoveAndInvestigateBehavior investigateBehavior = SCR_AIMoveAndInvestigateBehavior.Cast(m_Utility.FindActionOfType(SCR_AIMoveAndInvestigateBehavior));
-		SCR_AIObserveUnknownFireBehavior oldObserveBehavior = SCR_AIObserveUnknownFireBehavior.Cast(m_Utility.FindActionOfType(SCR_AIObserveUnknownFireBehavior));
-				
-		if (investigateBehavior && investigateBehavior.GetActionState() == EAIActionState.RUNNING)
-		{
-			if (SCR_AIObserveUnknownFireBehavior.IsNewPositionMoreRelevant(myOrigin, investigateBehavior.m_vPosition.m_Value, m_vObserveReactionPosition))
-				addObserveBehavior = true;
-		}
-		else if (oldObserveBehavior)
-		{
-			if (SCR_AIObserveUnknownFireBehavior.IsNewPositionMoreRelevant(myOrigin, oldObserveBehavior.m_vPosition.m_Value, m_vObserveReactionPosition))
-				addObserveBehavior = true;
-		}
-		else if (!oldObserveBehavior)
-			addObserveBehavior = true;
-		
-		if (addObserveBehavior)
-		{
-			SCR_AIObserveUnknownFireBehavior observeBehavior = new SCR_AIObserveUnknownFireBehavior(m_Utility, null, posWorld: m_vObserveReactionPosition, useMovement: false);
-			m_Utility.AddAction(observeBehavior);
-		}
-	}
-	
-	//-----------------------------------------------------------------------------------------------------
-	override void OnActionCompleted()
-	{
-		super.OnActionCompleted();
-		CreateObserveUnknownBehavior();
-	}	
 	
 	//-----------------------------------------------------------------------------------------------------
 	override float CustomEvaluate()
@@ -286,7 +253,7 @@ class SCR_AIPilotMoveFromIncomingVehicleBehavior : SCR_AIMoveFromDangerBehavior
 	
 	protected const float EXTRAPOLATE_POS_FORWARD_TIME_S = 0.2;
 	protected const float SIDE_STEP_LEN = 8;
-	
+	protected const float SIDE_STEP_FORWARD = 12;
 	//-----------------------------------------------------------------------------------------------------
 	void SCR_AIPilotMoveFromIncomingVehicleBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector dangerPos, IEntity dangerEntity)
 	{
@@ -311,13 +278,28 @@ class SCR_AIPilotMoveFromIncomingVehicleBehavior : SCR_AIMoveFromDangerBehavior
 			Fail();
 			return;
 		}
+
+		Physics phyDanger = m_DangerEntity.m_Value.GetPhysics();
+		if (!phyDanger)
+			return; // shouldn't happen as it triggered the even in first place
+		
+		vector dangerVelocity = phyDanger.GetVelocity().Normalized();
 		
 		vector myVelWorld = phy.GetVelocity();
 		vector myTransform[4];
 		myVehicle.GetTransform(myTransform);
-		
-		// Move some seconds ahead, and some meters sideways to the right
-		m_vMovePos.m_Value = myTransform[3] + EXTRAPOLATE_POS_FORWARD_TIME_S * myVelWorld + SIDE_STEP_LEN * myTransform[0];
+
+		// basicaly the rule is when danger comes from front or back go to right side
+		// if comes from side - go forward 
+		float dot = vector.DotXZ(dangerVelocity, myTransform[2]);
+		if (dot > 0.5 || dot < -0.5)
+		{
+			m_vMovePos.m_Value = myTransform[3] + EXTRAPOLATE_POS_FORWARD_TIME_S * myVelWorld + SIDE_STEP_LEN * myTransform[0] + SIDE_STEP_FORWARD * myTransform[2];
+		}
+		else
+		{
+			m_vMovePos.m_Value = myTransform[3] + EXTRAPOLATE_POS_FORWARD_TIME_S * myVelWorld + SIDE_STEP_LEN * myTransform[2];
+		}
 	}
 }
 
@@ -326,5 +308,5 @@ class SCR_AIGetPilotMoveFromIncomingVehicleBehaviorParameters : SCR_AIGetActionP
 	protected static ref TStringArray s_aVarsOut = (new SCR_AIPilotMoveFromIncomingVehicleBehavior(null, null, vector.Zero, null)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }

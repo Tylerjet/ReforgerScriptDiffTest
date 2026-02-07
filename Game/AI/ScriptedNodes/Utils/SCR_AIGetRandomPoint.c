@@ -70,13 +70,13 @@ class SCR_AIGetRandomPoint: AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
 	{
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override protected string GetOnHoverDescription()
+	static override protected string GetOnHoverDescription()
 	{
 		return "Returns random position in circle (2D) from given point or within radius of a waypoint. When origin vector isn't present it will assume zero vector instead.";
 	}

@@ -14,7 +14,7 @@ class SCR_AIDecoVectorDistance : DecoratorScripted
 	[Attribute("0", UIWidgets.EditBox)]
 	protected float m_fDistanceThreshold;
 	
-	override string GetOnHoverDescription() { return "Returns true when distance between two vectors is below distance threshold."; }
+	static override string GetOnHoverDescription() { return "Returns true when distance between two vectors is below distance threshold."; }
 	
 	override bool TestFunction(AIAgent owner)
 	{

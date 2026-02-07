@@ -16,6 +16,10 @@ class SCR_WBAfterWorldUpdateTest : ScriptComponent
 	}
 	
 	#ifdef WORKBENCH
+		override int _WB_GetAfterWorldUpdateSpecs(IEntity owner, IEntitySource src)
+		{
+			return EEntityFrameUpdateSpecs.CALL_WHEN_ENTITY_VISIBLE;
+		}
 		//------------------------------------------------------------------------------------------------
 		override void _WB_AfterWorldUpdate(IEntity owner, float timeSlice)
 		{

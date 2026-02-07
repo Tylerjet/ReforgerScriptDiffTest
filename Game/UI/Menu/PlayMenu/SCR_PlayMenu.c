@@ -267,7 +267,7 @@ class SCR_PlayMenu : MenuRootBase
 			scenario = scenarios[i];
 			elapsed = scenario.GetTimeSinceLastPlay();
 
-			if (elapsed == -1 || elapsed > THRESHOLD_RECENTLY_PLAYED || !SCR_ScenarioUICommon.IsMissingDependencies(scenario))
+			if (elapsed == -1 || elapsed > THRESHOLD_RECENTLY_PLAYED || SCR_ScenarioUICommon.IsMissingDependencies(scenario))
 			{
 				//PrintFormat("[GetRecentScenarios] removed: %1 | last played: %2 | missing dependency: %3", scenario.Name(), elapsed, SCR_ScenarioUICommon.IsMissingDependencies(scenario));
 				scenarios.Remove(i);

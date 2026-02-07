@@ -56,12 +56,12 @@ class SCR_AISpawnMagazines : AITaskScripted
 		return ENodeResult.FAIL;			
 	}	
 		
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}
 	
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "AI task that picks up all magazines of provided MagazineWell type in the vicinity of its inventory.";
 	}	

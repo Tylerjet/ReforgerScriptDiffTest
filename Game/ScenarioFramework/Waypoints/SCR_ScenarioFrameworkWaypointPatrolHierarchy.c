@@ -2,7 +2,7 @@
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkWaypointPatrolHierarchy : SCR_ScenarioFrameworkWaypointScripted
 {
-	[Attribute(defvalue: "5", desc: "Radius in m")]
+	[Attribute(defvalue: "5", uiwidget: UIWidgets.Slider, desc: "Radius in m")]
 	float m_fCompletionRadius;
 
 	[Attribute(defvalue: "{FBA8DC8FDA0E770D}Prefabs/AI/Waypoints/AIWaypoint_Patrol_Hierarchy.et", desc: "In Default, it will use specific prefab for each class, but here you can change it if you know what you are doing")]

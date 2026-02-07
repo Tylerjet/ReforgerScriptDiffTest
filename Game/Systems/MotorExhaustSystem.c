@@ -1,5 +1,12 @@
 class MotorExhaustSystem: GameSystem
 {
+	override static void InitInfo(WorldSystemInfo outInfo)
+	{
+		outInfo
+			.SetAbstract(false)
+			.AddPoint(ESystemPoint.Frame);
+	}
+
 	protected ref array<SCR_MotorExhaustEffectGeneralComponent> m_MotorsComponents = {};
 	
 	override protected void OnUpdate(ESystemPoint point)

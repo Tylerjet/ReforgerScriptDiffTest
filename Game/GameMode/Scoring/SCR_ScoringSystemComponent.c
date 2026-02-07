@@ -174,17 +174,9 @@ class SCR_ScoringSystemComponent : SCR_BaseScoringSystemComponent
 			return;
 		}
 		//~ Killed by friendly player. Score will still be deducted from friendly kills of admin and GMs
-		if (instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_FRIENDLY_PLAYER))
+		if (instigatorContextData.DoesPlayerKillCountAsTeamKill(editorKillsCount: true))
 		{
-			//~ If killer is a possessed player it is not counted
-			if (killerControlType == SCR_ECharacterControlType.POSSESSED_AI)
-				return;
-			
-			//~ Only add teamkill score if team kill is punished
-			SCR_AdditionalGameModeSettingsComponent additionalGameModeSettings = SCR_AdditionalGameModeSettingsComponent.GetInstance();
-			if (!additionalGameModeSettings || additionalGameModeSettings.IsTeamKillingPunished())
-				AddTeamKill(instigator.GetInstigatorPlayerID());
-			
+			AddTeamKill(instigator.GetInstigatorPlayerID());
 			return;
 		}
 	}

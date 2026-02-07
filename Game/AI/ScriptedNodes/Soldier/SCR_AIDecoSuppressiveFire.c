@@ -20,7 +20,7 @@ class SCR_AIDecoSuppressiveFire : DecoratorScripted
 	}
 	
 	//-----------------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}	

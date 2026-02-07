@@ -45,7 +45,6 @@ class SCR_ResourceComponent : ScriptComponent
 	const float UPDATE_DISTANCE_TRESHOLD = 2.5;
 	const float UPDATE_DISTANCE_TRESHOLD_SQUARE = UPDATE_DISTANCE_TRESHOLD * UPDATE_DISTANCE_TRESHOLD;
 	protected const float UPDATE_PERIOD = 10.0 / 60.0;
-	protected bool m_bIsDynamic;
 	protected bool m_bIsNetDirty;
 	protected int m_iGridUpdateId = int.MIN;
 	
@@ -322,13 +321,6 @@ class SCR_ResourceComponent : ScriptComponent
 		vector ownerOrigin = GetOwner().GetOrigin();
 		mins = ownerOrigin + m_vGridContainersBoundingVolumeMins;
 		maxs = ownerOrigin + m_vGridContainersBoundingVolumeMaxs;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	bool IsDynamic()
-	{
-		return m_bIsDynamic;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1424,6 +1416,11 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 #ifdef WORKBENCH 
+	override int _WB_GetAfterWorldUpdateSpecs(IEntity owner, IEntitySource src)
+	{
+		return EEntityFrameUpdateSpecs.CALL_WHEN_ENTITY_VISIBLE;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Called after updating world in Workbench. The entity must be visible in frustum, selected or named.
 	//! Used for performing the debug visualization on Workbench Editor's viewport.
@@ -1523,9 +1520,6 @@ class SCR_ResourceComponent : ScriptComponent
 		if (!vehicle)
 			return;
 		
-		GetGame().GetResourceGrid().PromoteResourceItemToDynamic(this);
-		m_bIsDynamic = true;
-		
 		vehicle.GetOnPhysicsActive().Insert(OnVehiclePhysicsActive);
 	}
 	
@@ -1558,20 +1552,6 @@ class SCR_ResourceComponent : ScriptComponent
 		SCR_ResourceSystem updateSystem = SCR_ResourceSystem.Cast(world.FindSystem(SCR_ResourceSystem));
 		
 		m_bIsOwnerActive = activeState;
-			
-		if (m_bIsOwnerActive)
-		{
-			m_bIsDynamic = true;
-			
-			GetGame().GetResourceGrid().PromoteResourceItemToDynamic(this);
-			updateSystem.RegisterDynamicComponent(this);
-		}
-		else
-		{
-			m_bIsDynamic = false;
-			GetGame().GetResourceGrid().PromoteResourceItemToStatic(this);
-			updateSystem.UnregisterDynamicComponent(this);
-		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1595,8 +1575,6 @@ class SCR_ResourceComponent : ScriptComponent
 		SCR_ResourceSystem updateSystem = SCR_ResourceSystem.Cast(world.FindSystem(SCR_ResourceSystem));
 		if (!updateSystem)
 			return;
-		
-		updateSystem.UnregisterDynamicComponent(this);
 		
 		delete m_aConsumers;
 		delete m_aGenerators;

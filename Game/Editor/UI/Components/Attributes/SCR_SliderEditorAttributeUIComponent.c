@@ -92,14 +92,14 @@ class SCR_SliderEditorAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 		
 		m_SliderWidgetComponent.SetValue(value);
 		m_SliderWidgetComponent.ShowCustomValue(GetSliderValueText(value));
-		OnChange(null, 0, 0, false);
+		OnChangeInternal(null, 0, 0, false);
 		
 		if (value > m_fMaxSliderValue)
 			PrintFormat("%1 attribute slider is set to '%2' but can only support up to '%3'", GetAttribute().GetUIInfo().GetName(), value.ToString(), m_fMaxSliderValue.ToString());
 	}
 
 	
-	override bool OnChange(Widget w, int x, int y, bool finished)
+	override bool OnChangeInternal(Widget w, int x, int y, bool finished)
 	{		
 		SCR_BaseEditorAttribute attribute = GetAttribute();
 		if (!attribute) 
@@ -116,7 +116,7 @@ class SCR_SliderEditorAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 			return false;
 		
 		var.SetFloat(value);
-		super.OnChange(w, x, y, finished);
+		super.OnChangeInternal(w, x, y, finished);
 		
 		return false;
 	}

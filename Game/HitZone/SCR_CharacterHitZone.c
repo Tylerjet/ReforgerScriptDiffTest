@@ -89,7 +89,7 @@ class SCR_RegeneratingHitZone : SCR_HitZone
 	//! Get current total damage per second of this hitZone
 	float GetHitZoneDamageOverTime(EDamageType targetDamageType)
 	{
-		array<ref BaseDamageEffect> effects = {};
+		array<ref SCR_PersistentDamageEffect> effects = {};
 		float dot;
 		
 		// if damageManager is not cast, throw assert
@@ -99,7 +99,7 @@ class SCR_RegeneratingHitZone : SCR_HitZone
 		// if wanted dps is physical hitZone passive regen, return the exact value. If the regen is still in delaytimer, return 0
 		if (targetDamageType == EDamageType.REGENERATION && SCR_CharacterHitZone.Cast(this))
 		{
-			array<ref PersistentDamageEffect> persistentEffects = damageMgr.GetAllPersistentEffectsOfType(SCR_PhysicalHitZonesRegenDamageEffect);
+			array<ref SCR_PersistentDamageEffect> persistentEffects = damageMgr.GetAllPersistentEffectsOfType(SCR_PhysicalHitZonesRegenDamageEffect);
 			if (!persistentEffects.IsEmpty())
 			{
 				SCR_PhysicalHitZonesRegenDamageEffect regenDamageEffect = SCR_PhysicalHitZonesRegenDamageEffect.Cast(persistentEffects[0]);
@@ -114,7 +114,7 @@ class SCR_RegeneratingHitZone : SCR_HitZone
 		if (SCR_CharacterHitZone.Cast(this) && targetDamageType == EDamageType.HEALING)
 			damageMgr.FindDamageEffectsOnHitZone(damageMgr.GetDefaultHitZone(), effects);
 		
-		foreach (BaseDamageEffect effect : effects)
+		foreach (SCR_PersistentDamageEffect effect : effects)
 		{
 			DotDamageEffect dotEffect = DotDamageEffect.Cast(effect);
 			if (dotEffect && dotEffect.GetDamageType() == targetDamageType)
@@ -192,14 +192,11 @@ class SCR_CharacterHitZone : SCR_RegeneratingHitZone
 	{
 		super.OnDamage(damageContext);
 		
-	//	Print("Character hitzone Damage amount: " + damageContext.damageValue + " Bullet type: " + damageContext.damageSource.GetName());
-	//	Print("Character hitzone Damage amount: " + damageContext.damageValue + " DamageType: " + damageContext.struckHitZone.GetName() + "    Bullet type: " + damageContext.damageSource.Type());
-		
 		if (this != damageContext.struckHitZone)
 			return;
 				
 		// Request impact sound from damage manager
-		bool critical = damageContext.damageType == EDamageType.FIRE || damageContext.damageValue >= GetCriticalDamageThreshold() * GetMaxHealth();
+		bool critical = damageContext.damageType == EDamageType.FIRE || damageContext.damageValue >= GetCriticalHealthThreshold();
 		
 		SCR_CharacterDamageManagerComponent manager = SCR_CharacterDamageManagerComponent.Cast(GetHitZoneContainer());
 		if (!manager)
@@ -289,6 +286,7 @@ class SCR_CharacterHitZone : SCR_RegeneratingHitZone
 		super.OnDamageStateChanged(newState, previousDamageState, isJIP);
 
 		UpdateSubmeshes();
+
 		SCR_CharacterDamageManagerComponent manager = SCR_CharacterDamageManagerComponent.Cast(GetHitZoneContainer());
 		if (manager)
 			manager.UpdateCharacterGroupDamage(GetHitZoneGroup());
@@ -330,7 +328,14 @@ class SCR_CharacterHitZone : SCR_RegeneratingHitZone
 		bleedingRate *= manager.GetBleedingScale();
 		
 		return bleedingRate;
-	}	
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	//! \return the absolute amount of health at which the health will be considered critical
+	float GetCriticalHealthThreshold()
+	{
+		return GetCriticalDamageThreshold() * GetMaxHealth();
+	}
 	
 	//-----------------------------------------------------------------------------------------------------------
 	override EHitZoneGroup GetHitZoneGroup()
@@ -371,11 +376,11 @@ class SCR_CharacterResilienceHitZone : SCR_RegeneratingHitZone
 			return;
 		
 		// passive healing on resilienceHitZone should stop when resilience is damaged
-		array<ref PersistentDamageEffect> effects = characterDmgManager.GetAllPersistentEffectsOnHitZone(this);
-		foreach (PersistentDamageEffect effect : effects)
+		array<ref SCR_PersistentDamageEffect> effects = {};
+		characterDmgManager.FindAllDamageEffectsOfTypeOnHitZone(SCR_PassiveHitZoneRegenDamageEffect, this, effects);
+		foreach (SCR_PersistentDamageEffect effect : effects)
 		{
-			if (SCR_PassiveHitZoneRegenDamageEffect.Cast(effect))
-				effect.Terminate();
+			effect.Terminate();
 		}
 		
 		characterDmgManager.RegenVirtualHitZone(this);
@@ -450,8 +455,8 @@ class SCR_CharacterBloodHitZone : SCR_RegeneratingHitZone
 			return dps;
 		
 		DotDamageEffect dotEffect;
-		array<ref PersistentDamageEffect> bleedingEffects = extendedDmgManager.GetAllPersistentEffectsOfType(SCR_BleedingDamageEffect);
-		foreach (PersistentDamageEffect effect : bleedingEffects)
+		array<ref SCR_PersistentDamageEffect> bleedingEffects = extendedDmgManager.GetAllPersistentEffectsOfType(SCR_BleedingDamageEffect);
+		foreach (SCR_PersistentDamageEffect effect : bleedingEffects)
 		{
 			dotEffect = DotDamageEffect.Cast(effect);
 			if (!dotEffect)

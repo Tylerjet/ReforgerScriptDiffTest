@@ -23,6 +23,6 @@ class SCR_AIDecoCombatMove_AimingAllowed : DecoratorScripted
 		return m_State.m_bAimAtTarget;
 	}
 	
-	override string GetOnHoverDescription() { return "Returns m_bAimAtTarget from Combat Move State"; }
-	override bool VisibleInPalette() { return true; }
+	static override string GetOnHoverDescription() { return "Returns m_bAimAtTarget from Combat Move State"; }
+	static override bool VisibleInPalette() { return true; }
 }

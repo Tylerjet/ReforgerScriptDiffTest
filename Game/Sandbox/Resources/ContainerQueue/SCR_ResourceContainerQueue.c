@@ -99,6 +99,27 @@ class SCR_ResourceContainerQueueBase : Managed
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Copies the registered resource containers into a set of weak references of resource containers.
+	//! 
+	//! \param[inout] containers The set to copy into.
+	void CopyContainers(inout notnull set<SCR_ResourceContainer> containers)
+	{
+		foreach (SCR_ResourceContainer container: m_aRegisteredContainers)
+		{
+			containers.Insert(container);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Copies the registered resource containers into an array of weak references of resource containers.
+	//! 
+	//! \param[inout] containers The array to copy into.
+	void CopyContainers(inout notnull array<SCR_ResourceContainer> containers)
+	{
+		containers.Copy(m_aRegisteredContainers);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Returns a resource container located at the provided index/position in the queue.
 	

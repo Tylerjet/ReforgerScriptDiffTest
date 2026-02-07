@@ -213,13 +213,13 @@ class SCR_FlammableHitZone : SCR_VehicleHitZone
 		if (float.AlmostEqual(newFireRate, m_fFireRate))
 			return;
 
-		SetFireRate(newFireRate);
-
 		// Last shot that sets the vehicle on fire is going to be remembered as instigator of fire
 		if (m_eFireState == SCR_EBurningState.SMOKING_IGNITING)
 			SetFireInstigator(damageContext.instigator);
 		else if (m_eFireState == SCR_EBurningState.BURNING && (!m_FireInstigator || m_FireInstigator.GetInstigatorType() == InstigatorType.INSTIGATOR_NONE))
 			SetFireInstigator(damageContext.instigator);
+
+		SetFireRate(newFireRate);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -632,7 +632,7 @@ class SCR_FlammableHitZone : SCR_VehicleHitZone
 		if (m_sDestructionParticle.IsEmpty())
 			return;
 
-		ParticleEffectEntitySpawnParams spawnParams();
+		ParticleEffectEntitySpawnParams spawnParams = new ParticleEffectEntitySpawnParams();
 		spawnParams.Transform[3] = position;
 		spawnParams.UseFrameEvent = true;
 		m_BurningGroundParticle = ParticleEffectEntity.SpawnParticleEffect(m_sBurningGroundParticle, spawnParams);
@@ -672,7 +672,7 @@ class SCR_FlammableHitZone : SCR_VehicleHitZone
 			m_SignalsManager.SetSignalValue(m_iFireStateSignalIdx, fireState);
 
 		// Create particle emitters
-		ParticleEffectEntitySpawnParams spawnParams();
+		ParticleEffectEntitySpawnParams spawnParams = new ParticleEffectEntitySpawnParams();
 		spawnParams.Transform[3] = m_vParticleOffset;
 		spawnParams.FollowParent = owner;
 		spawnParams.PlayOnSpawn = true;
@@ -682,7 +682,7 @@ class SCR_FlammableHitZone : SCR_VehicleHitZone
 		// Spawn particles on object
 		if (fireState == SCR_EBurningState.SMOKING_LIGHT)
 		{
-			if (!m_sDamagedParticle.IsEmpty())
+			if (!m_DamagedParticleLight && !m_sDamagedParticle.IsEmpty())
 				m_DamagedParticleLight = ParticleEffectEntity.SpawnParticleEffect(m_sDamagedParticle, spawnParams);
 		}
 		else if (m_DamagedParticleLight)
@@ -693,7 +693,7 @@ class SCR_FlammableHitZone : SCR_VehicleHitZone
 
 		if (fireState == SCR_EBurningState.SMOKING_HEAVY || fireState == SCR_EBurningState.SMOKING_IGNITING)
 		{
-			if (!m_sDamagedParticleHeavy.IsEmpty())
+			if (!m_DamagedParticleHeavy && !m_sDamagedParticleHeavy.IsEmpty())
 				m_DamagedParticleHeavy = ParticleEffectEntity.SpawnParticleEffect(m_sDamagedParticleHeavy, spawnParams);
 		}
 		else if (m_DamagedParticleHeavy)
@@ -704,7 +704,7 @@ class SCR_FlammableHitZone : SCR_VehicleHitZone
 
 		if (fireState == SCR_EBurningState.BURNING)
 		{
-			if (!m_sBurningParticle.IsEmpty())
+			if (!m_BurningParticle && !m_sBurningParticle.IsEmpty())
 				m_BurningParticle = ParticleEffectEntity.SpawnParticleEffect(m_sBurningParticle, spawnParams);
 		}
 		else if (m_BurningParticle)

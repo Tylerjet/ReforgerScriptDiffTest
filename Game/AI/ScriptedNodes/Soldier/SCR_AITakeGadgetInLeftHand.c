@@ -17,18 +17,18 @@ class SCR_AITakeGadgetInLeftHand : AITaskScripted
 	protected bool m_bWaiting;		// When true, we are waiting for item to be equipped
 	protected float m_fTimer_s;		// Timer how long we've been waiting
 	
-	protected static const string PORT_ITEM = "ItemOut";
+	// Inputs
+	protected static const string PORT_ITEM_IN = "ItemIn";
+	
+	// Outputs
+	protected static const string PORT_ITEM_OUT = "ItemOut";
 	
 	//------------------------------------------------------------------------------------------------
-	protected static ref TStringArray s_aVarsOut = {
-		PORT_ITEM
-	};
+	protected static ref TStringArray s_aVarsIn = { PORT_ITEM_IN };
+	override TStringArray GetVariablesIn() { return s_aVarsIn; }
 	
-	//------------------------------------------------------------------------------------------------
-	override TStringArray GetVariablesOut()
-	{
-		return s_aVarsOut;
-	}
+	protected static ref TStringArray s_aVarsOut = { PORT_ITEM_OUT };
+	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
 	// -----------------------------------------------------------------------------------------------
 	override void OnInit(AIAgent owner)
@@ -49,13 +49,13 @@ class SCR_AITakeGadgetInLeftHand : AITaskScripted
 		{
 			if (IsItemEquipped(m_ItemEntity))
 			{
-				SetVariableOut(PORT_ITEM, m_ItemEntity);
+				SetVariableOut(PORT_ITEM_OUT, m_ItemEntity);
 				Reset();
 				return ENodeResult.SUCCESS;
 			}
 			else if (m_fTimer_s > TIMEOUT_S)
 			{
-				ClearVariable(PORT_ITEM);
+				ClearVariable(PORT_ITEM_OUT);
 				Reset();
 				return ENodeResult.FAIL;
 			}
@@ -110,6 +110,12 @@ class SCR_AITakeGadgetInLeftHand : AITaskScripted
 	{
 		IEntity item;
 		
+		// Try to read item through port
+		GetVariableIn(PORT_ITEM_IN, item);
+		if (item)
+			return item;
+		
+		// Item wasn't provided through port, find it in our inventory
 		if (m_eItemType != 0)
 		{
 			SCR_HoldableItemPredicate predicate = new SCR_HoldableItemPredicate();
@@ -154,19 +160,19 @@ class SCR_AITakeGadgetInLeftHand : AITaskScripted
 	}
 	
 	// -----------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette()
+	protected override static bool VisibleInPalette()
 	{
 		return true;
 	}
 	
 	//-----------------------------------------------------------------------------------------------
-	protected override bool CanReturnRunning()
+	protected override static bool CanReturnRunning()
 	{
 		return true;
 	}
 	
 	//-----------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected override static string GetOnHoverDescription()
 	{
 		return "Equips inventory item, returns success when done and item ref.";
 	}

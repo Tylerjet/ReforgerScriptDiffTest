@@ -36,6 +36,14 @@ class PerceivableComponent: GameComponent
 	//! Compartment access component
 	proto external CompartmentAccessComponent GetCompartmentAccessComponent();
 	proto external bool IsInCompartment();
+	proto external FactionAffiliationComponent GetFactionAffiliationComponent();
+	//! Overrides faction value used by PerceptionComponents (see GetPerceivedFaction). Null value removes this override.
+	proto external void SetPerceivedFactionOverride(Faction faction);
+	//! Returns value set by SetPerceivedFactionOverride()
+	proto external Faction GetPerceivedFactionOverride();
+	//! Returns value set by SetPerceivedFactionOverride if it is not null. Otherwise returns value from FactionAffilicationComponent.
+	//! PerceptionComponent uses this method as well to resolve faction of target.
+	proto external Faction GetPerceivedFaction();
 
 	// callbacks
 

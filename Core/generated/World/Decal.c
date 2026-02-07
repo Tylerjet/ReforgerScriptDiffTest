@@ -9,7 +9,7 @@ Do not modify, this script is generated
 \{
 */
 
-sealed class Decal: pointer
+sealed class Decal: global_pointer
 {
 }
 

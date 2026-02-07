@@ -23,9 +23,8 @@ class SCR_PublishSaveDialog: SCR_EditorSaveDialog
 		{
 			string editing = editedManifest.GetEditingValue();
 			string val = editedManifest.GetValue();
-			if (editedManifest && editedManifest.GetEditingValue() == "thumbnail" && !editedManifest.GetValue().IsEmpty())
+			if (editedManifest.GetEditingValue() == "thumbnail" && !editedManifest.GetValue().IsEmpty())
 			{
-				
 				SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
 				SCR_EditorManagerEntity editorManager = core.GetEditorManager();
 				
@@ -80,7 +79,7 @@ class SCR_PublishSaveDialog: SCR_EditorSaveDialog
 	{
 		// Setup and upload save  
 		WorldSaveManifest manifest = ManifestFromConfigList();
-	
+		
 		// Create new save if not working with uploaded save
 		if (!m_SaveItem)
 		{

@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------------------------
-[BaseContainerProps()]
+[BaseContainerProps(), SCR_BaseGroupCommandTitleField("m_sCommandName")]
 class SCR_WaypointGroupCommand : SCR_BaseGroupCommand
 {
 	[Attribute(desc: "Prefab of the AI waypoint used in this command", params: "et class=AIWaypoint")]
@@ -17,9 +17,19 @@ class SCR_WaypointGroupCommand : SCR_BaseGroupCommand
 	[Attribute(defvalue: "5", desc: "Completion radius of command")]
 	protected float m_fCompletionRadius;
 	
+	[Attribute("0", UIWidgets.CheckBox, desc: "Optionally, execution of this command can set combat mode of the group.")]
+	bool m_bSetCombatMode;
+	
+	[Attribute(typename.EnumToString(EAIGroupCombatMode, EAIGroupCombatMode.FIRE_AT_WILL), UIWidgets.ComboBox, desc: "New combat mode value", enums: ParamEnumArray.FromEnum(EAIGroupCombatMode))]
+	protected EAIGroupCombatMode m_eCombatMode;
+	
 	//------------------------------------------------------------------------------------------------
 	override bool Execute(IEntity cursorTarget, IEntity target, vector targetPosition, int playerID, bool isClient)
 	{
+		SCR_ChimeraCharacter user = SCR_ChimeraCharacter.Cast(GetGame().GetPlayerManager().GetPlayerControlledEntity(playerID));
+		if (user && !CanBePerformed(user))
+			return false;//verify that at the moment of execution player can actually do that
+			
 		if (isClient && playerID == SCR_PlayerController.GetLocalPlayerId())
 		{
 			SpawnWPVisualization(targetPosition, playerID);
@@ -30,7 +40,16 @@ class SCR_WaypointGroupCommand : SCR_BaseGroupCommand
 		if (!m_sWaypointPrefab || !target || !targetPosition)
 			return false;
 
-		return SetWaypointForAIGroup(target, targetPosition, playerID);
+		bool waypointCreated = SetWaypointForAIGroup(target, targetPosition, playerID);
+		
+		if (!waypointCreated)
+			return false;
+		
+		// Set combat mode
+		if (m_bSetCombatMode)
+			SetCombatMode(target, m_eCombatMode);
+		
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -153,5 +172,17 @@ class SCR_WaypointGroupCommand : SCR_BaseGroupCommand
 		
 		SCR_PlayerControllerGroupComponent groupController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
 		return groupController && CanRoleShow();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetCombatMode(IEntity target, EAIGroupCombatMode combatMode)
+	{
+		SCR_AIGroup slaveGroup = SCR_AIGroup.Cast(target);
+		if (!slaveGroup)
+			return;
+		
+		SCR_AIGroupUtilityComponent groupUtility = SCR_AIGroupUtilityComponent.Cast(slaveGroup.FindComponent(SCR_AIGroupUtilityComponent));
+		
+		groupUtility.SetCombatMode(combatMode);
 	}
 }

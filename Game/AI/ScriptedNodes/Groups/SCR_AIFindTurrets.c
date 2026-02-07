@@ -9,7 +9,7 @@ class SCR_AIFindTurrets: AITaskScripted
 	protected SCR_AIGroup m_groupOwner;
 	
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() {return true;}
+	static override bool VisibleInPalette() {return true;}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(AIAgent owner)
@@ -54,6 +54,14 @@ class SCR_AIFindTurrets: AITaskScripted
 		{
 			BaseCompartmentManagerComponent compComp = BaseCompartmentManagerComponent.Cast(ent.FindComponent(BaseCompartmentManagerComponent));
 			if (!compComp)
+				continue;
+			
+			SCR_AIVehicleUsageComponent vehicleUsageComp = SCR_AIVehicleUsageComponent.Cast(ent.FindComponent(SCR_AIVehicleUsageComponent));
+			if (!vehicleUsageComp)
+				continue;
+			
+			// Ignore mortars, we can't use them autonomously
+			if (vehicleUsageComp.GetVehicleType() != EAIVehicleType.STATIC_WEAPON)
 				continue;
 			
 			array<BaseCompartmentSlot> compartmentSlots = {};
@@ -103,7 +111,7 @@ class SCR_AIFindTurrets: AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override string GetOnHoverDescription()
+	static override string GetOnHoverDescription()
 	{
 		return "SCR_AIFindTurrets: finds all static turrets within center and radius. All results are allocated (reserved) for this group.";
 	}

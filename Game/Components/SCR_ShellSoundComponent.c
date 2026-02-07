@@ -51,12 +51,7 @@ class SCR_ShellSoundComponent : ProjectileSoundComponent
 		
 		return playerCamera.GetOrigin();
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void OnUpdateSoundJobBegin(IEntity owner)
-	{
-	}
-	
+		
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{

@@ -555,7 +555,10 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 			return;
 
 		if (m_MobileAssembly)
+		{
 			m_MobileAssembly.UpdateRespawnCooldown(m_wInfoText);
+			m_MobileAssembly.UpdateSuppliesAmount(m_wInfoText);
+		}
 
 		if (!m_Base)
 			return;
@@ -872,8 +875,27 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 			props.SetGroupType(EMapDescriptorGroup.MDG_SEPARATE);
 			m_w_ServicesOverlay.SetVisible(false);
 			m_wServices.SetVisible(false);
-			
 		}
+		
+		IEntity owner = m_MobileAssembly.GetOwner();
+
+		if (!owner)
+			return;
+				
+		m_ResourceComponent = SCR_ResourceComponent.FindResourceComponent(owner);
+		
+		if (!m_ResourceComponent)
+			return;
+
+		m_ResourceConsumer = m_ResourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+
+		if (!m_ResourceConsumer)
+			return;
+		
+		m_ResourceInventoryPlayerComponentRplId = Replication.FindId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent)));
+		m_ResourceSubscriptionHandleConsumer = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandle(m_ResourceConsumer, m_ResourceInventoryPlayerComponentRplId);	
+	
+		m_ResourceComponent.TEMP_GetOnInteractorReplicated().Insert(SetIconInfoText);
 	}
 
 	//------------------------------------------------------------------------------------------------

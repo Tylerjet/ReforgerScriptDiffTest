@@ -206,7 +206,7 @@ class SCR_RequestedTask : SCR_BaseTask
 	//------------------------------------------------------------------------------------------------
 	string GetRequesterName()
 	{
-		return GetGame().GetPlayerManager().GetPlayerName(m_iRequesterID);
+		return SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(m_iRequesterID);
 	}
 	
 	//------------------------------------------------------------------------------------------------

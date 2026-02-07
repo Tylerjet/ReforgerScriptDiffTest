@@ -7,7 +7,7 @@ class SCR_AIGetAimDistanceCompensation : AITaskScripted
 	
 	protected static string VECTOR_OUT_PORT = "VectorOut";
 	
-	protected BaseWeaponManagerComponent m_WeaponMgr;
+	protected SCR_AICombatComponent m_CombatComp;
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(AIAgent owner)
@@ -15,13 +15,18 @@ class SCR_AIGetAimDistanceCompensation : AITaskScripted
 		IEntity ent = owner.GetControlledEntity();
 		if (!ent)
 			return;
-		m_WeaponMgr = BaseWeaponManagerComponent.Cast(ent.FindComponent(BaseWeaponManagerComponent));
+		m_CombatComp = SCR_AICombatComponent.Cast(ent.FindComponent(SCR_AICombatComponent));
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{
-		if (!m_WeaponMgr)
+		if (!m_CombatComp)
+			return ENodeResult.FAIL;
+		
+		BaseWeaponManagerComponent weaponMgr = m_CombatComp.GetCurrentWeaponManager();
+		
+		if (!weaponMgr)
 			return ENodeResult.FAIL;
 		
 		// Read input variables
@@ -51,7 +56,7 @@ class SCR_AIGetAimDistanceCompensation : AITaskScripted
 		BaseWeaponComponent currentWeapon;
 		BaseMuzzleComponent currentMuzzle;
 		
-		currentWeapon = m_WeaponMgr.GetCurrentWeapon();
+		currentWeapon = weaponMgr.GetCurrentWeapon();
 		if (currentWeapon)
 			currentMuzzle = currentWeapon.GetCurrentMuzzle();
 		
@@ -60,7 +65,7 @@ class SCR_AIGetAimDistanceCompensation : AITaskScripted
 		if (currentMuzzle)
 		{
 			vector muzzleMatrix[4];
-			m_WeaponMgr.GetCurrentMuzzleTransform(muzzleMatrix);
+			weaponMgr.GetCurrentMuzzleTransform(muzzleMatrix);
 			distance = vector.Distance(targetPos, muzzleMatrix[3]);
 		}
 		else
@@ -106,8 +111,8 @@ class SCR_AIGetAimDistanceCompensation : AITaskScripted
 	override TStringArray GetVariablesIn() { return s_aVarsIn; }
 	
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() {return true;}
+	static override bool VisibleInPalette() {return true;}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription() {return "Returns vertical offset for ballistic compensation of range to target";}
+	protected static override string GetOnHoverDescription() {return "Returns vertical offset for ballistic compensation of range to target";}
 }

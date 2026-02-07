@@ -9,7 +9,7 @@ class SCR_ViewLinkManualCameraComponent : SCR_BaseManualCameraComponent
 	{
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_MANUAL_CAMERA_VIEW_LINK))
 		{
-			string prefix = "enfusion://WorldEditor/";
+			const string prefix = "enfusion://WorldEditor/"; // TODO: check for good const usage
 			string link = System.ImportFromClipboard();
 			if (link.StartsWith(prefix))
 			{

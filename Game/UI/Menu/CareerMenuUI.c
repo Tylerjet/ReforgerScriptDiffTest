@@ -27,7 +27,7 @@ class CareerMenuUI: ChimeraMenuBase
 	// Values
 	static CareerMenuUI m_sInstance;
 	ref CareerBackendData m_BackendData;
-	protected ref CareerCallback m_Callback = new CareerCallback();
+	protected ref SCR_BackendCallback m_Callback = new SCR_BackendCallback();
 
 	[MenuBindAttribute()]
 	ButtonWidget Back;
@@ -59,7 +59,7 @@ class CareerMenuUI: ChimeraMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool OnChange(Widget w, int x, int y, bool finished)
+	override bool OnChange(Widget w, bool finished)
 	{
 		if (!finished || !m_EditPlayerName || w != m_EditPlayerName.GetRootWidget())
 			return false;
@@ -135,7 +135,10 @@ class CareerMenuUI: ChimeraMenuBase
 			m_BackendData = new CareerBackendData;
 			BackendApi backendApi = GetGame().GetBackendApi();
 			if (backendApi)
+			{
+				m_Callback.GetEventOnSuccess().Insert(UpdateCareerData);
 				backendApi.PlayerRequest(EBackendRequest.EBREQ_GAME_CharacterGet, m_Callback, m_BackendData, 0);
+			}
 		}
 		
 		super.OnMenuUpdate(tDelta);
@@ -215,24 +218,6 @@ class CareerMenuUI: ChimeraMenuBase
 		LoadoutStatSet statSet = m_LoadoutStatistics.GetLodoutStatSets()[id];
 		if (statSet)
 			m_LoadoutPreview.SetPreviewedLoadout(statSet.GetLoadout());
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-class CareerCallback : BackendCallback
-{
-	override void OnSuccess( int code )
-	{
-		if (CareerMenuUI.m_sInstance)
-			CareerMenuUI.m_sInstance.UpdateCareerData();
-	}
-	override void OnError( int code, int restCode, int apiCode )
-	{
-		Print("[BackendCallback] OnError: "+ GetGame().GetBackendApi().GetErrorCode(code));
-	}
-	override void OnTimeout()
-	{
-		Print("[BackendCallback] OnTimeout");
 	}
 };
 

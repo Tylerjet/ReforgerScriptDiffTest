@@ -15,6 +15,7 @@ enum EStringTableLabels
 	
 	//Releasables
 	PATCH_0_9_6 = 96, ///< Features intended for 0.9.6 patch
+	PATCH_1_2_1 = 97,
 	
 	EDITOR = 200, ///< In-game editor
 	EDITOR_MODE_EDIT = 201, ///< Edit mode

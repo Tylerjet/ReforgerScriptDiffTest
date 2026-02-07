@@ -11,23 +11,20 @@ class SCR_FadeInOutEffect : SCR_BaseScreenEffect
 
 	//------------------------------------------------------------------------------------------------
 	//! Fade the screen in/out
-	//! \param fadeDirection fades out if true, in if false 
+	//! \param fadeDirection fades out if true, in if false
 	void FadeOutEffect(bool fadeDirection, float seconds = 0.35)
 	{
-		if (seconds <= 0)
+		if (seconds < 0.1)
 			return;
 		
-		float targetVal;
-		if (fadeDirection)
-		{
-			m_wFadeInOut.SetOpacity(0);
-			targetVal = 1;
-		}
-		else
-		{
-			m_wFadeInOut.SetOpacity(1);
-		}
-		
-		GetGame().GetCallqueue().CallLater(AnimateWidget.Opacity, 0, false, m_wFadeInOut, targetVal, 1/seconds, true); // this is delayed by frame so there is at least one visible frame of opacity = 1 
+		AnimateWidget.StopAllAnimations(m_wFadeInOut);
+		AnimateEffectVisibility(m_wFadeInOut, (int)fadeDirection, (int)fadeDirection, seconds, seconds);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected override void ClearEffects()
+	{
+		if (m_wFadeInOut)
+			HideSingleEffect(m_wFadeInOut);
 	}
 };

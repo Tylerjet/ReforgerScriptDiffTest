@@ -15,6 +15,9 @@ class SCR_MapElementMoveComponent : ScriptedWidgetComponent
 	
 	[Attribute(defvalue: "0", uiwidget: UIWidgets.CheckBox, desc: "Allows the widget to be activated")]
 	bool m_bCanActivate;
+
+	[Attribute(desc: "When activation is disabled then this will allow for resetting the rotation of the tool")]
+	bool m_bCanResetRotation;
 }
 
 //! Component for interacting with map tools

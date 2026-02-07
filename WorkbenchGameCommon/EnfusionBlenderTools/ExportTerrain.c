@@ -1,13 +1,13 @@
 class ExportTerrainRequest : JsonApiStruct
 {
-	ref array<float> newcoords = new array<float>;
+	int area;
 	string worldPath;
 	string path;
 	int count;
 
 	void ExportTerrainRequest()
 	{
-		RegV("newcoords");
+		RegV("area");
 		RegV("worldPath");
 		RegV("path");
 		RegV("count");
@@ -56,44 +56,25 @@ class ExportTerrain : NetApiHandler
 		{
 			wm.SetOpenedResource(req.worldPath);
 		}
-
-		// read the Y coords from Binary temp file
-		array<float> coords = CoordsFromBin(req.path, req.count);
-		// modify the terrain coresponding to the new coords
-		ModifyTerrain(api, coords);
-
+		
+		FileHandle bin = FileIO.OpenFile(req.path, FileMode.READ);
+		for(int i = 0; i < req.count; i++)
+		{
+			array<float> coords = new array<float>;
+			array<int> indices = new array<int>;
+			
+			bin.ReadArray(indices, 4, 2);
+			bin.ReadArray(coords, 4, req.area);
+			
+			api.BeginTerrainAction(TerrainToolType.HEIGHT_EXACT);
+			api.SetTerrainSurfaceTile(0, indices[0], indices[1], coords);
+			api.EndTerrainAction();
+		}
+		
+		
+		bin.Close();
 		response.Output = true;
 		return response;
 	}
 
-
-	private array<float> CoordsFromBin(string path, int size)
-	{
-		// open temp bin
-		FileHandle bin = FileIO.OpenFile(path, FileMode.READ);
-		array<float> coords = new array<float>;
-
-		// read the new coords and remove the file
-		bin.ReadArray(coords, 4, size);
-		bin.Close();
-		FileIO.DeleteFile(path);
-		return coords;
-	}
-
-	// coords[X,Z,Y]
-	private void ModifyTerrain(WorldEditorAPI api, array<float> coords)
-	{
-		// init tool
-		api.BeginTerrainAction(TerrainToolType.HEIGHT_EXACT);
-		TerrainToolDesc_HeightExact tool = new TerrainToolDesc_HeightExact();
-
-		// set all new coords
-		for (int i = 0; i < coords.Count(); i+=3)
-		{
-			// the new Y coords
-			tool.fExactHeight = coords[i+ 2];
-			api.ModifyHeightMap(coords[i+ 0], coords[i+ 1], FilterMorphOperation.EXACT, tool, FilterMorphShape.SQUARE, FilterMorphLerpFunc.LINEAR);
-		}
-		api.EndTerrainAction();
-	}
 }

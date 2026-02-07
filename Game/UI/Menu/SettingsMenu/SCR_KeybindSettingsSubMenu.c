@@ -44,6 +44,7 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 	
 	// Footer
 	protected SCR_InputButtonComponent m_ResetAllButton;
+	protected SCR_InputButtonComponent m_CalibrateMCButton;
 	
 	protected SCR_SpinBoxComponent m_CategoriesSpinBox;
 
@@ -55,6 +56,7 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 	
 	protected static const string ACTION_RESET_SINGLE = 	"MenuResetKeybind";
 	protected static const string ACTION_RESET_ALL = 		"MenuResetAllKeybind";
+	protected static const string ACTION_CALIBRATE_MC =		"MenuCalibrateMotionControl";
 	protected static const string ACTION_UNBIND = 			"MenuUnbindKeybind";
 	protected static const string ACTION_ADVANCED_KEYBIND = "MenuAdvancedKeybind";
 
@@ -101,6 +103,7 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 		
 		// Footer Buttons
 		CreateResetAllKeybindsButton();
+		CreateCalibrateGyroButton();
 		CreateSimpleBindingButton();
 		CreateUnbindSingleButton();
 		CreateSingleKeybindResetButton();
@@ -364,6 +367,12 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected void CalibrateMotionControl()
+	{
+		new SCR_MotionControlCalibrationPromptDialog();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void ResetSingleKeybindToDefault()
 	{
 		if (!m_SelectedRowComponent)
@@ -388,6 +397,13 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 	{
 		m_ResetAllButton = CreateNavigationButton(ACTION_RESET_ALL, "#AR-Settings_Keybind_ResetEveryKeybind", true);
 		m_ResetAllButton.m_OnActivated.Insert(ResetKeybindsToDefault);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void CreateCalibrateGyroButton()
+	{
+		m_CalibrateMCButton = CreateNavigationButton(ACTION_CALIBRATE_MC, "#AR-Settings_Calibrate_Motion_Control", true);
+		m_CalibrateMCButton.m_OnActivated.Insert(CalibrateMotionControl);
 	}
 	
 	// -- Row --
@@ -476,7 +492,7 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 	protected void UpdateDescription()
 	{
 		if (m_wDescriptionScroll)
-			m_wDescriptionScroll.SetSliderPos(0, 0, true);
+			m_wDescriptionScroll.SetSliderPos(0, 0);
 		
 		// --- Update Visibility ---
 		string actionName;

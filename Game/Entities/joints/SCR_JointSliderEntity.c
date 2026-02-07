@@ -33,7 +33,7 @@ class SCR_JointSliderEntity: SCR_JointBaseEntity
 		vector axisVec = mat[2];
 		vector axisVec2 = mat[1];
 		vector axisVec3 = -mat[0];
-		float addVisAng = 0;
+		const float addVisAng = 0; // TODO: check for good const usage
 		
 		int sliceSubDiv = 16;
 		if (m_RotateMax > m_RotateMin)

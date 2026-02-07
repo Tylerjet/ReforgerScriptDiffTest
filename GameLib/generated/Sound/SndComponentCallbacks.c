@@ -14,6 +14,9 @@ enum SndComponentCallbacks
 	Update,
 	OnPostInit,
 	OnDelete,
+	OnInit,
+	None,
+	All,
 }
 
 /*!

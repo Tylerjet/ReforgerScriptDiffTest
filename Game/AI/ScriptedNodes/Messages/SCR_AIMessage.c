@@ -42,6 +42,7 @@ enum EMessageType_Goal
 	OPEN_NAVLINK_DOOR,
 	FIRE_ILLUM_FLARE,
 	ANIMATE,
+	ARTILLERY_SUPPORT
 };
 
 //----------------- EXPAND MESSAGE TYPES
@@ -426,7 +427,7 @@ class SCR_AIMessage_Investigate : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSen
 		m_MessageType = EMessageType_Goal.INVESTIGATE;
 	}
 	
-	static SCR_AIMessage_Investigate Create(vector pos, float radius, bool dangerous, EAIUnitType unitType = EAIUnitType.UnitType_Infantry, float duration = 10.0)
+	static SCR_AIMessage_Investigate Create(SCR_AIActivityBase relatedActivity, vector pos, float radius, bool dangerous, EAIUnitType unitType = EAIUnitType.UnitType_Infantry, float duration = 10.0)
 	{
 		SCR_AIMessage_Investigate msg = new SCR_AIMessage_Investigate();
 		msg.m_fRadius = radius;
@@ -434,6 +435,7 @@ class SCR_AIMessage_Investigate : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSen
 		msg.m_bIsDangerous = dangerous;
 		msg.m_eTargetUnitType = unitType;
 		msg.m_fDuration = duration;
+		msg.m_RelatedGroupActivity = relatedActivity;
 		return msg;
 	}
 	
@@ -611,6 +613,7 @@ class SCR_AIMessage_Vehicle : SCR_AIMessageGoal // MESSAGE_CLASS()
 class SCR_AIMessage_GetIn : SCR_AIMessage_Vehicle // MESSAGE_CLASS(GenerateSendGoalMessage, SCR_AISendGoalMessage_GetIn)
 {
 	EAICompartmentType m_eRoleInVehicle; // VARIABLE(NodePort, RoleInVehicle, NodePropertyEnum, m_eRoleInVehicle)
+	BaseCompartmentSlot m_CompartmentSlot; // VARIABLE(NodePort, CompartmentSlot)
 		
 	void SCR_AIMessage_GetIn() 
 	{
@@ -618,7 +621,7 @@ class SCR_AIMessage_GetIn : SCR_AIMessage_Vehicle // MESSAGE_CLASS(GenerateSendG
 	}	
 	
 	static SCR_AIMessage_GetIn Create(IEntity vehicle, SCR_AIBoardingParameters boardingParams, EAICompartmentType roleInVehicle, bool waypointRelated, float priorityLevel, AIWaypoint relatedWaypoint,
-									  SCR_AIActivityBase relatedActivity)
+									  SCR_AIActivityBase relatedActivity, BaseCompartmentSlot compartmentSlot)
 	{
 		SCR_AIMessage_GetIn msg = new SCR_AIMessage_GetIn();
 		msg.m_Vehicle = vehicle;
@@ -628,6 +631,7 @@ class SCR_AIMessage_GetIn : SCR_AIMessage_Vehicle // MESSAGE_CLASS(GenerateSendG
 		msg.m_fPriorityLevel = priorityLevel;
 		msg.m_RelatedWaypoint = relatedWaypoint;
 		msg.m_RelatedGroupActivity = relatedActivity;
+		msg.m_CompartmentSlot = compartmentSlot;
 		return msg;
 	}
 };
@@ -722,21 +726,35 @@ class SCR_AIMessage_Suppress : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSendGo
 
 class SCR_AIMessage_Animate : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSendGoalMessage, SCR_AISendGoalMessage_Animate)
 {
-	IEntity m_RootEntity;						// VARIABLE(NodePort, RootEntity)
-	ref SCR_AIAnimationScript m_AgentScript; 	// VARIABLE(NodePort, AgentScript)
+	IEntity m_RootEntity;														// VARIABLE(NodePort, RootEntity)
+	ref SCR_AIAnimationScript m_AgentScript; 									// VARIABLE(NodePort, AgentScript)
+	ref ScriptInvokerBase<SCR_AIOnAnimationBehaviorAction> m_RelatedInvoker; 	// VARIABLE(NodePort, RelatedInvoker)
 	
 	void SCR_AIMessage_Animate()
 	{
 		m_MessageType = EMessageType_Goal.ANIMATE;
 	}
 
-	static SCR_AIMessage_Animate Create(notnull IEntity entity, SCR_AIAnimationScript script, SCR_AIActivityBase relatedActivity)
+	static SCR_AIMessage_Animate Create(notnull IEntity entity, SCR_AIAnimationScript script, SCR_AIActivityBase relatedActivity, ScriptInvokerBase<SCR_AIOnAnimationBehaviorAction> relatedInvoker)
 	{
 		SCR_AIMessage_Animate msg = new SCR_AIMessage_Animate();
 		msg.m_RelatedGroupActivity = relatedActivity;
 		msg.m_RootEntity = entity;
 		msg.m_AgentScript = script;
+		msg.m_RelatedInvoker = relatedInvoker;
 		
 		return msg;
 	}
 }
+
+class SCR_AIMessage_ArtillerySupport : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSendGoalMessage, SCR_AISendGoalMessage_ArtillerySupport)
+{
+	IEntity m_ArtilleryEntity;				// VARIABLE(NodePort, ArtilleryEntity)
+	vector m_vTargetPos;					// VARIABLE(NodePort, TargetPos)
+	SCR_EAIArtilleryAmmoType m_eAmmoType;	// VARIABLE(NodePort, AmmoType, NodePropertyEnum, m_eAmmoType)
+	
+	void SCR_AIMessage_ArtillerySupport() 
+	{
+		m_MessageType = EMessageType_Goal.ARTILLERY_SUPPORT;
+	}
+};

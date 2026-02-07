@@ -43,6 +43,8 @@ class SCR_EntitiesToolbarEditorUIComponent : SCR_BaseToolbarEditorUIComponent
 	protected SCR_TabViewComponent m_TabView;
 	protected int m_iTab;
 
+	bool m_queuedRefresh = false;
+	
 	//------------------------------------------------------------------------------------------------
 	protected Widget CreateItem(SCR_EditableEntityComponent entity)
 	{
@@ -69,6 +71,16 @@ class SCR_EntitiesToolbarEditorUIComponent : SCR_BaseToolbarEditorUIComponent
 		return itemWidget;
 	}
 
+	//Many actions can request a refresh for the GM toolbar, but we should only refresh it once per frame.
+	protected void QueueRefresh()
+	{
+		if(m_queuedRefresh)
+			return;
+		
+		GetGame().GetCallqueue().CallLater(Refresh);
+		m_queuedRefresh = true;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	protected void Clear()
 	{
@@ -79,9 +91,10 @@ class SCR_EntitiesToolbarEditorUIComponent : SCR_BaseToolbarEditorUIComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnChanged(EEditableEntityState state, set<SCR_EditableEntityComponent> entitiesInsert, set<SCR_EditableEntityComponent> entitiesRemove)
 	{
-		Refresh();
+		QueueRefresh();
 	}
 
+	
 	//------------------------------------------------------------------------------------------------
 	protected void OnEditorSetSelection()
 	{
@@ -98,7 +111,8 @@ class SCR_EntitiesToolbarEditorUIComponent : SCR_BaseToolbarEditorUIComponent
 		m_iTab = index;
 		m_Type = m_aEntityTypeTabs[index].GetType();
 		m_aEntityTypeTabs[index].GetTypeBlackList(m_aTypeBlackList);
-		Refresh();
+
+		QueueRefresh();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -171,7 +185,9 @@ class SCR_EntitiesToolbarEditorUIComponent : SCR_BaseToolbarEditorUIComponent
 			if (m_Pagination)
 				m_Pagination.SetEntryCount(m_Entities.Count());
 		}
+		
 		super.Refresh();
+		m_queuedRefresh = false;
 	}
 
 	//------------------------------------------------------------------------------------------------

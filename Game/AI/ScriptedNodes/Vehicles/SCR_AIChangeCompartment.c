@@ -153,13 +153,13 @@ class SCR_AIChangeCompartment : AITaskScripted
 	}
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------
-	override bool CanReturnRunning() { return true; }
+	static override bool CanReturnRunning() { return true; }
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------
-	override string GetOnHoverDescription()
+	static override string GetOnHoverDescription()
 	{
 		return "ChangeCompartment: Changes compartment within the vehicle and keeps running until the character is in the desired slottype. \nIf slot is occupied by corpse, it kicks the corpse out";
 	}

@@ -60,6 +60,15 @@ class SCR_ContentBrowser_SavesSubMenu : SCR_ContentBrowser_AddonsSubMenu
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	override protected void Callback_OnRequestPageGetAssets(SCR_WorkshopApiCallback_RequestPage callback)
+	{
+		super.Callback_OnRequestPageGetAssets(callback);
+		
+		if (m_iOnlineFilteredItems == 0)
+			SetPanelsMode(false, messagePresetTag: MESSAGE_TAG_NO_SAVES_FOUND, forceFiltersList: true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void OnSaveItemDeleted(WorkshopItem item)
 	{
 		RequestPage(m_iCurrentPage);	

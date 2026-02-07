@@ -19,6 +19,7 @@ class SCR_AICombatMoveLogicBase : AITaskScripted
 	protected float m_fTargetDist;
 	protected float m_fWeaponMinDist;
 	protected bool m_bCloseRangeCombat;	// True if we consider it's a close range fight
+	protected bool m_bVeryLongRangeCombat; // True if we consider it's a very long range fight
 	
 	protected float m_fNextUpdate_ms;
 	[Attribute("500")]
@@ -77,6 +78,7 @@ class SCR_AICombatMoveLogicBase : AITaskScripted
 		// Update cached variables
 		m_fTargetDist = GetTargetDistance();
 		m_bCloseRangeCombat = m_fTargetDist < SCR_AICombatMoveUtils.CLOSE_RANGE_COMBAT_DIST;
+		m_bVeryLongRangeCombat = m_fTargetDist > SCR_AICombatMoveUtils.VERY_LONG_RANGE_COMBAT_DIST;
 		m_eThreatState = m_Utility.m_ThreatSystem.GetState();
 		m_eStance = m_CharacterController.GetStance();
 		m_fWeaponMinDist = m_CombatComp.GetSelectedWeaponMinDist();
@@ -361,9 +363,11 @@ class SCR_AICombatMoveLogicBase : AITaskScripted
 		float coverSearchSectorHalfAngleRad;
 		vector avoidStraightPathDir;
 		
-		if (!wp)
+		if (!wp || SCR_EntityWaypoint.Cast(wp))
 		{
-			// No waypoint, standard move logic
+			// No waypoint, or it's an entity-associated waypoint, like Follow waypoint.
+			// Therefore use standard movement logic.
+			// Otherwise they will want to run towards position where the waypoint is placed, which makes no sense.
 			movePos = targetPos;
 			eDirection = SCR_EAICombatMoveDirection.CUSTOM_POS; // Move to target
 			avoidStraightPathDir = GetAvoidStraightPathDir(); // Use flanking
@@ -625,7 +629,7 @@ class SCR_AICombatMoveLogicBase : AITaskScripted
 	}
 	
 	//--------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //! Combat movement node for attack behavior, which is aimed at BaseTarget
@@ -752,7 +756,9 @@ class SCR_AICombatMoveLogic_Attack : SCR_AICombatMoveLogicBase
 				longWaitTime = true;
 		}
 		
-		if (longWaitTime)
+		// Note: it's important to let bots enough time to aim at very long range
+		// Stop time should be more than just a few seconds.
+		if (m_bVeryLongRangeCombat)
 			waitTime *= 2.0;
 		
 		return waitTime;
@@ -774,6 +780,14 @@ class SCR_AICombatMoveLogic_Attack : SCR_AICombatMoveLogicBase
 		// - If we are not in cover.
 		if (IsFirstExecution() && !m_State.m_bInCover)
 			return true;
+		
+		// If we should keep formation, don't move too far away
+		if (m_Utility.ShouldKeepFormation() || m_CombatComp.GetCombatMode() == EAIGroupCombatMode.HOLD_FIRE)
+		{
+			// In this case we move only once
+			if (!IsFirstExecution())
+				return false;
+		}
 		
 		float stoppedWaitTime = ResolveStoppedWaitTime(m_State.m_bInCover, m_eThreatState, m_eWeaponType);	
 		return m_State.m_fTimerStopped_s > stoppedWaitTime;

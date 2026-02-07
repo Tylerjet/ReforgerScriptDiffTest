@@ -36,6 +36,11 @@ class SCR_ScenarioFrameworkActionAppendBriefingEntryTextBasedOnTask : SCR_Scenar
 		if (!journalSetupConfig)
 			return;
 
+		// Resolve Alias
+		SCR_FactionAliasComponent factionAliasComponent = SCR_FactionAliasComponent.Cast(GetGame().GetFactionManager().FindComponent(SCR_FactionAliasComponent));
+		if (factionAliasComponent) 
+			m_sFactionKey = factionAliasComponent.ResolveFactionAlias(m_sFactionKey);	
+
 		SCR_JournalConfig journalConfig = journalSetupConfig.GetJournalConfig(m_sFactionKey);
 		if (!journalConfig)
 			return;

@@ -62,12 +62,6 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 	protected SCR_CharacterBloodHitZone m_BloodHitZone;
 	protected float m_fUnconsciousBloodLevel;
 	
-	protected ECharacterStance m_eStance;
-	protected EMovementType m_eMovementType;
-	protected bool m_bWeaponRaised;
-	protected int m_iAttackCount;
-	protected int m_unitID;
-	
 	//------------------------------------------------------------------------------------------------
 	override protected void OnPostInit(IEntity owner)
 	{
@@ -302,50 +296,6 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 	{
 		return m_CombatComponent.GetMagazineCount(magazinyWellType, false);
 	}
-		
-//-------- 	Set or get AI stance, speed, raising weapon etc.
-
-	//------------------------------------------------------------------------------------------------
-	//! \param[in] stance
-	void SetStance(ECharacterStance stance)
-	{
-		m_eStance = stance;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	ECharacterStance GetStance()
-	{
-		return m_eStance;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \param[in] mode
-	void SetMovementType(EMovementType mode)
-	{
-		m_eMovementType = mode;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	EMovementType GetMovementType()
-	{
-		return m_eMovementType;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \param[in] raised
-	void SetWeaponRaised(bool raised)
-	{
-		m_bWeaponRaised = raised;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	bool GetWeaponRaised()
-	{
-		return m_bWeaponRaised;
-	}
 	
 	//------------------------------------------------------------------------------------------------
 	//!
@@ -371,6 +321,21 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 	{
 		return m_ThreatSystem;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Some obsolete functionality which we don't use
+	
+	[Obsolete()]
+	void SetStance(ECharacterStance stance) {}
+	
+	[Obsolete()]
+	ECharacterStance GetStance() { return 0; }
+	
+	[Obsolete()]
+	void SetMovementType(EMovementType mode) {}
+	
+	[Obsolete()]
+	EMovementType GetMovementType() { return 0; }
 	
 //-------- 	Evaluation of wounded state of AI
 
@@ -412,12 +377,21 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 			AddUnitState(EUnitState.UNCONSCIOUS);
 		
 		AIAgent agent = AIAgent.Cast(GetOwner());
+		if (!agent)
+			return;
+		
 		IEntity vehicle;
 		// find which vehicle this agent is in
 		if (HasUnitState(EUnitState.IN_VEHICLE))
 		{
 			ChimeraCharacter ent = ChimeraCharacter.Cast(agent.GetControlledEntity());
+			if (!ent)
+				return;
+			
 			CompartmentAccessComponent compartComp = ent.GetCompartmentAccessComponent();
+			if (!compartComp)
+				return;
+			
 			vehicle = compartComp.GetVehicleIn(ent);
 			
 		}

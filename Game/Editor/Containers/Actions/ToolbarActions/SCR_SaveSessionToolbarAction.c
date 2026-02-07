@@ -30,8 +30,7 @@ class SCR_SaveSessionToolbarAction : SCR_EditorToolbarAction
 			return false;
 		
 		//--- Disallow if editor save struct is not configured
-		SCR_SaveLoadComponent saveLoadComponent = SCR_SaveLoadComponent.GetInstance();
-		return saveLoadComponent && saveLoadComponent.ContainsStruct(SCR_EditorStruct);
+		return GetGame().GetSaveManager().ScenarioCanBeSaved();
 	}
 	
 	//---------------------------------------------------------------------------------------------

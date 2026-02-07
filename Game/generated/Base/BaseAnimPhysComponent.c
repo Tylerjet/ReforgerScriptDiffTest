@@ -51,6 +51,42 @@ class BaseAnimPhysComponent: GameComponent
 	proto external void PhysicsEnableGravity(bool pState);
 	proto external void PhysicsSetStance(int index);
 	proto external void PhysicsSetCollisionOffset(vector pOff);
+	/*!
+	//-----------------------------------------------------------------------------
+	// physics transform API
+	//-----------------------------------------------------------------------------
+
+	// This new transform API is needed for physically linking with another entity.
+	// Linking with another entity means that we are making the another entity our parent, but not in entity hierarchy terms, only in physical terms.
+	// The physical movement and transform will work as if the linked entity would be parent in entity hierarchy, but we have more control and don't have the overhead of entity hierarchy.
+	// If there is a linked entity, it doesn't mean that owner has a parent in entity hierarchy.
+	// All of the methods of this physics transform api were done to work even if the linked entity is not streamed in or is deleted.
+	// If the entity is not found, but we are still linked, we use the last known linked entity transformation to prevent distrupting transform changes when streaming in/out.
+	// Physical parent transform doesn't have to be the same as the parent's or linked entity transform.
+	// We do that to prevent quick character orientation change when linking to an entity. It does make linking transition much simpler for systems that use owner's local transformation.
+	// This API should be used if you care about LS of the owner when its linked. If you only care about world transform of the owner, you can use owner's entity API.
+	// Use cases of this API should be camera, commands or theoretically any code that works with position/orientation of owner and needs to work in the space of the linked entity.
+
+	*/
+	//! Returns physical transform in world space.
+	proto external void PhysicsGetTransformWS(out vector mat[4]);
+	//! Returns physical transform in local space of parent or linked entity.
+	proto external void PhysicsGetTransformLS(out vector mat[4]);
+	//! Returns physical transform of parent or linked entity.
+	proto external void PhysicsGetParentTransform(out vector mat[4]);
+	//! Returns true if the character is physically linked to another entity.
+	proto external bool PhysicsIsLinked();
+	//! Returns linked entity if its found, null if its not found.
+	//! If this returns a null, it doesn't mean we are not linked, so this shouldn't be used as a check if its linked
+	proto external IEntity GetLinkedEntity();
+	//! Returns velocity in local space of parent or linked entity.
+	//! Returned velocity is relative to the velocity of parent or linked enitity.
+	proto external vector PhysicsGetLocalVelocity();
+	//! Same as method above, y coordinate is zero.
+	proto external vector PhysicsGetLocalVelocityXZ();
+	//! Returns (yaw pitch roll) vector in local space of parent or linked entity
+	//! In degrees.
+	proto external vector PhysicsGetLocalYawPitchRoll();
 }
 
 /*!

@@ -62,7 +62,9 @@ class MultiplayerDialogUI: SCR_ConfigurableDialogUi //DialogUI
 		BaseContainer gameplaySettings = GetGame().GetGameUserSettings().GetModule("SCR_GameplaySettings");
 		
 		// Check whether address matches ipv4 format of x.x.x.x, or x.x.x.x:port where x = [0, 255]
-		if (IsAddressValid(sAddr))
+		//REFACTOR NOTE
+		//This is wrong, should check for either ip address OR invite code. Switche it to the corret function call.
+		if(IsInputValid(m_EditPort))
 		{
 			if (gameplaySettings)
 			{

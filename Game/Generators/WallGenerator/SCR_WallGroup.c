@@ -12,9 +12,9 @@ class SCR_WallGroup
 	//------------------------------------------------------------------------------------------------
 	//! Get a random wall piece, respecting piece weights
 	//! \return a weighted, random wall pair
-	SCR_WallPair GetRandomWall()
+	SCR_WallPair GetRandomWall(float value01)
 	{
-		int index = SCR_ArrayHelper.GetWeightedIndex(m_aWeights, Math.RandomFloat01());
+		int index = SCR_ArrayHelper.GetWeightedIndex(m_aWeights, value01);
 		return m_aWallPairs.Get(index);
 	}
 }

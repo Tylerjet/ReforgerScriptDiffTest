@@ -204,13 +204,15 @@ class SCR_NameTagData : Managed
 		
 		if (m_fTagFadeSpeed == 0)
 			animate = false;
-				
+		
 		if (animate)
 			AnimateWidget.Opacity(widget, targetVal, m_fTagFadeSpeed);
 		else 
 		{
 			AnimateWidget.StopAnimation(widget, WidgetAnimationOpacity);
 			widget.SetOpacity(targetVal);
+			if (targetVal >= 0.1)
+				widget.SetVisible(true);
 		}
 	}
 	
@@ -276,7 +278,7 @@ class SCR_NameTagData : Managed
 		{
 			PlayerManager playerMgr = GetGame().GetPlayerManager();
 			if (playerMgr)
-				m_sName = playerMgr.GetPlayerName(m_iPlayerID);
+				m_sName = SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(m_iPlayerID);
 			else 
 				m_sName = "No player manager!"
 		}
@@ -531,7 +533,7 @@ class SCR_NameTagData : Managed
 	//------------------------------------------------------------------------------------------------
 	//! Update tag position
 	void UpdateTagPos()
-	{		
+	{
 		vector matPos[4];
 		Animation anim = m_Entity.GetAnimation();
 		anim.GetBoneMatrix(m_iSpineBone, matPos);

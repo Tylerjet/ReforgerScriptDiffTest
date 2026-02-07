@@ -7,6 +7,7 @@ class SCR_AIRetreatWhileLookAtBehavior : SCR_AIBehaviorBase
 	float m_Timestamp = 0;
 	const float m_MaxTime = 3;
 	
+	//---------------------------------------------------------------------------------------------------------------------------------
 	void SCR_AIRetreatWhileLookAtBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, float priorityLevel = PRIORITY_LEVEL_NORMAL)
 	{
 		vector tempPos;
@@ -18,6 +19,13 @@ class SCR_AIRetreatWhileLookAtBehavior : SCR_AIBehaviorBase
 		m_fPriorityLevel.m_Value = priorityLevel;
 	}
 	
+	//---------------------------------------------------------------------------------------------------------------------------------
+	override int GetCause()
+	{
+		return SCR_EAIBehaviorCause.COMBAT;
+	}
+	
+	//---------------------------------------------------------------------------------------------------------------------------------
 	override float CustomEvaluate()
 	{
 		if(!m_TimeSet)
@@ -48,6 +56,7 @@ class SCR_AIRetreatFromTargetBehavior : SCR_AIBehaviorBase
 {
 	ref SCR_BTParamRef<BaseTarget> m_RetreatFromTarget = new SCR_BTParamRef<BaseTarget>("RetreatFromTarget");
 	
+	//---------------------------------------------------------------------------------------------------------------------------------
 	void SCR_AIRetreatFromTargetBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, notnull BaseTarget retreatFromTarget, float priorityLevel = PRIORITY_LEVEL_NORMAL)
 	{
 		m_RetreatFromTarget.Init(this, retreatFromTarget);
@@ -56,6 +65,13 @@ class SCR_AIRetreatFromTargetBehavior : SCR_AIBehaviorBase
 		m_fPriorityLevel.m_Value = priorityLevel;
 	}
 	
+	//---------------------------------------------------------------------------------------------------------------------------------
+	override int GetCause()
+	{
+		return SCR_EAIBehaviorCause.COMBAT;
+	}
+	
+	//---------------------------------------------------------------------------------------------------------------------------------
 	override float CustomEvaluate()
 	{
 		if (m_RetreatFromTarget.m_Value.GetTargetCategory() != ETargetCategory.ENEMY)
@@ -73,5 +89,5 @@ class SCR_AIGetRetreatFromTargetBehaviorParameters: SCR_AIGetActionParameters
 	static ref TStringArray s_aVarsOut = (new SCR_AIRetreatFromTargetBehavior(null, null, null)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 };

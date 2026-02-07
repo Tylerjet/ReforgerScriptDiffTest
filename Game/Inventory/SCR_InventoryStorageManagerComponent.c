@@ -28,6 +28,7 @@ enum EResupplyUnavailableReason
 	ENOUGH_ITEMS = 20,
 	NOT_IN_GIVEN_STORAGE = 30,
 	INVENTORY_FULL = 40,
+	RANK_TOO_LOW = 50,
 
 	//~ Resupply was valid. Add invalid reasons above
 	RESUPPLY_VALID = 99999,
@@ -262,6 +263,28 @@ class SCR_PrefabDataPredicate : InventorySearchPredicate
 	}
 }
 
+//! Searches for items with same prefab name by comparing prefab pointers rather than strings
+class SCR_ResourceNamePredicate : InventorySearchPredicate
+{
+	//! either set this manually or pass ResourceName to the constructor 
+	BaseContainer prefab;
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] rn ResourceName of the prefab that will be used for matching
+	void SCR_ResourceNamePredicate(ResourceName rn = string.Empty)
+	{
+		Resource resource = Resource.Load(rn);
+		if (resource.IsValid())
+			prefab = resource.GetResource().ToBaseContainer();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
+	{
+		return item.GetPrefabData().GetPrefab() == prefab;
+	}
+}
+
 class DropAndMoveOperationCallback : ScriptedInventoryOperationCallback
 {
 	InventoryItemComponent m_ItemBefore;
@@ -389,6 +412,7 @@ class SCR_ResupplyMagazinesCallback : ScriptedInventoryOperationCallback
 {
 	protected SCR_InventoryStorageManagerComponent m_Manager;
 	protected ref map<ResourceName, int> m_MagazinesToSpawn = new map<ResourceName, int>();
+	protected BaseInventoryStorageComponent m_LastTargetStorage;
 	
 	//------------------------------------------------------------------------------------------------
 	//!
@@ -413,7 +437,14 @@ class SCR_ResupplyMagazinesCallback : ScriptedInventoryOperationCallback
 	{
 		if (!m_Manager)
 			return;
-		
+
+		if (m_LastTargetStorage)
+		{//if we spawned something in hand slot then we need to skip the wait for the animation as there is no animation in this case
+			SCR_HandSlotStorageComponent handSlotStorage = SCR_HandSlotStorageComponent.Cast(m_LastTargetStorage);
+			if (handSlotStorage)
+				handSlotStorage.SkipAnimation_S();
+		}
+
 		if (!m_MagazinesToSpawn.IsEmpty())
 		{
 			//--- Next item to process
@@ -426,7 +457,8 @@ class SCR_ResupplyMagazinesCallback : ScriptedInventoryOperationCallback
 			else
 				m_MagazinesToSpawn.Set(prefab, count);
 			
-			m_Manager.TrySpawnPrefabToStorage(prefab, cb: this);
+			m_LastTargetStorage = m_Manager.FindStorageForResource(prefab);
+			m_Manager.TrySpawnPrefabToStorage(prefab, m_LastTargetStorage, cb: this);
 		}
 		else
 		{
@@ -658,7 +690,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		return false;
 	}
 	
-	BaseInventoryStorageComponent FindActualStorageForItemResource(ResourceName itemResource, BaseInventoryStorageComponent storage, int slotID = -1, int count = 1)
+	BaseInventoryStorageComponent FindActualStorageForItemResource(ResourceName itemResource, BaseInventoryStorageComponent storage, int slotID = -1)
 	{
 		array<BaseInventoryStorageComponent> storages = {};
 		storage.GetOwnedStorages(storages, 1, false);
@@ -666,7 +698,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 
 		foreach (BaseInventoryStorageComponent actualStorage : storages)
 		{
-			if (CanInsertResourceInStorage(itemResource, actualStorage, slotID, count))
+			if (CanInsertResourceInStorage(itemResource, actualStorage, slotID))
 				return actualStorage;
 		}
 
@@ -1456,6 +1488,18 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Check if item is in given storage
+	//! \param[in] storage Storage to check
+	//! \param[in] item Item to check
+	//! \param[in] player verifier
+	//! \return True if item is in inventory
+	static bool IsItemInStorage(notnull InventoryStorageManagerComponent storage, ResourceName item, IEntity player)
+	{
+		SCR_ArsenalInventoryStorageManagerComponent arsenalStorage = SCR_ArsenalInventoryStorageManagerComponent.Cast(storage);
+		return (arsenalStorage && arsenalStorage.IsPrefabInArsenalStorage(item)) || (!arsenalStorage && storage.GetDepositItemCountByResource(player, item) > 0);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] muzzle
 	//! \param[in] maxMagazineCount
@@ -1475,12 +1519,8 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 			return EResupplyUnavailableReason.NO_VALID_WEAPON;
 		
 		//~ Check if it is in arsenal or in the storage
-		if (mustBeInStorage)
-		{
-			SCR_ArsenalInventoryStorageManagerComponent arsenalStorage = SCR_ArsenalInventoryStorageManagerComponent.Cast(mustBeInStorage);
-			if ((arsenalStorage && !arsenalStorage.IsPrefabInArsenalStorage(magazineToResupply)) || (!arsenalStorage && mustBeInStorage.GetDepositItemCountByResource(user, magazineToResupply) < 1))
-				return EResupplyUnavailableReason.NOT_IN_GIVEN_STORAGE;
-		}
+		if (mustBeInStorage && !IsItemInStorage(mustBeInStorage, magazineToResupply, user))
+			return EResupplyUnavailableReason.NOT_IN_GIVEN_STORAGE;
 		
 		//~ Already has enough magazines
 		currentMagazineAmount = GetMagazineCountByMuzzle(user,muzzle); 
@@ -1504,12 +1544,8 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	EResupplyUnavailableReason CanResupplyItem(IEntity user, ResourceName itemToResupply, int maxItemCount = -1, InventoryStorageManagerComponent mustBeInStorage = null, out int currentItemAmount = -1)
 	{
 		//~ Check if it is in arsenal or in the storage
-		if (mustBeInStorage)
-		{
-			SCR_ArsenalInventoryStorageManagerComponent arsenalStorage = SCR_ArsenalInventoryStorageManagerComponent.Cast(mustBeInStorage);
-			if ((arsenalStorage && !arsenalStorage.IsPrefabInArsenalStorage(itemToResupply)) || (!arsenalStorage && mustBeInStorage.GetDepositItemCountByResource(user, itemToResupply) < 1))
-				return EResupplyUnavailableReason.NOT_IN_GIVEN_STORAGE;
-		}
+		if (mustBeInStorage && !IsItemInStorage(mustBeInStorage, itemToResupply, user))
+			return EResupplyUnavailableReason.NOT_IN_GIVEN_STORAGE;
 		
 		//~ Already has enough of the item in storage
 		currentItemAmount = GetDepositItemCountByResource(user, itemToResupply); 

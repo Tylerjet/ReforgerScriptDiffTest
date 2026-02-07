@@ -16,7 +16,7 @@ class SCR_AIGetTarget: AITaskScripted
 	protected ref Shape m_Shape;
 	#endif
 
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
     {
         return true;
     }

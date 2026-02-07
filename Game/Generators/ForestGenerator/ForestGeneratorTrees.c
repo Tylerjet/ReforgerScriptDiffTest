@@ -34,10 +34,10 @@ class ForestGeneratorTreeMiddle : ForestGeneratorTree
 [BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
 class ForestGeneratorTreeTall : ForestGeneratorTree
 {
-	[Attribute(defvalue: "5", uiwidget: UIWidgets.SpinBox, "Minimum required radius in the middle layer for this object to spawn"), ForestGeneratorDistaceAttribute(DistanceType.MID)]
+	[Attribute(defvalue: "5", uiwidget: UIWidgets.SpinBox, "Minimum required radius in the middle layer for this object to spawn", params: "0 inf"), ForestGeneratorDistaceAttribute(DistanceType.MID)]
 	float m_fMidDistance;
 
-	[Attribute(defvalue: "10", uiwidget: UIWidgets.SpinBox, "Minimum required radius in the top layer for this object to spawn"), ForestGeneratorDistaceAttribute(DistanceType.TOP)]
+	[Attribute(defvalue: "10", uiwidget: UIWidgets.SpinBox, "Minimum required radius in the top layer for this object to spawn", params: "0 inf"), ForestGeneratorDistaceAttribute(DistanceType.TOP)]
 	float m_fTopDistance;
 
 	//------------------------------------------------------------------------------------------------
@@ -67,14 +67,12 @@ class FallenTree : ForestGeneratorTree
 	[Attribute(defvalue: "1", desc: "This overrides the setting from template library!")]
 	bool m_bAlignToNormal;
 
-	float m_fYaw = 0;
+	float m_fYaw;
 	protected float m_fMinDistanceFromLine = -1;
 
 	//------------------------------------------------------------------------------------------------
 	void Rotate()
 	{
-		// vector yawDirection = vector.YawToVector(yaw);
-		// yawDirection = Vector(-yawDirection[0], 0, yawDirection[1]); // convert from Enforce to Enfusion format
 		m_CapsuleStart = Rotate2D(m_CapsuleStartInEditor * m_fScale, Math.DEG2RAD * m_fYaw);
 		m_CapsuleEnd = Rotate2D(m_CapsuleEndInEditor * m_fScale, Math.DEG2RAD * m_fYaw);
 	}
@@ -85,10 +83,11 @@ class FallenTree : ForestGeneratorTree
 		float sin = Math.Sin(rads);
 		float cos = Math.Cos(rads);
 
-		return Vector(
+		return {
 			vec[0] * cos - vec[2] * sin,
 			0,
-			vec[0] * sin + vec[2] * cos);
+			vec[0] * sin + vec[2] * cos
+		};
 	}
 
 	//------------------------------------------------------------------------------------------------

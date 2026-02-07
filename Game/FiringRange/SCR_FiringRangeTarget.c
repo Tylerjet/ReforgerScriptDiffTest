@@ -195,7 +195,8 @@ class SCR_FiringRangeTarget : BaseBuilding
 			// Start timer which will erect target.
 			m_bWaitInPosition = true;
 			// Animate target
-			m_SignalManager.SetSignalValue(m_iTargetHitSignal, ETargetState.TARGET_DOWN);
+			if (m_SignalManager)
+				m_SignalManager.SetSignalValue(m_iTargetHitSignal, ETargetState.TARGET_DOWN);
 			// Play sound
 			SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
 			if (soundManagerEntity)
@@ -213,7 +214,8 @@ class SCR_FiringRangeTarget : BaseBuilding
 			m_bTargetHit = false;
 			m_bWaitInPosition = false;
 			// Animate target
-			m_SignalManager.SetSignalValue(m_iTargetHitSignal, ETargetState.TARGET_UP);
+			if (m_SignalManager)
+				m_SignalManager.SetSignalValue(m_iTargetHitSignal, ETargetState.TARGET_UP);
 			// Play sound
 			SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
 			if (soundManagerEntity)
@@ -235,6 +237,8 @@ class SCR_FiringRangeTarget : BaseBuilding
 	//! Return states of target <0, 1> standing or lies
 	int GetState()
 	{
+		if (!m_SignalManager)
+			return 0;
 		return m_SignalManager.GetSignalValue(m_SignalManager.FindSignal("target_hit"));
 	}
 	

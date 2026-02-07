@@ -10,17 +10,21 @@ class SCR_AIDecoTestCanGroupDriveVehicle: DecoratorTestScripted
 		SCR_AIGroup group = SCR_AIGroup.Cast(agent);
 		if (!group)
 			return false;
+		
 		SCR_AIGroupUtilityComponent utility = group.GetGroupUtilityComponent();
 		if (!utility)
 			return false;
+		
 		array<IEntity> vehicles = {};
 		array<AIAgent> agents = {};
-		group.GetUsableVehicles(vehicles);
+		utility.m_VehicleMgr.GetAllVehicleEntities(vehicles);
 		if (vehicles.IsEmpty())
 			return false;
+		
 		int agentsCount = group.GetAgents(agents);	// number of agents we need to find compartments for	
 		if (agents.IsEmpty())
 			return false;
+		
 		IEntity vehicleToUse;
 		foreach (AIAgent ag: agents)
 		{
@@ -49,10 +53,12 @@ class SCR_AIDecoTestCanGroupDriveVehicle: DecoratorTestScripted
 		
 		if (agentsCount < 1)
 			return true;
+		
 		// we will use vehicles array and search for available compartments only in vehicles that have available driver seat
 		BaseCompartmentSlot compartment;
 		ref array<BaseCompartmentSlot> compartments = {};
 		BaseCompartmentManagerComponent compMan;
+		
 		if (!vehicleToUse && !SCR_AICompartmentHandling.FindAvailableCompartmentInVehicles(vehicles, ECompartmentType.PILOT, compartment, vehicleToUse))	
 			return false; 			// no available driver
 		
@@ -61,12 +67,14 @@ class SCR_AIDecoTestCanGroupDriveVehicle: DecoratorTestScripted
 			SCR_AIGroupVehicle groupVehicle = utility.m_VehicleMgr.FindVehicle(vehicleToUse);
 			if (!groupVehicle)
 				break;
+			
 			SCR_AIVehicleUsageComponent vehicleUsage = groupVehicle.GetVehicleUsageComponent();
 			if (vehicleUsage && vehicleUsage.CanBePiloted())
 			{	
 				compMan = BaseCompartmentManagerComponent.Cast(vehicleToUse.FindComponent(BaseCompartmentManagerComponent));
 				if (!compMan)
 					break;
+				
 				compMan.GetCompartments(compartments);
 				foreach (BaseCompartmentSlot comp: compartments)
 				{
@@ -76,10 +84,12 @@ class SCR_AIDecoTestCanGroupDriveVehicle: DecoratorTestScripted
 						break;
 				}
 			}
+			
 			vehicles.Remove(vehicles.Find(vehicleToUse));
 			if (!SCR_AICompartmentHandling.FindAvailableCompartmentInVehicles(vehicles, ECompartmentType.PILOT, compartment, vehicleToUse))
 				break; // no vehicle with available driver
 		}
+		
 		return agentsCount == 0;
 	}
 };

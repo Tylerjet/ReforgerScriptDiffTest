@@ -7,7 +7,7 @@ class SCR_AIGetMuzzleMagazineWell: AITaskScripted
 	static const string MAGAZINE_WELL_TYPE_PORT = "MagazineWellType";
 	
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() {return true;}
+	static override bool VisibleInPalette() {return true;}
 	
 	//------------------------------------------------------------------------------------------------
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
@@ -53,7 +53,7 @@ class SCR_AIGetMuzzleMagazineWell: AITaskScripted
 	
 
 	//------------------------------------------------------------------------------------------------
-	override string GetOnHoverDescription() 
+	static override string GetOnHoverDescription() 
 	{ 
 		return "Returns magazine well and its type of a specific weapon muzzle";	
 	};

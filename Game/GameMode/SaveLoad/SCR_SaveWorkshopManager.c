@@ -118,10 +118,10 @@ class SCR_SaveWorkshopManager
 		if (!header)
 			return null;
 		
-		string path = header.GetHeaderResourcePath();
+		ResourceName name = header.GetHeaderResourceName();
 		
 		WorkshopApi workshop = GetGame().GetBackendApi().GetWorkshop();
-		MissionWorkshopItem mission = workshop.GetInGameScenario(path);
+		MissionWorkshopItem mission = workshop.GetInGameScenario(name);
 		
 		if (!mission)
 			mission = workshop.GetCurrentMission();
@@ -140,14 +140,17 @@ class SCR_SaveWorkshopManager
 			return FALLBACK_SCENARIO_ID;
 		#endif
 		
+		if (!header)
+			return ResourceName.Empty;
+		
 		return header.GetHeaderResourceName();
 	}
 	
 	//----------------------------------------------------------------------------------------
 	static MissionWorkshopItem GetScenarioMissionWorkshopItem(MissionHeader missionHeader)
 	{
-		string path = missionHeader.GetHeaderResourceName();
-		return  GetGame().GetBackendApi().GetWorkshop().GetInGameScenario(path);
+		ResourceName name = missionHeader.GetHeaderResourceName();
+		return  GetGame().GetBackendApi().GetWorkshop().GetInGameScenario(name);
 	}
 	
 	//----------------------------------------------------------------------------------------
@@ -345,7 +348,6 @@ class SCR_SaveWorkshopManager
 	*/
 	static bool CanOverrideSave(notnull WorldSaveItem save)
 	{
-		// TODO: Use complex logic once use of downloaded owned save is working properly
 		bool isLocal = save.GetLocalRevision();
 		bool playerIsAuthor = false;
 		
@@ -353,6 +355,15 @@ class SCR_SaveWorkshopManager
 			playerIsAuthor = save.IsAuthor(); // Should be actually is contributor
 		
 		return isLocal || playerIsAuthor;
+	}
+	
+	//----------------------------------------------------------------------------------------
+	static bool IsSaveLocalOnly(notnull WorldSaveItem save)
+	{
+		Revision local = save.GetLocalRevision();
+		Revision active = save.GetActiveRevision();
+		
+		return save.GetLocalRevision() && !save.GetActiveRevision();
 	}
 	
 	//----------------------------------------------------------------------------------------

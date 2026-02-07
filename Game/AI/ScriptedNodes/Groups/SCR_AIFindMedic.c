@@ -6,7 +6,7 @@ class SCR_AIFindMedic : AITaskScripted
 	static const string PORT_AGENTS_EXCLUDE_ARRAY = "AgentsExcludeArray";
 	
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() {return true;}
+	static override bool VisibleInPalette() {return true;}
 	
 
 	//------------------------------------------------------------------------------------------------
@@ -169,7 +169,7 @@ class SCR_AIFindMedic : AITaskScripted
     }
 	
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Finds group member available for medic role";
 	}

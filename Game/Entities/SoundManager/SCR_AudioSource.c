@@ -117,9 +117,13 @@ class SCR_AudioSource
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void Terminate()
+	void Terminate(bool fadeOut = true)
 	{
-		AudioSystem.TerminateSound(m_AudioHandle);
+		if (fadeOut)
+			AudioSystem.TerminateSound(m_AudioHandle);
+		else
+			AudioSystem.TerminateSoundFadeOut(m_AudioHandle, false, 0);
+		
 		m_bTerminated = true;
 	}
 	

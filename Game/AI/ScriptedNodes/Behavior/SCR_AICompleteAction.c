@@ -14,13 +14,13 @@ class SCR_AICompleteAction : SCR_AIActionTask
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}	
 
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Completes action specified in input or current action";
 	}		

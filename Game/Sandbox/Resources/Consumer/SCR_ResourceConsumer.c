@@ -115,12 +115,15 @@ class SCR_ResourceActor : ScriptAndConfig
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] timeslice
-	void Update(float timeslice)
-	{
-		
-	}
+	//! Method used to perform a periodic/iterative update on the state of the resource actor.
+	//! \param[in] timeslice Delta time of the moment when the method was called.
+	[Obsolete("Use SCR_ResourceActor::Update(WorldTimestamp timestamp) instead.")]
+	void Update(float timeslice);
+	
+	//------------------------------------------------------------------------------------------------
+	//! Method used to perform a periodic/iterative update on the state of the resource actor.
+	//! \param[in] timestamp WorldTimestamp object of the moment when the method was called.
+	void Update(WorldTimestamp timestamp);
 	
 	//------------------------------------------------------------------------------------------------
 	//!
@@ -888,7 +891,7 @@ class SCR_ResourceConsumer : SCR_ResourceInteractor
 	{
 		SCR_ResourceConsumtionResponse response = RequestAvailability(resourceCost, true);
 		
-		if (!response || response.GetReason() != EResourceReason.SUFFICIENT || !m_bIsConsuming)
+		if (!m_bIsConsuming || response.GetReason() != EResourceReason.SUFFICIENT)
 			return response;
 		
 		float resourceUsed;

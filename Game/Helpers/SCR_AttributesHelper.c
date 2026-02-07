@@ -1,13 +1,13 @@
 class SCR_AttributesHelper
 {
-	static const string ENTRY_DELIMITER = ";";
-	static const string VALUE_DELIMITER = "|";
+	protected static const string ENTRY_DELIMITER = ";";
+	protected static const string VALUE_DELIMITER = "|";
 
 	//------------------------------------------------------------------------------------------------
-	//! Parses comma-separated string into ParamEnumArray. Enum value is assumed to be ascending.
+	//! Parses semicolon-separated string into ParamEnumArray. Enum value is assumed to be ascending.
 	//! Entries with zero-length titles are omitted.
 	//! \param[in] titles Example: First Enum; Second Enum; Best Enum
-	//! \return an array of ParamEnum objects created from comma-separated string titles.
+	//! \return an array of ParamEnum objects created from semicolon-separated string titles.
 	static ParamEnumArray ParamFromTitles(string titles)
 	{
 		array<string> titlesArray = {};
@@ -18,11 +18,12 @@ class SCR_AttributesHelper
 			if (title) // !.IsEmpty() not necessary
 				params.Insert(new ParamEnum(title.Trim(), i.ToString()));
 		}
+
 		return params;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Converts separated descriptions into ParamEnumArray for enum type.
+	//! Converts semicolon-separated descriptions into ParamEnumArray for enum type.
 	//! Entries with zero-length descriptions are omitted (pre-trimmed).
 	//! \param[in] enumType Converts separated descriptions into ParamEnumArray for given enum type.
 	//! \param[in] descriptions Example: "First Enum; Second Enum; Best Enum"
@@ -39,13 +40,14 @@ class SCR_AttributesHelper
 			if (description && enumType.GetVariableValue(NULL, i, enumValue))
 				params.Insert(new ParamEnum(enumType.GetVariableName(i), enumValue.ToString(), description.Trim()));
 		}
+
 		return params;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Parses pipe-separated descriptions into ParamEnum array.
-	//! Entries with empty titles are preserved. Enrty fields are Trimmed.
-	//! \param[in] document Example: "key1|value1;key2;key3|value3|description3;"
+	//! Entries with empty titles are preserved. Entry fields are trimmed.
+	//! \param[in] document e.g "key1|value1;key2;key3|value3|description3;"
 	//! \return The method takes a string document containing pipe-separated descriptions, extracts each description into title, value, and description,
 	static ParamEnumArray ParamFromEntries(string document)
 	{
@@ -60,6 +62,7 @@ class SCR_AttributesHelper
 			params.Insert(new ParamEnum(title.Trim(), value.Trim(), description.Trim()));
 			values.Clear();
 		}
+
 		return params;
 	}
 
@@ -73,8 +76,9 @@ class SCR_AttributesHelper
 		string result;
 		foreach (int i, ParamEnum paramEnum : enumArray)
 		{
-			result += paramEnum.m_Key + VALUE_DELIMITER + paramEnum.m_Value + VALUE_DELIMITER + paramEnum.m_Desc + ENTRY_DELIMITER;
+			result += string.Format("%2%1%3%1%4%5", VALUE_DELIMITER, paramEnum.m_Key, paramEnum.m_Value, paramEnum.m_Desc, ENTRY_DELIMITER);
 		}
+
 		return result;
 	}
 

@@ -9,10 +9,13 @@ class SCR_CustomTriggerConditionsGeneric : SCR_CustomTriggerConditions
 
 	//------------------------------------------------------------------------------------------------
 	//! Checks if all or any condition is met for trigger, sets status accordingly.
-	//! \param[in] trigger Checks if all or any condition is met for trigger activation.
-	override void CustomTriggerConditions(SCR_ScenarioFrameworkTriggerEntity trigger)
+	//! \param[in] entity Checks if all or any condition is met for trigger activation.
+	override bool Init(IEntity entity)
 	{
-		bool conditionStatus = SCR_ScenarioFrameworkActivationConditionBase.EvaluateEmptyOrConditions(m_eConditionLogic, m_aGenericConditions, trigger);
-		trigger.SetTriggerConditionsStatus(conditionStatus);
+		SCR_ScenarioFrameworkTriggerEntity trigger = SCR_ScenarioFrameworkTriggerEntity.Cast(entity);
+		if (!trigger)
+			return true;
+		
+		return SCR_ScenarioFrameworkActivationConditionBase.EvaluateEmptyOrConditions(m_eConditionLogic, m_aGenericConditions, trigger);
 	}
 }

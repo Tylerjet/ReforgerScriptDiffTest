@@ -1,3 +1,4 @@
+/*
 #ifdef WORKBENCH
 [WorkbenchPluginAttribute(name: "Move Line Up", shortcut: "Alt+Up", wbModules: { "ScriptEditor" }, category: "Move Line", awesomeFontCode: 0xF062)]
 class SCR_MoveLineUpPlugin : WorkbenchPlugin
@@ -64,17 +65,20 @@ class SCR_MoveLineDownPluginHelper
 
 		string trimmedLine = lineAbove.Trim();
 
-		/**/ if (trimmedLine == "{" || trimmedLine.StartsWith("{ /" + "/") || trimmedLine.StartsWith("{\t/" + "/")) // think of arrays { 0, 0, 0 }
+		if (trimmedLine == "{" || trimmedLine.StartsWith("{ /" + "/") || trimmedLine.StartsWith("{\t/" + "/")) // think of arrays { 0, 0, 0 }
 			lineBelow = lineBelow.Substring(1, lineBelow.Length() - 1);
-		else if (trimmedLine.StartsWith("}") && lineBelow != "\t" && lineBelow.StartsWith("\t"))
+		else
+		if (trimmedLine.StartsWith("}") && lineBelow != "\t" && lineBelow.StartsWith("\t"))
 			lineBelow = "\t" + lineBelow;
 
 		trimmedLine = lineBelow.Trim();
 
-		/**/ if (trimmedLine == "{" || trimmedLine.StartsWith("{ /" + "/") || trimmedLine.StartsWith("{\t/" + "/")) // think of arrays { 0, 0, 0 }
+		if (trimmedLine == "{" || trimmedLine.StartsWith("{ /" + "/") || trimmedLine.StartsWith("{\t/" + "/")) // think of arrays { 0, 0, 0 }
 			lineAbove = "\t" + lineAbove;
-		else if (trimmedLine.StartsWith("}") && lineBelow != "\t" && lineAbove.StartsWith("\t"))
+		else
+		if (trimmedLine.StartsWith("}") && lineBelow != "\t" && lineAbove.StartsWith("\t"))
 			lineAbove = lineAbove.Substring(1, lineAbove.Length() - 1);
 	}
 }
 #endif // WORKBENCH
+*/

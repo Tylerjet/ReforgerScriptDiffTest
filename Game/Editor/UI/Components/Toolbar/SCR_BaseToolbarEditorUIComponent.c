@@ -138,6 +138,8 @@ class SCR_BaseToolbarEditorUIComponent : SCR_DialogEditorUIComponent
 		SetToolbarVisible(hasContent);
 	}
 
+	//---- REFACTOR NOTE START: Call later used for fallback ui update
+	
 	//------------------------------------------------------------------------------------------------
 	//!
 	void MarkForRefresh()
@@ -146,6 +148,8 @@ class SCR_BaseToolbarEditorUIComponent : SCR_DialogEditorUIComponent
 		GetGame().GetCallqueue().CallLater(Refresh, 1); //--- Call with a delay, in case whatever called this is not ready yet and the toolbar would reflect incorrect state
 	}
 
+	//---- REFACTOR NOTE END ----
+	
 	//------------------------------------------------------------------------------------------------
 	protected void OnPageChanged(int page)
 	{

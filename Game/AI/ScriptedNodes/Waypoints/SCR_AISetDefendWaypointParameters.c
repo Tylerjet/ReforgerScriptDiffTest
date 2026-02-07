@@ -74,13 +74,13 @@ class SCR_AISetDefendWaypointParameters : AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Changes preset of defend waypoint, defined in m_DefendPresets array of defend waypoint entity.";
 	}

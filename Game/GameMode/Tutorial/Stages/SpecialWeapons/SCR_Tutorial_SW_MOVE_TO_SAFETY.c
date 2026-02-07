@@ -13,6 +13,8 @@ class SCR_Tutorial_SW_MOVE_TO_SAFETY : SCR_BaseTutorialStage
 	{
 		m_RadiusCenter = GetGame().GetWorld().FindEntityByName("DESTRUCTABLE_OBSTACLE");
 	
+		RegisterWaypoint("WP_SW_SAFETY");
+		
 		IEntity detonator = GetGame().GetWorld().FindEntityByName("CourseDetonator");
 		if (!detonator)
 			return;

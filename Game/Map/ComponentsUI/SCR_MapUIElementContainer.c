@@ -140,6 +140,7 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 		SCR_BaseTaskManager.s_OnTaskRemoved.Insert(OnTaskRemoved);
 		SCR_BaseTaskManager.s_OnTaskDeleted.Insert(OnTaskRemoved);
 		SCR_BaseTaskManager.s_OnTaskFinished.Insert(OnTaskRemoved);
+		SCR_BaseTaskManager.s_OnTaskFactionAssigned.Insert(OnTaskAdded);
 
 		m_bIsDeployMap = (config.MapEntityMode == EMapEntityMode.SPAWNSCREEN);
 
@@ -178,6 +179,11 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 		SCR_SpawnPoint.Event_SpawnPointRemoved.Remove(RemoveSpawnPoint);
 
 		SCR_BaseTaskManager.s_OnTaskUpdate.Remove(OnTaskAdded);
+		SCR_BaseTaskManager.s_OnTaskFailed.Remove(OnTaskRemoved);
+		SCR_BaseTaskManager.s_OnTaskRemoved.Remove(OnTaskRemoved);
+		SCR_BaseTaskManager.s_OnTaskDeleted.Remove(OnTaskRemoved);
+		SCR_BaseTaskManager.s_OnTaskFinished.Remove(OnTaskRemoved);
+		SCR_BaseTaskManager.s_OnTaskFactionAssigned.Remove(OnTaskAdded);
 
 		m_MapEntity.GetOnMapPan().Remove(OnMapPan);
 		SCR_SpawnPoint.OnSpawnPointNameChanged.Remove(UpdateSpawnPointName);

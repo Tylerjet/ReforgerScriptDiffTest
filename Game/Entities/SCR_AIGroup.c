@@ -101,7 +101,6 @@ class SCR_AIGroup : ChimeraAIGroup
 
 	protected ref array<IEntity> m_aSceneGroupUnitInstances;
 	protected ref array<IEntity> m_aSceneWaypointInstances;
-	protected ref array<IEntity> m_aUsableVehicles;
 	protected ref array<BaseCompartmentSlot> m_aAllocatedCompartments = {};	// allocated components (on vehicles) this group wants to get in
 	protected ref array<AISmartActionComponent> m_aAllocatedComponents = {};	// allocated smart action components this group wants to use
 	
@@ -418,7 +417,21 @@ class SCR_AIGroup : ChimeraAIGroup
 	{
 		return m_iLeaderID;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! Recursively searches through the group hierarchy to find the first leader who is a player
+	//! \return player ID that is used f.e. by PlayerManager, or -1 when there is no player leader in the group hierarchy
+	int GetFirstPlayerLeaderID()
+	{
+		if (m_iLeaderID > 0)
+			return m_iLeaderID;
+
+		if (!m_MasterGroup)
+			return -1;
+
+		return m_MasterGroup.GetFirstPlayerLeaderID();
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Called on the server (authority)
 	void SetPrivate(bool isPrivate)
@@ -1507,19 +1520,28 @@ class SCR_AIGroup : ChimeraAIGroup
 	{
 		for (int i = 0, length = aVehicleNames.Count(); i < length; i++)
 		{
+			IEntity vehicle;
+			
 #ifdef WORKBENCH
 			WorldEditorAPI m_API = _WB_GetEditorAPI();
 			if (m_API)
 			{
-				AddUsableVehicle(m_API.GetWorld().FindEntityByName(aVehicleNames[i]));
+				vehicle = m_API.GetWorld().FindEntityByName(aVehicleNames[i]);
 			}
 			else
 			{
-				AddUsableVehicle(GetGame().GetWorld().FindEntityByName(aVehicleNames[i]));
+				vehicle = GetGame().GetWorld().FindEntityByName(aVehicleNames[i]);
 			}
 #else
-			AddUsableVehicle(GetGame().GetWorld().FindEntityByName(aVehicleNames[i]));
+			vehicle = GetGame().GetWorld().FindEntityByName(aVehicleNames[i]);
 #endif
+			
+			if (vehicle)
+			{
+				SCR_AIVehicleUsageComponent vehicleUsageComp = SCR_AIVehicleUsageComponent.FindOnNearestParent(vehicle, vehicle);
+				if (vehicleUsageComp)
+					m_GroupUtilityComponent.m_VehicleMgr.TryAddVehicle(vehicleUsageComp);
+			}
 		}
 	}
 	
@@ -1631,67 +1653,7 @@ class SCR_AIGroup : ChimeraAIGroup
 			RemoveWaypoint(waypoint)
 		}
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	void AddUsableVehicle(IEntity vehicle)
-	{
-		if (Vehicle.Cast(vehicle) && m_aUsableVehicles.Find(vehicle) < 0)
-			m_aUsableVehicles.Insert(vehicle);
-		
-		if (vehicle)
-		{
-			SCR_AIVehicleUsageComponent vehicleUsageComp = SCR_AIVehicleUsageComponent.Cast(vehicle.FindComponent(SCR_AIVehicleUsageComponent));
 			
-			if (!vehicleUsageComp)
-				SCR_AIVehicleUsageComponent.ErrorNoComponent(vehicle);
-			
-			if (m_GroupUtilityComponent && vehicleUsageComp)
-				m_GroupUtilityComponent.AddUsableVehicle(vehicleUsageComp);
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void RemoveUsableVehicle(IEntity vehicle)
-	{
-		if (!vehicle)
-			m_aUsableVehicles.RemoveItem(null);
-		else if (Vehicle.Cast(vehicle) && m_aUsableVehicles.Find(vehicle) > -1)
-			m_aUsableVehicles.RemoveItem(vehicle);
-		for (int i = m_aAllocatedCompartments.Count() - 1; i >= 0 ; i--)
-		{ 
-			if (m_aAllocatedCompartments[i].GetVehicle() != vehicle)
-				continue;
-			m_aAllocatedCompartments[i].SetCompartmentAccessible(true);
-			m_aAllocatedCompartments.Remove(i);
-		}
-		
-		if (vehicle)
-		{
-			SCR_AIVehicleUsageComponent vehicleUsageComp = SCR_AIVehicleUsageComponent.Cast(vehicle.FindComponent(SCR_AIVehicleUsageComponent));
-			
-			if (m_GroupUtilityComponent && vehicleUsageComp)
-				m_GroupUtilityComponent.RemoveUsableVehicle(vehicleUsageComp);
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	bool IsUsableVehicle(IEntity vehicle)
-	{
-		return m_aUsableVehicles.Contains(vehicle);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	int GetUsableVehicles(out array<IEntity> usableVehicles)
-	{
-		return usableVehicles.Copy(m_aUsableVehicles);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	int GetUsableVehiclesCount()
-	{
-		return m_aUsableVehicles.Count();
-	}
-	
 	//------------------------------------------------------------------------------------------------
 	void GetAllocatedCompartments(out array<BaseCompartmentSlot> allocatedCompartments)
 	{
@@ -2176,7 +2138,6 @@ class SCR_AIGroup : ChimeraAIGroup
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
-		m_aUsableVehicles =  new array<IEntity>;
 		m_aAllocatedCompartments = new array<BaseCompartmentSlot>;
 		m_GroupUtilityComponent = SCR_AIGroupUtilityComponent.Cast(this.FindComponent(SCR_AIGroupUtilityComponent));
 		
@@ -2185,7 +2146,7 @@ class SCR_AIGroup : ChimeraAIGroup
 			//--- Instantly mark as initialized if no team members are to be spawned
 			Event_OnInit.Invoke(this);
 		}
-		else if (m_bSpawnImmediately)
+		else if (m_bSpawnImmediately || GetWorld().IsEditMode())
 		{
 			SpawnUnits();
 		}
@@ -2497,7 +2458,6 @@ class SCR_AIGroup : ChimeraAIGroup
 		DestroyEntities(m_aSceneGroupUnitInstances);
 		DestroyEntities(m_aSceneWaypointInstances);
 		RemoveStaticWaypointRefs(m_aStaticWaypoints);
-		ClearRefs(m_aUsableVehicles);
 	}
 };
 
@@ -2517,6 +2477,7 @@ enum EGroupState
 };
 
 //------------------------------------------------------------------------
+//! Names of enum values must match formation names in AIWorld
 enum SCR_EAIGroupFormation
 {
 	Wedge,

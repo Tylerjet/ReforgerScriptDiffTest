@@ -1021,7 +1021,7 @@ class SCR_NotificationsComponent : ScriptComponent
 		if (!playerManager)
 			return;
 		
-		m_mPlayerNameHistory.Set(playerID, playerManager.GetPlayerName(playerID));
+		m_mPlayerNameHistory.Set(playerID, SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(playerID));
 	}
 
 	//======================== START LISTENING TO UPDATE ========================\\

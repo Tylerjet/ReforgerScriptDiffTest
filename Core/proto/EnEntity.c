@@ -3,7 +3,7 @@
 \{
 */
 
-class EntityID: pointer
+class EntityID: handle64
 {
 	static EntityID INVALID;
 	static proto native EntityID FromInt(int hiBits, int loBits);

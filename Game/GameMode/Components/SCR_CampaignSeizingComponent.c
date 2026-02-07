@@ -6,6 +6,9 @@ class SCR_CampaignSeizingComponent : SCR_SeizingComponent
 {
 	[Attribute("60", params: "0 inf 0.1", category: "Campaign")]
 	protected float m_fExtraTimePerService;
+	
+	[Attribute("60", params: "0 inf 0.1", category: "Campaign")]
+	protected float m_fExtraTimePerRadioConnection;
 
 	protected SCR_CampaignMilitaryBaseComponent m_Base;
 	
@@ -54,9 +57,20 @@ class SCR_CampaignSeizingComponent : SCR_SeizingComponent
 
 			foreach (SCR_EServicePointType type : checkedTypes)
 			{
-				if (m_Base.GetServiceByType(type))
+				if (m_Base.GetServiceDelegateByType(type))
 					servicesCount++;
 			}
+		}
+		
+		int radioConnectionsCount;
+		SCR_CoverageRadioComponent comp = SCR_CoverageRadioComponent.Cast(m_Base.GetOwner().FindComponent(SCR_CoverageRadioComponent));
+		
+		if (comp)
+		{
+			SCR_CampaignFaction faction = m_Base.GetCampaignFaction();
+			
+			if (faction && faction.IsPlayable())
+				radioConnectionsCount = comp.GetRadiosInRangeOfCount(faction.GetFactionRadioEncryptionKey());
 		}
 
 		float seizingTimeVar = m_fMaximumSeizingTime - m_fMinimumSeizingTime;
@@ -67,13 +81,16 @@ class SCR_CampaignSeizingComponent : SCR_SeizingComponent
 			float deductPerPlayer = seizingTimeVar / (m_iMaximumSeizingCharacters - 1);
 			deduct = deductPerPlayer * (m_iSeizingCharacters - 1);
 		}
-		
-		float servicesMultiplier = 1;
+
+		float multiplier = 1;
 		
 		if ((m_fMaximumSeizingTime - m_fMinimumSeizingTime) > 0)
-			servicesMultiplier = 1 + (servicesCount * (m_fExtraTimePerService / (m_fMaximumSeizingTime - m_fMinimumSeizingTime)));
+		{
+			multiplier += (servicesCount * (m_fExtraTimePerService / (m_fMaximumSeizingTime - m_fMinimumSeizingTime)));
+			multiplier += (radioConnectionsCount * (m_fExtraTimePerRadioConnection / (m_fMaximumSeizingTime - m_fMinimumSeizingTime)));
+		}
 
-		m_fSeizingEndTimestamp = m_fSeizingStartTimestamp.PlusSeconds(servicesMultiplier * (m_fMaximumSeizingTime - deduct));
+		m_fSeizingEndTimestamp = m_fSeizingStartTimestamp.PlusSeconds(multiplier * (m_fMaximumSeizingTime - deduct));
 
 		ChimeraWorld world = GetGame().GetWorld();
 		WorldTimestamp currentTime = world.GetServerTimestamp();

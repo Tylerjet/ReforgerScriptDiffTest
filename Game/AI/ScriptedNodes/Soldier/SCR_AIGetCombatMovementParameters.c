@@ -14,12 +14,12 @@ class SCR_AIGetCombatMovementParameters : AITaskScripted
 		return s_aVarsOut;
 	}
 	
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
 	{
 		return true;
 	}
 	
-	override string GetOnHoverDescription()
+	static override string GetOnHoverDescription()
 	{
 		return "Returns stance and movement type while advancing towards enemy";
 	}

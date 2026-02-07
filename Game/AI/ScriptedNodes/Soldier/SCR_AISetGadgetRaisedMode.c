@@ -8,7 +8,7 @@ class SCR_AISetGadgetRaisedMode : AITaskScripted
 	
 	protected CharacterControllerComponent m_CharacterController;
 	
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}
@@ -42,7 +42,7 @@ class SCR_AISetGadgetRaisedMode : AITaskScripted
 		}
 	}
 	
-	override string GetOnHoverDescription()
+	static override string GetOnHoverDescription()
 	{
 		return "Sets raised mode of gadget, either on simulate or on abort.";
 	}

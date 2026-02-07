@@ -165,6 +165,8 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 			m_AttributesManager.ConfirmEditing();
 	}
 	
+	//---- REFACTOR NOTE START: Hard coded dialog name which can be changed easily in config
+	
 	protected void OnAcceptEndGame()
 	{
 		SCR_ConfigurableDialogUi dlg = SCR_CommonDialogs.CreateDialog("session_end");
@@ -174,6 +176,8 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 		dlg.m_OnConfirm.Insert(EndGamePopupComfirm);
 		
 	}
+	
+	//---- REFACTOR NOTE END ----
 	
 	protected void ButtonReset()
 	{
@@ -325,6 +329,8 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 		if (m_GamepadToggleEnableButton)
 			m_GamepadToggleEnableButton.GetRootWidget().SetVisible(m_bHasConflictingAttributes && !GetGame().GetInputManager().IsUsingMouseAndKeyboard());
 	}
+	
+	//---- REFACTOR NOTE START: End game logic is hard to read and condition to define behavior are too specific and hard to mod
 	
 	void InitWidget(array<ResourceName> categoryConfigs, array<ref SCR_EditorAttributeCategory> categories)
 	{		
@@ -504,6 +510,11 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 				gameMode.GetOnGameModeEnd().Insert(OnCancelEndGame);
 		}
 	}
+	
+	//---- REFACTOR NOTE END ----
+	
+	//---- REFACTOR NOTE START: Complex and hard to read logic of loops and conditions
+	// Conditions are uncessary specific and this approach is not modular
 	
 	//~Todo: Clean up set header script
 	protected void SetHeaderText(RichTextWidget header)
@@ -791,11 +802,12 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 		}
 	}
 	
+	//---- REFACTOR NOTE END ----
+	
 	protected void SetPlayerInfo(int playerId){
 		SCR_PlayerController contr = SCR_PlayerController.Cast(GetGame().GetPlayerController());
 		
-		//m_PlayerNameWidget.SetText(SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(playerId));
-		m_PlayerNameWidget.SetText(GetGame().GetPlayerManager().GetPlayerName(playerId));
+		m_PlayerNameWidget.SetText(SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(playerId));
 		contr.SetPlatformImageTo(playerId, m_PlatformImageWidget);
 		
 		m_PlayerNameWidget.SetVisible(true);

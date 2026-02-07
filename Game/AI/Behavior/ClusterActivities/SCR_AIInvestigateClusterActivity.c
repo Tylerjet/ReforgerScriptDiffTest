@@ -160,8 +160,7 @@ class SCR_AIInvestigateClusterActivity : SCR_AIFireteamsClusterActivity
 					continue;
 				
 				// Duration is large, since soldiers' investigation is tied to this activity
-				SCR_AIMessage_Investigate msg = SCR_AIMessage_Investigate.Create(pos, radius, true, duration: 10000);
-				msg.m_RelatedGroupActivity = this;
+				SCR_AIMessage_Investigate msg = SCR_AIMessage_Investigate.Create(this,pos, radius, true, duration: 10000);
 				msg.SetReceiver(agent);
 				comms.RequestBroadcast(msg, agent);
 			}

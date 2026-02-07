@@ -4,7 +4,7 @@ typedef ScriptInvokerBase<ScriptInvoker_AIWorldControlModeChangedMethod> ScriptI
 
 //#define DEBUG_NAVMESH_REBUILD_AREAS //--- Show bounds of recalculated navmesh areas
 
-class SCR_AIWorldClass: AIWorldClass
+class SCR_AIWorldClass: ChimeraAIWorldClass
 {
 };
 
@@ -20,7 +20,7 @@ enum EAIDebugCategory
 	LAST
 };
 
-class SCR_AIWorld : AIWorld
+class SCR_AIWorld : ChimeraAIWorld
 {
 	static const float MAX_NAVMESH_REBUILD_SIZE = 100 * 100; //--- Squared value
 	
@@ -98,6 +98,10 @@ class SCR_AIWorld : AIWorld
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_GRENADE_POSITIONS,"","Show grenade positions","AIScript");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_SUPPRESS_DEBUG,"","Show suppression debug","AIScript");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_ILLUM_FLARES_POSITIONS,"","Show illum flares positions","AIScript");
+			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_AIM_LEAD_DEBUG,"","Show aim leading debug","AIScript");
+			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_SECTOR_THREAT_FILTER, "", "Show sector threat filter", "AIScript");
+			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_SEARCH_AND_DESTROY,"","Show search and destroy points of interest","AIScript");
+			
 			
 #ifdef AI_DEBUG
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SEND_MESSAGE, "", "Show Send Message Menu","AIScript");
@@ -229,7 +233,9 @@ class SCR_AIWorld : AIWorld
 		int i = 0;
 		foreach (Tuple2<vector, vector> area: areas)
 		{
-			RequestNavmeshRebuild(area.param1, area.param2, redoRoads[i]);
+			RequestNavmeshRebuild(area.param1, area.param2);
+			if(redoRoads[i])
+				RequestRoadNetworkRebuild(area.param1, area.param2);
 #ifdef DEBUG_NAVMESH_REBUILD_AREAS
 			SCR_Shape.GetBoundsPoints(area.param1, area.param2, points);
 			m_DebugNavmeshRebuildAreas.Insert(Shape.CreateLines(Color.BLUE, ShapeFlags.NOZBUFFER, points, 19));

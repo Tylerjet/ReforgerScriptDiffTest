@@ -392,6 +392,10 @@ class SCR_EditorImagePositionEntity : GenericEntity
 		if (api && api.IsEntitySelected(api.EntityToSource(this)))
 			SCR_EditorImageGeneratorEntity.AddSelectedPosition(this);
 	}
+	override int _WB_GetAfterWorldUpdateSpecs(IEntitySource src)
+	{
+		return EEntityFrameUpdateSpecs.CALL_WHEN_ENTITY_VISIBLE;
+	}
 	override void _WB_AfterWorldUpdate(float timeSlice)
 	{
 		if (m_Labels.IsEmpty())

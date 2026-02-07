@@ -223,12 +223,19 @@ class SCR_BaseCompartmentManagerComponent : BaseCompartmentManagerComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Kill all the occupants and eject them if requested. Must be called on authority.
-	//! \param forceEject Chance the passengers get ejected. -1 Will use the same value that is configured on the compartment. 1 will force eject. Inbetween is custom chance.
-	void EjectRandomOccupants(float ejectionChance = -1, bool ejectUnconscious = false)
+	//! \param[in] forceEject Chance the passengers get ejected. -1 Will use the same value that is configured on the compartment. 1 will force eject. In-between is custom chance.
+	//! \param[in] ejectUnconscious
+	//! \param[out] allEjectedImmediately informs if this client was able to make characters leave their compartments
+	//! \param[in] ejectOnTheSpot if characters should be ejected in the position where they currently are
+	//! \return true if any character was ejected
+	bool EjectRandomOccupants(float ejectionChance = -1, bool ejectUnconscious = false, out bool allEjectedImmediately = true, bool ejectOnTheSpot = false)
 	{
 		array<BaseCompartmentSlot> compartments = {};
 		GetCompartments(compartments);
 
+		bool characterEjected;
+		bool ejectedImmediately;
+		allEjectedImmediately = true;
 		foreach (BaseCompartmentSlot compartment : compartments)
 		{
 			// if ejectionChance is <0, eject if random > compartmentChance
@@ -245,8 +252,13 @@ class SCR_BaseCompartmentManagerComponent : BaseCompartmentManagerComponent
 			}
 			// else if (ejectionChance ==  1) force eject
 			if (compartment)
-				compartment.EjectOccupant(ejectionChance == 1, ejectUnconscious);
+			{
+				characterEjected = compartment.EjectOccupant(ejectionChance == 1, ejectUnconscious, ejectedImmediately, ejectOnTheSpot) || characterEjected;
+				allEjectedImmediately = allEjectedImmediately && ejectedImmediately;
+			}
 		}
+
+		return characterEjected;
 	}
 
 	//------------------------------------------------------------------------------------------------

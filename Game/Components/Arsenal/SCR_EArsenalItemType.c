@@ -20,4 +20,7 @@ enum SCR_EArsenalItemType
 	WEAPON_ATTACHMENT = 1 << 17,
 	EXPLOSIVES = 1 << 18,
 	HANDWEAR = 1 << 19,
+	MORTARS = 1 << 20,
+	HELICOPTER = 1 << 21,
+	VEHICLE = 1 << 22,
 }

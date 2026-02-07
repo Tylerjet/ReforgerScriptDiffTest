@@ -62,10 +62,6 @@ class SCR_AICreateDefendBehaviorCoverQueryProps : AITaskScripted
 		m_CoverQueryProps.m_fSectorDistMax = Math.Clamp(desiredQueryRadius, QUERY_MIN_RADIUS, QUERY_MAX_RADIUS);
 		m_CoverQueryProps.m_fSectorDistMin = 0;
 		
-		
-		// Prefer directly reachable covers
-		m_CoverQueryProps.m_fScoreWeightNavmeshRay = 4.0;
-		
 		// Defend waypoint usage is very numerous, that's why we should reduce its performance impact
 		m_CoverQueryProps.m_iMaxCoversToCheck = SCR_AIFindCover.MAX_COVERS_LOW_PRIORITY;
 		
@@ -77,7 +73,7 @@ class SCR_AICreateDefendBehaviorCoverQueryProps : AITaskScripted
 	
 	
 	//---------------------------------------------------------------
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 	
 	protected static ref TStringArray s_aVarsIn = {
 		PORT_SECTOR_CENTER_POSITION,
@@ -92,5 +88,5 @@ class SCR_AICreateDefendBehaviorCoverQueryProps : AITaskScripted
 	};
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
-	override string GetOnHoverDescription() { return "Creates CoverQueryProperties for defend behavior"; }
+	static override string GetOnHoverDescription() { return "Creates CoverQueryProperties for defend behavior"; }
 }

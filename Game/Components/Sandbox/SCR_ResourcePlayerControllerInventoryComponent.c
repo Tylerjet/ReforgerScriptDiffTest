@@ -104,25 +104,63 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected bool TryPerformResourceConsumption(notnull SCR_ResourceActor actor, EResourceType resourceType, float resourceValue, bool ignoreOnEmptyBehavior = false)
+	//! Checks if it's possible to comnsume resourceValue resources from the specified actor.
+	//! \param[in] actor Actor to consume from.
+	//! \param[in] resourceValue The resource value to consume.
+	protected bool CheckResourceConsumptionAvailability(notnull SCR_ResourceActor actor, float resourceValue)
+	{
+		SCR_ResourceContainer container = SCR_ResourceContainer.Cast(actor);
+		
+		if (container)
+			return container.GetResourceValue() >= resourceValue;
+		
+		SCR_ResourceConsumer consumer = SCR_ResourceConsumer.Cast(actor);
+		
+		if (consumer)
+			return consumer.RequestAvailability(resourceValue).GetReason() == EResourceReason.SUFFICIENT;
+		
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Checks if it's possible to generate resourceValue resources from the specified actor.
+	//! \param[in] actor Actor to generate to.
+	//! \param[in] resourceValue The resource value to generate.
+	protected bool CheckResourceGenerationAvailability(notnull SCR_ResourceActor actor, float resourceValue)
+	{
+		SCR_ResourceContainer container = SCR_ResourceContainer.Cast(actor);
+		
+		if (container)
+			return container.ComputeResourceDifference() >= resourceValue;
+		
+		SCR_ResourceGenerator generator = SCR_ResourceGenerator.Cast(actor);
+		
+		if (generator)
+			return generator.RequestAvailability(resourceValue).GetReason() == EResourceReason.SUFFICIENT;
+		
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] actor from which we want to try to consume resources from
+	//! \param[in] resourceValue amount of resources that should be consumed
+	//! \param[in] ignoreOnEmptyBehavior
+	protected bool TryPerformResourceConsumption(notnull SCR_ResourceActor actor, float resourceValue, bool ignoreOnEmptyBehavior = false)
 	{
 		SCR_ResourceContainer container = SCR_ResourceContainer.Cast(actor);
 		
 		if (container)
 		{
 			EResourceContainerOnEmptyBehavior emptyBehavior = container.GetOnEmptyBehavior();
-			SCR_ResourceEncapsulator encapsulator = container.GetResourceEncapsulator();
 			
 			if (ignoreOnEmptyBehavior)
 				container.SetOnEmptyBehavior(EResourceContainerOnEmptyBehavior.NONE);
 			
-			if (encapsulator)
-				encapsulator.RequestConsumtion(resourceValue);
-			else
-				container.DecreaseResourceValue(resourceValue);
+			if (!container.DecreaseResourceValue(resourceValue))
+				return false;
 			
-			if (ignoreOnEmptyBehavior)
-				container.SetOnEmptyBehavior(emptyBehavior);
+			container.SetOnEmptyBehavior(emptyBehavior);
 			
 			return true;
 		}
@@ -130,40 +168,26 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		SCR_ResourceConsumer consumer = SCR_ResourceConsumer.Cast(actor);
 		
 		if (consumer)
-		{
-			consumer.RequestConsumtion(resourceValue);
-			
-			return true;
-		}
+			return consumer.RequestConsumtion(resourceValue).GetReason() == EResourceReason.SUFFICIENT;
 		
 		return false;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected bool TryPerformResourceGeneration(notnull SCR_ResourceActor actor, EResourceType resourceType, float resourceValue)
+	//!
+	//! \param[in] actor to which we want to try to add resources
+	//! \param[in] resourceValue amount of resources that should be added
+	protected bool TryPerformResourceGeneration(notnull SCR_ResourceActor actor, float resourceValue)
 	{
 		SCR_ResourceContainer container = SCR_ResourceContainer.Cast(actor);
 		
 		if (container)
-		{
-			SCR_ResourceEncapsulator encapsulator = container.GetResourceEncapsulator();
-			
-			if (encapsulator)
-				encapsulator.RequestGeneration(resourceValue);
-			else
-				container.IncreaseResourceValue(resourceValue);
-			
-			return true;
-		}
+			return container.IncreaseResourceValue(resourceValue);
 		
 		SCR_ResourceGenerator generator = SCR_ResourceGenerator.Cast(actor);
 		
 		if (generator)
-		{
-			generator.RequestGeneration(resourceValue);
-			
-			return true;
-		}
+			return generator.RequestGeneration(resourceValue).GetReason() == EResourceReason.SUFFICIENT;
 		
 		return false;
 	}
@@ -202,6 +226,11 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		if (!resourceComponentRplId.IsValid())
 			return;
 		
+		const typename interactorTypename = interactorType.ToType();
+		
+		if (!interactorTypename)
+			return;
+		
 		SCR_ResourceComponent resourceComponent = SCR_ResourceComponent.Cast(Replication.FindItem(resourceComponentRplId));
 		
 		if (!resourceComponent)
@@ -209,9 +238,9 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 
 		SCR_ResourceInteractor interactor;
 				
-		if (interactorType.ToType().IsInherited(SCR_ResourceGenerator))
+		if (interactorTypename.IsInherited(SCR_ResourceGenerator))
 			interactor = resourceComponent.GetGenerator(resourceIdentifier, resourceType);
-		else if (interactorType.ToType().IsInherited(SCR_ResourceConsumer))
+		else if (interactorTypename.IsInherited(SCR_ResourceConsumer))
 			interactor = resourceComponent.GetConsumer(resourceIdentifier, resourceType);
 		else
 			return;
@@ -231,6 +260,11 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		if (!resourceComponentRplId.IsValid())
 			return;
 		
+		const typename interactorTypename = interactorType.ToType();
+		
+		if (!interactorTypename)
+			return;
+		
 		SCR_ResourceComponent resourceComponent = SCR_ResourceComponent.Cast(Replication.FindItem(resourceComponentRplId));
 		
 		if (!resourceComponent)
@@ -238,9 +272,9 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 
 		SCR_ResourceInteractor interactor;
 		
-		if (interactorType == "SCR_ResourceGenerator")
+		if (interactorTypename.IsInherited(SCR_ResourceGenerator))
 			interactor = resourceComponent.GetGenerator(resourceIdentifier, resourceType);
-		else if (interactorType == "SCR_ResourceConsumer")
+		else if (interactorTypename.IsInherited(SCR_ResourceConsumer))
 			interactor = resourceComponent.GetConsumer(resourceIdentifier, resourceType);
 		else
 			return;
@@ -357,11 +391,12 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 				}
 			}
 		}
+
+		resourceCost *= consumer.GetBuyMultiplier();
+		if (!TryPerformResourceConsumption(consumer, resourceCost))
+			return;
 		
-		SCR_ResourceConsumtionResponse response = consumer.RequestConsumtion(resourceCost * consumer.GetBuyMultiplier());
-		
-		if (response.GetReason() == EResourceReason.SUFFICIENT)
-			inventoryManagerComponent.TrySpawnPrefabToStorage(resourceNameItem, storageComponent);
+		inventoryManagerComponent.TrySpawnPrefabToStorage(resourceNameItem, storageComponent, cb: new SCR_PrefabSpawnCallback(storageComponent));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -399,19 +434,20 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		if (!resourcesOwner)
 			return;
 		
+		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.FindArsenalComponent(resourcesOwner);
+		
 		//~ Get resource cost (cap at 0 minimum as function can return -1)
-		float resourceCost = Math.Clamp(SCR_ArsenalManagerComponent.GetItemRefundAmount(inventoryItemEntity, SCR_ArsenalComponent.FindArsenalComponent(resourcesOwner), false), 0, float.MAX);
+		float resourceCost = Math.Clamp(SCR_ArsenalManagerComponent.GetItemRefundAmount(inventoryItemEntity, arsenalComponent, false), 0, float.MAX);
 		
 		//~ Check if it can refund if resource cost is greater than 0
-		if (resourceCost > 0)
-		{
-			SCR_ResourceGenerationResponse response = generator.RequestAvailability(resourceCost);
-			if (response.GetReason() != EResourceReason.SUFFICIENT)
-				return;
-		}
+		if (resourceCost > 0 && !TryPerformResourceGeneration(generator, resourceCost))
+			return;
 		
 		IEntity parentEntity = inventoryItemEntity.GetParent();
 		SCR_InventoryStorageManagerComponent inventoryManagerComponent;
+		
+		//~ On item refunded just before the item is deleted
+		SCR_ArsenalManagerComponent.OnItemRefunded_S(inventoryItemEntity, PlayerController.Cast(GetOwner()), arsenalComponent);
 		
 		if (parentEntity)
 			inventoryManagerComponent = SCR_InventoryStorageManagerComponent.Cast(parentEntity.FindComponent(SCR_InventoryStorageManagerComponent));
@@ -420,6 +456,9 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 			return;
 		else if (!inventoryManagerComponent)
 			RplComponent.DeleteRplEntity(inventoryItemEntity, false);
+		
+		if (resourceCost <= 0)
+			return;
 		
 		generator.RequestGeneration(resourceCost);
 	}
@@ -453,8 +492,12 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		
 		float resourceUsed = Math.Min(resourceValueCurrentFrom, resourceValueMaxTo - resourceValueCurrentTo);
 		
-		if(TryPerformResourceConsumption(actorFrom, resourceType, resourceUsed) && TryPerformResourceGeneration(actorTo, resourceType, resourceUsed))
+		if (CheckResourceConsumptionAvailability(actorFrom, resourceUsed) && CheckResourceGenerationAvailability(actorTo, resourceUsed))
+		{
+			TryPerformResourceConsumption(actorFrom, resourceUsed);
+			TryPerformResourceGeneration(actorTo, resourceUsed);
 			OnPlayerInteraction(EResourcePlayerInteractionType.INVENTORY_SPLIT, componentFrom, componentTo, resourceType, resourceUsed);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -487,8 +530,12 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		
 		float resourceUsed = Math.Min(Math.Min(resourceValueCurrentFrom, resourceValueMaxTo - resourceValueCurrentTo), requestedResources);
 		
-		if(TryPerformResourceConsumption(actorFrom, resourceType, resourceUsed) && TryPerformResourceGeneration(actorTo, resourceType, resourceUsed))
+		if (CheckResourceConsumptionAvailability(actorFrom, resourceUsed) && CheckResourceGenerationAvailability(actorTo, resourceUsed))
+		{
+			TryPerformResourceConsumption(actorFrom, resourceUsed);
+			TryPerformResourceGeneration(actorTo, resourceUsed);
 			OnPlayerInteraction(EResourcePlayerInteractionType.INVENTORY_SPLIT, componentFrom, componentTo, resourceType, resourceUsed);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -511,6 +558,9 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		
 		float resourceValueCurrentFrom, resourceValueMaxFrom;
 		SCR_ResourceActor actorFrom = TryGetConsumptionActor(resourceComponentFrom, resourceType, resourceValueCurrentFrom, resourceValueMaxFrom);
+		
+		if (!CheckResourceConsumptionAvailability(actorFrom, requestedResources))
+			return;
 		
 		float resourceValueCurrentTo, resourceValueMaxTo;
 		SCR_ResourceActor actorConsumptionTo, actorGenerationTo;
@@ -540,7 +590,7 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 			
 			resourceUsed = Math.Min(resourceUsed, requestedResources);
 			
-			if (!TryPerformResourceConsumption(actorFrom, resourceType, resourceUsed))
+			if (!TryPerformResourceConsumption(actorFrom, resourceUsed))
 				return;
 			
 			RandomGenerator randGenerator	= new RandomGenerator();
@@ -565,9 +615,9 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 			actorConsumptionTo							= TryGetConsumptionActor(resourceComponentTo, resourceType, resourceValueCurrentTo, resourceValueMaxTo);
 			actorGenerationTo							= TryGetGenerationActor(resourceComponentTo, resourceType, resourceValueCurrentTo, resourceValueMaxTo);
 			
-			TryPerformResourceConsumption(actorConsumptionTo, resourceType, resourceValueCurrentTo, true);
+			TryPerformResourceConsumption(actorConsumptionTo, resourceValueCurrentTo, true);
 			
-			if (TryPerformResourceGeneration(actorGenerationTo, resourceType, resourceUsed))
+			if (TryPerformResourceGeneration(actorGenerationTo, resourceUsed))
 			{
 				OnPlayerInteraction(EResourcePlayerInteractionType.INVENTORY_SPLIT, resourceComponentFrom, resourceComponentTo, resourceType, resourceUsed);
 				
@@ -619,7 +669,7 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		float maxStoredResources				= Math.Min(resourceValueCurrentFrom, datum.GetMaxResourceValue());
 		float resourceUsed						= Math.Min(requestedResources, maxStoredResources);
 		
-		if (!TryPerformResourceConsumption(actorFrom, resourceType, resourceUsed))
+		if (!TryPerformResourceConsumption(actorFrom, resourceUsed))
 			return;
 		
 		EntitySpawnParams spawnParams	= new EntitySpawnParams();
@@ -636,9 +686,9 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		actorConsumptionTo							= TryGetConsumptionActor(resourceComponentTo, resourceType, resourceValueCurrentTo, resourceValueMaxTo);
 		actorGenerationTo							= TryGetGenerationActor(resourceComponentTo, resourceType, resourceValueCurrentTo, resourceValueMaxTo);
 		
-		TryPerformResourceConsumption(actorConsumptionTo, resourceType, resourceValueCurrentTo, true);
+		TryPerformResourceConsumption(actorConsumptionTo, resourceValueCurrentTo, true);
 		
-		if (!TryPerformResourceGeneration(actorGenerationTo, resourceType, resourceUsed))
+		if (!TryPerformResourceGeneration(actorGenerationTo, resourceUsed))
 		{
 			delete newStorageEntity;
 			

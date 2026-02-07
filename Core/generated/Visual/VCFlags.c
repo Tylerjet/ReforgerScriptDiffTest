@@ -14,6 +14,8 @@ enum VCFlags
 {
 	//! Don't filter too small objects
 	NOFILTER,
+	//! Inherit visibility from parent
+	INHERIT_PARENT_VISIBILITY,
 	//! This instance do not cast shadows.
 	NOSHADOW,
 	//! This instance ignore light interactions.

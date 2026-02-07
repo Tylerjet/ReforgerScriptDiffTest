@@ -11,12 +11,9 @@ class SCR_TestScriptedRadioMsgUserAction : ScriptedUserAction
 		BaseTransceiver transmitter = radioComp.GetTransceiver(0);
 		if (!transmitter)
 			return;
-		
-		if (radioComp)
-		{
-			//ScriptedRadioMessage msg();
-			SCR_RequestTransportMessage msg();
-			transmitter.BeginTransmission(msg);
-		}
+
+		//ScriptedRadioMessage msg = new ScriptedRadioMessage();
+		SCR_RequestTransportMessage msg = new SCR_RequestTransportMessage();
+		transmitter.BeginTransmission(msg);
 	}
-};
+}

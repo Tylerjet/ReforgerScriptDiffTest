@@ -24,7 +24,6 @@ class SCR_ModReportDialogComponent : SCR_ScriptedWidgetComponent
 	protected ref SCR_WorkshopItem m_Item;
 	protected WorkshopAuthor m_Author;
 	
-	protected ref SCR_WorkshopApiCallback_RequestPage m_CallbackPage;
 	protected ref SCR_ContentBrowser_GetAssetListParams m_Params;
 	
 	protected ref array<ref SCR_ConfigurableDialogUi> m_aDialogs = {};

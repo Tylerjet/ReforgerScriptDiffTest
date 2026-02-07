@@ -1,3 +1,13 @@
+/*!
+Action Cause value is not used for group settings now, unlike character settings.
+This enum is here for potential future compatibility.
+*/
+enum SCR_EAIActivityCause
+{
+	SAFE = 10,
+	ALWAYS = 1000 		// Special value for settings to run in all activities
+}
+
 class SCR_AIActivityBase : SCR_AIActionBase
 {
 	SCR_AIGroupUtilityComponent m_Utility;
@@ -58,6 +68,14 @@ class SCR_AIActivityBase : SCR_AIActionBase
 			comms.RequestBroadcast(msg, agent);
 		}
 	}
+	
+	//---------------------------------------------------------------------------------------------------------------------------------	
+	// Called from OnActionFailed and OnActionCompleted of the child behavior
+	void OnChildBehaviorFinished(SCR_AIBehaviorBase childBehavior);
+	
+	//---------------------------------------------------------------------------------------------------------------------------------	
+	// Called from constructor of the child behavior. Here we can register child behaviors.
+	void OnChildBehaviorCreated(SCR_AIBehaviorBase childBehavior);
 	
 	//---------------------------------------------------------------------------------------------------------------------------------
 	#ifdef AI_DEBUG

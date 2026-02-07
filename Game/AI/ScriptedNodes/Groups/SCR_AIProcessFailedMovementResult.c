@@ -6,8 +6,9 @@ class SCR_AIProcessFailedMovementResult : AITaskScripted
 	static const string PORT_IS_WAYPOINT_RELATED = "IsWaypointRelated";
 	static const string PORT_MOVE_LOCATION = "MoveLocation";
 
-	SCR_AIGroup m_Group;
-	SCR_AIGroupUtilityComponent m_GroupUtilityComponent;
+	protected SCR_AIGroup m_Group;
+	protected SCR_AIGroupUtilityComponent m_GroupUtilityComponent;
+	protected bool m_bProducedError; // the node will not produce another error unless you run the tree with "always reinit" true 
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(AIAgent owner)
@@ -26,20 +27,14 @@ class SCR_AIProcessFailedMovementResult : AITaskScripted
 		int moveResult;
 		if (!GetVariableIn(PORT_MOVE_RESULT, moveResult))
 		{
-			NodeError(this, owner, "Missing move result for SCR_AIProcessFailedMovementResult node");
+			NodeErrorOnce(owner, "Missing move result for SCR_AIProcessFailedMovementResult node");
 			return ENodeResult.RUNNING; 
 		}
 		
 #ifdef WORKBENCH
-		PrintDebug(owner, string.Format("Move failed with result %1", SCR_Enum.GetEnumName(EMoveRequestResult, moveResult)));
+		PrintDebug(owner, string.Format("Move failed with result %1", SCR_Enum.GetEnumName(EMoveError, moveResult)));
 #endif
 				
-		// Exit with error (and running status for debug) if we receive not-failed move result
-		if (moveResult == EMoveRequestResult.Uninitialized || moveResult == EMoveRequestResult.Running || moveResult == EMoveRequestResult.Succeeded || moveResult == EMoveRequestResult.Aborted)
-		{
-			NodeError(this, owner, string.Format("Unexpected move result for SCR_AIProcessFailedMovementResult node: %1", SCR_Enum.GetEnumName(EMoveRequestResult, moveResult)));
-			return ENodeResult.RUNNING; 
-		}
 				
 		int failedHandlerId;
 		GetVariableIn(PORT_HANDLER_ID, failedHandlerId);
@@ -47,20 +42,23 @@ class SCR_AIProcessFailedMovementResult : AITaskScripted
 		bool isWaypointRelated;
 		GetVariableIn(PORT_IS_WAYPOINT_RELATED, isWaypointRelated);
 		
-		vector moveLocation;
+		vector moveLocation, startLocation;
 		GetVariableIn(PORT_MOVE_LOCATION, moveLocation);
+		if (m_Group)
+			startLocation = m_Group.GetLeaderEntity().GetOrigin(); // safer than obtaining position of the group
 		
 		// we failed inside one of our vehicles -> leave the vehicle of the handlerId and try again
 		IEntity vehicleUsed;
+		SCR_AIGroupVehicle groupVehicle;
 		if (failedHandlerId != AIGroupMovementComponent.DEFAULT_HANDLER_ID) 
 		{
-			SCR_AIGroupVehicle groupVehicle = m_GroupUtilityComponent.m_VehicleMgr.FindVehicleBySubgroupId(failedHandlerId);
+			groupVehicle = m_GroupUtilityComponent.m_VehicleMgr.FindVehicleBySubgroupId(failedHandlerId);
 			if (groupVehicle)
 				vehicleUsed = groupVehicle.GetEntity();
 		}
 		
 		// Navlink is being negotiated, try again
-		if (moveResult == EMoveRequestResult.WaitingOnNavlink)
+		if (moveResult == EMoveError.WAITING_ON_NAVLINK)
 		{
 			return ENodeResult.FAIL;
 		}
@@ -69,7 +67,7 @@ class SCR_AIProcessFailedMovementResult : AITaskScripted
 		m_GroupUtilityComponent.OnMoveFailed(moveResult, vehicleUsed, isWaypointRelated, moveLocation);
 		
 		// Failed movement
-		if (moveResult == EMoveRequestResult.Failed)
+		if (moveResult == EMoveError.UNKNOWN)
 		{
 			if (isWaypointRelated)
 			{
@@ -79,7 +77,7 @@ class SCR_AIProcessFailedMovementResult : AITaskScripted
 				if (activity && !activity.m_RelatedWaypoint)
 				{
 #ifdef WORKBENCH
-					PrintDebug(owner, string.Format("Failed move as result of deleted waypoint %1", moveLocation));
+					PrintDebug(owner, string.Format("Failed move from %1 as result of deleted waypoint %2", startLocation, moveLocation));
 #endif
 					FailAction();
 					return ENodeResult.FAIL;
@@ -87,23 +85,23 @@ class SCR_AIProcessFailedMovementResult : AITaskScripted
 				
 				// If wp related and wp is the same we just return running
 				// As a result group will be stuck to allow us to debug it
-				NodeError(this, owner, string.Format("Failed move to waypoint %1", moveLocation));
+				NodeErrorOnce(owner, string.Format("Failed move from %1 to waypoint %2", startLocation, moveLocation));
 				return ENodeResult.RUNNING;
 			}
 			
 			FailAction();
 #ifdef WORKBENCH
-			PrintDebug(owner, string.Format("Failed move while following the entity %1", moveLocation));
+			PrintDebug(owner, string.Format("Failed move from %1 while following the entity %2", startLocation, moveLocation));
 #endif
 			// If result is not waypoint related we just fail
 			return ENodeResult.FAIL;
 		}
 		
 		// If stopped or vehicle is not used, complete waypoint if related and fail action
-		if (moveResult == EMoveRequestResult.Stopped || !vehicleUsed)
+		if (moveResult == EMoveError.STOPPED || !vehicleUsed)
 		{
 #ifdef WORKBENCH
-			PrintDebug(owner, string.Format("Move failed with result %1 to location %2, failing action.", SCR_Enum.GetEnumName(EMoveRequestResult, moveResult), moveLocation));
+			PrintDebug(owner, string.Format("Move failed with result %1 from %2 to location %3, failing action.", SCR_Enum.GetEnumName(EMoveError, moveResult), startLocation, moveLocation));
 #endif
 			if (isWaypointRelated)
 				CompleteWaypoint();
@@ -114,13 +112,13 @@ class SCR_AIProcessFailedMovementResult : AITaskScripted
 			return ENodeResult.RUNNING;
 		}
 #ifdef WORKBENCH
-		PrintDebug(owner, string.Format("Move failed with result %1 to location %2, retrying without vehicle.", SCR_Enum.GetEnumName(EMoveRequestResult, moveResult), moveLocation));
+		PrintDebug(owner, string.Format("Move failed with result %1 from %2 to location %3, retrying without vehicle.", SCR_Enum.GetEnumName(EMoveError, moveResult), startLocation, moveLocation));
 #endif	
 		// Exit vehicle and try again
 		if (vehicleUsed)
 		{
 			// If failed because the driver is dead, we dont need to leave vehicle
-			if (moveResult != EMoveRequestResult.EntityCantMove) 
+			if (moveResult != EMoveError.ENTITY_CANT_MOVE) 
 			{
 				// higher priority to overwrite conflicting forced move priorities
 				SCR_AIGetOutActivity getOut = new SCR_AIGetOutActivity(m_GroupUtilityComponent, null, vehicleUsed, priority: SCR_AIActionBase.PRIORITY_BEHAVIOR_GET_OUT_VEHICLE_HIGH_PRIORITY, priorityLevel: SCR_AIActionBase.PRIORITY_LEVEL_PLAYER);
@@ -128,16 +126,41 @@ class SCR_AIProcessFailedMovementResult : AITaskScripted
 			}
 			
 			// If vehicle got stuck turn the hazard lights on
-			if (moveResult == EMoveRequestResult.Stuck)
+			if (moveResult == EMoveError.STUCK)
 			{
 				// Turn them only if there's no enemy around
-				if (m_GroupUtilityComponent && m_GroupUtilityComponent.m_Perception && !m_GroupUtilityComponent.m_Perception.m_MostDangerousCluster)
-					SCR_AIVehicleUsability.TurnOnVehicleHazardLights(vehicleUsed);
+				TryTurnOnHazardLightsOnStuck(groupVehicle);
 			}
 		}
 		
 		// Fail a node to enable tree to try again
 		return ENodeResult.FAIL;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void TryTurnOnHazardLightsOnStuck(notnull SCR_AIGroupVehicle groupVehicle)
+	{
+		IEntity driver = groupVehicle.GetDriver();
+		
+		if (!driver)
+			return;
+		
+		bool turnOnLights = m_GroupUtilityComponent && m_GroupUtilityComponent.m_Perception && !m_GroupUtilityComponent.m_Perception.m_MostDangerousCluster;
+		if (!turnOnLights)
+			return;
+		
+		// We want to turn on hazard lights
+		
+		// Bail if it's forbidden by settings of driver
+		SCR_AICharacterSettingsComponent settingsComp = SCR_AICharacterSettingsComponent.FindOnControlledEntity(driver);
+		if (settingsComp)
+		{
+			SCR_AICharacterLightInteractionSettingBase setting = SCR_AICharacterLightInteractionSettingBase.Cast(settingsComp.GetCurrentSetting(SCR_AICharacterLightInteractionSettingBase));
+			if (setting && !setting.IsLightInterractionAllowed())
+				return;
+		}
+		
+		SCR_AIVehicleUsability.TurnOnVehicleHazardLights(groupVehicle.GetEntity());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -162,13 +185,15 @@ class SCR_AIProcessFailedMovementResult : AITaskScripted
 	//------------------------------------------------------------------------------------------------
 	void CompleteWaypoint()
 	{
+		if (!m_Group)
+			return;
 		AIWaypoint waypoint = m_Group.GetCurrentWaypoint();
 		if (waypoint)
 			m_Group.CompleteWaypoint(waypoint);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override protected bool CanReturnRunning() { return true; }
+	static override protected bool CanReturnRunning() { return true; }
 	
 	//------------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsOut = {};
@@ -179,8 +204,17 @@ class SCR_AIProcessFailedMovementResult : AITaskScripted
 	override TStringArray GetVariablesIn() { return s_aVarsIn; }
 	
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Processes failed movement result for proper BT reaction, calls group's failed move invoker";
-	}	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected ENodeResult NodeErrorOnce(AIAgent owner, string errorMessage)
+	{
+		if (!m_bProducedError)
+			NodeError(this, owner, errorMessage);
+		m_bProducedError = true;
+		return ENodeResult.FAIL;
+	}
 }

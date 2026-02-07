@@ -107,6 +107,13 @@ class SCR_AIThreatSystem
 	
 	//------------------------------------------------------------------------------------------------
 	//! \return
+	float GetSuppressionMeasure()
+	{
+		return m_fThreatSuppression;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetThreatMeasure()
 	{
 		return m_fThreatTotal;
@@ -199,24 +206,30 @@ class SCR_AIThreatSystem
 		{
 			int i;
 			AIDangerEvent dangerEvent;
+			
+#ifdef AI_DEBUG
+			if (m_Agent.GetDangerEventsCount() != 0)
+				AddDebugMessage(string.Format("Processing danger events: %1 in the queue", m_Agent.GetDangerEventsCount()));
+#endif
+			
 			for (int max = m_Agent.GetDangerEventsCount(); i < max; i++)
 			{
-				int dangerEventCount;
-				dangerEvent = m_Agent.GetDangerEvent(i, dangerEventCount);
+				int eventAggregationCount;
+				dangerEvent = m_Agent.GetDangerEvent(i, eventAggregationCount);
+				
+				
+				#ifdef AI_DEBUG
+				AddDebugMessage(string.Format("PerformDangerReaction: %1x %2", eventAggregationCount, dangerEvent));
+				#endif
 				
 				if (dangerEvent)
 				{
-					#ifdef AI_DEBUG
-					AddDebugMessage(string.Format("PerformDangerReaction: %1x %2, %3", dangerEventCount, dangerEvent, typename.EnumToString(SCR_EAIDangerEventType, dangerEvent.GetDangerType())));
-					#endif
-					
-					if (m_Config.PerformDangerReaction(m_Utility, dangerEvent, dangerEventCount))
+					if (m_Config.PerformDangerReaction(m_Utility, dangerEvent, eventAggregationCount))
 					{
-#ifdef WORKBENCH	
+#ifdef WORKBENCH
 						string message = typename.EnumToString(SCR_EAIDangerEventType, dangerEvent.GetDangerType());
 						SCR_AIDebugVisualization.VisualizeMessage(m_Utility.m_OwnerEntity, message, EAIDebugCategory.DANGER, 2);	// Show message above AI's head
 #endif
-						break;
 					}
 				}
 			}

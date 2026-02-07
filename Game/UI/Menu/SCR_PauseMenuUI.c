@@ -7,7 +7,14 @@ class PauseMenuUI : ChimeraMenuBase
 	protected Widget m_wRoot;
 	protected Widget m_wFade;
 	protected Widget m_wSystemTime;
+	protected BlurWidget m_wBlurEffect;
 	protected bool m_bFocused = true;
+
+	protected const float DURATION_IN_BLUR = 0.75;
+	protected const float DURATION_OUT_BLUR = 0.5;
+	
+	protected const float VALUE_BLUR = 0.8;
+	protected const float VALUE_DISABLED = 0.0;
 
 	//Editor and Photo mode Specific
 	protected SCR_ButtonTextComponent m_EditorUnlimitedOpenButton;
@@ -303,6 +310,48 @@ class PauseMenuUI : ChimeraMenuBase
 		m_OnPauseMenuOpened.Invoke();
 
 		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_FE_HUD_PAUSE_MENU_OPEN);
+		
+		SCR_CampaignBuildingEditorComponent CampaignBuildingEditorComponent = SCR_CampaignBuildingEditorComponent.Cast(SCR_CampaignBuildingEditorComponent.GetInstance(SCR_CampaignBuildingEditorComponent));
+		if (!CampaignBuildingEditorComponent)
+			return;
+		
+		m_wBlurEffect = BlurWidget.Cast(m_wRoot.FindAnyWidget("ScreenEffectBlur"));
+		CampaignBuildingEditorComponent.GetOnObstructionEventTriggered().Insert(AreaTriggerChange);
+		
+		if (CampaignBuildingEditorComponent.IsViewObstructed())
+			StartObstructionAnimation(true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] activated
+	protected void AreaTriggerChange(bool activated)
+	{
+		if (activated)
+			StartObstructionAnimation();
+		else
+			FinishObstructionAnimation();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Start screen obstruction effect.
+	protected void StartObstructionAnimation(bool force = false)
+	{
+		AnimateWidget.StopAnimation(m_wBlurEffect, WidgetAnimationBlurIntensity);
+		if (force)
+			m_wBlurEffect.SetIntensity(VALUE_BLUR);
+		else
+			AnimateWidget.BlurIntensity(m_wBlurEffect, VALUE_BLUR, DURATION_IN_BLUR);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Ends screen obstruction effect.
+	protected void FinishObstructionAnimation(bool force = false)
+	{
+		AnimateWidget.StopAnimation(m_wBlurEffect, WidgetAnimationBlurIntensity);
+		if (force)
+			m_wBlurEffect.SetIntensity(VALUE_DISABLED);
+		else
+			AnimateWidget.BlurIntensity(m_wBlurEffect, VALUE_DISABLED, DURATION_IN_BLUR);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -653,7 +702,7 @@ class PauseMenuUI : ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	private void OnFeedback()
 	{
-		FeedbackDialogUI.OpenFeedbackDialog();
+		SCR_FeedbackDialogUI.OpenFeedbackDialog();
 	}
 
 	//------------------------------------------------------------------------------------------------

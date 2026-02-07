@@ -28,7 +28,7 @@ class SCR_PlayersListEditorUIComponent : SCR_BaseEditorUIComponent
 		SCR_PlayersListEntryEditorUIComponent entry = SCR_PlayersListEntryEditorUIComponent.Cast(entryWidget.FindHandler(SCR_PlayersListEntryEditorUIComponent));
 		
 		//--- Name
-		entry.SetName(GetGame().GetPlayerManager().GetPlayerName(playerID));
+		entry.SetName(SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(playerID));
 		
 		//--- Life status
 		bool dead = true;
@@ -99,7 +99,7 @@ class SCR_PlayersListEditorUIComponent : SCR_BaseEditorUIComponent
 			if (delegate.GetPlayerID() == playerID)
 			{
 				entry.SetLinkedEntity(delegate);
-				entry.SetName(GetGame().GetPlayerManager().GetPlayerName(playerID));
+				entry.SetName(SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(playerID));
 				entry.SetDead(false);
 				return;
 			}

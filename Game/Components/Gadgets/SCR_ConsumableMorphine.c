@@ -14,7 +14,7 @@ class SCR_ConsumableMorphine : SCR_ConsumableEffectHealthItems
 		if (!damageMgr)
 			return false;
 		
-		array<ref PersistentDamageEffect> effects = damageMgr.GetAllPersistentEffectsOfType(SCR_MorphineDamageEffect);
+		array<ref SCR_PersistentDamageEffect> effects = damageMgr.GetAllPersistentEffectsOfType(SCR_MorphineDamageEffect);
 		if (!effects.IsEmpty())
 		{
 			failReason = SCR_EConsumableFailReason.ALREADY_APPLIED;
@@ -50,6 +50,13 @@ class SCR_ConsumableMorphine : SCR_ConsumableEffectHealthItems
 	EDamageType GetDefaultDamageType()
 	{
 		return EDamageType.HEALING;
+	}
+	
+	override ItemUseParameters GetAnimationParameters(IEntity item, notnull IEntity target, ECharacterHitZoneGroup group = ECharacterHitZoneGroup.VIRTUAL)
+	{
+		ItemUseParameters itemUseParams = super.GetAnimationParameters(item, target, group);
+		itemUseParams.SetAllowMovementDuringAction(true);
+		return itemUseParams;
 	}
 		
 	//------------------------------------------------------------------------------------------------

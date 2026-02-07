@@ -9,9 +9,13 @@ class SCR_CustomTriggerConditionsSpecificClassNameCount : SCR_CustomTriggerCondi
 
 	//------------------------------------------------------------------------------------------------
 	//! Initializes specific class names for scenario trigger entity, adding them as class types.
-	//! \param[in] trigger Trigger entity for scenario framework initialization.
-	override void Init(SCR_ScenarioFrameworkTriggerEntity trigger)
+	//! \param[in] entity Trigger for scenario framework initialization.
+	override void Prepare(IEntity entity)
 	{
+		SCR_ScenarioFrameworkTriggerEntity trigger = SCR_ScenarioFrameworkTriggerEntity.Cast(entity);
+		if (!trigger)
+			return;
+		
 		trigger.SetSpecificClassName(m_aSpecificClassNames);
 
 		typename type;
@@ -25,8 +29,13 @@ class SCR_CustomTriggerConditionsSpecificClassNameCount : SCR_CustomTriggerCondi
 
 	//------------------------------------------------------------------------------------------------
 	//! Checks how many times the specific classname is present inside the trigger and sets trigger conditions accordingly
-	override void CustomTriggerConditions(SCR_ScenarioFrameworkTriggerEntity trigger)
+	//! \param[in] entity
+	override bool Init(IEntity entity)
 	{
+		SCR_ScenarioFrameworkTriggerEntity trigger = SCR_ScenarioFrameworkTriggerEntity.Cast(entity);
+		if (!trigger)
+			return true;
+		
 		bool triggerStatus;
 		foreach (string className : m_aSpecificClassNames)
 		{
@@ -41,6 +50,6 @@ class SCR_CustomTriggerConditionsSpecificClassNameCount : SCR_CustomTriggerCondi
 			}
 		}
 
-		trigger.SetTriggerConditionsStatus(triggerStatus);
+		return triggerStatus;
 	}
 }

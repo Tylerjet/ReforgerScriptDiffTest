@@ -13,6 +13,7 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 	protected SCR_ContentBrowserEditorComponent m_ContentBrowserManager;
 	protected SCR_CampaignBuildingProviderComponent m_ForcedProviderComponent;
 	protected bool m_bViewObstructed;
+	protected ScriptedGameTriggerEntity m_BuildingAreaTrigger;
 
 	protected ref ScriptInvoker m_OnProviderChanged;
 	protected ref ScriptInvokerBool m_OnObstructionEventTriggered;
@@ -194,31 +195,9 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	SCR_FreeRoamBuildingClientTriggerEntity GetTrigger()
-	{
-		if (m_aProvidersComponents.IsEmpty())
-			return null;
-
-		//ToDo: Is it still needed?
-		// clear possible null, better solution - some invoker when the value in array change to null?
-		SCR_CampaignBuildingProviderComponent providerComponent = GetProviderComponent();
-		if (!providerComponent)
-		{
-			RemoveProviderEntityEditorComponent(providerComponent);
-			return null;
-		}
-
-		IEntity child = GetProviderEntity(providerComponent.UseMasterProvider()).GetChildren();
-		while (child)
-		{
-			SCR_FreeRoamBuildingClientTriggerEntity trg = SCR_FreeRoamBuildingClientTriggerEntity.Cast(child);
-			if (trg)
-				return trg;
-
-			child = child.GetSibling();
-		}
-
-		return null;
+	ScriptedGameTriggerEntity GetTrigger()
+	{		
+		return m_BuildingAreaTrigger;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -270,20 +249,20 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 		
 		if (!System.IsConsoleApp() && GetGame().GetPlayerController())
 		{
-			ScriptedGameTriggerEntity trigger = SpawnClientTrigger();
+			m_BuildingAreaTrigger = SpawnClientTrigger();
 
-			if (trigger)
+			if (m_BuildingAreaTrigger)
 			{
-				trigger.SetSphereRadius(providerComponenet.GetBuildingRadius());
+				m_BuildingAreaTrigger.SetSphereRadius(providerComponenet.GetBuildingRadius());
 
-				SCR_CampaignBuildingAreaMeshComponent areaMeshComponent = SCR_CampaignBuildingAreaMeshComponent.Cast(trigger.FindComponent(SCR_CampaignBuildingAreaMeshComponent));
+				SCR_CampaignBuildingAreaMeshComponent areaMeshComponent = SCR_CampaignBuildingAreaMeshComponent.Cast(m_BuildingAreaTrigger.FindComponent(SCR_CampaignBuildingAreaMeshComponent));
 				if (areaMeshComponent && areaMeshComponent.ShouldEnableFrameUpdateDuringEditor())
 				{
 					areaMeshComponent.ActivateEveryFrame();
 					areaMeshComponent.GenerateAreaMesh();
 				}
 
-				trigger.SetFlags(EntityFlags.VISIBLE, false);
+				m_BuildingAreaTrigger.SetFlags(EntityFlags.VISIBLE, false);
 			}
 		}
 		
@@ -331,6 +310,13 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 			return false;
 
 		return tab.CanBeShown();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! returns true if the view should be obsctructed
+	bool IsViewObstructed()
+	{
+		return m_bViewObstructed;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -388,7 +374,7 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 	//! Set event to obstruct view when enemy character enters a building radius
 	protected void SetOnEnterEvent()
 	{
-		SCR_FreeRoamBuildingClientTriggerEntity trigger = GetTrigger();
+		SCR_FreeRoamBuildingClientTriggerEntity trigger = SCR_FreeRoamBuildingClientTriggerEntity.Cast(GetTrigger());
 		if (!trigger)
 			return;
 		
@@ -424,7 +410,7 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 		if (CanBlockView(ent))
 			RemoveOnEntityKilled(ent);
 		
-		SCR_FreeRoamBuildingClientTriggerEntity trigger = GetTrigger();
+		ScriptedGameTriggerEntity trigger = GetTrigger();
 		if (!trigger)
 			return;
 		
@@ -596,9 +582,16 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 	//! Hide the area of building and remove the active faction
 	override protected void EOnEditorDeactivate()
 	{
-		SCR_FreeRoamBuildingClientTriggerEntity trigger = GetTrigger();
+		ScriptedGameTriggerEntity trigger = GetTrigger();
 		if (trigger)
+		{
+			IEntity ent = trigger.GetParent();
+			if (ent)
+				ent.RemoveChild(trigger);
+		
+			trigger.Update();
 			SCR_EntityHelper.DeleteEntityAndChildren(trigger);
+		}
 
 		FactionAffiliationComponent factionComponent = GetProviderFactionComponent();
 		if (factionComponent)

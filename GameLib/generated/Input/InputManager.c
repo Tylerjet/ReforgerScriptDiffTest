@@ -14,6 +14,8 @@ sealed class InputManager: ActionManager
 	private void InputManager();
 	private void ~InputManager();
 
+	//! Returns time delta used to update InputManager in last frame
+	proto external float GetLastTimeDelta();
 	//! Sets system cursor position
 	proto external void SetCursorPosition(int x, int y);
 	//! Returns true when mouse/keyboard is preferred input method

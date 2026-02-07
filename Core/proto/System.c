@@ -67,7 +67,7 @@ class MemoryStatsSnapshot: Managed
 }
 
 //! Handle to a running process.
-class ProcessHandle: pointer
+class ProcessHandle: handle64
 {
 }
 

@@ -22,6 +22,7 @@ class BaseMuzzleComponent: GameComponent
 	// Barrels
 	proto external int GetBarrelsCount();
 	proto external int GetCurrentBarrelIndex();
+	proto external int GetLastBarrelFired();
 	proto external bool IsBarrelChambered(int barrelIndex);
 	proto external bool IsCurrentBarrelChambered();
 	proto external bool IsChamberingPossible();

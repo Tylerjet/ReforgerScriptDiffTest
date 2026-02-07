@@ -151,7 +151,7 @@ class SCR_HeatMap_Autotest: GenericEntity
 	override void EOnInit(IEntity owner)
 	{
 		ChimeraWorld world = GetGame().GetWorld();
-		if (world.GetTimeAndWeatherManager())
+		if (world && world.GetTimeAndWeatherManager())
 		{
 			world.GetTimeAndWeatherManager().SetTimeOfTheDay(timeOfTheDay);
 			world.GetTimeAndWeatherManager().SetIsDayAutoAdvanced(false);
@@ -179,7 +179,7 @@ class SCR_HeatMap_Autotest: GenericEntity
 				m_worldSizeX = endX;
 				m_worldSizeZ = endZ;
 			}
-			else
+			else 
 			{
 				m_worldSizeX = m_worldSize;
 				m_worldSizeZ = m_worldSize;
@@ -193,6 +193,7 @@ class SCR_HeatMap_Autotest: GenericEntity
 		platforms.Insert(EPlatform.XBOX_ONE, "62e0e58f19098fc05e1b28ff");
 		platforms.Insert(EPlatform.XBOX_SERIES_X, "632863b8211b59093a5afb79");
 		platforms.Insert(EPlatform.XBOX_SERIES_S, "632863cb211b59093a5afb7a");
+		platforms.Insert(EPlatform.PS5, "66cdc91e0a90565192210ae0");
 	}
 
 	override void EOnFrame(IEntity owner, float timeSlice)

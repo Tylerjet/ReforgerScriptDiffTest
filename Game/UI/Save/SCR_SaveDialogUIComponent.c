@@ -93,6 +93,9 @@ class SCR_SaveDialogUIComponent : SCR_ScriptedWidgetComponent
 
 	[Attribute("session_load_bad_addons")]
 	protected string m_sLoadBadAddonsPrompt;
+	
+	[Attribute("save-published")]
+	protected string m_sDownloadIconName;
 
 	protected ScrollLayoutWidget m_wScroll;
 	protected Widget m_wList;
@@ -113,7 +116,7 @@ class SCR_SaveDialogUIComponent : SCR_ScriptedWidgetComponent
 	protected Widget m_wSelectedWidget;
 	protected string m_sSelectedFileName;
 
-	protected ref map<Widget, string> m_mEntries = new map<Widget, string>();
+	protected ref map<string, ref SCR_SaveDialogEntry> m_mEntries = new map<string, ref SCR_SaveDialogEntry>();
 	protected ref map<string, string> m_mEntryNames = new map<string, string>(); //--- file name, display name
 	protected ref array<Widget> m_aEntriesHidden = {};
 	protected ref array<Widget> m_aEntriesToShow = {};
@@ -158,8 +161,18 @@ class SCR_SaveDialogUIComponent : SCR_ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnDeletePrompt()
 	{
+		SCR_SaveDialogEntry entryToRemove;
+		foreach(SCR_SaveDialogEntry entry : m_mEntries)
+		{
+			if (entry.m_wEntry == m_wSelectedWidget)
+			{
+				entryToRemove = entry;
+				break;
+			}
+		}
+		
 		//--- Update GUI
-		m_mEntries.Remove(m_wSelectedWidget);
+		m_mEntries.Remove(entryToRemove.m_sFileName);
 		m_mEntryNames.Remove(m_sSelectedFileName);
 
 		m_wSelectedWidget.RemoveFromHierarchy();
@@ -273,7 +286,7 @@ class SCR_SaveDialogUIComponent : SCR_ScriptedWidgetComponent
 
 		m_fSliderPosY = sliderPosY;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	protected void DisplaySaveEntries()
 	{
@@ -284,7 +297,11 @@ class SCR_SaveDialogUIComponent : SCR_ScriptedWidgetComponent
 			ImageWidget entryImageWidget = ImageWidget.Cast(entryWidget.FindAnyWidget(m_sEntryImageWidgetName));
 			ImageWidget entryIconWidget = ImageWidget.Cast(entryWidget.FindAnyWidget(m_sEntryIconWidgetName));
 
-			string fileName = m_mEntries[entryWidget];
+			SCR_SaveDialogEntry entry = GetEntryByWidget(entryWidget);
+			if (!entry)
+				return;
+			
+			string fileName = entry.m_sFileName;
 			string entryName = EntryName(fileName);
 
 			SCR_MetaStruct meta = EntryMeta(fileName);
@@ -299,7 +316,14 @@ class SCR_SaveDialogUIComponent : SCR_ScriptedWidgetComponent
 				if (info)
 				{
 					info.SetIconTo(entryIconWidget);
-					displayName = info.GetName() + " " + displayName; //--- Hardcoded space separator, ToDo: Solve using %1 in the string itself?
+					
+					if (GetGame().GetSaveManager().IsDownloaded(fileName))
+					{
+						entry.m_bIsDownloaded = true;
+						entryIconWidget.LoadImageFromSet(0, UIConstants.ICONS_IMAGE_SET, m_sDownloadIconName);
+					}
+					
+					displayName = string.Format("%1 %2", info.GetName(), displayName);
 
 					SCR_ColorUIInfo colorInfo = SCR_ColorUIInfo.Cast(info);
 					if (colorInfo)
@@ -377,7 +401,20 @@ class SCR_SaveDialogUIComponent : SCR_ScriptedWidgetComponent
 
 	//------------------------------------------------------------------------------------------------
 	protected SCR_UIInfo EntryUIInfo(string fileName);
-
+	
+	//------------------------------------------------------------------------------------------------
+	protected SCR_SaveDialogEntry GetEntryByWidget(Widget w)
+	{
+		SCR_SaveDialogEntry selectedEntry;
+		foreach(SCR_SaveDialogEntry entry : m_mEntries)
+		{
+			if (entry.m_wEntry == w)
+				return entry;
+		}
+		
+		return null;
+	}
+	
 	//////////////////////////////////////////////////////////////////////////////////////////
 	// Overrides
 	//////////////////////////////////////////////////////////////////////////////////////////
@@ -425,13 +462,10 @@ class SCR_SaveDialogUIComponent : SCR_ScriptedWidgetComponent
 
 		WorkspaceWidget workspace = GetGame().GetWorkspace();
 
-		//--- Used for testing to artifically inflate the amount of entries
-		int debugCoef = 1;
-
 		Widget entryWidget;
 		SCR_ModularButtonComponent entryButton;
 
-		for (int i = 0, count = fileCount * debugCoef; i < count; i++)
+		for (int i = 0, count = fileCount; i < count; i++)
 		{;
 			string fileName = fileNames[i % fileCount];
 			entryWidget = workspace.CreateWidgets(m_sEntryLayout, m_wList);
@@ -442,8 +476,12 @@ class SCR_SaveDialogUIComponent : SCR_ScriptedWidgetComponent
 				entryButton.m_OnFocus.Insert(OnEntryFocus);
 				entryButton.m_OnDoubleClicked.Insert(OnEntryDoubleClick);
 			}
+			
+			SCR_SaveDialogEntry entry = new SCR_SaveDialogEntry();
+			entry.m_wEntry = entryWidget;
+			entry.m_sFileName = fileName;
 
-			m_mEntries.Insert(entryWidget, fileName);
+			m_mEntries.Insert(fileName, entry);
 			m_aEntriesHidden.Insert(entryWidget);
 
 			//--- Hide by default
@@ -464,13 +502,13 @@ class SCR_SaveDialogUIComponent : SCR_ScriptedWidgetComponent
 	protected void OnEntryFocus(SCR_ModularButtonComponent button)
 	{
 		//--- Save entry
-		string fileName;
 		Widget w = button.GetRootWidget();
-
-		if (m_mEntries.Find(w, fileName))
+		SCR_SaveDialogEntry entry = GetEntryByWidget(w);
+		
+		if (entry)
 		{
 			m_wLastFocusedEntry = w;
-			SelectEntry(w, fileName);
+			SelectEntry(w, entry.m_sFileName);
 		}
 	}
 
@@ -486,4 +524,11 @@ class SCR_SaveDialogUIComponent : SCR_ScriptedWidgetComponent
 	{
 		GetGame().GetCallqueue().Remove(OnFrame);
 	}
+}
+
+class SCR_SaveDialogEntry
+{
+	ref Widget m_wEntry;
+	bool m_bIsDownloaded;
+	string m_sFileName;
 }

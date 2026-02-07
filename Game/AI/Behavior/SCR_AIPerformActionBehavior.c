@@ -11,6 +11,12 @@ class SCR_AIPerformActionBehavior : SCR_AIBehaviorBase
 		m_SmartActionComponent.Init(this, smartActionComponent);
 	}
 	
+	//---------------------------------------------------------------------------------------------------------------------------------
+	override int GetCause()
+	{
+		return SCR_EAIBehaviorCause.SAFE;
+	}
+	
 	//------------------------------------------------------------------------------------------------------------------------------------------
 	override string GetActionDebugInfo()
 	{

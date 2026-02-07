@@ -6,7 +6,7 @@ class SCR_RadioVehicleSpawnPointClass : SCR_SpawnPointClass
 class SCR_RadioVehicleSpawnPoint : SCR_SpawnPoint
 {
 	protected SCR_PlayerSpawnPointManagerComponent m_PlayerSpawnPointManager;
-	protected Physics m_Physics;
+	protected Vehicle m_PhysicsVehicle;
 	
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
@@ -18,12 +18,11 @@ class SCR_RadioVehicleSpawnPoint : SCR_SpawnPoint
 			m_PlayerSpawnPointManager = SCR_PlayerSpawnPointManagerComponent.Cast(gameMode.FindComponent(SCR_PlayerSpawnPointManagerComponent));
 		
 		IEntity parent = owner.GetParent();
-		while (parent && !m_Physics)
+		while (parent)
 		{
 			if (Vehicle.Cast(parent))
 			{
-				m_Physics = parent.GetPhysics();
-				parent = parent.GetParent();
+				m_PhysicsVehicle = Vehicle.Cast(parent);
 				break;
 			}
 			
@@ -49,9 +48,10 @@ class SCR_RadioVehicleSpawnPoint : SCR_SpawnPoint
 		}
 		
 		//~ Vehicle is moving
-		if (m_Physics)
+		if (m_PhysicsVehicle)
 		{
-			if (m_Physics.GetVelocity() != vector.Zero || m_Physics.GetAngularVelocity() != vector.Zero)
+			Physics physics = m_PhysicsVehicle.GetPhysics();
+			if (physics && (physics.GetVelocity() != vector.Zero || physics.GetAngularVelocity() != vector.Zero))
 			{
 				result = SCR_ESpawnResult.NOT_ALLOWED_VEHICLE_MOVING;
 				return false;

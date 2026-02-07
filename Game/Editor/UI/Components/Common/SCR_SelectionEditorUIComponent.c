@@ -438,6 +438,8 @@ class SCR_SelectionEditorUIComponent : SCR_BaseEditorUIComponent
 		
 		return true;
 	}
+	
+	//---- REFACTOR NOTE START: Use of unclear hardcoded values
 
 	//------------------------------------------------------------------------------------------------
 	protected bool DrawFrameController(set<SCR_EditableEntityComponent> entities, out set<SCR_EditableEntityComponent> entitiesInside)
@@ -508,6 +510,8 @@ class SCR_SelectionEditorUIComponent : SCR_BaseEditorUIComponent
 		
 		return true;
 	}
+	
+	//---- REFACTOR NOTE END ----
 
 	//------------------------------------------------------------------------------------------------
 	protected void ConfirmFrame(bool isToggle)
@@ -554,6 +558,9 @@ class SCR_SelectionEditorUIComponent : SCR_BaseEditorUIComponent
 		}
 	}
 	
+	//---- REFACTOR NOTE START: Use of unclear hardcoded values
+	// Double click handled by delay using call later
+	
 	//------------------------------------------------------------------------------------------------
 	protected void ResetFrame()
 	{
@@ -593,6 +600,8 @@ class SCR_SelectionEditorUIComponent : SCR_BaseEditorUIComponent
 		GetGame().GetCallqueue().CallLater(EnableSelection, 100, false, true);
 		m_SelectedManager.Clear();
 	}
+	
+	//---- REFACTOR NOTE END ----
 
 	//------------------------------------------------------------------------------------------------
 	protected void EnableSelection(bool enable)
@@ -606,6 +615,8 @@ class SCR_SelectionEditorUIComponent : SCR_BaseEditorUIComponent
 		return SCR_MapEntity.GetMapInstance() && SCR_MapEntity.GetMapInstance().IsOpen();
 	}
 
+	//---- REFACTOR NOTE START: Use of unclear hardcoded values
+	
 	//------------------------------------------------------------------------------------------------
 	protected void OnMenuUpdate(float tDelta)
 	{
@@ -646,6 +657,8 @@ class SCR_SelectionEditorUIComponent : SCR_BaseEditorUIComponent
 		}
 	}
 
+	//---- REFACTOR NOTE END ----
+	
 	//------------------------------------------------------------------------------------------------
 	protected void OnMenuFocusLost()
 	{
@@ -667,6 +680,8 @@ class SCR_SelectionEditorUIComponent : SCR_BaseEditorUIComponent
 			return null;
 		}
 	}
+	
+	//---- REFACTOR NOTE START: Worth rethinking?
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Saved selection (cannot be done dynamically, action listeners cannot pass index as param)
@@ -720,6 +735,8 @@ class SCR_SelectionEditorUIComponent : SCR_BaseEditorUIComponent
 	protected void EditorTeleportSelection9() { EditorTeleportSelection(9); }
 	protected void EditorTeleportSelection0() { EditorTeleportSelection(0); }
 	
+	//---- REFACTOR NOTE END ----
+	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Custom methods
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -747,6 +764,8 @@ class SCR_SelectionEditorUIComponent : SCR_BaseEditorUIComponent
 	//--- Default methods
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	//---- REFACTOR NOTE START: Use of hardcoded values and specific methods limits modularity
+	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttachedScripted(Widget w)
 	{
@@ -860,7 +879,7 @@ class SCR_SelectionEditorUIComponent : SCR_BaseEditorUIComponent
 		menu.GetOnMenuUpdate().Insert(OnMenuUpdate);
 		menu.GetOnMenuFocusLost().Insert(OnMenuFocusLost);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
@@ -896,4 +915,6 @@ class SCR_SelectionEditorUIComponent : SCR_BaseEditorUIComponent
 			}
 		}
 	}
+	
+	//---- REFACTOR NOTE END ----
 }

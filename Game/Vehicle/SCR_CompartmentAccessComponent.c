@@ -258,6 +258,48 @@ class SCR_CompartmentAccessComponent : CompartmentAccessComponent
 		
 		return false;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Method used to ask the owner to leave the compartment
+	//! \param[in] type how player should get out of the vehicle
+	//! \param[in] doorInfoIndex through which door player will try to get out
+	//! \param[in] closeDoor should player close the door when he leaves the vehicle
+	//! \param[in] performWhenPaused
+	//! \param[in] ejectOnTheSpot if character should be ejected on the position where he currently is
+	void AskOwnerToGetOutFromVehicle(EGetOutType type, int doorInfoIndex, ECloseDoorAfterActions closeDoor, bool performWhenPaused, bool ejectOnTheSpot = false)
+	{
+		if (!GetCompartment())
+			return;
+ 
+		Rpc(GetOutOwner, type, doorInfoIndex, closeDoor, performWhenPaused, ejectOnTheSpot);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Replicated method executed by the owner of the character in order to get out of the vehicle
+	//! \param[in] type how player should get out of the vehicle
+	//! \param[in] doorInfoIndex through which door player will try to get out
+	//! \param[in] closeDoor should player close the door when he leaves the vehicle
+	//! \param[in] performWhenPaused
+	//! \param[in] ejectOnTheSpot if character should be ejected on the position where he currently is
+	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
+	protected void GetOutOwner(EGetOutType type, int doorInfoIndex, ECloseDoorAfterActions closeDoor, bool performWhenPaused, bool ejectOnTheSpot)
+	{
+		if (ejectOnTheSpot)
+		{
+			ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
+			if (!character)
+				return;
+
+			vector mat[4];
+			character.GetTransform(mat);
+			mat[3] = character.AimingPosition();
+
+			GetOutVehicle_NoDoor(mat, true, false);
+			return;
+		}
+
+		GetOutVehicle(type, doorInfoIndex, closeDoor, performWhenPaused);
+	}
 	
 	/*!
 	Get vehicle this entity is in.

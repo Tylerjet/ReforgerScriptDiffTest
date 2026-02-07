@@ -10,7 +10,7 @@ class SCR_AIFindSmartActions: AITaskScripted
 	protected SCR_AIGroup m_groupOwner;
 	
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() {return true;}
+	static override bool VisibleInPalette() {return true;}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(AIAgent owner)
@@ -74,7 +74,7 @@ class SCR_AIFindSmartActions: AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override string GetOnHoverDescription()
+	static override string GetOnHoverDescription()
 	{
 		return "FindSmartActions: finds all smart actions of given tags within center and radius. Caches result to group properties.";
 	}

@@ -74,8 +74,12 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 	[RplProp(onRplName: "OnArsenalTypeEnabledChanged"), Attribute(SCR_Enum.GetFlagValues(SCR_EArsenalTypes).ToString(), desc: "This determinds if arsenals are enabled on All entities or non-vehicle only", uiwidget: UIWidgets.Flags, enums: ParamEnumArray.FromEnum(SCR_EArsenalTypes))]
 	protected SCR_EArsenalTypes m_eArsenalTypesEnabled;
 	
+	[Attribute(desc: "Items can be ranked locked if true. Conflict functionality only.")]
+	protected bool m_bRankLockedItems;
+	
 	protected ref SCR_ArsenalGameModeUIDataHolder m_ArsenalGameModeUIDataHolder;
 	
+	//------------------------------------------------------------------------------------------------
 	static void GetArsenalLoadoutComponentsToCheck(out notnull array<string> componentsToCheck)
 	{
 		componentsToCheck.Reserve(componentsToCheck.Count() + 4);
@@ -156,40 +160,73 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 		if (!generator && mustHaveSupplyStorage)
 			return -1;
 		
+		//~ The total item refund amount
+		float refundAmount = GetItemRefundCost(item, entityCatalogManager, supplyCostType, refundMultiplier, faction);
+		
+		//~ Refund amount is invalid
+		if (refundAmount < 0)
+			return -1;
+		
+		//~ Get stored Items refund amount
+		refundAmount += GetStoredItemsRefundAmount(item, entityCatalogManager, supplyCostType, refundMultiplier, faction);
+	
+		//~ Can the supplies be stored?
+		if (mustHaveSupplyStorage)
+		{
+			isSupplyStorageAvailable = refundAmount == 0;
+			
+			if (refundAmount > 0 && generator)
+				isSupplyStorageAvailable = refundAmount > 0 && generator.GetAggregatedResourceValue() + refundAmount <= generator.GetAggregatedMaxResourceValue();
+		}
+		
+		return refundAmount;	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static protected int GetItemRefundCost(notnull IEntity item, notnull SCR_EntityCatalogManagerComponent entityCatalogManager, SCR_EArsenalSupplyCostType supplyCostType, float refundMultiplier, SCR_Faction faction, bool minusIfInvalid = true)
+	{
+		//~ Get prefab data
+		EntityPrefabData prefabData = item.GetPrefabData();
+		if (!prefabData)
+			return minusIfInvalid * -1;
+		
+		ResourceName itemPrefab = prefabData.GetPrefabName();
+		if (itemPrefab.IsEmpty())
+			return minusIfInvalid * -1;
+		
 		//~ Could not find the base entry
 		SCR_EntityCatalogEntry entry = entityCatalogManager.GetEntryWithPrefabFromAnyCatalog(EEntityCatalogType.ITEM, itemPrefab, faction);
 		if (!entry)
-			return -1;
+			return minusIfInvalid * -1;
 		
 		array<SCR_BaseEntityCatalogData> entityDataList = {};
 		if (entry.GetEntityDataList(entityDataList) <= 0)
-			return -1;
-		
-		//~ The total item cost
-		float itemCost;
+			return minusIfInvalid * -1;
 		
 		SCR_ArsenalItem arsenalData;
 		SCR_NonArsenalItemCostCatalogData nonArsenalData;
 		
-		//~ Get the supply cost of entry
+		float refundAmount;
+		
+		//~ Get refund amount of entry
 		foreach (SCR_BaseEntityCatalogData data : entityDataList)
 		{
 			arsenalData = SCR_ArsenalItem.Cast(data);
 			if (arsenalData)
 			{
-				itemCost = SCR_ResourceSystemHelper.RoundRefundSupplyAmount(arsenalData.GetSupplyCost(supplyCostType, false) * refundMultiplier);
+				refundAmount = SCR_ResourceSystemHelper.RoundRefundSupplyAmount(arsenalData.GetSupplyRefundAmount(supplyCostType, false) * refundMultiplier);
 				break;
 			}
 			
 			nonArsenalData = SCR_NonArsenalItemCostCatalogData.Cast(data);
 			if (nonArsenalData)
 			{
-				itemCost = SCR_ResourceSystemHelper.RoundRefundSupplyAmount(nonArsenalData.GetSupplyCost(supplyCostType) * refundMultiplier);
+				refundAmount = SCR_ResourceSystemHelper.RoundRefundSupplyAmount(nonArsenalData.GetSupplyCost(supplyCostType) * refundMultiplier);
 				break;
 			}
 		}
 		
-		//~ Get attachments cost if the item is a weapon
+		//~ Get attachments refund amount if the item is a weapon
 		if (arsenalData && (arsenalData.GetItemMode() == SCR_EArsenalItemMode.WEAPON || arsenalData.GetItemMode() == SCR_EArsenalItemMode.WEAPON_VARIANTS))
 		{
 			array<Managed> attachments = {};
@@ -231,32 +268,73 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 					arsenalData = SCR_ArsenalItem.Cast(data);
 					if (arsenalData)
 					{
-						itemCost += SCR_ResourceSystemHelper.RoundRefundSupplyAmount(arsenalData.GetSupplyCost(supplyCostType, false) * refundMultiplier);
+						refundAmount += SCR_ResourceSystemHelper.RoundRefundSupplyAmount(arsenalData.GetSupplyRefundAmount(supplyCostType, false) * refundMultiplier);
 						break;
 					}
 					
 					nonArsenalData = SCR_NonArsenalItemCostCatalogData.Cast(data);
 					if (nonArsenalData)
 					{
-						itemCost += SCR_ResourceSystemHelper.RoundRefundSupplyAmount(nonArsenalData.GetSupplyCost(supplyCostType) * refundMultiplier);
+						refundAmount += SCR_ResourceSystemHelper.RoundRefundSupplyAmount(nonArsenalData.GetSupplyCost(supplyCostType) * refundMultiplier);
 						break;
 					}
 				}
 			}
 		}
+		
+		return refundAmount;
+	}
 	
-		//~ Can the supplies be stored?
-		if (mustHaveSupplyStorage)
+	//------------------------------------------------------------------------------------------------
+	//~ Gets all item in storage and calculate the refund amount.
+	static protected int GetStoredItemsRefundAmount(notnull IEntity item, notnull SCR_EntityCatalogManagerComponent entityCatalogManager, SCR_EArsenalSupplyCostType supplyCostType, float refundMultiplier, SCR_Faction faction)
+	{
+		BaseInventoryStorageComponent inventoryStorage = BaseInventoryStorageComponent.Cast(item.FindComponent(BaseInventoryStorageComponent));
+		if (!inventoryStorage)
+			return 0;
+		
+		array<IEntity> storedItems = {};
+		inventoryStorage.GetAll(storedItems);
+		
+		int storedItemRefundAmount;
+		
+		foreach (IEntity storedItem : storedItems)
 		{
-			isSupplyStorageAvailable = itemCost == 0;
+			storedItemRefundAmount += GetItemRefundCost(storedItem, entityCatalogManager, supplyCostType, refundMultiplier, faction, false);
 			
-			if (itemCost > 0 && generator)
-				isSupplyStorageAvailable = itemCost > 0 && generator.GetAggregatedResourceValue() + itemCost <= generator.GetAggregatedMaxResourceValue();
+			//~ Get stored item refund amount
+			storedItemRefundAmount += GetStoredItemsRefundAmount(storedItem, entityCatalogManager, supplyCostType, refundMultiplier, faction);
 		}
 		
-		return itemCost;	
+		return storedItemRefundAmount;
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	//! When an item is refunded in the arsenal (Server Only)
+	//! \param[in] item Item that is being refunded
+	//! \param[in] playerController Player controller of player that refunds the item
+	//! \param[in] arsenal Arsenal the item was refunded at (Can potentially be null)
+	static void OnItemRefunded_S(notnull IEntity item, notnull PlayerController playerController, SCR_ArsenalComponent arsenal)
+	{
+		SCR_ArsenalManagerComponent arsenalManager;
+		if (!GetArsenalManager(arsenalManager))
+			return;
+		
+		//~ Only execute if has player controller and if server
+		if ((arsenalManager && !arsenalManager.GetGameMode().IsMaster()) || (!arsenalManager && Replication.IsClient()))
+			return;
+		
+		SCR_ArsenalRefundEffectComponent arsenalRefundEffectComp = SCR_ArsenalRefundEffectComponent.Cast(item.FindComponent(SCR_ArsenalRefundEffectComponent));
+		if (!arsenalRefundEffectComp)
+			return;
+		
+		//~ Get Prefab class data
+		SCR_ArsenalRefundEffectComponentClass arsenalRefundEffectClass = SCR_ArsenalRefundEffectComponentClass.Cast(arsenalRefundEffectComp.GetComponentData(arsenalRefundEffectComp.GetOwner()));
+		if (!arsenalRefundEffectClass)
+			return;
+		
+		arsenalRefundEffectClass.ExecuteFirstValidRefundEffect(item, playerController, arsenal);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! \return Arsenal type flags enabled in the game mode
@@ -307,6 +385,13 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 		
 		if ((gameMode && gameMode.IsMaster()) || (!gameMode && Replication.IsServer()))
 			OnArsenalTypeEnabledChanged();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! If items can be ranked locked
+	bool AreItemsRankLocked()
+	{
+		return m_bRankLockedItems;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -576,10 +661,6 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 		
 		if (spawnTarget)
 		{
-			//~ Check if spawn target is an MHQ
-			if (spawnTarget.FindComponent(SCR_CampaignMobileAssemblyStandaloneComponent))
-				return 0;
-			
 			IEntity parent = spawnTarget;
 			
 			//~ Check if spawn target is a base
@@ -974,7 +1055,7 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	protected SCR_PlayerLoadoutData GetPlayerLoadoutData(GameEntity characterEntity)
 	{
-		SCR_PlayerLoadoutData loadoutData();
+		SCR_PlayerLoadoutData loadoutData = new SCR_PlayerLoadoutData();
 		
 		EquipedLoadoutStorageComponent loadoutStorage = EquipedLoadoutStorageComponent.Cast(characterEntity.FindComponent(EquipedLoadoutStorageComponent));
 		if (loadoutStorage)
@@ -1001,7 +1082,7 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 				if (prefabName.IsEmpty())
 					continue;
 				
-				SCR_ClothingLoadoutData clothingData();
+				SCR_ClothingLoadoutData clothingData = new SCR_ClothingLoadoutData();
 				clothingData.SlotIdx = i;
 				clothingData.ClothingPrefab = prefabName;
 				
@@ -1034,7 +1115,7 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 				if (prefabName.IsEmpty())
 					continue;
 				
-				SCR_WeaponLoadoutData weaponData();
+				SCR_WeaponLoadoutData weaponData = new SCR_WeaponLoadoutData();
 				weaponData.SlotIdx = i;
 				weaponData.WeaponPrefab = prefabName;
 				

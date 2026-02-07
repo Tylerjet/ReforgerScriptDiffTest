@@ -2,9 +2,11 @@ class SCR_ResourceSystemSubscriptionManager
 {
 	static const int REPLICATION_MAX_FRAME_BUDGET		= 10;
 	static const int GRACEFUL_HANDLES_MAX_FRAME_BUDGET	= 10;
+	static const int GRACEFUL_HANDLES_POKED_THRESHOLD	= 10000;
 	
-	protected ref SCR_ContainerBudgetManager<array<ref SCR_ResourceSystemSubscriptionListing>,	SCR_ResourceSystemSubscriptionListing> m_ReplicationBudgetManager;
-	protected ref SCR_ContainerBudgetManager<array<ref SCR_ResourceSystemSubscriptionHandleBase>,	SCR_ResourceSystemSubscriptionHandleBase> m_GracefulHandlesBudgetManager;
+	protected int m_iGracefulHandlesPivot;
+	protected int m_iReplicateListenersPivot;
+	
 	protected ref array<ref SCR_ResourceSystemSubscriptionListing> m_aListings				= {};
 	protected ref array<SCR_ResourceSystemSubscriptionHandleBase> m_aHandles				= {};
 	protected ref array<ref SCR_ResourceSystemSubscriptionHandleBase> m_aGracefulHandles	= {};
@@ -229,32 +231,32 @@ class SCR_ResourceSystemSubscriptionManager
 	//------------------------------------------------------------------------------------------------
 	void ProcessGracefulHandles()
 	{
-		WorldTimestamp currentTime = GetGame().GetWorld().GetTimestamp();
+		const WorldTimestamp currentTime = GetGame().GetWorld().GetTimestamp();
+		SCR_ResourceSystemSubscriptionHandleBase handle;
 		
-		foreach (SCR_ResourceSystemSubscriptionHandleBase handle : m_GracefulHandlesBudgetManager.ProcessNextBatch())
+		// Clear out null graceful handles.
+		m_aGracefulHandles.RemoveItem(null);
+		
+		for (int i = 0; i < SCR_ResourceSystemSubscriptionManager.GRACEFUL_HANDLES_MAX_FRAME_BUDGET && !m_aGracefulHandles.IsEmpty(); ++i)
 		{
-			/*!
-			It could not always remove the specific null listing, but eventually it should clear
-				them out.
-			*/
-			if (!handle || currentTime.DiffMilliseconds(handle.GetLastPokedAt()) >= 10000)
+			handle = m_aGracefulHandles[m_iGracefulHandlesPivot++ % m_aGracefulHandles.Count()];
+			
+			if (currentTime.DiffMilliseconds(handle.GetLastPokedAt()) >= SCR_ResourceSystemSubscriptionManager.GRACEFUL_HANDLES_POKED_THRESHOLD)
+			{
 				m_aGracefulHandles.RemoveItem(handle);
+			}
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void ReplicateListeners()
 	{
-		foreach (SCR_ResourceSystemSubscriptionListing listing : m_ReplicationBudgetManager.ProcessNextBatch())
+		// Clear out null listings.
+		m_aListings.RemoveItem(null);
+		
+		for (int i = 0; i < SCR_ResourceSystemSubscriptionManager.REPLICATION_MAX_FRAME_BUDGET && !m_aListings.IsEmpty(); ++i)
 		{
-			if (listing)
-				listing.Replicate();
-			else
-				/*!
-				It could not always remove the specific null listing, but eventually it should clear
-					them out.
-				*/
-				m_aListings.RemoveItem(listing);
+			m_aListings[m_iReplicateListenersPivot++ % m_aListings.Count()].Replicate();
 		}
 	}
 	
@@ -434,12 +436,5 @@ class SCR_ResourceSystemSubscriptionManager
 			return;
 		
 		m_aListings.RemoveItem(listing);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void SCR_ResourceSystemSubscriptionManager()
-	{
-		m_ReplicationBudgetManager = new SCR_ContainerBudgetManager<array<ref SCR_ResourceSystemSubscriptionListing>, SCR_ResourceSystemSubscriptionListing>(m_aListings, REPLICATION_MAX_FRAME_BUDGET);
-		m_GracefulHandlesBudgetManager = new SCR_ContainerBudgetManager<array<ref SCR_ResourceSystemSubscriptionHandleBase>, SCR_ResourceSystemSubscriptionHandleBase>(m_aGracefulHandles, GRACEFUL_HANDLES_MAX_FRAME_BUDGET);
 	}
 }

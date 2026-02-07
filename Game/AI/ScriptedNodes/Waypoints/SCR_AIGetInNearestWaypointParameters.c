@@ -27,7 +27,7 @@ class SCR_AIGetInNearestWaypointParameters : SCR_AIGetWaypointParameters
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Returns get in nearest waypoint parameters";
 	}

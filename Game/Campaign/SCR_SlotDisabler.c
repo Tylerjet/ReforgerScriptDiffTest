@@ -101,6 +101,11 @@ class SCR_SlotDisablerEntity : GenericEntity
 		super._WB_SetExtraVisualiser(type, src);
 	}
 	
+	override int _WB_GetAfterWorldUpdateSpecs(IEntitySource src)
+	{
+		return EEntityFrameUpdateSpecs.CALL_WHEN_ENTITY_VISIBLE;
+	}
+	
 	override void _WB_AfterWorldUpdate(float timeSlice)
 	{
 		if (m_bVisualize)

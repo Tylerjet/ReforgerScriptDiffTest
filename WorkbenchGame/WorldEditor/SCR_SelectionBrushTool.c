@@ -23,7 +23,7 @@ class SCR_SelectionBrushTool : WorldEditorTool
 	[Attribute(desc: "Find objects using world Trace instead of Entities with MeshObjects - 2-3× the performance cost", category: "Brush")]
 	protected bool m_bUseTraceDetection;
 
-	[Attribute(defvalue: SCR_ESelectionBrushToolLayer.ALL_LAYERS.ToString(), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_ESelectionBrushToolLayer), category: "Selection")]
+	[Attribute(defvalue: SCR_ESelectionBrushToolLayer.ALL_LAYERS.ToString(), uiwidget: UIWidgets.ComboBox, enumType: SCR_ESelectionBrushToolLayer, category: "Selection")]
 	SCR_ESelectionBrushToolLayer m_eLayerSelection;
 
 	[Attribute(defvalue: "0", desc: "Select the topmost 3D parent, otherwise select the 3D world entity", category: "Selection")]
@@ -341,7 +341,7 @@ class SCR_SelectionBrushTool : WorldEditorTool
 
 		if (m_iMaxSelectedEntities > 0 && !m_bLimitReachedWarning && selectedEntitiesCount >= m_iMaxSelectedEntities)
 		{
-			Print("" + selectedEntitiesCount + "/" + m_iMaxSelectedEntities + " entities selected", LogLevel.WARNING);
+			PrintFormat("%1/%2 entities selected", selectedEntitiesCount, m_iMaxSelectedEntities, level: LogLevel.WARNING);
 			m_bLimitReachedWarning = true;
 		}
 	}

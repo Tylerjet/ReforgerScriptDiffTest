@@ -2,6 +2,13 @@ void ScriptInvoker_GroupMoveFailed_Callback(int moveResult, IEntity vehicleUsed,
 typedef func ScriptInvoker_GroupMoveFailed_Callback;
 typedef ScriptInvokerBase<ScriptInvoker_GroupMoveFailed_Callback> ScriptInvoker_GroupMoveFailed;
 
+enum EAIGroupCombatMode
+{
+	FIRE_AT_WILL = 0,
+	HOLD_FIRE,
+	RETURN_FIRE
+}
+
 [ComponentEditorProps(category: "GameScripted/AI", description: "Component for utility AI system for groups")]
 class SCR_AIGroupUtilityComponentClass : SCR_AIBaseUtilityComponentClass
 {
@@ -16,6 +23,7 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 	SCR_AIGroupInfoComponent m_GroupInfo;
 	SCR_AIGroupMovementComponent m_GroupMovementComponent;
 	SCR_MailboxComponent m_Mailbox;
+	SCR_AIGroupSettingsComponent m_SettingsComponent;
 	ref array<SCR_AIInfoComponent> m_aInfoComponents = {};
 	
 	ref ScriptInvoker_GroupMoveFailed m_OnMoveFailed;
@@ -26,7 +34,8 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 	const float SUPPRESS_OLD_CLUSTER_INFO_AGE_S = 15; // Time since last cluster info that we'll consider as old (starts scaling of fire rate to save ammo)
 	const float SUPPRESS_MAX_DESTROYED_CLUSTER_INFO_AGE_S = 10; // How long to suppress a target cluster which has only destroyed targets
 	const float SUPPRESS_MIN_DIST_TO_CLUSTER_M = 30; // What is the minimal distance of units to suppression bbox to stop firing
-		
+	const float SUPPRESS_MAX_DIST_TO_CLUSTER_M = 800; // Max distance ...
+	
 	protected float m_fLastUpdateTime = -1.0;
 	protected float m_fPerceptionUpdateTimer_ms;
 	
@@ -64,6 +73,10 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 	
 	// Currently suppressed cluster state
 	protected ref SCR_AITargetClusterState m_CurrentSuppressClusterState;
+	
+	// Combat modes
+	protected EAIGroupCombatMode m_eCombatModeExternal = EAIGroupCombatMode.FIRE_AT_WILL;	// Combat mode dictated by external settings (scenario, commanding, game master)
+	protected EAIGroupCombatMode m_eCombatModeActual = EAIGroupCombatMode.FIRE_AT_WILL;	// Actual combat mode at given moment, if automatic combat mode is used
 	
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateThreatMeasure()
@@ -120,6 +133,27 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 	float GetMaxAutonomousDistance()
 	{
 		return m_fMaxAutonomousDistance;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Sets combat mode as desired by external means, such as scenario, or commanding, or game master.
+	void SetCombatMode(EAIGroupCombatMode combatMode)
+	{
+		m_eCombatModeExternal = combatMode;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! See SetCombatMode
+	EAIGroupCombatMode GetCombatModeExternal()
+	{
+		return m_eCombatModeExternal;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns actual combat mode. See comment to EvaluateCombatMode method.
+	EAIGroupCombatMode GetCombatModeActual()
+	{
+		return m_eCombatModeActual;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -220,11 +254,12 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		AddDebugMessage("EvaluateActivity END\n");
 		#endif
 		
-		// Rebalance fireteams if needed
+		// Update group perception, update fire teams
 		bool isMilitary = IsMilitary();
-		if (isMilitary && !m_Owner.IsSlave())
+		bool isSlave = m_Owner.IsSlave();
+		if (isMilitary)
 		{
-			if (m_FireteamMgr.m_bRebalanceFireteams)
+			if (!isSlave && m_FireteamMgr.m_bRebalanceFireteams)
 			{
 				if (CanRebalanceFireteams()) // In some cases we can't rebalance fireteams yet
 				{
@@ -237,21 +272,58 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 			if (m_fPerceptionUpdateTimer_ms > PERCEPTION_UPDATE_TIMER_MS)
 			{
 				m_Perception.Update();
-				UpdateSuppressCluster();
-				UpdateThreatMeasure();
-				EvaluateFlareUsage();
 				
-				if (!m_Perception.m_aTargetClusters.IsEmpty())
-					UpdateClustersState(m_fPerceptionUpdateTimer_ms);
+				if (!isSlave)
+				{
+					UpdateSuppressCluster();
+					UpdateThreatMeasure();
+					EvaluateFlareUsage();
+					
+					if (!m_Perception.m_aTargetClusters.IsEmpty())
+						UpdateClustersState(m_fPerceptionUpdateTimer_ms);
+				}
 				
 				m_fPerceptionUpdateTimer_ms -= PERCEPTION_UPDATE_TIMER_MS;
 			}
 		}
-			
+		
+		// Combat modes
+		if (isMilitary)
+			EvaluateCombatMode();
+		
 		m_fLastUpdateTime = currentTime;
 		m_bNewGroupMemberAdded = false; // resetting reaction on group member added
 		
 		return m_CurrentActivity;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Resolves which actual combat mode the group has now, based on external combat mode.
+	//! Actual combat mode can be only either HOLD_FIRE or FIRE_AT_WILL,
+	//! Depending on external combat mode value, and if gorup considers itself under attack or not.
+	void EvaluateCombatMode()
+	{
+		if (m_eCombatModeExternal != EAIGroupCombatMode.RETURN_FIRE)
+		{
+			// Simple case - actual combat mode is same as external
+			m_eCombatModeActual = m_eCombatModeExternal;
+		}
+		else
+		{
+			// Automatic - actual combat mode depends if we're under attack or not
+			foreach (SCR_AIGroupTargetCluster c : m_Perception.m_aTargetClusters)
+			{
+				if (c.m_State && c.m_State.m_iCountEndangering != 0 && c.m_State.m_iCountAlive != 0)
+				{
+					// Any target cluster is endangering us
+					m_eCombatModeActual = EAIGroupCombatMode.FIRE_AT_WILL;
+					return;
+				}
+			}
+			
+			// Nothing is endangering us
+			m_eCombatModeActual = EAIGroupCombatMode.HOLD_FIRE;
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -302,8 +374,16 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 	//------------------------------------------------------------------------------------------------
 	protected bool ShouldSuppressCluster(SCR_AITargetClusterState clusterState)
 	{
+		// Disregard if combat mode doesn't allow it
+		if (m_eCombatModeActual == EAIGroupCombatMode.HOLD_FIRE)
+			return false;
+		
 		// Ignore clusters without endangering & identified targets or members too close
-		if (clusterState.m_iCountIdentified == 0 && clusterState.m_iCountEndangering == 0 || clusterState.m_fDistMin < SUPPRESS_MIN_DIST_TO_CLUSTER_M)
+		if (clusterState.m_iCountIdentified == 0 && clusterState.m_iCountEndangering == 0)
+			return false;
+		
+		// Ignore clusters too close or too far
+		if (clusterState.m_fDistMin < SUPPRESS_MIN_DIST_TO_CLUSTER_M || clusterState.m_fDistMin > SUPPRESS_MAX_DIST_TO_CLUSTER_M)
 			return false;
 		
 		// Max suppression time
@@ -775,6 +855,8 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		
 		m_Mailbox = SCR_MailboxComponent.Cast(m_Owner.FindComponent(SCR_MailboxComponent));
 		
+		m_SettingsComponent = SCR_AIGroupSettingsComponent.Cast(m_Owner.FindComponent(SCR_AIGroupSettingsComponent));
+		
 		m_fPerceptionUpdateTimer_ms = Math.RandomFloat(0, PERCEPTION_UPDATE_TIMER_MS);
 		
 		m_GroupMovementComponent = SCR_AIGroupMovementComponent.Cast(owner.FindComponent(SCR_AIGroupMovementComponent));
@@ -853,6 +935,23 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		return true;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	bool IsUsableVehicle(notnull SCR_AIVehicleUsageComponent vehicleUsageComp)
+	{
+		if (!vehicleUsageComp)
+			return false;
+		
+		return m_VehicleMgr.FindVehicle(vehicleUsageComp) != null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsUsableVehicle(notnull IEntity vehicleEntity)
+	{
+		if (!vehicleEntity)
+			return false;
+		
+		return m_VehicleMgr.FindVehicle(vehicleEntity) != null;
+	}	
 	
 	//------------------------------------------------------------------------------------------------
 	void AddUsableVehicle(notnull SCR_AIVehicleUsageComponent vehicleUsageComp)

@@ -3,6 +3,10 @@ class SCR_ExplosiveChargeComponentClass : ScriptGameComponentClass
 {
 }
 
+void ScriptInvokerFuzeChangedMethod(SCR_EFuzeType oldFuzeType, SCR_EFuzeType newFuzeType);
+typedef func ScriptInvokerFuzeChangedMethod;
+typedef ScriptInvokerBase<ScriptInvokerFuzeChangedMethod> ScriptInvokerFuzeChanged;
+
 class SCR_ExplosiveChargeComponent : ScriptGameComponent
 {
 	protected RplId m_RplID;
@@ -18,6 +22,30 @@ class SCR_ExplosiveChargeComponent : ScriptGameComponent
 
 	[RplProp(onRplName: "OnArrayOfConnectedDetonatorsChanged")]
 	protected ref array<RplId> m_aConnectedDetonators = {};
+
+	protected ref ScriptInvokerFuzeChanged m_OnFuzeChanged;
+
+	//------------------------------------------------------------------------------------------------
+	//! Script invoker that is triggered each time that fuze type chages for this entity
+	//! This invoker is also called when this entity is deleted like in case when its detonated
+	//! In such case its new fuze type will be NONE and such case can be recognized using IEntity.IsDeleted()
+	ScriptInvokerFuzeChanged GetOnFuzeChanged()
+	{
+		if (!m_OnFuzeChanged)
+			m_OnFuzeChanged = new ScriptInvokerFuzeChanged();
+
+		return m_OnFuzeChanged;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Triggers m_OnFuzeChanged when such exists with information about old and new fuze type
+	protected void OnFuzeChanged(SCR_EFuzeType oldFuzeType, SCR_EFuzeType newFuzeType)
+	{
+		if (!m_OnFuzeChanged)
+			return;
+
+		m_OnFuzeChanged.Invoke(oldFuzeType, newFuzeType);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	void OnFuzeTypeChanged()
@@ -116,17 +144,19 @@ class SCR_ExplosiveChargeComponent : ScriptGameComponent
 	//! Arms the charge and starts the timer for the detonation
 	void ArmWithTimedFuze(bool silent = false)
 	{
+		SCR_EFuzeType oldFuzeType = m_eUsedFuzeType;
 		m_eUsedFuzeType = SCR_EFuzeType.TIMED;
 		UpdateFuzeVisibility();
 		ChangeLockState(true);
+		OnFuzeChanged(oldFuzeType, m_eUsedFuzeType);
 
-		if (m_RplComp && !m_RplComp.Role())
+		if (m_RplComp && m_RplComp.Role() == RplRole.Authority)
 		{
 //---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 			ChimeraWorld world = ChimeraWorld.CastFrom(GetGame().GetWorld());
 			if (!world)
 				return;
-	
+
 			TimeAndWeatherManagerEntity timeAndWeatherManager = world.GetTimeAndWeatherManager();
 			if (!timeAndWeatherManager)
 				return;
@@ -153,15 +183,17 @@ class SCR_ExplosiveChargeComponent : ScriptGameComponent
 		if (!m_aConnectedDetonators.Contains(detonatorId))
 			m_aConnectedDetonators.Insert(detonatorId);
 
+		SCR_EFuzeType oldFuzeType = m_eUsedFuzeType;
 		m_eUsedFuzeType = fuzeType;
 		UpdateFuzeVisibility();
 		ChangeLockState(true);
-		if (shouldReplicate && m_RplComp && !m_RplComp.Role())
+		if (shouldReplicate && m_RplComp && m_RplComp.Role() == RplRole.Authority)
 		{
 			SetGarbageCollectable(false);
 			Replication.BumpMe();
 		}
 
+		OnFuzeChanged(oldFuzeType, m_eUsedFuzeType);
 		if (silent)
 			return;
 
@@ -182,12 +214,14 @@ class SCR_ExplosiveChargeComponent : ScriptGameComponent
 		m_aConnectedDetonators.Remove(index);
 		if (m_aConnectedDetonators.Count() < 1)
 		{
+			SCR_EFuzeType oldFuzeType = m_eUsedFuzeType;
 			m_eUsedFuzeType = SCR_EFuzeType.NONE;
 			UpdateFuzeVisibility();
 			ChangeLockState();
+			OnFuzeChanged(oldFuzeType, m_eUsedFuzeType);
 		}
 
-		if (shouldReplicate && m_RplComp && !m_RplComp.Role())
+		if (shouldReplicate && m_RplComp && m_RplComp.Role() == RplRole.Authority)
 		{
 			SetGarbageCollectable(true);
 			Replication.BumpMe();
@@ -201,7 +235,7 @@ class SCR_ExplosiveChargeComponent : ScriptGameComponent
 		ConnectDetonator(m_eUsedFuzeType, replaceWith, false, true);
 		RemoveDetonatorFromTheList(detonatorIdToReplace, false);
 
-		if (m_RplComp && !m_RplComp.Role())
+		if (m_RplComp && m_RplComp.Role() == RplRole.Authority)
 			Replication.BumpMe();
 	}
 
@@ -278,15 +312,17 @@ class SCR_ExplosiveChargeComponent : ScriptGameComponent
 		}
 
 		ChangeLockState();
+		SCR_EFuzeType oldFuzeType = m_eUsedFuzeType;
 		m_eUsedFuzeType = SCR_EFuzeType.NONE;
 		m_aConnectedDetonators.Clear();
 		UpdateFuzeVisibility();
-		if (m_RplComp && !m_RplComp.Role())
+		if (m_RplComp && m_RplComp.Role() == RplRole.Authority)
 		{
 			SetGarbageCollectable(true);
 			Replication.BumpMe();
 		}
 
+		OnFuzeChanged(oldFuzeType, m_eUsedFuzeType);
 		if (playSound)
 			PlaySound(SCR_SoundEvent.SOUND_EXPLOSIVE_DISARM);
 	}

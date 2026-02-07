@@ -12,7 +12,7 @@ class SCR_ScenarioFrameworkActionSpawnObjectBasedOnDistance : SCR_ScenarioFramew
 
 	[Attribute(defvalue: "", UIWidgets.EditComboBox, desc: "List of objects that are to be compared")]
 	ref array<string> 	m_aListOfObjects;
-	
+
 	[Attribute(defvalue: SCR_ScenarioFrameworkEActivationType.ON_TRIGGER_ACTIVATION.ToString(), uiwidget: UIWidgets.ComboBox, "", "", ParamEnumArray.FromEnum(SCR_ScenarioFrameworkEActivationType))]
 	SCR_ScenarioFrameworkEActivationType m_eActivationType;
 
@@ -38,7 +38,7 @@ class SCR_ScenarioFrameworkActionSpawnObjectBasedOnDistance : SCR_ScenarioFramew
 			Print(string.Format("ScenarioFramework Action: Can't spawn object - the slot doesn't have SCR_ScenarioFrameworkLayerBase component", object), LogLevel.ERROR);
 			return;
 		}
-		
+
 		if (layer.GetActivationType() != m_eActivationType)
 		{
 			Print(string.Format("Can't spawn object %1 - the slot has %2 activation type set instead of %3", object.GetName(), layer.GetActivationType(), m_eActivationType), LogLevel.ERROR);
@@ -70,7 +70,7 @@ class SCR_ScenarioFrameworkActionSpawnObjectBasedOnDistance : SCR_ScenarioFramew
 				Print(string.Format("ScenarioFramework Action: Can't spawn object - the slot doesn't have SCR_ScenarioFrameworkLayerBase component", objectName), LogLevel.ERROR);
 				continue;
 			}
-			
+
 			if (layer.GetActivationType() != m_eActivationType)
 			{
 				Print(string.Format("Can't spawn object %1 - the slot has %2 activation type set instead of %3", object.GetName(), layer.GetActivationType(), m_eActivationType), LogLevel.ERROR);
@@ -97,7 +97,6 @@ class SCR_ScenarioFrameworkActionSpawnObjectBasedOnDistance : SCR_ScenarioFramew
 			if (aChildren.IsEmpty())
 				break;
 
-			Math.Randomize(-1);
 			child = aChildren.GetRandomElement();
 			child.Init(null, m_eActivationType);
 			child.SetActivationType(SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT);
@@ -153,7 +152,6 @@ class SCR_ScenarioFrameworkActionSpawnObjectBasedOnDistance : SCR_ScenarioFramew
 
 		bool entitiesAreEmpty = aEntities.IsEmpty();
 
-		Math.Randomize(-1);
 		IEntity entityInList;
 		SCR_ScenarioFrameworkLayerBase selectedLayer;
 		if (!entityFrom && entitiesAreEmpty)
@@ -217,7 +215,7 @@ class SCR_ScenarioFrameworkActionSpawnObjectBasedOnDistance : SCR_ScenarioFramew
 		if (m_SpawnObjects == SCR_EScenarioFrameworkSpawnChildrenType.RANDOM_ONE)
 		{
 			//We need to introduce slight delay for the randomization by time seed to occur
-			SCR_ScenarioFrameworkSystem.GetCallQueue().CallLater(SpawnRandomObject, Math.RandomInt(1, 10), false, aObjectsNames);
+			SCR_ScenarioFrameworkCallQueueSystem.GetCallQueueNonPausable().CallLater(SpawnRandomObject, Math.RandomInt(1, 10), false, aObjectsNames);
 			return;
 		}
 
@@ -234,7 +232,7 @@ class SCR_ScenarioFrameworkActionSpawnObjectBasedOnDistance : SCR_ScenarioFramew
 						Print(string.Format("Can't spawn object %1 - the slot has %2 activation type set instead of %3", selectedLayer.GetName(), selectedLayer.GetActivationType(), m_eActivationType), LogLevel.ERROR);
 						continue;
 					}
-					
+
 					SCR_ScenarioFrameworkArea area = selectedLayer.GetParentArea();
 					if (!area)
 						continue;

@@ -13,7 +13,7 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 	
 	protected bool m_bTargetVersionLatest;	// When true, means we want to download latest version
 	
-	protected ref SCR_WorkshopCallbackBase m_Callback;
+	protected ref SCR_BackendCallback m_Callback;
 	
 	protected float m_fSizeBytes; // Total size of this download.
 	
@@ -279,9 +279,9 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 			return false;
 		}
 		
-		m_Callback = new SCR_WorkshopCallbackBase();
-		m_Callback.m_OnError.Insert(Callback_OnError);
-		m_Callback.m_OnTimeout.Insert(Callback_OnTimeout);
+		m_Callback = new SCR_BackendCallback();
+		m_Callback.GetEventOnFail().Insert(Callback_OnError);
+		m_Callback.GetEventOnTimeOut().Insert(Callback_OnTimeout);
 		
 		if (m_bTargetVersionLatest)
 		{
@@ -367,12 +367,12 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 	}
 	
 	//-----------------------------------------------------------------------------------------------
-	protected void Callback_OnError(SCR_WorkshopCallbackBase callback, int code, int restCode, int apiCode)
+	protected void Callback_OnError(SCR_BackendCallback callback, int code, int restCode, int apiCode)
 	{
 		//if (code != EBackendError.EBERR_INVALID_STATE) // Ignore this one for now // EApiCode.EACODE_ERROR_OK
 		
-		callback.m_OnError.Remove(Callback_OnError);
-		callback.m_OnTimeout.Remove(Callback_OnTimeout);
+		callback.GetEventOnFail().Remove(Callback_OnError);
+		callback.GetEventOnTimeOut().Remove(Callback_OnTimeout);
 		
 		Fail(code);
 		
@@ -402,7 +402,7 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 	}
 	
 	//-----------------------------------------------------------------------------------------------
-	protected void Callback_OnTimeout(SCR_WorkshopCallbackBase callback)
+	protected void Callback_OnTimeout(SCR_BackendCallback callback)
 	{
 		Fail();
 	}

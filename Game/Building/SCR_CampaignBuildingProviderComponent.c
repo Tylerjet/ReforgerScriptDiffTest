@@ -45,8 +45,6 @@ class SCR_CampaignBuildingProviderComponent : SCR_MilitaryBaseLogicComponent
 	//! Current AI Value represents, how many AI is currently spawned with this provider. The max number is limited by AI budget.
 	[RplProp()]
 	protected int m_iCurrentAIValue;
-	
-	protected Physics m_ProviderPhysics;
 
 	protected SCR_ResourceComponent m_ResourceComponent;
 
@@ -64,6 +62,143 @@ class SCR_CampaignBuildingProviderComponent : SCR_MilitaryBaseLogicComponent
 	protected bool m_bCooldownClientLock;
 	
 	SCR_CampaignBuildingProviderComponent m_MasterProviderComponent;
+	
+	private ref map<EEditableEntityBudget, int> m_accumulatedBudgetChanges = new map<EEditableEntityBudget, int>;
+	bool m_changesAccumulated = false;
+	
+	//------------------------------------------------------------------------------------------------
+	void AccumulateBudgetChange(EEditableEntityBudget budgetType, int amount)
+	{
+		m_accumulatedBudgetChanges[budgetType] = m_accumulatedBudgetChanges[budgetType] + amount;
+		
+		if(!m_changesAccumulated)
+		{
+			GetGame().GetCallqueue().CallLater(ClearAccumulatedBudgetChanges);
+			m_changesAccumulated = true;
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetAccumulatedBudgetChanges(EEditableEntityBudget type)
+	{
+		int value = 0;
+		bool found = m_accumulatedBudgetChanges.Find(type, value);
+		
+		if(found)
+			return value;
+		
+		return -1;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ClearAccumulatedBudgetChanges()
+	{
+		m_accumulatedBudgetChanges.Clear();
+		m_changesAccumulated = false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsThereEnoughSupplies(int availableSupplies, int supplyCost, int accumulatedSupplyCost)
+	{
+		int totalSupplyCost = supplyCost;
+		
+		if(accumulatedSupplyCost != -1)
+			totalSupplyCost += accumulatedSupplyCost;
+		
+		return totalSupplyCost <= availableSupplies;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsThereEnoughBudgetToSpawn(notnull array<ref SCR_EntityBudgetValue> budgetCosts)
+	{
+		if(budgetCosts.IsEmpty())
+			return true;
+		
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		
+		foreach(SCR_EntityBudgetValue budget : budgetCosts)
+		{
+			const EEditableEntityBudget budgetType = budget.GetBudgetType();
+
+			SCR_CampaignBuildingBudgetToEvaluateData data = GetBudgetData(budgetType);
+		
+			//budget shouldn't be evaluated, so we don't care
+			if(!data)
+				continue;
+			
+			SCR_CampaignBuildingProviderComponent realProvider = this;
+			const int currentBudgetValue = GetBudgetValue(budgetType, realProvider);
+			
+			const int budgetIncrease = budget.GetBudgetValue();
+			const int accumulatedBudgetChanges = realProvider.GetAccumulatedBudgetChanges(budgetType);
+
+			if(budgetType == EEditableEntityBudget.CAMPAIGN)	
+			{
+				//if supplies budget is disabled by GM we dont care
+				if(!gameMode.IsResourceTypeEnabled(EResourceType.SUPPLIES))
+					continue;
+				
+				bool enoughSupplies = realProvider.IsThereEnoughSupplies(currentBudgetValue, budgetIncrease, accumulatedBudgetChanges);
+				
+				//not enough supplies, we return false
+				if(!enoughSupplies)
+					return false;
+				
+				//enough supplies, continue checking for other budgets
+				continue;
+			}
+			
+			//max budget is unlimited, always allowed
+			const int maxBudgetValue = GetMaxBudgetValueFromMasterIfNeeded(budgetType);
+			if(maxBudgetValue == -1)
+				continue;
+
+			if(budgetIncrease + accumulatedBudgetChanges + currentBudgetValue > maxBudgetValue)
+				return false;
+		}
+		
+		foreach(SCR_EntityBudgetValue budget : budgetCosts)
+		{
+			const EEditableEntityBudget budgetType = budget.GetBudgetType();
+			SCR_CampaignBuildingProviderComponent realProvider = this;
+			
+			//get real provider if needed
+			const int currentBudgetValue = GetBudgetValue(budgetType, realProvider);
+			
+			realProvider.AccumulateBudgetChange(budgetType, budget.GetBudgetValue());
+		}
+		
+		//we accumulate supplies changes here
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetBudgetValue(EEditableEntityBudget type, out SCR_CampaignBuildingProviderComponent componentToUse)
+	{
+		bool useMaster = UseMasterProviderBudget(EEditableEntityBudget.PROPS, componentToUse);
+		
+		if(type == EEditableEntityBudget.PROPS)
+			return GetCurrentPropValue();
+		
+		if(type == EEditableEntityBudget.AI)
+			return GetCurrentAIValue();
+		
+		//if its not supplies I have no idea how are we suppossed to handle it xdd
+		if(type != EEditableEntityBudget.CAMPAIGN)
+			return -1;
+		
+		//check supplies
+		SCR_ResourceComponent resource = componentToUse.GetResourceComponent();
+		
+		if(!resource)
+			return false;
+		
+		SCR_ResourceConsumer consumer = resource.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+		//Get number of supplies
+		
+		float currentSupplies = consumer.GetAggregatedResourceValue();
+		return currentSupplies;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Return name of the provider
@@ -318,6 +453,28 @@ class SCR_CampaignBuildingProviderComponent : SCR_MilitaryBaseLogicComponent
 		if (!budgetData)
 			return -1;
 		
+		SCR_CampaignBuildingMaxValueBudgetToEvaluateData maxValueBudgetData = SCR_CampaignBuildingMaxValueBudgetToEvaluateData.Cast(budgetData);
+		if (maxValueBudgetData)
+			return maxValueBudgetData.GetMaxValue();
+			
+		return -1;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Return max value of the given budget if this budget is added to be evaluated with this provider and has max value set.
+	int GetMaxBudgetValueFromMasterIfNeeded(EEditableEntityBudget budget)
+	{
+		SCR_CampaignBuildingBudgetToEvaluateData budgetData = GetBudgetData(budget);
+		if (!budgetData)
+			return -1;
+		
+		SCR_CampaignBuildingProviderComponent masterProviderComponent;
+		
+		//if we should use the master's budget, also check master's budget no?
+		if (UseMasterProviderBudget(budgetData.GetBudget(), masterProviderComponent))
+			return masterProviderComponent.GetMaxBudgetValue(budget);
+		
+		//otherwise return normal max budget
 		SCR_CampaignBuildingMaxValueBudgetToEvaluateData maxValueBudgetData = SCR_CampaignBuildingMaxValueBudgetToEvaluateData.Cast(budgetData);
 		if (maxValueBudgetData)
 			return maxValueBudgetData.GetMaxValue();
@@ -1034,23 +1191,33 @@ class SCR_CampaignBuildingProviderComponent : SCR_MilitaryBaseLogicComponent
 	//! Check if the provider velocity in meters per second is faster then allowed. If so, terminate  a building mode.
 	private void CheckProviderMove()
 	{
-		vector velocity = m_ProviderPhysics.GetVelocity();
+		IEntity mainParent = SCR_EntityHelper.GetMainParent(GetOwner(), true);
+		if (!mainParent)
+			return;
+		
+		Physics providerPhysics = mainParent.GetPhysics();
+		if (!providerPhysics)
+			return;
+		
+		vector velocity = providerPhysics.GetVelocity();
 
 		if ((velocity.LengthSq()) > PROVIDER_SPEED_TO_REMOVE_BUILDING_SQ)
 			RemoveActiveUsers();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Check if the provider is dynamic. If so, save his physic component for move check.
+	//! Check if the provider is dynamic.
 	private bool IsProviderDynamic()
 	{
 		IEntity mainParent = SCR_EntityHelper.GetMainParent(GetOwner(), true);
 		if (!mainParent)
 			return false;
 
-		m_ProviderPhysics = mainParent.GetPhysics();
+		Physics providerPhysics = mainParent.GetPhysics();
+		if (!providerPhysics)
+			return false;
 
-		return m_ProviderPhysics && m_ProviderPhysics.IsDynamic();
+		return providerPhysics.IsDynamic();
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -33,5 +33,5 @@ class SCR_AIGetCombatMoveState : AITaskScripted
 	};
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }

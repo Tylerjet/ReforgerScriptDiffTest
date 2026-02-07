@@ -476,8 +476,6 @@ class IEntity: Managed
 	proto external EntityEvent GetEventMask();
 	//! \returns `true` when entity is loaded from map, `false` when dynamically spawned.
 	proto external bool IsLoaded();
-	//! \returns `true` if entity is ready to be deleted.
-	proto external bool IsRemoved();
 	//! \returns `true` if entity was deleted (entity pointer valid until the end of the frame).
 	proto external bool IsDeleted();
 	/*!

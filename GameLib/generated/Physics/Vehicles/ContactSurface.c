@@ -4,7 +4,6 @@ Do not modify, this script is generated
 ===========================================
 */
 
-#ifndef ENF_ENABLE_VHC_OVERRIDE
 /*!
 \addtogroup Physics_Vehicles
 \{
@@ -25,4 +24,3 @@ sealed class ContactSurface: BaseContainer
 /*!
 \}
 */
-#endif

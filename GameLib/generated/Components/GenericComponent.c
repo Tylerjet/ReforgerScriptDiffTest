@@ -128,6 +128,8 @@ class GenericComponent
 	event bool _WB_OnKeyChanged(IEntity owner, BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent);
 	//! Called after updating world in Workbench. The entity must be selected. You can use editor API here and do some edit actions if needed.
 	event void _WB_AfterWorldUpdate(IEntity owner, float timeSlice);
+	//! Called after _WB_OnInit or also later when editor needs to know whether _WB_AfterWorldUpdate needs to be called and when. Return value can be either 0 (event will not be called at all) or any combination of EEntityFrameUpdateSpecs. Avoid CALL_ALWAYS flag whenever possible to prevent performance issues
+	event int _WB_GetAfterWorldUpdateSpecs(IEntity owner, IEntitySource src);
 	//! User has chosen any of your menu item from editor's "Component" menu which you have recently provided in WB_GetContextMenuItems(). You can use editor API here and do some edit actions.
 	event void _WB_OnContextMenu(IEntity owner, int id);
 	//! User pressed a key and this entity is main member of entity selection. You can use editor API here and do some edit actions which will be undoable.

@@ -63,7 +63,7 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 			scenarioFrameworkSystem.PopUpMessage(GetTitle(), "#AR-Tasks_StatusFinished-UC", m_TargetFaction.GetFactionKey());
 
 		if (newState == SCR_TaskState.CANCELLED)
-			scenarioFrameworkSystem.PopUpMessage(GetTitle(), "#AR-Tasks_StatusFailed-UC", m_TargetFaction.GetFactionKey());
+			scenarioFrameworkSystem.PopUpMessage(GetTitle(), "#AR-Tasks_StatusObjectiveFailed-UC", m_TargetFaction.GetFactionKey());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -234,6 +234,14 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 			if (garbageSystem)
 				garbageSystem.UpdateBlacklist(m_Asset, true);
 		}
+		
+		SCR_MapDescriptorComponent mapDescriptor = SCR_MapDescriptorComponent.Cast(FindComponent(SCR_MapDescriptorComponent));
+		if (!mapDescriptor)
+			return;
+		
+		MapItem item = mapDescriptor.Item();
+		if (item)
+			item.Recycle();
 	}
 
 	//------------------------------------------------------------------------------------------------

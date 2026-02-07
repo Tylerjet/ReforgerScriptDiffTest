@@ -14,6 +14,14 @@ class WB_UIMenuItem: Managed
 	}
 }
 
+// Flags to specify when entity/component event _WB_AfterWorldUpdate needs to be called
+enum EEntityFrameUpdateSpecs
+{
+	CALL_ALWAYS = 1,								// called always (every frame)
+	CALL_WHEN_ENTITY_VISIBLE = 2,		// called every frame but only when entity is visible
+	CALL_WHEN_ENTITY_SELECTED = 4		// called every frame but only when entity is selected
+}
+
 class GenericEntityClass: EntityPrefabData
 {
 	void GenericEntityClass(BaseContainer prefab) {}

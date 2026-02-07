@@ -57,7 +57,7 @@ class SCR_AIAnimateActivity : SCR_AIActivityBase
 		{
 			if (!waypoint.m_aAnimationScripts.IsIndexValid(index))
 				break;
-			SCR_AIMessageHandling.SendAnimateMessage(agent, waypoint,  waypoint.m_aAnimationScripts[index], this, myComms, "Animate activity director");
+			SCR_AIMessageHandling.SendAnimateMessage(agent, waypoint,  waypoint.m_aAnimationScripts[index], this, waypoint.GetOnAnimationBehaviorAction(), myComms, "Animate activity director");
 		}
 	}
 	

@@ -283,6 +283,9 @@ class SCR_WidgetEditFormatName : SCR_WidgetEditFormatRange
 	//------------------------------------------------------------------------------------------------
 	override bool IsFormatValid(string str)
 	{
+		if (!m_EditBoxFilter)
+			return true;
+		
 		// Invalid input
 		if (!m_EditBoxFilter.IsLastInputValid())
 		{

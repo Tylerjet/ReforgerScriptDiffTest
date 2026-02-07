@@ -121,6 +121,48 @@ class SCR_BaseContainerTools
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Get component index in entity source.
+	//! \param[in] entitySource Entity source
+	//! \param[in] componentClassName Class name of desired component
+	//! \return 0-based index, -1 if not found
+	static int FindComponentIndex(IEntitySource entitySource, string componentClassName)
+	{
+		if (!entitySource)
+			return -1;
+
+		int componentsCount = entitySource.GetComponentCount();
+		for (int i; i < componentsCount; i++)
+		{
+			IEntityComponentSource componentSource = entitySource.GetComponent(i);
+			if (componentSource.GetClassName() == componentClassName)
+				return i;
+		}
+		return -1;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get component index in entity source.
+	//! \param[in] entitySource Entity source
+	//! \param[in] componentClass Class of desired component
+	//! \return 0-based index, -1 if not found
+	static int FindComponentIndex(IEntitySource entitySource, typename componentClass)
+	{
+		if (!entitySource)
+			return -1;
+
+		int componentsCount = entitySource.GetComponentCount();
+		IEntityComponentSource componentSource;
+		for (int i; i < componentsCount; i++)
+		{
+			componentSource = entitySource.GetComponent(i);
+			if (componentSource.GetClassName().ToType() && 
+				componentSource.GetClassName().ToType().IsInherited(componentClass))
+				return i;
+		}
+		return -1;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Get component source of given class from entity source.
 	//! \param[in] prefabEntity Entity source
 	//! \param[in] componentClassName Class name of desired component
@@ -151,11 +193,12 @@ class SCR_BaseContainerTools
 		if (!prefabEntity)
 			return null;
 
-		IEntityComponentSource componentSource
+		IEntityComponentSource componentSource;
 		for (int i, componentsCount = prefabEntity.GetComponentCount(); i < componentsCount; i++)
 		{
 			componentSource = prefabEntity.GetComponent(i);
-			if (componentSource.GetClassName().ToType().IsInherited(componentClass))
+			if (componentSource.GetClassName().ToType() && 
+				componentSource.GetClassName().ToType().IsInherited(componentClass))
 				return componentSource;
 		}
 

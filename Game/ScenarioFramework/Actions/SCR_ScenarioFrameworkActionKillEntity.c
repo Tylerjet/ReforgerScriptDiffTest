@@ -31,13 +31,12 @@ class SCR_ScenarioFrameworkActionKillEntity : SCR_ScenarioFrameworkActionBase
 			return;
 		}
 
-		Math.Randomize(-1);
+		vector randomDir = { // always right, front, up, never left, back, down
+			Math.RandomIntInclusive(1, 3),
+			Math.RandomIntInclusive(1, 3),
+			Math.RandomIntInclusive(1, 3)
+		};
 
-		vector randomDir = "0 0 0";
-		randomDir[0] = Math.RandomIntInclusive(1, 3);
-		randomDir[1] = Math.RandomIntInclusive(1, 3);
-		randomDir[2] = Math.RandomIntInclusive(1, 3);
-
-		animationComponent.AddRagdollEffectorDamage("1 1 1", randomDir, Math.RandomFloatInclusive(0, 50), Math.RandomFloatInclusive(0, 10), Math.RandomFloatInclusive(0, 20));
+		animationComponent.AddRagdollEffectorDamage(vector.One, randomDir, Math.RandomFloatInclusive(0, 50), Math.RandomFloatInclusive(0, 10), Math.RandomFloatInclusive(0, 20));
 	}
 }

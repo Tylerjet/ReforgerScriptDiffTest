@@ -7,6 +7,7 @@ class SCR_BaseTutorialStageClass : GenericEntityClass
 class SCR_BaseTutorialStage : GenericEntity
 {
 	protected float m_fTimer;
+	protected float m_fStageTimer;
 	protected float m_fConditionCheckPeriod = 0.25;
 	protected float m_fDuration;
 	protected float m_fDelay;
@@ -362,6 +363,7 @@ class SCR_BaseTutorialStage : GenericEntity
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
 		m_fTimer += timeSlice;
+		m_fStageTimer += timeSlice;
 		bool conditionComplete;
 		bool waypointReached = true;
 		

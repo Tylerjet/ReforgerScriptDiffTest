@@ -27,7 +27,7 @@ class SCR_AIRemoveVehicleFromGetInActivity : AITaskScripted
 		{
 			getIn.ClearActivityVehicle();
 			// if there are no other vehicles, fail straight away without restarting the activity
-			if (group.GetUsableVehiclesCount() == 0)
+			if (utility.m_VehicleMgr.GetVehiclesCount() == 0)
 				getIn.Fail();
 		}
 		
@@ -44,13 +44,13 @@ class SCR_AIRemoveVehicleFromGetInActivity : AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Removes vehicle from get in activity";
 	}

@@ -18,6 +18,8 @@ class DestructibleEntity: StaticModelEntity
 
 	// callbacks
 
+	event int GetDestructionCategory();
+	event int GetDestructionWeight();
 	/*!
 	Calculates the amount of damage a hitzone will receive.
 	\param damageType Damage type

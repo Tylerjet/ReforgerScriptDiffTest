@@ -25,6 +25,28 @@ class SCR_ScenarioFrameworkGetArrayOfPlayers : SCR_ScenarioFrameworkGet
 		IEntity playerEntity;
 		SCR_ChimeraCharacter chimeraCharacter;
 		bool factionKeyIsEmpty = m_aFactionKeys.IsEmpty();
+
+		if (!factionKeyIsEmpty)
+		{
+			// Resolve Alias
+			SCR_FactionAliasComponent factionAliasComponent = SCR_FactionAliasComponent.Cast(GetGame().GetFactionManager().FindComponent(SCR_FactionAliasComponent));
+			if (factionAliasComponent) 
+			{
+				array<string> aliasedFactionKeys = {};
+				foreach (string factionKey : m_aFactionKeys)
+				{
+					aliasedFactionKeys.Insert(factionAliasComponent.ResolveFactionAlias(factionKey))
+				}
+			
+				if (!aliasedFactionKeys.IsEmpty())
+				{
+					m_aFactionKeys.Clear();
+					m_aFactionKeys.InsertAll(aliasedFactionKeys);
+				
+				}
+			}
+		}
+
 		foreach (int playerID : playerIDs)
 		{
 			playerEntity = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerID);

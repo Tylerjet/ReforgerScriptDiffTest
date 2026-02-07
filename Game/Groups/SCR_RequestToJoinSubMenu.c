@@ -94,7 +94,7 @@ class SCR_RequestToJoinSubmenu : SCR_SubMenuBase
 			
 			entry.SetPlayerID(requesterIDs[i]);
 			
-			playerName.SetText(GetGame().GetPlayerManager().GetPlayerName(requesterIDs[i]));
+			playerName.SetText(SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(requesterIDs[i]));
 			
 			acceptButton.m_OnClicked.Insert(AcceptToJoinPrivateGroup);
 			refuseButton.m_OnClicked.Insert(RefuseJoinPrivateGroup);

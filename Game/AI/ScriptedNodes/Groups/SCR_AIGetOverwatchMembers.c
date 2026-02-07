@@ -10,7 +10,7 @@ class SCR_AIGetOverwatchMembers: AITaskScripted
 	int m_selectedIndexForMovement = 0, m_selectedIndexForCovering = 0;
 	
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() {return true;}
+	static override bool VisibleInPalette() {return true;}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(AIAgent owner)
@@ -157,7 +157,7 @@ class SCR_AIGetOverwatchMembers: AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override protected bool CanReturnRunning()
+	static override protected bool CanReturnRunning()
 	{
 		return true;
 	}
@@ -183,7 +183,7 @@ class SCR_AIGetOverwatchMembers: AITaskScripted
     }
 
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Getter returns unit available for cover and unit available for movement";
 	}	

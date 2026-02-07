@@ -49,7 +49,7 @@ class SCR_MarkShapesEditorOnlyPlugin : WorkbenchPlugin
 
 		worldEditorAPI.ToggleGeneratorEvents(false);
 
-		EditorEntityIterator iter(worldEditorAPI);
+		EditorEntityIterator iter = new EditorEntityIterator(worldEditorAPI);
 		IEntitySource src = iter.GetNext();
 		float prevProgress, currProgress;
 		while (src)

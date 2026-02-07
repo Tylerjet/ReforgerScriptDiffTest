@@ -29,13 +29,14 @@ class SCR_ObstacleDetector
 	protected ref TraceSphere m_AvoidObjectTraceSphere;
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] avoidObjects
 	void SetAvoidObjects(bool avoidObjects)
 	{
 		m_bAvoidObjects = avoidObjects;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param radius accepts 0..inf radius - a negative value will be floored to zero
+	//! \param[in] radius accepts 0..inf radius - a negative value will be considered to be zero
 	void SetAvoidObjectsDetectionRadius(float radius)
 	{
 		if (radius < 0)
@@ -47,6 +48,7 @@ class SCR_ObstacleDetector
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] height
 	void SetAvoidObjectsDetectionHeight(float height)
 	{
 		m_fAvoidObjectsDetectionHeight = height;
@@ -55,48 +57,56 @@ class SCR_ObstacleDetector
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] avoidRoads
 	void SetAvoidRoads(bool avoidRoads)
 	{
 		m_bAvoidRoads = avoidRoads;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] avoidRivers
 	void SetAvoidRivers(bool avoidRivers)
 	{
 		m_bAvoidRivers = avoidRivers;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] avoidPowerLines
 	void SetAvoidPowerLines(bool avoidPowerLines)
 	{
 		m_bAvoidPowerLines = avoidPowerLines;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] avoidTracks
 	void SetAvoidTracks(bool avoidTracks)
 	{
 		m_bAvoidTracks = avoidTracks;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] avoidForests
 	void SetAvoidForests(bool avoidForests)
 	{
 		m_bAvoidForests = avoidForests;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] avoidLakes
 	void SetAvoidLakes(bool avoidLakes)
 	{
 		m_bAvoidLakes = avoidLakes;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] avoidLand
 	void SetAvoidLand(bool avoidLand)
 	{
 		m_bAvoidLand = avoidLand;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] avoidOcean
 	void SetAvoidOcean(bool avoidOcean)
 	{
 		m_bAvoidOcean = avoidOcean;
@@ -104,13 +114,16 @@ class SCR_ObstacleDetector
 
 	//------------------------------------------------------------------------------------------------
 	//! positive = above water, negative = below water
-	//! \param offset value in metres
+	//! \param[in] offset value in metres
 	void SetAvoidLandOceanOffset(float offset)
 	{
 		m_fAvoidLandOceanOffset = offset;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] worldMin
+	//! \param[in] worldMax
 	// used by SCR_GeneratorBaseEntity.RefreshObstacles() (and RefreshObstaclesByWorld() which is unused)
 	void RefreshObstaclesByAABB(vector worldMin, vector worldMax)
 	{
@@ -124,6 +137,7 @@ class SCR_ObstacleDetector
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	// unused
 	void RefreshObstaclesByWorld()
 	{
@@ -137,6 +151,9 @@ class SCR_ObstacleDetector
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] worldPos
+	//! \param[in] radius
 	// used by ObjectBrushTool.CreateObjects()
 	void RefreshRoadObstaclesBySphere(vector worldPos, float radius)
 	{
@@ -150,6 +167,9 @@ class SCR_ObstacleDetector
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] worldPos
+	//! \param[in] radius
 	// used by ObjectBrushTool.OnMousePressEvent()
 	void RefreshAreaObstaclesBySphere(vector worldPos, float radius)
 	{
@@ -163,6 +183,7 @@ class SCR_ObstacleDetector
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	// used by ObjectBrushTool.OnMousePressEvent()
 	void RefreshAreaObstaclesByWorld()
 	{
@@ -180,8 +201,8 @@ class SCR_ObstacleDetector
 
 	//------------------------------------------------------------------------------------------------
 	//! Detects obstacles based on current settings - a SCR_ObstacleDetector.RefreshObstaclesBy*() method must have been called earlier
-	//! \param worldPos the location to check - only the 2D position will be checked
-	//! \param exclusionList list of entities that should not be considered as obstacles
+	//! \param[in] worldPos the location to check - only the 2D position will be checked
+	//! \param[in] exclusionList list of entities that should not be considered as obstacles
 	//! \return true if an obstacle has been detected or on error, false otherwise
 	bool HasObstacle(vector worldPos, array<IEntity> exclusionList = null)
 	{
@@ -267,6 +288,7 @@ class SCR_ObstacleDetector
 			}
 		}
 
+		// tracing is the expensive part
 		if (m_bAvoidObjects && (m_fAvoidObjectsDetectionHeight != 0 || m_fAvoidObjectsDetectionHeight > 0))
 		{
 			if (!m_AvoidObjectTraceSphere)
@@ -304,8 +326,8 @@ class SCR_ObstacleDetector
 
 	//------------------------------------------------------------------------------------------------
 	//! Sets up needed arrays
-	//! \param setupRoadSplines instanciates "road" spline arrays
-	//! \param setupAreaSplines instanciates area spline arrays
+	//! \param[in] setupRoadSplines instanciates "road" spline arrays
+	//! \param[in] setupAreaSplines instanciates area spline arrays
 	protected void SetupObstacleArrays(bool setupRoadSplines, bool setupAreaSplines)
 	{
 		// roads
@@ -374,8 +396,8 @@ class SCR_ObstacleDetector
 	//------------------------------------------------------------------------------------------------
 	//! Fills m_aAvoidInfo* arrays from RefreshObstaclesBy* request for HasObstacle usage
 	//! AllSplineQueryFilter, RoadSplineQueryFilter, AreaSplineQueryFilter call it
-	//! \param getRoadSplines get "road-like" splines - roads, rivers, powerlines
-	//! \param getAreaSplines get area splines - lakes, forests
+	//! \param[in] getRoadSplines get "road-like" splines - roads, rivers, powerlines
+	//! \param[in] getAreaSplines get area splines - lakes, forests
 	//! \return true when done
 	protected bool BaseSplineQueryFilter(IEntity entity, bool getRoadSplines, bool getAreaSplines)
 	{
@@ -552,11 +574,11 @@ class SCR_ObstacleDetectorSplineInfo
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Get 2D and 3D points from shape, in relative or world coordinates.
-	//! \param shapeEntity
-	//! \param pos2D can be null and won't be filled
-	//! \param pos3D can be null and won't be filled
-	//! \return number of points, or -1 in case of error/no array to fill
+	//! Get shape's 2D and/or 3D points in relative coordinates
+	//! \param[in] shapeEntity
+	//! \param[out] pos2D can be null and won't be filled
+	//! \param[out] pos3D can be null and won't be filled
+	//! \return number of points, or -1 in case of no array to fill
 	protected static int GetPoints2D3D(notnull ShapeEntity shapeEntity, out array<float> pos2D, out array<vector> pos3D)
 	{
 		if (!pos2D && !pos3D)
@@ -597,6 +619,9 @@ class SCR_ObstacleDetectorSplineInfo
 
 	//------------------------------------------------------------------------------------------------
 	// constructor
+	//! \param[in] shapeEntitySource
+	//! \param[in] shapeEntity
+	//! \param[in] generatorSource
 	void SCR_ObstacleDetectorSplineInfo(notnull IEntitySource shapeEntitySource, notnull ShapeEntity shapeEntity, notnull IEntitySource generatorSource)
 	{
 		typename generatorTypeName = generatorSource.GetClassName().ToType();
@@ -691,4 +716,4 @@ class SCR_ObstacleDetectorSplineInfo
 	}
 }
 
-#endif
+#endif // WORKBENCH

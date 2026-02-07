@@ -118,7 +118,7 @@ class SCR_PrefabTemplateClassCheckPlugin : WorkbenchPlugin
 		int fixedClassMismatches;
 		foreach (Tuple3<ResourceName, string, string> tuple : classMismatches)
 		{
-			Print(SCR_StringHelper.PadRight("Template class (" + tuple.param2 + ") differs from ancestor Prefab class (" + tuple.param3 + "): ", MIN_DESCRIPTION_WIDTH) + tuple.param1, LogLevel.WARNING);
+			Print(SCR_StringHelper.PadRight(string.Format("Template class (%1) differs from ancestor Prefab class (%2): ", tuple.param2, tuple.param3), MIN_DESCRIPTION_WIDTH) + tuple.param1, LogLevel.WARNING);
 			if (m_bFixTemplateClasses)
 			{
 				if (ChangeTemplateClass(tuple.param1, tuple.param3))

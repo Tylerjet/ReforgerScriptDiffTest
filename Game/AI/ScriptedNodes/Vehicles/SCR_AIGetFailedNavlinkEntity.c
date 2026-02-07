@@ -48,6 +48,6 @@ class SCR_AIGetFailedNavlinkEntity : AITaskScripted
 	protected static ref TStringArray s_aVarsOut = {PORT_NAVLINK_ENTITY, PORT_VEHICLE_ENTITY};
 	override TStringArray GetVariablesOut() { return s_aVarsOut; };
 	
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 

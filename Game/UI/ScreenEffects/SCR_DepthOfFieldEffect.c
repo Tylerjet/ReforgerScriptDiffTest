@@ -3,7 +3,7 @@ enum DepthOfFieldTypes
 	NONE,
 	SIMPLE,
 	BOKEH,
-};
+}
 
 class SCR_DepthOfFieldEffect : SCR_BaseScreenEffect
 {
@@ -11,21 +11,21 @@ class SCR_DepthOfFieldEffect : SCR_BaseScreenEffect
 	//DOFBokeh AddDOFBokehEffect()
 	protected const int FOCUSDISTANCE_MULTIPIER 							= 30;
 	protected const int FOCALLENGTH_MAX 									= 5000;
-	[Attribute( defvalue: "225", uiwidget: UIWidgets.EditBox, desc: "Intensity of the nearby DOF" )]
+	[Attribute(defvalue: "225", uiwidget: UIWidgets.EditBox, desc: "Intensity of the nearby DOF")]
 	protected int m_iFocalLengthNearIntensity;
-	
+
 	//DOFNormal AddDOFEffect()
 	protected const float FOCALDISTANCE_INTENSITY 						= 0.3;
 	protected const float STANDARD_FOCALCHANGE_NEAR 					= 0.25;
 	protected const int SIMPLEDOF_FOCALCHANGE_MAX			 			= 10000;
 	protected const int SIMPLEDOF_EFFECT_MAX							= 1500;
-	// Variables synced with DeathEffect 
+	// Variables synced with DeathEffect
 	protected const float DOF_START_OPACITY								= 0.7;
 	protected const float DOF_FADEIN_OPACITY_TARGET						= 1;
 
 	// Variables connected to a material, need to be static
 	static const int DEPTH_OF_FIELD_PRIORITY							= 8;
-	
+
 	// Play Animation of ClearDOFOutEffect()
 	protected const float DOFOUT_OPACITY_FADEOUT_DURATION				= 2;
 	protected const float DOFOUT_PROGRESSION_FADEOUT_DURATION			= 1;
@@ -44,7 +44,7 @@ class SCR_DepthOfFieldEffect : SCR_BaseScreenEffect
 	protected bool m_bForceSimpleToggle;
 	private static float s_fFocalLengthNear;									// Blur originates from camera, higher is further
 	protected const string DOF_BOKEH_EMAT								= "{5CFBB3297D669D9C}UI/Materials/ScreenEffects_DepthOfFieldBokehPP.emat";
-	
+
 	private int m_iDesiredDofType;
 	private int m_iNeededDofType;
 
@@ -57,23 +57,23 @@ class SCR_DepthOfFieldEffect : SCR_BaseScreenEffect
 	private static bool s_bEnableDOFBokeh;
 	private static bool s_bEnableDOF;
 	private bool m_bDisplaySuspended;
-	
+
 	//Character
 	protected ChimeraCharacter 											m_pCharacterEntity;
 	protected SightsComponent											m_SightsComponent;
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void DisplayStartDraw(IEntity owner)
 	{
-		m_wDOFOut = ImageWidget.Cast(m_wRoot.FindAnyWidget("DOFOut"));	
-		m_wDeath = ImageWidget.Cast(m_wRoot.FindAnyWidget("DeathOverlay"));
+		m_wDOFOut = ImageWidget.Cast(m_wRoot.FindAnyWidget("DOFOut"));
+		m_wDeath = ImageWidget.Cast(m_wRoot.FindAnyWidget("DOFOverlay"));
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override void SettingsChanged()
 	{
 		ClearEffects();
-		
+
 		// Get desired type of DOF
 		BaseContainer m_VideoSettings = GetGame().GetGameUserSettings().GetModule("SCR_VideoSettings");
 		if (m_VideoSettings)
@@ -84,27 +84,27 @@ class SCR_DepthOfFieldEffect : SCR_BaseScreenEffect
 
 		if (!m_pCharacterEntity)
 			return;
-		
+
 		bool addNear;
 		m_iNeededDofType = GetDOFType(addNear, true);
-		
+
 		if (m_iDesiredDofType == DepthOfFieldTypes.SIMPLE || m_iNeededDofType == DepthOfFieldTypes.SIMPLE)
 		{
-			m_pCharacterEntity.GetWorld().SetCameraPostProcessEffect(m_pCharacterEntity.GetWorld().GetCurrentCameraId(),DEPTH_OF_FIELD_PRIORITY,PostProcessEffectType.DepthOfFieldBokeh, "");
-			m_pCharacterEntity.GetWorld().SetCameraPostProcessEffect(m_pCharacterEntity.GetWorld().GetCurrentCameraId(),DEPTH_OF_FIELD_PRIORITY,PostProcessEffectType.DepthOfField, DOF_NORMAL_EMAT);
+			m_pCharacterEntity.GetWorld().SetCameraPostProcessEffect(m_pCharacterEntity.GetWorld().GetCurrentCameraId(), DEPTH_OF_FIELD_PRIORITY, PostProcessEffectType.DepthOfFieldBokeh, "");
+			m_pCharacterEntity.GetWorld().SetCameraPostProcessEffect(m_pCharacterEntity.GetWorld().GetCurrentCameraId(), DEPTH_OF_FIELD_PRIORITY, PostProcessEffectType.DepthOfField, DOF_NORMAL_EMAT);
 			m_iNeededDofType = m_iDesiredDofType;
 		}
 		else if (m_iDesiredDofType == DepthOfFieldTypes.BOKEH)
 		{
 			m_bForceSimpleToggle = 0;
-			m_pCharacterEntity.GetWorld().SetCameraPostProcessEffect(m_pCharacterEntity.GetWorld().GetCurrentCameraId(),DEPTH_OF_FIELD_PRIORITY,PostProcessEffectType.DepthOfField, "");
-			m_pCharacterEntity.GetWorld().SetCameraPostProcessEffect(m_pCharacterEntity.GetWorld().GetCurrentCameraId(),DEPTH_OF_FIELD_PRIORITY,PostProcessEffectType.DepthOfFieldBokeh, DOF_BOKEH_EMAT);
+			m_pCharacterEntity.GetWorld().SetCameraPostProcessEffect(m_pCharacterEntity.GetWorld().GetCurrentCameraId(), DEPTH_OF_FIELD_PRIORITY, PostProcessEffectType.DepthOfField, "");
+			m_pCharacterEntity.GetWorld().SetCameraPostProcessEffect(m_pCharacterEntity.GetWorld().GetCurrentCameraId(), DEPTH_OF_FIELD_PRIORITY, PostProcessEffectType.DepthOfFieldBokeh, DOF_BOKEH_EMAT);
 			m_iNeededDofType = m_iDesiredDofType;
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
- 	override void DisplayControlledEntityChanged(IEntity from, IEntity to)
+	override void DisplayControlledEntityChanged(IEntity from, IEntity to)
 	{
 		m_pCharacterEntity = ChimeraCharacter.Cast(to);
 		SettingsChanged();
@@ -131,7 +131,7 @@ class SCR_DepthOfFieldEffect : SCR_BaseScreenEffect
 
 		if (!m_wDeath)
 			return;
-		
+
 		if (m_iDesiredDofType == DepthOfFieldTypes.NONE)
 			return;
 
@@ -147,7 +147,7 @@ class SCR_DepthOfFieldEffect : SCR_BaseScreenEffect
 	//------------------------------------------------------------------------------------------------
 	//! \param[out] forceSimpleDOF Returns whether this weapon forces simple DOF
 	//! return Whether nearby DOF is allowed by the PIP settings
-	bool IsNearDOFAllowed(out bool forceSimpleDOF)
+	protected bool IsNearDOFAllowed(out bool forceSimpleDOF)
 	{
 		if (!s_bNearDofEffect || !m_pCharacterEntity)
 			return false;
@@ -158,12 +158,12 @@ class SCR_DepthOfFieldEffect : SCR_BaseScreenEffect
 
 		if (!controller.IsWeaponADS())
 		{
-			// when un-ADS'ing while Bokeh is desired, toggle off forced simple DOF once 
+			// when un-ADS'ing while Bokeh is desired, toggle off forced simple DOF once
 			if (m_iCustomFocusDistanceScale != -1 && m_iDesiredDofType == DepthOfFieldTypes.BOKEH)
 				ToggleForcedSimpleDOF(false);
-			
+
 			m_iCustomFocusDistanceScale = -1;
-			
+
 			return true;
 		}
 
@@ -174,38 +174,38 @@ class SCR_DepthOfFieldEffect : SCR_BaseScreenEffect
 			SightsComponent sights = weaponManager.GetCurrentSights();
 			if (!sights)
 				return true;
-			
+
 			SCR_2DPIPSightsComponent pipSightsComp = SCR_2DPIPSightsComponent.Cast(sights);
 			if (pipSightsComp && pipSightsComp.IsPIPEnabled())
 				return false;
-			
+
 			// to prevent unnecessary calls for prefabData, only call when the held weapon has changed
 			if (m_SightsComponent != sights)
 			{
 				sights.GetDOFRelatedPrefabData(m_iCustomFocusDistanceScale, forceSimpleDOF);
-				
+
 				// If desired DOF type is Bokeh, but this sight forces simple DOF, toggle to simple DOF or vice versa
 				if (!m_bForceSimpleToggle && forceSimpleDOF)
 					ToggleForcedSimpleDOF(true);
-				
+
 				m_SightsComponent = sights;
 			}
 		}
-		
+
 		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! \param[out] IsNearDOFAllowed Returns whether this weapon forces simple DOF
 	//! \param[in] settingsChanged Check sights even if they are the same in case settings change
-	DepthOfFieldTypes GetDOFType(out bool isNearDOFAllowed, bool settingsChanged = false)
+	protected DepthOfFieldTypes GetDOFType(out bool isNearDOFAllowed, bool settingsChanged = false)
 	{
 		if (!s_bNearDofEffect || !m_pCharacterEntity)
 		{
 			isNearDOFAllowed = false;
 			return m_iDesiredDofType;
 		}
-		
+
 		CharacterControllerComponent controller = m_pCharacterEntity.GetCharacterController();
 		if (!controller.IsWeaponRaised() || controller.IsGadgetInHands() || controller.GetInspect())
 		{
@@ -213,15 +213,15 @@ class SCR_DepthOfFieldEffect : SCR_BaseScreenEffect
 			m_iNeededDofType = m_iDesiredDofType;
 			return m_iDesiredDofType;
 		}
-		
+
 		if (!controller.IsWeaponADS())
 		{
-			// when un-ADS'ing while Bokeh is desired, toggle off forced simple DOF once 
+			// when un-ADS'ing while Bokeh is desired, toggle off forced simple DOF once
 			if (m_iCustomFocusDistanceScale != -1 && m_iDesiredDofType == DepthOfFieldTypes.BOKEH)
 				ToggleForcedSimpleDOF(false);
-			
+
 			m_iCustomFocusDistanceScale = -1;
-			
+
 			isNearDOFAllowed = true;
 			return m_iDesiredDofType;
 		}
@@ -237,7 +237,7 @@ class SCR_DepthOfFieldEffect : SCR_BaseScreenEffect
 				m_iNeededDofType = m_iDesiredDofType;
 				return m_iDesiredDofType;
 			}
-			
+
 			SCR_2DPIPSightsComponent pipSightsComp = SCR_2DPIPSightsComponent.Cast(sights);
 			if (pipSightsComp && pipSightsComp.IsPIPEnabled())
 			{
@@ -245,15 +245,15 @@ class SCR_DepthOfFieldEffect : SCR_BaseScreenEffect
 				m_iNeededDofType = m_iDesiredDofType;
 				return m_iDesiredDofType;
 			}
-			
+
 			// to prevent unnecessary calls for prefabData, only call when the held weapon has changed
 			if (m_SightsComponent != sights || settingsChanged)
 			{
 				bool forceSimpleDOF;
 				sights.GetDOFRelatedPrefabData(m_iCustomFocusDistanceScale, forceSimpleDOF);
-			
+
 				m_SightsComponent = sights;
-				
+
 				// If desired DOF type is Bokeh, but this sight forces simple DOF, toggle to simple DOF or vice versa
 				if (forceSimpleDOF)
 				{
@@ -265,26 +265,26 @@ class SCR_DepthOfFieldEffect : SCR_BaseScreenEffect
 				{
 					m_iNeededDofType = m_iDesiredDofType;
 				}
-			}	
+			}
 		}
-		
+
 		isNearDOFAllowed = true;
 		return m_iNeededDofType;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	void ToggleForcedSimpleDOF(bool forceSimpleDOF)
+	protected void ToggleForcedSimpleDOF(bool forceSimpleDOF)
 	{
 		if (forceSimpleDOF)
 		{
-			m_pCharacterEntity.GetWorld().SetCameraPostProcessEffect(m_pCharacterEntity.GetWorld().GetCurrentCameraId(),DEPTH_OF_FIELD_PRIORITY,PostProcessEffectType.DepthOfFieldBokeh, "");
-			m_pCharacterEntity.GetWorld().SetCameraPostProcessEffect(m_pCharacterEntity.GetWorld().GetCurrentCameraId(),DEPTH_OF_FIELD_PRIORITY,PostProcessEffectType.DepthOfField, DOF_NORMAL_EMAT);
+			m_pCharacterEntity.GetWorld().SetCameraPostProcessEffect(m_pCharacterEntity.GetWorld().GetCurrentCameraId(), DEPTH_OF_FIELD_PRIORITY, PostProcessEffectType.DepthOfFieldBokeh, "");
+			m_pCharacterEntity.GetWorld().SetCameraPostProcessEffect(m_pCharacterEntity.GetWorld().GetCurrentCameraId(), DEPTH_OF_FIELD_PRIORITY, PostProcessEffectType.DepthOfField, DOF_NORMAL_EMAT);
 			m_bForceSimpleToggle = true;
 		}
 		else
 		{
-			m_pCharacterEntity.GetWorld().SetCameraPostProcessEffect(m_pCharacterEntity.GetWorld().GetCurrentCameraId(),DEPTH_OF_FIELD_PRIORITY,PostProcessEffectType.DepthOfField, "");
-			m_pCharacterEntity.GetWorld().SetCameraPostProcessEffect(m_pCharacterEntity.GetWorld().GetCurrentCameraId(),DEPTH_OF_FIELD_PRIORITY,PostProcessEffectType.DepthOfFieldBokeh, DOF_BOKEH_EMAT);
+			m_pCharacterEntity.GetWorld().SetCameraPostProcessEffect(m_pCharacterEntity.GetWorld().GetCurrentCameraId(), DEPTH_OF_FIELD_PRIORITY, PostProcessEffectType.DepthOfField, "");
+			m_pCharacterEntity.GetWorld().SetCameraPostProcessEffect(m_pCharacterEntity.GetWorld().GetCurrentCameraId(), DEPTH_OF_FIELD_PRIORITY, PostProcessEffectType.DepthOfFieldBokeh, DOF_BOKEH_EMAT);
 			m_bForceSimpleToggle = false;
 			m_SightsComponent = null;
 			m_iNeededDofType = m_iDesiredDofType;
@@ -292,16 +292,16 @@ class SCR_DepthOfFieldEffect : SCR_BaseScreenEffect
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void AddDOFBokehEffect(bool nearDofAllowed)
+	protected void AddDOFBokehEffect(bool nearDofAllowed)
 	{
 		if (!m_pCharacterEntity)
 			return;
-		
+
 		if (m_wDeath.GetOpacity() > 0.1 && !m_bDisplaySuspended)
 			s_fFocalLength = s_fFocalLengthNear + (FOCALLENGTH_MAX * (m_wDeath.GetOpacity() - DOF_START_OPACITY) / (DOF_FADEIN_OPACITY_TARGET - DOF_START_OPACITY));
 		else
 			s_fFocalLength = 0.1; //If no death/unconsciousness blur is desired, set focallength to defaultvalue
-		
+
 		if (m_iCustomFocusDistanceScale > -1)
 			s_fFocusDistance = m_iCustomFocusDistanceScale;
 		else
@@ -318,11 +318,11 @@ class SCR_DepthOfFieldEffect : SCR_BaseScreenEffect
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void AddDOFEffect(float timeslice, bool nearDofAllowed)
+	protected void AddDOFEffect(float timeslice, bool nearDofAllowed)
 	{
 		if (!m_pCharacterEntity)
 			return;
-		
+
 		s_fFocalDistance = FOCALDISTANCE_INTENSITY;
 
 		// if s_bNearDofEffect is allowed, simpleDOF always must be enabled. If not, it must be disabled when inactive (i.e. focalchange > max)
@@ -355,4 +355,4 @@ class SCR_DepthOfFieldEffect : SCR_BaseScreenEffect
 		s_bEnableDOF						= false;
 		s_bEnableDOFBokeh					= false;
 	}
-};
+}

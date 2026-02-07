@@ -10,6 +10,13 @@ typedef ScriptInvokerBase<OnLogicPresenceChangedDelegate> OnLogicPresenceChanged
 //------------------------------------------------------------------------------------------------
 class SCR_MilitaryBaseSystem : GameSystem
 {
+	override static void InitInfo(WorldSystemInfo outInfo)
+	{
+		outInfo
+			.SetAbstract(false)
+			.AddPoint(ESystemPoint.FixedFrame);
+	}
+
 	protected ref array<SCR_MilitaryBaseComponent> m_aBases = {};
 	protected ref array<SCR_MilitaryBaseLogicComponent> m_aLogicComponents = {};
 	protected ref array<int> m_aAvailableCallsignIds;
@@ -104,7 +111,7 @@ class SCR_MilitaryBaseSystem : GameSystem
 		SCR_MilitaryBaseLogicComponent logicComponent;
 		IEntity processedEntity;
 		IEntity nextInHierarchy;
-		bool checkeEditableEntityComponent;
+		const bool checkeEditableEntityComponent; // TODO: check for good const usage
 
 		while (!queue.IsEmpty())
 		{

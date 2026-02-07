@@ -43,5 +43,5 @@ class SCR_AICheckLowAmmo : AITaskScripted
 	}
 	
 	//-------------------------------------------------------------------------------
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }

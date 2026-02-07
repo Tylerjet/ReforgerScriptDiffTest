@@ -122,6 +122,7 @@ class SCR_InventoryAttachmentPointUI : SCR_InventoryStorageBaseUI
 		return new SCR_InventoryAttachmentSlotUI(null, this);
 	}
 
+	protected override void SetPreviewItem();
 	protected string GetBoneName();
 	TNodeId GetBoneIndex();
 

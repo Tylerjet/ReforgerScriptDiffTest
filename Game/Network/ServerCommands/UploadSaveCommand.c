@@ -6,7 +6,7 @@ enum EBackendCallbackState
 	EBCS_TIMEOUT
 }
 
-class StateBackendCallback : BackendCallback
+class StateBackendCallback : SCR_BackendCallback
 {
 	EBackendCallbackState m_eState = EBackendCallbackState.EBCS_PENDING;
 	EApiCode m_eLastError = EApiCode.EACODE_ERROR_OK;
@@ -14,17 +14,20 @@ class StateBackendCallback : BackendCallback
 	
 	override void OnError( int code, int restCode, int apiCode )
 	{
+		super.OnError(code, restCode, apiCode);
 		m_eLastError = apiCode;
 		m_eState = EBackendCallbackState.EBCS_ERROR;
 	}
 	
 	override void OnSuccess( int code )
 	{
+		super.OnSuccess(code);
 		m_eState = EBackendCallbackState.EBCS_SUCCESS;
 	}
 	
 	override void OnTimeout()
 	{
+		super.OnTimeout();
 		m_eState = EBackendCallbackState.EBCS_TIMEOUT;
 	}
 }

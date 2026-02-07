@@ -15,7 +15,7 @@ class SCR_AIFindCover : AITaskScripted
 	protected ChimeraCoverManagerComponent m_CoverMgr;
 
 	// Constants for amount of covers to check for high priority cover queries and low priority cover queries
-	const vector NEAREST_POLY_HALF_EXTEND = Vector(1.0, 2.0, 1.0);
+	const vector NEAREST_POLY_HALF_EXTEND = "1.0 2.0 1.0";
 	const int MAX_COVERS_HIGH_PRIORITY = 25;
 	const int MAX_COVERS_LOW_PRIORITY = 15;
 	const float NAVMESH_AREA_COST_SCALE = 1/3.0; // It's scaled according to cost of Offroad area type, which is 3.0.
@@ -121,12 +121,12 @@ class SCR_AIFindCover : AITaskScripted
 
 	override static protected bool VisibleInPalette() {	return true; }
 
-	override string GetOnHoverDescription()
+	static override string GetOnHoverDescription()
 	{
 		return "Finds and locks cover through cover manager. Keep in mind that cover is also assigned to CombatMoveState!";
 	}
 	
-	override bool CanReturnRunning() { return true; }
+	static override bool CanReturnRunning() { return true; }
 
 	#ifdef WORKBENCH
 	private void ClearDebug()

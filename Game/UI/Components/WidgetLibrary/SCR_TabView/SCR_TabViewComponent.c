@@ -77,6 +77,9 @@ class SCR_TabViewComponent : SCR_ScriptedWidgetComponent
 	
 	protected const float BUTTON_PADDING_RIGHT = 4;
 	
+	protected const int MANW_TAB_WIDTH = 270;
+	protected const string MANW_IDENTIFIER = "MANW";
+	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
@@ -165,7 +168,11 @@ class SCR_TabViewComponent : SCR_ScriptedWidgetComponent
 			if (layout)
 			{
 				layout.EnableWidthOverride(true);
-				layout.SetWidthOverride(m_fTabWidth);
+				
+				if (content.m_sTabIdentifier == MANW_IDENTIFIER)
+					layout.SetWidthOverride(MANW_TAB_WIDTH);
+				else
+					layout.SetWidthOverride(m_fTabWidth);
 			}
 		}
 

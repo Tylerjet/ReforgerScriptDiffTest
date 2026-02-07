@@ -3,10 +3,10 @@ class SCR_FactionCallsignData
 {
 	protected ref map<int, ref SCR_CallsignCompanyData> m_mCompanyCallsigns = new map<int, ref SCR_CallsignCompanyData>();
 	protected ref map<int, ref SCR_CallsignCompanyData> m_mCompanyOverflowCallsigns = new map<int, ref SCR_CallsignCompanyData>();
-	
+
 	protected int m_iOverflowIndex;
 	protected bool m_bRandomizedCallsigns;
-	
+
 	//------------------------------------------------------------------------------------------------
 	// constructor
 	//! \param[in] factionCallsignInfo
@@ -14,25 +14,25 @@ class SCR_FactionCallsignData
 	{
 		m_iOverflowIndex = factionCallsignInfo.GetCompanyOverflowIndex();
 		m_bRandomizedCallsigns = factionCallsignInfo.GetIsAssignedRandomly();
-		
+
 		array<ref SCR_CallsignInfo> companyArray = {};
 		factionCallsignInfo.GetCompanyArray(companyArray);
 		int count = companyArray.Count();
-		
+
 		for(int i = 0; i < count; i++)
 		{
 			SCR_CallsignCompanyData companyData = SCR_CallsignCompanyData();
 			companyData.Init(factionCallsignInfo);
-			
+
 			//Check if overflow company and add it to correct map
 			if (i < m_iOverflowIndex)
 				m_mCompanyCallsigns.Insert(i, companyData);
 			//Overflow means it only grabs these if non of the default companies are available
-			else 
+			else
 				m_mCompanyOverflowCallsigns.Insert(i, companyData);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Gets company, platoon and squad index randomly from available callsigns
 	//! Will first go through default companies, if these are all taken then go though overflow companies
@@ -44,35 +44,33 @@ class SCR_FactionCallsignData
 	{
 		SCR_CallsignCompanyData randomCompany;
 		int random;
-		
+
 		//Default companies still available
 		if (!m_mCompanyCallsigns.IsEmpty())
 		{
-			Math.Randomize(-1);
 			random = Math.RandomInt(0, m_mCompanyCallsigns.Count());
 			company = m_mCompanyCallsigns.GetKey(random);
 			randomCompany = m_mCompanyCallsigns.GetElement(random);
 		}
-			
+
 		//Use overflow companies
 		else if (!m_mCompanyOverflowCallsigns.IsEmpty())
 		{
-			Math.Randomize(-1);
 			random = Math.RandomInt(0, m_mCompanyOverflowCallsigns.Count());
 			company = m_mCompanyOverflowCallsigns.GetKey(random);
 			randomCompany = m_mCompanyOverflowCallsigns.GetElement(random);
 		}
 		//No companies available
-		else 
+		else
 		{
 			return false;
 		}
-		
+
 		randomCompany.GetRandomCallsign(platoon, squad);
-		
+
 		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Goes through all available companies, platoons and squads and gets the first available. Meaning if platoon 1 is taken it will get 2 next not 3.
 	//! Will first go through default companies, if these are all taken then go though overflow companies
@@ -85,7 +83,7 @@ class SCR_FactionCallsignData
 	{
 		firstAvailableCompany = int.MAX;
 		SCR_CallsignCompanyData firstAvailableCompanyData;
-		
+
 		//Default companies still available
 		if (!m_mCompanyCallsigns.IsEmpty())
 		{
@@ -111,15 +109,15 @@ class SCR_FactionCallsignData
 			}
 		}
 		//No companies available
-		else 
+		else
 		{
 			return false;
 		}
-	
+
 		firstAvailableCompanyData.GetFirstAvailibleCallsign(firstAvailablePlatoon, firstAvailableSquad);
 		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Gets a callsign for a specific company given.
 	//! Will however use either GetRandomCallsign or GetFirstAvailibleCallsign (depending on callsign settings) if specific company is not available
@@ -130,11 +128,11 @@ class SCR_FactionCallsignData
 	bool GetSpecificCompanyCallsign(out int company, out int platoon, out int squad)
 	{
 		 SCR_CallsignCompanyData companyData;
-		
+
 		//Get specific company
 		if (!m_mCompanyCallsigns.Find(company, companyData))
 			m_mCompanyOverflowCallsigns.Find(company, companyData);
-		
+
 		//Specific company found
 		if (companyData)
 		{
@@ -144,17 +142,17 @@ class SCR_FactionCallsignData
 				companyData.GetRandomCallsign(platoon, squad);
 		}
 		//Company not available, use default logics
-		else 
+		else
 		{
 			if (!m_bRandomizedCallsigns)
 				return GetFirstAvailibleCallsign(company, platoon, squad);
 			else
 				return GetRandomCallsign(company, platoon, squad);
 		}
-		
+
 		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Adds callsign back to available callsign pool
 	//! \param[in] companyIndex company index
@@ -163,7 +161,7 @@ class SCR_FactionCallsignData
 	void AddCallsign(int companyIndex, int platoonIndex, int squadIndex)
 	{
 		SCR_CallsignCompanyData companyData;
-		
+
 		if (companyIndex < m_iOverflowIndex)
 		{
 			if (m_mCompanyCallsigns.Find(companyIndex, companyData))
@@ -177,7 +175,7 @@ class SCR_FactionCallsignData
 				m_mCompanyCallsigns.Insert(companyIndex, companyData);
 			}
 		}
-		else 
+		else
 		{
 			if (m_mCompanyOverflowCallsigns.Find(companyIndex, companyData))
 			{
@@ -191,7 +189,7 @@ class SCR_FactionCallsignData
 			}
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Removes callsign from available callsign pool
 	//! \param[in] company index
@@ -200,7 +198,7 @@ class SCR_FactionCallsignData
 	void RemoveCallsign(int companyIndex, int platoonIndex, int squadIndex)
 	{
 		SCR_CallsignCompanyData companyData;
-		
+
 		if (companyIndex < m_iOverflowIndex)
 		{
 			if (m_mCompanyCallsigns.Find(companyIndex, companyData))
@@ -212,7 +210,7 @@ class SCR_FactionCallsignData
 				}
 			}
 		}
-		else 
+		else
 		{
 			if (m_mCompanyOverflowCallsigns.Find(companyIndex, companyData))
 			{

@@ -201,7 +201,7 @@ class SCR_ScenarioFrameworkActionQRFDispacher : SCR_ScenarioFrameworkActionBase
 					callTime = 0;
 
 				m_bWaitingForNextWave = true;
-				SCR_ScenarioFrameworkSystem.GetCallQueue().CallLater(StartQRFProcedure, callTime, param1: killedEntity);
+				SCR_ScenarioFrameworkSystem.GetCallQueuePausable().CallLater(StartQRFProcedure, callTime, param1: killedEntity);
 			}
 			return;
 		}
@@ -249,7 +249,7 @@ class SCR_ScenarioFrameworkActionQRFDispacher : SCR_ScenarioFrameworkActionBase
 				ThresholdHandling();
 				m_fNextWaveDelayClock = time + m_fQRFNextWaveDelay * 1000;
 				m_bWaitingForDelayedSpawn = true;
-				SCR_ScenarioFrameworkSystem.GetCallQueue().CallLater(StartQRFProcedure, m_fQRFSpawnDelay * 1000, param1: killedEntity);
+				SCR_ScenarioFrameworkSystem.GetCallQueuePausable().CallLater(StartQRFProcedure, m_fQRFSpawnDelay * 1000, param1: killedEntity);
 				if (killedEntity)
 					DoPlaySoundOnEntityPosition(killedEntity, m_sSoundProjectFile, m_sQRFRequestedSoundEventName);
 

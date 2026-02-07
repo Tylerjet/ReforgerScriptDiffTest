@@ -443,6 +443,12 @@ class SCR_EntitySpawnerSlotComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override int _WB_GetAfterWorldUpdateSpecs(IEntity owner, IEntitySource src)
+	{
+		return EEntityFrameUpdateSpecs.CALL_WHEN_ENTITY_VISIBLE;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override event void _WB_AfterWorldUpdate(IEntity owner, float timeSlice)
 	{
 		if (m_bShowDebugShape && m_DebugShape)

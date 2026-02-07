@@ -77,6 +77,10 @@ class CharacterInputContext
 	proto external void SetHit(EHitReactionType hitRecationType, float direction);
 	proto external EHitReactionType GetHitReaction();
 	proto external float GetHitDirection();
+	proto external void SetVehicleDoorToggle(bool toggle);
+	proto external bool GetVehicleDoorToggle();
+	proto external void SetVehicleTurnOutToggle(bool toggle);
+	proto external bool GetVehicleTurnOutToggle();
 	proto external void SetVehicleDoorInfoIndex(int val);
 	proto external int GetVehicleDoorInfoIndex();
 	proto external void SetVehicleTeleportTarget(vector target[]);

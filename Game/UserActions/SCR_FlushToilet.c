@@ -62,6 +62,6 @@ class SCR_FlushToilet : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_FlushToilet()
 	{
-		AudioSystem.TerminateSound(m_AudioHandle);
+		AudioSystem.TerminateSoundFadeOut(m_AudioHandle, false, 0);
 	}
 };

@@ -1,6 +1,9 @@
 [BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
 class SCR_AiSkillEditorAttribute : SCR_BaseFloatValueHolderEditorAttribute
 {	
+	//---- REFACTOR NOTE START: Not up to date with internal scripting style ----
+	// Probably not implemeneted
+	
 	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)
 	{		
 		SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(item);
@@ -81,4 +84,5 @@ class SCR_AiSkillEditorAttribute : SCR_BaseFloatValueHolderEditorAttribute
 			}
 		}*/
 	}
+	//---- REFACTOR NOTE END ----
 };

@@ -87,13 +87,13 @@ class SCR_AIGetCompartmentEntityInComposition : AITaskScripted
     }
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
     {
         return true;
     }
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------
-	override string GetOnHoverDescription()
+	static override string GetOnHoverDescription()
 	{
 		return "GetCompartmentEntInComposition: finds first entity in a composition that contains compartment manager component";
 	}

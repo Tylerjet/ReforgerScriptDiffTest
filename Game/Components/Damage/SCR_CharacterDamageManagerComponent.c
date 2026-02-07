@@ -60,7 +60,7 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	[Attribute(defvalue: "", uiwidget: UIWidgets.ResourceNamePicker, desc: "Bleeding particle effect", params: "ptc", precision: 3, category: "Bleeding")]
 	protected ResourceName m_sBleedingParticle;
 
-	[Attribute(defvalue: "0.5", uiwidget: UIWidgets.Slider, desc: "Bleeding particle effect rate scale", params: "0 5 0.001", precision: 3, category: "Bleeding Mode")]
+	[Attribute(defvalue: "0.5", uiwidget: UIWidgets.Slider, desc: "Bleeding particle effect rate scale", params: "0 5 0.001", precision: 3, category: "Bleeding")]
 	protected float m_fBleedingParticleRateScale;
 
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, desc: "Character bleeding rate multiplier", params: "0 5 0.001", precision: 3, category: "Bleeding")]
@@ -75,42 +75,20 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	[Attribute(defvalue: "true", uiwidget: UIWidgets.CheckBox, desc: "Whether unconsciousness is allowed", category: "Unconsciousness")]
 	protected bool m_bPermitUnconsciousness;
 	
-	[Attribute(defvalue: "0.05", uiwidget: UIWidgets.Slider, desc: "Affects how much the bleeding is reduced", params: "0 1 0.001", precision: 3, category: "Tourniquets")]
-	protected float m_fTourniquetStrengthMultiplier;
+	[Attribute(defvalue: "0.05", uiwidget: UIWidgets.Slider, desc: "Affects how much the bleeding is reduced", params: "0 1 0.001", precision: 3, category: "Bleeding")]
+	protected float m_fTourniquetStrengthMultiplier;	
+	
+	[Attribute(defvalue: "4", uiwidget: UIWidgets.EditBox, desc: "When higher, less damage is needed to reach max aimingDamage", category: "Damage penalties")]
+	protected float m_fAimingDamageMultiplier;	
+	
+	[Attribute(defvalue: "3", uiwidget: UIWidgets.EditBox, desc: "When higher, less damage is needed to reach m_fMaxMovementDamage", category: "Damage penalties")]
+	protected float m_fMovementDamageMultiplier;	
+	
+	[Attribute(defvalue: "0.8", uiwidget: UIWidgets.EditBox, desc: "Maximum movement damage. 1 Means max-damage/immobilized", category: "Damage penalties")]
+	protected float m_fMaxMovementDamage;
 	
 	[Attribute(defvalue: "true", uiwidget: UIWidgets.CheckBox, desc: "Allow this character to show bleeding effects on any clothing items when damaged or bleeding", category: "Bleeding")]
 	protected bool m_bAllowBloodyClothes;
-	
-	//-----------------------------------------------------------------------------------------------------------
-	event override void OnInit(IEntity owner)
-	{
-		#ifdef ENABLE_DIAG
-		DiagInit(owner);
-		#endif
-		
-		SCR_BaseGameMode baseGameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-		if (baseGameMode)
-			s_HealthSettings = baseGameMode.GetGameModeHealthSettings();
-		
-		LIMB_GROUPS = {};
-		SCR_Enum.GetEnumValues(ECharacterHitZoneGroup, LIMB_GROUPS);
-		
-		ChimeraCharacter character = ChimeraCharacter.Cast(owner);
-		if (!character)
-			return;
-		
-		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
-		if (controller)
-			controller.m_OnLifeStateChanged.Insert(OnLifeStateChanged);
-			
-		RplComponent rpl = RplComponent.Cast(owner.FindComponent(RplComponent));
-		if (rpl && !GetDefaultHitZone().IsProxy())
-		{		
-			SCR_CharacterBuoyancyComponent charBuoyancyComp = SCR_CharacterBuoyancyComponent.Cast(owner.FindComponent(SCR_CharacterBuoyancyComponent));
-			if (charBuoyancyComp)
-				charBuoyancyComp.GetOnWaterEnter().Insert(OnWaterEnter);
-		}
-	}
 	
 	//-----------------------------------------------------------------------------------------------------------
 	//! Check whether character health state meets requirements for consciousness
@@ -238,7 +216,7 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 		
 		if (m_mClothItemDataMap.IsEmpty())
 			m_mClothItemDataMap = null;
-	}
+	}	
 	
 	//-----------------------------------------------------------------------------------------------------------
 	//! If !remove, take data from prefab and insert to map as class. If remove, remove this hitZone's stored data from map
@@ -357,11 +335,12 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 				return;
 			
 			//Terminate passive regeneration on bloodHZ when bleeding effect is added
-			array<ref PersistentDamageEffect> effects = GetAllPersistentEffectsOnHitZone(m_pBloodHitZone);
-			foreach (PersistentDamageEffect effect : effects)
+			array<ref SCR_PersistentDamageEffect> effects = {};
+			FindAllDamageEffectsOfTypeOnHitZone(SCR_PassiveHitZoneRegenDamageEffect, m_pBloodHitZone, effects);
+			
+			foreach (SCR_PersistentDamageEffect effect : effects)
 			{
-				if (SCR_PassiveHitZoneRegenDamageEffect.Cast(effect))
-					effect.Terminate();
+				effect.Terminate();
 			}
 		}
 	}
@@ -396,7 +375,7 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 		if (damageContext.damageType == EDamageType.COLLISION && damageContext.struckHitZone == GetDefaultHitZone())
 		{
 			if (damageContext.damageValue > damageContext.struckHitZone.GetDamageThreshold())
-				HandleFallDamage(damageContext.damageValue);
+				HandleAnimatedFallDamage(damageContext.damageValue);
 	
 			return true;
 		}
@@ -511,7 +490,7 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeHealed(bool ignoreHealingDOT = true)
 	{
-		array<ref PersistentDamageEffect> effects = {};
+		array<ref SCR_PersistentDamageEffect> effects = {};
 		GetPersistentEffects(effects);
 		
 		// if there is any physical damage or a bleeding, you can be healed
@@ -543,10 +522,10 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	{
 		if (!ignoreHealingDOT)
 		{
-			array<ref PersistentDamageEffect> effects = {};
+			array<ref SCR_PersistentDamageEffect> effects = {};
 			GetPersistentEffects(effects);
 			
-			foreach(PersistentDamageEffect effect : effects)
+			foreach(SCR_PersistentDamageEffect effect : effects)
 			{
 				effect.Terminate();	
 			}
@@ -724,7 +703,7 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	}
 
 	//-----------------------------------------------------------------------------------------------------------
-	HitZone GetHeadHitZone()
+	SCR_CharacterHeadHitZone GetHeadHitZone()
 	{
 		return m_pHeadHitZone;
 	}
@@ -733,6 +712,14 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	float GetTourniquetStrengthMultiplier()
 	{
 		return m_fTourniquetStrengthMultiplier;
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	//! Add Special contact effect to hitZone
+	//! \param[1] effect Special contact effect to be added to character
+	void AddSpecialContactEffect(notnull SCR_SpecialCollisionDamageEffect effect)
+	{
+		AddDamageEffect(effect);
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------
@@ -750,7 +737,7 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 		float hitZoneDamageMultiplier = hitZone.GetHealthScaled();
 		float bleedingRate = hitZone.GetMaxBleedingRate() - hitZone.GetMaxBleedingRate() * hitZoneDamageMultiplier;
 
-		SCR_BleedingDamageEffect hitZoneBleeding();
+		SCR_BleedingDamageEffect hitZoneBleeding = new SCR_BleedingDamageEffect();
 		if (colliderDescriptorIndex == -1)
 			colliderDescriptorIndex = Math.RandomInt(0, hitZone.GetNumColliderDescriptors() - 1);
 			
@@ -831,7 +818,7 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 			return;
 
 		// Create particle emitter
-		ParticleEffectEntitySpawnParams spawnParams();
+		ParticleEffectEntitySpawnParams spawnParams = new ParticleEffectEntitySpawnParams();
 		spawnParams.Parent = GetOwner();
 		spawnParams.PivotID = boneNode;
 		ParticleEffectEntity particleEmitter = ParticleEffectEntity.SpawnParticleEffect(m_sBleedingParticle, spawnParams);
@@ -867,8 +854,8 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 		
 		HitZone hitZone;
 		array<HitZone> hitZones = {};
-		array<ref PersistentDamageEffect> damageEffects = GetAllPersistentEffectsOfType(SCR_BleedingDamageEffect);
-		foreach (PersistentDamageEffect effect : damageEffects)
+		array<ref SCR_PersistentDamageEffect> damageEffects = GetAllPersistentEffectsOfType(SCR_BleedingDamageEffect);
+		foreach (SCR_PersistentDamageEffect effect : damageEffects)
 		{
 			hitZone = effect.GetAffectedHitZone();
 			if (!hitZones.Contains(hitZone))
@@ -918,18 +905,20 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 		if (charHZGroup == ECharacterHitZoneGroup.VIRTUAL)
 			return;
 
-		array<ref PersistentDamageEffect> effects = {};
+		array<ref SCR_PersistentDamageEffect> effects = {};
 		array<HitZone> hitZones = {};
 		GetHitZonesOfGroup(charHZGroup, hitZones);
 		
 		foreach (HitZone hitZone : hitZones)
 		{
-			effects = GetAllPersistentEffectsOnHitZone(hitZone);
-			foreach (PersistentDamageEffect effect : effects)
+			FindDamageEffectsOnHitZone(hitZone, effects);
+			foreach (SCR_PersistentDamageEffect effect : effects)
 			{
 				if (effect.GetDamageType() == EDamageType.BLEEDING)
 					TerminateDamageEffect(effect)
 			}
+			
+			effects.Clear();
 		}
 	}
 
@@ -956,8 +945,8 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	}
 
 	//-----------------------------------------------------------------------------------------------------------
-	//! Add bleeding to a random physical hitZone
-	void AddRandomBleeding()
+	//! Get a random physical hitZone
+	SCR_CharacterHitZone GetRandomPhysicalHitZone(bool includeBleedingHZs = false)
 	{
 		array<HitZone> hitZones = {};
 		array<HitZone> validHitZones = {};
@@ -968,21 +957,31 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 			//Is character hz
 			SCR_CharacterHitZone characterHitZone = SCR_CharacterHitZone.Cast(hitZone);
 			if (!characterHitZone)
-				return;
-			
-			// Is not already bleeding
-			SCR_RegeneratingHitZone regenHitZone = SCR_RegeneratingHitZone.Cast(hitZone);
-			if (!regenHitZone || regenHitZone.GetHitZoneDamageOverTime(EDamageType.BLEEDING))
 				continue;
-
+			
+			// skip over bleeding hitzones if includeBleedingHZs is true
+			if (!includeBleedingHZs)
+			{
+				SCR_RegeneratingHitZone regenHitZone = SCR_RegeneratingHitZone.Cast(hitZone);
+				if (!regenHitZone || regenHitZone.GetHitZoneDamageOverTime(EDamageType.BLEEDING))
+					continue;
+			}
+			
 			validHitZones.Insert(characterHitZone);
 		}
 
 		if (validHitZones.IsEmpty())
-			return;
+			return null;
 		
 		SCR_CharacterHitZone hitZone = SCR_CharacterHitZone.Cast(validHitZones.GetRandomElement());
-		AddBleedingEffectOnHitZone(hitZone);
+		return hitZone;
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	//! Add bleeding to a random physical hitZone
+	void AddRandomBleeding()
+	{
+		AddBleedingEffectOnHitZone(GetRandomPhysicalHitZone());
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------
@@ -1179,9 +1178,9 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	//! the official and globally used way of checking if bleeding tests for any PERSISTENT damage effects of EDamageType.BLEEDING. 
 	bool IsBleeding()
 	{
-		array<ref PersistentDamageEffect> effects = {};
+		array<ref SCR_PersistentDamageEffect> effects = {};
 		GetPersistentEffects(effects);
-		foreach (PersistentDamageEffect effect : effects)
+		foreach (SCR_PersistentDamageEffect effect : effects)
 		{
 			if (effect.GetDamageType() == EDamageType.BLEEDING)
 				return true;
@@ -1216,8 +1215,10 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 			}
 			
 			DotDamageEffect dotEffect;
-			array<ref PersistentDamageEffect> damageEffects = GetAllPersistentEffectsOnHitZone(hitZone);
-			foreach (PersistentDamageEffect effect : damageEffects)	
+			array<ref SCR_PersistentDamageEffect> damageEffects = {};
+			FindDamageEffectsOnHitZone(hitZone, damageEffects);
+			
+			foreach (SCR_PersistentDamageEffect effect : damageEffects)	
 			{
 				if (damageType != effect.GetDamageType())
 					continue;
@@ -1253,7 +1254,6 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	//-----------------------------------------------------------------------------------------------------------
 	void UpdateCharacterGroupDamage(ECharacterHitZoneGroup hitZoneGroup)
 	{
-		const float AIMING_DAMAGE_MULTIPLIER = 4;
 		const float TOURNIQUETTED_LEG_DAMAGE = 0.7;
 		const float TOURNIQUETTED_ARMS_DAMAGE = 0.7;
 		// Updated OnDamageStateChanged, movement damage is equal to the accumulative damage of all hitZones in the limb divided by the amount of limbs of type
@@ -1271,8 +1271,9 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 			else
 				rightLegDamage = (1 - GetGroupHealthScaled(ECharacterHitZoneGroup.RIGHTLEG));
 
-			float legDamage = (leftLegDamage + rightLegDamage) * 0.5;
-			SetMovementDamage( legDamage );
+			float legDamage = (leftLegDamage + rightLegDamage) * 0.5 * m_fMovementDamageMultiplier;
+			SetMovementDamage(Math.Clamp(legDamage, 0, m_fMaxMovementDamage));
+			return;
 		}
 
 		if (hitZoneGroup == ECharacterHitZoneGroup.LEFTARM || hitZoneGroup == ECharacterHitZoneGroup.RIGHTARM)
@@ -1289,8 +1290,8 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 			else
 				rightArmDamage = (1 - GetGroupHealthScaled(ECharacterHitZoneGroup.RIGHTARM));
 
-			float armDamage = (leftArmDamage + rightArmDamage) * 0.5;
-			SetAimingDamage(armDamage * AIMING_DAMAGE_MULTIPLIER);
+			float armDamage = (leftArmDamage + rightArmDamage) * 0.5 * m_fAimingDamageMultiplier;
+			SetAimingDamage(armDamage);
 		}
 	}
 	
@@ -1425,6 +1426,34 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	override void OnPostInit(IEntity owner)
 	{
 		super.OnPostInit(owner);
+		
+		#ifdef ENABLE_DIAG
+		DiagInit(owner);
+		#endif
+		
+		SCR_BaseGameMode baseGameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (baseGameMode)
+			s_HealthSettings = baseGameMode.GetGameModeHealthSettings();
+		
+		LIMB_GROUPS = {};
+		SCR_Enum.GetEnumValues(ECharacterHitZoneGroup, LIMB_GROUPS);
+		
+		ChimeraCharacter character = ChimeraCharacter.Cast(owner);
+		if (!character)
+			return;
+		
+		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
+		if (controller)
+			controller.m_OnLifeStateChanged.Insert(OnLifeStateChanged);
+			
+		RplComponent rpl = RplComponent.Cast(owner.FindComponent(RplComponent));
+		if (rpl && !GetDefaultHitZone().IsProxy())
+		{		
+			SCR_CharacterBuoyancyComponent charBuoyancyComp = SCR_CharacterBuoyancyComponent.Cast(owner.FindComponent(SCR_CharacterBuoyancyComponent));
+			if (charBuoyancyComp)
+				charBuoyancyComp.GetOnWaterEnter().Insert(OnWaterEnter);
+		}
+		
 		m_CommunicationSound = SCR_CommunicationSoundComponent.Cast(owner.FindComponent(SCR_CommunicationSoundComponent));
 		
 		// CallLater because GetOwner().GetPhysics() returns empty until GC finishes onPostInit
@@ -1534,6 +1563,10 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	//
 	protected void CalculateCollisionDamage(IEntity owner, IEntity other, vector collisionPosition, bool instantUnconsciousness = true)
 	{
+		HitZone defaultHitZone = GetDefaultHitZone();
+		if (!defaultHitZone || defaultHitZone.GetDamageState() == EDamageState.DESTROYED)
+			return;
+
 		if (instantUnconsciousness)
 			ForceUnconsciousness(GetResilienceHitZone().GetDamageStateThreshold(ECharacterDamageState.STATE3));
 		
@@ -1562,8 +1595,31 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------	
+	override void OnHandleFallDamage(EFallDamageType fallDamageType, vector velocityVector)
+	{
+		HitZone defaultHitZone = GetDefaultHitZone();
+		if (!defaultHitZone || defaultHitZone.GetDamageState() == EDamageState.DESTROYED)
+			return;
+
+		DamageManagerComponentClass prefabData = DamageManagerComponentClass.Cast(GetComponentData(GetOwner()));
+		
+		float damage = Math.InverseLerp(prefabData.GetFallDamageLimitNoDamage(), prefabData.GetFallDamageLimitFullDamage(), velocityVector.Length());
+		if (damage <= 0)
+			return;
+		
+		if (fallDamageType == EFallDamageType.RAGDOLL)
+			HandleRagdollFallDamage(GetRandomPhysicalHitZone(true), damage);
+
+		if (fallDamageType == EFallDamageType.LANDING)
+			HandleAnimatedFallDamage(GetDefaultHitZone().GetMaxHealth() * Math.Pow(damage, 3));
+		
+		if (m_CommunicationSound && GetDefaultHitZone().GetDamageState() == EDamageState.DESTROYED)
+			m_CommunicationSound.SoundEventDeath(false);
+	}
+	
 	//------------------------------------------------------------------------------------------------
-	void HandleFallDamage(float damage)
+	void HandleAnimatedFallDamage(float damage)
 	{
 		array<HitZone> targetHitZones = {};
 		GetHitZonesOfGroup(ECharacterHitZoneGroup.LEFTLEG, targetHitZones, true);
@@ -1579,6 +1635,48 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 		damage *= 2;
 		vector hitPosDirNorm[3];
 		SCR_DamageContext context = new SCR_DamageContext(EDamageType.COLLISION, damage/targetHitZones.Count(), hitPosDirNorm, GetOwner(), null, Instigator.CreateInstigator(GetOwner()), null, -1, -1);
+		context.damageEffect = new SCR_AnimatedFallDamageEffect();
+		
+		foreach (HitZone hitZone : targetHitZones)
+		{
+			context.struckHitZone = hitZone;
+			HandleDamage(context);
+		}
+		
+		// Give character impulse when dying from animated falldamage to make the ragdoll transition more seamless and smooth
+		SCR_CharacterAnimationComponent animComp = SCR_CharacterAnimationComponent.Cast(GetOwner().FindComponent(SCR_CharacterAnimationComponent));
+		if (animComp)
+		{		
+			float randomDirectional = Math.RandomFloat(-0.5, 0.3);
+			animComp.AddRagdollEffectorDamage(Vector(randomDirectional, 1, 0), Vector(randomDirectional, -0.5, 0.3), 82, 15, 2);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void HandleRagdollFallDamage(notnull HitZone contactingHitZone, float damage)
+	{
+		array<int> colliderIDs = {};
+		contactingHitZone.GetColliderIDs(colliderIDs);
+		if (colliderIDs.IsEmpty())
+			return;
+
+		vector colliderTransform[4];
+		Physics physics = GetOwner().GetPhysics();
+
+		physics.GetGeomWorldTransform(colliderIDs[0], colliderTransform);
+		
+		array<HitZone> targetHitZones = {};
+		GetPhysicalHitZones(targetHitZones);
+		GetNearestHitZones(colliderTransform[3], targetHitZones, 5);
+		
+		if (targetHitZones.IsEmpty())
+			return;
+		
+		vector hitPosDirNorm[3];
+		hitPosDirNorm[0] = colliderTransform[3];
+		
+		SCR_DamageContext context = new SCR_DamageContext(EDamageType.COLLISION, (damage*100) / targetHitZones.Count(), hitPosDirNorm, GetOwner(), null, GetInstigator(), null, -1, -1);
+		context.damageEffect = new SCR_RagdollFallDamageEffect();
 		
 		foreach (HitZone hitZone : targetHitZones)
 		{
@@ -1586,13 +1684,17 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 			HandleDamage(context);
 		}
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	protected void ApplyCollisionDamage(IEntity other, vector collisionPosition, float damageValue)
 	{
 		if (!GetOwner())
 			return;
-		
+
+		HitZone defaultHitZone = GetDefaultHitZone();
+		if (!defaultHitZone || defaultHitZone.GetDamageState() == EDamageState.DESTROYED)
+			return;
+
 		array<HitZone> characterHitZones = {};
 		GetAllHitZones(characterHitZones);
 		
@@ -1605,6 +1707,8 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 			other = vehicle.GetPilot();
 		
 		vector hitPosDirNorm[3];
+		hitPosDirNorm[0] = collisionPosition;
+
 		SCR_DamageContext context = new SCR_DamageContext(EDamageType.COLLISION, damageValue/hitZonesReturnAmount, hitPosDirNorm, GetOwner(), characterHitZones[0], Instigator.CreateInstigator(other), null, -1, -1);
 		
 		foreach (HitZone characterHitZone : characterHitZones)
@@ -1618,6 +1722,21 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 		
 		m_fHighestContact = 0;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Sound event playback
+	//! \param[in] soundEventName
+	void PlaySoundEvent(string soundEventName)
+	{
+		if (soundEventName.IsEmpty())
+			return;
+
+		CharacterSoundComponent soundComp = CharacterSoundComponent.Cast(GetOwner().FindComponent(CharacterSoundComponent));
+		if (!soundComp)
+			return;
+
+		soundComp.SoundEvent(soundEventName);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Get nearest hitZones to the point of impact
@@ -1626,6 +1745,9 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	//! \param hitZonesReturnAmount Amount of hitZones that are returned in nearestHitZones. IF all are wanted, set nearestHitZones.Count().
 	void GetNearestHitZones(vector worldPosition, notnull inout array<HitZone> nearestHitZones, int hitZonesReturnAmount)
 	{
+		if (nearestHitZones.IsEmpty())
+			return;
+		
 		array<vector> colliderDistances  = {};
 		array<int> IDs = {};
 		Physics physics = GetOwner().GetPhysics();

@@ -61,8 +61,6 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 	protected static const int BASES_IN_RANGE_RESUPPLY_THRESHOLD = 5;	// max bases to be taken into account when calculating supply income
 	protected static const float HQ_VEHICLE_SPAWN_RADIUS = 40;
 	protected static const float HQ_VEHICLE_QUERY_SPACE = 6;
-	protected static const string RADIO_CHATTER_SIGNAL_NAME = "RadioChatter";
-	protected static const string ESTABLISH_ACTION_SIGNAL_NAME = "EstablishAction";
 
 	protected ref OnSpawnPointAssignedInvoker m_OnSpawnPointAssigned;
 
@@ -88,7 +86,6 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 
 	protected SCR_CoverageRadioComponent m_RadioComponent;
 
-	protected IEntity m_HQRadio;
 	protected IEntity m_HQTent;
 
 	protected SCR_CampaignMapUIBase m_UIElement;
@@ -158,9 +155,9 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 	{
 		if (IsProxy())
 			return;
-		
+
 		SCR_CoverageRadioComponent radio = SCR_CoverageRadioComponent.Cast(GetOwner().FindComponent(SCR_CoverageRadioComponent));
-		
+
 		if (radio)
 			radio.SetPower(true);
 
@@ -175,9 +172,9 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 	{
 		if (IsProxy())
 			return;
-		
+
 		SCR_CoverageRadioComponent radio = SCR_CoverageRadioComponent.Cast(GetOwner().FindComponent(SCR_CoverageRadioComponent));
-		
+
 		if (radio)
 			radio.SetPower(false);
 
@@ -242,7 +239,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 		if (SCR_RespawnComponent.Diag_IsCLISpawnEnabled())
 			HandleSpawnPointFaction();
 #endif
-		
+
 		// Initialize registered services
 		array<SCR_ServicePointComponent> services = {};
 		GetServices(services);
@@ -276,9 +273,8 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 		}
 		else
 		{
-			if (!m_bIsHQ && SCR_XPHandlerComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_XPHandlerComponent)))
+			if (!m_bIsHQ && SCR_XPHandlerComponent.IsXpSystemEnabled())
 			{
-				Math.Randomize(-1);
 				GetGame().GetCallqueue().CallLater(EvaluateDefenders, DEFENDERS_CHECK_PERIOD + Math.RandomIntInclusive(0, DEFENDERS_CHECK_PERIOD * 0.1), true);
 			}
 		}
@@ -439,7 +435,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 
 		if (IsProxy())
 			return;
-		
+
 		GetGame().GetCallqueue().CallLater(SetProviderEntity, 1, false, service); // call later to give a time to a composition to properly register in replication.
 
 		if (radio != SCR_ERadioMsg.NONE && owner && IsHQRadioTrafficPossible(GetCampaignFaction(), SCR_ERadioCoverageStatus.BOTH_WAYS) && !duringInit)
@@ -451,17 +447,9 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 			GetGame().GetCallqueue().CallLater(SendHighestPriorityMessage, SCR_GameModeCampaign.UI_UPDATE_DELAY, false, owner);
 		}
 
-		foreach (SCR_MilitaryBaseLogicComponent logic : m_aSystems)
-		{
-			SCR_CampaignSeizingComponent seizingComponent = SCR_CampaignSeizingComponent.Cast(logic);
-
-			if (!seizingComponent)
-				continue;
-
-			seizingComponent.RefreshSeizingTimer();
-		}
+		RefreshSeizingTimers();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void SetProviderEntity(notnull SCR_ServicePointComponent service)
 	{
@@ -469,9 +457,9 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 
 		if (buildingComponent && !buildingComponent.GetProviderEntity())
 		{
-			array<SCR_CampaignBuildingProviderComponent> buildingProviders = {}; 
+			array<SCR_CampaignBuildingProviderComponent> buildingProviders = {};
 			GetBuildingProviders(buildingProviders);
-			
+
 			foreach (SCR_CampaignBuildingProviderComponent provider : buildingProviders)
 			{
 				if (provider && provider.IsMasterProvider())
@@ -482,7 +470,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 			}
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void SendHighestPriorityMessage(notnull SCR_CampaignFaction faction)
 	{
@@ -516,15 +504,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 		if (serviceCast.GetType() == SCR_EServicePointType.RADIO_ANTENNA)
 			RecalculateRadioRange();
 
-		foreach (SCR_MilitaryBaseLogicComponent logic : m_aSystems)
-		{
-			SCR_CampaignSeizingComponent seizingComponent = SCR_CampaignSeizingComponent.Cast(logic);
-
-			if (!seizingComponent)
-				continue;
-
-			seizingComponent.RefreshSeizingTimer();
-		}
+		RefreshSeizingTimers();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -669,7 +649,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 	{
 		return m_bIsHQ;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! \return If it cost supplies to spawn on this base
 	bool CostSuppliesToSpawn()
@@ -718,15 +698,15 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 
 		return range;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	bool CanReachByRadio(notnull IEntity entity)
 	{
 		SCR_CoverageRadioComponent radio = SCR_CoverageRadioComponent.Cast(entity.FindComponent(SCR_CoverageRadioComponent));
-		
+
 		if (!radio)
 			return false;
-		
+
 		return m_RadioComponent.ConnectedRadiosContain(radio, true);
 	}
 
@@ -739,14 +719,14 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 
 		if (!hq)
 			return SCR_ERadioCoverageStatus.NONE;
-		
+
 		SCR_CoverageRadioComponent radioHQ = SCR_CoverageRadioComponent.Cast(hq.GetOwner().FindComponent(SCR_CoverageRadioComponent));
 
 		if (!radioHQ)
 			return SCR_ERadioCoverageStatus.NONE;
-		
+
 		string encryption = radioHQ.GetEncryptionKey();
-		
+
 		SCR_CoverageRadioComponent radio = SCR_CoverageRadioComponent.Cast(GetOwner().FindComponent(SCR_CoverageRadioComponent));
 
 		if (!radio)
@@ -770,13 +750,13 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 			{
 				return (status == SCR_ERadioCoverageStatus.RECEIVE || status == SCR_ERadioCoverageStatus.BOTH_WAYS);
 			}
-			
+
 			case SCR_ERadioCoverageStatus.SEND:
 			{
 				return (status == SCR_ERadioCoverageStatus.SEND || status == SCR_ERadioCoverageStatus.BOTH_WAYS);
 			}
 		}
-		
+
 		return (status == direction);
 	}
 
@@ -815,7 +795,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 	{
 		if (IsProxy())
 			return;
-		
+
 		if (m_iCallsign == INVALID_BASE_CALLSIGN)
 			return;
 
@@ -838,10 +818,10 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 			return;
 
 		ChimeraWorld world = GetOwner().GetWorld();
-		
+
 		if (!world)
 			return;
-		
+
 		WorldTimestamp curTime = world.GetServerTimestamp();
 		if (m_fLastEnemyContactTimestamp != 0)
 		{
@@ -854,12 +834,12 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 
 		if (GetCapturingFaction())
 			return;
-		
+
 		FactionManager fManager = GetGame().GetFactionManager();
-		
+
 		if (!fManager)
 			return;
-		
+
 		SetAttackingFaction(fManager.GetFactionIndex(attackingFaction));
 	}
 
@@ -874,6 +854,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 			return;
 
 		m_CapturingFaction = null;
+		m_sCapturingFaction = FactionKey.Empty;
 
 		m_iCapturingFaction = INVALID_FACTION_INDEX;
 		Replication.BumpMe();
@@ -909,6 +890,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 		m_CapturingFaction = faction;
 
 		m_iCapturingFaction = SCR_CampaignFactionManager.Cast(GetGame().GetFactionManager()).GetFactionIndex(faction);
+		m_sCapturingFaction = faction.GetFactionKey();
 
 		m_iReconfiguredBy = playerID;
 		Replication.BumpMe();
@@ -971,28 +953,6 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 
 		m_CapturingFaction = SCR_CampaignFactionManager.Cast(GetGame().GetFactionManager()).GetCampaignFactionByIndex(m_iCapturingFaction);
 
-		if (m_SpawnPoint)
-		{
-			if (m_CapturingFaction && m_CapturingFaction != GetFaction())
-				m_SpawnPoint.SetRespawnTime(CONTESTED_RESPAWN_DELAY);
-			else
-				m_SpawnPoint.SetRespawnTime(0);
-		}
-
-		// Play or stop radio tuning SFX
-		if (m_HQRadio)
-		{
-			SignalsManagerComponent comp = SignalsManagerComponent.Cast(m_HQRadio.FindComponent(SignalsManagerComponent));
-
-			if (comp)
-			{
-				if (m_CapturingFaction)
-					comp.SetSignalValue(comp.AddOrFindSignal(ESTABLISH_ACTION_SIGNAL_NAME), 1);
-				else
-					comp.SetSignalValue(comp.AddOrFindSignal(ESTABLISH_ACTION_SIGNAL_NAME), 0);
-			}
-		}
-
 		if (!IsProxy())
 		{
 			SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
@@ -1036,7 +996,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 			RefreshTasks();
 		}
 
-		if (RplSession.Mode() != RplMode.Dedicated)
+		if (m_MapDescriptor && RplSession.Mode() != RplMode.Dedicated)
 			m_MapDescriptor.HandleMapInfo();
 
 		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
@@ -1085,7 +1045,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 
 			ChangeRadioSettings(newCampaignFaction);
 			RefreshTasks();
-			
+
 			// Update signal coverage only if the base was seized during normal play, not at the start
 			if (curTime > 10000)
 			{
@@ -1127,14 +1087,11 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 						continue;
 					}
 
-					if (m_HQRadio)
-					{
-						EntitySpawnParams params = EntitySpawnParams();
-						params.TransformMode = ETransformMode.WORLD;
-						params.Transform[3] = m_HQRadio.GetOrigin();
-						m_SeekDestroyWP = SCR_TimedWaypoint.Cast(GetGame().SpawnEntityPrefabLocal(Resource.Load(SCR_GameModeCampaign.GetInstance().GetSeekDestroyWaypointPrefab()), null, params));
-						m_SeekDestroyWP.SetHoldingTime(60);
-					}
+					EntitySpawnParams params = EntitySpawnParams();
+					params.TransformMode = ETransformMode.WORLD;
+					params.Transform[3] = GetOwner().GetOrigin();
+					m_SeekDestroyWP = SCR_TimedWaypoint.Cast(GetGame().SpawnEntityPrefabLocal(Resource.Load(SCR_GameModeCampaign.GetInstance().GetSeekDestroyWaypointPrefab()), null, params));
+					m_SeekDestroyWP.SetHoldingTime(60);
 
 					if (m_SeekDestroyWP)
 						grp.AddWaypointAt(m_SeekDestroyWP, 0);
@@ -1152,8 +1109,6 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 
 			if (m_MapDescriptor)
 				m_MapDescriptor.HandleMapInfo();
-
-			SetRadioChatterSignal(newCampaignFaction);
 
 			SCR_CampaignFaction playerFaction = SCR_CampaignFaction.Cast(SCR_FactionManager.SGetLocalPlayerFaction());
 			IEntity player = SCR_PlayerController.GetLocalControlledEntity();
@@ -1173,8 +1128,8 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 							SCR_PopUpNotification.GetInstance().PopupMsg("#AR-Campaign_BaseSeized-UC", prio: SCR_ECampaignPopupPriority.BASE_LOST, param1: factionR.GetFactionNameUpperCase(), param2: GetBaseNameUpperCase());
 					}
 
-					if (playerFaction == m_OwningFactionPrevious)
-						//campaign.ShowHint(SCR_ECampaignHints.BASE_LOST);
+					/*if (playerFaction == m_OwningFactionPrevious)
+						campaign.ShowHint(SCR_ECampaignHints.BASE_LOST);*/
 				}
 			}
 		}
@@ -1214,6 +1169,34 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 		tsv.SetFrequency(factionFrequency);
 
 		SCR_RadioCoverageSystem.UpdateAll();
+
+		array<SCR_CoverageRadioComponent> radios = {};
+		m_RadioComponent.GetRadiosInRange(radios);
+
+		foreach (SCR_CoverageRadioComponent radio : radios)
+		{
+			if (!radio)
+				continue;
+
+			SCR_CampaignMilitaryBaseComponent base = SCR_CampaignMilitaryBaseComponent.Cast(radio.GetOwner().FindComponent(SCR_CampaignMilitaryBaseComponent));
+
+			if (base)
+				base.RefreshSeizingTimers();
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void RefreshSeizingTimers()
+	{
+		foreach (SCR_MilitaryBaseLogicComponent logic : m_aSystems)
+		{
+			SCR_CampaignSeizingComponent seizingComponent = SCR_CampaignSeizingComponent.Cast(logic);
+
+			if (!seizingComponent)
+				continue;
+
+			seizingComponent.RefreshSeizingTimer();
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1243,7 +1226,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 		// event is called for every spawned entity of the AI group. Prevent adding duplicates.
 		if (m_aDefendersGroups.Contains(grp))
 			return;
-		
+
 		m_aDefendersGroups.Insert(grp);
 		grp.GetOnEmpty().Insert(RemoveGroup);
 	}
@@ -1254,7 +1237,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 	{
 		m_aDefendersGroups.RemoveItem(grp);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! \return
 	bool ContainsGroup(SCR_AIGroup grp)
@@ -1411,14 +1394,14 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 			SCR_CampaignMilitaryBaseComponent base;
 			array<SCR_CoverageRadioComponent> radios = {};
 			m_RadioComponent.GetRadiosInRange(radios);
-			
+
 			foreach (SCR_CoverageRadioComponent radio : radios)
 			{
 				base = SCR_CampaignMilitaryBaseComponent.Cast(radio.GetOwner().FindComponent(SCR_CampaignMilitaryBaseComponent));
-				
+
 				if (!base)
 					continue;
-				
+
 				if (base.GetType() != SCR_ECampaignBaseType.BASE)
 					continue;
 
@@ -1512,15 +1495,6 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] radio
-	void RegisterHQRadio(notnull IEntity radio)
-	{
-		m_HQRadio = radio;
-		SetRadioChatterSignal(GetCampaignFaction());
-	}
-
-	//------------------------------------------------------------------------------------------------
 	override void RegisterLogicComponent(notnull SCR_MilitaryBaseLogicComponent component)
 	{
 		super.RegisterLogicComponent(component);
@@ -1532,47 +1506,6 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 		// It's a temporary fix until we switch to full free building and bases on top of each other will no longer be a thing
 		if (flag && GetFaction())
 			GetGame().GetCallqueue().CallLater(ChangeFlags, 1000, false, GetFaction());
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \param[in] faction
-	void SetRadioChatterSignal(SCR_Faction faction)
-	{
-		if (!m_HQRadio)
-			return;
-
-		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
-
-		if (!campaign)
-			return;
-
-		SignalsManagerComponent comp = SignalsManagerComponent.Cast(m_HQRadio.FindComponent(SignalsManagerComponent));
-
-		if (!comp)
-			return;
-
-		if (!faction || faction.GetFactionKey() == campaign.GetFactionKeyByEnum(SCR_ECampaignFaction.INDFOR))
-		{
-			comp.SetSignalValue(comp.AddOrFindSignal(RADIO_CHATTER_SIGNAL_NAME), 0);
-		}
-		else
-		{
-			if (faction.GetFactionKey() == campaign.GetFactionKeyByEnum(SCR_ECampaignFaction.BLUFOR))
-			{
-				comp.SetSignalValue(comp.AddOrFindSignal(RADIO_CHATTER_SIGNAL_NAME), 1);
-			}
-			else
-			{
-				comp.SetSignalValue(comp.AddOrFindSignal(RADIO_CHATTER_SIGNAL_NAME), 2);
-			}
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	IEntity GetHQRadio()
-	{
-		return m_HQRadio;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1599,7 +1532,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 
 		item.SetVisible(false);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! return ResourceComponent of base
 	SCR_ResourceComponent GetResourceComponent()
@@ -1861,8 +1794,6 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 
 			if (!buildingPrefab)
 			{
-				Math.Randomize(-1);
-
 				if (Math.RandomFloat01() >= 0.5)
 					buildingPrefab = campaign.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR).GetBuildingPrefab(EEditableEntityLabel.SERVICE_HQ);
 				else
@@ -2130,14 +2061,17 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 		{
 			// Get rid of the old provider component right now otherwise it will still be used in provider selection for a couple of frames
 			// Which would not be good because its owner would be null soon
+
+			SCR_CampaignBuildingProviderComponent provider;
+
 			for (int i = m_aSystems.Count() - 1; i >= 0; i--)
 			{
-				SCR_CampaignBuildingProviderComponent provider = SCR_CampaignBuildingProviderComponent.Cast(m_aSystems[i]);
-				
+				provider = SCR_CampaignBuildingProviderComponent.Cast(m_aSystems[i]);
+
 				if (provider && SCR_EntityHelper.GetMainParent(provider.GetOwner(), true) == m_HQTent)
 					UnregisterLogicComponent(provider);
 			}
-			
+
 			RplComponent.DeleteRplEntity(m_HQTent, false);
 		}
 
@@ -2368,7 +2302,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 	override void EOnInit(IEntity owner)
 	{
 		super.EOnInit(owner);
-		
+
 		if (!IsProxy())
 		{
 			SCR_ResourceComponent resourceComponent = GetResourceComponent();
@@ -2381,7 +2315,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 					consumerComponent.GetOnResourcesChanged().Insert(HandleSpawnPointFaction);
 			}
 		}
-		
+
 		if (m_RadioComponent)
 			m_RadioComponent.GetOnCoverageChanged().Insert(OnHasSignalChanged);
 
@@ -2432,7 +2366,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 			campaign.GetBaseManager().GetOnAllBasesInitialized().Remove(OnAllBasesInitialized);
 			campaign.GetOnCallsignOffsetChanged().Remove(OnCallsignAssigned);
 		}
-		
+
 		SCR_ResourceComponent resourceComponent = GetResourceComponent();
 		if (resourceComponent)
 		{

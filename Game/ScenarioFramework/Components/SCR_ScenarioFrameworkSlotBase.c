@@ -10,7 +10,7 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 
 	[Attribute(desc: "Selects which object to spawn based on the selected Faction Key", category: "Asset")]
 	ref array<ref SCR_ScenarioFrameworkFactionSwitchedObject> m_aFactionSwitchedObjects;
-	
+
 	[Attribute(desc: "Name of the entity used for identification", category: "Asset")]
 	string m_sID;
 
@@ -45,9 +45,6 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	vector m_Size;
 	ResourceName m_sRandomlySpawnedObject;
 	vector m_vPosition;
-
-	[Attribute(defvalue: "1", desc: "Show the debug shapes in Workbench", category: "Debug")]
-	bool m_bShowDebugShapesInWorkbench;
 
 #ifdef WORKBENCH
 	protected IEntity m_PreviewEntity;
@@ -256,10 +253,10 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 		// Try get manually specified object
 		if (!SCR_StringHelper.IsEmptyOrWhiteSpace(m_sObjectToSpawn))
 			return m_sObjectToSpawn;
-		
+
 		return "";
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! \return Randomly spawned object ResourceName.
 	ResourceName GetRandomlySpawnedObject()
@@ -273,7 +270,7 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	{
 		m_sRandomlySpawnedObject = name;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Restores default settings, clears random object, resets position, calls superclass method.
 	//! \param[in] includeChildren Includes children objects in default restoration process.
@@ -283,7 +280,7 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	{
 		m_sRandomlySpawnedObject = string.Empty;
 		m_vPosition = vector.Zero;
-		
+
 		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization);
 	}
 
@@ -321,7 +318,7 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 
 		m_aSpawnedEntities.Clear();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Initializes whether an init has already happened, but for slots it always returns false.
 	//! \return false, indicating that the init has not yet occurred.
@@ -330,7 +327,7 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 		// We do not want to check this condition for Slots
 		return false;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Checks if object already exists, disables repetition and logs error
 	//! \return true if the object can be respawned, false otherwise.
@@ -342,10 +339,10 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 			m_ParentLayer.CheckAllChildrenSpawned(this);
 			return false;
 		}
-		
+
 		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Checks if entity is spawned, if not, waits for all children to spawn then checks again.
 	//! \return true if all children entities have been spawned, false otherwise.
@@ -357,7 +354,7 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 			InvokeAllChildrenSpawned();
 			return false;
 		}
-		
+
 		return true;
 	}
 
@@ -367,7 +364,7 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	{
 		m_sObjectToSpawn = GetSelectedObjectToSpawn();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! If m_bRandomizePerFaction, then it will set m_sObjectToSpawn to empty because the the catalog system has not been initialised.
 	//! It would be incorect to show the manually set object or the faction switched object because the catalog will take preference at runtime.
@@ -382,7 +379,7 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 		}
 		InitSelectedObjectToSpawn();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Spawns entity if not existing or queries objects in range, checks initiation success.
 	//! \return true if entity spawning is successful.
@@ -399,26 +396,26 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 
 		if (!InitEntitySpawnCheck())
 			return false;
-		
+
 		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Initializes selected object, repeatable spawn, and entity spawn.
 	//! \return true if all initialization steps succeed, false otherwise.
 	override bool InitOtherThings()
 	{
 		InitSelectedObjectToSpawn();
-		
+
 		if (!InitRepeatableSpawn())
 			return false;
-		
+
 		if (!InitEntitySpawn())
 			return false;
-		
+
 		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Finishes initialization, assigns unique ID, sets up damage manager, event handlers, inventory, and garbage system if applicable
 	override void FinishInit()
@@ -435,12 +432,12 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 					Print(string.Format("ScenarioFramework Slot: Entity of name %1 was found. The suffix _%2 will be added.", m_sID, suffixNumber), LogLevel.WARNING);
 					IDWithSuffix = m_sID + "_" + suffixNumber.ToString();
 	            }
-					
-				m_Entity.SetName(IDWithSuffix); 
+
+				m_Entity.SetName(IDWithSuffix);
 			}
 			else
 			{
-				m_Entity.SetName(m_sID); 
+				m_Entity.SetName(m_sID);
 			}
 		}
 
@@ -465,9 +462,9 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 			if (garbageSystem)
 				garbageSystem.UpdateBlacklist(m_Entity, true);
 		}
-		
+
 		super.FinishInit();
-		
+
 		InvokeAllChildrenSpawned();
 	}
 
@@ -479,7 +476,7 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	{
 		if (m_OnAllChildrenSpawned)
 			m_OnAllChildrenSpawned.Remove(DynamicDespawn);
-		
+
 		super.Init(area, activation);
 	}
 
@@ -585,7 +582,6 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 			return string.Empty;
 		}
 
-		Math.Randomize(-1);
 		prefab = entityEntries.GetRandomElement().GetPrefab();
 		m_sRandomlySpawnedObject = prefab;
 		return prefab;
@@ -655,15 +651,6 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 
 #ifdef WORKBENCH
 	//------------------------------------------------------------------------------------------------
-	//! Draws debug shape based on m_bShowDebugShapesInWorkbench setting in Workbench after world update.
-	//! \param[in] owner The owner represents the entity (object) calling the method.
-	//! \param[in] timeSlice TimeSlice represents the time interval for which the method is called during each frame update.
-	override void _WB_AfterWorldUpdate(IEntity owner, float timeSlice)
-	{
-		DrawDebugShape(m_bShowDebugShapesInWorkbench);
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! Sets preview entity's transform or teleports it if it's a BaseGameEntity.
 	//! \param[in] owner The owner represents the entity controlling the transformation changes in the method.
 	//! \param[in,out] mat Represents transformation matrix for object's position, rotation, and scale.
@@ -701,7 +688,7 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	override void _WB_OnInit(IEntity owner, inout vector mat[4], IEntitySource src)
 	{
 		SCR_EntityHelper.DeleteEntityAndChildren(m_PreviewEntity);
-		
+
 		InitSelectedObjectToPreview();
 		Resource resource = Resource.Load(m_sObjectToSpawn);
 		if (!resource || !resource.IsValid())
@@ -760,7 +747,7 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 #endif
 		if (SCR_Global.IsEditMode())
 			return;
-		
+
 		DynamicDespawn(this);
 	}
 }

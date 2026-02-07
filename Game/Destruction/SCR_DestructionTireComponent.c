@@ -227,7 +227,11 @@ class SCR_DestructionTireComponent : SCR_DestructionMultiPhaseComponent
 		if (GetTargetDamagePhase() != 0)
 			SetTargetDamagePhase(0);
 	
-		ApplyDamagePhaseData(pData, false);
+		ScriptCallQueue callQueue = GetGame().GetCallqueue();
+		if (!callQueue || callQueue.GetRemainingTime(ChangeModel) > -1)
+			return;
+
+		callQueue.CallLater(ChangeModel, param1: pData.m_PhaseModel);
 	}
 
 	//------------------------------------------------------------------------------------------------

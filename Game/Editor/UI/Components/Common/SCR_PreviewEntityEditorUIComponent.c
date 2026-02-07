@@ -203,6 +203,8 @@ class SCR_PreviewEntityEditorUIComponent : SCR_BaseEditorUIComponent
 		m_vTerrainNormal = SCR_TerrainHelper.GetTerrainNormal(pos, m_World, !m_PreviewEntityManager.IsUnderwater(), m_RotationTrace);
 	}
 
+	//---- REFACTOR NOTE START: Unclear hardcoded multiplier 
+	
 	//------------------------------------------------------------------------------------------------
 	protected void SetClickPos(vector clickPos)
 	{
@@ -221,6 +223,8 @@ class SCR_PreviewEntityEditorUIComponent : SCR_BaseEditorUIComponent
 		vector cameraPos = workspace.ProjScreenToWorld(clickPos[0], clickPos[1], clickDir, m_World, -1);
 		m_vClickPosWorldBase = cameraPos + clickDir * 10;
 	}
+	
+	//---- REFACTOR NOTE END ----
 
 	//------------------------------------------------------------------------------------------------
 	protected bool HasMouseMoved()

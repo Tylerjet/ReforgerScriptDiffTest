@@ -55,10 +55,12 @@ class SCR_Tutorial_SquadLeadership_ORDER_MOVE : SCR_BaseTutorialStage
 		if (!wreck)
 			return;
 		
-		if (vector.Distance(wreck.GetOrigin(), wp.GetOrigin()) > 25)
+		if ((vector.Distance(wreck.GetOrigin(), wp.GetOrigin()) > 25) || (wp.Type() != SCR_AIWaypoint))
 		{
 			if (m_bRepeated)
 				ShowHint(2);
+			
+			m_Group.GetSlave().RemoveWaypoint(wp);
 			
 			return;
 		}

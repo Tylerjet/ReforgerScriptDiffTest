@@ -471,7 +471,6 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		}
 
 		bool enableFriend;
-		bool enableBlock;
 		bool enableMute;
 		bool enablePlayerOptionList = CanOpenPlayerActionList(m_SelectedEntry);
 
@@ -869,7 +868,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 
 		foreach (int req : requesters)
 		{
-			reqNames.Insert(GetGame().GetPlayerManager().GetPlayerName(req));
+			reqNames.Insert(SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(req));
 		}
 
 		if (!requesters.Contains(m_SelectedEntry.m_iID))
@@ -963,7 +962,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 
 		if (entry.m_wName)
 		{
-			entry.m_wName.SetText(GetGame().GetPlayerManager().GetPlayerName(id));
+			entry.m_wName.SetText(SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(id));
 			if (entry.m_iID == m_PlayerController.GetPlayerId())
 				entry.m_wName.SetColor(m_PlayerNameSelfColor);
 		}
@@ -1332,16 +1331,17 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		
 		m_PlayerController = GetGame().GetPlayerController();
 		if (m_PlayerController)
+		{
 			m_SocialComponent = SocialComponent.Cast(m_PlayerController.FindComponent(SocialComponent));
+			
+			SCR_HUDManagerComponent hudManager = SCR_HUDManagerComponent.Cast(m_PlayerController.FindComponent(SCR_HUDManagerComponent));
+			hudManager.SetVisibleLayers(hudManager.GetVisibleLayers() & ~EHudLayers.HIGH);
+		}
 		
-		SCR_HUDManagerComponent hudManager = SCR_HUDManagerComponent.Cast(m_PlayerController.FindComponent(SCR_HUDManagerComponent));
-		hudManager.SetVisibleLayers(hudManager.GetVisibleLayers() & ~EHudLayers.HIGH);
-
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (!gameMode)
 			return;
 		m_PlayerGroupController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
-		m_PlayerController = GetGame().GetPlayerController();
 		m_VoterComponent = SCR_VoterComponent.GetInstance();
 		m_VotingManager = SCR_VotingManagerComponent.GetInstance();
 
@@ -1665,15 +1665,17 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		{
 			if (m_Block)
 			{
+				m_Block.SetEnabled(false, false);
 				m_Block.SetVisible(false, false);
-				m_Block.SetEnabled(false);
 			}
 			
 			if (m_Unblock)
 			{
+				m_Unblock.SetEnabled(false, false);
 				m_Unblock.SetVisible(false, false);
-				m_Unblock.SetEnabled(false);
 			}
+			
+			GetRootWidget().Update();
 			
 			m_SelectedEntry.m_wBlockedIcon.SetOpacity(0);
 			return;
@@ -1684,16 +1686,18 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		m_SelectedEntry.m_wBlockedIcon.SetOpacity(isBlocked);
 		
 		if (m_Block)
-		{
+		{	
+			m_Block.SetEnabled(!isBlocked, false);
 			m_Block.SetVisible(!isBlocked, false);
-			m_Block.SetEnabled(!isBlocked);
+		}
+		if (m_Unblock)
+		{	
+			m_Unblock.SetEnabled(isBlocked, false);
+			m_Unblock.SetVisible(isBlocked, false);
 		}
 		
-		if (m_Unblock)
-		{
-			m_Unblock.SetVisible(isBlocked, false);
-			m_Unblock.SetEnabled(isBlocked);
-		}
+		GetRootWidget().Update();
+		
 	}
 
 	//------------------------------------------------------------------------------------------------

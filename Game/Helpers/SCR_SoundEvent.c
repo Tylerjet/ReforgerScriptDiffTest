@@ -86,7 +86,7 @@ class SCR_SoundEvent
 
 	//Combat Ops
 	static const string	SOUND_CP_IPL_1 = "SOUND_CP_IPL_1";				//Insertion plan
-	static const string	SOUND_CP_IPl_2 = "SOUND_CP_IPL_2";				//Insertion plan
+	static const string	SOUND_CP_IPL_2 = "SOUND_CP_IPL_2";				//Insertion plan
 	static const string	SOUND_CP_IPL_3 = "SOUND_CP_IPL_3";				//Insertion plan
 	static const string	SOUND_CP_TD_PCL = "SOUND_CP_TD_PCL";			//Task Destroy
 	static const string	SOUND_CP_TD_VCL = "SOUND_CP_TD_VCL";			//Task Destroy
@@ -251,6 +251,8 @@ class SCR_SoundEvent
 	static const string SOUND_DEPLOYED_RADIO_EXIT_ZONE = "SOUND_DEPLOYED_RADIO_EXIT_ZONE";
 	static const string SOUND_DETONATOR_DETONATE_CHARGES = "SOUND_DETONATE";
 	static const string SOUND_DETONATOR_DISCONNECT_WIRES = "SOUND_DISCONNECT";
+	static const string SOUND_SHELL_CHARGE_RING_ADD = "SOUND_SHELL_CHARGE_RING_ADD";
+	static const string SOUND_SHELL_CHARGE_RING_REMOVE = "SOUND_SHELL_CHARGE_RING_REMOVE";
 
 	//BellSoundComponent
 	static const string SOUND_BELL_END = "SOUND_BELL_END";
@@ -275,6 +277,7 @@ class SCR_SoundEvent
 	static const string SOUND_INJURED_PLAYERCHARACTER = "SOUND_INJURED_PLAYERCHARACTER";
 	static const string SOUND_HIT = "SOUND_HIT";
 	static const string SOUND_DEATH = "SOUND_DEATH";
+	static const string SOUND_BODYFALL_TERMINAL = "SOUND_BODYFALL_TERMINAL";
 	static const string SOUND_KNOCKOUT = "SOUND_BREATH_OUT";
 	static const string SOUND_VOICE_PAIN_RELIEVE = "SOUND_VOICE_PAIN_RELIEVE";
 	
@@ -325,4 +328,4 @@ class SCR_SoundEvent
 	
 	static const string SOUND_MHQ_DEPLOY = "SOUND_MHQ_DEPLOY";
 	static const string SOUND_MHQ_DISMANTLE = "SOUND_MHQ_DISMANTLE";
-};
+}

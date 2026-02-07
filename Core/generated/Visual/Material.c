@@ -9,26 +9,28 @@ Do not modify, this script is generated
 \{
 */
 
-sealed class Material: pointer
+sealed class Material: Managed
 {
+	private void Material();
+
 	/*!
 	Get material, must exist in internal cache.
 	\param matName	material resource
 	*/
-	static proto Material GetMaterial(ResourceName matName);
+	static proto ref Material GetMaterial(ResourceName matName);
 	/*!
 	get material or load it of it doesn't exist in internal cache
 	\param matName	material resource
 	\param flags		material creation flags, use 0
 	*/
-	static proto Material GetOrLoadMaterial(ResourceName matName, int flags);
-	static proto Material Create(string name, string matClassName, map<string, string> params = null);
+	static proto ref Material GetOrLoadMaterial(ResourceName matName, int flags);
+	static proto ref Material Create(string name, string matClassName, map<string, string> params = null);
 	/*!
 	set parametr of material by string name
 	\param paramName	name of parameter
 	\param value		value
 	*/
-	proto external bool SetParam(string paramName, void value);
+	proto bool SetParam(string paramName, void value);
 	/*!
 	reset parametr of material to default value
 	\param paramName	name of parameter
@@ -41,15 +43,11 @@ sealed class Material: pointer
 	*/
 	proto external int GetParamIndex(string paramName);
 	//! Set parameter of material by index.
-	proto external void SetParamByIndex(int paramIndex, void value);
-	/*!
-	release material (created be CreateMaterial)
-	*/
-	proto external void Release();
+	proto void SetParamByIndex(int paramIndex, void value);
 	/*!
 	material name
 	*/
-	proto external void GetName(out string name);
+	proto void GetName(out string name);
 }
 
 /*!

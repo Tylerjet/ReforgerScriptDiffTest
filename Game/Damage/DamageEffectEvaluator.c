@@ -44,6 +44,9 @@ class DamageEffectEvaluator : ScriptAndConfig
 	void HandleEffectConsequences(SCR_IncendiaryDamageEffect effect, ExtendedDamageManagerComponent dmgManager);
 
 	//------------------------------------------------------------------------------------------------
+	void HandleEffectConsequences(SCR_VehicleFireDamageEffect effect, ExtendedDamageManagerComponent dmgManager);
+
+	//------------------------------------------------------------------------------------------------
 	void HandleEffectConsequences(SCR_FragmentationDamageEffect effect, ExtendedDamageManagerComponent dmgManager);
 
 	//------------------------------------------------------------------------------------------------
@@ -62,5 +65,35 @@ class DamageEffectEvaluator : ScriptAndConfig
 	void HandleEffectConsequences(SCR_MorphineDamageEffect effect, ExtendedDamageManagerComponent dmgManager);
 	
 	//------------------------------------------------------------------------------------------------
-	void HandleEffectConsequences(SCR_BandageDamageEffect effect, ExtendedDamageManagerComponent dmgManager);
+	void HandleEffectConsequences(SCR_BandageDamageEffect effect, ExtendedDamageManagerComponent dmgManager);	
+	
+	//------------------------------------------------------------------------------------------------
+	void HandleEffectConsequences(SCR_SpecialCollisionDamageEffect effect, ExtendedDamageManagerComponent dmgManager);
+	
+	//------------------------------------------------------------------------------------------------
+	void HandleEffectConsequences(SCR_PersistentBarbedWireDamageEffect effect, ExtendedDamageManagerComponent dmgManager);
+	
+	//------------------------------------------------------------------------------------------------
+	void HandleEffectConsequences(SCR_BarbedWireCuttingDamageEffect effect, ExtendedDamageManagerComponent dmgManager);
+	
+	//------------------------------------------------------------------------------------------------
+	void HandleEffectConsequences(SCR_FallDamageEffect effect, ExtendedDamageManagerComponent dmgManager);	
+	
+	//------------------------------------------------------------------------------------------------
+	void HandleEffectConsequences(SCR_AnimatedFallDamageEffect effect, ExtendedDamageManagerComponent dmgManager);
+	
+	//------------------------------------------------------------------------------------------------
+	void HandleEffectConsequences(SCR_RagdollFallDamageEffect effect, ExtendedDamageManagerComponent dmgManager);
+
+	//------------------------------------------------------------------------------------------------
+	void HandleEffectConsequences(SCR_BaseBlastDamageEffect effect, ExtendedDamageManagerComponent dmgManager);
+
+	//------------------------------------------------------------------------------------------------
+	void HandleEffectConsequences(SCR_ConcussionDamageEffect effect, ExtendedDamageManagerComponent dmgManager);
+
+	//------------------------------------------------------------------------------------------------
+	void HandleEffectConsequences(SCR_BackBlastDamageEffect effect, ExtendedDamageManagerComponent dmgManager);
+
+	//------------------------------------------------------------------------------------------------
+	void HandleEffectConsequences(SCR_MuzzleBlastDamageEffect effect, ExtendedDamageManagerComponent dmgManager);
 }

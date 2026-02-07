@@ -16,6 +16,10 @@ class SCR_AIVehicleCombatActivity : SCR_AIActivityBase
 		if (m_Utility.m_VehicleMgr.GetVehiclesCount() == 0)
 			return 0;
 		
+		// Does combat mode forbit combat?
+		if (m_Utility.GetCombatModeActual() == EAIGroupCombatMode.HOLD_FIRE)
+			return 0;
+		
 		// Does something threaten us too much?
 		SCR_AIGroupTargetCluster c = m_Utility.m_Perception.m_MostDangerousCluster;
 		if (!c)
@@ -178,12 +182,19 @@ class SCR_AIVehicleCombatActivity : SCR_AIActivityBase
 				ft.GetMembers(ftAgents);
 				foreach (AIAgent agent : ftAgents)
 				{
+					if (!vehicleComp) 
+						break;
+					if  (!vehicleComp.CanBePiloted())
+						break;
 					if (!agent)
 						continue;
-					SCR_AIInfoComponent agentInfo = SCR_AIInfoComponent.Cast(agent.FindComponent(SCR_AIInfoComponent));
+					SCR_ChimeraAIAgent chimeraAgent = SCR_ChimeraAIAgent.Cast(agent);
+					if (!chimeraAgent)
+						continue;
+					SCR_AIInfoComponent agentInfo = chimeraAgent.m_InfoComponent;
 					if (!agentInfo)
 						continue;
-					
+					// actual logic
 					if (agentInfo.HasUnitState(EUnitState.PILOT) && (agentInfo.HasUnitState(EUnitState.WOUNDED) || agentInfo.HasUnitState(EUnitState.UNCONSCIOUS)))
 					{
 						// driver is incap when attack starts - find someone available and use him as new driver

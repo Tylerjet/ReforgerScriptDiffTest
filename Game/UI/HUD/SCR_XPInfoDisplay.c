@@ -324,6 +324,13 @@ class SCR_XPInfoDisplay : SCR_InfoDisplayExtended
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return Image set containing the rank icons
+	static ResourceName GetRankIconImageSet()
+	{
+		return RANK_ICON_IMAGESET;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void ~SCR_XPInfoDisplay()
 	{
 		SCR_UITaskManagerComponent.s_OnTaskListVisible.Remove(ToggleXPInfo);

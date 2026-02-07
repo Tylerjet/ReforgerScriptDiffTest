@@ -62,11 +62,11 @@ class SCR_ScenarioFrameworkStruct : SCR_JsonApiStruct
 		// Weather has to be changed after init
 		if (timeHandler && m_iHours >= 0 && m_iMinutes >= 0)
 		{
-			GetGame().GetCallqueue().Remove(timeHandler.SetupDaytimeAndWeather);
-			GetGame().GetCallqueue().CallLater(timeHandler.SetupDaytimeAndWeather, 500, false, m_iHours, m_iMinutes, m_iSeconds, m_sWeatherState, true);
+			SCR_ScenarioFrameworkCallQueueSystem.GetCallQueueNonPausable().Remove(timeHandler.SetupDaytimeAndWeather);
+			SCR_ScenarioFrameworkCallQueueSystem.GetCallQueueNonPausable().CallLater(timeHandler.SetupDaytimeAndWeather, 500, false, m_iHours, m_iMinutes, m_iSeconds, m_sWeatherState, true);
 		}
 		
-		SCR_ScenarioFrameworkSystem.GetCallQueue().Clear();
+		SCR_ScenarioFrameworkSystem.GetCallQueuePausable().Clear();
 		scenarioFrameworkSystem.m_bDebugInit = true;
 		scenarioFrameworkSystem.m_iCurrentlySpawnedLayerTasks = 0;
 
@@ -80,7 +80,7 @@ class SCR_ScenarioFrameworkStruct : SCR_JsonApiStruct
 		scenarioFrameworkSystem.m_aESFTaskTypeForRandomization.Clear();
 		scenarioFrameworkSystem.m_aSpawnedAreas.Clear();
 		scenarioFrameworkSystem.m_aDespawnedAreas.Clear();
-		scenarioFrameworkSystem.m_VariableMap.Clear();
+		scenarioFrameworkSystem.m_mVariableMap.Clear();
 
 		foreach (SCR_ScenarioFrameworkArea registeredArea : scenarioFrameworkSystem.m_aAreas)
 		{
@@ -535,7 +535,7 @@ class SCR_ScenarioFrameworkAreaStruct : SCR_ScenarioFrameworkLayerStruct
 			areaStruct.StoreLayerState(layer);
 		}
 			
-		foreach (SCR_ScenarioFrameworkLayerStruct childLayerStruct : m_aLayersStructs)
+		foreach (SCR_ScenarioFrameworkLayerStruct childLayerStruct : areaStruct.m_aLayersStructs)
 		{
 			if (childLayerStruct.GetStructVarCount() >= 1)
 			{
@@ -831,7 +831,7 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 			layerStruct.StoreLayerState(layerToCycle);
 		}
 			
-		foreach (SCR_ScenarioFrameworkLayerStruct childLayerStruct : m_aLayersStructs)
+		foreach (SCR_ScenarioFrameworkLayerStruct childLayerStruct : layerStruct.m_aLayersStructs)
 		{
 			// We need to check if just one child layer struct has something saved
 			if (childLayerStruct.GetStructVarCount() >= 1)

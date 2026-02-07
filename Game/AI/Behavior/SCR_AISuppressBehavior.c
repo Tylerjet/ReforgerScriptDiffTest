@@ -24,6 +24,33 @@ class SCR_AISuppressBehavior : SCR_AIBehaviorBase
 		if (utility)
 			m_bUseCombatMove = !utility.m_AIInfo.HasUnitState(EUnitState.IN_VEHICLE);
 	}
+	
+	//---------------------------------------------------------------------------------------------------------------------------------
+	override void OnActionSelected()
+	{
+		super.OnActionSelected();
+		EnableFriendlyFireCheck(true);
+	}
+	
+	//---------------------------------------------------------------------------------------------------------------------------------
+	override void OnActionDeselected()
+	{
+		super.OnActionDeselected();
+		EnableFriendlyFireCheck(false);		
+	}
+	
+	//---------------------------------------------------------------------------------------------------------------------------------
+	void EnableFriendlyFireCheck(bool enable)
+	{
+		if (m_Utility && m_Utility.m_PerceptionComponent)
+			m_Utility.m_PerceptionComponent.SetFriendlyFireCheck(enable);
+	}
+	
+	//---------------------------------------------------------------------------------------------------------------------------------
+	override int GetCause()
+	{
+		return SCR_EAIBehaviorCause.COMBAT;
+	}
 };
 
 class SCR_AISuppressGroupClusterBehavior : SCR_AISuppressBehavior

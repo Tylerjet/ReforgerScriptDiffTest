@@ -283,6 +283,83 @@ class SCR_PrefabHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Create the structure from the provided blueprints
+	//! \param[in] structure
+	//! \param[in] addonPathPrefix e.g "$ArmaReforger:"
+	//! \return true on success, false on failure
+	static bool CreatePrefabStructure(notnull SCR_PrefabHelper_Structure structure, string addonPathPrefix)
+	{
+		structure.m_sName.TrimInPlace();
+		if (!structure.m_sName)
+		{
+			Print("Name is empty", LogLevel.ERROR);
+			return false;
+		}
+
+		if (!SCR_FileIOHelper.IsValidFileName(structure.m_sName))
+		{
+			Print("Name is invalid - " + structure.m_sName, LogLevel.ERROR);
+			return false;
+		}
+
+		if (!structure.m_Directory)
+		{
+			Print("Main directory is null", LogLevel.ERROR);
+			return false;
+		}
+
+		string absolutePath;
+		if (!Workbench.GetAbsolutePath(addonPathPrefix, absolutePath, false))
+		{
+			Print("Cannot get absolute path for " + addonPathPrefix + structure.m_Directory.m_sRelativePath, LogLevel.ERROR);
+			return false;
+		}
+
+		return CreatePrefabStructureDirectory(structure.m_sName, structure.m_Directory, absolutePath);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Create the structure from the provided blueprints
+	//! \param[in] structureName
+	//! \param[in] directory
+	//! \param[in] addon addon prefix, e.g "ArmaReforger" for "$ArmaReforger:Prefabs"
+	//! \return true on success, false on failure
+	protected static bool CreatePrefabStructureDirectory(string structureName, notnull SCR_PrefabHelper_StructureDirectory directory, string absoluteParentPath)
+	{
+		string absoluteDirectoryPath = FilePath.Concat(absoluteParentPath, directory.m_sRelativePath);
+		if (!FileIO.MakeDirectory(absoluteDirectoryPath))
+		{
+			Print("Cannot create directory " + absoluteDirectoryPath, LogLevel.ERROR);
+			return false;
+		}
+
+		foreach (SCR_PrefabHelper_StructureFile file : directory.m_aFiles)
+		{
+			string absoluteFilePath = string.Format(FilePath.Concat(absoluteDirectoryPath, file.m_sFileName), structureName);
+			ResourceName createdResource = CreateChildPrefab(file.m_sParentResource, absoluteFilePath);
+			if (!createdResource)
+			{
+				Print("Cannot create file " + absoluteFilePath, LogLevel.WARNING);
+				continue;
+			}
+		}
+
+		foreach (SCR_PrefabHelper_StructureDirectory subDirectory : directory.m_aSubDirectories)
+		{
+			string absoluteSubDirectoryPath = string.Format(FilePath.Concat(absoluteParentPath, subDirectory.m_sRelativePath), structureName);
+			if (!FileIO.MakeDirectory(absoluteSubDirectoryPath))
+			{
+				Print("Cannot create directory " + absoluteSubDirectoryPath, LogLevel.WARNING);
+				continue;
+			}
+
+			CreatePrefabStructureDirectory(structureName, subDirectory, absoluteSubDirectoryPath); // did you mean recursion?
+		}
+
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Create an entity and return an IEntitySource
 	//! Keeps the entity in the world, does NOT delete the entity itself
 	//! \param[in] parentPrefab if not provided, GenericEntity is used
@@ -490,8 +567,8 @@ class SCR_PrefabHelper
 		if (relativePath.IsEmpty())
 			return string.Empty;
 
-		relativePath.Replace("\\", "/");
-		relativePath.Replace("/" + "/", "/");
+		relativePath.Replace(SCR_StringHelper.ANTISLASH, SCR_StringHelper.SLASH);
+		relativePath.Replace(SCR_StringHelper.DOUBLE_SLASH, SCR_StringHelper.SLASH);
 
 		if (relativePath.StartsWith("/"))
 			relativePath = relativePath.Substring(1, relativePath.Length() - 1);
@@ -500,6 +577,26 @@ class SCR_PrefabHelper
 			relativePath = relativePath.Substring(0, relativePath.Length() - 1);
 
 		return relativePath;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Update a Prefab from the provided BaseContainer (that must obviously originate from a Prefab)
+	//! \param entitySource a spawned Prefab IEntitySource's ancestor (BaseContainer)
+	//! \return true in case of success, otherwise false
+	static bool UpdatePrefabFromEntitySourceAncestor(notnull BaseContainer actualPrefab)
+	{
+		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
+		if (!worldEditorAPI)
+		{
+			Print("WorldEditorAPI is not available", LogLevel.ERROR);
+			return string.Empty;
+		}
+
+		bool manageEditAction = BeginEntityAction();
+		bool result = worldEditorAPI.SaveEntityTemplate(actualPrefab); // no IEntitySource casting required
+		EndEntityAction(manageEditAction);
+
+		return result;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -633,5 +730,38 @@ class SCR_PrefabHelper
 			SCR_WorldEditorToolHelper.GetWorldEditorAPI().EndEntityAction();
 	}
 
+}
+
+[BaseContainerProps(configRoot: true), SCR_BaseContainerCustomTitleField("m_sName")]
+class SCR_PrefabHelper_Structure
+{
+	[Attribute(defvalue: "Structure name", desc: "Config type's friendly display name")]
+	string m_sName;
+
+	[Attribute(desc: "Root directory")]
+	ref SCR_PrefabHelper_StructureDirectory m_Directory;
+}
+
+[BaseContainerProps(), SCR_BaseContainerResourceTitleField("m_sRelativePath")]
+class SCR_PrefabHelper_StructureDirectory
+{
+	[Attribute(defvalue: "Prefabs/Category/SubCategory/%1", desc: "Directory path - can be empty (root), a simple name (one directory) or multiple (sub)directories separated by a slash\n%1 = project name (e.g S105)")]
+	string m_sRelativePath;
+
+	[Attribute(desc: "Subdirectories")]
+	ref array<ref SCR_PrefabHelper_StructureDirectory> m_aSubDirectories;
+
+	[Attribute(desc: "Files")]
+	ref array<ref SCR_PrefabHelper_StructureFile> m_aFiles;
+}
+
+[BaseContainerProps(), SCR_BaseContainerResourceTitleField("m_sFileName")]
+class SCR_PrefabHelper_StructureFile
+{
+	[Attribute(defvalue: "%1_base.et", desc: "Relative file path in which this Prefab is created - extension is optional and will be defined from parent Prefab\n%1 = project name (e.g S105)")]
+	string m_sFileName;
+
+	[Attribute(defvalue: "", desc: "The parent resource from which this one inherits", uiwidget: UIWidgets.ResourceNamePicker, params: "et conf")]
+	ResourceName m_sParentResource;
 }
 #endif // WORKBENCH

@@ -1,5 +1,5 @@
 //command that takes an EntityWaypoint, and executes the waypoint with entity under cursor, or player controller entity if Character entity not found
-[BaseContainerProps()]
+[BaseContainerProps(), SCR_BaseGroupCommandTitleField("m_sCommandName")]
 class SCR_CharacterEntityWaypointGroupCommand : SCR_WaypointGroupCommand
 {
 	//------------------------------------------------------------------------------------------------

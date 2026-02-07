@@ -124,6 +124,28 @@ class SCR_WidgetTools
 		return false;
 	}
 	/*!
+	Check if a widget is in another widget's hierarchy. If we reach the parent after performing more than 0 steps then the Widget is a child
+	\param w Queried widget
+	\param parent Queried parent
+	\return True if Widget 'w' is one of Widget 'parent' children, recursively.
+	*/
+	static bool IsChildOf(Widget w, notnull Widget parent, out int depth = 0)
+	{
+		int nStepsUp;
+		while (w)
+		{
+			if (w == parent && nStepsUp > 0)
+			{
+				depth = nStepsUp;
+				return true;
+			}
+			
+			w = w.GetParent();
+			nStepsUp++;
+		}
+		return false;
+	}
+	/*!
 	Remove all child widgets from hierarchy.
 	\param w Parent widget
 	*/

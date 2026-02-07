@@ -184,7 +184,7 @@ class SCR_WorldSetupPlugin_Entities : SCR_WorldSetupPluginBasePlugin
 			foreach (SCR_WorldSetupPluginConfig_EntitySourceKeyValue kvp : entry.m_aAdditionalValues)
 			{
 				if (!worldEditorAPI.SetVariableValue(entitySource, null, kvp.m_sKey, kvp.m_sValue))
-					Print("Could not set variable value \"" + kvp.m_sKey + "\" (value: " + kvp.m_sValue + ")", LogLevel.WARNING);
+					PrintFormat("Cannot set variable value \"%1\" (value: %2)", kvp.m_sKey, kvp.m_sValue, level: LogLevel.WARNING);
 			}
 		}
 

@@ -99,7 +99,7 @@ class SCR_AIDecoHasWeaponOfType : DecoratorScripted
 		return false;			
 	}	
 		
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}
@@ -109,7 +109,7 @@ class SCR_AIDecoHasWeaponOfType : DecoratorScripted
 		return "Weapon type: " + typename.EnumToString(EWeaponType,m_WeaponType) + "\nCurrent: " +  m_bCurrent.ToString();	
 	}	
 	
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Decorator that tests if entity has a weapon specified in attribute either as weapon type or as magazine well, in that case it returns the weapon type of the weapon";
 	}	

@@ -4,6 +4,8 @@ Day duration Attribute for getting and setting varriables in Editor Attribute wi
 [BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
 class SCR_DayDurationEditorAttribute: SCR_BaseValueListEditorAttribute
 {
+	//---- REFACTOR NOTE START: Hardcoded values that are not clear 
+	
 	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)
 	{
 		//If opened in global attributes
@@ -35,4 +37,6 @@ class SCR_DayDurationEditorAttribute: SCR_BaseValueListEditorAttribute
 			SCR_NotificationsComponent.SendToUnlimitedEditorPlayers(ENotification.EDITOR_ATTRIBUTES_DAY_DURATION_CHANGED, playerID, notificationInt * 100);
 		}
 	}
+	
+	//---- REFACTOR NOTE END ----
 };

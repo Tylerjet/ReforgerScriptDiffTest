@@ -15,6 +15,7 @@ class SCR_WorkshopUiCommon
 
 	// Map addon tags to icon names
 	static const ResourceName ADDON_TYPE_FILTER_CATEGORY_CONFIG = "{A557E41062372854}Configs/ContentBrowser/Filters/category_type.conf";
+	static const ResourceName ADDON_MANW_FILTER_CATEGORY_CONFIG = "{FB69283C67BD9E67}Configs/ContentBrowser/Filters/category_manw.conf";
 	static ref map<string, string> s_sAddonTagImageMap = new map<string, string>();
 
 	// Map addon tags to default pictures
@@ -117,7 +118,8 @@ class SCR_WorkshopUiCommon
 		mgr.m_OnAddonsChecked.Remove(SCR_WorkshopUiCommon.Callback_OnAddonsChecked);
 		mgr.m_OnAddonsChecked.Insert(SCR_WorkshopUiCommon.Callback_OnAddonsChecked);
 
-		InitAddonTagMaps();
+		InitAddonTagMaps(ADDON_TYPE_FILTER_CATEGORY_CONFIG);
+		InitAddonTagMaps(ADDON_MANW_FILTER_CATEGORY_CONFIG);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -577,9 +579,13 @@ class SCR_WorkshopUiCommon
 			return;
 		}
 		
-		bool show = state == SCR_EAddonPrimaryActionState.DOWNLOADED;
+		bool show = state == SCR_EAddonPrimaryActionState.DOWNLOADED;		
 		if (alwaysShowWhenDownloaded)
 			show = item.GetOffline();
+		
+		WorldSaveItem save = WorldSaveItem.Cast(item.GetWorkshopItem());
+		if (save && show)
+			show = !SCR_SaveWorkshopManager.IsSaveLocalOnly(save);
 		
 		button.SetVisible(show);
 		button.SetToggled(item.GetEnabled(), false);
@@ -741,10 +747,10 @@ class SCR_WorkshopUiCommon
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected static void InitAddonTagMaps()
+	protected static void InitAddonTagMaps(ResourceName configPath)
 	{
 		// Load addon type config
-		SCR_FilterCategory cat = SCR_ConfigHelperT<SCR_FilterCategory>.GetConfigObject(ADDON_TYPE_FILTER_CATEGORY_CONFIG);
+		SCR_FilterCategory cat = SCR_ConfigHelperT<SCR_FilterCategory>.GetConfigObject(configPath);
 		if (!cat)
 			return;
 

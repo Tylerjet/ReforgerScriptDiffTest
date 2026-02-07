@@ -68,19 +68,19 @@ class SCR_AIDebugCounter : AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
 	{
 		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------	
-	override protected bool CanReturnRunning()
+	static override protected bool CanReturnRunning()
 	{
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Increments variable for debug with configurable node behavior.";
 	}		

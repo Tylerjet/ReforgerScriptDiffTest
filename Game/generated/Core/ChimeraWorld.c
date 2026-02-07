@@ -19,6 +19,7 @@ sealed class ChimeraWorld: World
 	proto external ItemPreviewManagerEntity GetItemPreviewManager();
 	proto external MusicManager GetMusicManager();
 	proto external SoundWorld GetSoundWorld();
+	proto external DestructionManager GetDestructionManager();
 	/*!
 	Returns server-side timestamp of the world. On server, this is the same as
 	local timestamp. On client, this is a prediction of what current timestamp

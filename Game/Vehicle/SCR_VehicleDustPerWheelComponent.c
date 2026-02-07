@@ -46,10 +46,7 @@ class SCR_VehicleDustPerWheel : ScriptGameComponent
 	static const int							UPDATE_TIMEOUT = 1000; //Minimal delay between two particle swaps.
 
 	protected VehicleWheeledSimulation			m_Simulation;
-	protected Physics							m_Physics;
-	protected NwkMovementComponent				m_NwkMovementComponent;
 	protected SCR_VehicleDustPerWheelClass		m_ComponentData;
-	protected RplComponent						m_RplComponent;
 	protected ref array<ref VehicleDust>		m_aVehicleDusts = {};
 	protected float 							m_fUpdateTime;
 	protected float								m_fTime;
@@ -78,12 +75,6 @@ class SCR_VehicleDustPerWheel : ScriptGameComponent
 			m_ComponentData.m_fMaxDistanceVisibleSqr = m_ComponentData.m_fMaxDistanceVisible * m_ComponentData.m_fMaxDistanceVisible;
 		}
 		
-		m_NwkMovementComponent = NwkMovementComponent.Cast(m_pOwner.FindComponent(NwkMovementComponent));
-		
-		m_Physics = m_pOwner.GetPhysics();
-		
-		m_RplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
-
 		m_Simulation = VehicleWheeledSimulation.Cast(m_pOwner.FindComponent(VehicleWheeledSimulation));
 		if (!m_Simulation || !m_Simulation.IsValid())
 		{
@@ -151,16 +142,6 @@ class SCR_VehicleDustPerWheel : ScriptGameComponent
 	//------------------------------------------------------------------------------------------------
 	void Update(float timeSlice)
 	{
-		if (!m_RplComponent.IsProxy() || m_RplComponent.IsOwner())
-		{
-			if ((!m_Physics || !m_Physics.IsActive()))
-				return;
-		}
-		else if (m_NwkMovementComponent && !m_NwkMovementComponent.IsInterpolating())
-		{
-			return;
-		}
-		
 		if (m_Simulation.GetSpeedKmh() < m_ComponentData.m_fDustStartSpeed)
 			m_fUpdateTime = UPDATE_TIME;
 		else
@@ -191,47 +172,6 @@ class SCR_VehicleDustPerWheel : ScriptGameComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected TraceParam TraceWheelContact(int index, out vector position)
-	{
-		int wheelIdx = m_ComponentData.m_aWheels[index];
-
-		vector worldTransform[4];
-		m_pOwner.GetWorldTransform(worldTransform);
-
-		float radius = m_Simulation.WheelGetRadiusState(wheelIdx);
-
-		// Physics are offset by center of mass
-		Physics physics = m_pOwner.GetPhysics();
-		vector centerOfMass = physics.GetCenterOfMass();
-
-		TraceParam trace = new TraceParam();
-
-		trace.Start = (m_Simulation.WheelGetPosition(wheelIdx, 1.0) + centerOfMass).Multiply4(worldTransform);
-		trace.End = (m_Simulation.WheelGetPosition(wheelIdx, 0.0) + centerOfMass).Multiply4(worldTransform) + worldTransform[1] * -radius;
-
-		trace.Flags = TraceFlags.WORLD;
-		trace.LayerMask = EPhysicsLayerDefs.VehicleCast;
-
-		float hit = m_pOwner.GetWorld().TraceMove(trace, null);
-
-		vector remotePosition = trace.Start + (trace.End - trace.Start) * hit;
-		position = remotePosition.InvMultiply4(worldTransform);
-
-#ifdef ENABLE_DIAG
-		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_PARTICLES_VEHICLE_DUST))
-		{
-			vector p[2];
-			p[0] = trace.Start;
-			p[1] = trace.End;
-			Shape.CreateLines(Color.BLUE, ShapeFlags.ONCE | ShapeFlags.NOZBUFFER, p, 2);
-			Shape.CreateSphere(Color.RED, ShapeFlags.ONCE | ShapeFlags.NOZBUFFER, remotePosition, 0.05);
-		}
-#endif
-
-		return trace;
-	}
-
-	//------------------------------------------------------------------------------------------------
 	protected void UpdateEffect(VehicleDust vehicleDust, int index, float speed, float distanceFromCamera)
 	{
 		int wheelIdx = m_ComponentData.m_aWheels[index];
@@ -257,27 +197,13 @@ class SCR_VehicleDustPerWheel : ScriptGameComponent
 		}
 
 		GameMaterial newMaterial;
-		bool wheelHasContact;
-		if (m_RplComponent && m_RplComponent.IsRemoteProxy())
-		{
-			vector position;
-			TraceParam trace = TraceWheelContact(index, position);
-			if (trace)
-			{
-				newMaterial = trace.SurfaceProps;
-				wheelHasContact = trace.TraceEnt != null;
-				vehicleDust.m_vLocalDustPos = position;
-			}
-		}
-		else
-		{
-			if (m_Simulation.WheelGetContactLiquidState(wheelIdx) > 0)
-				newMaterial = m_Simulation.WheelGetContactLiquidMaterial(wheelIdx);
-			else
-				newMaterial = m_Simulation.WheelGetContactMaterial(wheelIdx);
 
-			wheelHasContact = m_Simulation.WheelHasContact(wheelIdx);
-		}
+		if (m_Simulation.WheelGetContactLiquidState(wheelIdx) > 0)
+			newMaterial = m_Simulation.WheelGetContactLiquidMaterial(wheelIdx);
+		else
+			newMaterial = m_Simulation.WheelGetContactMaterial(wheelIdx);
+
+		bool wheelHasContact = m_Simulation.WheelHasContact(wheelIdx);
 
 		vehicleDust.m_bWheelHasContact = wheelHasContact;
 
@@ -313,7 +239,7 @@ class SCR_VehicleDustPerWheel : ScriptGameComponent
 		//Create new effect
 		if (newResource && newResource.Length() > 0)
 		{
-			ParticleEffectEntitySpawnParams spawnParams();
+			ParticleEffectEntitySpawnParams spawnParams = new ParticleEffectEntitySpawnParams();
 			spawnParams.TargetWorld = GetOwner().GetWorld();
 			spawnParams.Parent = GetOwner();
 			spawnParams.UseFrameEvent = true;
@@ -337,21 +263,10 @@ class SCR_VehicleDustPerWheel : ScriptGameComponent
 	//------------------------------------------------------------------------------------------------
 	protected void UpdatePosition(VehicleDust vehicleDust, int wheelIdx)
 	{
-		vector position;
-		if (m_RplComponent && m_RplComponent.IsRemoteProxy())
-		{
-			vector worldTransform[4];
-			GetOwner().GetWorldTransform(worldTransform);
-			position = vehicleDust.m_vLocalDustPos.Multiply4(worldTransform);
-		}
-		else
-		{
-			if(!m_Simulation.WheelHasContact(wheelIdx))
-				return;
+		if(!m_Simulation.WheelHasContact(wheelIdx))
+			return;
 
-			position = m_Simulation.WheelGetContactPosition(wheelIdx);
-		}
-
+		vector position = m_Simulation.WheelGetContactPosition(wheelIdx);
 		vehicleDust.m_pParticleEffectEntity.SetOrigin(position);
 	}
 	

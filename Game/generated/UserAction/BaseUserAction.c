@@ -76,6 +76,10 @@ class BaseUserAction: ScriptAndConfig
 	//! Used to ask to send action data again during continuous action
 	proto external void SetSendActionDataFlag();
 	proto external ActionsManagerComponent GetActionsManager();
+	//! Action can be enabled/disabled by the server. Disabled actions return false for CanBeShown(). Has no effect when called from the client.
+	proto external void SetActionEnabled_S(bool enable);
+	//! Was the action disabled by the server?
+	proto external bool WasDisabledByServer();
 
 	// callbacks
 

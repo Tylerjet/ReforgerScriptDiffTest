@@ -1,5 +1,12 @@
 class EffectManagerSystem : GameSystem
 {
+	override static void InitInfo(WorldSystemInfo outInfo)
+	{
+		outInfo
+			.SetAbstract(false)
+			.AddPoint(ESystemPoint.Frame);
+	}
+
 	protected ref array<SCR_BaseEffectManagerComponent> m_Components = {};
 	
 	//------------------------------------------------------------------------------------------------

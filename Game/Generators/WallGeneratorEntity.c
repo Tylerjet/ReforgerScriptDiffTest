@@ -1,9 +1,9 @@
-[EntityEditorProps(category: "GameLib/Scripted/Generator", description: "WallGeneratorEntity", dynamicBox: true, visible: false)]
-class WallGeneratorEntityClass : SCR_GeneratorBaseEntityClass
+[EntityEditorProps(category: "GameLib/Scripted/Generator", description: "Wall Generator", dynamicBox: true, visible: false)]
+class WallGeneratorEntityClass : SCR_LineTerrainShaperGeneratorBaseEntityClass
 {
 }
 
-class WallGeneratorEntity : SCR_GeneratorBaseEntity
+class WallGeneratorEntity : SCR_LineTerrainShaperGeneratorBaseEntity
 {
 	/*
 		Middle Object
@@ -43,7 +43,7 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 	[Attribute("", UIWidgets.ResourcePickerThumbnail, "First Object Prefab", "et", category: "First Object")]
 	protected ResourceName FirstObject;
 
-	[Attribute("0", UIWidgets.Slider, "First object pre-padding, essentially a gap between previous vertex first object",params: "-5 5 0.01", category: "First Object")]
+	[Attribute("0", UIWidgets.Slider, "First object pre-padding, essentially a gap between previous vertex first object", params: "-5 5 0.01", category: "First Object")]
 	protected float FirstObjectPrePadding;
 
 	[Attribute("0", UIWidgets.Slider, "First object post-padding, essentially a gap between first object and the following one", params: "-5 5 0.01", category: "First Object")]
@@ -65,10 +65,10 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Last Object Prefab", "et", category: "Last Object")]
 	protected ResourceName LastObject;
 
-	[Attribute("0", UIWidgets.Slider, "Last object pre-padding, essentially a gap between previous vertex first object",params: "-5 5 0.01", category: "Last Object")]
+	[Attribute("0", UIWidgets.Slider, "Last object pre-padding, essentially a gap between previous vertex first object", params: "-5 5 0.01", category: "Last Object")]
 	protected float LastObjectPrePadding;
 
-	[Attribute("0", UIWidgets.Slider, "Last object post-padding, essentially a gap between first object and the following one", params: "-5 5 0.01", category: "Last Object")]
+	[Attribute(uiwidget: UIWidgets.None)] // obsolete, kept for Prefabs and layers retrocompatibility
 	protected float LastObjectPostPadding;
 
 	[Attribute("0", UIWidgets.Slider,"Last object offset to the side", params: "-5 5 0.01", category: "Last Object")]
@@ -87,13 +87,13 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 	[Attribute("0", UIWidgets.Slider, "Allow pre-padding on first wall asset in each line segment", params: "-2 2 0.01", category: "Global")]
 	protected float PostPadding;
 
-	[Attribute("0.5", UIWidgets.Slider, "Allow overshooting the segment line by this amount when placing assets", params: "-5 5 0.01", category: "Global")]
+	[Attribute(uiwidget: UIWidgets.None)] // obsolete, kept for Prefabs and layers retrocompatibility
 	protected float m_fOvershoot;
 
-	[Attribute("0", UIWidgets.Slider, "Objects offset to the side", params: "-5 5 0.01", category: "Global")]
+	[Attribute(uiwidget: UIWidgets.None)] // obsolete, kept for Prefabs and layers retrocompatibility
 	protected float m_fOffsetRight;
 
-	[Attribute("0", UIWidgets.Slider, "Object offset up/down", params: "-5 5 0.01", category: "Global")]
+	[Attribute(uiwidget: UIWidgets.None)] // obsolete, kept for Prefabs and layers retrocompatibility
 	protected float m_fOffsetUp;
 
 	[Attribute(defvalue: "", uiwidget: UIWidgets.Object, "Contains wall groups which group Wall/Weight pairs by length", category: "Global")]
@@ -106,7 +106,7 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 	[Attribute(defvalue: "1", desc: "Allow pre-padding on first wall asset in each line segment", category: "Other")]
 	protected bool PrePadFirst;
 
-	[Attribute(defvalue: "0", desc: "Copy the polyline precisely while sacrificing wall assets contact", category: "Other")]
+	[Attribute(defvalue: "0", desc: "Precisely places entities to anchors while sacrificing wall assets contact", category: "Other")]
 	protected bool ExactPlacement;
 
 	[Attribute(defvalue: "0", desc: "Start the wall from the other end of the polyline", category: "Other")]
@@ -118,469 +118,160 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 	[Attribute(defvalue: "0", desc: "Rotate object 180° around the Yaw axis", category: "Other")]
 	protected bool Rotate180;
 
-	[Attribute(defvalue: "0", desc: "If you want to generate objects smaller than 10 centimetres", category: "Other")]
+	[Attribute(uiwidget: UIWidgets.None)] // obsolete, kept for Prefabs and layers retrocompatibility
 	protected bool UseForVerySmallObjects;
 
-	[Attribute(defvalue: "0", desc: "Draw developer debug", category: "Other")]
+	[Attribute(uiwidget: UIWidgets.None)] // obsolete, kept for Prefabs and layers retrocompatibility
 	bool m_bDebug;
 
-	[Attribute(defvalue: "0", desc: "Whether or not walls should be snapped to the terrain", category: "Other")]
+	[Attribute(uiwidget: UIWidgets.None)] // obsolete, kept for Prefabs and layers retrocompatibility
 	protected bool m_bSnapToTerrain;
 
 	[Attribute(uiwidget: UIWidgets.None)] // obsolete, kept for Prefabs and layers retrocompatibility
-	protected ref array<ref ResourceName> WallPrefabs;
+	protected ref array<ResourceName> WallPrefabs;
 
 #ifdef WORKBENCH
 
-	protected IEntitySource m_ParentSource;
+	protected static const float MIN_WALL_PIECE_SIZE = 0.001;	//!< 1mm is enough precision
+	protected static const float MIN_WALL_SLOT_SIZE = 0.001;	//!< wall length, pre-padding and post-padding
 
 	protected ref SCR_WallGroupContainer m_WallGroupContainer;
 
-	protected ref array<ref SCR_WallGeneratorPoint> m_aPoints = {};
-	protected static ref array<ref Shape> s_aDebugShapes = {};
+	protected static BaseWorld s_World; // tricky, but used wisely! nulled after usage
+
+	protected static const ref map<ResourceName, float> MEASUREMENTS = new map<ResourceName, float>(); // always the same axis
+
+	protected static const int MAX_LOOPS_SAFETY = 500; // temporary limit per section calculation
 
 	//------------------------------------------------------------------------------------------------
-	//! \param entityName Prefab to measure
-	//! \param measureAxis 0 for X measure, 2 for Z measure
-	//! \param api required 
-	//! \return entity side on provided axis, 1 on close-to-zero (< 0.00001m) measurement, float.MAX on failure
-	static float MeasureEntity(ResourceName entityName, int measureAxis, WorldEditorAPI api)
+	protected void Generate()
 	{
-		float result = float.MAX;
-
-		if (entityName.IsEmpty())
-			return result;
-
-		Resource resource = Resource.Load(entityName);
-		if (!resource.IsValid())
-			return result;
-
-		GenericEntity wallEntity = GenericEntity.Cast(GetGame().SpawnEntityPrefab(resource, api.GetWorld()));
-		if (!wallEntity)
-			return result;
-
-		vector minBB;
-		vector maxBB;
-		wallEntity.GetBounds(minBB, maxBB);
-		delete wallEntity;
-
-		result = (maxBB - minBB)[measureAxis];
-		if (result < 0.000001)
+		if (!m_bEnableGeneration)
 		{
-			Print("Wall asset " + entityName + " is too small, does it have a valid mesh?", LogLevel.ERROR);
-			return 1; // generating is invalid, just avoid infinite loop
+			Print("Wall generation is disabled for this shape - tick it back on before saving", LogLevel.NORMAL);
+			return;
 		}
 
-		return result;
-	}
+		m_RandomGenerator.SetSeed(m_iSeed);
 
-	//------------------------------------------------------------------------------------------------
-	override bool _WB_OnKeyChanged(BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent)
-	{
-		super._WB_OnKeyChanged(src, key, ownerContainers, parent);
-
-		if (key == "coords")
-			return false;
-
-		WorldEditorAPI api = _WB_GetEditorAPI();
-		if (!api || api.UndoOrRedoIsRestoring())
-			return false;
-
-		IEntitySource thisSrc = api.EntityToSource(this);
-		IEntitySource parentSrc = thisSrc.GetParent();
-
-		BaseContainerTools.WriteToInstance(this, thisSrc);
-		OnShapeChanged(parentSrc, ShapeEntity.Cast(parent), {}, {});
-
-		return true;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Offsets the points in the 'points' array, used with m_fOffsetRight
-	protected void OffsetPoints(array<vector> points, float offset, bool debugAllowed = false)
-	{
-		array<vector> pointsTemp = {};
-		pointsTemp.Copy(points);
-		points.Clear();
-		int lastIndex = pointsTemp.Count() - 1;
-
-		vector matWrld[4];
-		if (m_bDebug && debugAllowed)
-			GetWorldTransform(matWrld);
-
-		vector forwardPrev = vector.One;
-		foreach (int i, vector pointTemp : pointsTemp)
-		{
-			vector forwardNext;
-
-			if (i < lastIndex)
-				forwardNext = pointsTemp[i + 1] - pointTemp;
-			else
-				forwardNext = -forwardPrev;
-
-			if (i == 0)
-				forwardPrev = -forwardNext;
-
-			forwardNext.Normalize();
-			forwardPrev.Normalize();
-
-			float dotProductPrevNext = vector.Dot(forwardPrev, forwardNext);
-			bool almostLine = dotProductPrevNext < -0.95;
-			vector diagonal = forwardNext + forwardPrev;
-
-			vector normalRight = -forwardPrev * vector.Up;
-			normalRight.Normalize();
-			float dotProductNormNext = vector.Dot(normalRight, forwardNext);
-			bool isLeft = dotProductNormNext > 0;
-
-			vector nextModified = dotProductPrevNext * forwardNext;
-			float dist = vector.Distance(nextModified, forwardPrev);
-			float diff;
-			if (dist != 0)
-				diff = offset / dist;
-
-			diagonal *= diff;
-
-			if (!isLeft)
-				diagonal = diagonal * -1;
-
-			if (almostLine)
-			{
-				vector vec = forwardNext - forwardPrev;
-				vector right = vec * vector.Up;
-				right.Normalize();
-				diagonal = right * offset;
-			}
-
-			points.Insert(pointsTemp[i] + diagonal);
-			forwardPrev = -forwardNext;
-
-			// debug
-			if (m_bDebug && debugAllowed)
-			{
-				pointTemp = pointTemp.Multiply4(matWrld); // variable reuse
-				s_aDebugShapes.Insert(Shape.Create(ShapeType.LINE, ARGB(255, 255, 255, 255), ShapeFlags.NOZBUFFER, pointTemp, pointTemp + forwardNext));
-				s_aDebugShapes.Insert(Shape.Create(ShapeType.LINE, ARGB(255, 0, 255, 0), ShapeFlags.NOZBUFFER, pointTemp, pointTemp + forwardPrev));
-				s_aDebugShapes.Insert(Shape.Create(ShapeType.LINE, ARGB(255, 255, 0, 0), ShapeFlags.NOZBUFFER, pointTemp, pointTemp + diagonal));
-			}
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void OnShapeInitInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity)
-	{
-		super.OnShapeInitInternal(shapeEntitySrc, shapeEntity);
-
-		// TODO: auto-trigger generation here as well
-		WorldEditorAPI api = _WB_GetEditorAPI();
-		if (!api || api.UndoOrRedoIsRestoring())
+		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
+		if (!worldEditorAPI || worldEditorAPI.UndoOrRedoIsRestoring())
 			return;
 
-		Preprocess(shapeEntitySrc);
-		Generate(shapeEntity);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void Preprocess(IEntitySource shapeEntitySrc)
-	{
-		m_aPoints.Clear();
-		WorldEditorAPI api = _WB_GetEditorAPI();
-
-		m_WallGroupContainer = new SCR_WallGroupContainer(api, m_aWallGroups, UseXAsForward, MiddleObject, this);
-		BaseContainerList points = shapeEntitySrc.GetObjectArray("Points");
-		if (points != null && points.Count() >= 2 && m_WallGroupContainer.m_bGenerated != 0)
-		{
-			bool isShapeClosed = false;
-			shapeEntitySrc.Get("IsClosed", isShapeClosed);
-			array<vector> pointsVec = {};
-			int pointCount = points.Count();
-			bool addFirstAsLast = false;
-
-			if (isShapeClosed && pointCount > 2) // no reason to "loop" for 2 points
-				addFirstAsLast = true;
-
-			// offset start
-			BaseContainer point;
-			vector pos;
-			for (int i = 0; i < pointCount; i++)
-			{
-				point = points.Get(i);
-				point.Get("Position", pos);
-				pointsVec.Insert(pos);
-			}
-
-			if (addFirstAsLast)
-				pointsVec.Insert(pointsVec[0]);
-
-			if (m_fOffsetRight != 0)
-				OffsetPoints(pointsVec,m_fOffsetRight, true);
-			// offset end
-
-			ResourceName customMesh;
-			float prePadding, postPadding, offsetUp;
-			bool generate, clipping, align;
-			BaseContainerList dataArr;
-			BaseContainer data;
-			int dataCount, lastPointIndex;
-			SCR_WallGeneratorPoint genPoint;
-
-			for (int i = 0; i < pointCount; i++)
-			{
-				point = points.Get(i);
-				pos = pointsVec[i];
-				customMesh = string.Empty;
-				prePadding = 0;
-				postPadding = 0;
-				generate = true;
-				clipping = false;
-				offsetUp = 0;
-				align = false;
-				dataArr = point.GetObjectArray("Data");
-				dataCount = dataArr.Count();
-
-				for (int j = 0; j < dataCount; ++j)
-				{
-					data = dataArr.Get(j);
-					if (data.GetClassName() == "WallGeneratorPointData")
-					{
-						data.Get("MeshAtPoint", customMesh);
-						data.Get("PrePadding", prePadding);
-						data.Get("PostPadding", postPadding);
-						data.Get("m_bGenerate", generate);
-						data.Get("m_bAllowClipping", clipping);
-						data.Get("m_fOffsetUp", offsetUp);
-						data.Get("m_bAlignWithNext", align);
-						break;
-					}
-				}
-
-				genPoint = new SCR_WallGeneratorPoint();
-				genPoint.m_vPos = pos;
-				genPoint.m_sCustomMesh = customMesh;
-				genPoint.m_fPrePadding = prePadding;
-				genPoint.m_fPostPadding = postPadding;
-				genPoint.m_bGenerate = generate;
-				genPoint.m_bClip = clipping;
-				genPoint.m_fOffsetUp = offsetUp;
-				genPoint.m_bAlignNext = align;
-				m_aPoints.Insert(genPoint);
-			}
-
-			if (addFirstAsLast)
-			{
-				m_aPoints.Insert(m_aPoints[0]);
-				lastPointIndex = m_aPoints.Count() - 1;
-				m_aPoints[lastPointIndex].m_vPos = pointsVec[lastPointIndex];
-			}
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected override void OnShapeChangedInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity, array<vector> mins, array<vector> maxes)
-	{
-		if (!shapeEntitySrc || _WB_GetEditorAPI().UndoOrRedoIsRestoring())
+		BaseWorld world = worldEditorAPI.GetWorld();
+		if (!world)
 			return;
 
-		Preprocess(shapeEntitySrc);
-		Generate(shapeEntity);
-	}
+		if (!m_WallGroupContainer)
+			m_WallGroupContainer = new SCR_WallGroupContainer(m_aWallGroups, UseXAsForward, MiddleObject);
 
-	//------------------------------------------------------------------------------------------------
-	protected IEntitySource PlacePrefab(
-		bool generate,
-		ResourceName name,
-		out vector pos,
-		vector dir,
-		vector prevDir,
-		float rotationAdjustment,
-		bool isGeneratorVisible,
-		float length,
-		float prePadding,
-		float postPadding,
-		float offsetUp,
-		bool alignNext,
-		bool prepadNext,
-		bool snapToGround = false,
-		bool allowClipping = false,
-		vector offsetRight = vector.Zero)
-	{
-		if (name.IsEmpty())
-			return null;
+		DeleteAllChildren();
 
-		vector prepadDirection;
-		vector orientation;
-
-		if (alignNext)
-			orientation = dir;
-		else
-			orientation = prevDir;
-
-		if (prepadNext)
-			prepadDirection = dir;
-		else
-			prepadDirection = prevDir;
-
-		pos += prepadDirection * prePadding;
-		IEntitySource ent;
-		WorldEditorAPI api = _WB_GetEditorAPI();
-		IEntitySource thisSource = api.EntityToSource(this);
-		int layerID = api.GetCurrentEntityLayerId();
-
-		if (generate)
-		{
-			vector rotMat[4];
-			Math3D.DirectionAndUpMatrix(orientation, vector.Up, rotMat);
-			vector rot = Math3D.MatrixToAngles(rotMat);
-			rot[1] = rot[0] + rotationAdjustment;
-			rot[0] = 0;
-			rot[2] = 0;
-
-			if (m_bSnapToTerrain)
-			{
-				vector world = CoordToParent(pos);
-				pos[1] = api.GetTerrainSurfaceY(world[0], world[2]);
-				if (m_ParentSource)
-					pos[1] = pos[1] - api.SourceToEntity(m_ParentSource).GetOrigin()[1];
-			}
-
-			if (snapToGround)
-			{
-				vector matWrld[4];
-				GetWorldTransform(matWrld);
-
-				ent = api.CreateEntityExt(name, "", layerID, thisSource, (pos + offsetRight), rot, TraceFlags.ENTS);
-				api.ParentEntity(thisSource, ent, true);
-			}
-			else
-			{
-				ent = api.CreateEntity(name, "", layerID, thisSource, pos + offsetRight, rot);
-			}
-
-			if (offsetUp != 0)
-			{
-				vector entPos;
-				ent.Get("coords", entPos);
-				entPos[1] = entPos[1] + offsetUp;
-				string coords = entPos[0].ToString() + " " + entPos[1].ToString() + " " + entPos[2].ToString();
-				api.SetVariableValue(ent, null, "coords", coords);
-			}
-
-			api.SetEntityVisible(ent, isGeneratorVisible, false);
-		}
-
-		if (allowClipping)
-			length = 0;
-
-		if (UseForVerySmallObjects)
-			pos += dir * (length + postPadding);
-		else
-			// if objects are big, advancement lower than 0.1 (10cm) is probably a bug
-			// and we may end up freezing by generating outrageous amout of entities
-			pos += dir * Math.Max(0.1, length + postPadding);
-
-		return ent;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void Generate(ShapeEntity shapeEntity)
-	{
-		if (!m_WallGroupContainer || m_WallGroupContainer.IsEmpty())
+		if (!m_ParentShapeSource || !m_ShapeNextPointHelper || !m_ShapeNextPointHelper.IsValid())
 			return;
 
-		WorldEditorAPI api = _WB_GetEditorAPI();
-		if (api == null || m_WallGroupContainer.IsEmpty())
+		ShapeEntity shapeEntity = ShapeEntity.Cast(worldEditorAPI.SourceToEntity(m_ParentShapeSource));
+		if (!shapeEntity)
 			return;
 
-		IEntitySource entSrc = api.EntityToSource(this);
-		m_ParentSource = entSrc.GetParent();
-		int childCount = entSrc.GetNumChildren();
+		float rotationOffset;
 
-		for (int i = childCount - 1; i >= 0; --i)
-		{
-			api.DeleteEntity(entSrc.GetChild(i));
-		}
-
-		if (m_aPoints.Count() < 2)
-			return;
-
-		int forwardAxis = 2;
+		int forwardAxis;
 		if (UseXAsForward)
-			forwardAxis = 0;
+			rotationOffset = -90;
+		else
+			forwardAxis = 2;
+
+		if (Rotate180)
+			rotationOffset += 180;
+
+		if (m_bStartFromTheEnd)
+			rotationOffset += 180;
+
+		MEASUREMENTS.Clear();
+
+		array<vector> anchorPoints = m_ShapeNextPointHelper.GetAnchorPoints();
+
+		typename type = m_ParentShapeSource.GetClassName().ToType();
+		bool isPolyline = type && type.IsInherited(PolylineShapeEntity); // no "exact placement" otherwise (potential unknown shape type)
+
+		// straight line mode variables start
+		bool isStraightLineMode = isPolyline; // in case we make it a checkbox
+
+		s_World = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi().GetWorld();
+
+		if (isStraightLineMode)
+			GenerateInStraightLine(anchorPoints, rotationOffset, forwardAxis);
+		else
+			GenerateClosestToShape(anchorPoints, rotationOffset);
+
+		s_World = null; // see? I told you - used wisely
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void GenerateInStraightLine(notnull array<vector> anchorPoints, float rotationOffset, int forwardAxis)
+	{
+		map<int, ref ShapePointDataScriptBase> pointDataMap = GetFirstPointDataMap(WallGeneratorPointData);
+		WallGeneratorPointData pointData;
+
+		vector from = anchorPoints[0];
+		vector to, dir, prevDir, rightVec;
+
+		bool generate = true;
+		bool exhausted, lastPoint, lastSegment, firstPass;
+		ResourceName customMesh;
+		float remaining;
+
+		SCR_WallPair wall;
 
 		float lastObjectLength;
 
 		if (m_bEnableLastObject && LastObject)
-			lastObjectLength = MeasureEntity(LastObject, forwardAxis, api);
+			lastObjectLength = MeasureEntity(LastObject, forwardAxis);
 
-		bool isGeneratorVisible = api.IsEntityVisible(entSrc);
+		bool isGeneratorVisible = _WB_GetEditorAPI().IsEntityVisible(m_Source);
 
-		// copy points so we have them after the entity is reinitialised
-		array<ref SCR_WallGeneratorPoint> localPoints = {};
-		foreach (SCR_WallGeneratorPoint wgPoint : m_aPoints)
-		{
-			localPoints.Insert(wgPoint);
-		}
-
-		if (m_bStartFromTheEnd)
-			SCR_ArrayHelperT<ref SCR_WallGeneratorPoint>.Reverse(localPoints);
-
-		float rotationAdjustment = 0;
-
-		if (UseXAsForward)
-			rotationAdjustment = -90;
-
-		if (Rotate180)
-			rotationAdjustment += 180;
-
-		if (m_bStartFromTheEnd)
-			rotationAdjustment += 180;
-
-		vector from = localPoints[0].m_vPos;
-		vector to, dir, prevDir, rightVec;
-
-		bool exhausted, lastPoint, lastSegment, generate, firstPass;
-		ResourceName customMesh;
-		float remaining;
-
-		// while-loop variables
-		string bestWall;
-		float bestLen, prePaddingToUse, postPaddingToUse, offsetUp, lengthRequirement;
-		bool allowClipping, alignNext, prepadNext, custom;
-		bool firstPlaced, placeMiddle, placeLast, lastPlaced, lastInSegmentDoNotPlace, middleOfSegmentDoNotPlace;
-		vector offsetRight;
-		SCR_WallPair wall;
-
-		for (int i, count = localPoints.Count(); i < count; i++)
+		int countMinus1 = anchorPoints.Count() - 1;
+		foreach (int i, vector anchorPoint : anchorPoints)
 		{
 			exhausted = false;
-			lastPoint = i == count - 1;
-			lastSegment = i == count - 2;
+			lastPoint = i == countMinus1;
+			lastSegment = i == countMinus1 - 1;
 
 			prevDir = dir;
 
 			if (ExactPlacement)
 			{
 				if (i == 1)
-					from = localPoints[i].m_vPos;
+					from = anchorPoint;
 				else
-					from = localPoints[i].m_vPos + (dir * PrePadding);
+					from = anchorPoint + (dir * PrePadding);
 			}
 
 			if (lastPoint)
 			{
-				to = localPoints[i].m_vPos;
-				dir = (localPoints[i].m_vPos - localPoints[i - 1].m_vPos).Normalized();
+				to = anchorPoint;
+				dir = vector.Direction(anchorPoints[i - 1], to).Normalized();
 			}
 			else
 			{
-				to = localPoints[i + 1].m_vPos;
-				dir = (to - from).Normalized();
+				to = anchorPoints[i + 1];
+				dir = vector.Direction(from, to).Normalized();
 				if (i == 0)
 					prevDir = dir;
 			}
 
-			customMesh = localPoints[i].m_sCustomMesh;
-			generate = localPoints[i].m_bGenerate;
+			pointData = WallGeneratorPointData.Cast(pointDataMap.Get(i));
+			if (pointData)
+			{
+				customMesh = pointData.MeshAtPoint;
+				generate = pointData.m_bGenerate;
+			}
+			else
+			{
+				customMesh = ResourceName.Empty;
+			}
+
 			remaining = vector.Distance(from, to) + m_fOvershoot;
 
 			firstPass = true; // first segment on the polyline
@@ -591,29 +282,29 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 			// as long as there is enough room for at least the smallest wall available
 			while (!exhausted)
 			{
-				bestWall = string.Empty;
-				bestLen = 0;
-				prePaddingToUse = PrePadding;
-				postPaddingToUse = PostPadding;
-				allowClipping = false;
-				alignNext = true;
-				prepadNext = true;
-				offsetUp = m_fOffsetUp;
-				custom = false;
-				offsetRight = vector.Zero;
-				firstPlaced = false;
-				placeMiddle = false;
-				placeLast = false;
-				lengthRequirement = 0;
-				lastPlaced = false;
-				lastInSegmentDoNotPlace = false;
-				middleOfSegmentDoNotPlace = false;
+				ResourceName bestWall = ResourceName.Empty;
+				float bestLen = 0;
+				float prePaddingToUse = PrePadding;
+				float postPaddingToUse = PostPadding;
+				bool allowClipping = false;
+				bool alignNext = true;
+				bool prepadNext = true;
+				float offsetUp = 0;
+				bool custom = false;
+				vector offsetRight = vector.Zero;
+				bool firstPlaced = false;
+				bool placeMiddle = false;
+				bool placeLast = false;
+				float lengthRequirement = 0;
+				bool lastPlaced = false;
+				bool lastInSegmentDoNotPlace = false;
+				bool middleOfSegmentDoNotPlace = false;
 
 				// first object
-				if (i == 0 && firstPass && m_bEnableFirstObject && !FirstObject.IsEmpty())
+				if (i == 0 && firstPass && m_bEnableFirstObject && FirstObject) // !.IsEmpty()
 				{
 					bestWall = FirstObject;
-					bestLen = MeasureEntity(FirstObject, forwardAxis, api);
+					bestLen = MeasureEntity(FirstObject, forwardAxis);
 					prePaddingToUse = FirstObjectPrePadding;
 					postPaddingToUse = FirstObjectPostPadding;
 					firstPlaced = true;
@@ -621,22 +312,22 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 					offsetUp = FirstObjectOffsetUp;
 				}
 				// custom mesh from the vertex data
-				else if (!customMesh.IsEmpty())
+				else if (customMesh) // !.IsEmpty()
 				{
 					bestWall = customMesh;
-					prePaddingToUse = localPoints[i].m_fPrePadding;
-					postPaddingToUse = localPoints[i].m_fPostPadding;
-					allowClipping = localPoints[i].m_bClip;
-					offsetUp = localPoints[i].m_fOffsetUp;
-					alignNext = localPoints[i].m_bAlignNext;
+					prePaddingToUse = pointData.PrePadding;
+					postPaddingToUse = pointData.PostPadding;
+					allowClipping = pointData.m_bAllowClipping;
+					offsetUp = pointData.m_fOffsetUp;
+					alignNext = pointData.m_bAlignWithNext;
 					prepadNext = false;
-					bestLen = MeasureEntity(customMesh, forwardAxis, api);
+					bestLen = MeasureEntity(customMesh, forwardAxis);
 					customMesh = string.Empty;
 					custom = true;
 				}
 				else if (!lastPoint)
 				{
-					wall = m_WallGroupContainer.GetRandomWall(remaining);
+					wall = m_WallGroupContainer.GetRandomWall(remaining, m_RandomGenerator.RandFloat01());
 					if (wall)
 					{
 						bestLen = wall.m_fWallLength;
@@ -660,14 +351,16 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 				if (!PrePadFirst && firstPass) // do not prepad the first asset in the segment
 					prePaddingToUse = 0;
 
-				PlacePrefab(generate, bestWall, from, dir, prevDir, rotationAdjustment, isGeneratorVisible, bestLen, prePaddingToUse, postPaddingToUse, offsetUp, alignNext, prepadNext, false, allowClipping, offsetRight);
+				PlacePrefab(generate, bestWall, from, dir, prevDir, rotationOffset, isGeneratorVisible, bestLen, prePaddingToUse, postPaddingToUse, offsetUp, alignNext, prepadNext, false, allowClipping, offsetRight);
 
 				remaining -= (bestLen * !allowClipping) + prePaddingToUse + postPaddingToUse; // TODO: fix bool multiplier
 
-				placeMiddle = !custom && m_bEnableMiddleObject && !MiddleObject.IsEmpty();
-				placeLast = lastSegment && m_bEnableLastObject && !LastObject.IsEmpty();
+				placeMiddle = !custom && m_bEnableMiddleObject && MiddleObject; // !.IsEmpty();
+				placeLast = lastSegment && m_bEnableLastObject && LastObject; // !.IsEmpty();
 
 				lengthRequirement = m_WallGroupContainer.m_fSmallestWall; // the minimal space required to place the next wall asset
+				if (lengthRequirement == 0)
+					break;
 
 				if (placeMiddle)
 					lengthRequirement += m_WallGroupContainer.m_fMiddleObjectLength;
@@ -686,11 +379,11 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 					bestWall = LastObject;
 					bestLen = lastObjectLength;
 					prePaddingToUse = LastObjectPrePadding;
-					postPaddingToUse = LastObjectPostPadding;
+					postPaddingToUse = 0;
 					offsetRight = rightVec * LastObjectOffsetRight;
 					offsetUp = LastObjectOffsetUp;
 
-					PlacePrefab(generate, bestWall, from, dir, prevDir, rotationAdjustment, isGeneratorVisible, bestLen, prePaddingToUse, postPaddingToUse, offsetUp, alignNext, prepadNext, false, allowClipping, offsetRight);
+					PlacePrefab(generate, bestWall, from, dir, prevDir, rotationOffset, isGeneratorVisible, bestLen, prePaddingToUse, postPaddingToUse, offsetUp, alignNext, prepadNext, false, allowClipping, offsetRight);
 					lastPlaced = true;
 					remaining -= (bestLen * !allowClipping) + prePaddingToUse + postPaddingToUse;
 				}
@@ -707,7 +400,7 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 					{
 						from += dir * MiddleObjectPrePadding;
 						offsetRight = rightVec * MiddleObjectOffsetRight;
-						PlacePrefab(generate, MiddleObject, from, dir, prevDir, rotationAdjustment, isGeneratorVisible, m_WallGroupContainer.m_fMiddleObjectLength, MiddleObjectPrePadding, MiddleObjectPostPadding, MiddleObjectOffsetUp,true, prepadNext, true, false, offsetRight);
+						PlacePrefab(generate, MiddleObject, from, dir, prevDir, rotationOffset, isGeneratorVisible, m_WallGroupContainer.m_fMiddleObjectLength, MiddleObjectPrePadding, MiddleObjectPostPadding, MiddleObjectOffsetUp, true, prepadNext, true, false, offsetRight);
 						remaining -= m_WallGroupContainer.m_fMiddleObjectLength + MiddleObjectPrePadding + MiddleObjectPostPadding;
 					}
 				}
@@ -715,19 +408,431 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 				firstPass = false;
 			}
 		}
-
-		// get the array back to normal
-		if (m_bStartFromTheEnd)
-			SCR_ArrayHelperT<ref SCR_WallGeneratorPoint>.Reverse(localPoints);
 	}
-#endif // WORKBENCH
 
 	//------------------------------------------------------------------------------------------------
-	// constructor
-	void WallGeneratorEntity(IEntitySource src, IEntity parent)
+	protected void GenerateClosestToShape(notnull array<vector> anchorPoints, float rotationOffset)
 	{
-#ifdef WORKBENCH
-		SetEventMask(EntityEvent.INIT);
-#endif // WORKBENCH
+		const bool isPolyline = false; // only used for splines as of now
+
+		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
+		int anchorPointsCountMinus1 = anchorPoints.Count() - 1;
+		map<int, ref ShapePointDataScriptBase> pointDataMap = GetFirstPointDataMap(WallGeneratorPointData);
+		vector lastPoint = anchorPoints[anchorPointsCountMinus1];
+		vector prevPoint = anchorPoints[0];
+
+		bool generateSection = true;
+
+		SCR_WallPair wallPair;
+		WallGeneratorPointData wallGeneratorPointData;
+		foreach (int anchorIndex, vector anchorPos : anchorPoints)
+		{
+			wallGeneratorPointData = WallGeneratorPointData.Cast(pointDataMap.Get(anchorIndex));
+			if (wallGeneratorPointData)
+				generateSection = wallGeneratorPointData.m_bGenerate;
+
+			if (!generateSection) // prevent even the mesh on this point, previous generator's behaviour
+				continue;
+
+			//
+			// generate anchor Prefab, whatever it is (FirstObject, MiddleObject, LastObject, PointDataObject etc)
+			//
+
+			// last anchor - generate "manually" (via CreateEntity) and leave
+			if (anchorIndex == anchorPointsCountMinus1)
+			{
+				vector lastDirection = m_ShapeNextPointHelper.GetCurrentDirection();
+				vector angles = lastDirection.VectorToAngles();
+				angles[1] = Math.Repeat(angles[0] + rotationOffset, 360);
+				angles[0] = 0;
+				angles[2] = 0;
+
+				vector right = lastDirection * -vector.Up;
+
+				if (m_bEnableLastObject && LastObject)
+				{
+					if (
+						worldEditorAPI.CreateEntity(
+							LastObject,
+							string.Empty,
+							m_iSourceLayerID,
+							m_Source,
+							prevPoint
+								+ LastObjectPrePadding * lastDirection
+								+ LastObjectOffsetRight * right
+								+ LastObjectOffsetUp * vector.Up,
+							angles))
+						break;
+				}
+
+				if (wallGeneratorPointData && wallGeneratorPointData.m_bGenerate && wallGeneratorPointData.MeshAtPoint)
+				{
+					if (
+						worldEditorAPI.CreateEntity(
+							wallGeneratorPointData.MeshAtPoint,
+							string.Empty,
+							m_iSourceLayerID,
+							m_Source,
+							prevPoint
+								+ wallGeneratorPointData.PrePadding * lastDirection
+								+ wallGeneratorPointData.m_fOffsetUp * vector.Up,
+							angles))
+						break;
+				}
+
+				break;
+			}
+
+			int nextAnchorIndex = anchorIndex + 1;
+
+			bool generatedAnchorPrefab;
+			if (anchorIndex == 0 && m_bEnableFirstObject && FirstObject)
+			{
+				if (
+					CreateWallEntity(
+						worldEditorAPI, s_World, FirstObject,
+						prevPoint, FirstObjectOffsetUp * vector.Up + FirstObjectOffsetRight * vector.Right,
+						FirstObjectPrePadding, FirstObjectPostPadding,
+						rotationOffset, nextAnchorIndex))
+					generatedAnchorPrefab = true;
+			}
+
+			if (!generatedAnchorPrefab && wallGeneratorPointData && wallGeneratorPointData.MeshAtPoint)
+			{
+				if (ExactPlacement)
+				{
+					m_ShapeNextPointHelper.SetOnAnchor(anchorIndex);
+					prevPoint = anchorPos;
+				}
+
+				if (
+					CreateWallEntity(
+						worldEditorAPI, s_World, wallGeneratorPointData.MeshAtPoint,
+						prevPoint, wallGeneratorPointData.m_fOffsetUp * vector.Up,
+						wallGeneratorPointData.PrePadding, wallGeneratorPointData.PostPadding,
+						rotationOffset, nextAnchorIndex))
+					generatedAnchorPrefab = true;
+			}
+
+			if (!generatedAnchorPrefab && m_bEnableMiddleObject && (PlaceMiddleAtVertex || PlaceMiddleAtVertexOnly) && MiddleObject)
+			{
+				if (
+					CreateWallEntity(
+						worldEditorAPI, s_World, MiddleObject,
+						prevPoint, MiddleObjectOffsetUp * vector.Up + MiddleObjectOffsetRight * vector.Right,
+						MiddleObjectPrePadding, MiddleObjectPostPadding,
+						rotationOffset, nextAnchorIndex))
+					generatedAnchorPrefab = true;
+			}
+
+			//
+			// generate from current point to the next anchor
+			//
+
+//			if (ExactPlacement && isPolyline && !generatedAnchorPrefab)
+//			{
+//				m_ShapeNextPointHelper.SetOnAnchor(anchorIndex);
+//				prevPoint = anchorPos;
+//			}
+
+			float distance = float.INFINITY;
+			wallPair = m_WallGroupContainer.GetRandomWall(distance, m_RandomGenerator.RandFloat01());
+
+int maxLoops1 = MAX_LOOPS_SAFETY;
+			while (wallPair)
+			{
+if (maxLoops1-- < 1)
+{
+Print("breaking while #1");
+break;
+}
+				float length = wallPair.m_fWallLength + PrePadding + PostPadding;
+				if (length < MIN_WALL_SLOT_SIZE)
+				{
+					PrintFormat(
+						"Invalid wall length/prePadding/postPadding combination (%1/%2/%3 = %4) - using default %5",
+						wallPair.m_fWallLength,
+						PrePadding,
+						PostPadding,
+						length,
+						MIN_WALL_SLOT_SIZE,
+						level: LogLevel.WARNING);
+					length = MIN_WALL_SLOT_SIZE;
+				}
+
+				// normal wall
+
+int maxLoops2 = MAX_LOOPS_SAFETY;
+				while (CreateWallEntity(
+						worldEditorAPI, s_World, wallPair.m_sWallAsset,
+						prevPoint, vector.Zero, wallPair.m_fPrePadding + PrePadding, wallPair.m_fPostPadding + PostPadding,
+						rotationOffset, nextAnchorIndex))
+				{
+if (maxLoops2 -- < 1)
+{
+Print("breaking while #2");
+break;
+}
+					if (m_bEnableMiddleObject && !PlaceMiddleAtVertexOnly && MiddleObject)
+					{
+						// insert a middle object after each wall
+						CreateWallEntity(
+							worldEditorAPI, s_World, MiddleObject,
+							prevPoint, MiddleObjectOffsetUp * vector.Up + MiddleObjectOffsetRight * vector.Right, MiddleObjectPrePadding, MiddleObjectPostPadding,
+							rotationOffset, nextAnchorIndex);
+					}
+
+					wallPair = m_WallGroupContainer.GetRandomWall(length, m_RandomGenerator.RandFloat01());
+					if (!wallPair)
+						break; // "while true" exit
+				}
+
+				// distance is too short for the current wallPair, let's retry with a shorter distance
+				distance = vector.DistanceXZ(prevPoint, anchorPoints[nextAnchorIndex]); // TODO: use -shape- distance to next anchor
+				wallPair = m_WallGroupContainer.GetRandomWall(distance - PrePadding - PostPadding, m_RandomGenerator.RandFloat01());
+				if (!wallPair)
+					break; // "while true" safety
+			}
+		}
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] entityName Prefab to measure
+	//! \param[in] measureAxis 0 for X measure (default for incorrect values), 1 for Y measure, 2 for Z measure
+	//! \param[in] world required
+	//! \return entity side on provided axis, MIN_WALL_PIECE_SIZE if below it, -1 on failure
+	static float MeasureEntity(ResourceName entityName, int measureAxis)
+	{
+		if (!entityName)
+			return -1;
+
+		float result;
+		if (MEASUREMENTS.Find(entityName, result))
+			return result;
+
+		result = -1;
+
+		Resource resource = Resource.Load(entityName);
+		if (!resource.IsValid())
+		{
+			MEASUREMENTS.Insert(entityName, result);
+			return result;
+		}
+
+		IEntity wallEntity = GetGame().SpawnEntityPrefab(resource, s_World);
+		if (wallEntity)
+		{
+			vector minBB;
+			vector maxBB;
+			wallEntity.GetBounds(minBB, maxBB);
+			delete wallEntity;
+
+			if (measureAxis == 2)		// Z-axis
+				result = (maxBB - minBB)[2];
+			else if (measureAxis == 1)	// Y-axis
+				result = (maxBB - minBB)[1];
+			else						// X-axis or incorrect value
+				result = (maxBB - minBB)[0];
+
+			if (result <= 0)
+			{
+				Print("Wall asset length is zero, does it have a valid mesh? " + entityName, LogLevel.ERROR);
+				result = -1;
+			}
+			else
+			if (result < MIN_WALL_PIECE_SIZE)
+			{
+				Print("Wall asset is too small, does it have a valid mesh? " + entityName, LogLevel.ERROR);
+				result = MIN_WALL_PIECE_SIZE;
+			}
+		}
+		else
+		{
+			Print("Cannot measure entity " + entityName, LogLevel.WARNING);
+		}
+
+		MEASUREMENTS.Insert(entityName, result);
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected IEntitySource CreateWallEntity(
+		WorldEditorAPI worldEditorAPI,
+		BaseWorld world,
+		ResourceName resourceName,
+		inout vector startPos, // as there is Y offset, pre- and post-padding
+		vector relPosOffset,
+		float prePadding,
+		float postPadding,
+		float dirOffset,
+		int anchorLimit = -1)
+	{
+		int axis;
+		if (!UseXAsForward)
+			axis = 2;
+
+		float size = MeasureEntity(resourceName, axis) + prePadding + postPadding;
+		if (size <= 0) // -1
+			return null;
+
+		vector nextPoint;
+		if (!m_ShapeNextPointHelper.GetNextPoint(size, nextPoint, anchorLimit, xzMode: true))
+			return null;
+
+		if (startPos == nextPoint)
+			return null;
+
+		vector direction = vector.Direction(startPos, nextPoint).Normalized();
+		if (direction == vector.Zero)
+			return null;
+
+		if (m_bSnapOffsetShapeToTheGround)
+		{
+			vector absPos = CoordToParent(startPos);
+			absPos[1] = worldEditorAPI.GetWorld().GetSurfaceY(absPos[0], absPos[2]) + m_vShapeOffset[1];
+			startPos = CoordToLocal(absPos);
+		}
+
+		startPos += prePadding * direction
+			+ relPosOffset[0] * (direction * -vector.Up) + relPosOffset[1] * vector.Up; // 90° 2D rotation + altitude
+
+		vector angles = direction.VectorToAngles();
+		angles = { 0, Math.Repeat(angles[0] + dirOffset, 360), 0 };
+
+		startPos += m_vShapeOffset[1] * vector.Up;
+
+		IEntitySource result = worldEditorAPI.CreateEntity(resourceName, string.Empty, m_iSourceLayerID, m_Source, startPos, angles);
+		startPos = nextPoint; // out
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected IEntitySource PlacePrefab(
+		bool generate,
+		ResourceName name,
+		out vector pos,
+		vector dir,
+		vector prevDir,
+		float rotationAdjustment,
+		bool isGeneratorVisible,
+		float length,
+		float prePadding,
+		float postPadding,
+		float offsetUp,
+		bool alignNext,
+		bool prepadNext,
+		bool snapToGround = false,
+		bool allowClipping = false,
+		vector offsetRight = vector.Zero)
+	{
+		if (!name) // .IsEmpty()
+			return null;
+
+		vector prepadDirection;
+		vector orientation;
+
+		if (alignNext)
+			orientation = dir;
+		else
+			orientation = prevDir;
+
+		if (prepadNext)
+			prepadDirection = dir;
+		else
+			prepadDirection = prevDir;
+
+		pos += prepadDirection * prePadding;
+		IEntitySource ent;
+		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
+
+		if (generate)
+		{
+			vector rotMat[4];
+			Math3D.DirectionAndUpMatrix(orientation, vector.Up, rotMat);
+			vector rot = Math3D.MatrixToAngles(rotMat);
+			rot = { 0, rot[0] + rotationAdjustment, 0 };
+
+			if (m_bSnapOffsetShapeToTheGround)
+			{
+				vector world = CoordToParent(pos);
+				pos[1] = worldEditorAPI.GetTerrainSurfaceY(world[0], world[2]);
+				if (m_ParentShapeSource)
+					pos[1] = pos[1] - worldEditorAPI.SourceToEntity(m_ParentShapeSource).GetOrigin()[1];
+			}
+
+			if (snapToGround)
+				ent = worldEditorAPI.CreateEntityExt(name, string.Empty, m_iSourceLayerID, m_Source, pos + offsetRight, rot, TraceFlags.ENTS);
+			else
+				ent = worldEditorAPI.CreateEntity(name, string.Empty, m_iSourceLayerID, m_Source, pos + offsetRight, rot);
+
+			if (offsetUp != 0)
+			{
+				vector entPos;
+				ent.Get("coords", entPos);
+				entPos[1] = entPos[1] + offsetUp;
+				if (entPos != vector.Zero)
+					worldEditorAPI.SetVariableValue(ent, null, "coords", string.Format("%1 %2 %3", entPos[0], entPos[1], entPos[2]));
+			}
+
+			worldEditorAPI.SetEntityVisible(ent, isGeneratorVisible, false);
+		}
+
+		if (allowClipping)
+			length = 0;
+
+		pos += dir * Math.Max(0.1, length + postPadding);
+
+		return ent;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected override bool _WB_OnKeyChanged(BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent)
+	{
+		super._WB_OnKeyChanged(src, key, ownerContainers, parent);
+
+		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
+		if (!worldEditorAPI || worldEditorAPI.UndoOrRedoIsRestoring())
+			return false;
+
+		// caution: m_ShapeNextPointHelper is overwritten!
+		if (key == "m_bStartFromTheEnd")
+		{
+			ShapeEntity shapeEntity = ShapeEntity.Cast(worldEditorAPI.SourceToEntity(m_ParentShapeSource));
+			if (!shapeEntity)
+				return false;
+
+			array<vector> anchorPoints = {};
+			array<vector> tesselatedPoints = {};
+			if (!SCR_ParallelShapeHelper.GetAnchorsAndTesselatedPointsFromShape(shapeEntity, m_vShapeOffset, m_bYOffsetInShapeSpace, anchorPoints, tesselatedPoints))
+			{
+				PrintFormat("[SCR_LineGeneratorBaseEntity.ResetShapeNextPointHelper] error getting anchors and tesselated points from shape (" + __FILE__ + " L" + __LINE__ + ")", this, level: LogLevel.WARNING);
+				return false;
+			}
+
+			if (!m_bStartFromTheEnd) // actually activated - going from false to true (not yet saved to container)
+			{
+				SCR_ArrayHelperT<vector>.Reverse(anchorPoints);
+				SCR_ArrayHelperT<vector>.Reverse(tesselatedPoints);
+			}
+
+			m_ShapeNextPointHelper = SCR_ShapeNextPointHelper.CreateFromPoints(anchorPoints, tesselatedPoints);
+		}
+
+		Generate();
+
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected override void OnShapeChangedInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity, array<vector> mins, array<vector> maxes)
+	{
+		super.OnShapeChangedInternal(shapeEntitySrc, shapeEntity, mins, maxes);
+		if (!shapeEntitySrc || _WB_GetEditorAPI().UndoOrRedoIsRestoring())
+			return;
+
+		Generate();
+	}
+
+#endif WORKBENCH
 }

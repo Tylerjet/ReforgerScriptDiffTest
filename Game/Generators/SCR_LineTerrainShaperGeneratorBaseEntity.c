@@ -1,8 +1,9 @@
-class SCR_LineTerrainShaperGeneratorBaseEntityClass : SCR_GeneratorBaseEntityClass
+class SCR_LineTerrainShaperGeneratorBaseEntityClass : SCR_LineGeneratorBaseEntityClass
 {
 }
 
-class SCR_LineTerrainShaperGeneratorBaseEntity : SCR_GeneratorBaseEntity
+// TODO: terrain shaping's line offset support
+class SCR_LineTerrainShaperGeneratorBaseEntity : SCR_LineGeneratorBaseEntity
 {
 	/*
 		Terrain Sculpting
@@ -23,13 +24,14 @@ class SCR_LineTerrainShaperGeneratorBaseEntity : SCR_GeneratorBaseEntity
 #ifdef WORKBENCH
 
 	//! Read by WorldEditorAPI.AddTerrainFlatterEntity, CANNOT be renamed
-	//! defined at the last moment in UpdateTerrainSimple from m_ParentShapeSource
+	//! defined at the last moment in UpdateTerrainSimple from m_ParentShapeSource / m_OffsetShapeSource
 	protected ShapeEntity m_ShapeEntity;
 
-	protected static ref array<string> s_aTerrainUpdateKeys = {
+	protected static const ref array<string> TERRAIN_UPDATE_KEYS = {
 		"m_bSculptTerrain", "m_iTerrainSculptingPriority",
 		"m_fTerrainSculptingPathWidth", "m_fTerrainSculptingFallOffWidth",
 	};
+	protected static const string OFFSET_SHAPE_COLOUR = "1 0 1 1"; // RGBA - magic pink (#F0F)
 
 	//------------------------------------------------------------------------------------------------
 	protected override void OnShapeInitInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity)
@@ -44,7 +46,7 @@ class SCR_LineTerrainShaperGeneratorBaseEntity : SCR_GeneratorBaseEntity
 	{
 		super.OnShapeTransformInternal(shapeEntitySrc, shapeEntity, mins, maxes);
 
-		UpdateTerrain(shapeEntity, false, mins, maxes);
+		UpdateTerrainSimple(false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -52,7 +54,7 @@ class SCR_LineTerrainShaperGeneratorBaseEntity : SCR_GeneratorBaseEntity
 	{
 		super.OnShapeChangedInternal(shapeEntitySrc, shapeEntity, mins, maxes);
 
-		UpdateTerrain(shapeEntity, false, mins, maxes);
+		UpdateTerrainSimple(false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -69,20 +71,39 @@ class SCR_LineTerrainShaperGeneratorBaseEntity : SCR_GeneratorBaseEntity
 		super._WB_OnKeyChanged(src, key, ownerContainers, parent);
 
 		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
+		if (!worldEditorAPI || worldEditorAPI.UndoOrRedoIsRestoring()) // sorry Ctrl+Z, but you cannot act here
+			return false;
+
 		if (!worldEditorAPI.AreGeneratorEventsEnabled())
 			return false;
 
 		BaseContainerTools.WriteToInstance(this, src);
 
-		if (s_aTerrainUpdateKeys.Contains(key))
+		if (TERRAIN_UPDATE_KEYS.Contains(key))
 		{
 			bool forceUpdate;
 			if (key == "m_bSculptTerrain")
 			{
 				if (m_bSculptTerrain)
+				{
 					forceUpdate = true;
+				}
 				else
+				{
 					worldEditorAPI.RemoveTerrainFlatterEntity(this, true);
+
+//					// delete offset shape
+//					IEntitySource offsetShapeSource;
+//					for (int i, count = m_ParentShapeSource.GetNumChildren(); i < count; ++i)
+//					{
+//						offsetShapeSource = m_ParentShapeSource.GetChild(i);
+//						if (offsetShapeSource.GetClassName().ToType() && offsetShapeSource.GetClassName().ToType().IsInherited(ShapeEntity))
+//						{
+//							worldEditorAPI.DeleteEntity(offsetShapeSource);
+//							break;
+//						}
+//					}
+				}
 			}
 
 			UpdateTerrainSimple(forceUpdate);
@@ -127,7 +148,8 @@ class SCR_LineTerrainShaperGeneratorBaseEntity : SCR_GeneratorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// wrapper
+	//! wrapper method around UpdateTerrain that sets m_ShapeEntity up
+	//! \param[in] forceUpdate WorldEditorAPI.AddTerrainFlatterEntity parameter
 	protected void UpdateTerrainSimple(bool forceUpdate = false)
 	{
 		if (!m_bSculptTerrain || !m_ParentShapeSource)
@@ -137,30 +159,61 @@ class SCR_LineTerrainShaperGeneratorBaseEntity : SCR_GeneratorBaseEntity
 		if (!worldEditorAPI)
 			return;
 
-		m_ShapeEntity = ShapeEntity.Cast(worldEditorAPI.SourceToEntity(m_ParentShapeSource));
-		if (!m_ShapeEntity)
-			return;
+//		IEntitySource offsetShapeSource;
+//		for (int i, count = m_ParentShapeSource.GetNumChildren(); i < count; ++i)
+//		{
+//			offsetShapeSource = m_ParentShapeSource.GetChild(i);
+//			if (offsetShapeSource.GetClassName().ToType() && offsetShapeSource.GetClassName().ToType().IsInherited(ShapeEntity))
+//				break;
+//
+//			offsetShapeSource = null;
+//		}
+//
+//		if (offsetShapeSource)
+//			worldEditorAPI.DeleteEntity(offsetShapeSource);
+//
+//		offsetShapeSource = worldEditorAPI.CreateEntity(m_ParentShapeSource.GetClassName(), string.Empty, 0, m_ParentShapeSource, vector.Zero, vector.Zero);
+//		if (!offsetShapeSource)
+//			return;
+//
+//		worldEditorAPI.SetVariableValue(offsetShapeSource, null, "LineColor", OFFSET_SHAPE_COLOUR);
+//		foreach (int i, vector anchorPoint : m_ShapeNextPointHelper.GetAnchorPoints())
+//		{
+//			worldEditorAPI.CreateObjectArrayVariableMember(offsetShapeSource, null, "Points", "ShapePoint", i);
+//			worldEditorAPI.SetVariableValue(offsetShapeSource, { new ContainerIdPathEntry("Points", i) }, "Position", string.Format("%1 %2 %3", anchorPoint[0], anchorPoint[1], anchorPoint[2]));
+//		}
+//
+//		ShapeEntity shapeEntity = ShapeEntity.Cast(worldEditorAPI.SourceToEntity(offsetShapeSource));
+		ShapeEntity shapeEntity = ShapeEntity.Cast(worldEditorAPI.SourceToEntity(m_ParentShapeSource));
+		if (shapeEntity)
+		{
+			array<vector> updateMins = {};
+			array<vector> updateMaxes = {};
+//			shapeEntity.GetAllInfluenceBBoxes(offsetShapeSource, updateMins, updateMaxes);
+			shapeEntity.GetAllInfluenceBBoxes(m_ParentShapeSource, updateMins, updateMaxes);
 
-		array<vector> updateMins = {};
-		array<vector> updateMaxes = {};
-		m_ShapeEntity.GetAllInfluenceBBoxes(m_ParentShapeSource, updateMins, updateMaxes);
+			UpdateTerrain(shapeEntity, forceUpdate, updateMins, updateMaxes);
+		}
 
-		UpdateTerrain(m_ShapeEntity, forceUpdate, updateMins, updateMaxes);
+//		worldEditorAPI.DeleteEntity(offsetShapeSource);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	// where everything happens
+	//! \param[in] shapeEntity the shape to follow for terrain update - is assigned to m_ShapeEntity as C++ reads this variable ("hardcoded" C++-side)
+	//! \param[in] forceUpdate
+	//! \param[in] updateMins
+	//! \param[in] updateMaxes
 	protected void UpdateTerrain(notnull ShapeEntity shapeEntity, bool forceUpdate, notnull array<vector> updateMins, notnull array<vector> updateMaxes)
 	{
+		m_ShapeEntity = shapeEntity;
+
 		if (!m_bSculptTerrain)
 			return;
 
 		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
 		if (!worldEditorAPI)
 			return;
-
-		vector mat[4];
-		shapeEntity.GetWorldTransform(mat);
 
 		array<vector> points = {};
 		shapeEntity.GenerateTesselatedShape(points);
@@ -171,15 +224,14 @@ class SCR_LineTerrainShaperGeneratorBaseEntity : SCR_GeneratorBaseEntity
 			return;
 		}
 
-		vector firstPoint = points[0].Multiply4(mat);
+		vector firstPoint = shapeEntity.CoordToParent(points[0]);
 		vector mins = firstPoint;
 		vector maxs = firstPoint;
 
-		vector pos;
 		foreach (vector point : points)
 		{
-			pos = point.Multiply4(mat);
-			for (int i = 0; i < 3; i++)
+			vector pos = shapeEntity.CoordToParent(point);
+			for (int i = 0; i < 3; ++i)
 			{
 				float val = pos[i];
 
@@ -194,17 +246,14 @@ class SCR_LineTerrainShaperGeneratorBaseEntity : SCR_GeneratorBaseEntity
 		worldEditorAPI.AddTerrainFlatterEntity(this, mins, maxs, m_iTerrainSculptingPriority, m_fTerrainSculptingPathWidth * 0.5, m_fTerrainSculptingFallOffWidth, forceUpdate, updateMins, updateMaxes);
 	}
 
-#endif // WORKBENCH
-
 	//------------------------------------------------------------------------------------------------
 	// constructor
 	protected void SCR_LineTerrainShaperGeneratorBaseEntity(IEntitySource src, IEntity parent)
 	{
-#ifdef WORKBENCH
 		if (!_WB_GetEditorAPI())
 			return;
 
 		m_ShapeEntity = ShapeEntity.Cast(parent);
-#endif // WORKBENCH
 	}
+#endif // WORKBENCH
 }

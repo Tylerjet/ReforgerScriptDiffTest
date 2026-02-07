@@ -24,13 +24,13 @@ class SCR_AICallOnExecuteWaypointTree : AITaskScripted
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Calls event OnExecuteWaypointTree of SCR_AIWaypointState of current waypoint";
 	}

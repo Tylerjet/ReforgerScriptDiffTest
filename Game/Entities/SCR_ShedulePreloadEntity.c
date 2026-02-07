@@ -13,6 +13,11 @@ sealed class SCR_ShedulePreloadEntity : GenericEntity
 	
 	
 #ifdef WORKBENCH
+	override int _WB_GetAfterWorldUpdateSpecs(IEntitySource src)
+	{
+		return EEntityFrameUpdateSpecs.CALL_WHEN_ENTITY_VISIBLE;
+	}
+
 	override void _WB_AfterWorldUpdate(float timeSlice)
 	{
 		ref auto pShape = Shape.CreateSphere(ARGB(100,0,255,0), ShapeFlags.ONCE | ShapeFlags.WIREFRAME, GetOrigin(), m_fPreloadRadius);

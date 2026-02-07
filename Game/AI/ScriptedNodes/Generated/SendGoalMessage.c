@@ -47,7 +47,7 @@ class SCR_AISendGoalMessage_Cancel : SCR_AISendMessageGenerated
 		s = s + string.Format("m_bIsWaypointRelated: %1\n", m_bIsWaypointRelated);
 		return s;
 	}
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -102,7 +102,7 @@ class SCR_AISendGoalMessage_Attack : SCR_AISendMessageGenerated
 		s = s + string.Format("m_bIsWaypointRelated: %1\n", m_bIsWaypointRelated);
 		return s;
 	}
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -160,7 +160,7 @@ class SCR_AISendGoalMessage_AttackCluster : SCR_AISendMessageGenerated
 		s = s + string.Format("m_bIsWaypointRelated: %1\n", m_bIsWaypointRelated);
 		return s;
 	}
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -212,7 +212,7 @@ class SCR_AISendGoalMessage_AttackClusterDone : SCR_AISendMessageGenerated
 		s = s + string.Format("m_bIsWaypointRelated: %1\n", m_bIsWaypointRelated);
 		return s;
 	}
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -264,7 +264,7 @@ class SCR_AISendGoalMessage_KeepFormation : SCR_AISendMessageGenerated
 		s = s + string.Format("m_bIsWaypointRelated: %1\n", m_bIsWaypointRelated);
 		return s;
 	}
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -277,7 +277,7 @@ class SCR_AISendGoalMessage_Move : SCR_AISendMessageGenerated
 	[Attribute("")]
 	bool m_bIsWaypointRelated;
 	
-	[Attribute("", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EMovementType))]
+	[Attribute("", UIWidgets.ComboBox, enumType: EMovementType)]
 	EMovementType m_eMovementType;
 	
 	[Attribute("")]
@@ -336,7 +336,7 @@ class SCR_AISendGoalMessage_Move : SCR_AISendMessageGenerated
 		s = s + string.Format("m_bUseVehicles: %1\n", m_bUseVehicles);
 		return s;
 	}
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -349,7 +349,7 @@ class SCR_AISendGoalMessage_Follow : SCR_AISendMessageGenerated
 	[Attribute("")]
 	bool m_bIsWaypointRelated;
 	
-	[Attribute("", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EMovementType))]
+	[Attribute("", UIWidgets.ComboBox, enumType: EMovementType)]
 	EMovementType m_eMovementType;
 	
 	[Attribute("")]
@@ -411,7 +411,7 @@ class SCR_AISendGoalMessage_Follow : SCR_AISendMessageGenerated
 		s = s + string.Format("m_bUseVehicles: %1\n", m_bUseVehicles);
 		return s;
 	}
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -430,7 +430,7 @@ class SCR_AISendGoalMessage_Investigate : SCR_AISendMessageGenerated
 	[Attribute("")]
 	bool m_bIsDangerous;
 	
-	[Attribute("", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EAIUnitType))]
+	[Attribute("", UIWidgets.ComboBox, enumType: EAIUnitType)]
 	EAIUnitType m_eTargetUnitType;
 	
 	[Attribute("")]
@@ -499,7 +499,7 @@ class SCR_AISendGoalMessage_Investigate : SCR_AISendMessageGenerated
 		s = s + string.Format("m_fDuration: %1\n", m_fDuration);
 		return s;
 	}
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -512,7 +512,7 @@ class SCR_AISendGoalMessage_SeekAndDestroy : SCR_AISendMessageGenerated
 	[Attribute("")]
 	bool m_bIsWaypointRelated;
 	
-	[Attribute("", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EMovementType))]
+	[Attribute("", UIWidgets.ComboBox, enumType: EMovementType)]
 	EMovementType m_eMovementType;
 	
 	[Attribute("")]
@@ -571,7 +571,7 @@ class SCR_AISendGoalMessage_SeekAndDestroy : SCR_AISendMessageGenerated
 		s = s + string.Format("m_bUseVehicles: %1\n", m_bUseVehicles);
 		return s;
 	}
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -626,7 +626,7 @@ class SCR_AISendGoalMessage_Heal : SCR_AISendMessageGenerated
 		s = s + string.Format("m_bIsWaypointRelated: %1\n", m_bIsWaypointRelated);
 		return s;
 	}
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -684,7 +684,7 @@ class SCR_AISendGoalMessage_ProvideAmmo : SCR_AISendMessageGenerated
 		s = s + string.Format("m_bIsWaypointRelated: %1\n", m_bIsWaypointRelated);
 		return s;
 	}
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -742,7 +742,7 @@ class SCR_AISendGoalMessage_PickupInventoryItems : SCR_AISendMessageGenerated
 		s = s + string.Format("m_bIsWaypointRelated: %1\n", m_bIsWaypointRelated);
 		return s;
 	}
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -805,7 +805,7 @@ class SCR_AISendGoalMessage_Defend : SCR_AISendMessageGenerated
 		s = s + string.Format("m_fDefendAngularRange: %1\n", m_fDefendAngularRange);
 		return s;
 	}
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -857,7 +857,7 @@ class SCR_AISendGoalMessage_Retreat : SCR_AISendMessageGenerated
 		s = s + string.Format("m_bIsWaypointRelated: %1\n", m_bIsWaypointRelated);
 		return s;
 	}
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -912,7 +912,7 @@ class SCR_AISendGoalMessage_HealWait : SCR_AISendMessageGenerated
 		s = s + string.Format("m_bIsWaypointRelated: %1\n", m_bIsWaypointRelated);
 		return s;
 	}
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -978,7 +978,7 @@ class SCR_AISendGoalMessage_PerformAction : SCR_AISendMessageGenerated
 		s = s + string.Format("m_sSmartActionTag: %1\n", m_sSmartActionTag);
 		return s;
 	}
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -1033,7 +1033,7 @@ class SCR_AISendGoalMessage_OpenNavlinkDoor : SCR_AISendMessageGenerated
 		s = s + string.Format("m_bIsWaypointRelated: %1\n", m_bIsWaypointRelated);
 		return s;
 	}
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -1046,7 +1046,7 @@ class SCR_AISendGoalMessage_GetIn : SCR_AISendMessageGenerated
 	[Attribute("")]
 	bool m_bIsWaypointRelated;
 	
-	[Attribute("", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EAICompartmentType))]
+	[Attribute("", UIWidgets.ComboBox, enumType: EAICompartmentType)]
 	EAICompartmentType m_eRoleInVehicle;
 	
 	protected static ref TStringArray _s_aVarsIn =
@@ -1056,7 +1056,8 @@ class SCR_AISendGoalMessage_GetIn : SCR_AISendMessageGenerated
 		"IsWaypointRelated",
 		"VehicleEntity",
 		"BoardingParams",
-		"RoleInVehicle"
+		"RoleInVehicle",
+		"CompartmentSlot"
 	};
 	override TStringArray GetVariablesIn() { return _s_aVarsIn; }
 	
@@ -1082,6 +1083,8 @@ class SCR_AISendGoalMessage_GetIn : SCR_AISendMessageGenerated
 		if(!GetVariableIn("RoleInVehicle", msg.m_eRoleInVehicle))
 			msg.m_eRoleInVehicle = m_eRoleInVehicle;
 		
+		GetVariableIn("CompartmentSlot", msg.m_CompartmentSlot);
+		
 		if (msg.m_bIsWaypointRelated)
 			msg.m_RelatedWaypoint = GetRelatedWaypoint(owner);
 		
@@ -1099,7 +1102,7 @@ class SCR_AISendGoalMessage_GetIn : SCR_AISendMessageGenerated
 		s = s + string.Format("m_eRoleInVehicle: %1\n", typename.EnumToString(EAICompartmentType, m_eRoleInVehicle));
 		return s;
 	}
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -1157,7 +1160,7 @@ class SCR_AISendGoalMessage_GetOut : SCR_AISendMessageGenerated
 		s = s + string.Format("m_bIsWaypointRelated: %1\n", m_bIsWaypointRelated);
 		return s;
 	}
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -1209,7 +1212,7 @@ class SCR_AISendGoalMessage_Flee : SCR_AISendMessageGenerated
 		s = s + string.Format("m_bIsWaypointRelated: %1\n", m_bIsWaypointRelated);
 		return s;
 	}
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -1270,7 +1273,7 @@ class SCR_AISendGoalMessage_ThrowGrenadeTo : SCR_AISendMessageGenerated
 		s = s + string.Format("m_bIsWaypointRelated: %1\n", m_bIsWaypointRelated);
 		return s;
 	}
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -1325,7 +1328,7 @@ class SCR_AISendGoalMessage_FireIllumFlareAt : SCR_AISendMessageGenerated
 		s = s + string.Format("m_bIsWaypointRelated: %1\n", m_bIsWaypointRelated);
 		return s;
 	}
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -1386,7 +1389,7 @@ class SCR_AISendGoalMessage_Suppress : SCR_AISendMessageGenerated
 		s = s + string.Format("m_bIsWaypointRelated: %1\n", m_bIsWaypointRelated);
 		return s;
 	}
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -1405,7 +1408,8 @@ class SCR_AISendGoalMessage_Animate : SCR_AISendMessageGenerated
 		"PriorityLevel",
 		"IsWaypointRelated",
 		"RootEntity",
-		"AgentScript"
+		"AgentScript",
+		"RelatedInvoker"
 	};
 	override TStringArray GetVariablesIn() { return _s_aVarsIn; }
 	
@@ -1428,6 +1432,8 @@ class SCR_AISendGoalMessage_Animate : SCR_AISendMessageGenerated
 		
 		GetVariableIn("AgentScript", msg.m_AgentScript);
 		
+		GetVariableIn("RelatedInvoker", msg.m_RelatedInvoker);
+		
 		if (msg.m_bIsWaypointRelated)
 			msg.m_RelatedWaypoint = GetRelatedWaypoint(owner);
 		
@@ -1442,6 +1448,72 @@ class SCR_AISendGoalMessage_Animate : SCR_AISendMessageGenerated
 		string s;
 		s = s + string.Format("m_fPriorityLevel: %1\n", m_fPriorityLevel);
 		s = s + string.Format("m_bIsWaypointRelated: %1\n", m_bIsWaypointRelated);
+		return s;
+	}
+	static override bool VisibleInPalette() { return true; }
+}
+
+//---------------------------------------------------------------------------------------
+// Generated from class: SCR_AIMessage_ArtillerySupport
+class SCR_AISendGoalMessage_ArtillerySupport : SCR_AISendMessageGenerated
+{
+	[Attribute("")]
+	float m_fPriorityLevel;
+	
+	[Attribute("")]
+	bool m_bIsWaypointRelated;
+	
+	[Attribute("", UIWidgets.ComboBox, enumType: SCR_EAIArtilleryAmmoType)]
+	SCR_EAIArtilleryAmmoType m_eAmmoType;
+	
+	protected static ref TStringArray _s_aVarsIn =
+	{
+		SCR_AISendMessageGenerated.PORT_RECEIVER,
+		"PriorityLevel",
+		"IsWaypointRelated",
+		"ArtilleryEntity",
+		"TargetPos",
+		"AmmoType"
+	};
+	override TStringArray GetVariablesIn() { return _s_aVarsIn; }
+	
+	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
+	{
+		AIAgent receiver = GetReceiverAgent(owner);
+		SCR_AIMessage_ArtillerySupport msg = new SCR_AIMessage_ArtillerySupport();
+		
+		msg.m_RelatedGroupActivity = GetRelatedActivity(owner);
+		
+		msg.SetText(m_sText);
+		
+		if(!GetVariableIn("PriorityLevel", msg.m_fPriorityLevel))
+			msg.m_fPriorityLevel = m_fPriorityLevel;
+		
+		if(!GetVariableIn("IsWaypointRelated", msg.m_bIsWaypointRelated))
+			msg.m_bIsWaypointRelated = m_bIsWaypointRelated;
+		
+		GetVariableIn("ArtilleryEntity", msg.m_ArtilleryEntity);
+		
+		GetVariableIn("TargetPos", msg.m_vTargetPos);
+		
+		if(!GetVariableIn("AmmoType", msg.m_eAmmoType))
+			msg.m_eAmmoType = m_eAmmoType;
+		
+		if (msg.m_bIsWaypointRelated)
+			msg.m_RelatedWaypoint = GetRelatedWaypoint(owner);
+		
+		if (SendMessage(owner, receiver, msg))
+			return ENodeResult.SUCCESS;
+		else
+			return ENodeResult.FAIL;
+	}
+	
+	override string GetNodeMiddleText()
+	{
+		string s;
+		s = s + string.Format("m_fPriorityLevel: %1\n", m_fPriorityLevel);
+		s = s + string.Format("m_bIsWaypointRelated: %1\n", m_bIsWaypointRelated);
+		s = s + string.Format("m_eAmmoType: %1\n", typename.EnumToString(SCR_EAIArtilleryAmmoType, m_eAmmoType));
 		return s;
 	}
 	static override bool VisibleInPalette() { return true; }

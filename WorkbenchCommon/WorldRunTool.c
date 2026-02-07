@@ -12,7 +12,7 @@ class WorldRunPlugin: WorkbenchPlugin
 {
 	[Attribute("game.exe", UIWidgets.EditBox)]
 	string Executable;
-	[Attribute("0", UIWidgets.ComboBox, "Configuration", "", ParamEnumArray.FromEnum(WorldRunConfiguration))]
+	[Attribute("0", UIWidgets.ComboBox, "Configuration", "", enumType: WorldRunConfiguration)]
 	int Configuration;
 	
 	[Attribute("-1", UIWidgets.EditBox, "Horizontal coordinate on the screen if running in window mode. Default if -1.")]

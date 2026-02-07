@@ -174,12 +174,13 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 		
 		if (verticalMode == EEditorTransformVertical.GEOMETRY)
 			flags |= EPreviewEntityFlag.GEOMETRY;
-		
-		ResourceName material;
+
 #ifdef PREVIEW_ENTITY_SHOW_REFERENCE
-		material = "{D0126AF0E6A27141}Common/Materials/Colors/colorRed.emat";
+		const ResourceName material = "{D0126AF0E6A27141}Common/Materials/Colors/colorRed.emat"; // TODO: check for good const usage
+#else
+		const ResourceName material; // TODO: check for good const usage
 #endif
-		
+
 		m_RefEntity = SCR_RefPreviewEntity.Cast(SCR_RefPreviewEntity.SpawnPreviewFromEditableEntities(m_aEditedEntities, "SCR_RefPreviewEntity", GetGame().GetWorld(), spawnParams, material, flags));
 		
 		int simulatedDelay = DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_NETWORK_DELAY) * 100;

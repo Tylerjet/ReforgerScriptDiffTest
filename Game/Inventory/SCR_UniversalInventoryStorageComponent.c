@@ -35,6 +35,36 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 	{
 		return m_fMaxWeight;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get an estimate of how many times the resource can fit in in this storage
+	int GetEstimatedCountFitForResourceWeight(ResourceName prefab)
+	{
+		const int volumeBased = GetEstimatedCountFitForResource(prefab);
+		const float itemWeight = GetWeightFromResource(prefab);
+		const int weightBased = Math.Floor((m_fMaxWeight - GetTotalWeight()) / itemWeight);
+		
+		if (volumeBased < weightBased)
+			return volumeBased;
+
+		return weightBased;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Checks if parent container will allow for storing provided amount of additional weight
+	//! \param[in] weight
+	protected bool CheckParentWeightLimit(float weight)
+	{
+		IEntity parent = GetOwner().GetParent();
+		if (!parent || ChimeraCharacter.Cast(parent))
+			return true;
+
+		SCR_UniversalInventoryStorageComponent parentStorage = SCR_UniversalInventoryStorageComponent.Cast(parent.FindComponent(SCR_UniversalInventoryStorageComponent));
+		if (!parentStorage)
+			return true;
+
+		return parentStorage.IsAdditionalWeightOk(weight);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	private SCR_ItemAttributeCollection GetAttributeCollection( IEntity item )
@@ -68,51 +98,70 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 	{
 		if (!super.CanStoreItem(item, slotID))
 			return false;
-		
-		InventoryItemComponent pItemComp = GetItemComponent( item );
-		if( !pItemComp )
+
+		InventoryItemComponent pItemComp = GetItemComponent(item);
+		if (!pItemComp)
 			return false;
 
-		bool bVolumeOK = PerformVolumeValidation( item );
-		if( !bVolumeOK )
+		bool bVolumeOK = PerformVolumeValidation(item);
+		if (!bVolumeOK)
 		{
-			if( pInventoryManager )	
-				pInventoryManager.SetReturnCode( EInventoryRetCode.RETCODE_ITEM_TOO_BIG );
+			if(pInventoryManager)	
+				pInventoryManager.SetReturnCode(EInventoryRetCode.RETCODE_ITEM_TOO_BIG);
+			
+			return false;
 		}
-		
-		bool bWeightOK = IsAdditionalWeightOk( pItemComp.GetTotalWeight() );
-		if( !bWeightOK )
+
+		bool bWeightOK = IsAdditionalWeightOk(pItemComp.GetTotalWeight());
+		if (!bWeightOK)
 		{
-			if( pInventoryManager )	
-				pInventoryManager.SetReturnCode( EInventoryRetCode.RETCODE_ITEM_TOO_HEAVY );
+			if (pInventoryManager)	
+				pInventoryManager.SetReturnCode(EInventoryRetCode.RETCODE_ITEM_TOO_HEAVY);
+			
+			return false;
 		}
-		
-		bool bDimensionsOK = PerformDimensionValidation(item);
-		return bVolumeOK && bWeightOK && bDimensionsOK;
+
+		IEntity parent = GetOwner().GetParent();
+		if (parent)
+		{
+			if (parent == item.GetParent())
+				return true; // If transfered from my parent inventory to me then it has to be within parents allowed weight limit
+
+			return CheckParentWeightLimit(pItemComp.GetTotalWeight());
+		}
+
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool CanStoreResource(ResourceName resourceName, int slotID, int count)
+	override bool CanStoreResource(ResourceName resourceName, int slotID)
 	{
-		if (!super.CanStoreResource(resourceName, slotID, count))
+		if (!super.CanStoreResource(resourceName, slotID))
 			return false;
 		
-		bool bVolumeOK = PerformVolumeAndDimensionValidationForResource(resourceName, true, count);
-		if( !bVolumeOK )
+		bool bVolumeOK = PerformVolumeValidationForResource(resourceName);
+		if (!bVolumeOK)
 		{
-			if( pInventoryManager )	
-				pInventoryManager.SetReturnCode( EInventoryRetCode.RETCODE_ITEM_TOO_BIG );
+			if (pInventoryManager)	
+				pInventoryManager.SetReturnCode(EInventoryRetCode.RETCODE_ITEM_TOO_BIG);
+			
+			return false;
 		}
 		
 		float fWeight = GetWeightFromResource(resourceName);
-		bool bWeightOK = IsAdditionalWeightOk( fWeight );
-		if( !bWeightOK )
+		bool bWeightOK = IsAdditionalWeightOk(fWeight);
+		if (!bWeightOK)
 		{
-			if( pInventoryManager )	
-				pInventoryManager.SetReturnCode( EInventoryRetCode.RETCODE_ITEM_TOO_HEAVY );
+			if (pInventoryManager)	
+				pInventoryManager.SetReturnCode(EInventoryRetCode.RETCODE_ITEM_TOO_HEAVY);
+			
+			return false;
 		}
-		
-		return bVolumeOK && bWeightOK;
+
+		if (GetOwner().GetParent())
+			return CheckParentWeightLimit(fWeight);
+
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -146,19 +195,24 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 		float occupiedVolumeWithoutItem = GetOccupiedSpace() - itemVolume;
 		
 		bool bVolumeOK = occupiedVolumeWithoutItem + nextItemVolume <= GetMaxVolumeCapacity();
-		if(!bVolumeOK && pInventoryManager)
+		if (!bVolumeOK || !PerformDimensionValidation(nextItem))
 		{	
-			pInventoryManager.SetReturnCode(EInventoryRetCode.RETCODE_ITEM_TOO_BIG);
+			if (pInventoryManager)
+				pInventoryManager.SetReturnCode(EInventoryRetCode.RETCODE_ITEM_TOO_BIG);
+			
+			return false;
 		}
 		
 		bool bWeightOK = IsAdditionalWeightOk(nextItemComp.GetTotalWeight() - itemComp.GetTotalWeight());
-		if(!bWeightOK && pInventoryManager)
+		if (!bWeightOK)
 		{
-			pInventoryManager.SetReturnCode(EInventoryRetCode.RETCODE_ITEM_TOO_HEAVY);
+			if (pInventoryManager)
+				pInventoryManager.SetReturnCode(EInventoryRetCode.RETCODE_ITEM_TOO_HEAVY);
+			
+			return false;
 		}
 		
-		bool bDimensionsOK = PerformDimensionValidation(nextItem);
-		return bVolumeOK && bWeightOK && bDimensionsOK;
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -301,6 +355,5 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 	protected override void OnAddedToSlot(IEntity item, int slotID);
 	override void OnManagerChanged(InventoryStorageManagerComponent manager);
 //	void SCR_UniversalInventoryStorageComponent( IEntityComponentSource src, IEntity ent, IEntity parent );
-
 	#endif	
 }

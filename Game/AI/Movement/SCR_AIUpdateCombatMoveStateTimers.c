@@ -48,7 +48,7 @@ class SCR_AIUpdateCombatMoveStateTimers : AITaskScripted
 	}	
 	
 	//--------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 	
 	protected ref TStringArray s_aVarsIn = { PORT_RESET };
 	override TStringArray GetVariablesIn()

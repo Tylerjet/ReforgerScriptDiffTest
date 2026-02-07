@@ -62,8 +62,17 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Enables custom map crosshair visuals")]
 	protected bool m_bEnableMapCrosshairVisuals;
 	
-	[Attribute(defvalue: "0", uiwidget: UIWidgets.CheckBox, desc: "Enables crosshair grid coordinate display")]
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Enables crosshair grid coordinate display")]
 	protected bool m_bEnableCrosshairCoords;
+
+	[Attribute(defvalue: "0.01", uiwidget: UIWidgets.EditBox, desc: "How precise grid display should be by multiplying current grid by this value and discarding everything that will be after the comma", params: "0.0001 1")]
+	protected float m_fGridPrecision;
+
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Enables crosshair height above sea level display")]
+	protected bool m_bEnableCrosshairHeightASL;
+
+	[Attribute(defvalue: "5", uiwidget: UIWidgets.EditBox, desc: "How accurate should be the display of the height", params: "1 1000 1")]
+	protected int m_iHeightPrecision;
 	
 	[Attribute("0 0 0 1", UIWidgets.ColorPicker, desc: "Cursor grid/guide lines color")]
 	protected ref Color m_GuidelineColor;
@@ -78,12 +87,15 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	protected static ref array<Widget> s_aTracedWidgets = {};
 	
 	// const
+	protected const int MAX_GRID_COORD = 1000;
 	protected const int CURSOR_CAPTURE_OFFSET = 10;		// hardcoded(code) screen edges in pixels for cursor capture
 	protected const int GUILDING_LINE_WIDTH = 16;
 	protected const float PAN_DEFAULT_COUNTDOWN = 0.1;
 	protected const float SINGLE_SELECTION_RANGE = 50.0;	// range in world pos
 	protected const float CIRCLE_SELECTION_RANGE = 500.0;	// range in world pos
 	protected const float FREE_CURSOR_RESET = 3.0;		// seconds, time before free cursor resets to locked mode on controller
+	protected static const LocalizedString TEXT_METERS = "#AR-ValueUnit_Short_Meters";
+	protected static const LocalizedString TEXT_GRID = "%1 %2";
 	
 	static const EMapCursorState CUSTOM_CURSOR_LOCKED = EMapCursorState.CS_DISABLE;
 	static const EMapCursorState STATE_PAN_RESTRICTED	= EMapCursorState.CS_DRAG | EMapCursorState.CS_MODIFIER | EMapCursorState.CS_CONTEXTUAL_MENU | EMapCursorState.CS_DIALOG;
@@ -142,6 +154,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	protected ImageWidget m_wGLFadeRight;
 	protected ImageWidget m_wGLFadeBot;
 	protected TextWidget m_wCoordText;
+	protected TextWidget m_wHeightASLText;
 	
 	//------------------------------------------------------------------------------------------------
 	// GETTERS / SETTERS
@@ -879,8 +892,8 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Digital zoom
-	protected void OnInputZoom(float value, EActionTrigger reason)
+	//! Digital zoom in. Methods are split for InputButton display purposes.
+	protected void OnInputZoomIn(float value, EActionTrigger reason)
 	{
 		if (Math.AbsFloat(value) < 0.001)
 			return;
@@ -902,6 +915,32 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		
 		m_fZoomHoldTime = 0;
 	}
+	
+	//--------------------------------------------------------------------------------------------------
+	//! Digital zoom out. Methods are split for InputButton display purposes.
+	protected void OnInputZoomOut(float value, EActionTrigger reason)
+	{
+		if (Math.AbsFloat(value) < 0.001)
+			return;
+
+		//! zoom disabled
+		if (m_CursorState & STATE_ZOOM_RESTRICTED)
+			return;
+				
+		m_fZoomHoldTime += System.GetFrameTimeS();
+		if ( (m_CursorState & EMapCursorState.CS_ZOOM) && m_fZoomHoldTime < 0.05)	// if pressed, call once every 0.05 second
+			return;
+		
+		float zoomPPU = m_MapEntity.GetCurrentZoom();
+		if (value != 0)
+		{
+			float zoomValue = -1 * Math.Min(1, value * value) * zoomPPU / m_fZoomStrength;
+			m_MapEntity.ZoomSmooth(zoomPPU + zoomValue, m_fZoomAnimTime, false);
+		}
+		
+		m_fZoomHoldTime = 0;
+	}
+	
 	
 	//------------------------------------------------------------------------------------------------
 	//! Digital zoom mouse wheel
@@ -1089,14 +1128,31 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		m_wCrossLBot.SetSize(0, workspace.DPIUnscale(sizeY) - cursorY);
 		m_wGLTop.SetSize(GUILDING_LINE_WIDTH, cursorY);
 		m_wGLLeft.SetSize(cursorX, GUILDING_LINE_WIDTH);
-		
-		if (m_bEnableCrosshairCoords)
+
+		float wX, wY;
+		m_MapEntity.ScreenToWorld(m_CursorInfo.Scale(m_CursorInfo.x), m_CursorInfo.Scale(m_CursorInfo.y), wX, wY);
+
+		if (m_bEnableCrosshairHeightASL)
 		{
-			float wX, wY;
-			m_MapEntity.ScreenToWorld(m_CursorInfo.Scale(m_CursorInfo.x), m_CursorInfo.Scale(m_CursorInfo.y), wX, wY);
-			m_wCoordText.SetText(Math.Round(wX).ToString() + ", " + Math.Round(wY).ToString());
+			float heightASL = Math.Round(GetGame().GetWorld().GetSurfaceY(wX, wY) / m_iHeightPrecision) * m_iHeightPrecision;
+			string height = SCR_StringHelper.Translate(TEXT_METERS, heightASL.ToString(0,0));
+			m_wHeightASLText.SetText(height);
 		}
 
+		if (m_bEnableCrosshairCoords)
+		{
+			wX *= m_fGridPrecision;
+			if (wX < 0)
+				wX = MAX_GRID_COORD + wX;
+
+			wY *= m_fGridPrecision;
+			if (wY < 0)
+				wY = MAX_GRID_COORD + wY;
+
+			string posY = (Math.Floor(wY)).ToString(3, 0);//to match grid precision
+			string posX = (Math.Floor(wX)).ToString(3, 0);//to match grid precision
+			m_wCoordText.SetText(SCR_StringHelper.Translate(TEXT_GRID, posX, posY));
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1132,6 +1188,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 			m_wGLFadeBot = ImageWidget.Cast(m_wCrossGrid.FindAnyWidget("GLFadeBot"));
 			m_wGLFadeTop = ImageWidget.Cast(m_wCrossGrid.FindAnyWidget("GLFadeTop"));
 			m_wCoordText = TextWidget.Cast(m_wCrossGrid.FindAnyWidget("CoordText"));
+			m_wHeightASLText = TextWidget.Cast(m_wCrossGrid.FindAnyWidget("HeightText"));
 			
 			// TODO configuration
 			// Colors
@@ -1144,11 +1201,15 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 			m_wGLFadeRight.SetColor(m_GuidelineColor);
 			m_wGLFadeBot.SetColor(m_GuidelineColor);
 			m_wCoordText.SetColor(m_GuidelineColor);
+			m_wHeightASLText.SetColor(m_GuidelineColor);
 			
 			m_wCoordText.SetOpacity(0); // text
 			
 			if (m_bEnableCrosshairCoords)
-				m_wCoordText.SetOpacity(1);	
+				m_wCoordText.SetOpacity(1);
+
+			if (m_bEnableCrosshairHeightASL)
+				m_wHeightASLText.SetOpacity(1);	
 		}
 		else 
 		{
@@ -1181,7 +1242,10 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		m_InputManager.AddActionListener("MapPanVGamepad", EActionTrigger.VALUE, OnInputPanVGamepad);
 		m_InputManager.AddActionListener("MapGamepadCursorX", EActionTrigger.VALUE, OnInputGamepadCursorH);
 		m_InputManager.AddActionListener("MapGamepadCursorY", EActionTrigger.VALUE, OnInputGamepadCursorV);
-		m_InputManager.AddActionListener("MapZoom", EActionTrigger.VALUE, OnInputZoom);
+		
+		m_InputManager.AddActionListener("MapZoomIn", EActionTrigger.VALUE, OnInputZoomIn);
+		m_InputManager.AddActionListener("MapZoomOut", EActionTrigger.VALUE, OnInputZoomOut);
+		
 		m_InputManager.AddActionListener("MapWheelUp", EActionTrigger.PRESSED, OnInputZoomWheelUp);
 		m_InputManager.AddActionListener("MapWheelDown", EActionTrigger.PRESSED, OnInputZoomWheelDown);
 		m_InputManager.AddActionListener("MapSelect", EActionTrigger.UP, HandleSelect);
@@ -1234,7 +1298,10 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		m_InputManager.RemoveActionListener("MapPanVGamepad", EActionTrigger.VALUE, OnInputPanVGamepad);
 		m_InputManager.RemoveActionListener("MapGamepadCursorX", EActionTrigger.VALUE, OnInputGamepadCursorH);
 		m_InputManager.RemoveActionListener("MapGamepadCursorY", EActionTrigger.VALUE, OnInputGamepadCursorV);
-		m_InputManager.RemoveActionListener("MapZoom", EActionTrigger.VALUE, OnInputZoom);
+		
+		m_InputManager.RemoveActionListener("MapZoomIn", EActionTrigger.VALUE, OnInputZoomIn);
+		m_InputManager.RemoveActionListener("MapZoomOut", EActionTrigger.VALUE, OnInputZoomOut);
+		
 		m_InputManager.RemoveActionListener("MapWheelUp", EActionTrigger.PRESSED, OnInputZoomWheelUp);
 		m_InputManager.RemoveActionListener("MapWheelDown", EActionTrigger.PRESSED, OnInputZoomWheelDown);
 		m_InputManager.RemoveActionListener("MapSelect", EActionTrigger.UP, HandleSelect);

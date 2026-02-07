@@ -23,6 +23,8 @@ class SCR_InventoryNavigationButtonBack : SCR_InputButtonComponent
 			return false;
 		
 		m_OnActivated.Invoke(this, m_sActionName, m_pParentStorage, m_iStorageIndex);
+		PlaySound(m_sSoundClicked);
+		PlaySound(m_sSoundContainerClosed);
 		return false;
 	}
 	

@@ -152,6 +152,9 @@ class CharacterCameraADS extends CharacterCameraBase
 		m_LastSightsComponent = null;
 		m_bLastSightsBlend = false;
 		m_fLastSightsBlendTime = 0;
+		
+		m_fProneBlend = 0.0;
+		m_fPronePistolBlend = 0.0;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -208,6 +211,8 @@ class CharacterCameraADS extends CharacterCameraBase
 		bool bUseProneADSMethod = IsProneADS();
 		EMuzzleType muzzleType = EMuzzleType.MT_BaseMuzzle;
 		
+		EWeaponType weaponType = EWeaponType.WT_NONE;
+		
 		// UPDATE:
 		// This is quite silly considering what is done afterwards,
 		// but the point is that we have to fight with zeroing, as it is
@@ -222,19 +227,19 @@ class CharacterCameraADS extends CharacterCameraBase
 			
 			vector zeroingLS[4];
 			if (m_WeaponManager.GetCurrentWeapon().GetCurrentSightsZeroingTransform(zeroingLS))
-			{
 				Math3D.MatrixMultiply4(cameraData.m_mSightsLocalMat, zeroingLS, cameraData.m_mSightsLocalMat);
-				
-				if (bUseProneADSMethod)
-				{
-					// Align camera vertically
-					vector charMat[4];
-					m_OwnerCharacter.GetLocalTransform(charMat);
-					vector camUpMS = vector.Up.InvMultiply3(charMat);
-					cameraData.m_mSightsLocalMat[0] = camUpMS * cameraData.m_mSightsLocalMat[2];
-					cameraData.m_mSightsLocalMat[1] = cameraData.m_mSightsLocalMat[2] * cameraData.m_mSightsLocalMat[0];
-				}
+
+			if (bUseProneADSMethod)
+			{
+				// Align camera vertically
+				vector charMat[4];
+				m_CharacterAnimationComponent.PhysicsGetTransformLS(charMat);
+				vector camUpMS = vector.Up.InvMultiply3(charMat);
+				cameraData.m_mSightsLocalMat[0] = camUpMS * cameraData.m_mSightsLocalMat[2];
+				cameraData.m_mSightsLocalMat[1] = cameraData.m_mSightsLocalMat[2] * cameraData.m_mSightsLocalMat[0];
 			}
+			
+			weaponType = currentWeapon.GetWeaponType();
 		}
 
 		// Get sights relative to right hand prop bone
@@ -369,28 +374,59 @@ class CharacterCameraADS extends CharacterCameraBase
 		// And add that to our result
 		sightsMS[3] = sightsMS[3] - aimingTranslationMS - extraTranslation;
 		
+		// Now we will disregard any previous rotation... (LOL and use aiming or freelook angles directly)
+
+		// If character linked to object add local head yaw and disable UseHeading		
 		vector aimingAnglesMS;
 		float fUseHeading = 1.0;
-		float fPositionModelSpace = 0.0;
-		
-		if (bUseProneADSMethod)
+		if (m_CharacterAnimationComponent.PhysicsIsLinked())
 		{
-			aimingAnglesMS = Math3D.MatrixToAngles(sightsMS);			
-			fUseHeading = 0.0;
-			fPositionModelSpace = 1.0;
-			pOutResult.m_bInterpolateOrientation = false;
+			aimingAnglesMS = cameraData.m_vLookAngles;
+			aimingAnglesMS[0] = aimingAnglesMS[0] + m_OwnerCharacter.GetAimRotationModel()[0] * Math.RAD2DEG;
 		}
 		else
 		{
-			// Now we will disregard any previous rotation... (LOL and use aiming or freelook angles directly)
-
 			// Take look angles directly and correct those for character pitch
 			aimingAnglesMS = cameraData.m_vLookAngles;
 			aimingAnglesMS[1] = aimingAnglesMS[1] + m_OwnerCharacter.GetLocalYawPitchRoll()[1];
-	
-			// Use as intended
-			Math3D.AnglesToMatrix(aimingAnglesMS, sightsMS);
 		}
+
+		// Blend in the prone method
+		float fPositionModelSpace = 0.0;
+		if (bUseProneADSMethod)
+		{
+			m_fProneBlend = Math.Clamp(m_fProneBlend + pDt, 0.0, 1.0);
+			vector aimingAnglesProneMS = Math3D.MatrixToAngles(sightsMS);
+			aimingAnglesMS = vector.Lerp(aimingAnglesMS, aimingAnglesProneMS, m_fProneBlend);
+			
+			fUseHeading = 1.0 - m_fProneBlend;
+			fPositionModelSpace = 1.0;
+			
+			pOutResult.m_bInterpolateOrientation = false;
+			if (m_fProneBlend < 1.0)
+				pOutResult.m_bInterpolateOrientation = true;
+		}
+
+		// Blend ADS on pistol when prone (otherwise camera jumps around)
+		if (weaponType == EWeaponType.WT_HANDGUN && bUseProneADSMethod) // is the weapon a handgun && is player proned
+		{
+			if (m_fPronePistolBlend < 1.0) // has blend has not finished
+			{
+				if (!m_OwnerCharacter.GetCharacterController().IsWeaponRaised() || m_fPronePistolBlend > 0.0) // is the weapon not fully raised
+				{
+					const float cameraVerticalOffset = 0.2; // slight offset so camera height matches the final camera height
+					m_fPronePistolBlend = Math.Clamp(m_fPronePistolBlend + pDt*2, 0.0, 1.0); // sped up to match animation speed
+					sightsMS[3][1] = Math.Lerp(cameraBoneMS[3][1] + cameraVerticalOffset, sightsMS[3][1], m_fPronePistolBlend);
+				}
+			}
+		}
+	
+		if (m_CharacterAnimationComponent.PhysicsIsLinked())
+		{
+			fUseHeading = 0.0;
+		}
+		// Use as intended
+		Math3D.AnglesToMatrix(aimingAnglesMS, sightsMS);
 
 		const float alphaEpsilon = 0.0005;
 		// Stabilize camera in certain cases
@@ -618,16 +654,14 @@ class CharacterCameraADS extends CharacterCameraBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void SolveCamera2DSight(ADSCameraData cameraData, out ScriptedCameraItemResult pOutResult)
+	protected void SolveCamera2DSight(ADSCameraData cameraData, float pDt, out ScriptedCameraItemResult pOutResult)
 	{
 		// TODO: Please make camera position consistent with 2DPIPSights m_vCameraPoint
-		float targetFOV;
-		m_WeaponManager.GetCurrentSightsCameraTransform(cameraData.m_mSightsLocalMat, targetFOV);
 
 		// TODO@AS: refactor
 		SCR_2DOpticsComponent sights2D = SCR_2DOpticsComponent.Cast(m_WeaponManager.GetCurrentSights());
 		BaseWeaponComponent weapon = m_WeaponManager.GetCurrentWeapon();
-
+		
 		// The camera position shall match the position and angle of camera with PIP scope
 		vector cameraAngles;
 		if (sights2D && weapon && weapon.IsSightADSActive())
@@ -635,7 +669,7 @@ class CharacterCameraADS extends CharacterCameraBase
 			vector sightsOffset = sights2D.GetSightsFrontPosition(true) + sights2D.GetCameraOffset() - sights2D.GetSightsOffset();
 			vector cameraOffset = sightsOffset.Multiply3(cameraData.m_mSightsLocalMat);
 			cameraData.m_mSightsLocalMat[3] = cameraData.m_mSightsLocalMat[3] + cameraOffset;
-
+			
 			// Get world orientation of sight
 			// Turrets require getting owner transform to obtain the world transform of the sight reliably
 			vector sightMat[4];
@@ -659,20 +693,22 @@ class CharacterCameraADS extends CharacterCameraBase
 
 		SCR_2DPIPSightsComponent sightsPIP = SCR_2DPIPSightsComponent.Cast(sights2D);
 		if (sightsPIP)
-			targetFOV = sightsPIP.GetMainCameraFOV();
+			cameraData.m_fFOV = sightsPIP.GetMainCameraFOV();
 
 		//! clamp fov so sights FOV is never greater than current fov?
-		pOutResult.m_fFOV = Math.Min(GetBaseFOV(), targetFOV);
+		pOutResult.m_fFOV = Math.Min(GetBaseFOV(), cameraData.m_fFOV);
 
 		// Add recoil and sway, reduced by FOV for convenience
 		vector adjustedLookAngles = cameraData.m_vLookAngles;
 
+		bool bProneStance = IsProneStance();
+		
 		AimingComponent aiming = m_OwnerCharacter.GetWeaponAimingComponent();
 		if (aiming)
 		{
 			if (m_ControllerComponent.GetIsWeaponDeployed())
 			{
-				if (!IsProneStance())
+				if (!bProneStance)
 					adjustedLookAngles = aiming.GetAimingRotation();
 			}
 
@@ -686,7 +722,7 @@ class CharacterCameraADS extends CharacterCameraBase
 
 		adjustedLookAngles = adjustedLookAngles - cameraAngles;
 		Math3D.AnglesToMatrix(adjustedLookAngles, lookRot);
-
+		
 		// snap to bone
 		vector handBoneTM[4];
 		m_OwnerCharacter.GetAnimation().GetBoneMatrix(m_iHandBoneIndex, handBoneTM);
@@ -694,6 +730,29 @@ class CharacterCameraADS extends CharacterCameraBase
 		//! sights transform relative to hand bone
 		Math3D.MatrixInvMultiply4(handBoneTM, cameraData.m_mSightsLocalMat, pOutResult.m_CameraTM);
 		vector finalPos = pOutResult.m_CameraTM[3];
+
+		bool bUseProneADSMethod = bProneStance && !m_CmdHandler.IsProneStanceTransition() && !m_pCameraData.m_bFreeLook;
+		if (bUseProneADSMethod)
+		{
+			// Align camera vertically
+			vector charMat[4];
+			m_OwnerCharacter.GetLocalTransform(charMat);
+			vector camUpMS = vector.Up.InvMultiply3(charMat);
+			lookRot[0] = camUpMS * lookRot[2];
+			lookRot[1] = lookRot[2] * lookRot[0];
+			
+			// Blend-in prone ADS
+			m_fProneBlend = Math.Clamp(m_fProneBlend + 3.0 * pDt, 0.0, 1.0);
+			
+			vector adjustedLookAnglesProne = Math3D.MatrixToAngles(lookRot);
+			adjustedLookAngles = vector.Lerp(adjustedLookAngles, adjustedLookAnglesProne, m_fProneBlend);
+			Math3D.AnglesToMatrix(adjustedLookAngles, lookRot);
+			
+			// No orientation interpolation while in prone
+			pOutResult.m_bInterpolateOrientation = false;
+			if (m_fProneBlend < 1.0)
+				pOutResult.m_bInterpolateOrientation = true;
+		}
 
 		//! sights in relation to hand
 		vector viewMatHandRel[4];
@@ -785,7 +844,7 @@ class CharacterCameraADS extends CharacterCameraBase
 			// 2D sights
 			if (!pip || SCR_Global.IsScope2DEnabled())
 			{
-				SolveCamera2DSight(m_pCameraData, pOutResult);
+				SolveCamera2DSight(m_pCameraData, pDt, pOutResult);
 				pOutResult.m_pOwner 				= m_OwnerCharacter;
 				pOutResult.m_pWSAttachmentReference = null;
 				return;
@@ -845,8 +904,8 @@ class CharacterCameraADS extends CharacterCameraBase
 		if (!pip)
 			return;
 
-		float offset = pip.GetMainCameraOffset();
-		pOutResult.m_CameraTM[3] = pOutResult.m_CameraTM[3] - Vector(0, 0, offset);
+		vector offset = pip.GetMainCameraOffset();
+		pOutResult.m_CameraTM[3] = pOutResult.m_CameraTM[3] - offset;
 	}
 	
 	bool IsProneStance()
@@ -863,7 +922,8 @@ class CharacterCameraADS extends CharacterCameraBase
 	
 	bool IsProneADS()
 	{
-		return IsProneStance() && !m_CmdHandler.IsProneStanceTransition() && !m_pCameraData.m_bFreeLook;
+		return IsProneStance() && !m_CmdHandler.IsProneStanceTransition() && !m_pCameraData.m_bFreeLook
+			&& m_CameraHandler.GetCurrentCamera() == this;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -899,7 +959,9 @@ class CharacterCameraADS extends CharacterCameraBase
 	private		vector	m_vLastEndPos;		//!< last position used for interpolation
 	
 	private		EMuzzleType m_LastMuzzleType = EMuzzleType.MT_BaseMuzzle;
-
+	private		float		m_fProneBlend = 1.0;
+	private		float		m_fPronePistolBlend = 1.0;
+	
 	protected const float CAMERA_INTERP = 0.6;
 	protected const float CAMERA_RECOIL_LIMIT = 0.25; //!< Maximum amount of recoil applied to camera from weapon in meters.
 };

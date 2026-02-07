@@ -88,7 +88,7 @@ class SCR_CampaignTaskNetworkComponent : SCR_TaskNetworkComponent
 			return;
 		
 		// send message with requester faction and his ID
-		SCR_RequestReinforcementsMessage msg();
+		SCR_RequestReinforcementsMessage msg = new SCR_RequestReinforcementsMessage();
 		msg.SetTargetFaction(requesterFaction);
 		msg.SetTargetBase(base);
 		//msg.SetRequesterID(requesterID);
@@ -125,7 +125,7 @@ class SCR_CampaignTaskNetworkComponent : SCR_TaskNetworkComponent
 			return;
 
 		// send message with requester faction and his ID
-		SCR_RequestTransportMessage msg();
+		SCR_RequestTransportMessage msg = new SCR_RequestTransportMessage();
 		msg.SetRequesterMainBase(requesterFaction);
 		msg.SetRequesterID(requesterID);
 		msg.SetPosition(positionFrom);
@@ -177,7 +177,7 @@ class SCR_CampaignTaskNetworkComponent : SCR_TaskNetworkComponent
 			return;
 
 		// send message with requester faction and his ID
-		SCR_RequestRefuelMessage msg();
+		SCR_RequestRefuelMessage msg = new SCR_RequestRefuelMessage();
 		msg.SetRequesterMainBase(requesterFaction);
 		msg.SetRequesterID(requesterID);
 		msg.SetPosition(position);
@@ -220,7 +220,7 @@ class SCR_CampaignTaskNetworkComponent : SCR_TaskNetworkComponent
 			return;
 		
 		// send message with requester faction and his ID
-		SCR_RequestEvacuationMessage msg();
+		SCR_RequestEvacuationMessage msg = new SCR_RequestEvacuationMessage();
 		msg.SetRequesterMainBase(requesterFaction);
 		msg.SetRequesterID(requesterID);
 		msg.SetPosition(position);

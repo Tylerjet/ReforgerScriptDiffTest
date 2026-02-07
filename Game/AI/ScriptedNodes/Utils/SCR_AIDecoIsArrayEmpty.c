@@ -3,7 +3,7 @@ class SCR_AIDecoIsArrayEmpty : DecoratorScripted
 	static const string VARIABLE_PORT		= "VariableIn";
 	
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() {return true;}
+	static override bool VisibleInPalette() {return true;}
 	
 	//------------------------------------------------------------------------------------------------
 	protected override bool TestFunction(AIAgent owner)

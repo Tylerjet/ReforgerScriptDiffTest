@@ -38,6 +38,10 @@ class ExtBaseInteractionHandlerComponent: BaseInteractionHandlerComponent
 	proto external int GetFilteredActions(out notnull array<BaseUserAction> outActions, out notnull array<bool> outCanBePerformed);
 	//! Returns true when there is a gathered context available
 	proto external bool IsContextAvailable();
+	//! If set to true, we expect a list of nearby entities to be provided from the user instead
+	proto external void SetManualNearbyCollectionOverride(bool enabled);
+	//! Returns whether manual nearby collection override is set (we expect a list of nearby entities to be provided from the user instead)
+	proto external bool GetManualNearbyCollectionOverride();
 	//! If set to true, we expect a list of entities to be provided from the user instead
 	proto external void SetManualCollectionOverride(bool enabled);
 	//! Returns whether manual collection override is set (we expect a list of entities to be provided from the user instead)
@@ -116,12 +120,22 @@ class ExtBaseInteractionHandlerComponent: BaseInteractionHandlerComponent
 	*/
 	event protected BaseUserAction GetSelectedActionScript();
 	/*!
-	Callback whem manual collection override is enabled. See SetManualCollectionOverride.
+	Callback when manual collection override is enabled. See SetManualCollectionOverride.
 	It may return nullptrs inside array if this is called between deletion of instance inside the array and updating of the array.
 	\param owner Parent entity
 	\param referencePoint Point in world space used to calculate distance and sort contexts by
 	*/
 	event protected array<IEntity> GetManualOverrideList(IEntity owner, out vector referencePoint);
+	/*!
+	Callback when manual nearby collection override is enabled. See SetManualNearbyCollectionOverride.
+	It may return nullptrs inside array if this is called between deletion of instance inside the array and updating of the array.
+	\param owner Parent entity
+	\param referencePoint Point in world space used to calculate distance and sort contexts by
+	*/
+	event protected array<IEntity> GetManualNearbyOverrideList(IEntity owner, out vector referencePoint);
+	/*!
+	*/
+	event protected bool IsPerformingAction();
 }
 
 /*!

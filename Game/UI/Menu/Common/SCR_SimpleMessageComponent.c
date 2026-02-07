@@ -149,7 +149,10 @@ class SCR_SimpleMessageComponent : ScriptedWidgetComponent
 	void SetVisible(bool visible)
 	{
 		if (m_wRoot)
+		{
 			m_wRoot.SetVisible(visible);
+			m_wRoot.Update();
+		}
 	}
 };
 

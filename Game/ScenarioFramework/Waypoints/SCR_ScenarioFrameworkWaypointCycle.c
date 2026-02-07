@@ -2,7 +2,7 @@
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkWaypointCycle : SCR_ScenarioFrameworkWaypoint
 {
-	[Attribute(defvalue: "10", desc: "Radius in m")]
+	[Attribute(defvalue: "10", uiwidget: UIWidgets.Slider, desc: "Radius in m")]
 	float m_fCompletionRadius;
 
 	[Attribute(defvalue: EAIWaypointCompletionType.All.ToString(), UIWidgets.ComboBox, "AI Waypoint Completion Type", "", ParamEnumArray.FromEnum(EAIWaypointCompletionType))]
@@ -109,7 +109,6 @@ class SCR_ScenarioFrameworkWaypointCycle : SCR_ScenarioFrameworkWaypoint
 	//! \param[in] layer
 	protected void ProcessWaypoints(SCR_ScenarioFrameworkLayerBase layer)
 	{
-		Math.Randomize(-1);
 		AIWaypoint waypoint;
 		foreach (SCR_ScenarioFrameworkSlotWaypoint slotWaypoint : m_aSlotWaypoints)
 		{
@@ -132,7 +131,7 @@ class SCR_ScenarioFrameworkWaypointCycle : SCR_ScenarioFrameworkWaypoint
 		m_bInitiated = true;
 		InvokeAllWaypointsSpawned();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void ShuffleWaypointArray(notnull array<AIWaypoint> arr)
 	{
@@ -140,7 +139,7 @@ class SCR_ScenarioFrameworkWaypointCycle : SCR_ScenarioFrameworkWaypoint
 	    for (int i = n - 1; i > 0; i--)
 	    {
 	        int j = Math.RandomInt(0, i + 1);
-			
+
 			arr.SwapItems(i, j);
 	    }
 	}

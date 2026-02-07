@@ -85,25 +85,19 @@ class SCR_AILookAction : Managed
 	}
 	#endif
 	
-	ENodeResult GetLookParametersToNode(SCR_AIGetLookParameters node)
+	//! Must be called by look behavior tree  to move data to it.
+	//! This call also resets various flags.
+	void MoveLookParametersToNode(out bool outCanLook, out vector outLookPos, out float outLookDuration, out bool outCancelLook, out bool outRestartLook)
 	{
-		bool canLook = m_vPosition != vector.Zero && (!m_Utility.m_CurrentBehavior || m_Utility.m_CurrentBehavior.m_bAllowLook);
+		outCanLook = m_vPosition != vector.Zero;
 		
-		node.SetVariableOut(node.PORT_LOOK, canLook);
-		
-		node.SetVariableOut(node.PORT_CANCEL, m_bCancelLook);
+		outCancelLook = m_bCancelLook;
 		m_bCancelLook = false; // Reset the flag if it was set
 		
-		node.SetVariableOut(node.PORT_RESTART, m_bRestartLook);
+		outRestartLook = m_bRestartLook;
 		m_bRestartLook = false; // Reset the flag if it was set
-		
-		if (canLook)
-		{
-			// Otherwise don't bother clearing variables, time waste
-			node.SetVariableOut(node.PORT_POSITION, m_vPosition);
-			node.SetVariableOut(node.PORT_DURATION, m_fDuration);
-		}
-		
-		return ENodeResult.SUCCESS;
+
+		outLookPos = m_vPosition;
+		outLookDuration = m_fDuration;
 	}
 };

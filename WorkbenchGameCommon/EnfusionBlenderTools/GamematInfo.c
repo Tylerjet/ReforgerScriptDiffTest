@@ -10,53 +10,77 @@ class GamematInfoRequest : JsonApiStruct
 
 class GamematInfoResponse : JsonApiStruct
 {
-	string Gamemat;
+	ref map<string, string> gamemats;
 
-	void GamematInfoResponse()
+	void GamematInfoResponse(map<string, string> materials)
 	{
-		RegV("Gamemat");
+		gamemats = materials;
+	}
+	
+	override void OnPack()
+	{
+		
+		foreach (string key, string value : gamemats)
+		{
+			StoreString(key,value);
+		}
+		
 	}
 }
 
-class GamematInfoUtils
+
+static map<string, string> GetGamemats()
 {
-	void GetGamemat(GamematInfoResponse response)
+	map<string, string> result = new map<string, string>();		
+
+	SearchResourcesFilter filter = new SearchResourcesFilter();
+	filter.fileExtensions = {"gamemat"};
+	
+	array<ResourceName> gamemats = {};
+	ResourceDatabase.SearchResources(filter, gamemats.Insert);
+	
+	string firstLetter;
+	array<string> splitStrings = new array<string>();
+	string guid;
+	string name;
+	string key;
+	
+	for (int i = 0; i < gamemats.Count(); i++)
 	{
-		// getting gamemats from rdb
-		SearchResourcesFilter filter = new SearchResourcesFilter();
-		filter.fileExtensions = {"gamemat"};
-		
-		array<ResourceName> gamemats = {};
-		ResourceDatabase.SearchResources(filter, gamemats.Insert);
-		
-		string guid;
-		string name;
-		
-		for (int i = 0; i < gamemats.Count(); i++)
+		// getting name
+		if (gamemats[i].Contains("/"))
 		{
-			// getting name
-			if (gamemats[i].Contains("/"))
-			{
-				name = gamemats[i].Substring(gamemats[i].LastIndexOf("/") + 1, gamemats[i].IndexOf(".") - gamemats[i].LastIndexOf("/") - 1);
-			}
-			else
-			{
-				name = gamemats[i].Substring(gamemats[i].IndexOf("}") + 1, gamemats[i].IndexOf(".") - gamemats[i].IndexOf("}") - 1);
-			}
-			// getting GUID
-			guid = gamemats[i].Substring(gamemats[i].IndexOf("{") + 1, gamemats[i].IndexOf("}") - 1);
-			// adding them to the format
-			if (i + 1 == gamemats.Count())
-			{
-				response.Gamemat += name + "_" + guid;
-			}
-			else
-			{
-				response.Gamemat += name + "_" + guid + " ";
-			}
+			name = gamemats[i].Substring(gamemats[i].LastIndexOf("/") + 1, gamemats[i].IndexOf(".") - gamemats[i].LastIndexOf("/") - 1);
 		}
-		return;
+		else
+		{
+			name = gamemats[i].Substring(gamemats[i].IndexOf("}") + 1, gamemats[i].IndexOf(".") - gamemats[i].IndexOf("}") - 1);
+		}
+		
+		guid = gamemats[i].Substring(gamemats[i].IndexOf("{") + 1, gamemats[i].IndexOf("}") - 1);
+		
+		key = "";
+		name.Split("_", splitStrings, false);
+		
+		
+		foreach (string item : splitStrings)
+		{
+			firstLetter = item[0];
+			firstLetter.ToUpper();
+			item = firstLetter + item.Substring(1, item.Length()-1);
+			
+			if (key.IsEmpty())
+				key = item;
+			else
+				key = key + " " + item;
+		}
+		
+		
+		result.Set(key, name + "_" + guid);
+		
 	}
+	
+	return result;
 }
 
 
@@ -70,10 +94,8 @@ class GamematInfo : NetApiHandler
 	override JsonApiStruct GetResponse(JsonApiStruct request)
 	{
 		GamematInfoRequest req = GamematInfoRequest.Cast(request);
-		GamematInfoResponse response = new GamematInfoResponse();
-		GamematInfoUtils utils = new GamematInfoUtils();
-
-		utils.GetGamemat(response);
+		
+		GamematInfoResponse response = new GamematInfoResponse(GetGamemats());
 
 		return response;
 	}

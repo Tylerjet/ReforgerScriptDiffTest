@@ -48,6 +48,7 @@ enum SCR_ESpawnResult
 	NOT_ALLOWED_NOT_ENOUGH_SUPPLIES,
 	NOT_ALLOWED_NO_ARSENAL,
 	NOT_ALLOWED_CUSTOM_LOADOUT,
+	NOT_ALLOWED_BASE_UNDER_ATTACK,
 
 	/*!
 		Prefab needs to meet certain conditions before it is spawned.

@@ -51,15 +51,6 @@ class RplComponent: BaseRplComponent
 	*/
 	proto external void ForceNodeMovement(vector previousPos);
 	/*!
-	Enable streaming for a specific entity.
-	This takes precedence over EnableStreaming for a specific Connection or Connection/Node
-
-	\warning Works only if Network Dynamic Simulation is enabled
-
-	\param enable If true streaming is enabled.
-	*/
-	proto external void EnableStreaming(bool enable);
-	/*!
 	Enable streaming of node to a specific player.
 	Respects disabled connection rules, respects disabled nodes rules
 
@@ -95,11 +86,6 @@ class RplComponent: BaseRplComponent
 	\param identity Client connection.
 	*/
 	static proto void RemoveMPObserver(RplIdentity identity);
-	/*
-	Enable or disable spatial relevacny of a node.
-	Spatial relevancy is not enforced in a hierarchy, meanining if a root node is not in spatial map, and a spatial node is attached to it, it will not be in spatial map.
-	*/
-	proto external void EnableSpatialRelevancy(bool enable);
 }
 
 /*!

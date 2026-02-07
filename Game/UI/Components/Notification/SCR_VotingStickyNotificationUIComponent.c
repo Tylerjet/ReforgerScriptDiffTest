@@ -76,18 +76,15 @@ class SCR_VotingStickyNotificationUIComponent : SCR_StickyNotificationUIComponen
 			
 			if (m_eActiveSingularVoteValue != SCR_VotingBase.DEFAULT_VALUE)
 			{
-				string playerName;
+				string playerName = SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(votingValues[0]);
 				
-				PlayerManager playermanager = GetGame().GetPlayerManager();
+				//PlayerManager playermanager = GetGame().GetPlayerManager();
 				
-				if (GetGame().GetPlatformService().GetLocalPlatformKind() == PlatformKind.PSN)				
+				if (GetGame().GetPlatformService().GetLocalPlatformKind() == PlatformKind.PSN){
 					if (GetGame().GetPlayerManager().GetPlatformKind(votingValues[0]) == PlatformKind.PSN)
-						playerName = string.Format("<color rgba=%1><image set='%2' name='%3' scale='%4'/></color>", UIColors.FormatColor(GUIColors.ENABLED), UIConstants.ICONS_IMAGE_SET, UIConstants.PLATFROM_PLAYSTATION_ICON_NAME, PLATFORM_ICON_SIZE) + playermanager.GetPlayerName(votingValues[0]);
+						playerName = string.Format("<color rgba=%1><image set='%2' name='%3' scale='%4'/></color>", UIColors.FormatColor(GUIColors.ENABLED), UIConstants.ICONS_IMAGE_SET, UIConstants.PLATFROM_PLAYSTATION_ICON_NAME, PLATFORM_ICON_SIZE) + playerName;
 					else
-						playerName = string.Format("<color rgba=%1><image set='%2' name='%3' scale='%4'/></color>", UIColors.FormatColor(GUIColors.ENABLED), UIConstants.ICONS_IMAGE_SET, UIConstants.PLATFROM_GENERIC_ICON_NAME, PLATFORM_ICON_SIZE) + playermanager.GetPlayerName(votingValues[0]);
-				else
-				{
-					playerName = playermanager.GetPlayerName(votingValues[0]);
+						playerName = string.Format("<color rgba=%1><image set='%2' name='%3' scale='%4'/></color>", UIColors.FormatColor(GUIColors.ENABLED), UIConstants.ICONS_IMAGE_SET, UIConstants.PLATFROM_GENERIC_ICON_NAME, PLATFORM_ICON_SIZE) + playerName;
 				}
 				
 				string text = WidgetManager.Translate(m_VotingManagerComponent.GetVotingInfo(m_eActiveSingularVoteType).GetStickyNotificationText(), playerName);

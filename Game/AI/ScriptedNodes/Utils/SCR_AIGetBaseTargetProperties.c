@@ -18,9 +18,9 @@ class SCR_AIGetBaseTargetProperties : AITaskScripted
 	};
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 	
-	override string GetOnHoverDescription() { return "Returns properties of provided BaseTarget"; };
+	static override string GetOnHoverDescription() { return "Returns properties of provided BaseTarget"; };
 	
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{

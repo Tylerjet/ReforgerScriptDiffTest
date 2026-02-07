@@ -5,7 +5,7 @@ class SCR_MotorExhaustEffectGeneralComponentClass : MotorExhaustEffectComponentC
 
 class SCR_MotorExhaustEffectGeneralComponent : MotorExhaustEffectComponent
 {
-	protected Particles								m_ExhaustParticles;
+//	protected Particles								m_ExhaustParticles;
 	protected ParticleEffectEntity					m_ExhaustEmitter;
 	protected ParticleEffectEntity					m_DamagedEmitter;
 	protected SCR_VehicleDamageManagerComponent		m_DamageManager;
@@ -252,7 +252,7 @@ class SCR_MotorExhaustEffectGeneralComponent : MotorExhaustEffectComponent
 	//! Create damaged exhaust particles
 	protected void CreateDamageEffect()
 	{
-		ParticleEffectEntitySpawnParams spawnParams();
+		ParticleEffectEntitySpawnParams spawnParams = new ParticleEffectEntitySpawnParams();
 
 		EntitySlotInfo effectPosition = GetEffectPosition();
 		if (effectPosition)

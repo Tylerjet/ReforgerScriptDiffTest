@@ -42,12 +42,12 @@ class SCR_AIDecoOnWaypointChanged : DecoratorScripted
 		return result;		
 	}
 		
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}	
 	
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "SCR_AIDecoOnWaypointChanged: Returns false if current waypoint is changed or is null";
 	}

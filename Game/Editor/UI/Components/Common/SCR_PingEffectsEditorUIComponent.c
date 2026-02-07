@@ -20,6 +20,8 @@ class SCR_PingEffectsEditorUIComponent : ScriptedWidgetComponent
 	//State
 	protected bool m_bWaitingForFade = true;
 	
+	//---- REFACTOR NOTE START: Hardcoded values
+	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
@@ -45,6 +47,8 @@ class SCR_PingEffectsEditorUIComponent : ScriptedWidgetComponent
 		
 		GetGame().GetCallqueue().CallLater(FadeOut, m_iFadeOutDelaySeconds * 1000);
 	}
+	
+	//---- REFACTOR NOTE END ----
 	
 	//------------------------------------------------------------------------------------------------
 	//~Todo: Should delete the widget once fading is done rather then having a seperate delete timer

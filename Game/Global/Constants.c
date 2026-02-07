@@ -56,6 +56,10 @@ class UIColors
 	//~ editor
 	static const ref Color EDITOR_ICON_COLOR_NEUTRAL	= Color.FromSRGBA(255, 255, 255, 255);	///< Colors for Editor Icons when an entity does not have an assigned faction and is not destroyed
 	static const ref Color EDITOR_ICON_COLOR_DESTROYED	= Color(0.25, 0.25, 0.25, 1); 			///< Colors for Editor Icons when an entity is dead or destroyed
+	
+	// Nearby Interactions
+	static const ref Color INTERACT_GENERIC_PRIMARY        			= Color.FromSRGBA(120, 120, 120, 180);
+	static const ref Color INTERACT_GENERIC_SECONDARY        			= Color.FromSRGBA(120, 120, 120, 70);
 
 	//------------------------------------------------------------------------------------------------
 	//! Get the provided colour in a format usable as default of Attributes
@@ -102,6 +106,7 @@ class UIColors
 
 class GUIColors
 {
+	static const ref Color DISABLED_GRAY  			= Color.FromSRGBA(128, 128, 128, 255); //Dark Gray
 	static const ref Color DISABLED 				= Color.FromSRGBA(200, 200, 200, 100);	//WHITE with 30% alpha converted to GREY with 100% alpha
 	static const ref Color DISABLED_GLOW 			= Color.FromSRGBA(0, 0, 0, 100);
 
@@ -135,6 +140,8 @@ class GUIColors
 	static const ref Color GREEN_DARK 				= Color.FromSRGBA(28, 157, 22, 255);	//DARK GREEN
 	
 	static const ref Color LIGHT_GRAY				= Color.FromSRGBA(189, 189, 188, 255);	//LIGHT GRAY
+	static const ref Color DARK_GRAY  				= Color.FromSRGBA(128, 128, 128, 255); //Dark Gray
+	static const ref Color DARKER_GRAY  				= Color.FromSRGBA(98, 98, 98, 200); //Darker Gray
 }
 
 class UIConstants
@@ -151,20 +158,25 @@ class UIConstants
 	static const float PROCESSING_SPINNER_ANIMATION_SPEED = 0.75;
 	
 	// Common labels
-	static const string FAVORITE_LABEL_ADD = 		"#AR-Workshop_ButtonAddToFavourites";
-	static const string FAVORITE_LABEL_REMOVE = 	"#AR-Workshop_ButtonRemoveFavourites";
-	static const string BOHEMIA_INTERACTIVE = 		"Bohemia Interactive";
-	static const string BOHEMIA_INTERACTIVE_LOC =	"#AR-Author_BI";
+	static const LocalizedString FAVORITE_LABEL_ADD = 		"#AR-Workshop_ButtonAddToFavourites";
+	static const LocalizedString FAVORITE_LABEL_REMOVE = 	"#AR-Workshop_ButtonRemoveFavourites";
+	static const LocalizedString BOHEMIA_INTERACTIVE_LOC =	"#AR-Author_BI";
+	static const string BOHEMIA_INTERACTIVE = 				"Bohemia Interactive";
 	
-	static const string VALUE_UNIT_PERCENTAGE = 	"#AR-ValueUnit_Percentage";
-	static const string VALUE_UNIT_SHORT_PLUS =		"#AR-ValueUnit_Short_Plus";
-	static const string VALUE_OUT_OF =				"#AR-SupportStation_ActionFormat_ItemAmount";
-	static const string VALUE_OUT_OF_SPACED =		"#AR-Filters_EntriesFound_Condensed";
+	static const LocalizedString VALUE_UNIT_PERCENTAGE = 	"#AR-ValueUnit_Percentage";
+	static const LocalizedString VALUE_UNIT_SHORT_PLUS =	"#AR-ValueUnit_Short_Plus";
+	static const LocalizedString VALUE_UNIT_MILS =			"#AR-ValueUnit_Mils";
+	static const LocalizedString VALUE_UNIT_DEGREES =		"#AR-ValueUnit_Degrees";
+	static const LocalizedString VALUE_UNIT_METERS =		"#AR-ValueUnit_Short_Meters";
+	static const LocalizedString VALUE_UNIT_SECONDS =		"#AR-ValueUnit_Short_Seconds";
 	
-	static const string TIME_DISPLAY_DAYS_HOURS_MINUTES_SECONDS =	"#AR-TimeDisplay_Days_Hours_Minutes_Seconds";
-	static const string TIME_DISPLAY_HOURS_MINUTES_SECONDS = 		"#AR-TimeDisplay_Hours_Minutes_Seconds";
-	static const string TIME_DISPLAY_MINUTES_SECONDS = 				"#AR-TimeDisplay_Minutes_Seconds";
-	static const string TIME_DISPLAY_SECONDS =						"#AR-TimeDisplay_Seconds";
+	static const LocalizedString VALUE_OUT_OF =				"#AR-SupportStation_ActionFormat_ItemAmount";
+	static const LocalizedString VALUE_OUT_OF_SPACED =		"#AR-Filters_EntriesFound_Condensed";
+	
+	static const LocalizedString TIME_DISPLAY_DAYS_HOURS_MINUTES_SECONDS =	"#AR-TimeDisplay_Days_Hours_Minutes_Seconds";
+	static const LocalizedString TIME_DISPLAY_HOURS_MINUTES_SECONDS = 		"#AR-TimeDisplay_Hours_Minutes_Seconds";
+	static const LocalizedString TIME_DISPLAY_MINUTES_SECONDS = 			"#AR-TimeDisplay_Minutes_Seconds";
+	static const LocalizedString TIME_DISPLAY_SECONDS =						"#AR-TimeDisplay_Seconds";
 	
 	// Common icons
 	static const ResourceName ICONS_IMAGE_SET = 		"{3262679C50EF4F01}UI/Textures/Icons/icons_wrapperUI.imageset";
@@ -176,6 +188,8 @@ class UIConstants
 	static const string PLATFROM_PLAYSTATION_ICON_NAME = "platform-playstation";
 	static const string PLATFROM_GENERIC_ICON_NAME = "generic-platform";
 
+	static const string ICON_INTERACT_DEFAULT = 	"use";
+	static const string ICON_INTERACT_DISABLED = 	"disable";
 	static const string ICON_WARNING = 			"warning";
 	static const string ICON_OK = 				"okCircle";
 	static const string ICON_CANCEL =			"cancelCircle";
@@ -187,10 +201,12 @@ class UIConstants
 	static const string ACTION_DISPLAY_ICON_SCALE_VERY_BIG =	"1.5";
 	static const string ACTION_DISPLAY_ICON_SCALE_HUGE =		"1.75";
 	
+	// Default Color Enum for nearby interaction
+	static const int NEARBY_INTERACTION_DEFAULT_STATE = SCR_ENearbyInteractionContextColors.DEFAULT;
+	
 	// Values
     static const float DISABLED_WIDGET_OPACITY = 	0.3;
     static const float ENABLED_WIDGET_OPACITY = 	1;
-	
 	static const float DISABLED_WIDGET_SATURATION = 0.5;
 	static const float ENABLED_WIDGET_SATURATION = 	1;
 	
@@ -305,4 +321,11 @@ enum SCR_EActionDisplayState
 	DISABLED,
 	NON_INTERACTABLE_HINT,
 	WARNING
+}
+
+enum SCR_EMouseButtons
+{
+	LEFT, //Keyboard Enter and Gamepad A are hardcoded to also return 0
+	RIGHT,
+	MIDDLE
 }

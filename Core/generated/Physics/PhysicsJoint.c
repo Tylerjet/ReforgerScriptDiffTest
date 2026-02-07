@@ -24,7 +24,7 @@ Wrapper over joint simulation
 	- 0->1, recommend to stay near 1
 	- the lower the value, the less the constraint will fight velocities which violate the angular limits
 */
-sealed class PhysicsJoint: pointer
+sealed class PhysicsJoint: global_pointer
 {
 	/*!
 	Creates hinge joint. Entities must be dynamic objects. Using only ent1 anchors it to the world.

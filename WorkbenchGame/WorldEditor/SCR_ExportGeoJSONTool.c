@@ -333,7 +333,7 @@ class SCR_ExportGeoJSONTool : WorldEditorTool
 	[Attribute("$profile:export", UIWidgets.FileNamePicker, "Where to save exported file. Do not use file suffix, it will be created automatically.")]
 	protected string m_sExportPath;
 
-	[Attribute("0", UIWidgets.ComboBox, desc: "Export type", enums: ParamEnumArray.FromEnum(SCR_EGeoExportType))]
+	[Attribute("0", UIWidgets.ComboBox, desc: "Export type", enumType: SCR_EGeoExportType)]
 	protected SCR_EGeoExportType m_eType;
 
 	[Attribute("0.0", UIWidgets.EditBox)]

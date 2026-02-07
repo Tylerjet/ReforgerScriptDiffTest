@@ -145,7 +145,7 @@ class SCR_ImportShapefileTool : WorldEditorTool
 			shape = shapeCollection.Get(i);
 			if (!shape)
 			{
-				Print("shape #" + (i + 1) + "/" + count + " is null?! Skipping", LogLevel.WARNING);
+				PrintFormat("shape #%1/%2 is null?! Skipping", i + 1, count, level: LogLevel.WARNING);
 				continue;
 			}
 
@@ -534,6 +534,7 @@ class SCR_ImportShapefileTool : WorldEditorTool
 
 	//------------------------------------------------------------------------------------------------
 	//! modifies forestShapeData but sets it back to its original value afterwards (duplicates a point then removes it)
+	//! \param[in] forestShapeDataArray
 	protected void GenerateForestGeneratorPointData(notnull array<ref ForestGeneratorShapeImportData> forestShapeDataArray)
 	{
 		int count = forestShapeDataArray.Count();
@@ -667,5 +668,21 @@ class SCR_SHPPrefabData
 
 	[Attribute(desc: "Prefab assigned to this ID", params: "et")]
 	ResourceName m_sPrefab;
+}
+
+class ForestGeneratorShapeImportData
+{
+	IEntitySource source;
+	IEntity entity;
+	int id;
+	ref SCR_AABB bbox;
+	ref array<vector> points = {};
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	void GenerateAAB()
+	{
+		bbox = new SCR_AABB(points);
+	}
 }
 #endif // WORKBENCH

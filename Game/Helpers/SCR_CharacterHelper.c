@@ -11,7 +11,7 @@ class SCR_CharacterHelper
 	//------------------------------------------------------------------------------------------------
 	//! Check if the provided entity is the local player
 	//! See EntityUtils.GetPlayer()
-	//! \param entity
+	//! \param[in] entity
 	// unused
 	static bool IsPlayer(IEntity entity)
 	{
@@ -96,10 +96,33 @@ class SCR_CharacterHelper
 	//------------------------------------------------------------------------------------------------
 	//! Check if the provided entity is -a- player - a human-controlled entity
 	//! See EntityUtils.IsPlayer()
-	//! \param entity
+	//! \param[in] entity
 	// unused
 	static bool IsAPlayer(IEntity entity)
 	{
 		return entity && EntityUtils.IsPlayer(entity);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Checks if provided client is in control of provided character or if it is an AI then is this client the owner of it
+	//! \param[in] character to check
+	//! \param[out] isAi
+	//! \return true when this client has the authority over provided character
+	static bool IsPlayerOrAIOwner(notnull ChimeraCharacter character, out bool isAi = false)
+	{
+		isAi = false;
+		if (SCR_PlayerController.GetLocalControlledEntity() == character)
+			return true;//do this first as IsPlayer fetches all players
+
+		if (EntityUtils.IsPlayer(character))
+			return false;
+
+		isAi = true;
+		//if this is ai then make sure that we have the authority over this entity
+		RplComponent charRplComp = character.GetRplComponent();
+		if (charRplComp && !charRplComp.IsOwner())
+			return false;
+
+		return true;
 	}
 }

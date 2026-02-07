@@ -125,6 +125,11 @@ void ScriptInvokerEntityAndStorageMethod(IEntity entity, BaseInventoryStorageCom
 typedef func ScriptInvokerEntityAndStorageMethod;
 typedef ScriptInvokerBase<ScriptInvokerEntityAndStorageMethod> ScriptInvokerEntityAndStorage;
 
+//~ Faction
+void ScriptInvokerFactionMethod(Faction faction);
+typedef func ScriptInvokerFactionMethod;
+typedef ScriptInvokerBase<ScriptInvokerFactionMethod> ScriptInvokerFaction;
+
 // this is an example class to show how to define and use script invokers
 /*
 class SCR_ExampleClass

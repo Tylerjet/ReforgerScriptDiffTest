@@ -47,8 +47,11 @@ class SCR_BaseContextMenuEditorUIComponent : SCR_BaseEditorUIComponent
 	
 	void CloseContextMenu()
 	{
-		if (m_ContextMenu) m_ContextMenu.SetVisible(false);
-		if (m_WorkSpace) m_WorkSpace.SetFocusedWidget(null);
+		if (m_ContextMenu)
+			m_ContextMenu.SetVisible(false);
+		
+		if (m_WorkSpace)
+			m_WorkSpace.SetFocusedWidget(null);
 		
 		m_OnContextMenuToggle.Invoke(false);
 	}
@@ -61,6 +64,9 @@ class SCR_BaseContextMenuEditorUIComponent : SCR_BaseEditorUIComponent
 	{
 		CloseContextMenu();
 	}
+	
+	//---- REFACTOR NOTE START: UI behavior might be unifiend 
+	// Using hard coded widget name
 	
 	protected void PopulateContextMenu(vector cursorWorldPosition)
 	{
@@ -119,6 +125,8 @@ class SCR_BaseContextMenuEditorUIComponent : SCR_BaseEditorUIComponent
 		if (m_BottomBarFadeUI)
 			m_BottomBarFadeUI.DelayedFadeIn(fadeDelay * 1000, true);
 	}
+	
+	//---- REFACTOR NOTE END ----
 	
 	bool IsContextMenuOpen()
 	{
@@ -305,6 +313,7 @@ class SCR_BaseContextMenuEditorUIComponent : SCR_BaseEditorUIComponent
 			m_InputManager.RemoveActionListener("MouseLeft", EActionTrigger.DOWN, OnMouseLeftDown);
 			m_InputManager.RemoveActionListener("EditorContextMenuClose", EActionTrigger.DOWN, CloseContextMenu);
 		}
+		
 		if (m_EditorManager)
 		{
 			m_EditorManager.GetOnModeChange().Remove(OnEditorModeChanged);

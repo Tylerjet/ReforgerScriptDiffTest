@@ -10,17 +10,20 @@
 enum EAmmoType
 {
 	/*UNDEFINED = 0,*/
-	FMJ = 1,
-	TRACER = 2,
-	AP = 4,
-	HE = 8,
-	HEAT = 16,
-	FRAG = 32,
-	SMOKE = 64,
-	INCENDIARY = 128,
-	SNIPER = 256,
-	ILLUMINATION = 512
-};
+	FMJ = 1 << 0,
+	TRACER = 1 << 1,
+	AP = 1 << 2,
+	HE = 1 << 3,
+	HEAT = 1 << 4,
+	FRAG = 1 << 5,
+	SMOKE = 1 << 6,
+	INCENDIARY = 1 << 7,
+	SNIPER = 1 << 8,
+	ILLUMINATION = 1 << 9,
+	TRAINING = 1 << 10,
+	SUBSONIC = 1 << 11,
+	HEDP = 1 << 12,
+}
 
 enum EWeaponFeature
 {

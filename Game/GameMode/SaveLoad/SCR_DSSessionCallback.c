@@ -161,7 +161,28 @@ class SCR_DSSessionCallback: DSSessionCallback
 		
 		GetGame().GetSaveManager().GetOnDeleted().Invoke(m_eType, fileName); //--- Call before the file is actually deleted
 		GetGame().GetBackendApi().GetStorage().LocalDelete(fileName);
-		SCR_SaveWorkshopManager.GetInstance().DeleteOfflineSaveByName(fileName);
+		
+		Print(string.Format("SCR_DSSessionCallback: LocalDelete: '%1'", fileName), LogLevel.VERBOSE);
+		return true;
+	}
+	
+	//----------------------------------------------------------------------------------------
+	//! Delete a save file based on if it's local or workshop.
+	//! \param[in] fileName Full save file name
+	//! \param[in] isFromWorkshop Select if you want to delete workshop item or local save (needed due to same names)
+	//! \return True if the file was deleted
+	bool Delete(string fileName, bool isFromWorkshop)
+	{
+		if (!GetGame().GetBackendApi().GetStorage().CheckFileID(fileName))
+			return false;
+		
+		GetGame().GetSaveManager().GetOnDeleted().Invoke(m_eType, fileName); //--- Call before the file is actually deleted
+		
+		if (!isFromWorkshop)
+			GetGame().GetBackendApi().GetStorage().LocalDelete(fileName);
+		else
+			SCR_SaveWorkshopManager.GetInstance().DeleteOfflineSaveByName(fileName);
+		
 		Print(string.Format("SCR_DSSessionCallback: LocalDelete: '%1'", fileName), LogLevel.VERBOSE);
 		return true;
 	}

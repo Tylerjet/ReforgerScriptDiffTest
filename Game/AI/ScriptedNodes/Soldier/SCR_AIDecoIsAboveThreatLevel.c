@@ -33,7 +33,7 @@ class SCR_AIDecoIsAboveThreatLevel : DecoratorScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Returns true if current threat state is higher than given threshold.";
 	}

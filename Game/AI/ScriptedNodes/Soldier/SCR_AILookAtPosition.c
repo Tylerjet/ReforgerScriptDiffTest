@@ -19,7 +19,7 @@ class SCR_AILookAtPosition: AITaskScripted
 	protected SCR_AIUtilityComponent m_Utility;	
 	
 	//-----------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() {return true;}
+	static override bool VisibleInPalette() {return true;}
 	
 	//-----------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsIn = {
@@ -88,7 +88,7 @@ class SCR_AILookAtPosition: AITaskScripted
     }
 	
 	//-----------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Look at position setter for execution inside tree LookAction.bt, the position may be corrected by terrain";
 	}

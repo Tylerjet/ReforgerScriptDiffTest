@@ -8,7 +8,7 @@ If you have more files to generate code from, make sure you add them to the conf
 [WorkbenchPluginAttribute(name: "AI Script Generator", description: "Generates scripted Behavior Tree node classes", wbModules: { "ScriptEditor" })]
 class SCR_AiScriptGeneratorPlugin : WorkbenchPlugin
 {
-	[Attribute("{6741D2D6C8EFBFF9}Configs/AiScriptGeneratorConfig.conf", UIWidgets.ResourceNamePicker, params: "conf class=SCR_AIScriptGeneratorConfig")]
+	[Attribute(defvalue: "{6741D2D6C8EFBFF9}Configs/AI/AIScriptGeneratorConfig.conf", params: "conf class=SCR_AIScriptGeneratorConfig")]
 	ResourceName m_sConfig;
 
 	//------------------------------------------------------------------------------------------------
@@ -652,7 +652,7 @@ class SCR_AiScriptGenerator_ClassGeneratorBase
 			if (!v.m_bBindPropertyIsEnum)
 				ctx.AddLine("[Attribute(\"" + "\")]");
 			else
-				ctx.AddLine(string.Format("[Attribute(\"" + "\", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(%1))]", v.m_sType));
+				ctx.AddLine(string.Format("[Attribute(\"" + "\", UIWidgets.ComboBox, enumType: %1)]", v.m_sType));
 
 			ctx.AddLine(string.Format("%1 %2;", v.m_sType, v.m_sBindPropertyName));
 			ctx.AddLine("");
@@ -805,7 +805,7 @@ class SCR_AiScriptGenerator_SendInfoMessageGenerator : SCR_AiScriptGenerator_Cla
 
 			GenerateGetNodeMiddleText(ctx, variables);
 
-			ctx.AddLine("override bool VisibleInPalette() { return true; }");
+			ctx.AddLine("static override bool VisibleInPalette() { return true; }");
 
 		ctx.AddLine("}");
 		ctx.AddLine("");
@@ -859,7 +859,7 @@ class SCR_AiScriptGenerator_SendGoalMessageGenerator : SCR_AiScriptGenerator_Cla
 
 			GenerateGetNodeMiddleText(ctx, variables);
 
-			ctx.AddLine("override bool VisibleInPalette() { return true; }");
+			ctx.AddLine("static override bool VisibleInPalette() { return true; }");
 
 		ctx.AddLine("}");
 		ctx.AddLine("");
@@ -904,7 +904,7 @@ class SCR_AiScriptGenerator_SendOrderGenerator : SCR_AiScriptGenerator_ClassGene
 
 		GenerateGetNodeMiddleText(ctx, variables);
 
-		ctx.AddLine("override bool VisibleInPalette() { return true; }");
+		ctx.AddLine("static override bool VisibleInPalette() { return true; }");
 
 		ctx.AddLine("}");
 		ctx.AddLine("");

@@ -39,9 +39,21 @@ class SCR_OpenVehicleDoorUserAction : VehicleDoorUserAction
 		
 		ECharacterDoorAnimType animType = ECharacterDoorAnimType.INVALID;
 		if (compartmentAccess.IsInCompartment())
-			animType = ECharacterDoorAnimType.FROM_INSIDE;
+		{
+			BaseCompartmentSlot compartment = compartmentAccess.GetCompartment();
+			array<int> compartmentDoors = {};
+			if (compartment)
+				compartment.GetAvailableDoorIndices(compartmentDoors);
+
+			if (compartmentDoors.Contains(GetDoorIndex()))
+				animType = ECharacterDoorAnimType.FROM_INSIDE;
+			else
+				animType = ECharacterDoorAnimType.NO_CHARACTER_ANIM;
+		}
 		else
+		{
 			animType = ECharacterDoorAnimType.FROM_OUTSIDE;
+		}
 		
 		if (!compartmentAccess.OpenDoor(pOwnerEntity, animType, GetDoorIndex()))
 			return;
@@ -52,10 +64,7 @@ class SCR_OpenVehicleDoorUserAction : VehicleDoorUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
 	{
-		SCR_VehicleDamageManagerComponent damageManager = SCR_VehicleDamageManagerComponent.Cast(GetOwner().FindComponent(SCR_VehicleDamageManagerComponent));
-		if (damageManager && damageManager.GetState() == EDamageState.DESTROYED)
-			return false;
-		
+		IEntity owner = GetOwner();//no null check here as it was already done in CanBeShownScript
 		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(user);
 		if (!character)
 			return false;
@@ -64,14 +73,7 @@ class SCR_OpenVehicleDoorUserAction : VehicleDoorUserAction
 		if (!compartmentAccess)
 			return false;
 		
-		if (compartmentAccess.AreDoorsFromDifferentVehicle(GetOwner(), GetDoorIndex()))
-			return false;
-		
-		BaseCompartmentManagerComponent managerComponent = BaseCompartmentManagerComponent.Cast(GetOwner().FindComponent(BaseCompartmentManagerComponent));
-		if (!managerComponent)
-			return false;
-		
-		Vehicle vehicle = Vehicle.Cast(SCR_EntityHelper.GetMainParent(GetOwner(), true));
+		Vehicle vehicle = Vehicle.Cast(SCR_EntityHelper.GetMainParent(owner, true));
 		if (vehicle)
 		{
 			Faction characterFaction = character.GetFaction();
@@ -82,14 +84,19 @@ class SCR_OpenVehicleDoorUserAction : VehicleDoorUserAction
 				return false;
 			}
 		}
-		
-		if (managerComponent.GetDoorUser(GetDoorIndex()) && managerComponent.GetDoorUser(GetDoorIndex()) != user || managerComponent.AreDoorOpen(GetDoorIndex()))
+
+		BaseCompartmentManagerComponent compartmentManager = BaseCompartmentManagerComponent.Cast(owner.FindComponent(BaseCompartmentManagerComponent));
+		if (!compartmentManager)
+			return false;
+
+		IEntity currentDoorUser = compartmentManager.GetDoorUser(GetDoorIndex());
+		if (currentDoorUser && currentDoorUser != user)
 		{
 			SetCannotPerformReason("#AR-UserAction_SeatOccupied");
 			return false;
 		}
 		
-		if (!compartmentAccess.CanAccessDoor(vehicle, managerComponent, GetDoorIndex()))
+		if (!compartmentAccess.CanAccessDoor(vehicle, compartmentManager, GetDoorIndex()))
 		{
 			SetCannotPerformReason("#AR-UserAction_SeatObstructed");
 			return false;
@@ -101,33 +108,28 @@ class SCR_OpenVehicleDoorUserAction : VehicleDoorUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
 	{
-		SCR_VehicleDamageManagerComponent damageManager = SCR_VehicleDamageManagerComponent.Cast(GetOwner().FindComponent(SCR_VehicleDamageManagerComponent));
-		if (damageManager && damageManager.GetState() == EDamageState.DESTROYED)
+		IEntity owner = GetOwner();
+		if (!owner)
 			return false;
 		
 		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(user);
 		if (!character)
 			return false;
 		
-		BaseCompartmentManagerComponent managerComponent = BaseCompartmentManagerComponent.Cast(GetOwner().FindComponent(BaseCompartmentManagerComponent));
-		if (!managerComponent)
-			return false;
-		
 		CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();
 		if (!compartmentAccess)
-			return false;
-		
-		if (compartmentAccess.AreDoorsFromDifferentVehicle(GetOwner(), GetDoorIndex()))
 			return false;
 
 		if (compartmentAccess.IsGettingIn() || compartmentAccess.IsGettingOut())
 			return false;
 		
-		if (managerComponent.AreDoorOpen(GetDoorIndex()))
-		{
+		if (compartmentAccess.IsDoorFromAnotherVehicle(owner, GetDoorIndex()))
 			return false;
-		}
 		
-		return true;
+		BaseCompartmentManagerComponent compartmentManager = BaseCompartmentManagerComponent.Cast(owner.FindComponent(BaseCompartmentManagerComponent));
+		if (!compartmentManager)
+			return false;
+		
+		return !compartmentManager.IsDoorOpen(GetDoorIndex());
 	}	
 };

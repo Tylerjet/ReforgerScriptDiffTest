@@ -1,4 +1,4 @@
-[BaseContainerProps()]
+[BaseContainerProps(), SCR_BaseGroupCommandTitleField("m_sCommandName")]
 class SCR_ContextGetIngroupCommand : SCR_WaypointGroupCommand
 {
 	[Attribute(desc: "Prefab of the AI waypoint used in this command to get into specific vehicle", params: "et class=AIWaypoint")]

@@ -17,7 +17,11 @@ class SCR_AIRemoveStuckVehicle : AITaskScripted
 			if (m_rGroup && vehicle)
 			{
 				
-				m_rGroup.RemoveUsableVehicle(vehicle);
+				SCR_AIVehicleUsageComponent vehicleUsageComp = SCR_AIVehicleUsageComponent.FindOnNearestParent(m_vehicleEnt, m_vehicleEnt);
+				if (!vehicleUsageComp)
+					return ENodeResult.FAIL;
+				
+				m_rGroup.GetGroupUtilityComponent().RemoveUsableVehicle(vehicleUsageComp);
 				return ENodeResult.SUCCESS;
 			};
 		}			
@@ -32,12 +36,12 @@ class SCR_AIRemoveStuckVehicle : AITaskScripted
         return s_aVarsIn;
     }
 	
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
     {
         return true;
     }
 	
-	override string GetOnHoverDescription()
+	static override string GetOnHoverDescription()
 	{
 		return "Remove stuck vehicle: when vehicle cannot be moved it removes it from group's list of owned vehicles";
 	}	

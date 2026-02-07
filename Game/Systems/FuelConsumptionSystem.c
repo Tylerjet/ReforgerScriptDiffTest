@@ -1,5 +1,12 @@
 class FuelConsumptionSystem : GameSystem
 {
+	override static void InitInfo(WorldSystemInfo outInfo)
+	{
+		outInfo
+			.SetAbstract(false)
+			.AddPoint(ESystemPoint.FixedFrame);
+	}
+
 	protected ref array<SCR_FuelConsumptionComponent> m_Components = {};
 
 	//------------------------------------------------------------------------------------------------

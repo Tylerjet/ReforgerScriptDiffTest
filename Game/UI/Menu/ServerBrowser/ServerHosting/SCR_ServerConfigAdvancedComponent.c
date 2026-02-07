@@ -39,7 +39,7 @@ class SCR_ServerConfigAdvancedComponent : SCR_ConfigListComponent
 		
 		m_PublicPortEdit = SCR_WidgetListEntryEditBox.Cast(FindEntry(PUBLIC_PORT));
 		if (m_PublicPortEdit)
-			m_PublicPortEdit.GetEditBoxComponent().m_OnChanged.Insert(OnPublicPortChanged);
+			m_PublicPortEdit.GetEditBoxComponent().m_OnWriteModeLeave.Insert(OnPublicPortChanged);
 		
 		m_BindPortEdit = SCR_WidgetListEntryEditBox.Cast(FindEntry(BIND_PORT));
 		if (m_BindPortEdit)
@@ -81,17 +81,14 @@ class SCR_ServerConfigAdvancedComponent : SCR_ConfigListComponent
 	}
 	
 	//-------------------------------------------------------------------------------------------
-	protected void OnPublicPortChanged(SCR_EditBoxComponent edit, string text)
+	protected void OnPublicPortChanged(string text)
 	{
 		// Edit bind by public port
 		if (!m_bWasPortEdited && m_BindPortEdit)
-		{
-			m_BindPortEdit.SetValue(text);
 			m_BindPortEdit.ClearInvalidInput();
-		}
 		
 		if (m_OnPortChanged)
-			m_OnPortChanged.Invoke(text);
+			m_OnPortChanged.Invoke(m_PublicPortEdit.ValueAsString());
 	}
 	
 	//-------------------------------------------------------------------------------------------

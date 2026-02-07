@@ -1,6 +1,9 @@
 [BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
 class SCR_AiStanceEditorAttribute : SCR_BaseFloatValueHolderEditorAttribute
 {
+	//---- REFACTOR NOTE START: Not up to date with internal scripting style ----
+	// Probably not implemeneted
+	
 	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)
 	{
 		SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(item);
@@ -43,4 +46,6 @@ class SCR_AiStanceEditorAttribute : SCR_BaseFloatValueHolderEditorAttribute
 			Print("Set Group stance to: " +  m_aValues[var.GetInt()].GetName());
 		}
 	}
+	
+	//---- REFACTOR NOTE END ----
 };

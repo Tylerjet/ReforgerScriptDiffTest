@@ -10,7 +10,6 @@ class SCR_ScenarioFrameworkGetRandomLayerBase : SCR_ScenarioFrameworkGet
 		if (m_aNameOfLayers.IsEmpty())
 			return null;
 
-		Math.Randomize(-1);
 		string selectedLayer = m_aNameOfLayers.GetRandomElement();
 
 		IEntity entity = FindEntityByName(selectedLayer);

@@ -692,10 +692,10 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 		if (fManager.GetFactionIndex(localPlayerFaction) != factionID)
 			return;
 
-		int duration = 6;
+		const int duration = 6; // TODO: check for good const usage
 		LocalizedString text;
 		LocalizedString text2;
-		string playerName = GetGame().GetPlayerManager().GetPlayerName(playerID);
+		string playerName = SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(playerID);
 
 		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
 
@@ -1238,6 +1238,8 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 			if (rewardID == SCR_EXPRewards.VETERANCY)
 				ShowHint(EHint.CONFLICT_VETERANCY);
 		}
+		
+		PrintFormat("Local player XP change: %1, event: %2, current XP: %3", XP, SCR_Enum.GetEnumName(SCR_EXPRewards, rewardID), totalXP, level: LogLevel.VERBOSE);
 	}
 
 	//------------------------------------------------------------------------------------------------

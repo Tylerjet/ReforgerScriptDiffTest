@@ -1,5 +1,6 @@
 class SCR_FireModeSwitchUserAction : SCR_InspectionUserAction
 {
+	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
 	{
 		if (!super.CanBeShownScript(user))
@@ -12,6 +13,7 @@ class SCR_FireModeSwitchUserAction : SCR_InspectionUserAction
 		return muzzle && muzzle.GetFireModesCount() > 2;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity)
 	{
 		if (!m_WeaponComponent)

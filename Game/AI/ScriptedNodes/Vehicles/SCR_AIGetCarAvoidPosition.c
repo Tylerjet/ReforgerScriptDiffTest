@@ -10,9 +10,9 @@ class SCR_AIGetCarAvoidPosition : AITaskScripted
 	protected static const string VEHICLE_PORT = "Vehicle";
 	protected static const string POSITION_PORT = "Position";
 	
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 	
-	override string GetOnHoverDescription()
+	static override string GetOnHoverDescription()
 	{
 		return "Returns position for a character to avoid a vehicle.";
 	}

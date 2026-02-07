@@ -23,7 +23,7 @@ class SCR_AIDecoCombatEnemy : DecoratorScripted
 	}
 	
 	//-------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() {return false; }
+	static override bool VisibleInPalette() {return false; }
 };
 
 class SCR_AIDecoCurrentEnemy: SCR_AIDecoCombatEnemy
@@ -41,7 +41,7 @@ class SCR_AIDecoCurrentEnemy: SCR_AIDecoCombatEnemy
 	}
 	
 	//-------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() {return true; }
+	static override bool VisibleInPalette() {return true; }
 };
 
 class SCR_AIDecoLastSeenEnemy: SCR_AIDecoCombatEnemy
@@ -59,5 +59,5 @@ class SCR_AIDecoLastSeenEnemy: SCR_AIDecoCombatEnemy
 	}
 	
 	//-------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() {return true; }
+	static override bool VisibleInPalette() {return true; }
 };

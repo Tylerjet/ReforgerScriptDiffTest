@@ -1,3 +1,13 @@
+//! Fail reasons of actions. They can be generic or specific to some behavior.
+enum EAIActionFailReason
+{
+	UNKNOWN,			// Unknown or unspecified
+	CANCELLED,			// Cancelled by SCR_AIMessage_Cancel or something else
+	TARGET_UNREACHABLE,
+	NO_AMMO,
+	ENTITY_DELETED		// Some crucial related entity got deleted
+}
+
 class SCR_AIActionBase : AIActionBase 
 {
 	// Priority levels
@@ -6,6 +16,7 @@ class SCR_AIActionBase : AIActionBase
 	const static float PRIORITY_LEVEL_GAMEMASTER				= 2000;
 	// Unit behaviors
 	const static float PRIORITY_BEHAVIOR_RETREAT_MELEE					= 190 + PRIORITY_LEVEL_PLAYER;
+	const static float PRIORITY_BEHAVIOR_AVOID_CHARACTER				= 180 + PRIORITY_LEVEL_PLAYER;
 	const static float PRIORITY_BEHAVIOR_GET_OUT_VEHICLE_HIGH_PRIORITY 	= 162 + PRIORITY_LEVEL_PLAYER; // High priority get out for evacuations of vehicles
 	const static float PRIORITY_BEHAVIOR_MOVE_FROM_DANGER				= 160 + PRIORITY_LEVEL_PLAYER;
 	const static float PRIORITY_BEHAVIOR_ATTACK_HIGH_PRIORITY			= 120 + PRIORITY_LEVEL_PLAYER;	// Attack high priority
@@ -14,6 +25,7 @@ class SCR_AIActionBase : AIActionBase
 	const static float PRIORITY_BEHAVIOR_GET_IN_VEHICLE					= 130;
 	const static float PRIORITY_BEHAVIOR_GET_OUT_VEHICLE				= 125;
 	const static float PRIORITY_BEHAVIOR_PICKUP_INVENTORY_ITEMS 		= 118;
+	const static float PRIORITY_BEHAVIOR_STATIC_ARTILLERY  				= 114;
 	const static float PRIORITY_BEHAVIOR_FIRE_ILLUM_FLARE				= 113;
 	const static float PRIORITY_BEHAVIOR_THROW_GRENADE					= 112;
 	const static float PRIORITY_BEHAVIOR_MEDIC_HEAL						= 111;
@@ -23,23 +35,26 @@ class SCR_AIActionBase : AIActionBase
 	const static float PRIORITY_BEHAVIOR_HEAL_WAIT						= 83;
 	const static float PRIORITY_BEHAVIOR_MOVE_FROM_VEHICLE_HORN			= 72;	
 	const static float PRIORITY_BEHAVIOR_ATTACK_NOT_SELECTED			= 70;	// Attack not selected
+	const static float PRIORITY_BEHAVIOR_OBSERVE_THREATS_HIGH_PRIORITY	= 69;	// Look at threats (gunshots), before safety is reached. !!! Priority of this must be higher than move and investigate!
 	const static float PRIORITY_BEHAVIOR_MOVE_FROM_UNKNOWN_FIRE			= 68;
-	const static float PRIORITY_BEHAVIOR_OBSERVE_UNKNOWN_FIRE 			= 66;	// Stare at gunfire origin. !!! Priority of this must be higher than move and investigate!
+	const static float PRIORITY_BEHAVIOR_OBSERVE_UNKNOWN_FIRE 			= 66;	// ! Obsolete ! Stare at gunfire origin. !!! Priority of this must be higher than move and investigate!
 	const static float PRIORITY_BEHAVIOR_HEAL							= 65;
 	const static float PRIORITY_BEHAVIOR_MOVE_AND_INVESTIGATE			= 64;
 	const static float PRIORITY_BEHAVIOR_SUPPRESS						= 63;
-	const static float PRIORITY_BEHAVIOR_OBSERVE_EXPLOSION				= 62;
 	const static float PRIORITY_BEHAVIOR_DEFEND							= 61;	// Defend selected waypoint	
 	const static float PRIORITY_BEHAVIOR_FIND_FIRE_POSITION				= 60;
-	const static float PRIORITY_BEHAVIOR_OBSERVE_LOW_PRIORITY			= 59;	// After observe executed looking once
+	const static float PRIORITY_BEHAVIOR_OBSERVE_LOW_PRIORITY			= 59;	// ! Obsolete ! After observe executed looking once 
 	const static float PRIORITY_BEHAVIOR_MOVE_INDIVIDUALLY				= 58;
 	const static float PRIORITY_BEHAVIOR_OPEN_NAVLINK_DOOR				= 54;	// Handling of door within group movement
 	const static float PRIORITY_BEHAVIOR_PERFORM_ACTION					= 30;
 	const static float PRIORITY_BEHAVIOR_MOVE							= 30;
 	const static float PRIORITY_BEHAVIOR_MOVE_IN_FORMATION				= 30;
+	const static float PRIORITY_BEHAVIOR_ATTACK_DISREGARD_THREATS		= 20;	// Attack, but when we are forbidden to shoot
 	const static float PRIORITY_BEHAVIOR_WAIT							= 10;
-	const static float PRIORITY_BEHAVIOR_ANIMATE						= 10;
+	const static float PRIORITY_BEHAVIOR_OBSERVE_THREATS_LOW_PRIORITY	= 4;
+	const static float PRIORITY_BEHAVIOR_MOVE_IN_FORMATION_LOW_PRIORITY = 3;	// When we're close to leader who isn't moving
 	const static float PRIORITY_BEHAVIOR_IDLE_DRIVER					= 2;
+	const static float PRIORITY_BEHAVIOR_ANIMATE						= 1.5;
 	const static float PRIORITY_BEHAVIOR_IDLE							= 1;
 	//const static float PRIORITY_BEHAVIOR_
 	
@@ -54,6 +69,7 @@ class SCR_AIActionBase : AIActionBase
 	const static float PRIORITY_ACTIVITY_RESUPPLY				= 100;
 	const static float PRIORITY_ACTIVITY_COMBAT_WITH_VEHICLES 	= 85;
 	const static float PRIORITY_ACTIVITY_HEAL					= 80;
+	const static float PRIORITY_ACTIVITY_ARTILLERY_SUPPORT		= 75;
 	const static float PRIORITY_ACTIVITY_ATTACK_CLUSTER			= 70;
 	const static float PRIORITY_ACTIVITY_SEEK_AND_DESTROY 		= 60;
 	const static float PRIORITY_ACTIVITY_INVESTIGATE_CLUSTER	= 55;
@@ -72,14 +88,14 @@ class SCR_AIActionBase : AIActionBase
 	
 	ResourceName m_sBehaviorTree;
 	
-	ResourceName m_sAbortBehaviorTree;
-	
 	ref ScriptInvoker m_OnActionCompleted = new ScriptInvoker();
 	ref ScriptInvoker m_OnActionFailed = new ScriptInvoker();
 	
 	// Array with parameters which must be exposed to scripts.
 	// For example see how m_bPrioritize is used here.
 	ref array<SCR_BTParamBase> m_aParams = {};	
+	
+	protected EAIActionFailReason m_eFailReason;
 	
 	//-------------------------------------------------------------------------------------
 	override float EvaluatePriorityLevel()
@@ -92,7 +108,29 @@ class SCR_AIActionBase : AIActionBase
 	{
 		m_fPriorityLevel.m_Value = priority;
 	}
-			
+	
+	//---------------------------------------------------------------------------------------------------------------------------------
+	EAIActionFailReason GetFailReason()
+	{
+		return m_eFailReason;
+	}
+	
+	//---------------------------------------------------------------------------------------------------------------------------------
+	//! Fail reason is an optional value which can be used to figure out why action failed.
+	void SetFailReason(EAIActionFailReason failReason)
+	{
+		m_eFailReason = failReason;
+	}
+	
+	//---------------------------------------------------------------------------------------------------------------------------------
+	//! Returns cause value, used for SCR_AISetting.
+	//! The return value should tell for which reason this action is being executed,
+	//! to decide if certain SCR_AISetting can be applied when this action runs, or not.
+	int GetCause()
+	{
+		return 0;
+	}
+	
 	//-------------------------------------------------------------------------------------
 	
 	#ifdef AI_DEBUG
@@ -129,7 +167,7 @@ class SCR_AIActionBase : AIActionBase
 	override void OnFail()
 	{
 		#ifdef AI_DEBUG
-		AddDebugMessage(string.Format("Fail: %1", GetActionDebugInfo()));
+		AddDebugMessage(string.Format("Fail: Reason: %1, %2", m_eFailReason, GetActionDebugInfo()));
 		#endif
 		OnActionFailed();		
 		m_OnActionFailed.Invoke(this);
@@ -139,7 +177,7 @@ class SCR_AIActionBase : AIActionBase
 	override void OnActionRemoved()
 	{
 		#ifdef AI_DEBUG
-		AddDebugMessage(string.Format("Fail: %1", GetActionDebugInfo()));
+		AddDebugMessage(string.Format("Remove: %1", GetActionDebugInfo()));
 		#endif
 	}
 	

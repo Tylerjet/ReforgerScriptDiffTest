@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 class SCR_DestructionBaseData
 {
 	// This integer is public as we don't want to have unnecessary getter & setter calls for it
@@ -63,4 +62,4 @@ class SCR_DestructionBaseData
 			m_OnDamage = new ScriptInvoker();
 		return m_OnDamage;
 	}
-};
+}

@@ -111,7 +111,7 @@ class SCR_DropdownEditorAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 			
 	}
 	
-	override bool OnChange(Widget w, int x, int y, bool finished)
+	override bool OnChangeInternal(Widget w, int x, int y, bool finished)
 	{	
 		SCR_BaseEditorAttribute attribute = GetAttribute();
 		if (!attribute) return false;
@@ -121,14 +121,14 @@ class SCR_DropdownEditorAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 			return false;
 		
 		var.SetInt(x);
-		super.OnChange(w, x, y, finished);
+		super.OnChangeInternal(w, x, y, finished);
 		return false;
 	}
 	
 	protected void OnChangeComboBox(SCR_ComboBoxComponent comboBox, int value)
 	{
 		if (m_bInitCalled)
-			OnChange(comboBox.GetRootWidget(), value, 0, false);
+			OnChangeInternal(comboBox.GetRootWidget(), value, 0, false);
 	}
 	
 	

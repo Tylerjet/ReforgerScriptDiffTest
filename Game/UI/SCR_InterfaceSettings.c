@@ -41,4 +41,13 @@ class SCR_InterfaceSettings : ModuleGameSettings
 
 	[Attribute("1")]
 	bool m_bShowVehicleInfo;
+	
+	[Attribute("1")]
+	bool m_bShowServerName;
+	
+	[Attribute("1")]
+	bool m_bShowInteractionHint;
+
+	[Attribute("1")]
+	bool m_bShowProjectileBallisticInfo;
 }

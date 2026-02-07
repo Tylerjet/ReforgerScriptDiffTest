@@ -20,6 +20,9 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 
 	protected bool m_bIsInRadioRange;
 	protected bool m_bCooldownDone = true;
+	
+	protected const EResourceType RESOURCE_TYPE = EResourceType.SUPPLIES;
+	protected const EResourceGeneratorID RESOURCE_GENERATOR_ID = EResourceGeneratorID.DEFAULT;
 
 	[RplProp(onRplName: "OnFactionChanged")]
 	protected int m_iFaction = SCR_CampaignMilitaryBaseComponent.INVALID_FACTION_INDEX;
@@ -121,12 +124,6 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	void OnParentFactionIDSet()
 	{
-		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
-
-		if (!campaign)
-			return;
-
-		Faction playerFaction = SCR_FactionManager.SGetLocalPlayerFaction();
 		SCR_CampaignFactionManager fManager = SCR_CampaignFactionManager.Cast(GetGame().GetFactionManager());
 		m_ParentFaction = SCR_CampaignFaction.Cast(fManager.GetFactionByIndex(m_iParentFaction));
 
@@ -140,38 +137,9 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 
 		m_ParentFaction.SetMobileAssembly(this);
 
-		if (RplSession.Mode() != RplMode.Dedicated)
-		{
-			SCR_MapDescriptorComponent mapDescriptor = SCR_MapDescriptorComponent.Cast(GetOwner().FindComponent(SCR_MapDescriptorComponent));
-
-			if (mapDescriptor)
-				m_MapItem = mapDescriptor.Item();
-
-			if (!m_MapItem || m_ParentFaction != playerFaction)
-				return;
-
-			m_MapItem.SetVisible(true);
-
-			switch (m_ParentFaction.GetFactionKey())
-			{
-				case campaign.GetFactionKeyByEnum(SCR_ECampaignFaction.BLUFOR):
-				{
-					m_MapItem.SetFactionIndex(EFactionMapID.WEST);
-					break;
-				}
-
-				case campaign.GetFactionKeyByEnum(SCR_ECampaignFaction.OPFOR):
-				{
-					m_MapItem.SetFactionIndex(EFactionMapID.EAST);
-					break;
-				}
-
-				default:
-				{
-					m_MapItem.SetFactionIndex(EFactionMapID.UNKNOWN);
-				}
-			}
-		}
+		// Delay so map item can initialize
+		if (!System.IsConsoleApp())
+			GetGame().GetCallqueue().CallLater(UpdateMapItem, SCR_GameModeCampaign.MINIMUM_DELAY);
 
 		SCR_RadioCoverageSystem.UpdateAll();
 		UpdateRadioCoverage();
@@ -210,6 +178,47 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 	int GetRadioRange()
 	{
 		return m_iRadioRange;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateMapItem()
+	{
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+
+		if (!campaign)
+			return;
+
+		SCR_MapDescriptorComponent mapDescriptor = SCR_MapDescriptorComponent.Cast(GetOwner().FindComponent(SCR_MapDescriptorComponent));
+
+		if (mapDescriptor)
+			m_MapItem = mapDescriptor.Item();
+		
+		Faction playerFaction = SCR_FactionManager.SGetLocalPlayerFaction();
+
+		if (!m_MapItem || m_ParentFaction != playerFaction)
+			return;
+
+		m_MapItem.SetVisible(true);
+
+		switch (m_ParentFaction.GetFactionKey())
+		{
+			case campaign.GetFactionKeyByEnum(SCR_ECampaignFaction.BLUFOR):
+			{
+				m_MapItem.SetFactionIndex(EFactionMapID.WEST);
+				break;
+			}
+
+			case campaign.GetFactionKeyByEnum(SCR_ECampaignFaction.OPFOR):
+			{
+				m_MapItem.SetFactionIndex(EFactionMapID.EAST);
+				break;
+			}
+
+			default:
+			{
+				m_MapItem.SetFactionIndex(EFactionMapID.UNKNOWN);
+			}
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -304,6 +313,9 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 		TextWidget respawn;
 		ImageWidget respawnImg;
 
+		if (!hq)
+			return;
+		
 		ResourceName imageset = hq.GetBuildingIconImageset();
 
 		if (w && imageset)
@@ -369,5 +381,45 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 				}
 			}
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Sets the value of supplies in widget based on available supplies in Mobile Assembly
+	//! \param[in] w
+	void UpdateSuppliesAmount(Widget w = null)
+	{
+		if (!w || !m_ParentFaction)
+			return;
+
+		SCR_CampaignMilitaryBaseComponent hq = m_ParentFaction.GetMainBase();
+		if (!hq)
+			return;
+
+		ResourceName imageset = hq.GetBuildingIconImageset();
+		if (!imageset)
+			return;
+
+		TextWidget resource = TextWidget.Cast(w.FindAnyWidget("Supplies"));
+		ImageWidget resourceImg = ImageWidget.Cast(w.FindAnyWidget("SuppliesIMG"));
+		
+		if (!resource || !resourceImg)
+			return;
+
+		SCR_ResourceComponent resourceComp = SCR_ResourceComponent.FindResourceComponent(GetOwner());
+		if (!resourceComp)
+			return;
+
+		SCR_ResourceConsumer resourceConsumer;
+		if (!resourceComp.GetConsumer(RESOURCE_GENERATOR_ID, RESOURCE_TYPE, resourceConsumer))
+			return;
+
+		float resourceAmount = resourceConsumer.GetAggregatedResourceValue();
+		float maxResourceAmount = resourceConsumer.GetAggregatedMaxResourceValue();
+
+		resource.SetTextFormat("#AR-Campaign_BaseSuppliesAmount", resourceAmount, maxResourceAmount);
+		resourceImg.LoadImageFromSet(0, imageset, "SuppliesBig");
+
+		resource.SetVisible(true);
+		resourceImg.SetVisible(true);
 	}
 }

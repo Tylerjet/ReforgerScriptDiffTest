@@ -234,19 +234,19 @@ class SCR_AIOccupyMovableVehicles : AITaskScripted
 	}
 		
 	//----------------------------------------------------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
 	{
 		return true;
 	};
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------
-	override string GetOnHoverDescription()
+	static override string GetOnHoverDescription()
 	{
 		return "OccupyMovableVehicles: goes over the array of known vehicles and sends group members on foot to get in movable vehicles. Keeps running until they are there.";
 	};
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------
-	override bool CanReturnRunning()
+	static override bool CanReturnRunning()
 	{
 		return true;
 	};

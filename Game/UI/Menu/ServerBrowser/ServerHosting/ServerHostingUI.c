@@ -28,7 +28,7 @@ class ServerHostingUI : SCR_TabDialog
 	protected ref SCR_ServerHostingSettingsSubMenu m_AdvancedSubMenu;
 
 	// Values
-	protected string m_iUnifiedPort; // Unified port used acress sub menu to define port from basic in advanced settings and vice versa
+	protected string m_sUnifiedPort; // Unified port used acress sub menu to define port from basic in advanced settings and vice versa
 	protected string m_sFileName;
 
 	// TODO: move tab specific stuff to a child of SCR_SuperMenuComponent (low priority)
@@ -307,10 +307,10 @@ class ServerHostingUI : SCR_TabDialog
 	//! Call when sub menu change port setting to propagete unified port on multiple places
 	protected void OnSubMenuChangePort(string port)
 	{
-		m_iUnifiedPort = port;
+		m_sUnifiedPort = port;
 
-		m_ConfigList.SetPort(m_iUnifiedPort);
-		m_AdvancedSettings.SetPorts(m_iUnifiedPort);
+		m_ConfigList.SetPort(m_sUnifiedPort);
+		m_AdvancedSettings.SetPorts(m_sUnifiedPort);
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -114,7 +114,7 @@ class SCR_ActionBlockUIName: SCR_DeviceBlockUIName
 		//--- ToDo: Turn color conversion to general function
 		Color sRGBA = Color.FromInt(UIColors.CONTRAST_COLOR.PackToInt());	
 
-		return m_sDelimiter + super.GetName() + "<br/><br/>" + string.Format("<color rgba=%2><action name='%1' scale='1.7'/></color>", m_sActionName, UIColors.FormatColor(sRGBA)) + "</br>";
+		return super.GetName() + m_sDelimiter + m_sDelimiter + string.Format("<color rgba=%2><action name='%1' scale='1.7'/></color>", m_sActionName, UIColors.FormatColor(sRGBA)) + m_sDelimiter;
 	}
 };
 [BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
@@ -153,7 +153,7 @@ class SCR_KeyBlockUIName: SCR_DeviceBlockUIName
 			}
 			keys += string.Format("<%2 name='%1' scale='1.7'/>", entry.m_sKey, entry.m_Tag);
 		}
-		return m_sDelimiter + super.GetName() + "<br/>" + string.Format("<color rgba='%2'>%1</color>", keys, UIColors.FormatColor(sRGBA)) + "</br>";	
+		return super.GetName() + m_sDelimiter + m_sDelimiter + string.Format("<color rgba='%2'>%1</color>", keys, UIColors.FormatColor(sRGBA)) + m_sDelimiter;	
 	}
 };
 [BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("m_sKey")]
@@ -228,7 +228,7 @@ class SCR_ImageBlockUIName: SCR_SubBlockUIName
 			return string.Empty;
 		}
 		
-		return "</br>" + string.Format("<color rgba=%1><image set='%2' name='%3' scale='%4'/></color>", UIColors.FormatColor(m_fColor), m_sImageSet, m_sImage, m_fScale) + "</br>";
+		return "</br>" + string.Format("<color rgba=%1><image set='%2' name='%3' scale='%4'/></color>", UIColors.FormatColor(m_fColor), m_sImageSet, m_sImage, m_fScale);
 	}
 }
 

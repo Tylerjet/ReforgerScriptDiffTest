@@ -57,7 +57,7 @@ class SCR_HealSupportStationComponent : SCR_BaseDamageHealSupportStationComponen
  	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override int GetSupplyCostAction(IEntity actionOwner, IEntity actionUser, SCR_BaseUseSupportStationAction action)
+	protected override int GetSupplyAmountAction(IEntity actionOwner, IEntity actionUser, SCR_BaseUseSupportStationAction action)
 	{
 		if (!AreSuppliesEnabled())
 			return 0;
@@ -68,18 +68,18 @@ class SCR_HealSupportStationComponent : SCR_BaseDamageHealSupportStationComponen
 		EDamageType activeDoT;
 		float damageToHeal = GetDamageOrStateToHeal(actionOwner, actionUser, damageHealAction, activeDoT, hitZones);
 		if (activeDoT != -1)
-			return super.GetSupplyCostAction(actionOwner, actionUser, action);
+			return super.GetSupplyAmountAction(actionOwner, actionUser, action);
 		
 		//~ Not a character
 		SCR_CharacterDamageManagerComponent characterDamageManager = SCR_CharacterDamageManagerComponent.Cast(damageHealAction.GetActionDamageManager());	
 		if (!characterDamageManager)
-			return super.GetSupplyCostAction(actionOwner, actionUser, action);
+			return super.GetSupplyAmountAction(actionOwner, actionUser, action);
 		
 		HitZone bloodHitZone = characterDamageManager.GetBloodHitZone();
 		
 		//~ No blood hitZone or bloodhitZone full health, use default logic				
 		if (hitZones.Count() != 1 || hitZones[0] != bloodHitZone)
-			return super.GetSupplyCostAction(actionOwner, actionUser, action);
+			return super.GetSupplyAmountAction(actionOwner, actionUser, action);
 			
 		//~ Calculate the supply cost
 		float bloodHealCost = (damageToHeal / m_iBloodHealedEachExecute) * m_iSupplyCostBloodHealed;
@@ -124,7 +124,7 @@ class SCR_HealSupportStationComponent : SCR_BaseDamageHealSupportStationComponen
 		if (AreSuppliesEnabled())
 		{
 			//~ Failed to consume supplies, meaning there weren't enough supplies for the action
-			if (!OnConsumeSuppliesServer(GetSupplyCostAction(actionOwner, actionUser, action)))
+			if (!OnConsumeSuppliesServer(GetSupplyAmountAction(actionOwner, actionUser, action)))
 				return;
 		}
 					

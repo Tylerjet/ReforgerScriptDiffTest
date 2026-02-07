@@ -44,7 +44,7 @@ class SCR_ArsenalInventoryStorageManagerComponent : ScriptedInventoryStorageMana
 		m_ItemsInArsenal.Clear();
 		if (!newArsenalContent)
 			return;
-		
+
 		foreach (ResourceName prefab : newArsenalContent)
 		{
 			m_ItemsInArsenal.Insert(prefab);
@@ -126,11 +126,28 @@ class SCR_ArsenalInventoryStorageManagerComponent : ScriptedInventoryStorageMana
 			return;
 		
 		array<ResourceName> prefabs = {};
-		arsenalComponent.GetAvailablePrefabs(prefabs);
-		OnArsenalUpdated(prefabs);
+		if (arsenalComponent.GetAvailablePrefabs(prefabs))
+			OnArsenalUpdated(prefabs);
+		else if (!SCR_EntityCatalogManagerComponent.GetInstance())
+			SCR_EntityCatalogManagerComponent.GetOnEntityCatalogInitialized().Insert(OnEntityCatalogInitialized);
 		
 		//~ Subscribe to arsenal changes
 		arsenalComponent.GetOnArsenalUpdated().Insert(OnArsenalUpdated);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnEntityCatalogInitialized()
+	{
+		SCR_EntityCatalogManagerComponent.GetOnEntityCatalogInitialized().Remove(OnEntityCatalogInitialized);
+		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.Cast(GetOwner().FindComponent(SCR_ArsenalComponent));
+		if (!arsenalComponent)
+			return;
+
+		array<ResourceName> prefabs = {};
+		if (!arsenalComponent.GetAvailablePrefabs(prefabs))
+			return;
+
+		OnArsenalUpdated(prefabs);
 	}
 	
 	//------------------------------------------------------------------------------------------------

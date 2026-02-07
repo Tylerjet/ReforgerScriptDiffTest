@@ -9,18 +9,18 @@ Do not modify, this script is generated
 \{
 */
 
-//! Game editor entity visualiser type.
+//! Game editor entity visualizer type.
 enum EntityVisualizerType
 {
 	//! no visualizer
 	EVT_NONE,
 	//! normal visualizer
 	EVT_NORMAL,
-	//! selected entity visualiser (but no as main)
+	//! selected entity visualizer (but no as main)
 	EVT_SELECTED,
-	//! selected as main entity visualiser
+	//! selected as main entity visualizer
 	EVT_SELECTED_AS_MAIN,
-	//! under cursor entity visualiser
+	//! under cursor entity visualizer
 	EVT_UNDER_CURSOR,
 }
 

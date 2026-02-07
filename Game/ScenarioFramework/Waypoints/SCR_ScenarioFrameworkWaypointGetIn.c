@@ -2,7 +2,7 @@
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkWaypointGetIn : SCR_ScenarioFrameworkWaypointBoardingEntity
 {
-	[Attribute(defvalue: "10", desc: "Radius in m")]
+	[Attribute(defvalue: "10", uiwidget: UIWidgets.Slider, desc: "Radius in m")]
 	float m_fCompletionRadius;
 
 	[Attribute(defvalue: "{712F4795CF8B91C7}Prefabs/AI/Waypoints/AIWaypoint_GetIn.et", desc: "In Default, it will use specific prefab for each class, but here you can change it if you know what you are doing")]

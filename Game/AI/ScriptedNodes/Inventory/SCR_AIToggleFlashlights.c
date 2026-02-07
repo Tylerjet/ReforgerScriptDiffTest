@@ -4,6 +4,7 @@ class SCR_AIToggleFlashlights : AITaskScripted
 	protected bool m_bEnable;
 	
 	protected SCR_GadgetManagerComponent m_GadgetManager;
+	protected SCR_AICharacterSettingsComponent m_Settings;
 	
 	//------------------------------------------------------------------------------------------------------
 	override static string GetOnHoverDescription()
@@ -16,6 +17,7 @@ class SCR_AIToggleFlashlights : AITaskScripted
 	override void OnInit(AIAgent owner)
 	{
 		m_GadgetManager = SCR_GadgetManagerComponent.GetGadgetManager(owner.GetControlledEntity());
+		m_Settings = SCR_AICharacterSettingsComponent.Cast(owner.FindComponent(SCR_AICharacterSettingsComponent));
 	}
 	
 	//------------------------------------------------------------------------------------------------------
@@ -25,7 +27,7 @@ class SCR_AIToggleFlashlights : AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------------
-	static ENodeResult ToggleFlashlights(notnull SCR_GadgetManagerComponent gadgetManager, bool newState)
+	ENodeResult ToggleFlashlights(notnull SCR_GadgetManagerComponent gadgetManager, SCR_AICharacterSettingsComponent settingsComp,  bool newState)
 	{
 		array<SCR_GadgetComponent> gadgets = gadgetManager.GetGadgetsByType(EGadgetType.FLASHLIGHT);
 		
@@ -34,6 +36,14 @@ class SCR_AIToggleFlashlights : AITaskScripted
 		
 		if (gadgets.IsEmpty())
 			return ENodeResult.FAIL;
+		
+		// Bail if settings don't allow us to interact with lights
+		if (settingsComp)
+		{
+			SCR_AICharacterLightInteractionSettingBase setting = SCR_AICharacterLightInteractionSettingBase.Cast(settingsComp.GetCurrentSetting(SCR_AICharacterLightInteractionSettingBase));
+			if (setting && !setting.IsLightInterractionAllowed())
+				return ENodeResult.SUCCESS;
+		}
 		
 		bool success = false;
 		foreach (SCR_GadgetComponent gadget : gadgets)
@@ -50,8 +60,12 @@ class SCR_AIToggleFlashlights : AITaskScripted
 				continue;
 			
 			bool occluded = slot.IsOccluded();
+			bool newToggledState = newState && !occluded;
+			bool currentState = gadget.IsToggledOn();
 			
-			gadget.ToggleActive(newState && !occluded, SCR_EUseContext.FROM_ACTION);
+			if (newToggledState != gadget.IsToggledOn())
+				gadget.ToggleActive(newToggledState, SCR_EUseContext.FROM_ACTION);
+			
 			success |= true;
 		}
 			
@@ -78,7 +92,7 @@ class SCR_AIToggleFlashlightsOnSimulate : SCR_AIToggleFlashlights
 		if (!m_GadgetManager)
 			return ENodeResult.FAIL;
 		
-		return ToggleFlashlights(m_GadgetManager, m_bEnable);
+		return ToggleFlashlights(m_GadgetManager, m_Settings, m_bEnable);
 	};
 	
 	//------------------------------------------------------------------------------------------------------
@@ -98,7 +112,7 @@ class SCR_AIToggleFlashlightsOnAbort : SCR_AIToggleFlashlights
 		if (!m_GadgetManager)
 			return;
 		
-		ToggleFlashlights(m_GadgetManager, m_bEnable);
+		ToggleFlashlights(m_GadgetManager, m_Settings, m_bEnable);
 	}
 	
 	//------------------------------------------------------------------------------------------------------

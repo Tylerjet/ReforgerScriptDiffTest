@@ -63,9 +63,9 @@ sealed class Workbench
 	static proto ref ScriptModule GetWBGameScriptModule();
 	/*!
 	Saves PixelRawData into specified path in PNG format
-	\param file			Name where to save data
+	\param fileName	Name where to save data
 	\param data			which data to save
-	\param with			width of data
+	\param width		width of data
 	\param height		height of data
 	\param stride		byte size between two rows of data
 	*/

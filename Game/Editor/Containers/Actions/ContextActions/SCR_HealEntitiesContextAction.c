@@ -19,9 +19,8 @@ class SCR_HealEntitiesContextAction : SCR_SelectedEntitiesContextAction
 		
 		if (damageComponent.GetState() == EDamageState.DESTROYED)
 			return false;
-		
-		// False will disable HealContextAction if the entity has exclusively positive damage effects/dot
-		return damageComponent.CanBeHealed(false);
+
+		return damageComponent.CanBeHealed();
 	}
 	
 	override void Perform(SCR_EditableEntityComponent selectedEntity, vector cursorWorldPosition)

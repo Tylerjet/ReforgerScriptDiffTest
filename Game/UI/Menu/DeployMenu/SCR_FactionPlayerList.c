@@ -328,7 +328,7 @@ class SCR_PlayerName : ScriptedWidgetComponent
 	{
 		m_iPlayerId = pid;
 		if (m_wName)
-			m_wName.SetText(GetGame().GetPlayerManager().GetPlayerName(pid));
+			m_wName.SetText(SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(pid));
 			
 		SetPlatform();
 	}

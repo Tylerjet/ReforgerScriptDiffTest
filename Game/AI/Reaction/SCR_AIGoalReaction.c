@@ -142,8 +142,6 @@ class SCR_AIGoalReaction_Move : SCR_AIGoalReaction
 		
 		auto behavior = new SCR_AIMoveIndividuallyBehavior(utility, msg.m_RelatedGroupActivity,
 			msg.m_MovePosition, SCR_AIActionBase.PRIORITY_BEHAVIOR_MOVE_INDIVIDUALLY, msg.m_fPriorityLevel, msg.m_FollowEntity);
-		if (m_OverrideBehaviorTree != string.Empty)
-			behavior.m_sBehaviorTree = m_OverrideBehaviorTree;
 
 		utility.WrapBehaviorOutsideOfVehicle(behavior);
 		utility.AddAction(behavior);
@@ -158,36 +156,23 @@ class SCR_AIGoalReaction_Move : SCR_AIGoalReaction
 		auto activity = new SCR_AIMoveActivity(utility, msg.m_RelatedWaypoint, msg.m_MovePosition,
 			msg.m_FollowEntity, msg.m_eMovementType, msg.m_bUseVehicles, SCR_AIActionBase.PRIORITY_ACTIVITY_MOVE, priorityLevel: msg.m_fPriorityLevel);
 		
-		utility.SetStateAllActionsOfType(SCR_AISeekAndDestroyActivity,EAIActionState.FAILED); // move fails seek and destroy
+		utility.SetStateAllActionsOfType(SCR_AISearchAndDestroyActivity,EAIActionState.FAILED); // move fails seek and destroy
 		utility.AddAction(activity);
 	}
 };
 
 [BaseContainerProps()]
 class SCR_AIGoalReaction_Follow : SCR_AIGoalReaction
-{
-	override void PerformReaction(notnull SCR_AIUtilityComponent utility, SCR_AIMessageBase message)
-	{
-		auto msg = SCR_AIMessage_Follow.Cast(message);
-		if (!msg)
-			return;
-		
-		auto behavior = new SCR_AIFollowInFormationBehavior(utility, msg.m_RelatedGroupActivity, vector.Zero,
-				SCR_AIActionBase.PRIORITY_ACTIVITY_FOLLOW,  priorityLevel: msg.m_fPriorityLevel);
-	
-		utility.AddAction(behavior);
-	}
-	
+{	
 	override void PerformReaction(notnull SCR_AIGroupUtilityComponent utility, SCR_AIMessageBase message)
 	{		
 		auto msg = SCR_AIMessage_Follow.Cast(message);
 		if (!msg || !msg.m_FollowEntity)
 			return;
 		
-		//SCR_AIBaseUtilityComponent utility, bool prioritize, bool isWaypointRelated, vector pos, float priority = PRIORITY_ACTIVITY_FOLLOW, IEntity ent = null, bool useVehicles = false, float distance = 1.0
 		auto activity = new SCR_AIFollowActivity(utility, msg.m_RelatedWaypoint, vector.Zero, msg.m_FollowEntity,
 			msg.m_eMovementType, false, SCR_AIActionBase.PRIORITY_ACTIVITY_FOLLOW, priorityLevel: msg.m_fPriorityLevel, distance: msg.m_fDistance);
-		utility.SetStateAllActionsOfType(SCR_AISeekAndDestroyActivity, EAIActionState.FAILED); // move fails seek and destroy
+		utility.SetStateAllActionsOfType(SCR_AISearchAndDestroyActivity, EAIActionState.FAILED); // move fails seek and destroy
 		utility.AddAction(activity);
 	}
 };
@@ -217,8 +202,7 @@ class SCR_AIGoalReaction_MoveInFormation : SCR_AIGoalReaction
 	{
 		SCR_AIMessageGoal msg = SCR_AIMessageGoal.Cast(message);
 		
-		auto behavior = new SCR_AIMoveInFormationBehavior(utility, msg.m_RelatedGroupActivity, vector.Zero,
-			SCR_AIActionBase.PRIORITY_BEHAVIOR_MOVE_IN_FORMATION, msg.m_fPriorityLevel);
+		auto behavior = new SCR_AIMoveInFormationBehavior(utility, msg.m_RelatedGroupActivity, msg.m_fPriorityLevel);
 			
 		utility.AddAction(behavior);
 	}
@@ -237,28 +221,36 @@ class SCR_AIGoalReaction_GetInVehicle : SCR_AIGoalReaction
 		// from msg.m_eRoleInVehicle and msg.m_Vehicle we deduce empty compartment to get in, if none found, we dont add behavior get in
 		BaseCompartmentSlot compartmentSlot;
 		EAICompartmentType wantedCompartmentType = msg.m_eRoleInVehicle;
-		BaseCompartmentManagerComponent compMan = BaseCompartmentManagerComponent.Cast(msg.m_Vehicle.FindComponent(BaseCompartmentManagerComponent));
-		if (!compMan)
-			return;
-		array<BaseCompartmentSlot> compartments = {};
-		compMan.GetCompartments(compartments);
-		foreach (BaseCompartmentSlot comp: compartments)
+		if (msg.m_CompartmentSlot)
 		{
-			if (msg.m_eRoleInVehicle == EAICompartmentType.None)
-				wantedCompartmentType = SCR_AICompartmentHandling.CompartmentClassToType(comp.Type());
-			
-			if (comp.IsReserved() || (SCR_AICompartmentHandling.CompartmentClassToType(comp.Type()) != wantedCompartmentType))
-				continue;
-			
-			IEntity occupant = comp.GetOccupant();
-			if (occupant && occupant == utility.m_OwnerEntity)
-				// we are already inside correct compartment type! we are done -> do not add new behavior
+			compartmentSlot = msg.m_CompartmentSlot;
+			wantedCompartmentType = SCR_AICompartmentHandling.CompartmentClassToType(compartmentSlot.Type());
+		}
+		else
+		{
+			BaseCompartmentManagerComponent compMan = BaseCompartmentManagerComponent.Cast(msg.m_Vehicle.FindComponent(BaseCompartmentManagerComponent));
+			if (!compMan)
 				return;
-			else if (occupant && SCR_AIDamageHandling.IsConscious(occupant))
-				continue;
-			comp.SetReserved(utility.m_OwnerEntity);
-			compartmentSlot = comp;
-			break;
+			array<BaseCompartmentSlot> compartments = {};
+			compMan.GetCompartments(compartments);
+			foreach (BaseCompartmentSlot comp: compartments)
+			{
+				if (msg.m_eRoleInVehicle == EAICompartmentType.None)
+					wantedCompartmentType = SCR_AICompartmentHandling.CompartmentClassToType(comp.Type());
+				
+				if (comp.IsReserved() || (SCR_AICompartmentHandling.CompartmentClassToType(comp.Type()) != wantedCompartmentType))
+					continue;
+				
+				IEntity occupant = comp.GetOccupant();
+				if (occupant && occupant == utility.m_OwnerEntity)
+					// we are already inside correct compartment type! we are done -> do not add new behavior
+					return;
+				else if (occupant && SCR_AIDamageHandling.IsConscious(occupant))
+					continue;
+				comp.SetReserved(utility.m_OwnerEntity);
+				compartmentSlot = comp;
+				break;
+			}
 		}
 		if (!compartmentSlot)
 		{
@@ -330,7 +322,7 @@ class SCR_AIGoalReaction_SeekAndDestroy : SCR_AIGoalReaction
 		if (!msg)
 			return;
 		
-		auto activity = new SCR_AISeekAndDestroyActivity(utility, msg.m_RelatedWaypoint, msg.m_MovePosition, ent: msg.m_FollowEntity, useVehicles: msg.m_bUseVehicles, priorityLevel: msg.m_fPriorityLevel);
+		auto activity = new SCR_AISearchAndDestroyActivity(utility, msg.m_RelatedWaypoint, msg.m_MovePosition, ent: msg.m_FollowEntity, useVehicles: msg.m_bUseVehicles, priorityLevel: msg.m_fPriorityLevel);
 		
 		utility.SetStateAllActionsOfType(SCR_AIMoveActivity,EAIActionState.FAILED);
 		utility.AddAction(activity);
@@ -484,7 +476,10 @@ class SCR_AIGoalReaction_OpenNavlinkDoor : SCR_AIGoalReaction
 		if (!smartActionComp)
 			return;
 		
-		SCR_AIPerformActionBehavior performActionBehavior = new SCR_AIPerformActionBehavior(utility, msg.m_RelatedGroupActivity, smartActionComp, priority: SCR_AIActionBase.PRIORITY_BEHAVIOR_OPEN_NAVLINK_DOOR);
+		SCR_AIPerformActionBehavior performActionBehavior = new SCR_AIPerformActionBehavior(utility,
+			msg.m_RelatedGroupActivity, smartActionComp,
+			priority: SCR_AIActionBase.PRIORITY_BEHAVIOR_OPEN_NAVLINK_DOOR,
+			priorityLevel: msg.m_fPriorityLevel);
 				
 		utility.WrapBehaviorOutsideOfVehicle(performActionBehavior);
 		utility.AddAction(performActionBehavior);
@@ -505,7 +500,12 @@ class SCR_AIGoalReaction_Cancel : SCR_AIGoalReaction
 		foreach(AIActionBase action: actions)
 		{
 			if (action.GetRelatedGroupActivity() == msg.m_RelatedGroupActivity)
+			{
+				SCR_AIActionBase actionBase = SCR_AIActionBase.Cast(action);
+				if (actionBase)
+					actionBase.SetFailReason(EAIActionFailReason.CANCELLED);
 				action.Fail();
+			}
 		};
 	}
 };
@@ -606,7 +606,7 @@ class SCR_AIGoalReaction_Animate : SCR_AIGoalReaction
 		if (!msg || !msg.m_RootEntity)
 			return;
 		
-		auto behavior = new SCR_AIAnimateBehavior(utility, msg.m_RelatedGroupActivity, rootEntity: msg.m_RootEntity, priorityLevel: msg.m_fPriorityLevel, scriptForAgent: msg.m_AgentScript);
+		auto behavior = new SCR_AIAnimateBehavior(utility, msg.m_RelatedGroupActivity, rootEntity: msg.m_RootEntity, priorityLevel: msg.m_fPriorityLevel, scriptForAgent: msg.m_AgentScript, relatedInvoker:  msg.m_RelatedInvoker);
 		if (m_OverrideBehaviorTree != string.Empty)
 			behavior.m_sBehaviorTree = m_OverrideBehaviorTree;
 		
@@ -624,6 +624,25 @@ class SCR_AIGoalReaction_Animate : SCR_AIGoalReaction
 			activity.m_sBehaviorTree = m_OverrideBehaviorTree;
 		
 		utility.AddAction(activity);
+	}
+};
+
+[BaseContainerProps()]
+class SCR_AIGoalReaction_ArtillerySupport : SCR_AIGoalReaction
+{
+	override void PerformReaction(notnull SCR_AIUtilityComponent utility, SCR_AIMessageBase message)
+	{
+		SCR_AIMessage_ArtillerySupport msg = SCR_AIMessage_ArtillerySupport.Cast(message);
+		if (!msg)
+			return;
+		
+		array<ref AIActionBase> actions = {};
+		utility.FindActionsOfType(SCR_AIStaticArtilleryBehavior, actions);
+		foreach (auto a : actions)
+			a.Fail();
+		
+		SCR_AIStaticArtilleryBehavior b = new SCR_AIStaticArtilleryBehavior(utility, msg.m_RelatedGroupActivity, msg.m_ArtilleryEntity, msg.m_vTargetPos, msg.m_eAmmoType, priorityLevel: msg.m_fPriorityLevel);
+		utility.AddAction(b);
 	}
 };
 

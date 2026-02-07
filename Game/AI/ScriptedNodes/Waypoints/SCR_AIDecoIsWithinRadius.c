@@ -25,12 +25,12 @@ class SCR_AIDecoIsWithinRadius : DecoratorScripted
 		return false;
 	}	
 
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}
 	
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Decorator that test that all AIAgents are within completion radius of waypoint, current waypoint is used if none is provided";
 	}	

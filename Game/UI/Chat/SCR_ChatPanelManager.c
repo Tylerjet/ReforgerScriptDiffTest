@@ -237,7 +237,8 @@ class SCR_ChatPanelManager : SCR_GameCoreBase
 			msg,
 			m_ChatEntity.GetWhisperChannel(),
 			senderId,
-			GetGame().GetPlayerManager().GetPlayerName(senderId),
+			//GetGame().GetPlayerManager().GetPlayerName(senderId),
+			SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(senderId),
 			receiverId);
 		
 		OnNewMessage(m);
@@ -260,7 +261,8 @@ class SCR_ChatPanelManager : SCR_GameCoreBase
 			msg,
 			m_ChatEntity.GetChannel(channelId),
 			senderId,
-			GetGame().GetPlayerManager().GetPlayerName(senderId));
+			//GetGame().GetPlayerManager().GetPlayerName(senderId));
+			SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(senderId));
 		
 		this.OnNewMessage(m);
 	}

@@ -5,7 +5,7 @@ class SCR_AIDayNightTest : DecoratorScripted
 	protected float m_fSunsetTime;
 	
 	//-------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Returns true during daytime, false otherwise.";
 	}

@@ -26,6 +26,7 @@ class SCR_AIMoveActivity : SCR_AIActivityBase
 		SetPriority(priority);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override float CustomEvaluate()
 	{
 		if (m_Utility.HasActionOfType(SCR_AIHealActivity))
@@ -68,23 +69,10 @@ class SCR_AIMoveActivity : SCR_AIActivityBase
 		SendCancelMessagesToAllAgents();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnActionDeselected()
 	{
 		super.OnActionDeselected();
 		SendCancelMessagesToAllAgents();
-	}
-};
-
-class SCR_AISeekAndDestroyActivity : SCR_AIMoveActivity
-{
-	void SCR_AISeekAndDestroyActivity(SCR_AIGroupUtilityComponent utility, AIWaypoint relatedWaypoint, vector pos, IEntity ent, EMovementType movementType = EMovementType.RUN, bool useVehicles = false, float priority = PRIORITY_ACTIVITY_SEEK_AND_DESTROY, float priorityLevel = PRIORITY_LEVEL_NORMAL)
-	{
-		//m_bRemoveOnCompletion = false; removed: after S&D move was not realized, completed S&D was not removed
-		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Group/ActivitySeekDestroy.bt";
-	}
-	
-	override string GetActionDebugInfo()
-	{
-		return this.ToString() + " seek and destroy around" + m_Entity.m_Value.ToString();
 	}
 };

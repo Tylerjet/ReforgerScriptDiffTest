@@ -33,8 +33,7 @@ class SCR_BaseGroup : ScriptedSelectionMenuEntry
 	{
 		if (m_pSelectedEntry)
 		{
-			auto entryName = m_pSelectedEntry.GetEntryName();
-			outName = entryName;
+			outName = m_pSelectedEntry.GetEntryName();
 			return true;
 		}
 		

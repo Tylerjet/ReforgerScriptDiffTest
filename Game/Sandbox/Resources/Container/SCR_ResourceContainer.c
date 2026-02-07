@@ -75,6 +75,7 @@ class SCR_ResourceContainer : SCR_ResourceActor
 	
 	protected bool m_bIsEncapsulated;
 	
+	protected WorldTimestamp m_LastUpdateTimestamp;
 	protected float m_fResourceGainElapsedTime;
 	protected float m_fResourceDecayElapsedTime;
 	protected float m_fWeightMultiplier;
@@ -209,6 +210,13 @@ class SCR_ResourceContainer : SCR_ResourceActor
 	int GetLinkedInteractorIndex(notnull SCR_ResourceInteractor interactor)
 	{
 		return m_aInteractors.Find(interactor);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns the timestamp that is aimed to be used for the computation of gain and decay.
+	WorldTimestamp GetLastUpdateTimestamp()
+	{
+		return m_LastUpdateTimestamp;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -380,6 +388,16 @@ class SCR_ResourceContainer : SCR_ResourceActor
 			m_OnDecayEnabledChangedInvoker = new ScriptInvoker();
 		
 		return m_OnDecayEnabledChangedInvoker;
+	}
+	
+	
+	//------------------------------------------------------------------------------------------------
+	//! Sets the timestamp that is aimed to be used for the computation of gain and decay.
+	//!
+	//! \param[in] timestamp the timestamp to set as last update timestamp.
+	void SetLastUpdateTimestamp(WorldTimestamp timestamp)
+	{
+		m_LastUpdateTimestamp = timestamp;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -686,9 +704,11 @@ class SCR_ResourceContainer : SCR_ResourceActor
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void Update(float timeslice)
+	override void Update(WorldTimestamp timestamp)
 	{
-		float resourceValue = 0.0;
+		float resourceValue;
+		const float timeslice = timestamp.DiffSeconds(m_LastUpdateTimestamp);
+		m_LastUpdateTimestamp = timestamp;
 		
 		if (m_bEnableResourceGain)
 			ComputeResourceGain(timeslice, resourceValue);
@@ -711,7 +731,7 @@ class SCR_ResourceContainer : SCR_ResourceActor
 	{
 		m_fResourceGainElapsedTime += timeslice;
 		
-		float resourceGainElapsedTimeRelative = m_fResourceGainElapsedTime - m_fResourceGainTimeout;
+		const float resourceGainElapsedTimeRelative = m_fResourceGainElapsedTime - m_fResourceGainTimeout;
 		
 		if (m_fResourceGainElapsedTime < m_fResourceGainTimeout 
 		||	resourceGainElapsedTimeRelative < m_fResourceGainTickrate 
@@ -727,7 +747,7 @@ class SCR_ResourceContainer : SCR_ResourceActor
 	{
 		m_fResourceDecayElapsedTime += timeslice;
 		
-		float resourceDecayElapsedTimeRelative = m_fResourceDecayElapsedTime - m_fResourceDecayTimeout;
+		const float resourceDecayElapsedTimeRelative = m_fResourceDecayElapsedTime - m_fResourceDecayTimeout;
 		
 		if (m_fResourceDecayElapsedTime < m_fResourceDecayTimeout 
 		||	resourceDecayElapsedTimeRelative < m_fResourceDecayTickrate 
@@ -881,17 +901,19 @@ class SCR_ResourceContainer : SCR_ResourceActor
 	void CopyFromContainer(notnull SCR_ResourceContainer container)
 	{
 		m_sDebugName				= container.m_sDebugName;
+		m_eResourceRights			= container.m_eResourceRights;
+		m_eResourceType				= container.m_eResourceType;
 		m_eStorageType				= container.m_eStorageType;
 		m_fResourceValueCurrent		= container.m_fResourceValueCurrent;
 		m_fResourceValueMax			= container.m_fResourceValueMax;
 		m_bEnableResourceGain		= container.m_bEnableResourceGain;
 		m_fResourceGain				= container.m_fResourceGain;
 		m_fResourceGainTickrate		= container.m_fResourceGainTickrate;
+		m_fResourceGainTimeout		= container.m_fResourceGainTimeout;
 		m_bEnableResourceDecay		= container.m_bEnableResourceDecay;
 		m_fResourceDecay			= container.m_fResourceDecay;
 		m_fResourceDecayTickrate	= container.m_fResourceDecayTickrate;
-		m_eResourceRights			= container.m_eResourceRights;
-		m_eResourceType				= container.m_eResourceType;
+		m_fResourceDecayTimeout		= container.m_fResourceDecayTimeout;
 		m_eOnEmptyBehavior			= container.m_eOnEmptyBehavior;
 	}
 	

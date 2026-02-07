@@ -25,8 +25,8 @@ class SCR_AIResetCombatMoveState : AITaskScripted
 	}	
 	
 	//--------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 	
 	//--------------------------------------------------------------------------------------------
-	override bool CanReturnRunning() { return true; }
+	static override bool CanReturnRunning() { return true; }
 }

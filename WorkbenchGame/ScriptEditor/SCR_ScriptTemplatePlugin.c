@@ -6,7 +6,7 @@ class SCR_ScriptTemplatePlugin : WorkbenchPlugin
 		Category: General
 	*/
 
-	[Attribute(defvalue: SCR_EScriptTemplateType.None.ToString(), desc: "Template type to be used", uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_EScriptTemplateType), category: "General")]
+	[Attribute(defvalue: SCR_EScriptTemplateType.None.ToString(), desc: "Template type to be used", uiwidget: UIWidgets.ComboBox, enumType: SCR_EScriptTemplateType, category: "General")]
 	protected SCR_EScriptTemplateType m_eClassType;
 
 	[Attribute(desc: "Full classname - if left empty, file name will be used", category: "General")]
@@ -120,7 +120,7 @@ class SCR_ScriptTemplateConfig
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(SCR_EScriptTemplateType, "m_eType")]
 class SCR_ScriptTemplateConfigEntry
 {
-	[Attribute(uiwidget: UIWidgets.ComboBox, desc: "Template type", enums: ParamEnumArray.FromEnum(SCR_EScriptTemplateType))]
+	[Attribute(uiwidget: UIWidgets.ComboBox, desc: "Template type", enumType: SCR_EScriptTemplateType)]
 	SCR_EScriptTemplateType m_eType;
 
 	[Attribute(uiwidget: UIWidgets.EditBoxMultiline, desc: "Template text that will be added to the file. Variables are:\n%1 - class name\n%2 - parent class name")]
@@ -144,6 +144,8 @@ enum SCR_EScriptTemplateType
 	UIMenu,
 	ConfigRoot,
 	WorkbenchPlugin,
+	ScriptEditorPlugin,
+	WorldEditorPlugin,
 	WorldEditorTool,
 }
 #endif // WORKBENCH

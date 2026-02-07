@@ -51,20 +51,20 @@ class SCR_AITaskTimerGate: SCR_AITaskTimer
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
 	{
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Task Timer 2: similar to Task Timer, only is running while time has not elapsed";
 	}
 	
 	//------------------------------------------------------------------------------------------------
 		
-	override protected bool CanReturnRunning()
+	static override protected bool CanReturnRunning()
 	{
 		return true;
 	}

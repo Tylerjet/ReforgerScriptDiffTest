@@ -221,6 +221,31 @@ class SCR_BaseDeployableSpawnPointComponent : SCR_BaseDeployableInventoryItemCom
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override void OnDelete(IEntity owner)
+	{
+		super.OnDelete(owner);
+
+		DisconnectFromDeployableSpawnPointSystem();
+
+		s_aActiveDeployedSpawnPoints.RemoveItem(this);
+
+		if (s_OnSpawnPointDismantled)
+			s_OnSpawnPointDismantled.Invoke(-1);
+
+		if (!m_bIsDeployed || !m_RplComponent || m_RplComponent.IsProxy())
+			return;
+
+		if (!m_SpawnPoint || m_SpawnPoint.IsDeleted())
+			return;
+
+		RplComponent rplComp = RplComponent.Cast(m_SpawnPoint.FindComponent(RplComponent));
+		if (!rplComp)
+			return;
+
+		rplComp.DeleteRplEntity(m_SpawnPoint, false);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	// destructor
 	void ~SCR_BaseDeployableSpawnPointComponent()
 	{

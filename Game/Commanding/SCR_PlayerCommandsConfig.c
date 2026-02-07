@@ -55,14 +55,11 @@ class SCR_PlayerCommandingConfigActionPair : Managed
 }
 
 //! Commanding menu commanding element class
-[BaseContainerProps()]
+[BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("m_sCommandName")]
 class SCR_PlayerCommandingMenuCommand : SCR_PlayerCommandingMenuBaseElement
 {
 	[Attribute("", UIWidgets.EditBox, "Name of the command used from SCR_PlayerCommandsConfig" )]
 	protected string m_sCommandName;
-	
-	[Attribute("", UIWidgets.EditBox, "Name of the command that is displayed in the menu" )]
-	protected string m_sCommandDisplayText;
 	
 	protected string m_sCommandCustomDisplayText;
 	
@@ -76,12 +73,6 @@ class SCR_PlayerCommandingMenuCommand : SCR_PlayerCommandingMenuBaseElement
 	void SetCommandName(string name)
 	{
 		m_sCommandName = name;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	string GetCommandDisplayText()
-	{
-		return m_sCommandDisplayText;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -105,7 +96,7 @@ class SCR_PlayerCommandingMenuBaseElement : Managed
 };
 
 //! Commanding menu base element class
-[BaseContainerProps()]
+[BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("m_sCategoryDisplayText")]
 class SCR_PlayerCommandingMenuCategoryElement : SCR_PlayerCommandingMenuBaseElement
 {
 	[Attribute("", UIWidgets.EditBox, "Name of the category that is displayed in the menu" )]

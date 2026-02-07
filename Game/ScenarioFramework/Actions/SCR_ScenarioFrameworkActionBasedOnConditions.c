@@ -8,7 +8,10 @@ class SCR_ScenarioFrameworkActionBasedOnConditions : SCR_ScenarioFrameworkAction
 	SCR_EScenarioFrameworkLogicOperators m_eActivationConditionLogic;
 
 	[Attribute(desc: "Actions to be executed if conditions' evaluation is successful.")]
-	ref array<ref SCR_ScenarioFrameworkActionBase>	m_aActions;
+	ref array<ref SCR_ScenarioFrameworkActionBase> m_aActions;
+	
+	[Attribute(desc: "Actions to be executed if conditions' evaluation is failed.")]
+	ref array<ref SCR_ScenarioFrameworkActionBase> m_aFailedActions;
 
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate(IEntity object)
@@ -16,18 +19,37 @@ class SCR_ScenarioFrameworkActionBasedOnConditions : SCR_ScenarioFrameworkAction
 		if (!CanActivate())
 			return;
 		
-		if (!SCR_ScenarioFrameworkActivationConditionBase.EvaluateEmptyOrConditions(m_eActivationConditionLogic, m_aActivationConditions, object))
-			return;
-
-		foreach (SCR_ScenarioFrameworkActionBase actions : m_aActions)
+		if (SCR_ScenarioFrameworkActivationConditionBase.EvaluateEmptyOrConditions(m_eActivationConditionLogic, m_aActivationConditions, object))
 		{
-			actions.OnActivate(object);
+			foreach (SCR_ScenarioFrameworkActionBase actions : m_aActions)
+			{
+				actions.OnActivate(object);
+			}
+		}
+		else
+		{
+			foreach (SCR_ScenarioFrameworkActionBase actions : m_aFailedActions)
+			{
+				actions.OnActivate(object);
+			}
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override array<ref SCR_ScenarioFrameworkActionBase> GetSubActions()
 	{
-		return m_aActions;
+		array<ref SCR_ScenarioFrameworkActionBase> allActions = {};
+		
+		foreach (SCR_ScenarioFrameworkActionBase action : m_aActions)
+		{
+			allActions.Insert(action);
+		}
+		
+		foreach (SCR_ScenarioFrameworkActionBase action : m_aFailedActions)
+		{
+			allActions.Insert(action);
+		}
+		
+		return allActions;
 	}
 }

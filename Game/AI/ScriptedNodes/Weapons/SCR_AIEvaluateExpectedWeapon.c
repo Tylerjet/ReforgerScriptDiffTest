@@ -45,7 +45,7 @@ class SCR_AIEvaluateExpectedWeapon : AITaskScripted
 	}
 	
 	//--------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 	
 	protected static ref TStringArray s_aVarsOut = {
 		PORT_WEAPON_COMPONENT,

@@ -63,6 +63,41 @@ class BaseCollimatorSightsComponent: SightsComponent
 	proto external void SetHorizontalAngularCorrection(float fAngle);
 	//! Get the angular correction (windage) in mils
 	proto external float GetHorizontalAngularCorrection();
+	/*!
+	Returns true if the sight is active, false if it isn't
+	THis doesn't necessarily mean that the sight is visible, it can be active but
+	the reticle might be hidden because it is only visible during ADS.
+	*/
+	proto external bool IsSightActive();
+	/*!
+	Set the sight on or off.
+	Note that the sight can only be forced off. Whether it is on/visible or not
+	depends on other factors. By default, the sight is on if and only if
+	- ADS is active for a weapon sight
+	- There is an occupant in the seat the sight is attached to for vehicle sights
+	Calling this function with true as a parameter will force the sight off.
+	*/
+	proto external void SetSightForcedOff(bool forceOff);
+	/*!
+	Enable manual brightness setting. If false, brightness is either automatic or fixed to Day/Night mode
+	If true, manual brightness can be set
+	*/
+	proto external void EnableManualBrightness(bool bEnable);
+	//! Returns true if manual brightness is enabled
+	proto external bool IsManualBrightnessEnabled();
+	/*!
+	Enable and set manaul brightness control.
+	fBrightness is a factor greater or equal to zero. If bClamp is true,
+	then the brightess is set between Night intensity (0.0f) and day intensity (1.0f).
+	If bClamp is false, then the brightness is set between off (0.0f) and day intensity (1.0f).
+
+	fBrightness might go over 1 for extra brightness, but never below zero.
+	*/
+	proto external void SetManualBrightness(float fBrightness, bool bClamp);
+	//! Return the current reticle manual brightness.
+	proto external float GetManualBrightness();
+	//! Return true if manual brighness is clamped between day and night, or false if between off and day
+	proto external bool GetManualBrightnessClamp();
 
 	// callbacks
 

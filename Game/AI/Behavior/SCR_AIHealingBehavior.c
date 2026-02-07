@@ -39,6 +39,13 @@ class SCR_AIHealBehavior : SCR_AIBehaviorBase
 		}
 	}
 	
+	//---------------------------------------------------------------------------------------------------------------------------------
+	override int GetCause()
+	{
+		return SCR_EAIBehaviorCause.DANGER_MEDIUM;
+	}	
+	
+	//---------------------------------------------------------------------------------------------------------------------------------
 	override void OnActionCompleted()
 	{
 		super.OnActionCompleted();
@@ -47,6 +54,7 @@ class SCR_AIHealBehavior : SCR_AIBehaviorBase
 #endif
 	}
 	
+	//---------------------------------------------------------------------------------------------------------------------------------
 	override float CustomEvaluate()
 	{
 		if (!(GetGame().GetWorld().GetWorldTime() - m_fTimeCreated_ms > m_fPriorityDelay_ms))

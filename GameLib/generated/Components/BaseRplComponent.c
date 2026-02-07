@@ -140,6 +140,18 @@ class BaseRplComponent: GenericComponent
 	True if entity is marked as to-be-manually-deleted by proxies after removed from replication
 	*/
 	proto external bool IsReleasedFromRpl();
+	/*
+	Enable or disable spatial relevancy of a node.
+	Spatial relevancy is not enforced in a hierarchy, meaning if a root node is not
+	in spatial map, and a spatial node is attached to it, it will not be in spatial
+	map.
+	*/
+	proto external void EnableSpatialRelevancy(bool enable);
+	/*!
+	Enable streaming for a specific entity.
+	\param enable If true streaming is enabled.
+	*/
+	proto external void EnableStreaming(bool enable);
 	/*!
 	Returns true if the node is self-inserting (it inserts itself to replication in BaseRplComponent's EOnInit)
 	*/

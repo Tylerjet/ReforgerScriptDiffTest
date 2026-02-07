@@ -56,6 +56,12 @@ class SCR_PIPSightsComponent : ScriptedSightsComponent
 
 	#ifdef WORKBENCH
 	//------------------------------------------------------------------------------------------------
+	override int _WB_GetAfterWorldUpdateSpecs(IEntity owner, IEntitySource src)
+	{
+		return EEntityFrameUpdateSpecs.CALL_WHEN_ENTITY_VISIBLE;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected override void _WB_AfterWorldUpdate(IEntity owner, float timeSlice)
 	{
 		const float axisLength = 0.1;

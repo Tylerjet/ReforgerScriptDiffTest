@@ -87,7 +87,7 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 	protected override void HandleSightDeactivation()
 	{
 		IEntity owner = GetOwner();
-		if (owner && m_bShouldHideParentObject)
+		if (m_bShouldHideParentObject && owner && !owner.IsDeleted())
 		{
 			owner.SetFlags(EntityFlags.VISIBLE, true);
 			IEntity parent = owner.GetParent();
@@ -97,7 +97,9 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 
 		if (m_bShouldHideParentCharacter && m_ParentCharacter)
 		{
-			m_ParentCharacter.SetFlags(EntityFlags.VISIBLE, false);
+			if (!m_ParentCharacter.IsDeleted())
+				m_ParentCharacter.SetFlags(EntityFlags.VISIBLE, false);
+
 			m_ParentCharacter = null;
 		}
 
@@ -251,29 +253,69 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 
 		// TEMPORARY SOLUTION
 		// There is a 'mistake' in inheritance, m_pParentCharacter is never set because ADS changes are not propagated (super is not called in SCR_2DPIPSightsComponent)
-		IEntity owner = GetOwner();
-		if (owner)
+		SCR_ChimeraCharacter parentCharacter = GetCharacterOwner();
+		IEntity soundSource = GetOwner();
+		if (!Turret.Cast(soundSource))//turrets have sight component in them and not as an attachment
 		{
-			IEntity parent = owner.GetParent();
-			SCR_ChimeraCharacter pParentCharacter = null;
-			IEntity parentParent = parent;
-			while (parentParent)
+			IEntity parent = soundSource.GetParent();
+			while (parent)
 			{
-				SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(parentParent);
-				if (character)
-				{
-					pParentCharacter = character;
+				if (ChimeraCharacter.Cast(parent))
 					break;
-				}
 
-				parentParent = parentParent.GetParent();
-			}
-
-			if (pParentCharacter)
-			{
-				pParentCharacter.SetIllumination(m_bIsIlluminationOn, Replication.FindId(WeaponComponent.Cast(parent.FindComponent(WeaponComponent))));
+				soundSource = parent;
+				parent = parent.GetParent();
 			}
 		}
+
+		if (!parentCharacter || !soundSource)
+			return;
+
+		RplComponent wpnRplComp = SCR_EntityHelper.GetEntityRplComponent(soundSource);
+		if (!wpnRplComp)
+			return;
+
+		parentCharacter.SetIllumination(m_bIsIlluminationOn, wpnRplComp.Id());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected SCR_ChimeraCharacter GetCharacterOwner()
+	{
+		IEntity owner = GetOwner();
+		if (!owner)
+			return null;
+
+		if (Turret.Cast(owner))
+		{
+			SCR_BaseCompartmentManagerComponent compartmentManager = SCR_BaseCompartmentManagerComponent.Cast(owner.FindComponent(SCR_BaseCompartmentManagerComponent));
+			if (!compartmentManager || !compartmentManager.AnyCompartmentsOccupiedOrLocked())
+				return null;
+
+			array<BaseCompartmentSlot> outCompartments = {};
+			if (compartmentManager.GetCompartments(outCompartments) < 1)
+				return null;
+
+			foreach (BaseCompartmentSlot compartment: outCompartments)
+			{
+				if (TurretCompartmentSlot.Cast(compartment))
+					return SCR_ChimeraCharacter.Cast(compartment.GetOccupant());
+			}
+		}
+		else
+		{
+			IEntity parent = owner.GetParent();
+			SCR_ChimeraCharacter character;
+			while (parent)
+			{
+				character = SCR_ChimeraCharacter.Cast(parent);
+				if (character)
+					return character;
+
+				parent = parent.GetParent();
+			}
+		}
+
+		return null;
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -111,7 +111,7 @@ class SCR_LoadingScreenComponent : SCR_BaseLoadingScreenComponent
 	}	
 
 	//---------------------------------------------------------------------------------------------
-	override void OnHide()
+	override void OnHideInternal()
 	{
 		if (m_bMissionDataRetrieved)
 		{

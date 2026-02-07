@@ -36,6 +36,8 @@ class SCR_BudgetProgressEditorUIComponent : SCR_ScriptedWidgetComponent
 	// Public
 	//------------------------------------------------------------------------------------------------
 
+	//---- REFACTOR NOTE START: Not using localized unit values
+	
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] value
@@ -77,6 +79,8 @@ class SCR_BudgetProgressEditorUIComponent : SCR_ScriptedWidgetComponent
 			m_wProgressBar.SetSliderChangeColor(Color.FromInt(UIColors.CONFIRM.PackToInt()));
 		}
 	}
+
+	//---- REFACTOR NOTE END ----
 
 	//------------------------------------------------------------------------------------------------
 	//!

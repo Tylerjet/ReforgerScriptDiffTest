@@ -5,13 +5,13 @@ class ParamEnumAddons : array<ref ParamEnum>
 	//------------------------------------------------------------------------------------------------
 	//! Get ParamEnumArray compatible with Attribute's enums parameter
 	//! Example:
-	//! @code
-	//! [Attribute(desc: "Pick an addon", enums: ParamEnumAddons.FromEnum())]
+	//! \code
+	//! [Attribute(desc: "Pick an addon", uiwidget: UIWidgets.ComboBox, enums: ParamEnumAddons.FromEnum())]
 	//! protected int m_iAddon;
-	//! @endcode
-	//! \param titleFormat 0 for "AddonID", 1 for "AddonTitle", 2 for "AddonTitle (AddonID)"
-	//! \param hideCoreModules 0 to hide nothing, 1 to hide core (vanilla) addons, 2 to hide core addons only when more addons are available
-	//! \return [Attribute] combobox-compatible ParamEnumArray value (for int variable)
+	//! \endcode
+	//! \param[in] titleFormat 0 for "AddonID", 1 for "AddonTitle", 2 for "AddonTitle (AddonID)"
+	//! \param[in] hideCoreModules 0 to hide nothing, 1 to hide core (vanilla) addons, 2 to hide core addons only when more addons are available
+	//! \return an [Attribute] combobox-compatible ParamEnumArray value (for int variable)
 	static ParamEnumArray FromEnum(int titleFormat = 2, int hideCoreModules = 0)
 	{
 		ParamEnumArray params = new ParamEnumArray();
@@ -50,8 +50,8 @@ class SCR_AddonTool
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns an array of addons where given resource is present or modified.
-	//! \param prefab Prefab path
-	//! \param ignoreCoreAddons if true then ArmaReforger and Core are ignored unless no other addons are found
+	//! \param[in] prefab Prefab path
+	//! \param[in] ignoreCoreAddons if true then ArmaReforger and Core are ignored unless no other addons are found
 	//! \return array of addon ID strings
 	static array<string> GetResourceAddons(ResourceName prefab, bool ignoreCoreAddons = false)
 	{
@@ -88,8 +88,8 @@ class SCR_AddonTool
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns last addon where given resource is present.
-	//! \param prefab Prefab path
-	//! \return Class name
+	//! \param[in] prefab Prefab path
+	//! \return class name
 	static string GetResourceLastAddon(ResourceName prefab)
 	{
 		array<string> addonNames = GetResourceAddons(prefab);
@@ -100,11 +100,18 @@ class SCR_AddonTool
 	}
 
 	//------------------------------------------------------------------------------------------------
+	[Obsolete("Use GetAddonID instead")]
+	static string GetAddonIndex(int index)
+	{
+		return GetAddonID(index);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Get addon name by providing index of the addon.
 	//! Can be used in tandem with ParamEnumAddons.
-	//! \param index Index number
+	//! \param[in] index Index number
 	//! \return Addon ID
-	static string GetAddonIndex(int index)
+	static string GetAddonID(int index)
 	{
 		array<string> addons = {};
 		GameProject.GetLoadedAddons(addons);
@@ -113,9 +120,9 @@ class SCR_AddonTool
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] ignoreCoreAddons
+	// \param[in] ignoreCoreAddons
 	//! \return addon IDs (format "core", "ArmaReforger" etc)
-	static array<string> GetAllAddonIDs(bool ignoreCoreAddons = false)
+	static array<string> GetAllAddonIDs(/* bool ignoreCoreAddons = false */)
 	{
 		array<string> addonGUIDs = {};
 		GameProject.GetLoadedAddons(addonGUIDs);
@@ -128,9 +135,19 @@ class SCR_AddonTool
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] ignoreCoreAddons
+	//! \param[in] addonIndex
+	//! \return addon file system, e.g "$core:", "$ArmaReforger:" etc
+	static string GetAddonFileSystem(int addonIndex)
+	{
+		array<string> addonGUIDs = {};
+		GameProject.GetLoadedAddons(addonGUIDs);
+		return ToFileSystem(GameProject.GetAddonID(addonGUIDs[addonIndex]));
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// \param[in] ignoreCoreAddons
 	//! \return addon IDs (format "$core:", "$ArmaReforger:" etc)
-	static array<string> GetAllAddonFileSystems(bool ignoreCoreAddons = false)
+	static array<string> GetAllAddonFileSystems(/* bool ignoreCoreAddons = false */)
 	{
 		array<string> addonGUIDs = {};
 		GameProject.GetLoadedAddons(addonGUIDs);
@@ -150,6 +167,7 @@ class SCR_AddonTool
 	//! :test -> :test
 	//! $abc -> $abc
 	//! $abc: -> <empty string>
+	//! \param[in] fileSystemPath
 	//! \return path without addon prefix, or untouched provided path if the format is wrong (proper format = $addonName:somethingElse)
 	static string StripFileSystem(string fileSystemPath)
 	{
@@ -174,11 +192,11 @@ class SCR_AddonTool
 	//------------------------------------------------------------------------------------------------
 	//!  Convert addon name to file system format.
 	//! For instance, "ArmaReforger" will get converted to "$ArmaReforger:".
-	//! \param addon Addon ID
+	//! \param[in] addon Addon ID
 	//! \return addon name or empty string on wrong input
 	static string ToFileSystem(string addon)
 	{
-		addon.Trim();
+		addon.TrimInPlace();
 		if (!addon) // !.IsEmpty()
 			return string.Empty;
 
@@ -188,21 +206,27 @@ class SCR_AddonTool
 #ifdef WORKBENCH
 	//------------------------------------------------------------------------------------------------
 	//! Return the absolute path (without a trailing '/')
-	//! \param relativeDirPath if a directory resourceName is provided, use resourceName.GetPath()
+	//! \param[in] addonId
+	//! \param[in] relativeDirPath if a directory resourceName is provided, use resourceName.GetPath()
+	//! \param[out] result
+	//! \param[in] mustExist
 	//! \return true on success, false on failure
 	static bool GetAddonAbsolutePath(int addonId, string relativeDirPath, out string result, bool mustExist = true)
 	{
-		return Workbench.GetAbsolutePath(ToFileSystem(GetAddonIndex(addonId)) + relativeDirPath, result, mustExist);
+		return Workbench.GetAbsolutePath(ToFileSystem(GetAddonID(addonId)) + relativeDirPath, result, mustExist);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Return the absolute path (without a trailing '/')
-	//! \param directory a directory resourceName should be provided\
+	//! \param[in] addonId
+	//! \param[in] directory a directory resourceName should be provided\
 	//! if a -file- ResourceName is provided, the xxx.yyy part WILL be part of the provided directory so use FilePath.StripFileName if not wanted
+	//! \param[out] result
+	//! \param[in] mustExist
 	//! \return true on success, false on failure
 	static bool GetAddonAbsolutePath(int addonId, ResourceName directory, out string result, bool mustExist = true)
 	{
-		return Workbench.GetAbsolutePath(ToFileSystem(GetAddonIndex(addonId)) + directory.GetPath(), result, mustExist);
+		return Workbench.GetAbsolutePath(ToFileSystem(GetAddonID(addonId)) + directory.GetPath(), result, mustExist);
 	}
 #endif
 }

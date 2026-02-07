@@ -173,33 +173,25 @@ class SCR_ChimeraAIAgent : ChimeraAIAgent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	static Faction GetFaction(IEntity entity)
+	//! Checks if this agent perceives the entity as enemy
+	bool IsPerceivedEnemy(IEntity entity)
 	{
-		// Common case first
-		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(entity);
-		if (character && character.m_pFactionComponent)
-		{
-			return character.m_pFactionComponent.GetAffiliatedFaction();
-		}
+		Faction otherFaction = SCR_AIFactionHandling.GetEntityPerceivedFaction(entity);
 		
-		Vehicle vehicle = Vehicle.Cast(entity);
-		if (vehicle && vehicle.m_pFactionComponent)
-		{
-			return vehicle.m_pFactionComponent.GetAffiliatedFaction();
-		}
+		Faction myFaction;
+		if (m_FactionAffiliationComponent)
+			myFaction = m_FactionAffiliationComponent.GetAffiliatedFaction();
 		
-		// Worst case - some other entity, perform component search
-		FactionAffiliationComponent factionAffiliation = FactionAffiliationComponent.Cast(entity.FindComponent(FactionAffiliationComponent));
-		if (factionAffiliation)
-			return factionAffiliation.GetAffiliatedFaction();
-		
-		return null;
+		if (!otherFaction || !myFaction)
+			return false;
+				
+		return myFaction.IsFactionEnemy(otherFaction);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	bool IsEnemy(IEntity entity)
 	{
-		Faction otherFaction = GetFaction(entity);
+		Faction otherFaction = SCR_AIFactionHandling.GetEntityFaction(entity);
 		
 		Faction myFaction;
 		if (m_FactionAffiliationComponent)

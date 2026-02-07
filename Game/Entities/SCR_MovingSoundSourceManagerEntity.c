@@ -145,7 +145,7 @@ class SCR_MovingSoundSourceEntity : GenericEntity
 	{		
 		foreach(SCR_MoveData moveData : m_aMoveData)
 		{
-			AudioSystem.TerminateSound(moveData.m_AudioHandle);
+			AudioSystem.TerminateSoundFadeOut(moveData.m_AudioHandle, false, 0);
 		}
 	}
 	

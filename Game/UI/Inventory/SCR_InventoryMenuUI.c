@@ -326,6 +326,13 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	protected ref SCR_SupplyRefundItemHintUIInfo 			m_SupplyRefundUIInfo;
 	const protected ResourceName 							m_sNonrefundableUIInfoPrefab = "{B3E94EB9D0F0EAC6}Configs/Inventory/ItemHints/Nonrefundable_ItemHint.conf";
 	protected ref SCR_NonrefundableItemHintUIInfo			m_NonrefundableUIInfo;
+	protected const ResourceName 							ITEM_RANK_PREFAB = "{B329E7CABD481EF6}Configs/Inventory/ItemHints/ArsenalItemRank_ItemHint.conf";
+	protected ref SCR_ArsenalItemRankHintUIInfo 			m_ArsenalItemRankUIInfo;
+	protected const ResourceName 							VALUABLE_INTEL_UIINFO_PREFAB = "{5EE3196892CA5142}Configs/Inventory/ItemHints/ValuableIntel_ItemHint.conf";
+	protected ref SCR_ValuableIntelItemHintUIInfo 			m_ValuableIntelUIInfo;
+	
+	protected const ResourceName 										ITEM_FACTION_INFO_CONFIG = "{80DCFB729B7255F7}Configs/Inventory/ItemHints/ItemFaction_ItemHint.conf";
+	protected ref map<FactionKey, ref SCR_FactionOutfitItemHintUIInfo> 	m_mItemFactionUIInfos = new map<FactionKey, ref SCR_FactionOutfitItemHintUIInfo>();
 	
 	//variables dedicated to move an item from storage to storage
 	protected IEntity 											m_pItem;
@@ -537,14 +544,13 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		bool visible = false;
 		if (m_morphineTimerHandlerGlobal)
 		{
-			array<ref PersistentDamageEffect> effects = m_CharDamageManager.GetAllPersistentEffectsOnHitZone(m_CharDamageManager.GetDefaultHitZone());
-			foreach (PersistentDamageEffect effect : effects)
+			array<ref SCR_PersistentDamageEffect> effects = {};
+			m_CharDamageManager.FindAllDamageEffectsOfTypeOnHitZone(SCR_MorphineDamageEffect, m_CharDamageManager.GetDefaultHitZone(), effects);
+			
+			foreach (SCR_PersistentDamageEffect effect : effects)
 			{
-				if (SCR_MorphineDamageEffect.Cast(effect))
-				{
-					visible = true;
-					break;
-				}
+				visible = true;
+				break;
 			}
 			
 			m_morphineTimerHandlerGlobal.GetRootWidget().SetVisible(visible);
@@ -553,14 +559,13 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (m_salineTimerHandlerGlobal)
 		{
 			visible = false;
-			array<ref PersistentDamageEffect> effects = m_CharDamageManager.GetAllPersistentEffectsOnHitZone(charBloodHZ);
-			foreach (PersistentDamageEffect effect : effects)
+			array<ref SCR_PersistentDamageEffect> effects = {};
+			m_CharDamageManager.FindAllDamageEffectsOfTypeOnHitZone(SCR_SalineDamageEffect, charBloodHZ, effects);
+			
+			foreach (SCR_PersistentDamageEffect effect : effects)
 			{
-				if (SCR_SalineDamageEffect.Cast(effect))
-				{
-					visible = true;
-					break;
-				}
+				visible = true;
+				break;
 			}
 			
 			m_salineTimerHandlerGlobal.GetRootWidget().SetVisible(visible);
@@ -837,7 +842,8 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		SetAttachmentSpinBoxActive(m_bIsUsingGamepad);
 		
 		ResetHighlightsOnAvailableStorages();
-		SetOpenStorage();
+		if (!SetOpenStorage())
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_OPEN);
 		UpdateTotalWeightText();
 		
 		InitializeCharacterHitZones();
@@ -890,7 +896,8 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			Widget btnToFocus = m_pStorageLootUI.GetButtonWidget();
 			if (m_pActiveStorageUI)
 				btnToFocus = m_pActiveStorageUI.GetButtonWidget();
-			GetGame().GetWorkspace().SetFocusedWidget(btnToFocus);
+			
+			GetGame().GetCallqueue().Call(FocusWidget, btnToFocus);
 		}
 		else
 		{
@@ -1624,7 +1631,10 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		
 		if (pStorage == m_StorageManager)
 			return m_pStorageListUI;
-		
+
+		if (pStorage && m_StorageManager && pStorage.GetOwner() == m_StorageManager.GetOwner())
+			return m_pStorageListUI;
+
 		BaseInventoryStorageComponent parentStorage;
 
 		if (pStorage && pStorage.GetParentSlot())
@@ -1693,7 +1703,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	//~ Add any general hints not found on the item itself such as arsenal cost when the item is in an arsenal
 	protected void GetGeneralItemHintsInfos(out notnull array<SCR_InventoryItemHintUIInfo> hintsInfo)
-	{
+	{		
 		bool arsenalCostSet;
 		
 		//~ Arsenal supply cost hint if item is in an arsenal storage
@@ -1705,37 +1715,87 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 				m_SupplyCostUIInfo.SetSupplyCost(arsenalSlot.GetItemSupplyCost());
 				hintsInfo.InsertAt(m_SupplyCostUIInfo, 0);
 				arsenalCostSet = true;
+				
+				//~ Set arsenal rank icon
+				if (m_ArsenalItemRankUIInfo)
+				{
+					SCR_ECharacterRank requiredItemRank = arsenalSlot.GetRequiredRank();					
+					
+					//~ Add required rank hint if higher then SCR_ECharacterRank.PRIVATE or player is Renegade
+					if (requiredItemRank > SCR_ECharacterRank.PRIVATE || SCR_CharacterRankComponent.GetCharacterRank(SCR_PlayerController.GetLocalControlledEntity()) <= SCR_ECharacterRank.RENEGADE)
+					{
+						m_ArsenalItemRankUIInfo.SetRequiredRank(requiredItemRank);
+						hintsInfo.InsertAt(m_ArsenalItemRankUIInfo, arsenalCostSet);
+					}
+				}
 			}
 		}
 		
 		//~ Add refund cost
 		if (!arsenalCostSet && m_SupplyRefundUIInfo && IsStorageArsenal(m_pStorageLootUI.GetCurrentNavigationStorage()))
 		{
+			bool isNonRefundable;
 			bool nonrefundableItemInStorage = false;
 			if (DoesSlotContainNonRefundableItems(m_pFocusedSlotUI, nonrefundableItemInStorage))
 			{
 				m_NonrefundableUIInfo.SetContainsNonrefundableItem(nonrefundableItemInStorage);
 				hintsInfo.InsertAt(m_NonrefundableUIInfo, 0);
-				return;
+				isNonRefundable = true;
 			}
 			
-			BaseInventoryStorageComponent storage = m_pStorageLootUI.GetCurrentNavigationStorage();
-			
-			if (storage)
+			if (!isNonRefundable)
 			{
-				SCR_ArsenalComponent arsenalComp = SCR_ArsenalComponent.Cast(storage.GetOwner().FindComponent(SCR_ArsenalComponent));
-				if (arsenalComp)
+				BaseInventoryStorageComponent storage = m_pStorageLootUI.GetCurrentNavigationStorage();
+				if (storage)
 				{
-					bool isSupplyStorageAvailable;
-					float supplyRefundAmount = SCR_ArsenalManagerComponent.GetItemRefundAmount(m_pFocusedSlotUI.GetInventoryItemComponent().GetOwner(), arsenalComp, true, isSupplyStorageAvailable: isSupplyStorageAvailable);
-					
-					if (supplyRefundAmount >= 0)
+					SCR_ArsenalComponent arsenalComp = SCR_ArsenalComponent.Cast(storage.GetOwner().FindComponent(SCR_ArsenalComponent));
+					if (arsenalComp)
 					{
-						m_SupplyRefundUIInfo.SetSupplyRefund(supplyRefundAmount, isSupplyStorageAvailable);
-						hintsInfo.InsertAt(m_SupplyRefundUIInfo, 0);
+						bool isSupplyStorageAvailable;
+						float supplyRefundAmount = SCR_ArsenalManagerComponent.GetItemRefundAmount(m_pFocusedSlotUI.GetInventoryItemComponent().GetOwner(), arsenalComp, true, isSupplyStorageAvailable: isSupplyStorageAvailable);
+						
+						if (supplyRefundAmount >= 0)
+						{
+							m_SupplyRefundUIInfo.SetSupplyRefund(supplyRefundAmount, isSupplyStorageAvailable);
+							hintsInfo.InsertAt(m_SupplyRefundUIInfo, 0);
+						}
 					}
 				}
 			}
+		}
+		
+		//~ Faction hint for items with a faction
+		if (!m_mItemFactionUIInfos.IsEmpty())
+		{
+			InventoryItemComponent itemInventory = m_pFocusedSlotUI.GetInventoryItemComponent();
+			if (itemInventory)
+			{
+				SCR_ItemOutfitFactionComponent outfitFaction = SCR_ItemOutfitFactionComponent.Cast(itemInventory.GetOwner().FindComponent(SCR_ItemOutfitFactionComponent));
+				if (outfitFaction && outfitFaction.IsValid())
+				{
+					array<SCR_OutfitFactionData> outfitValues = {};
+					outfitFaction.GetOutfitFactionDataArray(outfitValues);
+					
+					SCR_FactionOutfitItemHintUIInfo foundInfo;
+					
+					foreach (SCR_OutfitFactionData data : outfitValues)
+					{
+						if (!m_mItemFactionUIInfos.Find(data.GetAffiliatedFactionKey(), foundInfo))
+							continue;
+						
+						foundInfo.SetFaction(data.GetAffiliatedFaction(), data);
+						hintsInfo.Insert(foundInfo);
+					}
+				}
+			}
+		}
+		
+		//~ Character identity item valuable intel hint
+		SCR_IdentityInventoryItemComponent identityInventoryItem = SCR_IdentityInventoryItemComponent.Cast(m_pFocusedSlotUI.GetInventoryItemComponent().GetOwner().FindComponent(SCR_IdentityInventoryItemComponent));
+		if (identityInventoryItem && identityInventoryItem.HasValuableIntel(true))
+		{
+			m_ValuableIntelUIInfo.SetIntel(identityInventoryItem);
+			hintsInfo.Insert(m_ValuableIntelUIInfo);
 		}
 	}
 
@@ -1785,6 +1845,9 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		else
 			m_pItemInfo.SetItemHints(m_pFocusedSlotUI.GetInventoryItemComponent());
 			
+		//~ Create Identity UI
+		m_pItemInfo.CreateIdentityUI(SCR_IdentityInventoryItemComponent.Cast(m_pFocusedSlotUI.GetInventoryItemComponent()));
+		
 		int targetPosX, targetPosY;
 
 		float x, y;
@@ -2686,12 +2749,12 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			m_iVicinityDiscoveryRadius = 0;
 		}
 
-		auto menuManager = GetGame().GetMenuManager();
-		auto menu = ChimeraMenuPreset.Inventory20Menu;
+		MenuManager menuManager = GetGame().GetMenuManager();
+		ChimeraMenuPreset menu = ChimeraMenuPreset.Inventory20Menu;
 
-		auto inventoryMenu = menuManager.FindMenuByPreset( menu ); // prototype inventory
+		MenuBase inventoryMenu = menuManager.FindMenuByPreset(menu); // prototype inventory
 		if (inventoryMenu)
-			menuManager.CloseMenuByPreset( menu );
+			menuManager.CloseMenuByPreset(menu);
 		
 		if  (m_PlayerRenderAttributes)
 			m_PlayerRenderAttributes.ResetDeltaRotation();
@@ -3667,7 +3730,16 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			return false;
 		
 		//! Perform refund logic.
-		IEntity arsenalEntity							= storageComponent.GetOwner();
+		IEntity arsenalEntity = storageComponent.GetOwner();
+		if (arsenalEntity)
+		{
+			SCR_ArsenalComponent arsenalComp = SCR_ArsenalComponent.Cast(arsenalEntity.FindComponent(SCR_ArsenalComponent));
+			
+			//~ Arsenal is disabled so cannot refund
+			if (arsenalComp && !arsenalComp.IsArsenalEnabled())
+				return true;
+		}
+		
 		InventoryItemComponent inventoryItemComponent	= m_pSelectedSlotUI.GetInventoryItemComponent();
 		SCR_ResourceComponent resourceComponent			= SCR_ResourceComponent.FindResourceComponent(arsenalEntity);
 		SCR_ResourcePlayerControllerInventoryComponent resourceInventoryComponent = SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent));
@@ -3692,7 +3764,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		
 		if (!arsenalInventorySlotUI)
 		{
-			if (m_pActiveHoveredStorageUI)
+			if (m_pActiveHoveredStorageUI && !IsStorageArsenal(m_pActiveHoveredStorageUI.GetCurrentNavigationStorage()))
 				return false;
 			
 			// Check if slot contains any nonrefundable items
@@ -3708,7 +3780,16 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			if (!storageComponent || !IsStorageArsenal(storageComponent) )	
 				return false;
 			
-			IEntity arsenalEntity							= storageComponent.GetOwner();
+			IEntity arsenalEntity = storageComponent.GetOwner();
+			if (arsenalEntity)
+			{
+				SCR_ArsenalComponent arsenalComp = SCR_ArsenalComponent.Cast(arsenalEntity.FindComponent(SCR_ArsenalComponent));
+				
+				//~ Arsenal is disabled so cannot refund
+				if (arsenalComp && !arsenalComp.IsArsenalEnabled())
+					return true;
+			}
+				
 			InventoryItemComponent inventoryItemComponent	= m_pSelectedSlotUI.GetInventoryItemComponent();
 			SCR_ResourceComponent resourceComponent			= SCR_ResourceComponent.FindResourceComponent(arsenalEntity);
 			auto resourceInventoryComponent					= SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent));
@@ -3827,7 +3908,16 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			if (!storageComponent || !IsStorageArsenal(storageComponent) )	
 				return false;
 			
-			IEntity arsenalEntity							= storageComponent.GetOwner();
+			IEntity arsenalEntity = storageComponent.GetOwner();
+			if (arsenalEntity)
+			{
+				SCR_ArsenalComponent arsenalComp = SCR_ArsenalComponent.Cast(arsenalEntity.FindComponent(SCR_ArsenalComponent));
+				
+				//~ Arsenal is disabled so cannot refund
+				if (arsenalComp && !arsenalComp.IsArsenalEnabled())
+					return true;
+			}
+				
 			InventoryItemComponent inventoryItemComponent	= m_pSelectedSlotUI.GetInventoryItemComponent();
 			SCR_ResourceComponent resourceComponent			= SCR_ResourceComponent.FindResourceComponent(arsenalEntity);
 			auto resourceInventoryComponent					= SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent));
@@ -3894,6 +3984,9 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		
 		if (!m_pSelectedSlotUI || !arsenalInventorySlotUI)
 			return false;
+		
+		if (!arsenalInventorySlotUI.IsAvailable())
+			return true;
 		
 		SCR_InventoryStorageManagerComponent invManagerTo	= m_InventoryManager;
 		IEntity slotEntity									= arsenalInventorySlotUI.GetInventoryItemComponent().GetOwner();
@@ -4095,25 +4188,22 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetOpenStorage()
+	bool SetOpenStorage()
 	{
 		IEntity m_pStorageToOpen = GetInventoryStorageManager().GetStorageToOpen();
 
 		if (!m_pStorageToOpen)
-		{
-			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_OPEN);
-			return;
-		}
+			return false;
 
 		BaseInventoryStorageComponent comp = BaseInventoryStorageComponent.Cast(m_pStorageToOpen.FindComponent(BaseInventoryStorageComponent));
 
 		if (!comp)
-			return;
+			return false;
 
 		SCR_InventoryStorageBaseUI storageUI = GetStorageUIFromVicinity(comp);
 
 		if (!storageUI)
-			return;
+			return false;
 
 		if (storageUI.IsTraversalAllowed())
 			storageUI.Traverse(comp);
@@ -4123,9 +4213,16 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		ButtonWidget lastCloseTraverseButton = storageUI.GetLastCloseTraverseButton();
 
 		if (m_bIsUsingGamepad && lastCloseTraverseButton && !CanFocusOnSlotInStorage(storageUI, 0))
-			GetGame().GetWorkspace().SetFocusedWidget(lastCloseTraverseButton);
+			GetGame().GetCallqueue().Call(FocusWidget, lastCloseTraverseButton);
 		else
-			FocusOnSlotInStorage(storageUI);
+			GetGame().GetCallqueue().Call(FocusOnSlotInStorage, storageUI, 0);
+		
+		return true;
+	}
+	
+	protected void FocusWidget(Widget focusWidget)
+	{
+		GetGame().GetWorkspace().SetFocusedWidget(focusWidget);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -4173,6 +4270,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		{
 			OpenStorageAsContainer(storage);
 			OpenLinkedStorages(storage);
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_HOTKEY_OPEN);
 		}
 	}
 	
@@ -4386,7 +4484,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 				point.OnDrop(m_pFocusedSlotUI);
 			}
 			
-			if (!hzContainer || !point)
+			if (m_pFocusedSlotUI && (!hzContainer || !point))
 			{
 				m_pFocusedSlotUI.UseItem(m_Player, SCR_EUseContext.FROM_INVENTORY);
 			}
@@ -4668,6 +4766,14 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			ShowQuickSlotStorage();
 
 		UpdateTotalWeightText();
+		
+		if (m_pWeaponStorage && item.FindComponent(MagazineComponent))
+		{
+			if (m_pWeaponStorageComp.Get(0) || m_pWeaponStorageComp.Get(1))
+			{
+				m_pWeaponStorage.Refresh();
+			}
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -4709,6 +4815,14 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			storageUI.Refresh();
 
 		UpdateTotalWeightText();
+		
+		if (m_pWeaponStorage && item.FindComponent(MagazineComponent))
+		{
+			if (m_pWeaponStorageComp.Get(0) || m_pWeaponStorageComp.Get(1))
+			{
+				m_pWeaponStorage.Refresh();
+			}
+		}		
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -5222,6 +5336,26 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		m_SupplyCostUIInfo = SCR_SupplyCostItemHintUIInfo.Cast(SCR_BaseContainerTools.CreateInstanceFromPrefab(m_sSupplyCostUIInfoPrefab));
 		m_SupplyRefundUIInfo = SCR_SupplyRefundItemHintUIInfo.Cast(SCR_BaseContainerTools.CreateInstanceFromPrefab(m_sSupplyRefundUIInfoPrefab));
 		m_NonrefundableUIInfo = SCR_NonrefundableItemHintUIInfo.Cast(SCR_BaseContainerTools.CreateInstanceFromPrefab(m_sNonrefundableUIInfoPrefab));
+		m_ArsenalItemRankUIInfo = SCR_ArsenalItemRankHintUIInfo.Cast(SCR_BaseContainerTools.CreateInstanceFromPrefab(ITEM_RANK_PREFAB));
+		m_ValuableIntelUIInfo = SCR_ValuableIntelItemHintUIInfo.Cast(SCR_BaseContainerTools.CreateInstanceFromPrefab(VALUABLE_INTEL_UIINFO_PREFAB));
+		
+		//~ Create generic hint info for items with factions
+		FactionManager factionManager = GetGame().GetFactionManager();
+		if (factionManager)
+		{
+			array<Faction> factions = {};
+			factionManager.GetFactionsList(factions);
+			
+			SCR_FactionOutfitItemHintUIInfo factionHintInfo;
+			foreach (Faction faction : factions)
+			{
+				factionHintInfo = SCR_FactionOutfitItemHintUIInfo.Cast(SCR_BaseContainerTools.CreateInstanceFromPrefab(ITEM_FACTION_INFO_CONFIG));
+				if (!factionHintInfo)
+					break;
+				
+				m_mItemFactionUIInfos.Insert(faction.GetFactionKey(), factionHintInfo);
+			}
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

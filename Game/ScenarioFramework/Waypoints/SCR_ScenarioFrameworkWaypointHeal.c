@@ -2,7 +2,7 @@
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkWaypointHeal : SCR_ScenarioFrameworkWaypointEntity
 {
-	[Attribute(defvalue: "10", desc: "Radius in m")]
+	[Attribute(defvalue: "10", uiwidget: UIWidgets.Slider, desc: "Radius in m")]
 	float m_fCompletionRadius;
 
 	[Attribute(defvalue: "{36ED7C150D5BB654}Prefabs/AI/Waypoints/AIWaypoint_Heal.et", desc: "In Default, it will use specific prefab for each class, but here you can change it if you know what you are doing")]

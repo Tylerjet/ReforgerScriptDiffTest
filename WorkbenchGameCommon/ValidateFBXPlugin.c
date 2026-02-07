@@ -11,6 +11,8 @@ class ValidateFBXPlugin: WorkbenchPlugin
 	bool BoneNames;	
 	[Attribute("true", UIWidgets.CheckBox, "Report invalid texture/emat GUIDs and missing links in xob")]
 	bool TextureGUIDs;
+	[Attribute("true", UIWidgets.CheckBox, "Report objects that have Vertex Colors")]
+	bool VertexColors;
 	
 	
 	static ref array<string> allFbxs = new array<string>;
@@ -71,7 +73,10 @@ class ValidateFBXPlugin: WorkbenchPlugin
 			{
 				config += " -guid";
 			}
-			
+			if(VertexColors)
+			{
+				config += " -vc";
+			}
 			if(selected == 0)
 			{
 				Print("No fbx file selected. Please select at least one fbx file in the resource browser.",LogLevel.WARNING);
@@ -79,7 +84,7 @@ class ValidateFBXPlugin: WorkbenchPlugin
 			// caling the ValidateFBX.exe with the right parameters
 			else
 			{
-				string command = toolPath + config + " -pl FBX";
+				string command = "\"" + toolPath + "\"" + config + " -pl FBX";
 				Workbench.RunProcess(command);
 				Print("Validating " + selected + " fbx file/s...");
 			}
@@ -138,6 +143,10 @@ class ValidateFBXPlugin: WorkbenchPlugin
 			{
 				config += " -guid";
 			}
+			if(VertexColors)
+			{
+				config += " -vc";
+			}
 			
 			if(selected == 0)
 			{
@@ -146,7 +155,7 @@ class ValidateFBXPlugin: WorkbenchPlugin
 			// caling the ValidateFBX.exe with the right parameters
 			else
 			{
-				string command = toolPath + config + " -pl FBX";
+				string command = "\"" + toolPath + "\"" + config + " -pl FBX";
 				Workbench.RunProcess(command);
 				Print("Validating " + selected + " fbx file/s...");
 			}

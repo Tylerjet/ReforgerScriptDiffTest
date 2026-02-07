@@ -17,8 +17,8 @@ class InventoryStorageManagerComponent: GameComponent
 	proto external bool CanInsertItem(IEntity item, EStoragePurpose purpose = EStoragePurpose.PURPOSE_ANY);
 	proto external bool CanInsertItemInStorage(IEntity item, BaseInventoryStorageComponent storage, int slotID = -1);
 	//! Will iterate over storages and find if item can be inserted in first best match
-	proto external bool CanInsertResource(ResourceName resourceName, EStoragePurpose purpose = EStoragePurpose.PURPOSE_ANY, int count = 1);
-	proto external bool CanInsertResourceInStorage(ResourceName resourceName, BaseInventoryStorageComponent storage, int slotID = -1, int count = 1);
+	proto external bool CanInsertResource(ResourceName resourceName, EStoragePurpose purpose = EStoragePurpose.PURPOSE_ANY);
+	proto external bool CanInsertResourceInStorage(ResourceName resourceName, BaseInventoryStorageComponent storage, int slotID = -1);
 	//! Will iterate over storages and try insert the item at first best match
 	proto external bool TryInsertItem(IEntity item, EStoragePurpose purpose = EStoragePurpose.PURPOSE_ANY, InventoryOperationCallback cb = null);
 	//! Will try to insert item at storage. If slotID -1 will try to insert in any free storage
@@ -106,9 +106,7 @@ class InventoryStorageManagerComponent: GameComponent
 	//! Find Items by specifying necessary component types (eg all Entities that contain all of the provided components), returns count of found items
 	proto external int FindItemsWithComponents(out notnull array<IEntity> foundItems, array<typename> componentsQuery, EStoragePurpose purpose = EStoragePurpose.PURPOSE_DEPOSIT);
 	proto external int CountItem(InventorySearchPredicate predicate, EStoragePurpose purpose = EStoragePurpose.PURPOSE_DEPOSIT);
-	//! Find Items by specifying necessary component types (eg all Entities that contain all of the provided components), returns count of found items
 	proto external int GetMagazineCountByWeapon(BaseWeaponComponent weapon);
-	//! Find Items by specifying necessary component types (eg all Entities that contain all of the provided components), returns count of found items
 	proto external int GetMagazineCountByMuzzle(IEntity verifier, BaseMuzzleComponent pMuzzle);
 	proto external int GetGrenadesCount();
 

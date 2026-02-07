@@ -58,7 +58,10 @@ class BaseTarget: ScriptAndConfig
 	proto external PerceivableComponent GetPerceivableComponent();
 	proto external DamageManagerComponent GetDamageManagerComponent();
 	proto external BaseWeaponManagerComponent GetWeaponManagerComponent();
+	//! Returns PerceivableComponent.GetFactionAffiliationComponent()
 	proto external FactionAffiliationComponent GetFactionAffiliationComponent();
+	//! Returns PerceivableComponent.GetPerceivedFaction()
+	proto external Faction GetPerceivedFaction();
 	proto void GetAccumulatedRecognition(out float outRecognitionDetect, out float outRecognitionIdentify);
 	// Sets the last seen position to provided value if the timestamp is newer than existing last seen time
 	proto external void UpdateLastSeenPosition(vector pos, float perceptionMgrTimestamp);

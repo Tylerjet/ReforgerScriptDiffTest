@@ -41,11 +41,11 @@ class SCR_AIAllowLookAction : AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------	
-	protected override bool VisibleInPalette() {return true;}	
+	protected static override bool VisibleInPalette() {return true;}	
 	
 	//------------------------------------------------------------------------------------------------
-    override bool CanReturnRunning() {return true;}
+    static override bool CanReturnRunning() {return true;}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription() {return "Node that allows free look of AI unit and disallows it on abort.";}
+	protected static override string GetOnHoverDescription() {return "Node that allows free look of AI unit and disallows it on abort.";}
 };

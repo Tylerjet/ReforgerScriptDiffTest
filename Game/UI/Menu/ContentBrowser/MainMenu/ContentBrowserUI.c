@@ -1,6 +1,7 @@
 enum EWorkshopTabId
 {
-	ONLINE = 0,
+	MANW = 0,
+	ONLINE,
 	GAME_SAVES,
 	OFFLINE,
 	MOD_MANAGER

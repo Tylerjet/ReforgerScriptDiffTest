@@ -171,6 +171,8 @@ class SCR_CustomDropdownEditorUIComponent : ScriptedWidgetComponent
 		return m_bIsOpened;
 	}
 	
+	//---- REFACTOR NOTE START: 90 and 270 rotation is understandable but it might be hard to find in case of tweaking
+	
 	//------------------------------------------------------------------------------------------------
 	//! Open the dropdown
 	//! \param[in] focusIndex set which button should be focused. Ignored if -1
@@ -262,6 +264,8 @@ class SCR_CustomDropdownEditorUIComponent : ScriptedWidgetComponent
 		// Remove action listeners
 		GetGame().GetInputManager().RemoveActionListener(UIConstants.MENU_ACTION_LEFT, EActionTrigger.DOWN, OnMenuActionLeft);
 	}
+	
+	//---- REFACTOR NOTE END ----
 	
 	protected void OnLMB()
 	{

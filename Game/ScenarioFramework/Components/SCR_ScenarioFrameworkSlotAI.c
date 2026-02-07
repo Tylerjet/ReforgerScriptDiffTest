@@ -40,9 +40,6 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	[Attribute(defvalue: EAISkill.REGULAR.ToString(), UIWidgets.ComboBox, "AI skill in combat", "", ParamEnumArray.FromEnum(EAISkill), category: "Common")]
 	EAISkill m_eAISkill;
 
-	[Attribute(defvalue: EAICombatType.NORMAL.ToString(), UIWidgets.ComboBox, "AI combat type", "", ParamEnumArray.FromEnum(EAICombatType), category: "Common")]
-	EAICombatType m_eAICombatType;
-
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.EditBox, desc: "Sets perception ability. Affects speed at which perception detects targets. Bigger value means proportionally faster detection.", params: "0 100 0.001", category: "Common")]
 	float m_fPerceptionFactor;
 
@@ -58,6 +55,7 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 
 	// Temporary solution as we don't know if invoker or a different method will initialize waypoints
 	bool m_bWaypointsInitialized;
+	bool m_bGroupWasNull;
 
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] arrayForRemoval Array of resource names for AI prefab removal.
@@ -101,6 +99,9 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 			GetOnAllChildrenSpawned().Insert(DynamicDespawn);
 			return;
 		}
+		
+		GetOnAllChildrenSpawned().Remove(ProcessWaypoints);
+		GetOnAllChildrenSpawned().Remove(SetWaypointToAI);
 
 		if (!m_bInitiated || m_bExcludeFromDynamicDespawn)
 			return;
@@ -170,6 +171,8 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	//! \return true if all initialization steps succeed, false otherwise.
 	override bool InitOtherThings()
 	{
+		m_aWaypoints.Clear();
+		m_AIGroup = null;
 		m_iCurrentlySpawnedWaypoints = 0;
 		m_bWaypointsInitialized = false;
 		SCR_AIGroup.IgnoreSpawning(true);
@@ -225,10 +228,10 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	//! Activates AI group, removes unwanted prefabs, balances units count, sets on agent remove and add events,
 	void ActivateAI()
 	{
-		bool groupWasNull;
+		m_bGroupWasNull = false;
 		m_AIGroup = SCR_AIGroup.Cast(m_Entity);
 		if (!m_AIGroup)
-			groupWasNull = true;
+			m_bGroupWasNull = true;
 
 		if (!m_AIGroup && !CreateAIGroup())
 		{
@@ -263,7 +266,7 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 
 		m_AIGroup.GetOnAgentRemoved().Insert(DecreaseAIGroupMemberCount);
 
-		if (groupWasNull)
+		if (m_bGroupWasNull)
 		{
 			m_AIGroup.SetNumberOfMembersToSpawn(1);
 			OnAgentAdded(null);
@@ -345,7 +348,6 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 					if (combatComponent)
 					{
 						combatComponent.SetAISkill(m_eAISkill);
-						combatComponent.SetCombatType(m_eAICombatType);
 						combatComponent.SetPerceptionFactor(m_fPerceptionFactor);
 					}
 					
@@ -377,7 +379,6 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 				if (combatComponent)
 				{
 					combatComponent.SetAISkill(m_eAISkill);
-					combatComponent.SetCombatType(m_eAICombatType);
 					combatComponent.SetPerceptionFactor(m_fPerceptionFactor);
 				}
 				
@@ -489,9 +490,9 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	//! \param[in] layer for which this is called
 	protected void ProcessWaypoints(SCR_ScenarioFrameworkLayerBase layer)
 	{
-		if (m_bInitiated)
+		if (m_bInitiated && !m_bWaypointsInitialized)
 			SetWaypointToAI(this);
-		else
+		else if (!m_bGroupWasNull)
 			GetOnAllChildrenSpawned().Insert(SetWaypointToAI);
 	}
 
@@ -528,13 +529,25 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 			m_AIGroup = SCR_AIGroup.Cast(m_Entity);
 
 		if (!m_AIGroup)
-			return;
+		{
+			if (!CreateAIGroup())
+			{
+				m_bWaypointsInitialized = true;
+				return;
+			}
+		}
 
 		m_aWaypoints.RemoveItemOrdered(null);
 
 		foreach (AIWaypoint waypoint : m_aWaypoints)
 		{
 			m_AIGroup.AddWaypoint(waypoint);
+		}
+		
+		if (m_aWaypoints.IsEmpty())
+		{
+			m_bWaypointsInitialized = false;
+			return;
 		}
 		
 		if (m_vPosition != vector.Zero || !m_bSpawnAIOnWPPos || m_aWaypoints.IsEmpty())
@@ -547,7 +560,14 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 			array<AIWaypoint> cycleWaypoints = {};
 			cycleWaypoint.GetWaypoints(cycleWaypoints);
 			if (!cycleWaypoints.IsEmpty() && cycleWaypoints[0] != null)
+			{
 				waypoint = cycleWaypoints[0];
+			}
+			else
+			{
+				m_bWaypointsInitialized = false;
+				return;
+			}
 		}
 			
 		AIFormationComponent formComp = AIFormationComponent.Cast(m_AIGroup.FindComponent(AIFormationComponent));

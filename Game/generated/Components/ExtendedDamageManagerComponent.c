@@ -22,12 +22,14 @@ class ExtendedDamageManagerComponent: SCR_DamageManagerComponent
 	proto external void AddDamageEffect(notnull BaseDamageEffect damageEffect);
 	/*!
 	If this persistent effect is contained on the damage manger, it will be removed.
+	Note: Function checks PersistentDamageEffects.
 	\param PersistentDamageEffect dmgEffect: The damage effect to terminate.
 	\return returns true if the effect was contained and removed, false otherwise or if you are a proxy.
 	*/
 	proto external bool TerminateDamageEffect(notnull PersistentDamageEffect dmgEffect);
 	/*!
 	Terminates all damage effects of the given type
+	Note: Function checks PersistentDamageEffects.
 	\param typename typeName: the type of the persistent effects to terminate
 	*/
 	proto external void TerminateDamageEffectsOfType(typename typeName);
@@ -44,20 +46,23 @@ class ExtendedDamageManagerComponent: SCR_DamageManagerComponent
 	Clears passed array (persistentEffects) and fills it with all current PersistentEffects contained in the damage manager.
 	\param array<ref PersistentDamageEffect> persistentEffects: An array that will be filled with all the persistent effects on the damage manager.
 	*/
-	proto external void GetPersistentEffects(out notnull array<ref PersistentDamageEffect> persistentEffects);
+	proto external void GetPersistentEffects(out notnull array<ref SCR_PersistentDamageEffect> persistentEffects);
 	/*!
-	Returns true if a persistent effect of the type is currently present
+	Returns true if a persistent effect of the type is currently present.
+	Note: Function checks PersistentDamageEffects.
 	\param typename typeName: The type of DamageEffect we want to check for.
 	*/
 	proto external bool IsDamageEffectPresent(typename typeName);
 	/*!
 	Finds a DamageEffect of the requested type contained on this ExtendedDamageManager
+	Note: Function checks PersistentDamageEffects.
 	\param typename typeName: The type of DamageEffect we want to check for.
 	\return The first DamageEffect of the requested type. Otherwise it returns null.
 	*/
 	proto external SCR_PersistentDamageEffect FindDamageEffectOfType(typename typeName);
 	/*!
 	Fills damageEffects array with all the DamageEffects of the given type present on this manager. damageEffects array is NOT cleared when calling this method.
+	Note: Function checks PersistentDamageEffects.
 	\param typename typeName: The type of DamageEffect we want to check for.
 	\param array<ref SCR_PersistentDamageEffect> damageEffects: The found effects will be stored here
 	\return the amount of matches for the effect type.
@@ -68,7 +73,7 @@ class ExtendedDamageManagerComponent: SCR_DamageManagerComponent
 	\param array<ref BaseDamageEffect> damageEffects: DamageEffects that affect the hitzone passed.
 	\param HitZone hitzone: The hitzone where the DamageEffects are applied
 	*/
-	proto external void FindDamageEffectsOnHitZone(HitZone hitzone, out notnull array<ref BaseDamageEffect> damageEffects);
+	proto external void FindDamageEffectsOnHitZone(HitZone hitzone, out notnull array<ref SCR_PersistentDamageEffect> damageEffects);
 	/*!
 	Finds a DamageEffect of the requested type contained on this ExtendedDamageManager, that is being applied to the HitZone
 	\param typename typeName: The type of DamageEffect we want to check for.
@@ -77,6 +82,7 @@ class ExtendedDamageManagerComponent: SCR_DamageManagerComponent
 	proto external SCR_PersistentDamageEffect FindDamageEffectOnHitZone(typename typeName, HitZone hitzone);
 	/*!
 	Finds all the DamageEffects of the requested type contained on this ExtendedDamageManager, that is being applied to the requested HitZone
+	Note: Function checks PersistentDamageEffects.
 	\param typename typeName: The type of DamageEffect we want to check for.
 	\param HitZone hitzone: hitzone the effects have to be applied to
 	\param array<ref SCR_PersistentDamageEffect> damageEffects: Matching effects will get stored here. This array is NOT cleared when calling this method.
@@ -85,6 +91,7 @@ class ExtendedDamageManagerComponent: SCR_DamageManagerComponent
 	proto external int FindAllDamageEffectsOfTypeOnHitZone(typename typeName, HitZone hitzone, out notnull array<ref SCR_PersistentDamageEffect> damageEffects);
 	/*!
 	Returns true if a persistent effect of the type is currently present in any of the hitzones passed
+	Note: Function checks PersistentDamageEffects.
 	\param typename typeName: The type of DamageEffect we want to check for.
 	\param array<HitZone> hitZones: List of hitzones to check against
 	*/

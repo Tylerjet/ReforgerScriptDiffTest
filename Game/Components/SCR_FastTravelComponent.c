@@ -257,8 +257,13 @@ class SCR_FastTravelComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	protected void FadeOut()
 	{
-		SCR_FadeInOutEffect fade = SCR_FadeInOutEffect.Cast(GetGame().GetHUDManager().FindInfoDisplay(SCR_FadeInOutEffect));
-		fade.FadeOutEffect(true, FADE_DURATION);
+		SCR_ScreenEffectsManager manager = SCR_ScreenEffectsManager.GetScreenEffectsDisplay();
+		if (manager)
+		{
+			SCR_FadeInOutEffect fade = SCR_FadeInOutEffect.Cast(manager.GetEffect(SCR_FadeInOutEffect));
+			if (fade)
+				fade.FadeOutEffect(true, FADE_DURATION);
+		}
 
 		// Wait for fade to black
 		GetGame().GetCallqueue().CallLater(Teleport, (FADE_DURATION + BLACKSCREEN_DURATION) * 1000);
@@ -275,8 +280,13 @@ class SCR_FastTravelComponent : ScriptComponent
 			SCR_NotificationsComponent.SendLocal(ENotification.FASTTRAVEL_DONE);
 		}
 
-		SCR_FadeInOutEffect fade = SCR_FadeInOutEffect.Cast(GetGame().GetHUDManager().FindInfoDisplay(SCR_FadeInOutEffect));
-		fade.FadeOutEffect(false, FADE_DURATION);
+		SCR_ScreenEffectsManager manager = SCR_ScreenEffectsManager.GetScreenEffectsDisplay();
+		if (manager)
+		{
+			SCR_FadeInOutEffect fade = SCR_FadeInOutEffect.Cast(manager.GetEffect(SCR_FadeInOutEffect));
+			if (fade)
+				fade.FadeOutEffect(false, FADE_DURATION);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------

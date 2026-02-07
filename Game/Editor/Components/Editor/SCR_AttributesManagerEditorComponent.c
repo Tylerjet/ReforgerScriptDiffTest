@@ -684,7 +684,7 @@ class SCR_AttributesManagerEditorComponent : SCR_BaseEditorComponent
 	//! Get list of all attributes of given type (or inherits from type)
 	//! \param[in] type Class of attribute
 	//! \param[out] attributes list of attributes of type
-	//! \param[in] includedInherit If true will also get inherent classes else will only get the attributes of given type
+	//! \param[in] includedInherit If true will also get inherit classes else will only get the attributes of given type
 	//! \param[in] ignoreAttribute Add if a given attribute should be ignored
 	//! \return Count of the found attributes
 	int GetActiveAttributesOfType(typename type, notnull out array<SCR_BaseEditorAttribute> attributes, bool includedInherit = true, SCR_BaseEditorAttribute ignoreAttribute = null)

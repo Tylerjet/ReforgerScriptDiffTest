@@ -24,6 +24,46 @@ class AddonBuildInfoTool : WorkbenchPlugin
 
 	 */
 
+	static bool FindAddonByAbsolutePath(
+		string queryAbsolutePath,
+		out string outAddonGuid,
+		out string outAddonId,
+		out string outAddonExactRoot
+	)
+	{
+		if (!FilePath.IsAbsolutePath(queryAbsolutePath))
+			return false;
+
+		queryAbsolutePath = FilePath.ToInternalFormat(queryAbsolutePath);
+		if (!queryAbsolutePath.EndsWith("/"))
+			queryAbsolutePath += "/";
+
+		array<string> addonGuids = {};
+		GameProject.GetLoadedAddons(addonGuids);
+
+		foreach(string addonGuid : addonGuids)
+		{
+			string addonId = GameProject.GetAddonID(addonGuid);
+			string addonExactRoot = string.Format("$%1:", addonId);
+			string addonAbsolutePath;
+			if (!Workbench.GetAbsolutePath(addonExactRoot, addonAbsolutePath))
+				continue;
+
+			if (!addonAbsolutePath.EndsWith("/"))
+				addonAbsolutePath += "/";
+
+			if (addonAbsolutePath.Compare(queryAbsolutePath, caseSensitive: false) == 0)
+			{
+				outAddonGuid = addonGuid;
+				outAddonId = addonId;
+				outAddonExactRoot = addonExactRoot;
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	private void OnEntFileFound(ResourceName resName, string file)
 	{
 		m_EntFiles.Insert(resName.GetPath());
@@ -159,63 +199,46 @@ class AddonBuildInfoTool : WorkbenchPlugin
 		string addonPathCli;
 		if (!rm.GetCmdLine("-addonPath", addonPathCli))
 		{
-			Print("Missing argument 'addonPath' for AddonBuildInfoTool plugin.", level: LogLevel.ERROR);
+			Print("Missing argument 'addonPath', which is required AddonBuildInfoTool plugin.", level: LogLevel.ERROR);
 			Workbench.Exit(1);
 			return;
 		}
 		if (!FilePath.IsAbsolutePath(addonPathCli))
 		{
-			PrintFormat("Argument 'addonPath' for AddonBuildInfoTool plugin must be an absolute path, but its value is '%1'", addonPathCli, level: LogLevel.ERROR);
+			PrintFormat("Argument 'addonPath' must be an absolute path, but its value is '%1'", addonPathCli, level: LogLevel.ERROR);
 			Workbench.Exit(2);
 			return;
 		}
-		addonPathCli = FilePath.ToInternalFormat(addonPathCli);
-		if (!addonPathCli.EndsWith("/"))
-			addonPathCli += "/";
+
+		string addonGuid, addonId, addonExactRoot;
+		bool found = AddonBuildInfoTool.FindAddonByAbsolutePath(
+			addonPathCli, addonGuid, addonId, addonExactRoot
+		);
+		if (!found)
+		{
+			PrintFormat("Could not find addon matching path '%1'.", addonPathCli);
+			Workbench.Exit(3);
+		}
 
 		string ciInfoDstCli;
 		if (!rm.GetCmdLine("-ciInfoDst", ciInfoDstCli))
 		{
 			Print("Missing argument 'ciInfoDst' for AddonBuildInfoTool plugin.", level: LogLevel.ERROR);
-			Workbench.Exit(3);
+			Workbench.Exit(4);
 			return;
 		}
 		ciInfoDstCli = FilePath.ToInternalFormat(ciInfoDstCli);
 
-		array<string> addonGUIDs = {};
-		GameProject.GetLoadedAddons(addonGUIDs);
-
-		bool foundAddon = false;
-		foreach(string addonGUID : addonGUIDs)
+		FileHandle outputFile = FileIO.OpenFile(ciInfoDstCli, FileMode.WRITE);
+		if (!outputFile.IsOpen())
 		{
-			string addonID = GameProject.GetAddonID(addonGUID);
-			string addonExactRoot = string.Format("$%1:", addonID);
-			string addonAbsPath;
-			if (!Workbench.GetAbsolutePath(addonExactRoot, addonAbsPath))
-				continue;
-
-			if (!addonAbsPath.EndsWith("/"))
-				addonAbsPath += "/";
-
-			PrintFormat("%1 => cmp(%2, %3)", addonExactRoot, addonAbsPath, addonPathCli);
-			if (addonAbsPath.Compare(addonPathCli, caseSensitive: false) != 0)
-				continue;
-
-			foundAddon = true;
-			Print("Found matching addon.");
-
-			FileHandle outputFile = FileIO.OpenFile(ciInfoDstCli, FileMode.WRITE);
-			if (!outputFile.IsOpen())
-			{
-				PrintFormat("Couldn't open file '%1' for writing.", ciInfoDstCli, level: LogLevel.ERROR);
-				Workbench.Exit(4);
-				return;
-			}
-
-			GenerateCiInfo(rm, outputFile, addonExactRoot, addonID);
-			outputFile.Close();
-			break;
+			PrintFormat("Couldn't open file '%1' for writing.", ciInfoDstCli, level: LogLevel.ERROR);
+			Workbench.Exit(5);
+			return;
 		}
+
+		GenerateCiInfo(rm, outputFile, addonExactRoot, addonId);
+		outputFile.Close();
 		Workbench.Exit(0);
 	}
 }

@@ -1,8 +1,8 @@
 class SCR_FileIOHelper
 {
-	protected static const string PATH_DELIMITER = "/"; // accepted under Windows too
+	protected static const string PATH_DELIMITER = SCR_StringHelper.SLASH; // accepted under Windows too
 	protected static const string FORBIDDEN_FILENAME_CHARS_WINDOWS = "*/\\<>:|?\t\r\n\"";
-	protected static const string FORBIDDEN_FILENAME_CHARS_LINUX = "/";
+	protected static const string FORBIDDEN_FILENAME_CHARS_LINUX = SCR_StringHelper.SLASH;
 
 	//------------------------------------------------------------------------------------------------
 	//! OBSOLETE - use FileIO.MakeDirectory instead\n
@@ -56,7 +56,7 @@ class SCR_FileIOHelper
 	//! \param[in] source file to copy
 	//! \param[in] destination copy destination
 	//! \param[in] overwrite set to false to prevent an accidental overwrite
-	//! \return
+	//! \return true on success, false otherwise
 	static bool Copy(string source, string destination, bool overwrite = true)
 	{
 		array<string> content = ReadFileContent(source);
@@ -94,6 +94,30 @@ class SCR_FileIOHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Get file content as one big string
+	//! \param[in] filePath relative or absolute
+	//! \param[in] printWarning true to print warning on issue, false otherwise
+	//! \return raw string file content or empty string if file does not exist or cannot be opened
+	static string GetFileStringContent(string filePath, bool printWarning = true)
+	{
+		FileHandle fileHandle = FileIO.OpenFile(filePath, FileMode.READ);
+		if (!fileHandle)
+		{
+			if (printWarning)
+				Print("Cannot open/read " + filePath, LogLevel.WARNING);
+
+			return string.Empty;
+		}
+
+		string result;
+		fileHandle.Read(result, -1);
+		fileHandle.Close();
+
+		return result;
+	}
+
+
+	//------------------------------------------------------------------------------------------------
 	//! Get file content as array of lines
 	//! \param[in] filePath relative or absolute
 	//! \param[in] printWarning true to print warning on issue, false otherwise
@@ -111,9 +135,8 @@ class SCR_FileIOHelper
 
 		string lineContent;
 		array<string> result = {};
-		while (!fileHandle.IsEOF())
+		while (fileHandle.ReadLine(lineContent) > -1)
 		{
-			fileHandle.ReadLine(lineContent);
 			result.Insert(lineContent);
 		}
 
@@ -144,6 +167,49 @@ class SCR_FileIOHelper
 		}
 		else
 		{
+			foreach (int lineNumber, string line : lines)
+			{
+				if (lineNumber < linesCountMinusOne)
+					fileHandle.WriteLine(line);
+			}
+
+			// avoid final line return due to WriteLine
+			fileHandle.Write(lines[linesCountMinusOne]);
+		}
+
+		fileHandle.Close();
+
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Write all lines in the file after its existing content
+	//! Adds to the file if it exists, creates it otherwise
+	//! \param[in] filePath relative or absolute
+	//! \param[in] lines
+	//! \return true on success, false otherwise
+	static bool AppendFileContent(string filePath, notnull array<string> lines)
+	{
+		if (!FileIO.FileExists(filePath))
+			return WriteFileContent(filePath, lines);
+
+		FileHandle fileHandle = FileIO.OpenFile(filePath, FileMode.APPEND);
+		if (!fileHandle)
+		{
+			Print("Cannot open/append " + filePath, LogLevel.WARNING);
+			return false;
+		}
+
+		int linesCountMinusOne = lines.Count() - 1;
+		if (linesCountMinusOne == -1)
+		{
+			fileHandle.Write(string.Empty); // needed?
+		}
+		else
+		{
+			// add a line return before appending the provided lines
+			fileHandle.Write("\n");
+
 			foreach (int lineNumber, string line : lines)
 			{
 				if (lineNumber < linesCountMinusOne)
@@ -241,6 +307,7 @@ class SCR_FileIOHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return true if Windows or Xbox, false otherwise
 	protected static bool IsWindowsBased()
 	{
 		EPlatform platform = System.GetPlatform();

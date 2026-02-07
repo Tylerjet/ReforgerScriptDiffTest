@@ -75,7 +75,7 @@ class SCR_AIWaitForNewCombatComponentWeapon : AITaskScripted
 	}
 	
 	//--------------------------------------------------------------------------------------------
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
 	{
 		return true;
 	}

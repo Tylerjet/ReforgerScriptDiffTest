@@ -1,214 +1,203 @@
 #ifdef WORKBENCH
 
+class TerrainTile
+{
+	Shape shapeTile;
+	vector coordsTile;
+	vector minTile;
+	vector maxTile;
+	
+	
+	void TerrainTile(Shape square, vector coords, vector min, vector max)
+	{
+		shapeTile = square;
+		coordsTile = coords;
+		minTile = min;
+		maxTile = max;
+	}
+}
+
+
 [WorkbenchToolAttribute(name: "Send Terrain To Blender", description: "Sends terrain selection to Blender for advanced terrain modifications.", wbModules: { "WorldEditor" }, shortcut: "Ctrl+P", awesomeFontCode: 0xf00a)]
 class TerrainExportTool : WorldEditorTool
 {
-	[Attribute(defvalue: "1", desc: "Uniform scale for mouse selection", category: "Selection")]
-	bool m_bRectangleSelection;
-	[Attribute(defvalue: "0", UIWidgets.Coords, desc: "X width of rectangle from starting point", category: "Selection")]
-	int m_iWidth;
-	[Attribute(defvalue: "0", UIWidgets.Coords, desc: "Z height of rectangle from starting point", category: "Selection")]
-	int m_iLength;
-	[Attribute(defvalue: "0 0 0", desc: "Location of start corner. No need to fill Y-axis", category: "Selection")]
-	vector m_vStartLocation;
-	[Attribute(defvalue: "0 0 0", desc: "Location of end corner. No need to fill Y-axis", category: "Selection")]
-	vector m_vEndLocation;
-
-
-	ref DebugTextScreenSpace m_text;
-	ref DebugTextScreenSpace m_crossHair;
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, desc: "Brush radius", params: string.Format("%1 %2 %3", SIZE_MIN, SIZE_MAX, SIZE_STEP), category: "Brush")]
+	protected float m_iSelectionSize;
+	
+	protected static const float SIZE_MIN = 1;
+	protected static const float SIZE_MAX = 20;
+	protected static const float SIZE_STEP = 1;
+	
+	
 	vector previousPoint3D;
-	ref Shape polyline;
+	ref Shape square;
+	 
+	ref array<ref TerrainTile> terrainTileVisual = {};
+	ref array<ref TerrainTile> terrainTileSelection = {};
+	
+	
+	ref array<ref Shape> visualTiles = {};
+	ref array<vector> visualCoords = {};
+	
+	ref array<vector> selectedCoords = {};
+	ref array<ref Shape> selectedTiles = {};
+	
+	
+	ref array<ref Shape> shapeTiles = {};
+	//ref array<vector> selectedTiles = {};
+	
+	//Remove
 	vector currentPoint3D;
 	vector line[8];
+	//------
+	
+	
 	vector startPosition;
 	bool clicked = false;
 
 
-
-	//------------------------------------------------------------------------------------------------
-	[ButtonAttribute("Import To Blender")]
-	protected void Execute()
+	[ButtonAttribute("Export To Blender")]
+	protected void Blender()
 	{
-		if (!EBTConfigPlugin.HasBlenderRegistered())
-			return;
+		WorldEditor we = Workbench.GetModule(WorldEditor);
+		auto api = we.GetApi();
+		array<float> heightMap = {};
+	
 		
-		// getting coords from the selection shape
-		float zMax = line[0][2];
-		float xMin = line[0][0];
-		float zMin = line[4][2];
-		float xMax = line[4][0];
-		// getting cellsize
-		float cellSize = m_API.GetTerrainUnitScale();
+		string path;
+		// creating temp bin file to pass the coords
+		Workbench.GetAbsolutePath("$profile:", path);
+		path = path + "/BlendTerrain.bin";
+		Print(path);
+		float tileResX = (m_API.GetTerrainResolutionX(0) * m_API.GetTerrainUnitScale(0)) / m_API.GetTerrainTilesX(0) / m_API.GetTerrainUnitScale();
+		float tileResY = (m_API.GetTerrainResolutionY(0) * m_API.GetTerrainUnitScale(0)) / m_API.GetTerrainTilesY(0) / m_API.GetTerrainUnitScale();
 
-		// corecting the Max and Mix values
-		if (zMax < zMin)
+		int area = (Math.Floor(tileResX) * Math.Floor(tileResY));
+		int tileCount = 0;
+		FileHandle bin = FileIO.OpenFile(path, FileMode.WRITE);
+		api.BeginTerrainAction(TerrainToolType.HEIGHT_EXACT);
+		// Area of one tile
+		bin.Write(area);
+
+		for(int i = 0; i < selectedCoords.Count(); i++)
 		{
-			zMin = zMin + zMax;
-			zMax = zMin - zMax;
-			zMin = zMin - zMax;
-		}
-		if (xMax < xMin)
-		{
-			xMin = xMin + xMax;
-			xMax = xMin - xMax;
-			xMin = xMin - xMax;
-		}
-
-		if (startPosition != "0 0 0")
-		{
-			// getting Y coords of the selection
-			array<float> height = new array<float>;
-			height = GetHeightArray(SnapToVertex(xMax, cellSize), SnapToVertex(zMax, cellSize), SnapToVertex(xMin, cellSize), SnapToVertex(zMin, cellSize), m_API, cellSize);
-			string path;
-
-			// creating temp bin file to pass the coords
-			Workbench.GetAbsolutePath("$profile:", path);
-			path = path + "/BlendTerrain.bin";
-
-			// progress bar
-			WorldEditor we = Workbench.GetModule(WorldEditor);
-			WBProgressDialog progress = new WBProgressDialog("Processing", we);
+			tileCount += 1;
+			int coordsX = Math.Round(selectedCoords[i][0] * (Math.Floor(tileResX) * m_API.GetTerrainUnitScale()));
+			int coordsY = Math.Round(selectedCoords[i][2] * (Math.Floor(tileResY) * m_API.GetTerrainUnitScale()));
 			
-			// writing the coords to the bin file
-			FileHandle bin = FileIO.OpenFile(path, FileMode.WRITE);
-			bin.WriteArray(height);
-			bin.Close();
-
-			// getting all necessary parameters for the blender
-			string worldpath;
-			m_API.GetWorldPath(worldpath);
-			string coords = string.Format("%1|%2", SnapToVertex(xMin, cellSize), SnapToVertex(zMin, cellSize));
-			int columns = Math.Round(((SnapToVertex(xMax, cellSize) - SnapToVertex(xMin, cellSize)) / cellSize));
-			int rows = Math.Round(((SnapToVertex(zMax, cellSize) - SnapToVertex(zMin, cellSize)) / cellSize));
-
-			string pathToExecutable;
-			if (!EBTConfigPlugin.GetDefaultBlenderPath(pathToExecutable))
-				return;
+			int indexX = selectedCoords[i][0];
+			int indexY = selectedCoords[i][2];
+			bin.Write(indexX);
+			bin.Write(indexY);
 			
-			// run Blender via CMD with the parameters and the path to the bin temp
-			Workbench.RunProcess(string.Format("\"%1\" --python-expr \"import bpy;bpy.ops.scene.ebt_import_terrain()\" -- -binPath \"%2\" -count %3 -rows %4 -columns %5 -cellsize %6 -coords \" %7\" -worldpath \"%8\"",
-			pathToExecutable, path, height.Count(), rows, columns, cellSize, coords, worldpath));
-			Print("Blender is starting");
+			bin.Write(coordsX);
+			bin.Write(coordsY);
+
+			if (api.GetTerrainSurfaceTile(0, selectedCoords[i][0], selectedCoords[i][2], heightMap))
+			{
+				bin.WriteArray(heightMap);
+			}
 		}
-		else
-		{
-			Print("No area selected!");
-		}
+		api.EndTerrainAction();		
+		bin.Close();
+				
+		string pathToExecutable;
+		if (!EBTConfigPlugin.GetDefaultBlenderPath(pathToExecutable))
+			return;
+
+		string worldpath;
+		m_API.GetWorldPath(worldpath);
+		
+		BlenderOperatorDescription operatorDescription = new BlenderOperatorDescription("terrain");
+		operatorDescription.blIDName = "scene.ebt_import_terrain";
+		operatorDescription.AddParam("binPath", path);
+		operatorDescription.AddParam("cellSize", m_API.GetTerrainUnitScale(0));
+		operatorDescription.AddParam("worldPath",worldpath);
+		operatorDescription.AddParam("tileCount", tileCount);
+		
+		StartBlenderWithOperator(operatorDescription, false);
 	}
-
-
+	
+	
+	
 	//------------------------------------------------------------------------------------------------
-
-	//------------------------------------------------------------------------------------------------
-	[ButtonAttribute("Use Coords")]
-	protected void CoordsReload()
+	[ButtonAttribute("Clear Selection")]
+	protected void ClearSelection()
 	{
-		// setting lines points to the coords set by user
-		line[0] = m_vStartLocation;
-		line[1] = Vector(m_vStartLocation[0], m_vStartLocation[1], m_vEndLocation[2]);
-		line[2] = line[1];
-		line[3] = Vector(m_vEndLocation[0], m_vStartLocation[1], m_vEndLocation[2]);
-		line[4] = line[3];
-		line[5] = Vector(m_vEndLocation[0], m_vStartLocation[1], m_vStartLocation[2]);
-		line[6] = line[5];
-		line[7] = line[0];
-
-		// creating the polyline
-		polyline = Shape.CreateLines(ARGB(255, 255, 255, 255), ShapeFlags.NOZBUFFER|ShapeFlags.TRANSP, line, 8);
+		visualTiles.Clear();
+		selectedTiles.Clear();
+		selectedCoords.Clear();
+		shapeTiles.Clear();
 	}
+	
+	
+
 	//------------------------------------------------------------------------------------------------
-	[ButtonAttribute("Use Scale")]
-	protected void ScaleReload()
-	{
-		if (startPosition == ("0 0 0"))
-		{
-			Print("No start position selected!");
-		}
-		else
-		{
-			// calculating the lines points from the startPosition with the scale
-			line[0] = startPosition;
-			line[1] = Vector(startPosition[0], startPosition[1], startPosition[2] + m_iLength);
-			line[2] = line[1];
-			line[3] = Vector(startPosition[0] + m_iWidth, startPosition[1], startPosition[2] + m_iLength);
-			line[4] = line[3];
-			line[5] = Vector(startPosition[0] + m_iWidth, startPosition[1], startPosition[2]);
-			line[6] = line[5];
-			line[7] = line[0];
-
-			polyline = Shape.CreateLines(ARGB(255, 255, 255, 255), ShapeFlags.NOZBUFFER|ShapeFlags.TRANSP, line, 8);
-		}
-
-	}
-	//------------------------------------------------------------------------------------------------
-
 	override void OnMouseMoveEvent(float x, float y)
 	{
+		terrainTileVisual.Clear();
+		visualTiles.Clear();
+		visualCoords.Clear();
 		vector traceStart;
 		vector traceEnd;
 		vector traceDir;
 
-		// setting visual parameters
-		m_crossHair.SetTextColor(ARGBF(1, 1.0, 1.0, 1.0));
-		m_text.SetTextColor(ARGBF(1, 1.0, 1.0, 1.0));
-		m_crossHair.SetPosition(x - 9, y - 16);
-		m_crossHair.SetText("+");
-		m_text.SetPosition(x + 15, y);
-
-
 		if (m_API.TraceWorldPos(x, y, TraceFlags.WORLD, traceStart, traceEnd, traceDir))
 		{
-			currentPoint3D = traceEnd;
-			if (clicked)
+			float tileResX = (m_API.GetTerrainResolutionX(0) * m_API.GetTerrainUnitScale(0)) / m_API.GetTerrainTilesX(0);
+			float tileResY = (m_API.GetTerrainResolutionY(0) * m_API.GetTerrainUnitScale(0)) / m_API.GetTerrainTilesY(0);
+			vector tile = Vector(Math.Floor(traceEnd[0] / Math.Floor(tileResX)), 0, Math.Floor(traceEnd[2] / Math.Floor(tileResY)));			
+			vector tileCornerMin = Vector(tile[0] * Math.Floor(tileResX),0, tile[2] * Math.Floor(tileResY));
+			vector tileCornerMax = Vector(tileCornerMin[0] + Math.Floor(tileResX),0,tileCornerMin[2] + Math.Floor(tileResY));
+			
+			vector coords = traceEnd;
+			for(int w = 1; w <= m_iSelectionSize; w++)
 			{
-				// calculating the rectangle from the startPoint and mousePosition
-				if (m_bRectangleSelection)
+				// now just deleting when click and clicking
+				for(int h = 1; h <= m_iSelectionSize; h++)
 				{
-					float zLength = Math.Max(Math.AbsFloat(startPosition[0] - traceEnd[0]), Math.AbsFloat(startPosition[2] - traceEnd[2]));
-					float xLength = Math.Max(Math.AbsFloat(startPosition[0] - traceEnd[0]), Math.AbsFloat(startPosition[2] - traceEnd[2]));
-
-					//Flipping Selection box
-					if (traceEnd[0] < startPosition[0] && traceEnd[2] < startPosition[2])
-					{
-						xLength = -xLength;
-						zLength = -zLength;
-					}
-					else if (traceEnd[2] < startPosition[2])
-					{
-						zLength = -zLength;
-					}
-					else if (traceEnd[0] < startPosition[0])
-					{
-						xLength = -xLength;
-					}
-					line[0] = startPosition;
-					line[1] = Vector(startPosition[0], startPosition[1], startPosition[2] + zLength);
-					line[2] = line[1];
-					line[3] = Vector(startPosition[0] + xLength, startPosition[1], startPosition[2] + zLength);
-					line[4] = line[3];
-					line[5] = Vector(startPosition[0] + xLength, startPosition[1], startPosition[2]);
-					line[6] = line[5];
-					line[7] = line[0];
+					tile = Vector(Math.Floor(coords[0] / Math.Floor(tileResX)),0,Math.Floor(coords[2] / Math.Floor(tileResY)));
+					
+					tileCornerMin = Vector(tile[0] * Math.Floor(tileResX),0, tile[2] * Math.Floor(tileResY));
+					tileCornerMax = Vector(tileCornerMin[0] + Math.Floor(tileResX),0,tileCornerMin[2] + Math.Floor(tileResY));
+					Shape tileShape = Shape.Create(ShapeType.BBOX, ARGB(50,100,100,100), ShapeFlags.NOZBUFFER|ShapeFlags.TRANSP, tileCornerMin, tileCornerMax);
+					visualTiles.Insert(tileShape);
+					visualCoords.Insert(tile);
+					
+					coords[0] = coords[0] + tileResX;
 				}
-				// calculating square
-				else
-				{
-					line[0] = startPosition;
-					line[1] = Vector(startPosition[0], startPosition[1], traceEnd[2]);
-					line[2] = line[1];
-					line[3] = Vector(traceEnd[0], startPosition[1], traceEnd[2]);
-					line[4] = line[3];
-					line[5] = Vector(traceEnd[0], startPosition[1], startPosition[2]);
-					line[6] = line[5];
-					line[7] = line[0];
-				}
-
-				polyline = Shape.CreateLines(ARGB(255, 255, 255, 255), ShapeFlags.NOZBUFFER|ShapeFlags.TRANSP, line, 8);
+				coords[0] = coords[0] - tileResX * m_iSelectionSize;
+				coords[2] = coords[2] + tileResY;
 			}
 		}
 	}
 
+
+	void UpdateSelection(vector mouseCoords)
+	{
+		float tileResX = (m_API.GetTerrainResolutionX(0) * m_API.GetTerrainUnitScale(0)) / m_API.GetTerrainTilesX(0);
+		float tileResY = (m_API.GetTerrainResolutionY(0) * m_API.GetTerrainUnitScale(0)) / m_API.GetTerrainTilesY(0);
+		vector tile = Vector(Math.Floor(mouseCoords[0] / Math.Floor(tileResX)), 0, Math.Floor(mouseCoords[2] / Math.Floor(tileResY)));
+		
+		for(int i = 0; i < visualCoords.Count(); i++)
+		{
+			if(!selectedCoords.Contains(visualCoords[i]))
+			{
+				vector tileCornerMin = Vector(visualCoords[i][0] * Math.Floor(tileResX),0, visualCoords[i][2] * Math.Floor(tileResY));
+				vector tileCornerMax = Vector(tileCornerMin[0] + Math.Floor(tileResX),0,tileCornerMin[2] + Math.Floor(tileResY));
+				Shape selectedShape = Shape.Create(ShapeType.BBOX, ARGB(50,100,100,0), ShapeFlags.NOZBUFFER|ShapeFlags.TRANSP, tileCornerMin, tileCornerMax);
+				selectedTiles.Insert(selectedShape);
+				selectedCoords.Insert(visualCoords[i]);
+			}
+			else
+			{
+				int index = selectedCoords.Find(visualCoords[i]);
+				selectedCoords.Remove(index);
+				selectedTiles.Remove(index);
+			}
+		}
+	}
+	
 	override void OnMousePressEvent(float x, float y, WETMouseButtonFlag buttons)
 	{
 		vector traceStart;
@@ -216,79 +205,23 @@ class TerrainExportTool : WorldEditorTool
 		vector traceDir;
 		if (m_API.TraceWorldPos(x, y, TraceFlags.WORLD, traceStart, traceEnd, traceDir))
 			{
-				if (!clicked)
-				{
-					// setting start position right before the user clicks
-					currentPoint3D = traceEnd;
-					startPosition = currentPoint3D;
-					previousPoint3D = currentPoint3D;
-					clicked = true;
-				}
-				else
-				{
-					// start creating the polyline
-					polyline = Shape.CreateLines(ARGB(255, 255, 255, 255), ShapeFlags.NOZBUFFER|ShapeFlags.TRANSP, line, 8);
-					clicked = false;
-				}
+				UpdateSelection(traceEnd);
 			}
 	}
-	override void OnKeyPressEvent(KeyCode key, bool isAutoRepeat)
-	{
-		if (key == KeyCode.KC_ESCAPE && isAutoRepeat == false)
-		{
-			// reseting all positions
-			previousPoint3D = "0 0 0";
-			startPosition = "0 0 0";
-			clicked = false;
-			polyline = Shape.CreateLines(ARGB(255, 255, 0, 0), ShapeFlags.NOZBUFFER|ShapeFlags.TRANSP, line, 1);
-		}
-	}
+
 	override void OnActivate()
 	{
 		EBTConfigPlugin.UpdateRegisteredBlenderExecutables();
-		// showing cross
-		m_text = DebugTextScreenSpace.Create(m_API.GetWorld(), "", 0, 100, 100, 14, ARGBF(1, 1, 1, 1), 0x00000000);
-		m_crossHair = DebugTextScreenSpace.Create(m_API.GetWorld(), "", 0, 0, 0, 30, ARGBF(1, 1, 1, 1), 0x00000000);
+
 	}
 	override void OnDeActivate()
 	{
-		// reseting
-		m_text = null;
-		m_crossHair = null;
-		polyline = null;
+		selectedTiles.Clear();
+		selectedCoords.Clear();
+		shapeTiles.Clear();
+		visualTiles.Clear();
+		square = null;
 		startPosition = "0 0 0";
-	}
-
-	// gets Y coords from the selection
-	array<float> GetHeightArray(float xMax, float zMax, float xMin, float zMin, WorldEditorAPI api, float cellSize)
-	{
-		WorldEditor we = Workbench.GetModule(WorldEditor);
-		WBProgressDialog progress = new WBProgressDialog("Processing...", we);
-		int diff = (zMax - zMin) / cellSize;
-		int count = 0;
-		// setting constant to fix Floating Point Error when iterating with floats
-		// cellsize can't be lower than 0.1 so 100 should be enough to convert it to int
-		const int FLOAT_FIX = 100;
-		array<float> coords = new array<float>;
-		// rows from max to min
-		for (int z = zMax*FLOAT_FIX; z >= zMin*FLOAT_FIX; z -= cellSize*FLOAT_FIX)
-		{
-			// columns from max to min
-			progress.SetProgress(count / diff);
-			count += 1;
-			for (int x = xMax*FLOAT_FIX; x >= xMin*FLOAT_FIX; x -= cellSize*FLOAT_FIX)
-			{
-				coords.Insert(api.GetTerrainSurfaceY(x/FLOAT_FIX, z/FLOAT_FIX));
-			}
-		}
-		return coords;
-	}
-
-	// snapping coords to the nearest vertex using cellSize
-	float SnapToVertex(float coord, float cellSize)
-	{
-		float vertex_coord = Math.Round(coord / cellSize) * cellSize;
-		return vertex_coord;
 	}
 }
 

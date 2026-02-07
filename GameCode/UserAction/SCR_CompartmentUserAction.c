@@ -15,8 +15,9 @@ class SCR_CompartmentUserAction : CompartmentUserAction
 		if (!actionInfo)
 			return false;
 		
-		string selfName = actionInfo.GetName();
-		outName = selfName + "%CTX_HACK%" + compartmentInfo.GetName();
+		outName = actionInfo.GetName();
+		if (!compartmentInfo.GetName().IsEmpty())
+			outName += "%CTX_HACK%" + compartmentInfo.GetName();
 		
 		return true;
 	}

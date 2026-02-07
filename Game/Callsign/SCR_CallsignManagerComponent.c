@@ -100,7 +100,7 @@ class SCR_CallsignManagerComponent : SCR_BaseGameModeComponent
 	//! \param[out] platoonIndex to assign
 	//! \param[out] squadIndex to assign
 	void AssignCallGroupCallsign(Faction faction, SCR_CallsignGroupComponent masterCallsignComponent, out int companyIndex, out int platoonIndex, out int squadIndex)
-	{
+	{		
 		companyIndex = -1;
 		platoonIndex = -1;
 		squadIndex = -1;

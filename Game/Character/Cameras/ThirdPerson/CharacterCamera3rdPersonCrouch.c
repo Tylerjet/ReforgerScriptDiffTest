@@ -24,7 +24,7 @@ class CharacterCamera3rdPersonCrouch extends CharacterCamera3rdPersonBase
 		movement = (Math.Clamp(movement, 1, 3) - 1.0) * 0.5;
 		movement *= CONST_CAMERAMOVEMENTHEIGH;
 		
-		float stanceCameraHeight = 0.0;
+		const float stanceCameraHeight = 0.0; // TODO: check for good const usage
 		
 		m_fCameraHeight	= Math.SmoothCD(m_fCameraHeight, Math.Max(movement, stanceCameraHeight), m_fCameraHeightVel, 0.2, 1000, pDt);
 		m_CameraOffsetMS[1] = 0.7 + m_fCameraHeight;

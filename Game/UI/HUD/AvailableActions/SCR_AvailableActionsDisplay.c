@@ -148,8 +148,11 @@ class SCR_AvailableActionContext
 	[Attribute("true")]
 	protected bool m_bEnabled;
 
-	[Attribute("0", UIWidgets.EditBox, "Amount of mili seconds to hide this hint, 0 and less means no hidding")]
+	[Attribute("0", UIWidgets.EditBox, "Amount of milliseconds to hide this hint after it was shown, 0 means no hiding", params: "0 inf")]
 	protected int m_iTimeForHide;
+
+	[Attribute("0", UIWidgets.EditBox, "Amount of milliseconds that have to pass while conditions are met in oder for this hint to be shown", params: "0 inf")]
+	protected int m_iTimeToShow;
 
 	[Attribute("", UIWidgets.Object)]
 	protected ref array<ref SCR_AvailableActionCondition> m_aConditions;
@@ -165,8 +168,8 @@ class SCR_AvailableActionContext
 
 	protected const string MARKUP_FORMAT = "<action name=\"%1\"/>";
 
-	protected bool m_bActivated = false;
-	protected bool m_bHideTimeOver = true;
+	protected float m_fShowCountdown = m_iTimeToShow;
+	protected float m_fHideCountdown = m_iTimeForHide;
 
 	//------------------------------------------------------------------------------------------------
 	string ToString(bool forceText = true)
@@ -198,7 +201,7 @@ class SCR_AvailableActionContext
 	}
 
 	//------------------------------------------------------------------------------------------------
-	bool IsAvailable(SCR_AvailableActionsConditionData data)
+	bool IsAvailable(SCR_AvailableActionsConditionData data, float timeSlice)
 	{
 		if (!m_bEnabled)
 			return false;
@@ -211,41 +214,39 @@ class SCR_AvailableActionContext
 
 			if (!cond.IsAvailable(data))
 			{
-				if (m_bActivated)
-					m_bActivated = false;
-
-				GetGame().GetCallqueue().Remove(HideHint);
-				m_bHideTimeOver = true;
-
 				isOk = false;
 				break;
 			}
-
-			// Restart hide time counter
-			if (m_iTimeForHide > 0 && m_bHideTimeOver && !m_bActivated)
-			{
-				m_bHideTimeOver = false;
-				GetGame().GetCallqueue().Remove(HideHint);
-				GetGame().GetCallqueue().CallLater(HideHint, m_iTimeForHide, false);
-			}
-
-			if (!m_bActivated)
-				m_bActivated = true;
 		}
 
-		// Hide if time is over
-		if (m_iTimeForHide > 0 && m_bHideTimeOver)
-			isOk = false;
+		if (m_iTimeToShow > 0)
+		{// Show only when conditions were met for long enough
+			if (!isOk)
+			{
+				m_fShowCountdown = m_iTimeToShow;
+				m_fHideCountdown = m_iTimeForHide;
+			}
+			else if (m_fShowCountdown > 0)
+			{
+				m_fShowCountdown -= timeSlice * 1000;
+			}
+
+			isOk = isOk && m_fShowCountdown <= 0;
+		}
+
+		if (m_iTimeForHide > 0 && m_fShowCountdown <= 0)
+		{// Hide if time is over
+			if (!isOk)
+				m_fHideCountdown = m_iTimeForHide;
+			else if (m_fHideCountdown > 0)
+				m_fHideCountdown -= timeSlice * 1000;
+
+			isOk = isOk && m_fHideCountdown > 0;
+		}
 
 		return isOk;
 	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void HideHint()
-	{
-		m_bHideTimeOver = true;
-	}
-};
+}
 
 //------------------------------------------------------------------------------------------------
 class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
@@ -323,7 +324,7 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 	//! Go through the list of passed in action names of inActions
 	//! and populate the outActions list with actions that are currently active (available)
 	//! Returns count of available actions or -1 in case of error
-	protected int GetAvailableActions(SCR_AvailableActionsConditionData data, array<ref SCR_AvailableActionContext> inActions, out array<SCR_AvailableActionContext> outActions)
+	protected int GetAvailableActions(SCR_AvailableActionsConditionData data, array<ref SCR_AvailableActionContext> inActions, out array<SCR_AvailableActionContext> outActions, float timeSlice)
 	{
 		ArmaReforgerScripted game = GetGame();
 		if (!game)
@@ -342,7 +343,7 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 			if (actionName == string.Empty)
 				continue;
 
-			if (inputManager.IsActionActive(actionName) && action.IsAvailable(data))
+			if (inputManager.IsActionActive(actionName) && action.IsAvailable(data, timeSlice))
 			{
 				outActions.Insert(action);
 				count++;
@@ -422,17 +423,17 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 		if (m_fDataFetchTimer >= 0.25)
 		{
 			m_data.FetchData(controlledEntity, m_fDataFetchTimer);
-			DisplayWidgetsUpdate();
+			DisplayWidgetsUpdate(m_fDataFetchTimer);
 
 			m_fDataFetchTimer = 0;
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
-	private void DisplayWidgetsUpdate()
+	private void DisplayWidgetsUpdate(float timeSlice)
 	{
 		array<SCR_AvailableActionContext> availableActions = new array<SCR_AvailableActionContext>();
-		int actionsCount = GetAvailableActions(m_data, m_aActions, availableActions);
+		int actionsCount = GetAvailableActions(m_data, m_aActions, availableActions, timeSlice);
 
 		// Enable additional ones
 		if (actionsCount > m_iLastCount)

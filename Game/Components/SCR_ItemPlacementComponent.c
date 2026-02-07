@@ -11,14 +11,17 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	[Attribute("{14A9DCEA57D1C381}Assets/Conflict/CannotBuild.emat")]
 	protected ResourceName m_sCannotBuildMaterial;
 
+	[Attribute("{8FBC3A6E946F056E}Common/Materials/Default_Transparent.emat")]
+	protected ResourceName m_sTransparentMaterial;
+
 	protected int m_iEquipComplete;
 	protected int m_iTargetEntityNodeID;
-	protected bool m_bCanPlace;
 	protected bool m_bInEditor;
 	protected bool m_bIsBeingAttachedToEntity;
 	protected vector m_vCurrentMat[4];
 	protected vector m_aCamDeploymentPosition[4];
 	protected IEntity m_EquippedItem;
+	protected ENotification m_eCantPlaceReason;
 	protected SCR_PlaceableItemComponent m_PlaceableItem;
 	protected IEntity m_PreviewEntity;
 	protected SCR_CompartmentAccessComponent m_CompartmnetAccessComponent;
@@ -185,9 +188,9 @@ class SCR_ItemPlacementComponent : ScriptComponent
 		if (!controlledEntity)
 			return;
 
-		if (!m_bCanPlace)
+		if (m_eCantPlaceReason > 0)
 		{
-			SCR_NotificationsComponent.SendToPlayer(GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(controlledEntity), ENotification.EDITOR_PLACING_BLOCKED);
+			SCR_NotificationsComponent.SendLocal(m_eCantPlaceReason);
 			return;
 		}
 
@@ -337,21 +340,23 @@ class SCR_ItemPlacementComponent : ScriptComponent
 		BaseWorld world = GetOwner().GetWorld();
 		float traceDistance = world.TraceMove(param, FilterCallback);
 		IEntity tracedEntity = param.TraceEnt;
+
 		if (!tracedEntity && m_TargetId.IsValid())
 		{
-			m_bCanPlace = false;
+			m_eCantPlaceReason = ENotification.PLACEABLE_ITEM_CANT_PLACE_SURFACE_NO_LONGER_THERE;//entity to which we were attaching is no longer there
 		}
 		else if (tracedEntity)
 		{
 			RplComponent rplComp = RplComponent.Cast(tracedEntity.FindComponent(RplComponent));
 			if (!rplComp || rplComp.Id() != m_TargetId)
-				m_bCanPlace = false;
+				m_eCantPlaceReason = ENotification.PLACEABLE_ITEM_CANT_PLACE_SURFACE_NO_LONGER_THERE;//entity to which we were attaching is no longer there
+			else if (m_iTargetEntityNodeID != param.NodeIndex)
+				m_eCantPlaceReason = ENotification.PLACEABLE_ITEM_CANT_PLACE_DIFFERENT_SURFACE;//same entity but different part of it is now there
+			else
+				m_eCantPlaceReason = 0;
 		}
 
-		if (m_iTargetEntityNodeID != param.NodeIndex)
-			m_bCanPlace = false;
-
-		if (!m_bCanPlace)
+		if (m_eCantPlaceReason > 0)
 		{
 			IEntity controlledEntity = SCR_PlayerController.GetLocalControlledEntity();
 			if (!controlledEntity)
@@ -367,7 +372,13 @@ class SCR_ItemPlacementComponent : ScriptComponent
 			}
 			else
 			{
-				characterController.ActionUnequipItem();
+				CharacterAnimationComponent animationComponent = characterController.GetAnimationComponent();
+				if (!animationComponent)
+					return;
+
+				CharacterCommandHandlerComponent commandHandler = animationComponent.GetCommandHandler();
+				commandHandler.CancelItemUse();
+				SCR_NotificationsComponent.SendLocal(m_eCantPlaceReason);
 				GetGame().GetCallqueue().Remove(ValidateTargetEntityExistance);
 			}
 		}
@@ -501,6 +512,7 @@ class SCR_ItemPlacementComponent : ScriptComponent
 		float maxPlacementDistance = m_PlaceableItem.GetMaxPlacementDistance();
 		SCR_EPlacementType placementType = m_PlaceableItem.GetPlacementType();
 
+		m_eCantPlaceReason = 0;
 		switch (placementType)
 		{
 			case SCR_EPlacementType.XZ_FIXED:
@@ -512,8 +524,10 @@ class SCR_ItemPlacementComponent : ScriptComponent
 				break;
 		}
 
-		if (m_bCanPlace)
+		if (m_eCantPlaceReason == 0)
 			SCR_Global.SetMaterial(m_PreviewEntity, m_sCanBuildMaterial);
+		else if (m_eCantPlaceReason == ENotification.PLACEABLE_ITEM_CANT_PLACE_DISTANCE)
+			SCR_Global.SetMaterial(m_PreviewEntity, m_sTransparentMaterial);
 		else
 			SCR_Global.SetMaterial(m_PreviewEntity, m_sCannotBuildMaterial);
 	}
@@ -548,7 +562,7 @@ class SCR_ItemPlacementComponent : ScriptComponent
 		m_PreviewEntity.SetTransform(m_vCurrentMat);
 		m_PreviewEntity.Update();
 
-		m_bCanPlace = ValidatePlacement(up, param.TraceEnt, world, character);
+		ValidatePlacement(up, param.TraceEnt, world, character, m_eCantPlaceReason);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -631,15 +645,14 @@ class SCR_ItemPlacementComponent : ScriptComponent
 		// Reject based on distance from character
 		if (SCR_PlaceableItemComponent.GetDistanceFromCharacter(character, m_vCurrentMat[3], m_PlaceableItem.GetDistanceMeasurementMethod()) > maxPlacementDistance)
 		{
-			m_bCanPlace = false;
+			m_eCantPlaceReason = ENotification.PLACEABLE_ITEM_CANT_PLACE_DISTANCE;//this position is too far away
 			return;
 		}
 
 		m_iTargetEntityNodeID = param.NodeIndex;
 		m_aCamDeploymentPosition = cameraMat;
 		m_aCamDeploymentPosition[3] = character.EyePosition();
-		m_bCanPlace = ValidatePlacement(m_vCurrentMat[1], tracedEntity, world, SCR_PlayerController.GetLocalControlledEntity());
-
+		ValidatePlacement(m_vCurrentMat[1], tracedEntity, world, SCR_PlayerController.GetLocalControlledEntity(), m_eCantPlaceReason);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -694,12 +707,13 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	//! \param[in] world
 	//! \param[in] character
 	//! \return
-	bool ValidatePlacement(vector up, IEntity tracedEntity, BaseWorld world, IEntity character)
+	void ValidatePlacement(vector up, IEntity tracedEntity, BaseWorld world, IEntity character, out ENotification cantPlaceReason)
 	{
 		if (!m_PlaceableItem.CanBeAttachedWhileAngled() && vector.Dot(up, vector.Up) < 0.5) // Early reject based on the angle of placement (the maximum should be dictated by item settings)
 		{
 			SCR_Global.SetMaterial(m_PreviewEntity, m_sCannotBuildMaterial);
-			return false;
+			cantPlaceReason = ENotification.PLACEABLE_ITEM_CANT_PLACE_TOO_STEEP;//angle too steep
+			return;
 		}
 
 		if (tracedEntity != m_TargetEntity)
@@ -710,7 +724,10 @@ class SCR_ItemPlacementComponent : ScriptComponent
 			m_iTargetEntityNodeID = -1;
 
 			if (!ValidateEntity(tracedEntity)) // Reject on items with dynamic physics
-				return false;
+			{
+				cantPlaceReason = ENotification.PLACEABLE_ITEM_CANT_PLACE_GENERIC;//cant attach to this
+				return;
+			}
 
 			Physics entPhys = tracedEntity.GetPhysics();
 			if (entPhys && !(entPhys.GetInteractionLayer() & EPhysicsLayerDefs.Terrain))
@@ -744,7 +761,10 @@ class SCR_ItemPlacementComponent : ScriptComponent
 
 		// collides with another entity
 		if (paramOBB.TraceEnt)
-			return false;
+		{
+			cantPlaceReason = ENotification.PLACEABLE_ITEM_CANT_PLACE_NOT_ENOUGH_SPACE;//not enough space
+			return;
+		}
 
 		if (tracedEntity && m_bIsBeingAttachedToEntity)
 		{
@@ -755,8 +775,6 @@ class SCR_ItemPlacementComponent : ScriptComponent
 				m_bIsBeingAttachedToEntity = false;
 		}
 		m_TargetEntity = tracedEntity;
-
-		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -27,11 +27,11 @@ class SCR_AIGetUsableVehicle : AITaskScripted
 			compType = m_eCompartmentType;
 		
 		array<IEntity> vehicles = {};
-		group.GetUsableVehicles(vehicles);
+		group.GetGroupUtilityComponent().m_VehicleMgr.GetAllVehicleEntities(vehicles);
 		if (!vehicles || vehicles.IsEmpty())
 		 	return ENodeResult.FAIL;
-		IEntity vehicle;
 		
+		IEntity vehicle;
 		if (SCR_AICompartmentHandling.FindAvailableCompartmentInVehicles(vehicles, compType, compartmentOut, vehicle))
 		{
 			if (m_bReserveCompartment)
@@ -67,13 +67,13 @@ class SCR_AIGetUsableVehicle : AITaskScripted
     }
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
     {
         return true;
     }
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------
-	override string GetOnHoverDescription()
+	static override string GetOnHoverDescription()
 	{
 		return "GetUsableVehicle: takes vehicles from the list of known vehicles of group and checks if the slot of m_compartmentType is available.\n It does not relaese reservation the found compartment!";
 	}

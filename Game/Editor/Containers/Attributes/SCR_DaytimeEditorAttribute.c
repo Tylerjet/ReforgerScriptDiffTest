@@ -27,6 +27,8 @@ class SCR_DaytimeEditorAttribute: SCR_BaseValueListEditorAttribute
 		manager.SetAttributeSelected(SCR_TimePresetsEditorAttribute, false, -1);
 	}
 	
+	//---- REFACTOR NOTE START: Hardcoded numbers 
+	
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)
 	{
 		if (!var) 
@@ -81,6 +83,8 @@ class SCR_DaytimeEditorAttribute: SCR_BaseValueListEditorAttribute
 		if (item)
 			SCR_NotificationsComponent.SendToUnlimitedEditorPlayers(ENotification.EDITOR_ATTRIBUTES_TIME_CHANGED, playerID,  time[0].ToInt(), time[1].ToInt(), time[3].ToInt(), time[4].ToInt());
 	}
+	
+	//---- REFACTOR NOTE END ----
 	
 	override void PreviewVariable(bool setPreview, SCR_AttributesManagerEditorComponent manager)
 	{

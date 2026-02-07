@@ -71,6 +71,8 @@ class SCR_LayerAutoEnterUIComponent : SCR_BaseEditorUIComponent
 	{
 		m_bCanCharge = true;
 	}
+	
+	//---- REFACTOR NOTE START: Using call later as input delay and also using hardcoded value there
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnMenuUpdate(float tDelta)
@@ -110,6 +112,8 @@ class SCR_LayerAutoEnterUIComponent : SCR_BaseEditorUIComponent
 			}
 		}
 	}
+	
+	//---- REFACTOR NOTE END ----
 	
 	//------------------------------------------------------------------------------------------------
 	override protected bool IsUnique()

@@ -12,7 +12,13 @@ class SCR_BaseRadialCommand
 	
 	[Attribute("", UIWidgets.EditBox, "Name of the icon associated to the command, taken from appropriate imageset set in the radial menu" )]
 	protected string m_sIconName;
-	
+
+	[Attribute(SCR_ECharacterRank.INVALID.ToString(), UIWidgets.ComboBox, desc: "Rank that is requried in order to use this command.\nINVALID == no requirement", enums: ParamEnumArray.FromEnum(SCR_ECharacterRank))]
+	protected SCR_ECharacterRank m_eRequiredRank;
+
+	protected LocalizedString m_sCannotPerformReason;
+
+	protected static const LocalizedString CANNOT_PERFORM_RANK_TOO_LOW = "#AR-Commanding_CannotPefrorm_RankTooLow";
 	//------------------------------------------------------------------------------------------------
 	//! method that will be executed when the command is selected in the menu
 	//! This method is right now broadcaasted to all clients, so if the command 
@@ -87,8 +93,39 @@ class SCR_BaseRadialCommand
 	
 	//------------------------------------------------------------------------------------------------
 	//!
-	bool CanBePerformed()
+	bool CanBePerformed(notnull SCR_ChimeraCharacter user)
 	{
+		if (m_eRequiredRank == SCR_ECharacterRank.INVALID)
+			return true;
+
+		if (!SCR_XPHandlerComponent.IsXpSystemEnabled())
+			return true;
+
+		SCR_ECharacterRank currentRank = SCR_CharacterRankComponent.GetCharacterRank(user);
+		if (currentRank < m_eRequiredRank)
+		{
+			SCR_Faction userFaction = SCR_Faction.Cast(user.GetFaction());
+			if (!userFaction)
+				return false;
+
+			string requiredRankName = userFaction.GetRankName(m_eRequiredRank);
+			string currentRankName = userFaction.GetRankName(currentRank);
+			SetCannotPerformReason(SCR_StringHelper.Translate(CANNOT_PERFORM_RANK_TOO_LOW, requiredRankName, currentRankName));
+			return false;
+		}
+
 		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void SetCannotPerformReason(LocalizedString newReason)
+	{
+		m_sCannotPerformReason = newReason;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	LocalizedString GetCannotPerformReason()
+	{
+		return m_sCannotPerformReason;
 	}
 }

@@ -17,13 +17,20 @@ class SCR_BuilderNameTooltipDetail : SCR_EntityTooltipDetail
 		BaseGameMode gameMode = GetGame().GetGameMode();	
 		if (!gameMode)
 			return false;
-				
+
+		int playerId;
 		SCR_CampaignBuildingCompositionComponent compositionComponent = SCR_CampaignBuildingCompositionComponent.Cast(entity.GetOwner().FindComponent(SCR_CampaignBuildingCompositionComponent));
-		if (!compositionComponent)
+		if (compositionComponent)
+			playerId = compositionComponent.GetBuilderId();
+
+		if (playerId == 0)//SCR_CampaignBuildingCompositionComponent.INVALID_PLAYER_ID = 0
+			playerId = entity.GetAuthorPlayerID();
+
+		if (playerId <= 0)//SCR_EditableEntityComponent.GetAuthorPlayerID can return 0 when there is no author
 			return false;
-		
+
 		PlatformKind playerPlatformKind;
-		string name = GetPlayerName(compositionComponent.GetBuilderId(), playerPlatformKind);
+		string name = GetPlayerName(playerId, playerPlatformKind);
 		if (SCR_StringHelper.IsEmptyOrWhiteSpace(name))
 			return false;
 		
@@ -40,24 +47,15 @@ class SCR_BuilderNameTooltipDetail : SCR_EntityTooltipDetail
 		return true;
 	}
 	
+	//---- REFACTOR NOTE END ----
+	
 	//------------------------------------------------------------------------------------------------
 	protected string GetPlayerName(int playerID, out PlatformKind playerPlatformKind = PlatformKind.NONE)
 	{
 		PlayerManager playerManager = GetGame().GetPlayerManager();
-		if (!playerManager)
-			return string.Empty;
-		
-		string playerName = playerManager.GetPlayerName(playerID);
-		playerPlatformKind = playerManager.GetPlatformKind(playerID);
-		
-		//Player name not found
-		if (playerName.IsEmpty())
-		{
-			SCR_NotificationsComponent notificationsManager = SCR_NotificationsComponent.GetInstance();
-			if (notificationsManager)
-				playerName = notificationsManager.GetPlayerNameFromHistory(playerID);
-		}
-			
-		return playerName;
+		if (playerManager)
+			playerPlatformKind = playerManager.GetPlatformKind(playerID);
+
+		return SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(playerID);
 	}
 }

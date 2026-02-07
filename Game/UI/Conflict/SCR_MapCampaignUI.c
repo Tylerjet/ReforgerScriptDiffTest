@@ -185,8 +185,9 @@ class SCR_MapCampaignUI : SCR_MapUIElementContainer
 			comp.SetMapOpened(true);
 		}
 		
-		//Set image from ImageSet 
-		ResourceName imageSet = "{5E8F77F38C2B9B9F}UI/Imagesets/MilitarySymbol/ICO.imageset";
+		// Set image from ImageSet
+		// TODO: check for good const usage
+		const ResourceName imageSet = "{5E8F77F38C2B9B9F}UI/Imagesets/MilitarySymbol/ICO.imageset";
 		ImageWidget image = ImageWidget.Cast(indicator.FindAnyWidget("Image"));
 		if(image)
 		{

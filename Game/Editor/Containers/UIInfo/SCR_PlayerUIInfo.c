@@ -20,7 +20,7 @@ class SCR_PlayerUIInfo : SCR_UIInfo
 	override LocalizedString GetName()
 	{
 		if (m_iPlayerID > 0)
-			return GetGame().GetPlayerManager().GetPlayerName(m_iPlayerID);
+			return SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(m_iPlayerID);
 		else
 			return super.GetName();
 	}

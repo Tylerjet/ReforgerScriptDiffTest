@@ -151,7 +151,7 @@ class SCR_PrefabManagementTool : WorldEditorTool
 			string absoluteSaveDirectory;
 			if (!SCR_AddonTool.GetAddonAbsolutePath(m_iAddon, relativeSaveDirectory, absoluteSaveDirectory, false))
 			{
-				Print("Wrong path: " + SCR_AddonTool.ToFileSystem(SCR_AddonTool.GetAddonIndex(m_iAddon)) + relativeSaveDirectory, LogLevel.WARNING);
+				Print("Wrong path: " + SCR_AddonTool.ToFileSystem(SCR_AddonTool.GetAddonID(m_iAddon)) + relativeSaveDirectory, LogLevel.WARNING);
 				continue;
 			}
 
@@ -221,7 +221,7 @@ class SCR_PrefabManagementTool : WorldEditorTool
 			string absoluteSaveDirectory;
 			if (!SCR_AddonTool.GetAddonAbsolutePath(m_iAddon, relativeSaveDirectory, absoluteSaveDirectory))
 			{
-				Print("Wrong path: " + SCR_AddonTool.GetAddonIndex(m_iAddon) + relativeSaveDirectory, LogLevel.WARNING);
+				Print("Wrong path: " + SCR_AddonTool.GetAddonID(m_iAddon) + relativeSaveDirectory, LogLevel.WARNING);
 				continue;
 			}
 

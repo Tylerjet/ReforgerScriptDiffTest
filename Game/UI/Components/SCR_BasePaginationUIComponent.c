@@ -263,7 +263,7 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 		
 		//--- Set focus
 		if (focusedButton)
-			GetGame().GetWorkspace().SetFocusedWidget(focusedButton);
+			GetGame().GetCallqueue().Call(FocusWidget, focusedButton);
 		
 		/*
 		//--- Create dummy widget in bottom right cell to stretch the grid
@@ -302,6 +302,14 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 		
 		return hasContent;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Separated focus function for later call
+	protected void FocusWidget(Widget w)
+	{
+		GetGame().GetWorkspace().SetFocusedWidget(w);
+	}
+	
 	/*!
 	Refresh the current page.
 	\return True if the page has any content
@@ -310,6 +318,7 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 	{
 		return SetPage(m_iCurrentPage, true);
 	}
+	
 	protected void IterateIndex(out int row, out int column)
 	{
 		column++;
@@ -319,6 +328,7 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 			row++;
 		}
 	}
+	
 	protected void EnablePageButton(Widget w, bool enable)
 	{
 		if (!w)
@@ -337,6 +347,7 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 		else 	
 			w.SetEnabled(enable);
 	}
+	
 	protected void OnButtonPrev()
 	{
 		if (m_bIgnoreGamePadInput && !GetGame().GetInputManager().IsUsingMouseAndKeyboard())
@@ -346,6 +357,7 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 			SetPage(m_iCurrentPage - 1);
 			
 	}
+	
 	protected void OnButtonNext()
 	{
 		if (m_bIgnoreGamePadInput && !GetGame().GetInputManager().IsUsingMouseAndKeyboard())
@@ -379,6 +391,7 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 	{
 		return false;
 	}
+	
 	override bool OnFocus(Widget w, int x, int y)
 	{
 		if (w == m_FocusPrevWidget)
@@ -408,6 +421,7 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 		
 		return false;
 	}
+	
 	override bool OnMouseEnter(Widget w, int x, int y)
 	{
 		if (m_bMustHoverOverContent)
@@ -436,11 +450,13 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 		}
 		return false;
 	}
+	
 	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
 	{
 		SetUnderCursor(false);
 		return false;
 	}
+	
 	override void HandlerAttached(Widget w)
 	{
 		super.HandlerAttached(w);

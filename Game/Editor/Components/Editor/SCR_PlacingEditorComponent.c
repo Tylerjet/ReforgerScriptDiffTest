@@ -124,7 +124,8 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	private SCR_StatesEditorComponent m_StatesManager;
 	protected SCR_PreviewEntityEditorComponent m_PreviewManager;
 	protected SCR_BudgetEditorComponent m_BudgetManager;
-
+	protected SCR_EditableEntityCore m_editableEntityCore;
+	
 	private SCR_SiteSlotEntity m_Slot;
 	private int m_iEntityIndex;
 	private ref map<int, IEntity> m_WaitingPreviews = new map<int, IEntity>;
@@ -133,7 +134,7 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	private EEditorPlacingFlags m_PlacingFlags;
 	private EEditorPlacingFlags m_CompatiblePlacingFlags;
 	private ref set<SCR_EditableEntityComponent> m_Recipients;
-	private ref SCR_EditorPreviewParams m_InstantPlacingParam;
+	protected ref SCR_EditorPreviewParams m_InstantPlacingParam;
 	
 	protected bool m_bBlockPlacing;
 	
@@ -148,6 +149,18 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	
 	protected static SCR_EditableEntityComponent m_DelayedSpawnEntity;
 	protected static ref SCR_EditorPreviewParams m_DelayedSpawnPreviewParams;
+			
+	static protected ref map<EEditableEntityBudget, int> m_accumulatedBudgetChanges = new map<EEditableEntityBudget, int>;
+	
+	//Basically every time someone has GM rights a new entity with its own SCR_PlacingEditorComponent is used.
+	//Each GM client has ownership of that entity and will use it to send RPC's to server
+	//However when server handles the spawning of the entity instead of using the instance owned by the server
+	//(in which variables in other components like the budget one have been initialized)
+	//they use the entity owned by the client that sent the RPC
+	//This is one of the many, many, many issues that GM has with replication but there is no time for a rewrite,
+	//so instead we have this single static variable. Welp.
+	static SCR_PlacingEditorComponent serverPlacingEditorComponent;
+	static bool m_accumulatedBudgetChangesClearQueued = false;
 	
 	void SetPlacingBlocked(bool blocked)
 	{
@@ -195,7 +208,7 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		if (!m_PreviewManager.IsChange() && !m_InstantPlacingParam)
 		{
 			SendNotification(ENotification.EDITOR_TRANSFORMING_INCORRECT_POSITION);
-			SetSelectedPrefab(ResourceName.Empty, true);
+			//SetSelectedPrefab(ResourceName.Empty, true);
 			return false;
 		}
 		
@@ -386,6 +399,16 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 			return;
 		}
 		
+		//always allow player spawning
+		if(!canBePlayer)
+		{
+			//server one should check if possible or not. Check variable description if you are confused
+			bool canSpawn = IsThereEnoughBudgetToSpawn(editableEntitySource);
+		
+			if(!canSpawn)
+				return;
+		}
+
 		OnBeforeEntityCreatedServer(prefab);
 		
 		SCR_EditableEntityComponent entity;
@@ -467,6 +490,73 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		Rpc(CreateEntityOwner, prefabID, entityIds, entityIndex, isQueue, hasRecipients, currentLayerID, 0);
 		Event_OnPlaceEntityServer.Invoke(prefabID, entity, playerID);
 	}
+	
+	bool IsThereEnoughBudgetToSpawn(IEntityComponentSource entitySource)
+	{
+		if(!entitySource)
+			return false;
+		
+		if (!m_BudgetManager)
+		{
+			m_BudgetManager = SCR_BudgetEditorComponent.Cast(FindEditorComponent(SCR_BudgetEditorComponent, false, true));
+			if (!m_BudgetManager)
+				return true;
+		}
+	
+		array<ref SCR_EntityBudgetValue> budgetCosts = {};
+		map<EEditableEntityBudget, int> tempBudgetAggregation = m_accumulatedBudgetChanges;
+		SCR_EditableEntityCoreBudgetSetting budgetSettings;
+
+		m_BudgetManager.GetEntitySourcePreviewBudgetCosts(entitySource, budgetCosts);	
+
+		bool budgetFound = false;
+		foreach(SCR_EntityBudgetValue budget : budgetCosts)
+		{
+			const EEditableEntityBudget budgetType = budget.GetBudgetType();
+			int accumulatedBudgetCost = 0;
+			int maxBudgetForType = 0;
+			
+			bool found = tempBudgetAggregation.Find(budgetType, accumulatedBudgetCost);
+			m_BudgetManager.GetMaxBudgetValue(budgetType, maxBudgetForType);
+
+			bool hasBudget = m_editableEntityCore.GetBudget(budgetType, budgetSettings);
+			int currentBudgetValue = 0;
+
+			if(hasBudget)
+				currentBudgetValue = budgetSettings.GetCurrentBudget();
+			
+			//if same budget, we aggregate them
+			const int newAggregatedBudget = budget.GetBudgetValue() + accumulatedBudgetCost;
+
+			//check if budget goes over max
+			if(newAggregatedBudget + currentBudgetValue > maxBudgetForType)
+			{	
+				EEditableEntityBudget blockingBudget;
+				bool canPlace = m_BudgetManager.CanPlaceEntitySource(entitySource, blockingBudget, false, false);
+
+				return false;
+			}
+			//if all budgets are valid, we will update accumulated budgets and return true	
+			tempBudgetAggregation[budgetType] = newAggregatedBudget;
+		}
+		
+		m_accumulatedBudgetChanges = tempBudgetAggregation;
+		
+		if(!m_accumulatedBudgetChangesClearQueued)
+		{
+			GetGame().GetCallqueue().CallLater(ClearAccumulatedBudgetChanges);
+			m_accumulatedBudgetChangesClearQueued = true;
+		}
+		
+		return true;
+	}
+	
+	protected static void ClearAccumulatedBudgetChanges()
+	{
+		m_accumulatedBudgetChanges.Clear();
+		m_accumulatedBudgetChangesClearQueued = false;
+	}
+	
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void CreateEntityOwner(int prefabID, array<RplId> entityIds, int entityIndex, int isQueue, bool hasRecipients, RplId currentLayerID, int attempt)
 	{
@@ -928,13 +1018,11 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		//--- Track if recipients are deleted (stop placing when no recipient remains)
 		if (prefab && recipients)
 		{
-			SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
-			core.Event_OnEntityUnregistered.Insert(OnEntityUnregistered);
+			m_editableEntityCore.Event_OnEntityUnregistered.Insert(OnEntityUnregistered);
 		}
 		else if (!prefab && m_Recipients)
 		{
-			SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
-			core.Event_OnEntityUnregistered.Remove(OnEntityUnregistered);
+			m_editableEntityCore.Event_OnEntityUnregistered.Remove(OnEntityUnregistered);
 		}
 		
 		//--- Set the prefab
@@ -1165,11 +1253,49 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		}
 		debugTexts.Insert(string.Format("Placing flags: %1", SCR_Enum.FlagsToString(EEditorPlacingFlags, m_PlacingFlags)));
 	}
+	
+	override protected void EOnEditorInitServer()
+	{
+		super.EOnEditorInitServer();
+		
+		m_BudgetManager = SCR_BudgetEditorComponent.Cast(FindEditorComponent(SCR_BudgetEditorComponent, false, true));
+		m_editableEntityCore = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
+		
+		if(!IsMaster())
+			return;
+		
+		/*
+		if(m_editableEntityCore)
+		{
+			m_editableEntityCore.Event_OnEntityBudgetUpdated.Insert(OnBudgetsUpdated);
+		}
+		
+		serverPlacingEditorComponent = this;
+		*/
+	}
+	
+	override protected void EOnEditorDeleteServer()
+	{
+		super.EOnEditorDeleteServer();
+		
+		/*
+		if(!IsMaster())
+			return;
+		
+		if(m_editableEntityCore)
+		{
+			m_editableEntityCore.Event_OnEntityBudgetUpdated.Remove(OnBudgetsUpdated);
+		}
+		*/
+	}
+	
 	override void EOnEditorActivate()
 	{
 		m_StatesManager = SCR_StatesEditorComponent.Cast(FindEditorComponent(SCR_StatesEditorComponent));
 		m_PreviewManager = SCR_PreviewEntityEditorComponent.Cast(FindEditorComponent(SCR_PreviewEntityEditorComponent, true));
 		m_BudgetManager = SCR_BudgetEditorComponent.Cast(FindEditorComponent(SCR_BudgetEditorComponent, false, true));
+		m_editableEntityCore = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
+		
 		if (m_BudgetManager)
 		{
 			m_BudgetManager.Event_OnBudgetMaxReached.Insert(OnBudgetMaxReached);

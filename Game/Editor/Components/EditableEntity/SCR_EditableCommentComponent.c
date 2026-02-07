@@ -81,6 +81,12 @@ class SCR_EditableCommentComponent : SCR_EditableEntityComponent
 	private static const float _WB_DRAW_DISTANCE_SQ = 1500 * 1500; //--- Squared value
 
 	//------------------------------------------------------------------------------------------------
+	override int _WB_GetAfterWorldUpdateSpecs(IEntity owner, IEntitySource src)
+	{
+		return EEntityFrameUpdateSpecs.CALL_WHEN_ENTITY_VISIBLE;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override void _WB_AfterWorldUpdate(IEntity owner, float timeSlice)
 	{
 		SCR_UIInfo info = GetInfo();

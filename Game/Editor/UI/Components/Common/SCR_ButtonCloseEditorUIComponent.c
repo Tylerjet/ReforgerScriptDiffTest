@@ -12,10 +12,16 @@ class SCR_ButtonCloseEditorUIComponent: ScriptedWidgetComponent
 	[Attribute()]
 	protected string m_sButtonRespawnMenuDisabledName;
 	
+	[Attribute("Toolbar_CaptureButton")]
+	protected string m_sButtonCapture;
+	
 	protected Widget m_ButtonClose;
 	protected Widget m_ButtonPlayer;
 	protected Widget m_ButtonRespawnMenu;
 	protected Widget m_ButtonRespawnMenuDisabled;
+	protected Widget m_wButtonCapture;
+	
+	//---- REFACTOR NOTE START: States could be enums
 	
 	protected const int BUTTON_CLOSE = 0;
 	protected const int BUTTON_PLAYER = 1;
@@ -75,7 +81,19 @@ class SCR_ButtonCloseEditorUIComponent: ScriptedWidgetComponent
 		m_ButtonPlayer.SetVisible(showButton == BUTTON_PLAYER);
 		m_ButtonRespawnMenu.SetVisible(showButton == BUTTON_RESPAWN_MENU);
 		m_ButtonRespawnMenuDisabled.SetVisible(showButton == BUTTON_RESPAWN_MENU_DISABLED);
+		
+		if (m_wButtonCapture)
+		{
+			SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
+			if (!editorManager)
+				return;
+			
+			EEditorMode mode = editorManager.GetCurrentMode();
+			m_wButtonCapture.SetVisible(mode == EEditorMode.PHOTO_SAVE);
+		}
 	}
+	
+	//---- REFACTOR NOTE END ----
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnPlayerKilled(notnull SCR_InstigatorContextData instigatorContextData)
@@ -109,6 +127,7 @@ class SCR_ButtonCloseEditorUIComponent: ScriptedWidgetComponent
 		m_ButtonRespawnMenu = w.FindAnyWidget(m_sButtonRespawnMenuName);
 		m_ButtonRespawnMenuDisabled = w.FindAnyWidget(m_sButtonRespawnMenuDisabledName);
 		m_ButtonClose = w.FindAnyWidget(m_sButtonCloseName);
+		m_wButtonCapture = w.FindAnyWidget(m_sButtonCapture);
 		
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (gameMode)

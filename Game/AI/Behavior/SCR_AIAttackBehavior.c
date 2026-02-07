@@ -23,6 +23,12 @@ class SCR_AIAttackBehavior : SCR_AIBehaviorBase
 	protected static const float WAIT_TIME_UNEXPECTED = 0.25;
 	protected static const float WAIT_TIME_OVERTHREATENED = 0.8;
 	
+	//---------------------------------------------------------------------------------------------------------------------------------
+	override int GetCause()
+	{
+		return SCR_EAIBehaviorCause.COMBAT;
+	}
+	
 	//----------------------------------------------------------------------------------
 	void InitParameters(BaseTarget target, float waitTime)
 	{
@@ -130,7 +136,11 @@ class SCR_AIAttackBehavior : SCR_AIBehaviorBase
 			m_bCloseRange = closeRange;
 			m_CombatComponent.SetTargetSelectionProperties(m_bCloseRange);
 		}
-				
+		
+		// Combat mode?
+		if (m_CombatComponent.GetCombatMode() == EAIGroupCombatMode.HOLD_FIRE)
+			return PRIORITY_BEHAVIOR_ATTACK_DISREGARD_THREATS;
+		
 		float targetScore = m_Utility.m_CombatComponent.m_WeaponTargetSelector.CalculateTargetScore(baseTarget);
 		
 		if (baseTarget.IsEndangering() || baseTarget.GetTimeSinceEndangered() < SCR_AICombatComponent.TARGET_ENDANGERED_TIMEOUT_S)

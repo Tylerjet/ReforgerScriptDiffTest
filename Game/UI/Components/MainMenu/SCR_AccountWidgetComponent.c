@@ -153,7 +153,7 @@ class SCR_AccountWidgetComponent : SCR_ScriptedWidgetComponent
 		if (!m_ProfileStatusIcon)
 			return;
 
-		m_ProfileStatusIcon.SetVisibile(true);
+		m_ProfileStatusIcon.SetVisible(true);
 		
 		Color color = m_ColorOffline;
 		string image = m_sIconOffline;
@@ -178,7 +178,7 @@ class SCR_AccountWidgetComponent : SCR_ScriptedWidgetComponent
 			color = m_ColorOnline;
 			image = m_sIconOnline;
 			
-			m_ProfileStatusIcon.SetVisibile(m_bShowOnlineIcon);
+			m_ProfileStatusIcon.SetVisible(m_bShowOnlineIcon);
 			
 			if (tooltipContent)
 				tooltipMessage = tooltipContent.GetDefaultMessage();

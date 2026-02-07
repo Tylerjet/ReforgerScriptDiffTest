@@ -86,8 +86,7 @@ class SCR_EntityTooltipEditorUIComponent : SCR_BaseTooltipEditorUIComponent
 			{
 				if (playerID > 0)
 				{
-					//string playerName = SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(playerID);
-					string playerName = GetGame().GetPlayerManager().GetPlayerName(playerID);
+					string playerName = SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(playerID);
 					
 					if(GetGame().GetPlayerManager().GetPlatformKind(SCR_PlayerController.GetLocalPlayerId()) == PlatformKind.PSN || true){
 						if (GetGame().GetPlayerManager().GetPlatformKind(playerID) == PlatformKind.PSN)

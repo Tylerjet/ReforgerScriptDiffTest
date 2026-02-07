@@ -1,6 +1,6 @@
 class SCR_AIDecoWeaponUnobstructed : DecoratorScripted
 {
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 
 	protected CharacterControllerComponent m_CharacterController;
 	protected CompartmentAccessComponent m_CompartmentAccess;
@@ -26,7 +26,7 @@ class SCR_AIDecoWeaponUnobstructed : DecoratorScripted
 		m_bInitialized = m_CharacterController && m_CompartmentAccess;
 	}
 	
-	override string GetOnHoverDescription()
+	static override string GetOnHoverDescription()
 	{
 		return "Returns TRUE if current weapon is not obstructed";
 	}

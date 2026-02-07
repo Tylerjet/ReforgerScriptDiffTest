@@ -38,6 +38,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	protected const string MESSAGE_TAG_NOTHING_DOWNLOADED_2 = "nothing_downloaded2";
 	protected const string MESSAGE_TAG_ERROR_CONNECTION = "error_connection";
 	protected const string MESSAGE_TAG_LOADING = "loading";
+	protected const string MESSAGE_TAG_NO_SAVES_FOUND = "no_saves_found";
 
 	// --- Protected / Private ---
 	protected ref SCR_ContentBrowser_AddonsSubMenuBaseWidgets m_Widgets = new SCR_ContentBrowser_AddonsSubMenuBaseWidgets();
@@ -357,9 +358,9 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		m_WorkshopApi.SetPageItems(0);
 
 		SCR_WorkshopApiCallback_RequestPage callback = new SCR_WorkshopApiCallback_RequestPage(pageId);
-		callback.m_OnGetAssets.Insert(Callback_OnRequestPageGetAllAssets);
-		callback.m_OnError.Insert(Callback_OnRequestPageGetAllAssets);
-		callback.m_OnTimeout.Insert(Callback_OnRequestPageGetAllAssets);
+		callback.GetEventOnSuccess().Insert(Callback_OnRequestPageGetAllAssets);
+		callback.GetEventOnFail().Insert(Callback_OnRequestPageGetAllAssets);
+		callback.GetEventOnTimeOut().Insert(Callback_OnRequestPageGetAllAssets);
 
 		m_aSearchCallbacks.Insert(callback);
 
@@ -379,9 +380,9 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		m_WorkshopApi.SetPageItems(GRID_N_COLUMNS * GRID_N_ROWS);
 
 		SCR_WorkshopApiCallback_RequestPage callback = new SCR_WorkshopApiCallback_RequestPage(pageId);
-		callback.m_OnGetAssets.Insert(Callback_OnRequestPageGetAssets);
-		callback.m_OnError.Insert(Callback_OnRequestPageTimeout);
-		callback.m_OnTimeout.Insert(Callback_OnRequestPageTimeout);
+		callback.GetEventOnSuccess().Insert(Callback_OnRequestPageGetAssets);
+		callback.GetEventOnFail().Insert(Callback_OnRequestPageTimeout);
+		callback.GetEventOnTimeOut().Insert(Callback_OnRequestPageTimeout);
 
 		m_aSearchCallbacks.Insert(callback);
 
@@ -405,9 +406,9 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void PageRequestCallbackCleanup(SCR_WorkshopApiCallback_RequestPage callback)
 	{
-		callback.m_OnSuccess.Clear();
-		callback.m_OnError.Clear();
-		callback.m_OnTimeout.Clear();
+		callback.GetEventOnSuccess().Clear();
+		callback.GetEventOnFail().Clear();
+		callback.GetEventOnTimeOut().Clear();
 
 		m_aSearchCallbacks.RemoveItem(callback);
 	}
@@ -426,6 +427,9 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		m_iPageCount = Math.Ceil(m_aExternalItems.Count() / nItemsPerPage);
 
 		SetPanelsMode(false);
+		
+		foreach(SCR_WorkshopItem item: itemsAtPage)
+			item.LoadDetails();
 
 		GridScreen_DisplayItems(itemsAtPage);
 
@@ -1295,11 +1299,20 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		SCR_FilterCategory catQuick = filterSet.FindFilterCategory("quick_filters");
 		SCR_FilterEntry filterAll = catQuick.FindFilter("all");
 		SCR_FilterEntry filterFav = catQuick.FindFilter("favourite");
+		SCR_FilterEntry filterAddonsOnly = catQuick.FindFilter("addons_only");
+		SCR_FilterEntry filterSavensOnly = catQuick.FindFilter("saves_only");
+		
 		if (filterAll.GetSelected())
 			arraysFromCategories.Insert(items);
 		
 		else if (filterFav.GetSelected())
 			arraysFromCategories.Insert(SCR_AddonManager.SelectItemsBasic(items, EWorkshopItemQuery.FAVOURITE));
+		
+		else if (filterAddonsOnly.GetSelected())
+			arraysFromCategories.Insert(SCR_AddonManager.SelectItemsBasic(items, EWorkshopItemQuery.ONLY_WORKSHOP_ITEM));
+		
+		else if (filterSavensOnly.GetSelected())
+			arraysFromCategories.Insert(SCR_AddonManager.SelectItemsBasic(items, EWorkshopItemQuery.ONLY_WORLD_SAVES));
 
 		// Type tags
 		array<WorkshopTag> selectedWorkshopTags = {};

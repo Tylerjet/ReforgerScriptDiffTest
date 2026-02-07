@@ -27,6 +27,12 @@ class SCR_AIFireIllumFlareBehavior : SCR_AIBehaviorBase
 			DrawPositionDebug();		
 #endif
 	}
+	
+	//---------------------------------------------------------------------------------------------------------------------------------
+	override int GetCause()
+	{
+		return SCR_EAIBehaviorCause.COMBAT;
+	}	
 		
 	//----------------------------------------------------------------------------------
 	override void OnActionSelected()

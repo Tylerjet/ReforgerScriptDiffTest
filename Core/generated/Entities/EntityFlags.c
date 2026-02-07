@@ -25,6 +25,7 @@ enum EntityFlags
 	FEATURE,
 	//! You can check whether the entity has been rendered by enf::Entity::IsRendered()
 	SET_RENDERED,
+	STREAMABLE,
 	//! Tells that this entity has to be actively updated by engine
 	ACTIVE,
 	/*!

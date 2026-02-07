@@ -23,36 +23,48 @@ class SCR_EditorSaveLoadUIComponent : SCR_SaveDialogUIComponent
 		}
 
 		//--- Loading a file leads to restart, ask first
-		string displayName = m_mEntryNames[m_sSelectedFileName];
 		string fileName;
-		if (m_mEntries.Find(GetGame().GetWorkspace().GetFocusedWidget(), fileName))
+		Widget focusedEntry = GetGame().GetWorkspace().GetFocusedWidget();
+		
+		foreach (SCR_SaveDialogEntry entry : m_mEntries)
 		{
-			SCR_MetaStruct meta = GetGame().GetSaveManager().GetMeta(fileName);
-			if (meta)
+			if (entry.m_wEntry == focusedEntry)
 			{
-				if (!meta.IsVersionCompatible())
-				{
-					// Warning - incompatible version
-					m_LoadBadVersionPrompt = SCR_ConfigurableDialogUi.CreateFromPreset(SCR_CommonDialogs.DIALOGS_CONFIG, m_sLoadBadVersionPrompt);
-					m_LoadBadVersionPrompt.m_OnConfirm.Insert(LoadEntry);
-					m_LoadBadVersionPrompt.SetTitle(displayName);
-					return;
-				}
-				else if (!meta.AreAddonsCompatible())
-				{
-					// Warning - incompatible addons
-					m_LoadBadAddonsPrompt = SCR_ConfigurableDialogUi.CreateFromPreset(SCR_CommonDialogs.DIALOGS_CONFIG, m_sLoadBadAddonsPrompt);
-					m_LoadBadAddonsPrompt.m_OnConfirm.Insert(LoadEntry);
-					m_LoadBadAddonsPrompt.SetTitle(displayName);
-					return;
-				}
+				fileName = entry.m_sFileName;
+				break;
+			}
+		}
+
+		if (fileName.IsEmpty())
+			return;
+
+		string displayName = m_mEntryNames[m_sSelectedFileName];
+		SCR_MetaStruct meta = GetGame().GetSaveManager().GetMeta(fileName);
+		if (meta)
+		{
+			if (!meta.IsVersionCompatible())
+			{
+				// Warning - incompatible version
+				m_LoadBadVersionPrompt = SCR_ConfigurableDialogUi.CreateFromPreset(SCR_CommonDialogs.DIALOGS_CONFIG, m_sLoadBadVersionPrompt);
+				m_LoadBadVersionPrompt.m_OnConfirm.Insert(LoadEntry);
+				m_LoadBadVersionPrompt.SetTitle(displayName);
+				return;
 			}
 
-			//--- Confirm prompt
-			m_ConfirmPrompt = SCR_ConfigurableDialogUi.CreateFromPreset(SCR_CommonDialogs.DIALOGS_CONFIG, m_sConfirmPrompt);
-			m_ConfirmPrompt.m_OnConfirm.Insert(OnConfirmPrompt);
-			m_ConfirmPrompt.SetTitle(displayName);
+			if (!meta.AreAddonsCompatible())
+			{
+				// Warning - incompatible addons
+				m_LoadBadAddonsPrompt = SCR_ConfigurableDialogUi.CreateFromPreset(SCR_CommonDialogs.DIALOGS_CONFIG, m_sLoadBadAddonsPrompt);
+				m_LoadBadAddonsPrompt.m_OnConfirm.Insert(LoadEntry);
+				m_LoadBadAddonsPrompt.SetTitle(displayName);
+				return;
+			}
 		}
+
+		//--- Confirm prompt
+		m_ConfirmPrompt = SCR_ConfigurableDialogUi.CreateFromPreset(SCR_CommonDialogs.DIALOGS_CONFIG, m_sConfirmPrompt);
+		m_ConfirmPrompt.m_OnConfirm.Insert(OnConfirmPrompt);
+		m_ConfirmPrompt.SetTitle(displayName);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -65,8 +77,10 @@ class SCR_EditorSaveLoadUIComponent : SCR_SaveDialogUIComponent
 	//------------------------------------------------------------------------------------------------
 	override protected void OnDeletePrompt()
 	{
+		SCR_SaveDialogEntry entry = m_mEntries[m_sSelectedFileName];
+		
 		//--- Delete the file
-		GetGame().GetSaveManager().Delete(m_sSelectedFileName);
+		GetGame().GetSaveManager().Delete(m_sSelectedFileName, entry.m_bIsDownloaded);
 
 		//--- Update GUI
 		super.OnDeletePrompt();
@@ -75,8 +89,13 @@ class SCR_EditorSaveLoadUIComponent : SCR_SaveDialogUIComponent
 	//------------------------------------------------------------------------------------------------
 	override protected void LoadEntry()
 	{
-		string fileName;
-		if (m_mEntries.Find(m_wLastFocusedEntry, fileName))
+		SCR_SaveDialogEntry selectedEntry = GetEntryByWidget(m_wLastFocusedEntry);
+		if (!selectedEntry)
+			return;
+		
+		string fileName = m_mEntries.GetKeyByValue(selectedEntry);
+		
+		if (!fileName.IsEmpty())
 		{
 			SCR_SaveManagerCore saveManager = GetGame().GetSaveManager();
 

@@ -2,7 +2,7 @@
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkWaypointSearchAndDestroy : SCR_ScenarioFrameworkWaypointTimed
 {
-	[Attribute(defvalue: "20", desc: "Radius in m")]
+	[Attribute(defvalue: "20", uiwidget: UIWidgets.Slider, desc: "Radius in m")]
 	float m_fCompletionRadius;
 
 	[Attribute(defvalue: "{B3E7B8DC2BAB8ACC}Prefabs/AI/Waypoints/AIWaypoint_SearchAndDestroy.et", desc: "In Default, it will use specific prefab for each class, but here you can change it if you know what you are doing")]

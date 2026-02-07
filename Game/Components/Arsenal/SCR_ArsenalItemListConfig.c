@@ -40,12 +40,13 @@ class SCR_ArsenalItemListConfig
 	
 	//------------------------------------------------------------------------------------------------
 	//! Get arsenal items filtered by SCR_EArsenalItemType filter, caches values
-	// \param filter Combined flags for available items for this faction (RIFLE, MAGAZINE, EQUIPMENT, RADIOBACKPACK etc.)
-	//! \param typeFilter
-	//! \param modeFilter
-	//! \param requiresDisplayType Requires the Arsenal data to have display data type (-1 is ignore)
+	//! \param[in] filter Combined flags for available items for this faction (RIFLE, MAGAZINE, EQUIPMENT, RADIOBACKPACK etc.)
+	//! \param[in] typeFilter
+	//! \param[in] modeFilter
+	//! \param[in] requiresDisplayType Requires the Arsenal data to have display data type (-1 is ignore)
+	//! \param[in] checkFaction If a faction is given it will check if the item is part of the faction and if not will filter out the item
 	//! \return array with availabe arsenal items of give filter types
-	array<SCR_ArsenalItem> GetFilteredArsenalItems(SCR_EArsenalItemType typeFilter, SCR_EArsenalItemMode modeFilter, EArsenalItemDisplayType requiresDisplayType = -1)
+	array<SCR_ArsenalItem> GetFilteredArsenalItems(SCR_EArsenalItemType typeFilter, SCR_EArsenalItemMode modeFilter, EArsenalItemDisplayType requiresDisplayType = -1, SCR_Faction checkFaction = null)
 	{
 		array<SCR_ArsenalItem> filteredItems = new array<SCR_ArsenalItem>();
 		
@@ -72,10 +73,21 @@ class SCR_ArsenalItemListConfig
 			}
 		}
 		
+		//~ Get the catalog if a faction is given
+		SCR_EntityCatalog catalog;
+		if (checkFaction)
+			catalog = checkFaction.GetFactionEntityCatalogOfType(EEntityCatalogType.ITEM, false);
+		
 		foreach	(SCR_ArsenalItem item : itemsByType)
 		{
 			if (item.GetItemMode() & modeFilter)
+			{
+				//~ Check if item is part of faction
+				if (catalog && !catalog.GetEntryWithPrefab(item.GetItemResourceName()))
+					continue;
+
 				filteredItems.Insert(item);
+			}
 		}
 
 		return filteredItems;

@@ -27,6 +27,14 @@ void ShowBoneDebug(IEntity ent, int bone, float scale)
 }
 
 //------------------------------------------------------------------------------------------------
+//! \param[in] pos position in worldspace
+//! \param[in] aroundDir normalized direction in worldsapce towards the base
+//! \param[in] coneAngX angle on its local X axis
+//! \param[in] coneAngY angle on its local Y axis
+//! \param[in] coneLength length of the sides (not height of the cone - for round base you can use coneLength = coneHeight / Math.Cos(coneAngleInRadians))
+//! \param[in] color
+//! \param[in] subdivisions
+//! \param[in] flags
 Shape CreateCone(vector pos, vector aroundDir, float coneAngX, float coneAngY, float coneLength, int color, int subdivisions, ShapeFlags flags)
 {
 	if (subdivisions < 2)

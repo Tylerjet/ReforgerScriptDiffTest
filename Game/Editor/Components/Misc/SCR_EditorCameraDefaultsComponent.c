@@ -88,6 +88,10 @@ class SCR_EditorCameraDefaultsComponent : ScriptComponent
 	{
 		return { new WB_UIMenuItem("Add current camera coordinates", 0) };
 	}
+	override int _WB_GetAfterWorldUpdateSpecs(IEntity owner, IEntitySource src)
+	{
+		return EEntityFrameUpdateSpecs.CALL_WHEN_ENTITY_VISIBLE;
+	}
 	override void _WB_AfterWorldUpdate(IEntity owner, float timeSlice)
 	{
 		if (!m_aPositions) return;
@@ -98,9 +102,9 @@ class SCR_EditorCameraDefaultsComponent : ScriptComponent
 		WorldEditorAPI api = genericOwner._WB_GetEditorAPI();
 		if (!api || !api.IsEntitySelected(api.EntityToSource(owner))) return;
 		
-		float length = 200;
-		float width = 160;
-		float height = 90;
+		const float length = 200; // TODO: check for good const usage
+		const float width = 160; // TODO: check for good const usage
+		const float height = 90; // TODO: check for good const usage
 		
 		vector transform[4];
 		foreach (SCR_CameraCoordinates coordinate: m_aPositions)

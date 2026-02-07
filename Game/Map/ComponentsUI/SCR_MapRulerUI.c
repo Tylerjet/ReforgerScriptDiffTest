@@ -55,7 +55,30 @@ class SCR_MapRulerUI : SCR_MapUIBaseComponent
 		m_wFrame.SetVisible(visible);
 		
 		if (visible)
-		{									
+		{
+			if (!m_wImage)
+				return;
+
+			ChimeraCharacter player = ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
+			if (!player || !player.GetCharacterController())
+				return;
+
+			CharacterControllerComponent controller = player.GetCharacterController();
+			if (!controller)
+				return;
+
+			IEntity mapItem = controller.GetAttachedGadgetAtLeftHandSlot();
+			if (!mapItem)
+				return;
+
+			SCR_MapGadgetComponent mapGadget = SCR_MapGadgetComponent.Cast(mapItem.FindComponent(SCR_MapGadgetComponent));
+			if (!mapGadget)
+				return;
+
+			m_fRulerLength = mapGadget.GetRulerLength();
+			if (m_wImage.LoadImageTexture(0, mapGadget.GetProtractorTexture()))
+				m_wImage.SetImage(0);
+
 			float zoomVal = m_MapEntity.GetCurrentZoom();
 			m_fSizeCoef = 1000 / (m_fRulerLength / m_fBaseImageSize[0]); // (ruler real length%) / 1000 pix(meters)
 			float sizeVal = m_wWorkspace.DPIUnscale(zoomVal * m_fSizeCoef);
@@ -165,21 +188,10 @@ class SCR_MapRulerUI : SCR_MapUIBaseComponent
 	//! SCR_MapToolInteractionUI event
 	protected void OnActivateTool(Widget widget)
 	{
-		if (widget != m_wFrame)
+		if (!m_wImage)
 			return;
-		
-		float zoomVal = m_MapEntity.GetCurrentZoom();
-		float sizeVal = m_wWorkspace.DPIUnscale(zoomVal * m_fSizeCoef);
-				
-		if (m_MapEntity.GetMapSizeX() < m_fSizeCoef * m_aSizesArray[m_iCurrentSizeIndex])	// ruler size is bigger than the map, skip to start of the size array
-		{
-			m_iCurrentSizeIndex = 0;
-			SetSize(sizeVal, sizeVal);
-		}
-		else
-		{
-			SetSize(sizeVal, sizeVal, true);
-		}
+
+		m_wImage.SetRotation(0);
 	}
 	
 	//------------------------------------------------------------------------------------------------

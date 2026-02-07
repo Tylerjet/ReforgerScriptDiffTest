@@ -20,20 +20,23 @@ class SCR_AIGetOutActivity : SCR_AIActivityBase
 		SetPriority(priority);
 	}
 	
+	//-----------------------------------------------------------------------------------------------------------------------------------
 	override void OnActionCompleted()
 	{
 		if (m_RelatedWaypoint)
 			m_Utility.m_Owner.CompleteWaypoint(m_RelatedWaypoint);
 		if (m_Vehicle.m_Value)
-			m_Utility.m_Owner.RemoveUsableVehicle(m_Vehicle.m_Value);
+		{
+			SCR_AIVehicleUsageComponent vehicleUsageComp = SCR_AIVehicleUsageComponent.FindOnNearestParent(m_Vehicle.m_Value, m_Vehicle.m_Value);
+			if (vehicleUsageComp)
+				m_Utility.m_VehicleMgr.RemoveVehicle(vehicleUsageComp);
+		}
 		else
 		{
-			array<IEntity> groupVehicles = {};
-			m_Utility.m_Owner.GetUsableVehicles(groupVehicles);
-			foreach (IEntity vehicle : groupVehicles)
-			{
-				m_Utility.m_Owner.RemoveUsableVehicle(vehicle);
-			}
+			array<ref SCR_AIGroupVehicle> groupVehicles = {};
+			m_Utility.m_VehicleMgr.GetAllVehicles(groupVehicles);
+			foreach (SCR_AIGroupVehicle vehicle : groupVehicles)
+				m_Utility.m_VehicleMgr.RemoveVehicle(vehicle.GetVehicleUsageComponent());
 		}
 		super.OnActionCompleted();
 	}

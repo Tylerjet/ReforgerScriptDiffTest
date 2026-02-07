@@ -30,6 +30,11 @@ class SCR_InputButtonDisplay : ScriptedWidgetComponent
 	protected bool m_bIsContinuous;
 	protected bool m_bIsToggled;
 	protected bool m_bIsOverwritten;
+	protected bool m_bIsUsingImage;
+	protected bool m_bIsUsingImageGlow;
+	protected bool m_bIsUsingText;
+	
+	protected bool m_bKeybindActive = true;
 	
 	protected SCR_InputButtonComponent m_InputButtonComp;
 	protected WidgetAnimationAlphaMask m_HoldingAnimation;
@@ -98,6 +103,10 @@ class SCR_InputButtonDisplay : ScriptedWidgetComponent
 	//! \return
 	bool SetAction(BaseContainer data, BaseContainer filter)
 	{
+		m_bIsUsingImage = false;
+		m_bIsUsingText = false;
+		m_bIsUsingImageGlow = false;
+		
 		GetFilter(filter);
 
 		data.Get("m_sText", m_sButtonText);
@@ -138,11 +147,23 @@ class SCR_InputButtonDisplay : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void ForceSetHoldAction(bool state)
+	{
+		m_bIsHoldAction = state;
+
+		m_wHoldIndicator.SetVisible(m_bIsHoldAction);
+		AnimateHoldComplete();
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Overrides Texture of the Button
 	//! USE SCR_InputButtonComponent.SetTexture() to call
 	void OverrideTexture(string imagePath, string image = string.Empty, Color color = Color.White, SCR_EButtonSize buttonType = SCR_EButtonSize.KEYBOARD_MEDIUM, bool setOverride = true)
 	{
 		m_bIsOverwritten = setOverride;
+		m_bIsUsingImage = false;
+		m_bIsUsingText = false;
+		m_bIsUsingImageGlow = false;
 		
 		GameProject.GetModuleConfig("ChimeraGlobalConfig").Get("InputButtonLayoutConfig", m_sButtonLayoutConfig);
 		
@@ -189,9 +210,46 @@ class SCR_InputButtonDisplay : ScriptedWidgetComponent
 		else
 			m_wButtonImg.LoadImageTexture(0, imagePath);
 		
-		m_wButtonImg.SetColor(Color.FromInt(color.PackToInt()));		
-		m_wButtonImg.SetVisible(true);
+		m_wButtonImg.SetColor(Color.FromInt(color.PackToInt()));	
+		
+		if (m_bKeybindActive)	
+			m_wButtonImg.SetVisible(true);
+		
+		m_bIsUsingImage = true;
+		
 		m_wButtonImg.SetSize(m_InputButtonComp.m_iHeightInPixel * 0.5, m_InputButtonComp.m_iHeightInPixel * 0.5);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Change the visibility of the Button Image & Text
+	//! \param[in] visibility
+	void ChangeInputVisibility(bool visible)
+	{
+		m_bKeybindActive = visible;
+		
+		if (visible)
+		{
+			// Check if an Image or Text is used for this Button, to enable the correct widgets
+			if (m_wButtonImg && m_bIsUsingImage)
+				m_wButtonImg.SetVisible(true);
+		
+			if (m_wButtonImgGlow && m_bIsUsingImageGlow)
+				m_wButtonImgGlow.SetVisible(true);
+			
+			if (m_wButtonText && m_bIsUsingText)
+				m_wButtonText.SetVisible(true);
+		}
+		else
+		{
+			if (m_wButtonImg)
+				m_wButtonImg.SetVisible(false);
+		
+			if (m_wButtonImgGlow)
+				m_wButtonImgGlow.SetVisible(false);
+			
+			if (m_wButtonText)
+				m_wButtonText.SetVisible(false);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -305,12 +363,20 @@ class SCR_InputButtonDisplay : ScriptedWidgetComponent
 		{
 			m_wButtonImg.LoadImageFromSet(0, m_ButtonLayout.m_sImageSet, m_aButtonTextures[0].m_sTexture);
 			m_wButtonImg.SetColor(m_aButtonTextures[0].m_Color);
-			m_wButtonImg.SetVisible(true);
+			
+			if (m_bKeybindActive)
+				m_wButtonImg.SetVisible(true);
+			
+			m_bIsUsingImage = true;
 
 			if (m_aButtonTextures[0].m_bHasShadow)
 			{
 				m_wButtonImgGlow.LoadImageFromSet(0, m_ButtonLayout.m_sGlowImageSet, m_aButtonTextures[0].m_sTexture);
-				m_wButtonImgGlow.SetVisible(true);
+				
+				if (m_bKeybindActive)
+					m_wButtonImgGlow.SetVisible(true);
+				
+				m_bIsUsingImageGlow = true;
 			}
 			else
 			{
@@ -328,7 +394,11 @@ class SCR_InputButtonDisplay : ScriptedWidgetComponent
 		}
 		else
 		{
-			m_wButtonText.SetVisible(true);
+			if (m_bKeybindActive)
+				m_wButtonText.SetVisible(true);
+			
+			m_bIsUsingText = true;
+			
 			m_wButtonImg.SetVisible(false);
 			m_wButtonImgGlow.SetVisible(false);
 			//! Lets just clean up the Images if we dont need them anymore
@@ -583,6 +653,12 @@ class SCR_InputButtonDisplay : ScriptedWidgetComponent
 		AnimateWidget.Position(m_wHoldIndicator, m_fHoldIndicatorDefaultPosition, (1 / m_InputButtonComp.m_fHoldIndicatorAnimationTime));
 		
 		m_InputButtonComp.GetOnHoldAnimComplete().Invoke(this);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void AnimateHoldForceEnd()
+	{
+		FrameSlot.SetPos(m_wHoldIndicator, m_fHoldIndicatorAnimationPosition[0], m_fHoldIndicatorAnimationPosition[1]);
 	}
 
 	//------------------------------------------------------------------------------------------------

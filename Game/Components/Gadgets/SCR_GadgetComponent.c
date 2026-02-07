@@ -65,6 +65,9 @@ class SCR_GadgetComponent : ScriptGameComponent
 	[Attribute("0.5", UIWidgets.Auto, desc: "Weapon no fire time set while equipped\n[s]", category: "Gadget")]
 	protected float m_fWeaponNoFireTime;
 
+	[Attribute("1", desc: "Can this item be held in hand", category: "Gadget")]
+	protected bool m_bCanBeHeld;
+
 	bool m_bFocused;
 	protected bool m_bActivated = false;					// current state if the gadget can be toggled on	
 	protected EGadgetMode m_iMode = EGadgetMode.ON_GROUND;	// curent gadget mode
@@ -285,7 +288,7 @@ class SCR_GadgetComponent : ScriptGameComponent
 	//! \return Returns true if heldable
 	bool CanBeHeld()
 	{
-		return true;
+		return m_bCanBeHeld;
 	}
 	
 	//------------------------------------------------------------------------------------------------

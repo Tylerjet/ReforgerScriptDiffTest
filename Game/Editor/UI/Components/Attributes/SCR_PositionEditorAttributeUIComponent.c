@@ -104,7 +104,7 @@ class SCR_PositionEditorAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 			m_EditBoxY.SetValue(CapValueToString(m_fPositionY));
 		}
 		
-		OnChange(null, 1, 0, false);
+		OnChangeInternal(null, 1, 0, false);
 	}
 
 	protected void OnInputDeviceIsGamepad(bool isGamepad)
@@ -164,7 +164,7 @@ class SCR_PositionEditorAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 			m_fPositionY = value[1];
 	}
 	
-	override bool OnChange(Widget w, int x, int y, bool finished)
+	override bool OnChangeInternal(Widget w, int x, int y, bool finished)
 	{	
 		if (x != 1)
 			return false;
@@ -226,7 +226,7 @@ class SCR_PositionEditorAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 		
 		editBox.SetValue(CapValueToString(value));
 		
-		OnChange(null, 1, 0, false);
+		OnChangeInternal(null, 1, 0, false);
 	}
 	
 	protected string CapValueToString(float value)

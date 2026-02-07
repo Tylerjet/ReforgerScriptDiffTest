@@ -11,9 +11,9 @@ class SCR_AIGetCombatMoveRequestParametersBase : AITaskScripted
 		return s_aVarsIn;
 	}
 	
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 	
-	override  string GetOnHoverDescription() { return "Unpacks data from combat move request";	};
+	static override  string GetOnHoverDescription() { return "Unpacks data from combat move request";	};
 }
 
 

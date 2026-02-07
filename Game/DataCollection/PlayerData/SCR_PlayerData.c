@@ -58,7 +58,7 @@ class SCR_PlayerData : JsonApiStruct
 	/*!
 	Backend callbacks necessary to make the request to load and store the characterdata from the player's profile
 	*/
-	protected ref CharacterDataLoadingCallback m_CharacterDataCallback = new CharacterDataLoadingCallback(this);
+	protected ref SCR_BackendCallback m_CharacterDataCallback = new SCR_BackendCallback();
 	protected ref BackendCallback m_StoringCallback = new BackendCallback();
 
 	//------------------------------------------------------------------------------------------------
@@ -216,6 +216,9 @@ class SCR_PlayerData : JsonApiStruct
 		if (ba.IsAuthenticated())
 		{
 				Print("Making menuCallback request for PlayerData", LogLevel.VERBOSE);
+				m_CharacterDataCallback.GetEventOnSuccess().Insert(BackendDataReady);
+				m_CharacterDataCallback.GetEventOnFail().Insert(LoadEmptyProfile);
+				m_CharacterDataCallback.GetEventOnTimeOut().Insert(LoadEmptyProfile);
 				ba.PlayerRequest(EBackendRequest.EBREQ_GAME_CharacterGet, m_CharacterDataCallback, this, m_iPlayerID); //ID 0 refers to the local player
 				//The callback has a reference to this instance so it will automatically call the BackendDataReady or the LoadEmptyProfile methods
 		}
@@ -901,47 +904,6 @@ class SCR_PlayerData : JsonApiStruct
 			case 2: return m_Configs.SPECIALIZATION_2_COUNT;
 		}
 		return -1;
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-class CharacterDataLoadingCallback : BackendCallback
-{
-
-	SCR_PlayerData m_PlayerDataInstance;
-
-	void CharacterDataLoadingCallback(SCR_PlayerData instance)
-	{
-		m_PlayerDataInstance = instance;
-	}
-
-	/**
-	\brief Request finished with error result
-	\param code Error code is type of EBackendError
-	*/
-	override void OnError(int code, int restCode, int apiCode)
-	{
-		Print("[CharacterDataLoadingCallback] OnError: "+ GetGame().GetBackendApi().GetErrorCode(code), LogLevel.ERROR);
-		m_PlayerDataInstance.LoadEmptyProfile();
-	}
-
-	/**
-	\brief Request finished with success result
-	\param code Code is type of EBackendRequest
-	*/
-	override void OnSuccess(int code)
-	{
-		Print("[CharacterDataLoadingCallback] OnSuccess.", LogLevel.DEBUG);
-		m_PlayerDataInstance.BackendDataReady();
-	}
-
-	/**
-	\brief Request not finished due to timeout
-	*/
-	override void OnTimeout()
-	{
-		Print("[CharacterDataLoadingCallback] OnTimeout", LogLevel.ERROR);
-		m_PlayerDataInstance.LoadEmptyProfile();
 	}
 };
 

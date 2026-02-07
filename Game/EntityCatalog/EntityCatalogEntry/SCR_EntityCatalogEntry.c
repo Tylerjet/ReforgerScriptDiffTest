@@ -182,7 +182,7 @@ class SCR_EntityCatalogEntry
 		foreach (SCR_BaseEntityCatalogData entityData: m_aEntityDataList)
 		{
 			//~ Check if correct type and not disabled
-			if (entityData.IsEnabled() && entityData.Type() == dataType)
+			if (entityData.IsEnabled() && entityData.Type().IsInherited(dataType))
 				return entityData;
 		}
 		
@@ -224,7 +224,7 @@ class SCR_EntityCatalogEntry
 		foreach (SCR_BaseEntityCatalogData entityData: m_aEntityDataList)
 		{
 			//~ Check if correct type and not disabled
-			if (entityData.IsEnabled() && entityData.Type() == dataType)
+			if (entityData.IsEnabled() && entityData.Type().IsInherited(dataType))
 				return true;
 		}
 		

@@ -78,6 +78,8 @@ class SCR_BaseActionsEditorComponentClass : SCR_BaseEditorComponentClass
 		}
 	}
 	
+	//---- REFACTOR NOTE START: Sorting might be done simpler and easir to read?
+	
 	//------------------------------------------------------------------------------------------------
 	// constructor
 	//! \param[in] prefab
@@ -143,6 +145,8 @@ class SCR_BaseActionsEditorComponentClass : SCR_BaseEditorComponentClass
 		}
 		m_ActionGroups = null;
 	}
+	
+	//---- REFACTOR NOTE END ----
 }
 
 class SCR_BaseActionsEditorComponent : SCR_BaseEditorComponent

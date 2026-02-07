@@ -26,5 +26,5 @@ class SCR_AISendOrderGenerated : AITaskScripted
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() { return false; }	
+	static override bool VisibleInPalette() { return false; }	
 }

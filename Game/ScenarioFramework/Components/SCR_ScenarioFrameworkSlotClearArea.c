@@ -5,6 +5,9 @@ class SCR_ScenarioFrameworkSlotClearAreaClass : SCR_ScenarioFrameworkSlotTaskCla
 
 class SCR_ScenarioFrameworkSlotClearArea : SCR_ScenarioFrameworkSlotTask
 {
+	[Attribute(desc: "Ignored Faction Keys that won't be used for any calculations for this Slot Clear", category: "Asset")]
+	protected ref array<FactionKey> m_aIgnoredFactionKeys;
+	
 	//------------------------------------------------------------------------------------------------
 	//! Initializes trigger entities, disables periodic queries, and sets init sequence done to false.
 	override void FinishInit()
@@ -13,6 +16,10 @@ class SCR_ScenarioFrameworkSlotClearArea : SCR_ScenarioFrameworkSlotTask
 		if (trigger)
 		{
 			trigger.EnablePeriodicQueries(false);
+			
+			SCR_FactionControlTriggerEntity factionTrigger = SCR_FactionControlTriggerEntity.Cast(trigger);
+			if (factionTrigger && m_aIgnoredFactionKeys)
+				factionTrigger.AddIgnoredFactionKeys(m_aIgnoredFactionKeys);
 			
 			SCR_ScenarioFrameworkTriggerEntity frameworkTrigger = SCR_ScenarioFrameworkTriggerEntity.Cast(trigger);
 			if (frameworkTrigger)

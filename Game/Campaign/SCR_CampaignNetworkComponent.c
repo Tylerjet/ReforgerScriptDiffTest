@@ -37,7 +37,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 	protected static ref ScriptInvokerInt3 s_OnSuppliesDelivered;
 	protected static ref ScriptInvokerBase<OnBaseCapturedDelegate> s_OnBaseCaptured; // <base, playerID>
 
-	static const float FULL_SUPPLY_TRUCK_AMOUNT = 600.0;
+	static const float FULL_SUPPLY_TRUCK_AMOUNT = 1500.0;
 	static const int SUPPLY_DELIVERY_THRESHOLD_SQ = 200 * 200;
 
 	//********************************//

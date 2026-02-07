@@ -3,6 +3,7 @@ class SCR_AISettingsComponentClass : ScriptComponentClass
 {
 }
 
+// Obsolete and should be removed eventually
 class SCR_AISettingsComponent : ScriptComponent
 {
 	// rewrite if condition below if adding new lines!!!

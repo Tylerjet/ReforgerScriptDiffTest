@@ -6,30 +6,12 @@ class SCR_AICombatComponentClass : ScriptComponentClass
 enum EAISkill
 {
 	NONE,
+	NOOB 	= 10,
 	ROOKIE	= 20,
 	REGULAR	= 50,
 	VETERAN	= 70,
 	EXPERT 	= 80,
 	CYLON  	= 100
-}
-
-// be aware it is used for bitmask
-enum EAICombatActions
-{
-	HOLD_FIRE = 1, // No longer/not yet used
-	BURST_FIRE = 2, // No longer used
-	SUPPRESSIVE_FIRE = 4,
-	MOVEMENT_WHEN_FIRE = 8,
-	MOVEMENT_TO_LAST_SEEN = 16,
-}
-
-enum EAICombatType
-{
-	NONE,
-	NORMAL,
-	SUPPRESSIVE,
-	RETREAT,
-	SINGLE_SHOT
 }
 
 class SCR_AICombatComponent : ScriptComponent
@@ -39,7 +21,7 @@ class SCR_AICombatComponent : ScriptComponent
 	static const float			 ENDANGERING_TARGET_SCORE_MULTIPLIER = 1.05;	//!< Multiplier of target score if target is considered endangering
 	
 	// Score increments for assigned targets and endangering targets
-	protected static const float ASSIGNED_TARGETS_SCORE_INCREMENT = 30.0;
+	protected static const float ASSIGNED_TARGETS_SCORE_INCREMENT = 0.5;
 	protected static const float ENDANGERING_TARGETS_SCORE_INCREMENT = 15.0;
 	
 	// Constants related to weapon&target selector
@@ -53,8 +35,8 @@ class SCR_AICombatComponent : ScriptComponent
 
 	          static const float TARGET_MAX_LAST_SEEN = 11.0;
 	protected static const float TARGET_MIN_INDIRECT_TRACE_FRACTION_MIN = 0.5;	//!< Min value of TraceFraction for indirect attacks. \see BaseTarget.GetTraceFraction.
-	protected static const float TARGET_MAX_DISTANCE_INFANTRY = 500.0;
-	protected static const float TARGET_MAX_DISTANCE_VEHICLE = 700.0;
+	protected static const float TARGET_MAX_DISTANCE_INFANTRY = 9999.0; 		//!< This value is old and is now meaningless with the way group logic works.
+	protected static const float TARGET_MAX_DISTANCE_VEHICLE = 700.0;		//!<
 	protected static const float TARGET_MAX_DISTANCE_DISARMED = 0.0;		//!< Max distance at which disarmed targets are considered for attack. Now it's 0, so they never shoot disarmed targets
 	protected static const float TARGET_MAX_TIME_SINCE_ENDANGERED = 5.0; 	//!< Max time since we were endangered to consider the enemy target endangering
 	protected static const float TARGET_SCORE_RETREAT = 75.0;				//!< Threshold for target score for retreating from that target
@@ -96,10 +78,6 @@ class SCR_AICombatComponent : ScriptComponent
 	protected SCR_BaseCompartmentManagerComponent m_CurrentVehicleCompartmentManager;	//!< Vehicle's compartment manager
 	protected BaseCompartmentSlot m_CurrentCompartmentSlot;			//!< Current compartment slot
 	protected TurretControllerComponent m_CurrentTurretController;	//!< Current turret controller (if we are in a turret)
-
-	protected EAICombatActions	m_iAllowedActions; //!< will be initialised with default combat type
-	protected EAICombatType		m_eCombatType = EAICombatType.NORMAL;
-	protected EAICombatType		m_eDefaultCombatType = EAICombatType.NORMAL;
 
 	[Attribute("50", UIWidgets.ComboBox, "AI skill in combat", "", ParamEnumArray.FromEnum(EAISkill) )]
 	protected EAISkill m_eAISkillDefault;
@@ -259,19 +237,20 @@ class SCR_AICombatComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	BaseWeaponComponent GetCurrentWeapon()
 	{
-		if (m_CurrentTurretController)
-		{
-			// If we are in turret, find turret weapon
-			BaseWeaponManagerComponent turretWpnMgr = m_CurrentTurretController.GetWeaponManager();
-			if (turretWpnMgr)
-				return turretWpnMgr.GetCurrentWeapon();
-		}
-		
-		// If not in turret, use character's weapon
-		if (m_WpnManager)
-			return m_WpnManager.GetCurrentWeapon();
+		BaseWeaponManagerComponent wpnManger = GetCurrentWeaponManager();
+		if (wpnManger)
+			return wpnManger.GetCurrentWeapon();
 		
 		return null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	BaseWeaponManagerComponent GetCurrentWeaponManager()
+	{
+		if (m_CurrentTurretController)
+			return m_CurrentTurretController.GetWeaponManager();
+		
+		return m_WpnManager;
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -570,12 +549,13 @@ class SCR_AICombatComponent : ScriptComponent
 		// False if not in turret
 		if (!m_CurrentTurretController)
 			return false;
-		TurretComponent turretComp = m_CurrentTurretController.GetTurretComponent();
-		if (!turretComp)
-			return false;
 		
 		// False if we have a valid target to attack
 		if (m_SelectedTarget)
+			return false;
+		
+		TurretComponent turretComp = m_CurrentTurretController.GetTurretComponent();
+		if (!turretComp)
 			return false;
 		
 		// False if we have a driver in the vehicle
@@ -606,9 +586,18 @@ class SCR_AICombatComponent : ScriptComponent
 					targetPos = target.GetLastSeenPosition();
 			}
 			
-			// False if there is no target which would cause us to dismount
 			if (!target)
-				return false;
+			{
+				// If there is no target, try to get data out of threat system
+				int sectorMajor, sectorMinor;
+				m_Utility.m_SectorThreatFilter.GetActiveSectors(sectorMajor, sectorMinor);
+				
+				// False if there's nothing in threat system
+				if (sectorMajor == -1)
+					return false;
+				
+				targetPos = m_Utility.m_SectorThreatFilter.GetSectorPos(sectorMajor);
+			}
 			else
 			{
 				IEntity targetEntity = target.GetTargetEntity();
@@ -662,9 +651,8 @@ class SCR_AICombatComponent : ScriptComponent
 	//! Adds action to dismount turret, investigate, and go back
 	//! \param[in] targetPos
 	//! \param[in] addGetOut
-	//! \param[in] addInvestigate
 	//! \param[in] addGetIn
-	void TryAddDismountTurretActions(vector targetPos, bool addGetOut = true, bool addInvestigate = true, bool addGetIn = true)
+	void TryAddDismountTurretActions(vector targetPos, bool addGetOut = true, bool addGetIn = true)
 	{
 		BaseCompartmentSlot compartmentSlot = m_CurrentCompartmentSlot;
 		if (!compartmentSlot)
@@ -680,16 +668,6 @@ class SCR_AICombatComponent : ScriptComponent
 			m_Utility.AddAction(getOutAction);
 		}
 		
-		if (addInvestigate)
-		{
-			AIActionBase prevInvestigate = m_Utility.FindActionOfType(SCR_AIMoveAndInvestigateBehavior);
-			if (!prevInvestigate)
-			{
-				SCR_AIMoveAndInvestigateBehavior moveAndInvestigateAction = new SCR_AIMoveAndInvestigateBehavior(m_Utility, null, targetPos, SCR_AIActionBase.PRIORITY_BEHAVIOR_DISMOUNT_TURRET_INVESTIGATE, true);
-				m_Utility.AddAction(moveAndInvestigateAction);
-			}
-		}
-		
 		if (addGetIn)
 		{	
 			AIActionBase prevGetInAction = m_Utility.FindActionOfType(SCR_AIGetInVehicle);
@@ -699,71 +677,6 @@ class SCR_AICombatComponent : ScriptComponent
 				m_Utility.AddAction(getInAction);
 			}
 		}
-	}
-	
-	protected static const float DISTANCE_MAX = 22; 
-	protected static const float DISTANCE_MIN = 6; // Minimal distance when movement is allowed
-	private static const float NEAR_PROXIMITY = 2;
-	
-	protected const float m_StopDistance = 30 + Math.RandomFloat(0, 10); 
-	// TODO: add possibility to get cover towards custom position
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \return
-	vector FindNextCoverPosition()
-	{
-		if (!m_SelectedTarget)
-			return vector.Zero;
-		
-		vector ownerPos = GetOwner().GetOrigin();
-		vector lastSeenPos = m_SelectedTarget.GetLastSeenPosition();
-		float distanceToTarget = vector.Distance(ownerPos, lastSeenPos);
-
-		if (m_StopDistance > distanceToTarget)
-			return vector.Zero;
-		
-		// Create randomized position
-		SCR_ChimeraAIAgent agent = GetAiAgent();
-		SCR_DefendWaypoint defendWp = SCR_DefendWaypoint.Cast(agent.m_GroupWaypoint);
-		vector direction;
-		bool standardAttack = true;
-		float nextCoverDistance;
-		
-		// If target is outside defend waypoint, run towards center of it
-		if (defendWp)
-		{
-			if (!defendWp.IsWithinCompletionRadius(lastSeenPos) &&
-				!defendWp.IsWithinCompletionRadius(ownerPos))
-			{
-				direction = vector.Direction(ownerPos, defendWp.GetOrigin());	// Direction towards center of defend wp
-				
-				if (vector.Distance(defendWp.GetOrigin(), ownerPos) < DISTANCE_MIN)
-					nextCoverDistance = 0;
-				else	
-					nextCoverDistance = DISTANCE_MIN;
-				
-				standardAttack = false;
-			}
-		}
-		
-		if (standardAttack)
-		{
-			nextCoverDistance = Math.RandomFloat(DISTANCE_MIN, DISTANCE_MAX);
-
-			// If close enough, get directly to the target
-			if (nextCoverDistance > (distanceToTarget - DISTANCE_MIN))
-				nextCoverDistance = distanceToTarget - DISTANCE_MIN;
-			
-			direction = vector.Direction(ownerPos, m_SelectedTarget.GetLastSeenPosition());
-		}
-			
-		direction.Normalize();
-		vector newPositionCenter = direction * nextCoverDistance + ownerPos, newPosition;
-		// yes possibly it could lead to end up in target position but lets ignore it for now
-		
-		newPosition = s_AIRandomGenerator.GenerateRandomPointInRadius(0, NEAR_PROXIMITY, newPositionCenter, true);
-		newPosition[1] = newPositionCenter[1];
-		return newPosition;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -865,7 +778,7 @@ class SCR_AICombatComponent : ScriptComponent
 		
 		float priorityLevelClamped = currentAction.GetRestrictedPriorityLevel();
 		
-		if (m_Utility.m_AIInfo.HasRole(EUnitRole.MEDIC))
+		if (!m_Utility.m_AIInfo.HasUnitState(EUnitState.UNCONSCIOUS) && m_Utility.m_AIInfo.HasRole(EUnitRole.MEDIC))
 		{
 			if (!m_Utility.HasActionOfType(SCR_AIHealBehavior))
 			{
@@ -880,154 +793,32 @@ class SCR_AICombatComponent : ScriptComponent
 			AIGroup myGroup = m_Agent.GetParentGroup();
 			if (myGroup)
 			{
-				SCR_MailboxComponent myMailbox = SCR_MailboxComponent.Cast(m_Agent.FindComponent(SCR_MailboxComponent));
-				SCR_AIMessage_Wounded msg = SCR_AIMessage_Wounded.Create(m_Utility.m_OwnerEntity);
-				myMailbox.RequestBroadcast(msg, myGroup);
+				// Hack: we use group's comms component, and send from it to it directly, because if this AI is unconscious, his mailbox is already disabled.
+				AICommunicationComponent comms = myGroup.GetCommunicationComponent();
+				if (comms)
+				{
+					SCR_AIMessage_Wounded msg = SCR_AIMessage_Wounded.Create(m_Utility.m_OwnerEntity);
+					
+					#ifdef AI_DEBUG
+					msg.m_sSentFromBt = "SCR_AICombatComponent.Event_OnDamageEffectAdded";
+					#endif
+					
+					msg.SetReceiver(myGroup);
+					comms.RequestBroadcast(msg, myGroup);
+				}
 			}
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] action
-	//! \return
-	// Checks if unit is allowed to do action from the allowed actions enum
-	bool IsActionAllowed(EAICombatActions action)
+	//! Returns current combat mode of soldier. Now soldier doesn't have his own combat mode, it's dictated by group.
+	EAIGroupCombatMode GetCombatMode()
 	{
-		return (m_iAllowedActions & action);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	EAICombatActions GetAllowedActions()
-	{
-		return m_iAllowedActions;
-	}
-	
-	//------------------------------------------------------------------------------------------------	
-	private void SetActionAllowed(EAICombatActions action, bool isAllowed)
-	{
-		#ifdef AI_DEBUG
-		AddDebugMessage(string.Format("SetActionAllowed: %1, %2", typename.EnumToString(EAICombatActions, action), isAllowed));
-		#endif
+		SCR_AIGroup myGroup = SCR_AIGroup.Cast(GetAiAgent().GetParentGroup());
+		if (!myGroup)
+			return EAIGroupCombatMode.FIRE_AT_WILL;
 		
-		if ((m_iAllowedActions & action) != isAllowed)
-		{
-			if (isAllowed)
-				m_iAllowedActions = m_iAllowedActions | action;
-			else
-				m_iAllowedActions = m_iAllowedActions & ~action;
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------	
-	//! \param[in] isHoldFire
-	void SetHoldFire(bool isHoldFire)
-	{
-		#ifdef AI_DEBUG
-		AddDebugMessage(string.Format("SetHoldFire: %1", isHoldFire));
-		#endif
-		
-		if (isHoldFire)
-		{ 
-			SetActionAllowed(EAICombatActions.HOLD_FIRE,true);
-			SetActionAllowed(EAICombatActions.BURST_FIRE,false);
-			SetActionAllowed(EAICombatActions.SUPPRESSIVE_FIRE,false);
-		}
-		else
-		{
-			SetCombatType(m_eCombatType);
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	EAICombatType GetCombatType()
-	{
-		return m_eCombatType;
-	}
-	
-	// For current AI combat type can be changed during the behaviors
-	// If you want AI to come bac to your state you have to set also default
-	//------------------------------------------------------------------------------------------------
-	//! \param[in] combatType
-	void SetCombatType(EAICombatType combatType)
-	{
-		#ifdef AI_DEBUG
-		AddDebugMessage(string.Format("SetCombatType: %1", typename.EnumToString(EAICombatType, combatType)));
-		#endif
-		
-		switch (combatType)
-		{
-			case EAICombatType.NONE:
-			{
-				SetActionAllowed(EAICombatActions.HOLD_FIRE,true);
-				SetActionAllowed(EAICombatActions.MOVEMENT_WHEN_FIRE,false);
-				SetActionAllowed(EAICombatActions.SUPPRESSIVE_FIRE,false);
-				SetActionAllowed(EAICombatActions.MOVEMENT_TO_LAST_SEEN,false);
-				break;
-			}
-			case EAICombatType.NORMAL:
-			{
-				SetActionAllowed(EAICombatActions.HOLD_FIRE,false);
-				SetActionAllowed(EAICombatActions.MOVEMENT_WHEN_FIRE,true);
-				SetActionAllowed(EAICombatActions.SUPPRESSIVE_FIRE,false);
-				SetActionAllowed(EAICombatActions.MOVEMENT_TO_LAST_SEEN,true);
-				break;
-			}
-			case EAICombatType.SUPPRESSIVE:
-			{
-				SetActionAllowed(EAICombatActions.HOLD_FIRE,false);
-				SetActionAllowed(EAICombatActions.MOVEMENT_WHEN_FIRE,false);
-				SetActionAllowed(EAICombatActions.SUPPRESSIVE_FIRE,true);
-				SetActionAllowed(EAICombatActions.MOVEMENT_TO_LAST_SEEN,true);
-				break;
-			}
-			case EAICombatType.RETREAT:
-			{
-				SetActionAllowed(EAICombatActions.HOLD_FIRE,false);
-				SetActionAllowed(EAICombatActions.MOVEMENT_WHEN_FIRE,true);
-				SetActionAllowed(EAICombatActions.SUPPRESSIVE_FIRE,false);
-				SetActionAllowed(EAICombatActions.MOVEMENT_TO_LAST_SEEN,false);
-				break;
-			}
-			case EAICombatType.SINGLE_SHOT:
-			{
-				SetActionAllowed(EAICombatActions.HOLD_FIRE,false);
-				SetActionAllowed(EAICombatActions.MOVEMENT_WHEN_FIRE,false);
-				SetActionAllowed(EAICombatActions.SUPPRESSIVE_FIRE,false);
-				SetActionAllowed(EAICombatActions.MOVEMENT_TO_LAST_SEEN,false);
-				break;
-			}
-		}
-		m_eCombatType = combatType;
-#ifdef WORKBENCH
-		SCR_AIDebugVisualization.VisualizeMessage(GetOwner(), typename.EnumToString(EAICombatType,m_eCombatType), EAIDebugCategory.COMBAT, 5);
-#endif
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! When AI use reset e.g. after bounding overwatch it is resetted to default combat type
-	//! You have to also call SetCombatType to have immediate effect.
-	//! \param[in] combatType
-	void SetDefaultCombatType(EAICombatType combatType)
-	{
-		#ifdef AI_DEBUG
-		AddDebugMessage(string.Format("SetDefaultCombatType: %1", typename.EnumToString(EAICombatType, combatType)));
-		#endif
-		
-		m_eDefaultCombatType = combatType;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
-	void ResetCombatType()
-	{
-		#ifdef AI_DEBUG
-		AddDebugMessage("ResetCombatType");
-		#endif
-		
-		SetCombatType(m_eDefaultCombatType);
+		return myGroup.GetGroupUtilityComponent().GetCombatModeActual();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1329,8 +1120,6 @@ class SCR_AICombatComponent : ScriptComponent
 			float worldTime = world.GetWorldTime();
 			m_fNextWeaponTargetEvaluation_ms = worldTime + Math.RandomFloat(0, WEAPON_TARGET_UPDATE_PERIOD_MS);
 		}
-		
-		SetCombatType(m_eDefaultCombatType);
 
 		if (owner)
 		{
@@ -1401,7 +1190,8 @@ class SCR_AICombatComponent : ScriptComponent
 	{
 		if (closeCombat)
 		{
-			m_WeaponTargetSelector.SetSelectionProperties(TARGET_MAX_LAST_SEEN_DIRECT_ATTACK_CLOSE, TARGET_MAX_LAST_SEEN_INDIRECT_ATTACK_CLOSE, TARGET_MAX_LAST_SEEN,
+			// Here TARGET_MAX_LAST_SEEN_INDIRECT_ATTACK_CLOSE is used instead of TARGET_MAX_LAST_SEEN, since it's largest of the two
+			m_WeaponTargetSelector.SetSelectionProperties(TARGET_MAX_LAST_SEEN_DIRECT_ATTACK_CLOSE, TARGET_MAX_LAST_SEEN_INDIRECT_ATTACK_CLOSE, TARGET_MAX_LAST_SEEN_INDIRECT_ATTACK_CLOSE,
 			TARGET_MIN_INDIRECT_TRACE_FRACTION_MIN, TARGET_MAX_DISTANCE_INFANTRY, TARGET_MAX_DISTANCE_VEHICLE, TARGET_MAX_TIME_SINCE_ENDANGERED, TARGET_MAX_DISTANCE_DISARMED);		
 			return;
 		}
@@ -1516,6 +1306,32 @@ class SCR_AICombatComponent : ScriptComponent
 		if (targetInfo.m_fTimestamp > tgt.GetTimeLastSeen())
 			tgt.UpdateLastSeenPosition(targetInfo.m_vWorldPos, targetInfo.m_fTimestamp);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Obsolete methods
+	[Obsolete("Outdated functionality which is not used anywhere")]
+	bool IsActionAllowed(int action) { return true; }
+	
+	[Obsolete("Outdated functionality which is not used anywhere")]
+	int GetAllowedActions() { return 0; }
+	
+	[Obsolete("Outdated method, does not affect anything in AI")]
+	private void SetActionAllowed(int action, bool isAllowed) {}
+	
+	[Obsolete("Use Combat Modes instead")]
+	void SetHoldFire(bool isHoldFire) {}
+	
+	[Obsolete("Outdated functionality which is not used anywhere")]
+	int GetCombatType() {	return 0; }
+	
+	[Obsolete("Use Combat Modes instead")]
+	void SetCombatType(int combatType) {}
+	
+	[Obsolete()]
+	void SetDefaultCombatType(int combatType) {}
+	
+	[Obsolete()]
+	void ResetCombatType() {}
 	
 	#ifdef AI_DEBUG
 	//------------------------------------------------------------------------------------------------

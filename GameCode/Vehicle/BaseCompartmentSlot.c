@@ -220,28 +220,30 @@ class BaseCompartmentSlot : ExtBaseCompartmentSlot
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get default occupent prefab data
-	\param[in] irrespectiveEject Force occupant out of compartment regardless of whether it makes sense realistically.
-	\param[in] gettingIn
-	\param[in] gettingOut 
-	*/
-	void EjectOccupant(bool forceEject = false, bool ejectUnconsciously = false)
+	//! Force eject occupant from this compartment
+	//! \param[in] forceEject Force occupant out of compartment regardless of whether it makes sense realistically.
+	//! \param[in] ejectUnconsciously Force ejected character to be unconscious
+	//! \param[out] ejectedImmediately returns true if this client was capable of ejecting character that is in this compartment
+	//! \param[in] ejectOnTheSpot if character should be ejected in the position where he currently is
+	//! \return true if character was ejected
+	bool EjectOccupant(bool forceEject = false, bool ejectUnconsciously = false, out bool ejectedImmediately = false, bool ejectOnTheSpot = false)
 	{
 		ChimeraCharacter character = ChimeraCharacter.Cast(GetOccupant());
 		if (!character)
-			return;
+			return false;
 
 		RplComponent rpl = character.GetRplComponent();
 		if (rpl && rpl.IsProxy())
-			return;
+			return false;
 		
 		// Ignore characters that only began to get in the vehicle
-		CompartmentAccessComponent access = character.GetCompartmentAccessComponent();
+		SCR_CompartmentAccessComponent access = SCR_CompartmentAccessComponent.Cast(character.GetCompartmentAccessComponent());
 		if (!access)
-			return;
+			return false;
 
-		int nearestDoorInd = PickDoorIndexForPoint(character.GetOrigin());
+		int nearestDoorInd;
+		if (!ejectOnTheSpot)
+			 nearestDoorInd = PickDoorIndexForPoint(character.GetOrigin());
 		
 		if (ejectUnconsciously)
 		{
@@ -250,8 +252,28 @@ class BaseCompartmentSlot : ExtBaseCompartmentSlot
 				damageMan.ForceUnconsciousness(damageMan.GetResilienceHitZone().GetDamageStateThreshold(ECharacterDamageState.STATE3));
 		}
 		
-		if (forceEject || GetManager().AreDoorOpen(nearestDoorInd) || ShouldCharactersFallOutWhenFlipped())
-			access.GetOutVehicle(EGetOutType.TELEPORT, nearestDoorInd, ECloseDoorAfterActions.INVALID, false);
+		if (forceEject || GetManager().IsDoorOpen(nearestDoorInd) || ShouldCharactersFallOutWhenFlipped())
+		{
+			if (!ejectOnTheSpot)
+			{
+				ejectedImmediately = access.GetOutVehicle(EGetOutType.TELEPORT, nearestDoorInd, ECloseDoorAfterActions.INVALID, false);
+			}
+			else
+			{
+				vector mat[4];
+				character.GetTransform(mat);
+				mat[3] = character.AimingPosition();//dont use root position as it may be f.e. under the vehicle floor
+
+				ejectedImmediately = access.GetOutVehicle_NoDoor(mat, ejectUnconsciously, false);
+			}
+
+			if (!ejectedImmediately)
+				access.AskOwnerToGetOutFromVehicle(EGetOutType.TELEPORT, nearestDoorInd, ECloseDoorAfterActions.INVALID, false, ejectOnTheSpot);
+
+			return true;
+		}
+		
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------

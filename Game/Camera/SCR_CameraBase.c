@@ -103,6 +103,11 @@ class SCR_CameraBase: CameraBase
 	}
 	
 #ifdef WORKBENCH
+	override int _WB_GetAfterWorldUpdateSpecs(IEntitySource src)
+	{
+		return EEntityFrameUpdateSpecs.CALL_WHEN_ENTITY_VISIBLE;
+	}
+
 	override void _WB_AfterWorldUpdate(float timeSlice)
 	{
 		WorldEditorAPI api = _WB_GetEditorAPI();

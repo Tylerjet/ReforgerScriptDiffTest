@@ -24,6 +24,7 @@ class SCR_InventoryStoragesListUI : SCR_InventoryStorageBaseUI
 		return m_aSlots.Get( slotID );
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	SCR_InventorySlotUI FindItemSlot(InventoryItemComponent item)
 	{
 		for (int i = 0; i < m_aSlots.Count(); i++)
@@ -55,7 +56,7 @@ class SCR_InventoryStoragesListUI : SCR_InventoryStorageBaseUI
 	
 	//------------------------------------------------------------------------------------------------
 	// ! creates the slot
-	protected SCR_InventorySlotUI CreateStorageSlotUI( InventoryItemComponent pItemComponent )
+	protected SCR_InventorySlotUI CreateStorageSlotUI(notnull InventoryItemComponent pItemComponent )
 	{
 		//Salinebags and tourniquets must not be visible in inventory when applied
 		if (pItemComponent.GetParentSlot().Type() == SCR_TourniquetStorageSlot || pItemComponent.GetParentSlot().Type() == SCR_SalineBagStorageSlot)
@@ -74,12 +75,14 @@ class SCR_InventoryStoragesListUI : SCR_InventoryStorageBaseUI
 			return new SCR_InventorySlotUI( pItemComponent, this );		
 		}
 	}
+	
 	//------------------------------------------------------------------------------------------------
 	// ! 
-	override int CreateSlots( )
+	override int CreateSlots()
 	{
-		if( !m_InventoryStorage )
+		if(!m_InventoryStorage)
 			return -1;
+
 		m_Items.Clear();
 		m_InventoryStorage.GetAll(m_Items);		
 		/*
@@ -87,30 +90,37 @@ class SCR_InventoryStoragesListUI : SCR_InventoryStorageBaseUI
 			pSlot.Destroy();
 		*/
 		m_aSlots.Clear();
-		foreach ( IEntity item: m_Items )
-		{			
-			if ( item )
-				m_aSlots.Insert( CreateStorageSlotUI( InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent) )) );
-			else
-				m_aSlots.Insert( CreateStorageSlotUI( null ) );
+
+		SCR_InventorySlotUI uiSlot;
+		foreach (IEntity item: m_Items)
+		{
+			if (!item)
+				continue;
+
+			uiSlot = CreateStorageSlotUI(InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent)));
+			if (!uiSlot)
+				continue;
+
+			m_aSlots.Insert(uiSlot);
 		}
-		return m_aSlots.Count()-1;
+
+		return m_aSlots.Count() - 1;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	// ! sorting slots by their index, Changing Loadoaut layout in BaseLoadoutManager will affect it.
 	override void SortSlots()
 	{		
-		array<int> aCoordinates;
-		int iWidgetColumnSize = 1;
-		int iWidgetRowSize = 1;
-		int iCol = 1;
+		const int iWidgetColumnSize = 1;
+		const int iWidgetRowSize = 1;
+		int column, row;
 			
 		//reset all elements to 0 - free it
 		m_iMatrix.Reset();
 		
 		foreach ( SCR_InventorySlotUI pSlot: m_aSlots )
 		{
+			column = 0;
 			if(!pSlot)
 				continue;
 
@@ -126,25 +136,17 @@ class SCR_InventoryStoragesListUI : SCR_InventoryStorageBaseUI
 					Print( sName );
 				}
 			#endif
+
 			Widget w = pSlot.GetWidget();
 			if( w )
 			{
-				//reserve the position based on the enum
-				int iLoadoutArea = m_pInventoryUIConfig.GetRowByArea( pSlot.GetLoadoutArea() );
-				if ( iLoadoutArea == - 1 )
-					iLoadoutArea = m_pInventoryUIConfig.GetRowByCommonItemType( pSlot.GetCommonItemType() );
-				if ( iLoadoutArea != -1 )
-					aCoordinates = m_iMatrix.ReservePlace( iWidgetColumnSize, iWidgetRowSize, 0, iLoadoutArea );	//if area exists in the config, reserve the index
-				else
-					aCoordinates = m_iMatrix.Reserve1stFreePlace( iWidgetColumnSize, iWidgetRowSize );				//if it doesn't exist, reserve the 1st free place
-				if( ( aCoordinates[0] != -1 ) && ( aCoordinates[1] != -1 ) )
-				{
-					GridSlot.SetColumn( w, aCoordinates[0] );
-					if ( iLoadoutArea < m_iMaxRows )
-					{
-						GridSlot.SetRow( w, iLoadoutArea );	
-					}
-				}
+				row = GetSlotRow(pSlot, pItem);
+
+				if (!CorrectSlotPositioning(column, row))
+					continue;
+
+				GridSlot.SetColumn(w, column);
+				GridSlot.SetRow(w, row);
 				
 				SCR_CharacterInventoryStorageComponent characterStorage = SCR_CharacterInventoryStorageComponent.Cast(m_Storage);
 				
@@ -155,49 +157,119 @@ class SCR_InventoryStoragesListUI : SCR_InventoryStorageBaseUI
 				
 				GridSlot.SetColumnSpan( w, iWidgetColumnSize );
 				GridSlot.SetRowSpan( w, iWidgetRowSize );
-				iCol += iWidgetColumnSize;			
 			}
 		}
+
 		FillWithEmptySlots();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Method used to verify and correct if provided position isnt within limits
+	//! \param[in,out] column
+	//! \param[in,out] row
+	//! \return true when given position is within limits
+	protected bool CorrectSlotPositioning(inout int column, inout int row)
+	{
+		if (row >= MAX_ENTRIES_EACH_COLUMN)
+		{//>= because we count from 0
+			int overflow = row;
+			while (overflow >= MAX_ENTRIES_EACH_COLUMN)
+			{
+				column++;
+				overflow -= MAX_ENTRIES_EACH_COLUMN;
+			}
+			row = overflow;
+		}
+
+		if (column >= m_iMaxColumns)
+		{
+			Print("SCR_InventoryStoragesListUI.CorrectSlotPositioning (" + __FILE__ + " L" + __LINE__ + ") - There is not enough space in the layout to fit more slots => wanted/max row=" + row + "/" + MAX_ENTRIES_EACH_COLUMN + " wanted/max column=" + column + "/" + m_iMaxColumns, LogLevel.WARNING);
+			return false;
+		}
+
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Method used to extract information about the position of the slot in the ui slot list
+	//! \param[in] inventoryItemComp of slotted entity
+	//! \param[in] uiSlot
+	//! \return row id that coresponds to the configuration of this slot
+	protected int GetSlotRow(notnull SCR_InventorySlotUI uiSlot, notnull InventoryItemComponent inventoryItemComp)
+	{
+		int loadoutAreaId = m_pInventoryUIConfig.GetRowByArea( uiSlot.GetLoadoutArea() );
+
+		if (loadoutAreaId == - 1)
+			loadoutAreaId = m_pInventoryUIConfig.GetRowByCommonItemType( uiSlot.GetCommonItemType() );
+
+		if (SCR_HandSlotStorageSlot.Cast(inventoryItemComp.GetParentSlot()))
+			loadoutAreaId = m_pInventoryUIConfig.GetRowByCommonItemType(ECommonItemType.HAND_SLOT_ITEM);
+
+		return loadoutAreaId;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override protected void FillWithEmptySlots()
 	{
-		bool bFilling = true;
-		array<int> aCoordinates = {};
-		while ( bFilling )
+		array<SCR_LoadoutArea> validLoadoutAreas = {};
+		m_pInventoryUIConfig.GetValidLoaddoutAreas(validLoadoutAreas);
+
+		SCR_CharacterInventoryStorageComponent characterStorage = SCR_CharacterInventoryStorageComponent.Cast(m_Storage);
+		bool notEmpty;
+		int row, column;
+		Widget slotWidget;
+		SCR_ItemAttributeCollection itemAttributeCollection;
+		SCR_InventorySlotUI newUiSlot;
+		ResourceName iconName;
+		foreach (int i, SCR_LoadoutArea area : validLoadoutAreas)
 		{
-			aCoordinates = m_iMatrix.Reserve1stFreePlace( 1, 1 );
-			if( ( aCoordinates[0] != -1 ) && ( aCoordinates[1] != -1 ) )
+			column = 0;
+			row = i;
+
+			if (!CorrectSlotPositioning(column, row))
+				break;
+
+			notEmpty = false;
+			foreach (SCR_InventorySlotUI uiSlot: m_aSlots)
 			{
-				SCR_ItemAttributeCollection pAttrib = new SCR_ItemAttributeCollection();
-				pAttrib.SetSlotType( ESlotID.SLOT_ANY );
-				pAttrib.SetSlotSize( ESlotSize.SLOT_1x1 );
-				SCR_InventorySlotUI pSlot = new SCR_InventorySlotUI( null, this, true, -1, pAttrib );
-				m_aSlots.Insert( pSlot );
-				GridSlot.SetColumn( pSlot.GetWidget(), aCoordinates[0] );
-				GridSlot.SetRow( pSlot.GetWidget(), aCoordinates[1] );
-				ResourceName icon = m_pInventoryUIConfig.GetIconByRow( aCoordinates[1] );
-				if ( icon != ResourceName.Empty )
-					pSlot.SetIcon( icon );
-				
-				SCR_CharacterInventoryStorageComponent characterStorage = SCR_CharacterInventoryStorageComponent.Cast(m_Storage);
-				if (characterStorage)
-				{
-					LoadoutAreaType loadoutArea = m_pInventoryUIConfig.GetAreaByRow(aCoordinates[1]);
-					
-					if (loadoutArea)
-						pSlot.SetSlotBlocked(characterStorage.IsAreaBlocked(loadoutArea.Type()));
-				}
-			}	
-			else
-			{
-				bFilling = false;
+				slotWidget = uiSlot.GetWidget();
+				if (!slotWidget)
+					continue;
+
+				if (column != GridSlot.GetColumn(slotWidget))
+					continue;
+
+				if (row != GridSlot.GetRow(slotWidget))
+					continue;
+
+				notEmpty = true;
+				break;
 			}
-			
+
+			if (notEmpty)
+				continue;
+
+			itemAttributeCollection = new SCR_ItemAttributeCollection();
+			itemAttributeCollection.SetSlotType(ESlotID.SLOT_ANY);
+			itemAttributeCollection.SetSlotSize(ESlotSize.SLOT_1x1);
+
+			newUiSlot = new SCR_InventorySlotUI(pStorageUI: this, pAttributes: itemAttributeCollection);
+			GridSlot.SetColumn(newUiSlot.GetWidget(), column);
+			GridSlot.SetRow(newUiSlot.GetWidget(), row);
+			m_aSlots.Insert(newUiSlot);
+
+			iconName = m_pInventoryUIConfig.GetIconByRow(i);
+			if (iconName != ResourceName.Empty )
+				newUiSlot.SetIcon(iconName);
+
+			if (!characterStorage)
+				continue;
+
+			if (area.m_LoadoutArea)
+				newUiSlot.SetSlotBlocked(characterStorage.IsAreaBlocked(area.m_LoadoutArea.Type()));
 		}
 	}
+	
 	//------------------------------------------------------------------------------------------------
 	// ! do we want to delete all slots in the actual grid and show the content of the selected child storage? ( no )
 	override bool IsTraversalAllowed()
@@ -217,7 +289,6 @@ class SCR_InventoryStoragesListUI : SCR_InventoryStorageBaseUI
 	//------------------------------------------------------------------------ COMMON METHODS ----------------------------------------------------------------------
 	
 	//------------------------------------------------------------------------------------------------
-	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached( Widget w )
 	{
 		super.HandlerAttached( w );
@@ -228,13 +299,13 @@ class SCR_InventoryStoragesListUI : SCR_InventoryStorageBaseUI
 		RefreshList();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	void RefreshList()
 	{
-		CreateEmptyLayout();
 		CreateSlots();	
 		SortSlots();
 	}
-			
+
 	//------------------------------------------------------------------------------------------------
 	void SCR_InventoryStoragesListUI(BaseInventoryStorageComponent storage, LoadoutAreaType slotID = null, SCR_InventoryMenuUI menuManager = null, int iPage = 0, array<BaseInventoryStorageComponent> aTraverseStorage = null )
 	{
@@ -251,7 +322,7 @@ class SCR_InventoryStoragesListUI : SCR_InventoryStorageBaseUI
 		
 		//~ Get items in row
 		if (m_pInventoryUIConfig)
-			m_iMaxRows = m_pInventoryUIConfig.GetLoadoutAreaCount();
+			m_iMaxRows = m_pInventoryUIConfig.GetValidLoadoutAreaCount();
 		
 		int tempMaxRowCount = m_iMaxRows;
 		m_iMaxColumns = 0;
@@ -270,7 +341,7 @@ class SCR_InventoryStoragesListUI : SCR_InventoryStorageBaseUI
 			m_iMaxColumns = 1;
 		}
 		
-		m_iMatrix = new SCR_Matrix( m_iMaxColumns, m_iMaxRows );
+		m_iMatrix = new SCR_Matrix(m_iMaxColumns, MAX_ENTRIES_EACH_COLUMN);
 		m_sGridPath = "CharacterGrid";
 		m_Storage = storage;
 	}

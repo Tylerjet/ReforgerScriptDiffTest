@@ -210,7 +210,7 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 	//! Initialize empty map in the background.
 	protected void InitMapPlain()
 	{
-		ResourceName conf = "{A786DD4868598F15}Configs/Map/MapPlain.conf";
+		const ResourceName conf = "{A786DD4868598F15}Configs/Map/MapPlain.conf"; // TODO: check for good const usage
 		m_MapEntity.OpenMap(m_MapEntity.SetupMapConfig(EMapEntityMode.PLAIN, conf, GetRootWidget()));
 	}
 	

@@ -36,7 +36,9 @@ class SCR_AIVehicleUsageComponent : ScriptComponent
 	
 	protected ref ScriptInvokerBase<SCR_AIOnVehicleDeleted> m_OnDeleted;
 	protected ref ScriptInvokerBase<SCR_AIOnVehicleDamageStateChanged> m_OnDamageStateChanged;
-	
+	protected TurretCompartmentSlot m_TurretSlot;
+	protected PilotCompartmentSlot m_PilotSlot;
+
 	//------------------------------------------------------------------------------
 	ScriptInvokerBase<SCR_AIOnVehicleDeleted> GetOnDeleted()
 	{
@@ -53,6 +55,16 @@ class SCR_AIVehicleUsageComponent : ScriptComponent
 			m_OnDamageStateChanged = new ScriptInvokerBase<SCR_AIOnVehicleDamageStateChanged>();
 		
 		return m_OnDamageStateChanged;
+	}
+
+	TurretCompartmentSlot GetTurretCompartmentSlot()
+	{
+		return m_TurretSlot;
+	}
+
+	PilotCompartmentSlot GetPilotCompartmentSlot()
+	{
+		return m_PilotSlot;
 	}
 	
 	//------------------------------------------------------------------------------
@@ -125,6 +137,23 @@ class SCR_AIVehicleUsageComponent : ScriptComponent
 		SCR_DamageManagerComponent damageMgr = SCR_DamageManagerComponent.Cast(owner.FindComponent(SCR_DamageManagerComponent));
 		if (damageMgr)
 			damageMgr.GetOnDamageStateChanged().Insert(OnDamageStateChanged);
+
+		// find pilot & turret slots
+		SCR_BaseCompartmentManagerComponent compartmentMan = SCR_BaseCompartmentManagerComponent.Cast(owner.FindComponent(SCR_BaseCompartmentManagerComponent));
+		if (compartmentMan)
+		{
+			array<BaseCompartmentSlot> compartmentSlots = {};
+			compartmentMan.GetCompartments(compartmentSlots);
+			foreach (BaseCompartmentSlot slot : compartmentSlots)
+			{
+				TurretCompartmentSlot turretComp = TurretCompartmentSlot.Cast(slot);
+				PilotCompartmentSlot pilotComp = PilotCompartmentSlot.Cast(slot);
+				if (turretComp)
+					m_TurretSlot = turretComp;
+				if (pilotComp)
+					m_PilotSlot = pilotComp;
+			}
+		}
 	}
 	
 	//------------------------------------------------------------------------------

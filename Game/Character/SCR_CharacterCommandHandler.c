@@ -110,7 +110,13 @@ class SCR_CharacterCommandHandlerComponent : CharacterCommandHandlerComponent
 		
 		loiterCommand.FinishLoiter();
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_ScriptedCommandsStaticTable GetScriptedStaticTable()
+	{
+		return m_ScrStaticTable;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \return

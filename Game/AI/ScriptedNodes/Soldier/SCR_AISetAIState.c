@@ -5,7 +5,7 @@ class SCR_AISetAIState : AITaskScripted
 	[Attribute("0", UIWidgets.ComboBox, "State of AI", "", ParamEnumArray.FromEnum(EUnitAIState) )]
 	protected EUnitAIState m_stateToSet;
 	
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}
@@ -27,7 +27,7 @@ class SCR_AISetAIState : AITaskScripted
 		return ENodeResult.SUCCESS;
 	}
 	
-	override string GetOnHoverDescription() 
+	static override string GetOnHoverDescription() 
 	{ 
 		return "Sets AI state either on self";	
 	};

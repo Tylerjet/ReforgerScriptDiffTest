@@ -84,10 +84,10 @@ class SCR_AIGetAllowedLookRange : AITaskScripted
 	}
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------
-	override string GetOnHoverDescription()
+	static override string GetOnHoverDescription()
 	{
 		return "GetAllowedLookRange: Gets the range of look for character in vehicle";
 	}

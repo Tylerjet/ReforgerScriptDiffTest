@@ -4,6 +4,9 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 //---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 // Very bloated class, with a lot of functionality mixed with looks, and too many useless methods and attributes inherited from the parent.
 	
+	[Attribute("1", desc: "If enabled, buttons won't show the Text/Image to display the required input")]
+	protected bool m_bKeybindActive;
+	
 	[Attribute("MenuTabLeft", desc: "Name of action from chimeraInputCommon")]
 	protected string m_sActionName;
 
@@ -78,7 +81,7 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 
 	[Attribute(UIConstants.ICONS_GLOW_IMAGE_SET)]
 	protected ResourceName m_sComboIndicatorImageSetGlow;
-
+	
 	[Attribute(desc: "If enabled Text size is controlled by set size Inside the RichText widget")]
 	protected bool m_bOverrideTextSize;
 
@@ -94,14 +97,18 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 	protected const string COMBO_INDICATOR_COMBO_NAME = "keybind_combo";
 
 	protected const float COMBO_INDICATOR_SIZE_MULTIPLIER = 0.5;
+	
+	// TODO: fix textures having improper offset: we should not need different padding scaling
+	protected const float COMBO_INDICATOR_PADDING_MULTIPLIER_LEFT = 0.20;
+	protected const float COMBO_INDICATOR_PADDING_MULTIPLIER_RIGHT = 0.15;
+	
 	protected const float MIN_FONTSIZE_MULTIPLIER = 0.5;
 
 	protected ref SCR_InputButtonDisplay m_ButtonDisplay;
 	protected Widget m_wHorizontalLayout;
-	protected ImageWidget m_wComboIndicatorImage;
-	protected ImageWidget m_wComboIndicatorShadow;
 	protected RichTextWidget m_wTextHint;
 
+	protected ref array<SizeLayoutWidget> m_aComboIndicators = {};
 	protected ref array<Widget> m_aComboWidgets = {};
 	protected ref array<BaseContainer> m_aFilterStack = {};
 	protected ref array<int> m_aFilterStackIndexRemover = {};
@@ -235,6 +242,19 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 	//------------------------------------------------------------------------------------------------
 	override bool OnClick(Widget w, int x, int y, int button)
 	{
+		if (button != 0 || !m_wRoot.IsVisible() || !m_wRoot.IsEnabled())
+			return false;
+
+		if (m_bIsDoubleTapAction)
+			return false;
+
+		m_bIsHoldingButton = true;
+
+		OnInput();
+
+		super.OnClick(w, x, y, button);
+
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -331,7 +351,12 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 			ProcessFilterStack();
 
 			if (m_ButtonDisplay)
+			{
 				m_ButtonDisplay.SetAction(data, m_aFilterStack[0]);
+				
+				if (!m_bKeybindActive)
+					m_ButtonDisplay.ChangeInputVisibility(false);
+			}
 
 			if (!m_bOverrideTextSize && m_wTextHint && m_ButtonDisplay)
 			{
@@ -458,37 +483,34 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 					break;
 
 				//! Create Combo indicator
-				Widget comboIndicator = GetGame().GetWorkspace().CreateWidgets(m_sComboIndicatorWidget, m_wHorizontalLayout);
-
+				SizeLayoutWidget comboIndicator = SizeLayoutWidget.Cast(GetGame().GetWorkspace().CreateWidgets(m_sComboIndicatorWidget, m_wHorizontalLayout));
 				if (!comboIndicator)
 				{
 					Print(string.Format("Unable to create Widget! %1 or %2 are null!", m_sComboIndicatorWidget, m_wHorizontalLayout), LogLevel.ERROR);
 					return;
 				}
 
-				m_wComboIndicatorImage = ImageWidget.Cast(comboIndicator.FindAnyWidget(COMBO_INDICATOR_IMAGE_NAME));
-				m_wComboIndicatorShadow = ImageWidget.Cast(comboIndicator.FindAnyWidget(COMBO_INDICATOR_SHADOW_NAME));
+				ImageWidget comboIndicatorImage = ImageWidget.Cast(comboIndicator.FindAnyWidget(COMBO_INDICATOR_IMAGE_NAME));
+				ImageWidget comboIndicatorShadow = ImageWidget.Cast(comboIndicator.FindAnyWidget(COMBO_INDICATOR_SHADOW_NAME));
 
-				if (m_wComboIndicatorImage && m_wComboIndicatorShadow)
+				if (comboIndicatorImage && comboIndicatorShadow)
 				{
 					if (m_aKeyStackArray[i] == " + ")
 					{
-						m_wComboIndicatorImage.LoadImageFromSet(0, m_sComboIndicatorImageSet, COMBO_INDICATOR_COMBO_NAME);
-						m_wComboIndicatorShadow.LoadImageFromSet(0, m_sComboIndicatorImageSetGlow, COMBO_INDICATOR_COMBO_NAME);
+						comboIndicatorImage.LoadImageFromSet(0, m_sComboIndicatorImageSet, COMBO_INDICATOR_COMBO_NAME);
+						comboIndicatorShadow.LoadImageFromSet(0, m_sComboIndicatorImageSetGlow, COMBO_INDICATOR_COMBO_NAME);
 					}
 
 					if (m_aKeyStackArray[i] == " | ")
 					{
-						m_wComboIndicatorImage.LoadImageFromSet(0, m_sComboIndicatorImageSet, COMBO_INDICATOR_DIVIDER_NAME);
-						m_wComboIndicatorShadow.LoadImageFromSet(0, m_sComboIndicatorImageSetGlow, COMBO_INDICATOR_DIVIDER_NAME);
+						comboIndicatorImage.LoadImageFromSet(0, m_sComboIndicatorImageSet, COMBO_INDICATOR_DIVIDER_NAME);
+						comboIndicatorShadow.LoadImageFromSet(0, m_sComboIndicatorImageSetGlow, COMBO_INDICATOR_DIVIDER_NAME);
 
 						comboAmount++;
 					}
-
-					m_wComboIndicatorImage.SetSize(m_iHeightInPixel * COMBO_INDICATOR_SIZE_MULTIPLIER, m_iHeightInPixel * COMBO_INDICATOR_SIZE_MULTIPLIER);
-					m_wComboIndicatorShadow.SetSize(m_iHeightInPixel * COMBO_INDICATOR_SIZE_MULTIPLIER, m_iHeightInPixel * COMBO_INDICATOR_SIZE_MULTIPLIER);
 				}
 
+				m_aComboIndicators.Insert(comboIndicator);
 				m_aComboWidgets.Insert(comboIndicator);
 				continue;
 			}
@@ -517,9 +539,14 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 				return;
 			}
 
+			UpdateComboIndicatorSizes();
+			
 			component.Init(m_wRoot);
 			component.SetAction(keyData, m_aFilterStack[filterIndex]);
 			filterIndex++;
+			
+			if (!m_bKeybindActive)
+				component.ChangeInputVisibility(false);
 
 			m_aComboWidgets.Insert(comboWidget);
 		}
@@ -541,6 +568,7 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 		}
 
 		m_aComboWidgets.Clear();
+		m_aComboIndicators.Clear();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -571,26 +599,11 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnButtonPressed(float value, EActionTrigger reason)
 	{
+		if (!m_bKeybindActive)
+			return;
+		
 		PlaySoundClicked();
 		OnInput();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override bool OnMouseButtonDown(Widget w, int x, int y, int button)
-	{
-		if (button != 0 || !m_wRoot.IsVisible() || !m_wRoot.IsEnabled())
-			return false;
-
-		if (m_bIsDoubleTapAction)
-			return false;
-
-		m_bIsHoldingButton = true;
-
-		OnInput();
-
-		super.OnClick(w, x, y, button);
-
-		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -961,11 +974,7 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 			m_wTextHint.SetMinFontSize(textSize * MIN_FONTSIZE_MULTIPLIER);
 		}
 
-		if (m_wComboIndicatorImage && m_wComboIndicatorShadow)
-		{
-			m_wComboIndicatorImage.SetSize(m_iHeightInPixel * COMBO_INDICATOR_SIZE_MULTIPLIER, m_iHeightInPixel * COMBO_INDICATOR_SIZE_MULTIPLIER);
-			m_wComboIndicatorShadow.SetSize(m_iHeightInPixel * COMBO_INDICATOR_SIZE_MULTIPLIER, m_iHeightInPixel * COMBO_INDICATOR_SIZE_MULTIPLIER);
-		}
+		UpdateComboIndicatorSizes();
 
 		m_ButtonDisplay.Resize();
 	}
@@ -1018,6 +1027,32 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 	void SetColorActionDisabled(Color newColor)
 	{
 		m_ActionDisabled = newColor;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Change the visibility of the Button Image & Text
+	//! \param[in] visibility
+	void ChangeInputVisibility(bool visible)
+	{
+		if (!m_ButtonDisplay)
+			return;
+		
+		m_bKeybindActive = visible;
+		
+		m_ButtonDisplay.ChangeInputVisibility(visible);
+		
+		if (m_aComboWidgets.IsEmpty())
+			return;
+		
+		SCR_InputButtonDisplay component;
+		foreach (Widget inputButton : m_aComboWidgets)
+		{
+			component = SCR_InputButtonDisplay.Cast(inputButton.FindHandler(SCR_InputButtonDisplay));
+			if (!component)
+				continue;
+
+			component.ChangeInputVisibility(visible);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1137,6 +1172,21 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 		return m_bForceDisabled;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateComboIndicatorSizes()
+	{
+		float size = m_iHeightInPixel * COMBO_INDICATOR_SIZE_MULTIPLIER;
+		float paddingLeft = m_iHeightInPixel * COMBO_INDICATOR_PADDING_MULTIPLIER_LEFT * -1;
+		float paddingRight = m_iHeightInPixel * COMBO_INDICATOR_PADDING_MULTIPLIER_RIGHT * -1;
+		
+		foreach (SizeLayoutWidget w : m_aComboIndicators)
+		{
+			w.SetWidthOverride(size);
+			w.SetHeightOverride(size);
+			LayoutSlot.SetPadding(w, paddingLeft, 0, paddingRight, 0);
+		}
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Static method to easily find component by providing name and parent.
 	//! Searching all children will go through whole hierarchy, instead of immediate chidren

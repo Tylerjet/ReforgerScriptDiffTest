@@ -8,11 +8,29 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 {
 	[Attribute("0.3", UIWidgets.EditBox, desc: "seconds, delay before map gets activated giving time for the animation to be visible", params: "1 1000", category: "Map")]
 	protected float m_fActivationDelay;
-				
+
+	[Attribute("{FC855D20AA561819}UI/Textures/Map/ProtractorScale.edds", UIWidgets.ResourcePickerThumbnail, desc: "Image of that will be used as a texture for a protractor.", params: "edds")]
+	protected ResourceName m_sProtractorTexture;
+
+	[Attribute(defvalue: "1994", uiwidget: UIWidgets.EditBox, desc: "[px] Exact length of the ruler that coresponds to 1km of distance")]
+	protected float m_fRulerLength;
+
 	protected bool m_bIsMapOpen;
 	protected bool m_bIsFirstTimeOpened = true;		// whether the map has bene opened since put into a lot
 	protected SCR_MapEntity m_MapEntity;			// map instance
-	protected SCR_FadeInOutEffect m_FadeInOutEffect;	
+	protected SCR_FadeInOutEffect m_FadeInOutEffect;
+
+	//------------------------------------------------------------------------------------------------
+	ResourceName GetProtractorTexture()
+	{
+		return m_sProtractorTexture;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetRulerLength()
+	{
+		return m_fRulerLength;
+	}
 
 //---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 	//------------------------------------------------------------------------------------------------

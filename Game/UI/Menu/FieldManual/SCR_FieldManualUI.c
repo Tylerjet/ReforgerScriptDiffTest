@@ -22,15 +22,20 @@ class SCR_FieldManualUI : MenuRootBase
 	protected ref SCR_FieldManualEntryScriptedWidgetEventHandler m_EntryButtonEventHandler;
 	protected Widget m_wLastClickedSubCategory;
 
+	protected Widget m_wLoadingServerQueue;
+
 	protected SCR_FieldManualConfigEntry m_CurrentEntry;
 
 	protected ButtonWidget m_wFirstSubCategoryButton;
+	protected Widget m_wLastSelectedWidget;
 
 	protected bool m_bIsInEntryViewMode;
 	protected bool m_bIsInSearchMode;
 	protected bool m_bOpenedFromOutside;
 
 	protected bool m_bArmaWarning;
+	
+	protected float m_fSliderYPos;
 
 	protected static const int TILES_GRID_WIDTH = 5;
 	protected static const string SEARCH_RESULT_KEY = "#AR-FieldManual_SearchResult";
@@ -125,6 +130,10 @@ class SCR_FieldManualUI : MenuRootBase
 		if (m_MenuSearchbar && m_MenuSearchbar.m_OnConfirm)
 				m_MenuSearchbar.m_OnConfirm.Insert(ProcessSearch);
 
+		// Server Queue
+		m_wLoadingServerQueue = rootWidget.FindAnyWidget("ServerQueue");
+		HideQueueMessage();
+
 		m_MenuBtnBack.m_OnActivated.Insert(CloseMenuOrReadingPanel);
 
 #ifdef WORKBENCH
@@ -171,22 +180,49 @@ class SCR_FieldManualUI : MenuRootBase
 	{
 		bool resetTiles = m_bIsInSearchMode || m_bIsInEntryViewMode || w != m_wLastClickedSubCategory;
 		m_bIsInSearchMode = false;
+
+		if (m_wLastClickedSubCategory)
+			FlipButtonState(m_wLastClickedSubCategory, false);
+
+		FlipButtonState(w, true);
+
 		m_wLastClickedSubCategory = w;
+		m_wLastSelectedWidget = null;
 		CloseReadingPanel();
 		ResetLastSearch();
 		if (resetTiles)
 			SetTilesByWidget(w);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] widget sub category button
+	//! \param[in] bool toggle state
+	protected bool FlipButtonState(Widget w, bool state)
+	{
+		ButtonWidget btnWidget = ButtonWidget.Cast(w);
+		if (!btnWidget)
+			return false;
+
+		SCR_ModularButtonComponent btnModularComponent = SCR_ModularButtonComponent.Cast(btnWidget.FindHandler(SCR_ModularButtonComponent));
+		if (!btnModularComponent)
+			return false;
+
+		btnModularComponent.SetToggled(state);
+
+		return true;
+	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Open the clicked tile card
 	//! \param[in] w
 	void OnTileClicked(Widget w)
 	{
 		m_bIsInSearchMode = false;
 		SetCurrentEntryByWidget(w);
 
-		if (m_wLastClickedSubCategory)
-			GetGame().GetWorkspace().SetFocusedWidget(m_wLastClickedSubCategory);
+		m_wLastSelectedWidget = w;
+
+		FocusLastSelectedEntry();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -200,29 +236,12 @@ class SCR_FieldManualUI : MenuRootBase
 			return null;
 		}
 
-		Widget assetImage = createdWidget.FindAnyWidget("AssetImage");
-		if (assetImage)
+		SCR_AssetCardFrontUIComponent cardComp = SCR_AssetCardFrontUIComponent.Cast(createdWidget.FindHandler(SCR_AssetCardFrontUIComponent));
+		if (cardComp)
 		{
-			ImageWidget backgroundImageWidget = ImageWidget.Cast(createdWidget.FindAnyWidget("FullBackground"));
-			if (backgroundImageWidget && m_ConfigRoot.m_aTileBackgrounds && !m_ConfigRoot.m_aTileBackgrounds.IsEmpty())
-				backgroundImageWidget.LoadImageTexture(0, m_ConfigRoot.m_aTileBackgrounds.GetRandomElement());
-
-			ImageWidget imageWidget = ImageWidget.Cast(assetImage.FindAnyWidget("Image"));
-			if (imageWidget)
-			{
-				if (!entry.m_Image.IsEmpty())
-					imageWidget.LoadImageTexture(0, entry.m_Image);
-				else
-					imageWidget.SetVisible(false);
-			}
-		}
-
-		Widget assetInfo = createdWidget.FindAnyWidget("AssetInfo");
-		if (assetInfo)
-		{
-			TextWidget textWidget = TextWidget.Cast(assetInfo.FindAnyWidget("EntityName"));
-			if (textWidget)
-				textWidget.SetText(entry.m_sTitle);
+			cardComp.SetImage(entry.m_Image);
+			cardComp.SetBackgroundImage(m_ConfigRoot.m_aTileBackgrounds.GetRandomElement());
+			cardComp.SetText(entry.m_sTitle);
 		}
 
 		return createdWidget;
@@ -303,14 +322,19 @@ class SCR_FieldManualUI : MenuRootBase
 		m_wGridScrollLayoutWidget.SetVisible(!m_bIsInEntryViewMode);
 		m_wReadingWidget.SetVisible(m_bIsInEntryViewMode);
 
+		
 		if (!m_bIsInEntryViewMode)
 		{
 			if (m_BreadCrumbsComponent && m_CurrentEntry && m_CurrentEntry.m_Parent && m_CurrentEntry.m_Parent.m_Parent)
 				m_BreadCrumbsComponent.Set(m_CurrentEntry.m_Parent.m_Parent.m_sTitle, m_CurrentEntry.m_Parent.m_sTitle);
-
+			
+			m_wGridScrollLayoutWidget.SetSliderPos(0, m_fSliderYPos);
 			m_CurrentEntry = null;
 			return;
 		}
+		
+		float x;
+		m_wGridScrollLayoutWidget.GetSliderPos(x, m_fSliderYPos);
 
 		if (m_BreadCrumbsComponent && entry.m_Parent && entry.m_Parent.m_Parent)
 			m_BreadCrumbsComponent.Set(entry.m_Parent.m_Parent.m_sTitle, entry.m_Parent.m_sTitle, entry.m_sTitle);
@@ -318,17 +342,6 @@ class SCR_FieldManualUI : MenuRootBase
 		m_CurrentEntry = entry;
 
 		m_wPageEntryTitle.SetText(entry.m_sTitle);
-
-		// entry tab management - disabled for now
-//		if (m_PageTabView)
-//		{
-//			while (m_PageTabView.GetTabCount() > 0)
-//			{
-//				m_PageTabView.RemoveTab(0);
-//			}
-//			m_PageTabView.AddTab("", entry.m_sTitle);
-//			m_PageTabView.ShowTab(0, false, false);
-//		}
 
 		Widget readingWidget = entry.CreateWidget(m_wPageFrame);
 		SCR_FieldManualConfigEntry_Weapon weaponEntry = SCR_FieldManualConfigEntry_Weapon.Cast(entry);
@@ -684,6 +697,25 @@ class SCR_FieldManualUI : MenuRootBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Open the last selected Sub Category and selected it
+	protected void OpenLastSelectedSubCategory()
+	{
+		OnSubCategoryClicked(m_wLastClickedSubCategory);
+		GetGame().GetCallqueue().CallLater(FocusLastSelectedEntry, 0, false, m_wLastSelectedWidget, false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Focus the last selected valid widget
+	protected void FocusLastSelectedEntry(Widget w = null)
+	{
+		if (w)
+			m_wLastSelectedWidget = w;
+
+		if (m_wLastSelectedWidget)
+			GetGame().GetWorkspace().SetFocusedWidget(m_wLastSelectedWidget);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! resets last search value
 	// used in SCR_FieldManualSubCategoryScriptedWidgetEventHandler.OnClick
 	protected void ResetLastSearch()
@@ -698,13 +730,16 @@ class SCR_FieldManualUI : MenuRootBase
 		search = search.Trim();
 
 		if (search.IsEmpty())
-		{
+		{			
 			ResetLastSearch();
-//			if (m_bIsInSearchMode)
-//				OpenFirstSubCategory();
+			if (m_bIsInSearchMode)
+				OpenLastSelectedSubCategory();
 
 			return;
 		}
+		
+		if (m_wLastClickedSubCategory)
+			FlipButtonState(m_wLastClickedSubCategory, false);
 
 		CloseReadingPanel();
 
@@ -789,6 +824,22 @@ class SCR_FieldManualUI : MenuRootBase
 			CloseReadingPanel();
 		else
 			Close();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Show the Server Queue
+	void ShowQueueMessage()
+	{
+		if (m_wLoadingServerQueue)
+			m_wLoadingServerQueue.SetVisible(true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Hide the Server Queue
+	void HideQueueMessage()
+	{
+		if (m_wLoadingServerQueue)
+			m_wLoadingServerQueue.SetVisible(false);
 	}
 
 	//------------------------------------------------------------------------------------------------

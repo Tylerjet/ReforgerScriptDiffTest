@@ -38,19 +38,28 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 
 	[Attribute(desc: "Show the debug shapes during runtime", category: "Debug")]
 	bool m_bShowDebugShapesDuringRuntime;
+	
+	[Attribute(desc: "Show the debug shapes in Workbench", category: "Debug")]
+	bool m_bShowDebugShapesInWorkbench;
 
 	[Attribute("0", uiwidget: UIWidgets.ComboBox, "", "", ParamEnumArray.FromEnum(SCR_ScenarioFrameworkEActivationType), category: "Activation")]
 	SCR_ScenarioFrameworkEActivationType m_eActivationType;
 
 	[Attribute(desc: "Conditions that will be checked upon init and based on the result it will let this to finish init or not", category: "Activation")]
 	ref array<ref SCR_ScenarioFrameworkActivationConditionBase> m_aActivationConditions;
-	
+
 	[Attribute(defvalue: SCR_EScenarioFrameworkLogicOperators.AND.ToString(), UIWidgets.ComboBox, "Which Boolean Logic will be used for Activation Conditions", "", enums: SCR_EScenarioFrameworkLogicOperatorHelper.GetParamInfo(), category: "Activation")]
 	SCR_EScenarioFrameworkLogicOperators m_eActivationConditionLogic;
 
 	[Attribute(desc: "Actions that will be activated when this gets initialized", category: "OnInit")]
 	ref array<ref SCR_ScenarioFrameworkActionBase>	m_aActivationActions;
 
+	[Attribute(desc: "Should the dynamic Spawn/Despawn based on distance from observer cameras be enabled?", category: "Activation")]
+	bool m_bDynamicDespawn;
+
+	[Attribute(defvalue: "750", params: "0 inf", desc: "How close at least one observer camera must be in order to trigger spawn", category: "Activation")]
+	int m_iDynamicDespawnRange;	
+	
 	[Attribute(desc: "", category: "Activation")]
 	bool m_bExcludeFromDynamicDespawn;
 
@@ -69,13 +78,13 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 	float m_fDebugShapeRadius = 0.25;
 	WorldTimestamp m_fRepeatSpawnTimeStart;
 	WorldTimestamp	m_fRepeatSpawnTimeEnd;
-	int	m_iDebugShapeColor = ARGB(32, 0xFF, 0x00, 0x12);
+	int	m_iDebugShapeColor = ARGB(32, 255, 255, 255);
 	int m_iCurrentlySpawnedChildren;
 	int m_iSupposedSpawnedChildren;
 	bool m_bInitiated;
 	bool m_bDynamicallyDespawned;
 	bool m_bIsTerminated; //Marks if this was terminated - either by death or deletion
-	
+
 	//Default values we need to store
 	int m_iRepeatedSpawnNumberDefault = m_iRepeatedSpawnNumber;
 	SCR_ScenarioFrameworkEActivationType m_eActivationTypeDefault = m_eActivationType;
@@ -130,7 +139,7 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 			m_aRandomlySpawnedChildren.Insert(layer);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Adds child to list if not already present, ensuring uniqueness.
 	//! \param[in] child Adds child object to list of randomly spawned children if it's not already in the list.
@@ -212,7 +221,7 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 
 		return null;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Gathers all layers from child entities and their siblings, adding them to the provided array.
 	//! \param[out] layers Represents all layers in this layer hierarchy.
@@ -228,15 +237,15 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 			if (layerBase)
 			{
 				layers.Insert(layerBase);
-				
+
 				layerBase.GetAllLayers(aSiblingLayers);
 				layers.InsertAll(aSiblingLayers);
 			}
-			
+
 			child = child.GetSibling();
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Gathers all layers from child entities and their siblings, adding them to the provided array, filtered by activation type
 	//! \param[out] layers Represents all layers in this layer hierarchy.
@@ -254,15 +263,15 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 			{
 				if (layerBase.m_eActivationType == activationType)
 					layers.Insert(layerBase);
-				
+
 				layerBase.GetAllLayers(aSiblingLayers, activationType);
 				layers.InsertAll(aSiblingLayers);
 			}
-			
+
 			child = child.GetSibling();
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Gathers all layer tasks from child entities and their siblings, adding them to the provided array.
 	//! \param[out] layerTasks Represents all tasks associated with layers in the scenario hierarchy.
@@ -281,15 +290,15 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 				layerTask = SCR_ScenarioFrameworkLayerTask.Cast(layerBase);
 				if (layerTask)
 					layerTasks.Insert(layerTask);
-				
+
 				layerBase.GetAllLayerTasks(aSiblingLayerTasks);
 				layerTasks.InsertAll(aSiblingLayerTasks);
 			}
-			
+
 			child = child.GetSibling();
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Gets all slot tasks from all layers in the hierarchy of the owner entity, including sibling layers' tasks.
 	//! \param[out] slotTasks Represents all slot tasks from the current entity and its siblings in the hierarchy.
@@ -308,11 +317,11 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 				slotTask = SCR_ScenarioFrameworkSlotTask.Cast(layerBase);
 				if (slotTask)
 					slotTasks.Insert(slotTask);
-				
+
 				layerBase.GetAllSlotTasks(aSiblingSlotTasks);
 				slotTasks.InsertAll(aSiblingSlotTasks);
 			}
-			
+
 			child = child.GetSibling();
 		}
 	}
@@ -395,23 +404,23 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 			SCR_FactionAliasComponent factionAliasComponent = SCR_FactionAliasComponent.GetFactionAliasComponentForWB();
 			if (!factionAliasComponent)
 				return GetFactionKey();   // If the mission creator didn't define SCR_FactionAliasComponent, then alias resolution is not needed.
-			
+
 			return factionAliasComponent.ResolveFactionAlias(GetFactionKey());
 		}
-		
+
 		IEntity parentEntity = GetOwner().GetParent();
 		if (!parentEntity)
 			return "";
-		
+
 		SCR_ScenarioFrameworkLayerBase parentLayer = SCR_ScenarioFrameworkLayerBase.Cast(parentEntity.FindComponent(SCR_ScenarioFrameworkLayerBase));
 		if (!parentLayer)
 			return "";
-		
+
 		FactionKey factionKey = parentLayer.GetParentFactionKeyRecursive();
 		return factionKey;
-		
+
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! \return parent layer entity or null if no parent layer exists.
 	SCR_ScenarioFrameworkLayerBase GetParentLayer()
@@ -468,12 +477,40 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 	{
 		return m_bInitiated;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return Indicates whether dynamic despawn is enabled or not.
+	bool GetDynamicDespawnEnabled()
+	{
+		return m_bDynamicDespawn;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] enabled Enables or disables dynamic despawning.
+	void SetDynamicDespawnEnabled(bool enabled)
+	{
+		m_bDynamicDespawn = enabled;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! \return Represents whether the layer is excluded from dynamic despawning.
 	bool GetDynamicDespawnExcluded()
 	{
 		return m_bExcludeFromDynamicDespawn;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return Represents dynamic despawn range.
+	int GetDynamicDespawnRange()
+	{
+		return m_iDynamicDespawnRange;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] range Represents distance in meters for dynamic despawning.
+	void SetDynamicDespawnRange(int range)
+	{
+		m_iDynamicDespawnRange = range;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -503,9 +540,17 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 	{
 		if (m_aChildren.IsEmpty())
 			return null;
+		
+		array<SCR_ScenarioFrameworkLayerBase> suitableChildren = {};
+		foreach (SCR_ScenarioFrameworkLayerBase child : m_aChildren)
+		{
+			if (child.GetDynamicDespawnEnabled())
+				continue;
+			
+			suitableChildren.Insert(child);
+		}
 
-		Math.Randomize(-1);
-		return m_aChildren.GetRandomElement();
+		return suitableChildren.GetRandomElement();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -514,46 +559,61 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 	void GetChildren(out array<SCR_ScenarioFrameworkLayerBase> children)
 	{
 		children = {};
-		array<SCR_ScenarioFrameworkLayerBase> childrenReversed = {};
+		map<string, SCR_ScenarioFrameworkLayerBase> childrenReversed = new map<string, SCR_ScenarioFrameworkLayerBase>;
+		array<string> childrenStringsReversed = {};
 		SCR_ScenarioFrameworkLayerBase layerBase;
 		IEntity child = GetOwner().GetChildren();
 		while (child)
 		{
 			layerBase = SCR_ScenarioFrameworkLayerBase.Cast(child.FindComponent(SCR_ScenarioFrameworkLayerBase));
 			if (layerBase)
-				childrenReversed.Insert(layerBase);
-			
+			{
+				childrenReversed.Insert(layerBase.GetName(), layerBase);
+				childrenStringsReversed.Insert(layerBase.GetName());
+			}
+
 			child = child.GetSibling();
 		}
-		
-		for (int i = childrenReversed.Count() - 1; i >= 0; i--)
+
+		childrenStringsReversed.Sort();
+		foreach (string name : childrenStringsReversed)
 		{
-			children.Insert(childrenReversed[i]);
+			layerBase = childrenReversed.Get(name);
+
+			if (layerBase)
+				children.Insert(layerBase);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Reverses and inserts children layers into an array, filtered by activation type
 	//! \param[out] children Returns an array of child entities with SCR_ScenarioFrameworkLayerBase component, reversed and then inserted into the main
 	void GetChildren(out array<SCR_ScenarioFrameworkLayerBase> children, SCR_ScenarioFrameworkEActivationType activationType)
 	{
 		children = {};
-		array<SCR_ScenarioFrameworkLayerBase> childrenReversed = {};
+		map<string, SCR_ScenarioFrameworkLayerBase> childrenReversed = new map<string, SCR_ScenarioFrameworkLayerBase>;
+		array<string> childrenStringsReversed = {};
 		SCR_ScenarioFrameworkLayerBase layerBase;
 		IEntity child = GetOwner().GetChildren();
 		while (child)
 		{
 			layerBase = SCR_ScenarioFrameworkLayerBase.Cast(child.FindComponent(SCR_ScenarioFrameworkLayerBase));
 			if (layerBase)
-				childrenReversed.Insert(layerBase);
-			
+			{
+				childrenReversed.Insert(layerBase.GetName(), layerBase);
+				childrenStringsReversed.Insert(layerBase.GetName());
+			}
+
 			child = child.GetSibling();
 		}
-		
-		for (int i = childrenReversed.Count() - 1; i >= 0; i--)
+
+		childrenStringsReversed.Sort();
+		foreach (string name : childrenStringsReversed)
 		{
-			if (childrenReversed[i].m_eActivationType == activationType)
-				children.Insert(childrenReversed[i]);
+			layerBase = childrenReversed.Get(name);
+
+			if (layerBase && layerBase.m_eActivationType == activationType)
+				children.Insert(layerBase);
 		}
 	}
 
@@ -611,7 +671,7 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 
 		//This calls the RepeatedSpawnCalled with set delay and is set in a way that it
 		//Can be both queued that way or called manually from different place (pseudo-looped CallLater)
-		SCR_ScenarioFrameworkSystem.GetCallQueue().CallLater(RepeatedSpawnCalled, 1000 * m_fRepeatedSpawnTimer);
+		SCR_ScenarioFrameworkSystem.GetCallQueuePausable().CallLater(RepeatedSpawnCalled, 1000 * m_fRepeatedSpawnTimer);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -620,7 +680,7 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 	{
 		if (m_iRepeatedSpawnNumber != -1)
 			m_iRepeatedSpawnNumber--;
-		
+
 		SpawnChildren(true);
 
 		if (!m_bEnableRepeatedSpawn || (m_iRepeatedSpawnNumber != -1 && m_iRepeatedSpawnNumber <= 0))
@@ -646,7 +706,7 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 		if (m_OnAllChildrenSpawned)
 			m_OnAllChildrenSpawned.Invoke(this);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Calculates supposed spawned children based on activation type, termination, initiation, and conditions.
 	//! \param[in] previouslyRandomized indicates whether children layers were spawned randomly previously.
@@ -657,20 +717,23 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 		{
 			foreach (SCR_ScenarioFrameworkLayerBase child : m_aRandomlySpawnedChildren)
 			{
+				if (child.GetDynamicDespawnEnabled())
+					continue;
+				
 				int activationType = child.GetActivationType();
 				if (activationType == SCR_ScenarioFrameworkEActivationType.ON_TRIGGER_ACTIVATION || activationType == SCR_ScenarioFrameworkEActivationType.ON_AREA_TRIGGER_ACTIVATION
 					|| activationType == SCR_ScenarioFrameworkEActivationType.ON_TASKS_INIT)
 					continue;
-				
+
 				if (child.GetIsTerminated())
 					continue;
-				
+
 				if (!child.InitActivationConditions())
 					continue;
-	
+
 				if (child.GetIsInitiated())
 					m_iCurrentlySpawnedChildren++;
-	
+
 				m_iSupposedSpawnedChildren++;
 			}
 		}
@@ -678,20 +741,23 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 		{
 			foreach (SCR_ScenarioFrameworkLayerBase child : m_aChildren)
 			{
+				if (child.GetDynamicDespawnEnabled())
+					continue;
+				
 				int activationType = child.GetActivationType();
 				if (activationType == SCR_ScenarioFrameworkEActivationType.ON_TRIGGER_ACTIVATION || activationType == SCR_ScenarioFrameworkEActivationType.ON_AREA_TRIGGER_ACTIVATION
 					|| activationType == SCR_ScenarioFrameworkEActivationType.ON_TASKS_INIT)
 					continue;
-				
+
 				if (child.GetIsTerminated())
 					continue;
-				
+
 				if (!child.InitActivationConditions())
 					continue;
-	
+
 				if (child.GetIsInitiated())
 					m_iCurrentlySpawnedChildren++;
-	
+
 				m_iSupposedSpawnedChildren++;
 			}
 		}
@@ -702,11 +768,14 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 	//! \param[in] layer for which this check is invoked.
 	void CheckAllChildrenSpawned(SCR_ScenarioFrameworkLayerBase layer = null)
 	{
+		if (!layer && layer.GetDynamicDespawnEnabled())
+			return;
+		
 		if (m_SpawnChildren == SCR_EScenarioFrameworkSpawnChildrenType.ALL)
 		{
 			m_iCurrentlySpawnedChildren = 0;
 			CalculateSupposedSpawnedChildren();
-			
+
 			if (m_iCurrentlySpawnedChildren == m_iSupposedSpawnedChildren)
 				InvokeAllChildrenSpawned();
 		}
@@ -719,13 +788,16 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 			m_iCurrentlySpawnedChildren = 0;
 			foreach (SCR_ScenarioFrameworkLayerBase child : m_aChildren)
 			{
+				if (child.GetDynamicDespawnEnabled())
+					continue;
+				
 				int activationType = child.GetActivationType();
 				if (activationType == SCR_ScenarioFrameworkEActivationType.ON_TRIGGER_ACTIVATION || activationType == SCR_ScenarioFrameworkEActivationType.ON_AREA_TRIGGER_ACTIVATION)
 					continue;
-				
+
 				if (child.GetIsTerminated())
 					continue;
-				
+
 				if (!child.InitActivationConditions())
 					continue;
 
@@ -748,7 +820,7 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 			InvokeAllChildrenSpawned();
 			return;
 		}
-		
+
 		if (!previouslyRandomized && !m_aRandomlySpawnedChildren.IsEmpty())
 			previouslyRandomized = true;
 
@@ -757,10 +829,25 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 			int slotCount;
 			foreach (SCR_ScenarioFrameworkLayerBase child : m_aChildren)
 			{
+				if (child.GetDynamicDespawnEnabled())
+				{
+					if (m_aChildren.Count() == 1)
+						InvokeAllChildrenSpawned();	
+					
+					continue;
+				}
+				
 				if (SCR_ScenarioFrameworkSlotBase.Cast(child))
 				{
-					SCR_ScenarioFrameworkSystem.GetCallQueue().CallLater(InitChild, SPAWN_DELAY * slotCount, false, child);
-					slotCount++;
+					if (SCR_ScenarioFrameworkSlotMarker.Cast(child) || SCR_ScenarioFrameworkSlotWaypoint.Cast(child))
+					{
+						InitChild(child);	
+					}
+					else
+					{
+						SCR_ScenarioFrameworkCallQueueSystem.GetCallQueueNonPausable().CallLater(InitChild, SPAWN_DELAY * slotCount, false, child);
+						slotCount++;
+					}
 				}
 				else
 				{
@@ -771,12 +858,12 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 		else if (m_SpawnChildren == SCR_EScenarioFrameworkSpawnChildrenType.RANDOM_ONE)
 		{
 			//We need to introduce slight delay for the randomization by time seed to occur
-			SCR_ScenarioFrameworkSystem.GetCallQueue().CallLater(SpawnRandomOneChild, Math.RandomInt(200, 400), false, previouslyRandomized);
+			SCR_ScenarioFrameworkCallQueueSystem.GetCallQueueNonPausable().CallLater(SpawnRandomOneChild, Math.RandomInt(200, 400), false, previouslyRandomized);
 		}
 		else
 		{
 			//We need to introduce slight delay for the randomization by time seed to occur
-			SCR_ScenarioFrameworkSystem.GetCallQueue().CallLater(SpawnRandomMultipleChildren, Math.RandomInt(200, 400), false, previouslyRandomized);
+			SCR_ScenarioFrameworkCallQueueSystem.GetCallQueueNonPausable().CallLater(SpawnRandomMultipleChildren, Math.RandomInt(200, 400), false, previouslyRandomized);
 		}
 	}
 
@@ -787,7 +874,7 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 		CalculateSupposedSpawnedChildren(true);
 		foreach (int i, SCR_ScenarioFrameworkLayerBase child : m_aRandomlySpawnedChildren)
 		{
-			SCR_ScenarioFrameworkSystem.GetCallQueue().CallLater(InitChild, 200 * i, false, child);
+			SCR_ScenarioFrameworkCallQueueSystem.GetCallQueueNonPausable().CallLater(InitChild, 200 * i, false, child);
 		}
 	}
 
@@ -815,27 +902,29 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 			SpawnPreviouslyRandomizedChildren();
 		else
 		{
-			array<SCR_ScenarioFrameworkLayerBase> aChildren = {};
-			aChildren.Copy(m_aChildren);
+			array<SCR_ScenarioFrameworkLayerBase> suitableChildren = {};
+			foreach (SCR_ScenarioFrameworkLayerBase child : m_aChildren)
+			{
+				if (child.GetDynamicDespawnEnabled())
+					continue;
+				
+				suitableChildren.Insert(child);
+			}
 
-			if (aChildren.IsEmpty())
+			if (suitableChildren.IsEmpty())
 				return;
 
 			if (m_SpawnChildren == SCR_EScenarioFrameworkSpawnChildrenType.RANDOM_BASED_ON_PLAYERS_COUNT)
 				m_iRandomPercent = Math.Ceil(GetPlayersCount() / GetMaxPlayersForGameMode() * 100);
 
-			m_iSupposedSpawnedChildren = Math.Round(m_aChildren.Count() / 100 * m_iRandomPercent);
+			m_iSupposedSpawnedChildren = Math.Round(suitableChildren.Count() * 0.01 * m_iRandomPercent);
 			SCR_ScenarioFrameworkLayerBase child;
 			for (int i = 1; i <= m_iSupposedSpawnedChildren; i++)
 			{
-				if (aChildren.IsEmpty())
-					continue;
-
-				Math.Randomize(-1);
-				child = aChildren.GetRandomElement();
+				child = suitableChildren.GetRandomElement();
 				m_aRandomlySpawnedChildren.Insert(child);
 				InitChild(child);
-				aChildren.RemoveItem(child);
+				suitableChildren.RemoveItem(child);
 			}
 		}
 	}
@@ -869,7 +958,7 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 			logic.Init();
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Restores default settings, clears children, removes spawned entities, optionally reinitializes after restoration.
 	//! \param[in] includeChildren Restores default settings for this entity and its children if includeChildren is true.
@@ -883,17 +972,17 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 		m_bInitiated = false;
 		m_bDynamicallyDespawned = false;
 		m_bIsTerminated = false;
-		
+
 		foreach (SCR_ScenarioFrameworkActionBase activationAction : m_aActivationActions)
 		{
 			activationAction.RestoreToDefault();
 		}
-		
+
 		if (includeChildren)
 		{
 			if (m_aChildren.IsEmpty())
 				GetChildren(m_aChildren);
-			
+
 			foreach (SCR_ScenarioFrameworkLayerBase child : m_aChildren)
 			{
 				child.RestoreToDefault(includeChildren, false);
@@ -908,14 +997,14 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 		{
 			SCR_EntityHelper.DeleteEntityAndChildren(entity);
 		}
-		
+
 		m_aSpawnedEntities.Clear();
-		
+
 		foreach (SCR_ScenarioFrameworkLogic logic : m_aLogic)
 		{
 			logic.RestoreToDefault();
 		}
-		
+
 		if (reinitAfterRestoration)
 			Init(m_Area);
 	}
@@ -931,7 +1020,7 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 			GetOnAllChildrenSpawned().Insert(DynamicDespawn);
 			return;
 		}
-		
+
 		if (m_bExcludeFromDynamicDespawn)
 			return;
 
@@ -940,7 +1029,9 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 		m_aChildren.RemoveItem(null);
 		foreach (SCR_ScenarioFrameworkLayerBase child : m_aChildren)
 		{
-			child.DynamicDespawn(this);
+			// Check if the child has its own Dynamic Despawn in place that is managed by the parent area and not the parent layer
+			if (!child.m_bDynamicDespawn)
+				child.DynamicDespawn(this);
 		}
 
 		m_aChildren.Clear();
@@ -959,7 +1050,7 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 	{
 		Init(GetParentArea(), SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Initialization check if already happened.
 	//! \return whether initialization has already happened.
@@ -967,7 +1058,7 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 	{
 		return m_bInitiated;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Initializes parent layer.
 	//! \return true if parent layer is already initialized, otherwise initializes it and returns true if successful.
@@ -975,11 +1066,11 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 	{
 		if (m_ParentLayer)
 			return true;
-		
+
 		m_ParentLayer = GetParentLayer();
 		return (m_ParentLayer != null);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Checks if layer is not terminated, spawns children if parent exists, returns false if terminated or children not spawnned
 	//! \return true if not terminated, otherwise false.
@@ -987,13 +1078,13 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 	{
 		if (!m_bIsTerminated)
 			return true;
-		
+
 		if (m_ParentLayer)
 			m_ParentLayer.CheckAllChildrenSpawned(this);
-			
+
 		return false;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Checks if object is not dynamically despawned, then verifies if activation type matches, spawns all children if
 	//! \param[in] activation Activation type determines if scenario object should spawn or despawn based on conditions.
@@ -1004,13 +1095,13 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 		{
 			if (m_ParentLayer)
 				m_ParentLayer.CheckAllChildrenSpawned(this);
-			
+
 			return false;
 		}
-		
+
 		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Checks activation conditions for scenario layer, sets condition status based on logic operator, checks parent layer if needed.
 	//! \return whether all activation conditions for this scenario layer have been initialized successfully.
@@ -1018,15 +1109,15 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 	{
 		if (m_aActivationConditions.IsEmpty())
 			return true;
-		
+
 		IEntity owner = GetOwner();
 		bool conditionStatus = SCR_ScenarioFrameworkActivationConditionBase.EvaluateEmptyOrConditions(m_eActivationConditionLogic, m_aActivationConditions, owner);
 		if (!conditionStatus && m_ParentLayer && calledFromInit)
 			m_ParentLayer.CheckAllChildrenSpawned(this);
-	
+
 		return conditionStatus;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Initializes area for scenario framework layer
 	//! \param[in] area sets parent area if provided or gets parent area if not provided
@@ -1036,21 +1127,21 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 		if (area)
 		{
 			m_Area = area;
-			return true;		
+			return true;
 		}
-	
+
 		m_Area = GetParentArea();
 		if (!m_Area)
 		{
 			if (m_ParentLayer)
 				m_ParentLayer.CheckAllChildrenSpawned(this);
-			
+
 			return false;
 		}
-		
+
 		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Handles inheritance of faction settings from parents
 	bool InitFactionSettings()
@@ -1060,35 +1151,35 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 			// Try Inherit
 			if (!m_ParentLayer)
 				return true;
-			
+
 			FactionKey parentFactionKey = m_ParentLayer.GetFactionKey();
 			if (!SCR_StringHelper.IsEmptyOrWhiteSpace(parentFactionKey))
 				SetFactionKey(parentFactionKey);
 			return true;
 		}
-		
+
 		// Resolve Alias
 		SCR_FactionAliasComponent factionAliasComponent = SCR_FactionAliasComponent.Cast(GetGame().GetFactionManager().FindComponent(SCR_FactionAliasComponent));
-		if (factionAliasComponent) 
+		if (factionAliasComponent)
 			SetFactionKey(factionAliasComponent.ResolveFactionAlias(GetFactionKey()));
 		// Its not a mistake if the mission creator didn't define SCR_FactionAliasComponent. It just means that alias resolution is not needed.
-		return true;  
+		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! For situations where some other logic is to be appended in these checks and is to be performed before FinishInit
 	bool InitOtherThings()
 	{
 		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! For situations where some other logic is needed to be performed before or after this Insert
 	void FinishInitChildrenInsert()
 	{
 		GetOnAllChildrenSpawned().Insert(AfterAllChildrenSpawned);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Initializes children, retrieves them, and spawns them.
 	void FinishInit()
@@ -1106,10 +1197,10 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 	{
 		if (InitAlreadyHappened())
 			return;
-		
+
 		if (!InitParentLayer())
 			return;
-		
+
 		if (!InitFactionSettings())
 			return;
 
@@ -1118,19 +1209,19 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 
 		if (!InitDynDespawnAndActivation(activation))
 			return;
-		
+
 		if (!InitActivationConditions(true))
 			return;
 
 		if (!InitArea(area))
 			return;
-		
+
 		if (!InitOtherThings())
 			return;
-		
+
 		FinishInit();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Initializes logic, plugins and actions.
 	//! \param[in] layer for which this method is called.
@@ -1165,7 +1256,7 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
 		super.EOnFrame(owner, timeSlice);
-		
+
 		if (m_bShowDebugShapesDuringRuntime)
 			DrawDebugShape(true);
 	}
@@ -1179,18 +1270,18 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 		{
 			//TODO: deactivate once the slots are not needed (after entity was spawned)
 			SetEventMask(owner, EntityEvent.INIT | EntityEvent.FRAME);
-			
+
 			if (SCR_Global.IsEditMode())
 				return;
-			
+
 			BaseGameMode gameMode = GetGame().GetGameMode();
 			if (!gameMode)
 				return;
-			
+
 			SCR_ScenarioFrameworkSystem scenarioFrameworkSystem = SCR_ScenarioFrameworkSystem.GetInstance();
 			if (!scenarioFrameworkSystem)
 				return;
-			
+
 			scenarioFrameworkSystem.ManageLayerDebugShape(GetOwner().GetID(), m_bShowDebugShapesDuringRuntime, m_fDebugShapeRadius, true);
 		}
 	}
@@ -1218,9 +1309,29 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 			m_fDebugShapeRadius
 		);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	array<ref SCR_ScenarioFrameworkActionBase> GetActions()
+	{
+		return m_aActivationActions;
+	}
+
 #ifdef WORKBENCH
-	
+
+	//------------------------------------------------------------------------------------------------
+	override int _WB_GetAfterWorldUpdateSpecs(IEntity owner, IEntitySource src)
+	{
+		return EEntityFrameUpdateSpecs.CALL_WHEN_ENTITY_VISIBLE;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Draws debug shape based on m_bShowDebugShapesInWorkbench setting in Workbench after world update.
+	//! \param[in] owner The owner represents the entity (object) calling the method.
+	//! \param[in] timeSlice TimeSlice represents the time interval for which the method is called during each frame update.
+	override void _WB_AfterWorldUpdate(IEntity owner, float timeSlice)
+	{
+		DrawDebugShape(m_bShowDebugShapesInWorkbench);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Renames all entities in the owner's children hierarchy.
@@ -1236,6 +1347,22 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 			RenameOwnerEntity(child);
 			child = child.GetSibling();
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Controls debug shape visibility in Workbench based on user input.
+	//! \param[in] owner The owner represents the entity (object) in the game world that triggers the method when its key value changes.
+	//! \param[in] src BaseContainer src represents input parameter containing key-value pairs related to the key changes in the Workbench.
+	//! \param[in] key Controls whether debug shapes are drawn in Workbench.
+	//! \param[in] ownerContainers Represents a list of containers related to the owner entity in the method.
+	//! \param[in] parent Parent represents the entity that owns the key change event, used for context in the method.
+	//! \return: Controls whether debug shapes are drawn in Workbench.
+	override bool _WB_OnKeyChanged(IEntity owner, BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent)
+	{
+		if (key == "m_bShowDebugShapesInWorkbench")
+			DrawDebugShape(m_bShowDebugShapesInWorkbench);
+
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1258,7 +1385,10 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 	//! \param[in] parent
 	void SCR_ScenarioFrameworkLayerBase(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
-		m_iDebugShapeColor = ARGB(32, 0x99, 0xF3, 0x12);
+		if (m_bDynamicDespawn)
+			m_fDebugShapeRadius = m_iDynamicDespawnRange;
+		
+		m_iDebugShapeColor = ARGB(32, 255, 255, 255);
 #ifdef WORKBENCH
 		foreach (SCR_ScenarioFrameworkPlugin plugin : m_aPlugins)
 		{
@@ -1266,14 +1396,14 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 		}
 #endif
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Removes object in edit mode or despawns it if not in edit mode.
 	void ~SCR_ScenarioFrameworkLayerBase()
 	{
 		if (SCR_Global.IsEditMode())
 			return;
-		
+
 		DynamicDespawn(this);
 	}
 }

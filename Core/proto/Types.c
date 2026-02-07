@@ -129,11 +129,15 @@ class pointer
 	proto string ToString();
 }
 
+//! Plain C++ pointer, no weak pointers, no memory management. Safe to store outside local scope.
+class global_pointer: pointer
+{
+}
+
 //! Plain 64bit data, no weak pointers, no memory management.
 class handle64: pointer
 {
 }
-
 
 class func
 {
@@ -142,7 +146,7 @@ class func
 }
 
 //! Script representation for C++ RTTI types.
-class TypeID: pointer
+class TypeID: handle64
 {
 }
 
@@ -532,7 +536,7 @@ class map<Class TKey,Class TValue>: Managed
 	/*!
 	Search for an element with the given key and remove it.
 	\param key The key of the element to find and remove.
-	\param[out] val Destination where result will be stored.
+	\param[out] value Destination where result will be stored.
 	\return `true` if element was removed.
 	*/
 	proto bool Take(TKey key, out TValue value);

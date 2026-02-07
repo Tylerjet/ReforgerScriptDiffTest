@@ -86,6 +86,12 @@ class SCR_BaseEffectManagerComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	#ifdef WORKBENCH
 		//------------------------------------------------------------------------------------------------------------
+		override int _WB_GetAfterWorldUpdateSpecs(IEntity owner, IEntitySource src)
+		{
+			return EEntityFrameUpdateSpecs.CALL_WHEN_ENTITY_VISIBLE;
+		}
+
+		//------------------------------------------------------------------------------------------------------------
 		override void _WB_AfterWorldUpdate(IEntity owner, float timeSlice)
 		{	
 			foreach (SCR_EffectModule pModule : m_aEffectModules)

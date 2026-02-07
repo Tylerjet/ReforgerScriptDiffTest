@@ -26,10 +26,25 @@ class TextureTypeProperty
 	ref array<int> m_OtherVariants;
 }
 
+enum TextureIssueOp
+{
+	Ignore = 0,
+	Report = 1 << 0,
+	Fix = 1 << 2,
+	ReportAndFix = Report | Fix,
+}
+
+enum TextureCheckResult
+{
+	NothingChanged = 0,
+	SomethingChanged = 1,
+	UnfixedFatalIssue = 2,
+}
+
 class PlatformConfig
 {
 	string m_Platform;
-	string m_ConfigFile;
+	ResourceName m_ConfigFile;
 }
 
 class TextureType
@@ -56,7 +71,7 @@ class TextureType
 		m_Properties.Insert(prop);
 	}
 
-	void AddBaseConfig(string platform, string configFile)
+	void AddBaseConfig(string platform, ResourceName configFile)
 	{
 		PlatformConfig config = new PlatformConfig;
 		config.m_Platform = platform;
@@ -64,7 +79,7 @@ class TextureType
 		m_PlatformConfigs.Insert(config);
 	}
 
-	string GetBaseConfig(string platform)
+	ResourceName GetBaseConfig(string platform)
 	{
 		foreach (PlatformConfig config : m_PlatformConfigs)
 		{
@@ -90,33 +105,29 @@ class TextureType
 
 	bool IsType(string path)
 	{
-		path.ToLower();
-		return path.Contains(m_PostFix);
+		string pathNoExt = FilePath.StripExtension(path);
+		pathNoExt.ToLower();
+		return pathNoExt.EndsWith(m_PostFix);
 	}
+}
 
-	bool TestPostFix(string resource)
-	{
-		int resourceLength = resource.Length();
-		int postFixLength = m_PostFix.Length();
-		if (resourceLength < postFixLength)
-			return false;
-
-		resource.ToLower();
-		int lastIndex = resource.LastIndexOf(m_PostFix);
-		return lastIndex == (resourceLength - postFixLength);
-	}
+class TextureTypes
+{
+	ref array<ref TextureType> m_Types;
 
 	// Property names
-	static const string Conversion = "Conversion";
-	static const string ColorSpace = "ColorSpace";
-	static const string GenerateMips = "GenerateMips";
-	static const string GenerateCubemap = "GenerateCubemap";
+	private static const string Conversion = "Conversion";
+	private static const string ColorSpace = "ColorSpace";
+	private static const string GenerateMips = "GenerateMips";
+	private static const string GenerateCubemap = "GenerateCubemap";
 
-	static void RegisterTypes(array<ref TextureType> container)
+	void TextureTypes()
 	{
+		m_Types = new array<ref TextureType>();
+
 		//--------------------------------------------------------------------
 		//color maps -> to sRGB
-		ref TextureType COType = new TextureType(container, "_CO.", );
+		ref TextureType COType = new TextureType(m_Types, "_co");
 		COType.Insert(Conversion, MetaEddsConversion, MetaEddsConversion.ColorHQCompression);
 		COType.Insert(ColorSpace, MetaEddsColorSpaceConversion, MetaEddsColorSpaceConversion.ToSrgb);
 		COType.AddBaseConfig("PC", "{EAB5DE3219F9CBA8}configs/ResourceTypes/PC/TextureColorMap.conf");
@@ -126,33 +137,33 @@ class TextureType
 		COType.AddBaseConfig("PS5", "{531A0D167B1ABD97}configs/ResourceTypes/PS5/TextureColorMap.conf");
 		COType.AddBaseConfig("HEADLESS", "{BEAF5CD0C438676E}configs/ResourceTypes/HEADLESS/TextureColorMap.conf");
 
-		ref TextureType BCType = new TextureType(container, "_BC.");
+		ref TextureType BCType = new TextureType(m_Types, "_bc");
 		BCType.CopyFrom(COType);
 
-		ref TextureType BCRType = new TextureType(container, "_BCR.");
+		ref TextureType BCRType = new TextureType(m_Types, "_bcr");
 		BCRType.CopyFrom(COType);
 
-		ref TextureType BCHType = new TextureType(container, "_BCH.");
+		ref TextureType BCHType = new TextureType(m_Types, "_bch");
 		BCHType.CopyFrom(COType);
 
-		ref TextureType CAType = new TextureType(container, "_CA.");
+		ref TextureType CAType = new TextureType(m_Types, "_ca");
 		CAType.CopyFrom(COType);
 
-		ref TextureType BCAType = new TextureType(container, "_BCA.");
+		ref TextureType BCAType = new TextureType(m_Types, "_bca");
 		BCAType.CopyFrom(COType);
 
-		ref TextureType MCType = new TextureType(container, "_MC.");
+		ref TextureType MCType = new TextureType(m_Types, "_mc");
 		MCType.CopyFrom(COType);
 
-		ref TextureType MCAType = new TextureType(container, "_MCA.");
+		ref TextureType MCAType = new TextureType(m_Types, "_mca");
 		MCAType.CopyFrom(COType);
 
-		ref TextureType MLODType = new TextureType(container, "_MLOD.");
+		ref TextureType MLODType = new TextureType(m_Types, "_mlod");
 		MLODType.CopyFrom(COType);
 
 		//--------------------------------------------------------------------
 		//EM maps
-		ref TextureType EMType = new TextureType(container, "_EM.");
+		ref TextureType EMType = new TextureType(m_Types, "_em");
 		EMType.Insert(Conversion, MetaEddsConversion, MetaEddsConversion.ColorHQCompression, {MetaEddsConversion.DXTCompression});
 		EMType.Insert(ColorSpace, MetaEddsColorSpaceConversion, MetaEddsColorSpaceConversion.ToSrgb);
 		EMType.AddBaseConfig("PC", "{EAB5DE3219F9CBA8}configs/ResourceTypes/PC/TextureColorMap.conf");
@@ -164,7 +175,7 @@ class TextureType
 
 		//--------------------------------------------------------------------
 		//MCR maps - rgb is linear overlay modificator of albedo
-		ref TextureType MCRType = new TextureType(container, "_MCR.");
+		ref TextureType MCRType = new TextureType(m_Types, "_mcr");
 		MCRType.Insert(Conversion, MetaEddsConversion, MetaEddsConversion.ColorHQCompression);
 		MCRType.Insert(ColorSpace, MetaEddsColorSpaceConversion, MetaEddsColorSpaceConversion.ToLinear, {MetaEddsColorSpaceConversion.ToSrgb});
 		MCRType.AddBaseConfig("PC", "{A6CC0A2F9DB86CBE}configs/ResourceTypes/PC/TextureMCRMap.conf");
@@ -176,28 +187,28 @@ class TextureType
 
 		//--------------------------------------------------------------------
 		//pure normal maps
-		ref TextureType NOType = new TextureType(container, "_NO.");
+		ref TextureType NOType = new TextureType(m_Types, "_no");
 		NOType.Insert(Conversion, MetaEddsConversion, MetaEddsConversion.RedGreenHQCompression);
 		NOType.AddBaseConfig("PC", "{CEA87F769FD618D2}configs/ResourceTypes/PC/TextureNormalMap.conf");
 		NOType.AddBaseConfig("XBOX_ONE", "{5B84FAB5D39FB8AA}configs/ResourceTypes/XBOX_ONE/TextureNormalMap.conf");
 		NOType.AddBaseConfig("XBOX_SERIES", "{1B409AA3788B720F}configs/ResourceTypes/XBOX_SERIES/TextureNormalMap.conf");
 		NOType.AddBaseConfig("PS4", "{9533DFD9EDDCEDD2}configs/ResourceTypes/PS4/TextureNormalMap.conf");
-		NOType.AddBaseConfig("PS5", "{5CEA2418C9F889F8}configs/ResourceTypes/PS5/TextureTerrainNormal.conf");
+		NOType.AddBaseConfig("PS5", "{30F530559C17A96E}configs/ResourceTypes/PS5/TextureNormalMap.conf");
 		NOType.AddBaseConfig("HEADLESS", "{FC84ABE4B37D0DA0}configs/ResourceTypes/HEADLESS/TextureNormalMap.conf");
 
-		ref TextureType NType = new TextureType(container, "_N.");
+		ref TextureType NType = new TextureType(m_Types, "_n");
 		NType.CopyFrom(NOType);
 
-		ref TextureType NOHQType = new TextureType(container, "_NOHQ.");
+		ref TextureType NOHQType = new TextureType(m_Types, "_nohq");
 		NOHQType.CopyFrom(NOType);
 
 		// Terrain textures are caught by this and they would require swizzle to work.
-		// ref TextureType normalType = new TextureType(container, "_normal.");
+		// ref TextureType normalType = new TextureType(m_Types, "_normal.");
 		// normalType.Insert(Conversion, MetaEddsConversion, MetaEddsConversion.RedGreenHQCompression);
 
 		//--------------------------------------------------------------------
 		//N types and packing with other sources
-		ref TextureType NMOType = new TextureType(container, "_NMO.");
+		ref TextureType NMOType = new TextureType(m_Types, "_nmo");
 		NMOType.Insert(Conversion, MetaEddsConversion, MetaEddsConversion.ColorHQCompression);
 		NMOType.AddBaseConfig("PC", "{A968DA7F9A1E3A3E}configs/ResourceTypes/PC/TextureNType.conf");
 		NMOType.AddBaseConfig("XBOX_ONE", "{7F6A4D372443A88D}configs/ResourceTypes/XBOX_ONE/TextureNType.conf");
@@ -206,17 +217,17 @@ class TextureType
 		NMOType.AddBaseConfig("PS5", "{DED3C8CA8494EA99}configs/ResourceTypes/PS5/TextureNType.conf");
 		NMOType.AddBaseConfig("HEADLESS", "{AFD658E4D0EB5FBC}configs/ResourceTypes/HEADLESS/TextureNType.conf");
 
-		ref TextureType NHOType = new TextureType(container, "_NHO.");
+		ref TextureType NHOType = new TextureType(m_Types, "_nho");
 		NHOType.CopyFrom(NMOType);
 
-		ref TextureType NTCType = new TextureType(container, "_NTC.");
+		ref TextureType NTCType = new TextureType(m_Types, "_ntc");
 		NTCType.CopyFrom(NMOType);
 
-		ref TextureType NTOType = new TextureType(container, "_NTO.");
+		ref TextureType NTOType = new TextureType(m_Types, "_nto");
 		NTOType.CopyFrom(NMOType);
 
 		//--------------------------------------------------------------------
-		ref TextureType VFXType = new TextureType(container, "_VFX.");
+		ref TextureType VFXType = new TextureType(m_Types, "_vfx");
 		VFXType.Insert(Conversion, MetaEddsConversion, MetaEddsConversion.ColorHQCompression);
 		VFXType.AddBaseConfig("PC", "{4EC6C20A754D338D}configs/ResourceTypes/PC/TextureEffect.conf");
 		VFXType.AddBaseConfig("XBOX_ONE", "{CA41B00C72F6D179}configs/ResourceTypes/XBOX_ONE/TextureEffect.conf");
@@ -227,7 +238,7 @@ class TextureType
 
 		//--------------------------------------------------------------------
 		//various masks
-		ref TextureType MASKQType = new TextureType(container, "_MASK.");
+		ref TextureType MASKQType = new TextureType(m_Types, "_mask");
 		MASKQType.Insert(Conversion, MetaEddsConversion, MetaEddsConversion.ColorHQCompression);
 		MASKQType.AddBaseConfig("PC", "{2231C67ACC4BB0AC}configs/ResourceTypes/PC/TextureMask.conf");
 		MASKQType.AddBaseConfig("XBOX_ONE", "{3B78A666261DD8B4}configs/ResourceTypes/XBOX_ONE/TextureMask.conf");
@@ -236,7 +247,7 @@ class TextureType
 		MASKQType.AddBaseConfig("PS5", "{64796311C22F7B3C}configs/ResourceTypes/PS5/TextureMask.conf");
 		MASKQType.AddBaseConfig("HEADLESS", "{0B025DFAF55852CD}configs/ResourceTypes/HEADLESS/TextureMask.conf");
 
-		ref TextureType MASK1QType = new TextureType(container, "_MASK1.");
+		ref TextureType MASK1QType = new TextureType(m_Types, "_mask1");
 		MASK1QType.Insert(Conversion, MetaEddsConversion, MetaEddsConversion.RedHQCompression);
 		MASK1QType.AddBaseConfig("PC", "{51097E750D3FCE37}configs/ResourceTypes/PC/TextureMask1.conf");
 		MASK1QType.AddBaseConfig("XBOX_ONE", "{870BE93DB3625C84}configs/ResourceTypes/XBOX_ONE/TextureMask1.conf");
@@ -245,7 +256,7 @@ class TextureType
 		MASK1QType.AddBaseConfig("PS5", "{26B26CC013B51E90}configs/ResourceTypes/PS5/TextureMask1.conf");
 		MASK1QType.AddBaseConfig("HEADLESS", "{57B7FCEE47CAABB5}configs/ResourceTypes/HEADLESS/TextureMask1.conf");
 
-		ref TextureType MASK2QType = new TextureType(container, "_MASK2.");
+		ref TextureType MASK2QType = new TextureType(m_Types, "_mask2");
 		MASK2QType.Insert(Conversion, MetaEddsConversion, MetaEddsConversion.RedGreenHQCompression);
 		MASK2QType.AddBaseConfig("PC", "{0FE15736B2B24038}configs/ResourceTypes/PC/TextureMask2.conf");
 		MASK2QType.AddBaseConfig("XBOX_ONE", "{D9E3C07E0CEFD28B}configs/ResourceTypes/XBOX_ONE/TextureMask2.conf");
@@ -254,13 +265,13 @@ class TextureType
 		MASK2QType.AddBaseConfig("PS5", "{785A4583AC38909F}configs/ResourceTypes/PS5/TextureMask2.conf");
 		MASK2QType.AddBaseConfig("HEADLESS", "{095FD5ADF84725BA}configs/ResourceTypes/HEADLESS/TextureMask2.conf");
 
-		
+
 		//camo mask
-		ref TextureType CRMType = new TextureType(container, "_CRM.");
+		ref TextureType CRMType = new TextureType(m_Types, "_crm");
 		CRMType.CopyFrom(MASKQType);
-		
+
 		//clutter mask
-		ref TextureType CMASKType = new TextureType(container, "_CMASK.");
+		ref TextureType CMASKType = new TextureType(m_Types, "_cmask");
 		CMASKType.Insert(Conversion, MetaEddsConversion, MetaEddsConversion.RedGreenHQCompression);
 		CMASKType.Insert(GenerateMips, bool, false);
 		CMASKType.AddBaseConfig("PC", "{6733F446131BB044}configs/ResourceTypes/PC/TextureCMask.conf");
@@ -269,11 +280,11 @@ class TextureType
 		CMASKType.AddBaseConfig("PS4", "{E784645532AE636D}configs/ResourceTypes/PS4/TextureCMask.conf");
 		CMASKType.AddBaseConfig("PS5", "{1088E6F30D9160E3}configs/ResourceTypes/PS5/TextureCMask.conf");
 		CMASKType.AddBaseConfig("HEADLESS", "{618D76DD59EED5C6}configs/ResourceTypes/HEADLESS/TextureCMask.conf");
-	
-		
+
+
 		//--------------------------------------------------------------------
 		//one channel
-		ref TextureType AType = new TextureType(container, "_A.");
+		ref TextureType AType = new TextureType(m_Types, "_a");
 		AType.Insert(Conversion, MetaEddsConversion, MetaEddsConversion.RedHQCompression);
 		AType.AddBaseConfig("PC", "{6B149ECE3A72EF45}configs/ResourceTypes/PC/TextureOneChannel.conf");
 		AType.AddBaseConfig("XBOX_ONE", "{DC95471339A9BC2B}configs/ResourceTypes/XBOX_ONE/TextureOneChannel.conf");
@@ -282,17 +293,17 @@ class TextureType
 		AType.AddBaseConfig("PS5", "{EE57BA009CACD0D1}configs/ResourceTypes/PS5/TextureOneChannel.conf");
 		AType.AddBaseConfig("HEADLESS", "{6866463573917E52}configs/ResourceTypes/HEADLESS/TextureOneChannel.conf");
 
-		ref TextureType HType = new TextureType(container, "_H.");
+		ref TextureType HType = new TextureType(m_Types, "_h");
 		HType.CopyFrom(AType);
 
-		ref TextureType OType = new TextureType(container, "_O.");
+		ref TextureType OType = new TextureType(m_Types, "_o");
 		OType.CopyFrom(AType);
-		
-		ref TextureType AOType = new TextureType(container, "_AO.");
+
+		ref TextureType AOType = new TextureType(m_Types, "_ao");
 		AOType.CopyFrom(AType);
 
 		//--------------------------------------------------------------------
-		ref TextureType layerType = new TextureType(container, "_layer.");
+		ref TextureType layerType = new TextureType(m_Types, "_layer");
 		layerType.Insert(Conversion, MetaEddsConversion, MetaEddsConversion.None);
 		layerType.AddBaseConfig("PC", "{A59F335F96C4442F}configs/ResourceTypes/PC/TextureTerrainLayer.conf");
 		layerType.AddBaseConfig("XBOX_ONE", "{9843D16A29542D5A}configs/ResourceTypes/XBOX_ONE/TextureTerrainLayer.conf");
@@ -301,7 +312,7 @@ class TextureType
 		layerType.AddBaseConfig("PS5", "{BA3AFE83BEFD6794}configs/ResourceTypes/PS5/TextureTerrainLayer.conf");
 		layerType.AddBaseConfig("HEADLESS", "{3B38AD285230D19F}configs/ResourceTypes/HEADLESS/TextureTerrainLayer.conf");
 
-		ref TextureType supertextureType = new TextureType(container, "_supertexture.");
+		ref TextureType supertextureType = new TextureType(m_Types, "_supertexture");
 		supertextureType.Insert(Conversion, MetaEddsConversion, MetaEddsConversion.ColorHQCompression);
 		supertextureType.Insert(ColorSpace, MetaEddsColorSpaceConversion, MetaEddsColorSpaceConversion.ToSrgb);
 		supertextureType.AddBaseConfig("PC", "{CBA1266690ABD336}configs/ResourceTypes/PC/TextureTerrainSuper.conf");
@@ -311,7 +322,7 @@ class TextureType
 		supertextureType.AddBaseConfig("PS5", "{D404EBBAB892F08D}configs/ResourceTypes/PS5/TextureTerrainSuper.conf");
 		supertextureType.AddBaseConfig("HEADLESS", "{5506B811545F4686}configs/ResourceTypes/HEADLESS/TextureTerrainSuper.conf");
 
-		ref TextureType normaltextureType = new TextureType(container, "_normal.");
+		ref TextureType normaltextureType = new TextureType(m_Types, "_normal");
 		normaltextureType.Insert(Conversion, MetaEddsConversion, MetaEddsConversion.DXTCompression);
 		normaltextureType.AddBaseConfig("PC", "{835E083C88C3D9C3}configs/ResourceTypes/PC/TextureTerrainNormal.conf");
 		normaltextureType.AddBaseConfig("XBOX_ONE", "{6C5EFFA712A52100}configs/ResourceTypes/XBOX_ONE/TextureTerrainNormal.conf");
@@ -321,7 +332,7 @@ class TextureType
 		normaltextureType.AddBaseConfig("HEADLESS", "{EAB38BDFD096C0A6}configs/ResourceTypes/HEADLESS/TextureTerrainNormal.conf");
 
 		// UI texture atlas
-		ref TextureType UITextureAtlasType = new TextureType(container, "_atlas.");
+		ref TextureType UITextureAtlasType = new TextureType(m_Types, "_atlas");
 		UITextureAtlasType.Insert(GenerateMips, bool, false);
 		UITextureAtlasType.AddBaseConfig("PC", "{1D692833852EC72A}configs/ResourceTypes/PC/TextureUIAtlas.conf");
 		UITextureAtlasType.AddBaseConfig("XBOX_ONE", "{96767353535A4256}configs/ResourceTypes/XBOX_ONE/TextureUIAtlas.conf");
@@ -331,25 +342,25 @@ class TextureType
 		UITextureAtlasType.AddBaseConfig("HEADLESS", "{15892FB1C3E30D2C}configs/ResourceTypes/HEADLESS/TextureUIAtlas.conf");
 
 		// UI textures
-		ref TextureType uiType = new TextureType(container, "_ui.");
+		ref TextureType uiType = new TextureType(m_Types, "_ui");
 		uiType.AddBaseConfig("PC", "{3549C665CAA9A8EA}configs/ResourceTypes/PC/TextureUI.conf");
 		uiType.AddBaseConfig("XBOX_ONE", "{5E6D8E2B87D36B34}configs/ResourceTypes/XBOX_ONE/TextureUI.conf");
 		uiType.AddBaseConfig("XBOX_SERIES", "{03194CD39583675A}configs/ResourceTypes/XBOX_SERIES/TextureUI.conf");
 		uiType.AddBaseConfig("PS4", "{A752014F057BCE60}configs/ResourceTypes/PS4/TextureUI.conf");
 		uiType.AddBaseConfig("PS5", "{8BEB72EF65A8FB2E}configs/ResourceTypes/PS5/TextureUI.conf");
 		uiType.AddBaseConfig("HEADLESS", "{E604D15366D985DF}configs/ResourceTypes/HEADLESS/TextureUI.conf");
-		
+
 		// UI textures uncompressed
-		ref TextureType uiTypeUncompressed = new TextureType(container, "_uiuc.");
+		ref TextureType uiTypeUncompressed = new TextureType(m_Types, "_uiuc");
 		uiTypeUncompressed.AddBaseConfig("PC", "{D256EAFDC1226362}configs/ResourceTypes/PC/TextureUIUncompressed.conf");
 		uiTypeUncompressed.AddBaseConfig("XBOX_ONE", "{712BC6681ADE741A}configs/ResourceTypes/XBOX_ONE/TextureUIUncompressed.conf");
 		uiTypeUncompressed.AddBaseConfig("XBOX_SERIES", "{B613AECC9D415504}configs/ResourceTypes/XBOX_SERIES/TextureUIUncompressed.conf");
 		uiTypeUncompressed.AddBaseConfig("PS4", "{9A726D592B629239}configs/ResourceTypes/PS4/TextureUIUncompressed.conf");
 		uiTypeUncompressed.AddBaseConfig("PS5", "{30FCD9651534E6BB}configs/ResourceTypes/PS5/TextureUIUncompressed.conf");
 		uiTypeUncompressed.AddBaseConfig("HEADLESS", "{A677FEF8099B272E}configs/ResourceTypes/HEADLESS/TextureUIUncompressed.conf");
-		
+
 		// Env. map (Generate env map from panorama, HDR compression enabled by default)
-		ref TextureType environmentMapType = new TextureType(container, "_env.");
+		ref TextureType environmentMapType = new TextureType(m_Types, "_env");
 		environmentMapType.AddBaseConfig("PC", "{009B945B41B128FC}configs/ResourceTypes/PC/TextureEnvMap.conf");
 		environmentMapType.AddBaseConfig("XBOX_ONE", "{841CE65D460ACA08}configs/ResourceTypes/XBOX_ONE/TextureEnvMap.conf");
 		environmentMapType.AddBaseConfig("XBOX_SERIES", "{13ADEB7213310A3B}configs/ResourceTypes/XBOX_SERIES/TextureEnvMap.conf");
@@ -358,25 +369,25 @@ class TextureType
 		environmentMapType.AddBaseConfig("HEADLESS", "{72CBAA83E9422B05}configs/ResourceTypes/HEADLESS/TextureEnvMap.conf");
 
 		//Lut texture
-		ref TextureType lutType = new TextureType(container, "_lut.");
+		ref TextureType lutType = new TextureType(m_Types, "_lut");
 		lutType.AddBaseConfig("PC", "{FDA8724761A5E880}configs/ResourceTypes/PC/TextureLut.conf");
 		lutType.AddBaseConfig("XBOX_ONE", "{9AE8215636729E7A}configs/ResourceTypes/XBOX_ONE/TextureLut.conf");
 		lutType.AddBaseConfig("XBOX_SERIES", "{CBB7E88AA7DE5748}configs/ResourceTypes/XBOX_SERIES/TextureLut.conf");
 		lutType.AddBaseConfig("PS4", "{F34906600DC4FE84}configs/ResourceTypes/PS4/TextureLut.conf");
 		lutType.AddBaseConfig("PS5", "{5D15FD30EDF58E3B}configs/ResourceTypes/PS5/TextureLut.conf");
 		lutType.AddBaseConfig("HEADLESS", "{3D6CF9FDEC095638}configs/ResourceTypes/HEADLESS/TextureLut.conf");
-		
+
 		//this is special type, it looks if file with same name but .fnt extension is exist next to .edds
-		ref TextureType fontType = new FontTextureType(container, "_fnt.");
+		ref TextureType fontType = new FontTextureType(m_Types, "_fnt");
 		fontType.AddBaseConfig("PC", "{F18523FA5BAAEA63}configs/ResourceTypes/PC/TextureFonts.conf");
 		fontType.AddBaseConfig("XBOX_ONE", "{02B393E0229C74CB}configs/ResourceTypes/XBOX_ONE/TextureFonts.conf");
 		fontType.AddBaseConfig("XBOX_SERIES", "{85ECC27BD918BA89}configs/ResourceTypes/XBOX_SERIES/TextureFonts.conf");
 		fontType.AddBaseConfig("PS4", "{3C102C974458DF07}configs/ResourceTypes/PS4/TextureFonts.conf");
 		fontType.AddBaseConfig("PS5", "{863E314F45203AC4}configs/ResourceTypes/PS5/TextureFonts.conf");
 		fontType.AddBaseConfig("HEADLESS", "{D20F8633D63483FA}configs/ResourceTypes/HEADLESS/TextureFonts.conf");
-		
+
 		//this is special type which will be assigned when no one from normal types above matches
-		ref TextureType unspecifiedType = new TextureType(container, "");
+		ref TextureType unspecifiedType = new TextureType(m_Types, "");
 		unspecifiedType.Insert(Conversion, MetaEddsConversion, MetaEddsConversion.DXTCompression);
 		unspecifiedType.AddBaseConfig("PC", "{DC555BD399D92412}configs/ResourceTypes/PC/TextureUnspecified.conf");
 		unspecifiedType.AddBaseConfig("XBOX_ONE", "{8F13AE697AE60784}configs/ResourceTypes/XBOX_ONE/TextureUnspecified.conf");
@@ -384,13 +395,380 @@ class TextureType
 		unspecifiedType.AddBaseConfig("PS4", "{C6CD3D8752652D2A}configs/ResourceTypes/PS4/TextureUnspecified.conf");
 		unspecifiedType.AddBaseConfig("PS5", "{6248F71B9D7C1E93}configs/ResourceTypes/PS5/TextureUnspecified.conf");
 		unspecifiedType.AddBaseConfig("HEADLESS", "{699C82A6807668A7}configs/ResourceTypes/HEADLESS/TextureUnspecified.conf");
+	}
 
-		// new TextureType(container, "_ads.");
-		// new TextureType(container, "_OcclusionRoughnessMetallic.");
-		// new TextureType(container, "_smdi.");
-		// new TextureType(container, "_dtsmdi.");
-		// new TextureType(container, "_nrm.");
-		// new TextureType(container, "_as.");
+	TextureType FindTextureType(string absFileName)
+	{
+		TextureType unspecifiedType = null;
+
+		foreach (TextureType texType : m_Types)
+		{
+			if (texType.m_PostFix == "")
+			{
+				unspecifiedType = texType;
+				continue;
+			}
+
+			if (texType.IsType(absFileName))
+				return texType;
+		}
+
+		return unspecifiedType;
+	}
+
+	TextureCheckResult DoChecks(TextureIssueOp op, ResourceName resourceName, notnull MetaFile meta)
+	{
+		int combined = 0;
+		TextureCheckResult checkRes;
+
+		checkRes = CheckConfigurations(op, resourceName, meta);
+		combined |= checkRes;
+		if (checkRes == TextureCheckResult.UnfixedFatalIssue)
+			return checkRes;
+
+		TextureType matchingType = FindTextureType(resourceName);
+		checkRes = CheckAncestors(op, resourceName, meta, matchingType);
+		combined |= checkRes;
+		if (checkRes == TextureCheckResult.UnfixedFatalIssue)
+			return checkRes;
+
+		checkRes = CheckUnnecessarySettingInPc(op, resourceName, meta);
+		combined |= checkRes;
+		if (checkRes == TextureCheckResult.UnfixedFatalIssue)
+			return checkRes;
+
+		checkRes = CheckSuspiciousNonPcSetting(op, resourceName, meta);
+		combined |= checkRes;
+		if (checkRes == TextureCheckResult.UnfixedFatalIssue)
+			return checkRes;
+
+		checkRes = CheckWrongPropertyValues(op, resourceName, meta, matchingType);
+		combined |= checkRes;
+		if (checkRes == TextureCheckResult.UnfixedFatalIssue)
+			return checkRes;
+
+		return combined;
+	}
+
+	TextureCheckResult CheckConfigurations(TextureIssueOp op, ResourceName resourceName, notnull MetaFile meta)
+	{
+		BaseContainerList configurations = meta.GetObjectArray("Configurations");
+		if (!configurations)
+		{
+			if (op & TextureIssueOp.Report)
+				PrintFormat("@\"%1\" : Meta-file is missing 'Configurations' property.", resourceName);
+
+			return TextureCheckResult.UnfixedFatalIssue;
+		}
+
+		BaseContainer confPc = configurations.Get(0);
+		string confClassPc = confPc.GetClassName();
+		if (confClassPc == "EDDSResourceClass")
+		{
+			if (op & TextureIssueOp.Report)
+				PrintFormat("@\"%1\" : Resource class is 'EDDSResourceClass'", resourceName);
+
+			return TextureCheckResult.UnfixedFatalIssue;
+		}
+
+		int numVarsPc = confPc.GetNumVars();
+		TextureCheckResult res = TextureCheckResult.NothingChanged;
+		for (int iConf = 1, countConf = configurations.Count(); iConf < countConf; iConf++)
+		{
+			BaseContainer confDerived = configurations.Get(iConf);
+			string confName = confDerived.GetName();
+			string confClassDerived = confDerived.GetClassName();
+			if (confClassPc != confClassDerived)
+			{
+				if (op & TextureIssueOp.Report)
+				{
+					PrintFormat(
+						"@\"%1\" : Configuration '%2' has wrong type: expected: '%3', found: '%4'",
+						resourceName, confName, confClassPc, confClassDerived
+					);
+				}
+				res = TextureCheckResult.UnfixedFatalIssue;
+			}
+
+			int numVarsDerived = confDerived.GetNumVars();
+			if (numVarsPc != numVarsDerived)
+			{
+				if (op & TextureIssueOp.Report)
+				{
+					PrintFormat(
+						"@\"%1\" : Configuration '%1' has wrong num vars: expected: '%2', found: '%3'",
+						resourceName, confName, numVarsPc, numVarsDerived
+					);
+				}
+				res = TextureCheckResult.UnfixedFatalIssue;
+			}
+		}
+
+		return res;
+	}
+
+	TextureCheckResult CheckAncestors(TextureIssueOp op, ResourceName resourceName, notnull MetaFile meta, notnull TextureType type)
+	{
+		BaseContainerList configurations = meta.GetObjectArray("Configurations");
+
+		bool unfixedFatalIssue = false;
+		bool somethingChanged = false;
+		for (int iConf = 0, countConf = configurations.Count(); iConf < countConf; iConf++)
+		{
+			BaseContainer config = configurations.Get(iConf);
+			string configName = config.GetName();
+			ResourceName baseConfig = type.GetBaseConfig(configName);
+
+			if (!baseConfig)
+			{
+				if (op & TextureIssueOp.Report)
+				{
+					PrintFormat("@\"%1\" : Ancestor config missing for configuration '%2'.",
+						resourceName, configName
+					);
+				}
+
+				unfixedFatalIssue = true;
+				continue;
+			}
+
+			BaseContainer ancestor = config.GetAncestor();
+			if (!ancestor || ancestor.GetResourceName() != baseConfig)
+			{
+				if (op & TextureIssueOp.Report)
+				{
+					PrintFormat("@\"%1\" : Incorrect ancestor on configuration '%2'",
+						resourceName, configName
+					);
+				}
+				if (op & TextureIssueOp.Fix)
+				{
+					config.SetAncestor(baseConfig);
+					somethingChanged = true;
+				}
+				else
+				{
+					unfixedFatalIssue = true;
+				}
+			}
+		}
+
+		if (unfixedFatalIssue)
+			return TextureCheckResult.UnfixedFatalIssue;
+		else if (somethingChanged)
+			return TextureCheckResult.SomethingChanged;
+		else
+			return TextureCheckResult.NothingChanged;
+	}
+
+	TextureCheckResult CheckUnnecessarySettingInPc(TextureIssueOp op, ResourceName resourceName, notnull MetaFile meta)
+	{
+		BaseContainerList configurations = meta.GetObjectArray("Configurations");
+		BaseContainer confPc = configurations[0];
+		BaseContainer confPcAncestor = confPc.GetAncestor();
+		if (!confPcAncestor)
+			return TextureCheckResult.NothingChanged;
+
+		bool propertiesModified = false;
+		for (int iVar = 0, countVar = confPc.GetNumVars(); iVar < countVar; iVar++)
+		{
+			string name = confPc.GetVarName(iVar);
+			if (!confPc.IsVariableSetDirectly(name))
+				continue;
+
+			int propValPc, propValPcAncestor;
+			if (!confPc.Get(name, propValPc))
+				continue;
+			if (!confPcAncestor.Get(name, propValPcAncestor))
+				continue;
+
+			if (propValPc == propValPcAncestor)
+			{
+				if (op & TextureIssueOp.Report)
+				{
+					PrintFormat(
+						"@\"%1\" : Configuration 'PC' has directly set value for property '%2', even though same value is inherited from ancestor.",
+						resourceName, name
+					);
+				}
+
+				if (op & TextureIssueOp.Fix)
+				{
+					propertiesModified = true;
+					confPc.ClearVariable(name);
+				}
+			}
+		}
+
+		if (propertiesModified)
+			return TextureCheckResult.SomethingChanged;
+		else
+			return TextureCheckResult.NothingChanged;
+	}
+
+	TextureCheckResult CheckSuspiciousNonPcSetting(TextureIssueOp op, ResourceName resourceName, notnull MetaFile meta)
+	{
+		BaseContainerList configurations = meta.GetObjectArray("Configurations");
+		BaseContainer confPc = configurations[0];
+		bool propertiesModified = false;
+		bool fatalIssue = false;
+		for (int iConf = 1, countConf = configurations.Count(); iConf < countConf; iConf++)
+		{
+			BaseContainer confDerived = configurations.Get(iConf);
+			string confName = confDerived.GetName();
+
+			for (int iVar = 0, countVar = confPc.GetNumVars(); iVar < countVar; iVar++)
+			{
+				string namePc = confPc.GetVarName(iVar);
+				string nameDerived = confDerived.GetVarName(iVar);
+				if (namePc != nameDerived)
+				{
+					if (op & TextureIssueOp.Report)
+					{
+						PrintFormat(
+							"@\"%1\" : Configuration '%2' has wrong var %3 name: expected: '%4', actual: '%5'",
+							resourceName, confName, iVar, namePc, nameDerived
+						);
+					}
+
+					fatalIssue = true;
+					continue;
+				}
+
+				bool isSetDirectlyPc = confPc.IsVariableSetDirectly(namePc);
+				bool isSetDirectlyDerived = confDerived.IsVariableSetDirectly(nameDerived);
+				if (isSetDirectlyPc)
+				{
+					int propValPc, propValDerived;
+					if (!confPc.Get(namePc, propValPc))
+						continue;
+
+					if (!confDerived.Get(nameDerived, propValDerived))
+						continue;
+
+					if (propValPc != propValDerived)
+					{
+						if (op & TextureIssueOp.Report)
+						{
+							PrintFormat(
+								"@\"%1\" : Configuration '%2' has wrong value in property '%3': expected '%4', found '%5'",
+								resourceName, confName, nameDerived, propValPc, propValDerived
+							);
+						}
+
+						if (op & TextureIssueOp.Fix)
+						{
+							propertiesModified = true;
+							confDerived.Set(nameDerived, propValPc);
+						}
+					}
+				}
+				else
+				{
+					if (isSetDirectlyDerived)
+					{
+						int propValDerived;
+						if (!confDerived.Get(nameDerived, propValDerived))
+							continue;
+
+						if (op & TextureIssueOp.Report)
+						{
+							PrintFormat(
+								"@\"%1\" : Configuration '%2' has property '%3' set directly while 'PC' doesn't. value: '%4'",
+								resourceName, confName, nameDerived, propValDerived
+							);
+						}
+
+						if (op & TextureIssueOp.Fix)
+						{
+							propertiesModified = true;
+							confDerived.ClearVariable(nameDerived);
+						}
+					}
+				}
+			}
+		}
+
+		if (fatalIssue)
+			return TextureCheckResult.UnfixedFatalIssue;
+		else if (propertiesModified)
+			return TextureCheckResult.SomethingChanged;
+		else
+			return TextureCheckResult.NothingChanged;
+	}
+
+	TextureCheckResult CheckWrongPropertyValues(TextureIssueOp op, ResourceName resourceName, notnull MetaFile meta, notnull TextureType type)
+	{
+		// This check is currently disabled because it is not clear what it should
+		// be doing now that we have introduced configs for specific texture suffixes.
+		return TextureCheckResult.NothingChanged;
+
+		BaseContainerList configurations = meta.GetObjectArray("Configurations");
+		BaseContainer confPc = configurations[0];
+
+		TextureCheckResult res = TextureCheckResult.NothingChanged;
+		foreach (TextureTypeProperty prop : type.m_Properties)
+		{
+			int propVal;
+			if (confPc.Get(prop.m_Name, propVal))
+			{
+				int propValCorrect = prop.m_Val;
+				bool isIncorrect = propVal != propValCorrect;
+				if (isIncorrect && prop.m_OtherVariants)
+				{
+					foreach (int otherVariant : prop.m_OtherVariants)
+					{
+						if (otherVariant == propVal)
+						{
+							isIncorrect = false;
+							break;
+						}
+					}
+				}
+
+				if (isIncorrect)
+				{
+					if (op & TextureIssueOp.Report)
+					{
+						string valName, valNameCorrect;
+						if (prop.m_ValType == bool)
+						{
+							if (propVal)        { valName        = "true"; } else { valName        = "false"; }
+							if (propValCorrect) { valNameCorrect = "true"; } else { valNameCorrect = "false"; }
+						}
+						else
+						{
+							valName        = typename.EnumToString(prop.m_ValType, propVal);
+							valNameCorrect = typename.EnumToString(prop.m_ValType, propValCorrect);
+						}
+						PrintFormat("@\"%1\" : Property '%2' has wrong value ('%3' instead of '%4').",
+							resourceName, prop.m_Name, valName, valNameCorrect
+						);
+					}
+
+					if (op & TextureIssueOp.Fix)
+					{
+						res = TextureCheckResult.SomethingChanged;
+						confPc.Set(prop.m_Name, propValCorrect);
+					}
+				}
+			}
+			else
+			{
+				if (op & TextureIssueOp.Report)
+				{
+					PrintFormat("@\"%1\" : Property '%2' is not set", resourceName, prop.m_Name);
+				}
+
+				if (op & TextureIssueOp.Fix)
+				{
+					res = TextureCheckResult.SomethingChanged;
+					confPc.Set(prop.m_Name, prop.m_Val);
+				}
+			}
+		}
+
+		return res;
 	}
 }
 
@@ -401,60 +779,32 @@ class FontTextureType: TextureType
 		string fntPath = FilePath.ReplaceExtension(path, "fnt");
 		return FileIO.FileExists(fntPath);
 	}
-	
-	override bool TestPostFix(string resource)
-	{
-		return IsType(resource);
-	}
 }
 
-//----------------------------------------------------------------------------------------------
-bool FixTextureMetaFile(MetaFile meta, string absFileName, array<ref TextureType> textureTypes)
-{
-	BaseContainerList configurations = meta.GetObjectArray("Configurations");
-	if(!configurations)
-		return false;
+// //----------------------------------------------------------------------------------------------
+// bool FixTextureMetaFile(MetaFile meta, string absFileName, TextureTypes textureTypes)
+// {
+// 	BaseContainerList configurations = meta.GetObjectArray("Configurations");
+// 	if(!configurations)
+// 		return false;
 
-	bool anyChangeInMetaFile = false;
+// 	bool anyChangeInMetaFile = false;
 
-	for(int c = 0; c < configurations.Count(); c++)
-	{
-		BaseContainer cfg = configurations.Get(c);
+// 	for(int c = 0; c < configurations.Count(); c++)
+// 	{
+// 		TextureType typeToAssign = textureTypes.FindTextureType(absFileName);
+// 		BaseContainer cfg = configurations.Get(c);
+// 		string cfgName = cfg.GetName();
+// 		ResourceName ancestor = typeToAssign.GetBaseConfig(cfgName);
+// 		if (ancestor != "")
+// 		{
+// 			cfg.SetAncestor(ancestor);
+// 			anyChangeInMetaFile = true;
+// 		}
+// 	}
 
-		string cfgName = cfg.GetName();
-
-		TextureType unspecifiedType = null;
-		TextureType typeToAssign = null;
-
-		foreach (TextureType texType : textureTypes)
-		{
-			if(texType.IsType(absFileName))
-			{
-				typeToAssign = texType;
-				break;
-			}
-			else if(texType.m_PostFix == "")
-			{
-				unspecifiedType = texType
-			}
-		}
-
-		if(!typeToAssign)
-			typeToAssign = unspecifiedType;
-
-		ResourceName ancestor = typeToAssign.GetBaseConfig(cfgName);
-		if(ancestor != "")
-		{
-			cfg.SetAncestor(ancestor);
-			anyChangeInMetaFile = true;
-		}
-
-//		cfg.ClearVariable(TextureType.Conversion);
-//		cfg.ClearVariable(TextureType.ColorSpace);
-	}
-
-	return anyChangeInMetaFile;
-}
+// 	return anyChangeInMetaFile;
+// }
 
 [WorkbenchPluginAttribute("Texture Import", "Texture Import Helper", "", "", {"ResourceManager"},"",0xf574)]
 class TextureImportPlugin: ResourceManagerPlugin
@@ -462,13 +812,7 @@ class TextureImportPlugin: ResourceManagerPlugin
 	[Attribute("true", UIWidgets.CheckBox)]
 	bool Enabled;
 
-	ref array<ref TextureType> m_TextureTypes = new array<ref TextureType>;
-
-	//--------------------------------------------------------------------
-	void TextureImportPlugin()
-	{
-		TextureType.RegisterTypes(m_TextureTypes);
-	}
+	ref TextureTypes m_TextureTypes = new TextureTypes();
 
 	//--------------------------------------------------------------------
 	bool IsImage(string className)
@@ -491,29 +835,22 @@ class TextureImportPlugin: ResourceManagerPlugin
 		if (!Enabled || !IsImage(conf.GetClassName()))
 			return;
 
-		FixTextureMetaFile(metaFile, absFileName, m_TextureTypes);
-/*
-		foreach (TextureType texType : m_TextureTypes)
-		{
-			if (!texType.IsType(absFileName))
-				continue;
-
-			Print("TextureImportPlugin: registering '" + texType.m_PostFix + "' texture '" + absFileName +"', " + texType.m_Properties.Count() + " properties", LogLevel.VERBOSE);
-			foreach (TextureTypeProperty prop : texType.m_Properties)
-			{
-				conf.Set(prop.m_Name, prop.m_Val);
-			}
-		}
-*/
+		TextureType type = m_TextureTypes.FindTextureType(absFileName);
+		m_TextureTypes.CheckAncestors(TextureIssueOp.Fix, absFileName, metaFile, type);
+		// FixTextureMetaFile(metaFile, absFileName, m_TextureTypes);
 	}
-	
+
 	override void OnRenameResource(string absFileNameOld, string absFileNameNew, BaseContainer metaFile)
 	{
+		Print(absFileNameOld);
+		Print(absFileNameNew);
 		BaseContainer conf = metaFile.GetObjectArray("Configurations")[0];
 		if (!Enabled || !IsImage(conf.GetClassName()))
 			return;
 
-		FixTextureMetaFile(metaFile, absFileNameNew, m_TextureTypes);
+		TextureType type = m_TextureTypes.FindTextureType(absFileNameNew);
+		m_TextureTypes.CheckAncestors(TextureIssueOp.Fix, absFileNameNew, metaFile, type);
+		// FixTextureMetaFile(metaFile, absFileNameNew, m_TextureTypes);
 	}
 
 	override void Configure()
@@ -537,41 +874,49 @@ class BatchTextureProcessorPlugin: WorkbenchPlugin
 	[Attribute("", UIWidgets.EditBox, "Check only textures whose path ends with given filter string.")]
 	string PathEndsWith;
 
-	[Attribute("false", UIWidgets.CheckBox, "Report unrecognized postfix")]
-	bool ReportUnrecognizedPostfix;
-
 	[Attribute("true", UIWidgets.CheckBox, "Report missing meta-file")]
 	bool ReportMissingMetaFile;
 
-	[Attribute("true", UIWidgets.CheckBox, "Report missing configurations")]
-	bool ReportMissingConfigurations;
+	[Attribute(
+		enumType: TextureIssueOp,
+		uiwidget: UIWidgets.ComboBox,
+		desc: "Check whether configurations are present and have correct classes."
+	)]
+	TextureIssueOp CheckConfigurations;
 
-	[Attribute("true", UIWidgets.CheckBox, "Report wrong resource class")]
-	bool ReportWrongResourceClass;
+	[Attribute(
+		enumType: TextureIssueOp,
+		uiwidget: UIWidgets.ComboBox,
+		desc: "Check whether configurations have correct ancestors."
+	)]
+	TextureIssueOp CheckAncestors;
 
-	[Attribute("true", UIWidgets.CheckBox, "Report wrong property values")]
-	bool ReportWrongPropertyValues;
+	[Attribute(
+		enumType: TextureIssueOp,
+		uiwidget: UIWidgets.ComboBox,
+		desc: "Check whether PC configuration is directly setting same value as inherited from ancestor"
+	)]
+	TextureIssueOp UnnecessarySettingInPc;
 
-	[Attribute("100", UIWidgets.SpinBox, "Number of issues that will be reported. Set 0 to report all issues.", "0 10000 1")]
-	int MaxReportCount;
+	[Attribute(
+		enumType: TextureIssueOp,
+		uiwidget: UIWidgets.ComboBox,
+		desc: "Non-PC configuration property having different value than what is directly set in PC."
+	)]
+	TextureIssueOp CheckSuspiciousNonPcSetting;
 
-	[Attribute("false", UIWidgets.CheckBox, "Fix import properties with wrong values and reimport corresponding textures.")]
-	bool FixProperties;
+	[Attribute(
+		enumType: TextureIssueOp,
+		uiwidget: UIWidgets.ComboBox,
+		desc: "Check whether properties have values matching presets."
+	)]
+	TextureIssueOp CheckWrongPropertyValues;
 
-	[Attribute("false", UIWidgets.CheckBox, "Fix inheritance of configurations")]
-	bool FixMetaFile;
+	[Attribute("true", UIWidgets.CheckBox, "Reimport changed resources")]
+	bool ReimportChanged;
 
-	[Attribute("10", UIWidgets.SpinBox, "Number of textures to fix and reimport. Can be used to shorten processing time. Set 0 to remove any restrictions.", "0 10000 1")]
-	int MaxFixCount;
-
-	ref array<ref TextureType> m_TextureTypes = new array<ref TextureType>;
+	ref TextureTypes m_TextureTypes = new TextureTypes();
 	ref array<string> m_Resources = new array<string>;
-
-	//----------------------------------------------------------------------------------------------
-	void BatchTextureProcessorPlugin()
-	{
-		TextureType.RegisterTypes(m_TextureTypes);
-	}
 
 	//----------------------------------------------------------------------------------------------
 	[ButtonAttribute("Run", true)]
@@ -635,32 +980,16 @@ class BatchTextureProcessorPlugin: WorkbenchPlugin
 
 		// TODO: Search resources in specific directory? Must filter myself.
 
-		array<ref TextureType> textureTypes = new array<ref TextureType>;
-		TextureType.RegisterTypes(textureTypes);
-		foreach (TextureType texType : textureTypes)
-		{
-			texType.m_PostFix += "edds";
-		}
-
 		SearchResourcesFilter filter = new SearchResourcesFilter();
 		filter.fileExtensions = {"edds"};
 		ResourceDatabase.SearchResources(filter, Find);
-		
+
 		m_Resources.Sort();
 
 		ResourceManager rb = Workbench.GetModule(ResourceManager);
 		WBProgressDialog progress = new WBProgressDialog("Processing...", rb);
 
-		bool noMetaFileReport = !ReportMissingMetaFile && !ReportMissingConfigurations && !ReportWrongPropertyValues;
 		float count = m_Resources.Count();
-
-		int reportCount = 0;
-
-		int reimportCountMax;
-		if (MaxFixCount > 0)
-			reimportCountMax = MaxFixCount;
-		else
-			reimportCountMax = m_Resources.Count();
 
 		array<string> toRebuild = new array<string>;
 
@@ -671,163 +1000,69 @@ class BatchTextureProcessorPlugin: WorkbenchPlugin
 			if (!TestAgainstFilter(resource))
 				continue;
 
-			TextureType matchingType = null;
-			foreach (TextureType texType : textureTypes)
-			{
-				if (texType.TestPostFix(resource))
-				{
-					matchingType = texType;
-					break;
-				}
-			}
-
-			if (!matchingType)
-			{
-				if (ReportUnrecognizedPostfix)
-				{
-					ReportIssue(reportCount, resource, "postfix is not recognized");
-				}
-				continue;
-			}
-
-			// Optimization. Loading metafiles is rather expensive (file IO), so if we don't report
-			// anything for these files, don't open them.
-			if (noMetaFileReport && !FixProperties && !FixMetaFile)
-				continue;
-
 			MetaFile meta = rb.GetMetaFile(resource);
 			if (!meta)
 			{
 				if (ReportMissingMetaFile)
-				{
-					ReportIssue(reportCount, resource, "meta-file is missing");
-				}
+					PrintFormat("@\"%1\" : Meta-file is missing.", resource);
+
 				continue;
 			}
 
-			BaseContainerList configurations = meta.GetObjectArray("Configurations");
-			if (!configurations)
+			TextureType matchingType;
+			bool metaChanged = false;
+			TextureCheckResult checkRes = TextureCheckResult.NothingChanged;
+
+			if (checkRes != TextureCheckResult.UnfixedFatalIssue)
 			{
-				if (ReportMissingConfigurations)
-				{
-					ReportIssue(reportCount, resource, "meta-file is missing 'Configurations' property");
-				}
-				meta.Release();
-				continue;
+				checkRes = m_TextureTypes.CheckConfigurations(CheckConfigurations, resource, meta);
+				if (checkRes == TextureCheckResult.SomethingChanged)
+					metaChanged = true;
 			}
 
-			BaseContainer conf = configurations.Get(0);
-			if (ReportWrongResourceClass && conf.GetClassName() == "EDDSResourceClass")
+			if (checkRes != TextureCheckResult.UnfixedFatalIssue)
 			{
-				ReportIssue(reportCount, resource, "Resource class is 'EDDSResourceClass'");
+				matchingType = m_TextureTypes.FindTextureType(resource);
+				checkRes = m_TextureTypes.CheckAncestors(CheckAncestors, resource, meta, matchingType);
+				if (checkRes == TextureCheckResult.SomethingChanged)
+					metaChanged = true;
 			}
 
-			bool propertiesModified = false;
-			if (ReportWrongPropertyValues || FixProperties)
+			if (checkRes != TextureCheckResult.UnfixedFatalIssue)
 			{
-				foreach (TextureTypeProperty prop : matchingType.m_Properties)
-				{
-					int propVal;
-					if (conf.Get(prop.m_Name, propVal))
-					{
-						int propValCorrect = prop.m_Val;
-						bool isIncorrect = propVal != propValCorrect;
-						if (isIncorrect && prop.m_OtherVariants)
-						{
-							foreach (int otherVariant : prop.m_OtherVariants)
-							{
-								if (otherVariant == propVal)
-								{
-									isIncorrect = false;
-									break;
-								}
-							}
-						}
-
-						if (isIncorrect)
-						{
-							if (ReportWrongPropertyValues)
-							{
-								string valName, valNameCorrect;
-								if (prop.m_ValType == bool)
-								{
-									if (propVal)        { valName        = "true"; } else { valName        = "false"; }
-									if (propValCorrect) { valNameCorrect = "true"; } else { valNameCorrect = "false"; }
-								}
-								else
-								{
-									valName        = typename.EnumToString(prop.m_ValType, propVal);
-									valNameCorrect = typename.EnumToString(prop.m_ValType, propValCorrect);
-								}
-								string issue = string.Format(
-									"Property '%1' has wrong value ('%2' instead of '%3').",
-									prop.m_Name, valName, valNameCorrect
-								);
-								ReportIssue(reportCount, resource, issue);
-							}
-
-							if (FixProperties && toRebuild.Count() < reimportCountMax)
-							{
-								propertiesModified = true;
-								conf.Set(prop.m_Name, propValCorrect);
-							}
-						}
-					}
-					else
-					{
-						if (ReportWrongPropertyValues)
-						{
-							ReportIssue(reportCount, resource, string.Format("Property '%1' is not set", prop.m_Name));
-						}
-
-						if (FixProperties && toRebuild.Count() < reimportCountMax)
-						{
-							propertiesModified = true;
-							conf.Set(prop.m_Name, prop.m_Val);
-						}
-					}
-				}
+				checkRes = m_TextureTypes.CheckUnnecessarySettingInPc(UnnecessarySettingInPc, resource, meta);
+				if (checkRes == TextureCheckResult.SomethingChanged)
+					metaChanged = true;
 			}
 
-			bool anyChangeInMetaFile = false;
-
-			if(FixMetaFile)
+			if (checkRes != TextureCheckResult.UnfixedFatalIssue)
 			{
-				anyChangeInMetaFile = FixTextureMetaFile(meta, resource, m_TextureTypes);
-
-				if(anyChangeInMetaFile)
-					Print(resource);
+				checkRes = m_TextureTypes.CheckSuspiciousNonPcSetting(CheckSuspiciousNonPcSetting, resource, meta);
+				if (checkRes == TextureCheckResult.SomethingChanged)
+					metaChanged = true;
 			}
 
-			if (propertiesModified || anyChangeInMetaFile )
+			if (checkRes != TextureCheckResult.UnfixedFatalIssue)
+			{
+				checkRes = m_TextureTypes.CheckWrongPropertyValues(CheckWrongPropertyValues, resource, meta, matchingType);
+				if (checkRes == TextureCheckResult.SomethingChanged)
+					metaChanged = true;
+			}
+
+			if (metaChanged)
 			{
 				meta.Save();
-
-				if(!FixMetaFile)
-					toRebuild.Insert(resource);
+				toRebuild.Insert(resource);
 			}
 			meta.Release();
 		}
 
-		if (MaxReportCount > 0 && reportCount > MaxReportCount)
-			PrintFormat("... and %1 more issues.", reportCount);
-
-		if (toRebuild.Count() > 0)
+		if (ReimportChanged && toRebuild.Count() > 0)
 		{
 			Print("Reimporting modified resources.");
 			rb.RebuildResourceFiles(toRebuild, "PC");
 		}
 
 		m_Resources.Clear();
-	}
-
-	//----------------------------------------------------------------------------------------------
-	void ReportIssue(inout int reportCount, string resource, string issue)
-	{
-		reportCount++;
-		if (MaxReportCount > 0 && reportCount > MaxReportCount)
-			return;
-
-		PrintFormat("@\"%1\" : %2", resource, issue);
 	}
 }

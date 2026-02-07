@@ -11,7 +11,11 @@ class SCR_Tutorial_CombatEngineering_Move_3 : SCR_BaseTutorialStage
 	{
 		RegisterWaypoint("WP_CE_PATH3");
 
-		SCR_Waypoint wp = RegisterWaypoint("WP_CE_PATH6");
+		IEntity wpEnt = GetGame().GetWorld().FindEntityByName("WP_CE_PATH6");
+		if (wpEnt)
+			UnregisterWaypoint(wpEnt);
+		
+		SCR_Waypoint wp = RegisterWaypoint(wpEnt);
 		if (wp)
 			wp.m_iMaximumDrawDistance = 50
 	}

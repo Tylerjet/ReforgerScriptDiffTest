@@ -108,8 +108,62 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 		SCR_BaseTaskManager.s_OnTaskDeleted.Insert(OnTasksChanged);
 	}
 	
+	//======================================== FACTION RELATIONSHIP REPLICATION ========================================\\
+	//------------------------------------------------------------------------------------------------
+	//! Replicates the setting faction to friendly. Called by SCR_FactionManager (Server only)
+	//! \param[in] FactionIndex index to set faction friendly to
+	void SetFactionFriendly_S(int FactionIndex)
+	{
+		Rpc(SetFactionFriendlyBroadcast, FactionIndex);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void SetFactionFriendlyBroadcast(int FactionIndex)
+	{
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!SCR_FactionManager)
+			return;
+		
+		SCR_Faction refFaction = SCR_Faction.Cast(m_Faction);
+		if (!refFaction)
+			return;
+		
+		SCR_Faction scrFaction = SCR_Faction.Cast(factionManager.GetFactionByIndex(FactionIndex));
+		if (!scrFaction)
+			return;
+		
+		factionManager.SetFactionsFriendly(refFaction, scrFaction, updateAIs: false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Replicates the setting faction to hostile. Called by SCR_FactionManager (Server Only)
+	//! \param[in] FactionIndex index to set faction hostile to
+	void SetFactionHostile_S(int FactionIndex)
+	{
+		Rpc(SetFactionHostileBroadcast, FactionIndex);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void SetFactionHostileBroadcast(int FactionIndex)
+	{
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!SCR_FactionManager)
+			return;
+		
+		SCR_Faction refFaction = SCR_Faction.Cast(m_Faction);
+		if (!refFaction)
+			return;
+		
+		SCR_Faction scrFaction = SCR_Faction.Cast(factionManager.GetFactionByIndex(FactionIndex));
+		if (!scrFaction)
+			return;
+		
+		factionManager.SetFactionsHostile(refFaction, scrFaction, updateAIs: false);
+	}
+	
 	//======================================== FACTION SPAWNPOINTS ========================================\\
-
 	//------------------------------------------------------------------------------------------------
 	// Called on server
 	protected void InitSpawnPointCount()
@@ -347,6 +401,31 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 		writer.WriteInt(m_iTaskCount);
 		writer.WriteBool(m_ScrFaction.IsPlayable());
 		
+		SCR_Faction factionRef = SCR_Faction.Cast(m_Faction);
+		if (!factionRef)
+			return true;
+		
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
+			return true;
+		
+		array<Faction> factions = {};
+		factionManager.GetFactionsList(factions);
+		SCR_Faction scrFaction;
+		
+		//~ Write if faction is hostile or friendly
+		foreach (Faction faction : factions)
+		{
+			scrFaction = SCR_Faction.Cast(faction);
+			if (!scrFaction)
+				continue;
+			
+			if (scrFaction.DoCheckIfFactionFriendly(factionRef))
+				writer.WriteBool(true);
+			else
+				writer.WriteBool(false);
+		}
+		
 		return true;
 	}
 	
@@ -365,6 +444,35 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 		SetFactionIndexBroadcast(m_iFactionIndex);
 		InitSpawnPointCountBroadcast(spawnPointCount);
 		InitTaskCountBroadcast(taskCount);
+		
+		SCR_Faction factionRef = SCR_Faction.Cast(m_Faction);
+		if (!factionRef)
+			return true;
+		
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
+			return true;
+		
+		array<Faction> factions = {};
+		factionManager.GetFactionsList(factions);
+		SCR_Faction scrFaction;
+		
+		bool isFriendly;
+		
+		//~ Read if faction is hostile or friendly and set the faction to hostile or friendly
+		foreach (Faction faction : factions)
+		{
+			scrFaction = SCR_Faction.Cast(faction);
+			if (!scrFaction)
+				continue;
+			
+			reader.ReadBool(isFriendly);
+			
+			if (isFriendly)
+				factionManager.SetFactionsFriendly(factionRef, scrFaction);
+			else 
+				factionManager.SetFactionsHostile(factionRef, scrFaction);
+		}
 		
 		return true;
 	}

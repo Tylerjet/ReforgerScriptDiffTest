@@ -69,7 +69,7 @@ class ChimeraMenuBase : MenuBase
 {
 
 //---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
-// The base scripted menu class should not give a crap about edit boxes
+// The base scripted menu class should not care about edit boxes
 	
 	// Editbox type check
 	protected const string INPUT_CONTEXT_EDIT = "MenuTextEditContext";

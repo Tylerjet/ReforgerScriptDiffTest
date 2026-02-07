@@ -69,7 +69,7 @@ class SCR_NTIconState : SCR_NTIconBase
 {
 	[Attribute("0", UIWidgets.CheckBox, "Whether this element should use defined faction rank icons in default state")]
 	protected bool m_bUseRanks;
-					
+	
 	//------------------------------------------------------------------------------------------------
 	override void SetDefaults(SCR_NameTagData data, int index)
 	{		
@@ -81,7 +81,7 @@ class SCR_NTIconState : SCR_NTIconBase
 		
 		ImageWidget iWidget = ImageWidget.Cast( data.m_aNametagElements[index] );
 		if (iWidget)
-		{						
+		{
 			SCR_NTStateIcon stateConf = SCR_NTStateIcon.Cast( GetEntityStateConfig(data) );
 			if (stateConf)
 			{
@@ -100,12 +100,17 @@ class SCR_NTIconState : SCR_NTIconBase
 [BaseContainerProps(), SCR_NameTagElementTitle()]
 class SCR_NTIconPlatform : SCR_NTIconBase
 {	
+	BaseContainer m_GameplaySettings;
+
 	//------------------------------------------------------------------------------------------------	
 	override void SetDefaults(SCR_NameTagData data, int index)
 	{
 		ImageWidget iWidget = ImageWidget.Cast( data.m_aNametagElements[index] );
 		if (!iWidget)
 			return;
+		
+		if (!m_GameplaySettings)
+			m_GameplaySettings = GetGame().GetGameUserSettings().GetModule("SCR_GameplaySettings");
 		
 		data.SetVisibility(iWidget, false, 0, false);
 		
@@ -119,9 +124,13 @@ class SCR_NTIconPlatform : SCR_NTIconBase
 		if (!playerController)
 			return;
 		
+		bool showOnPC;
+		if (m_GameplaySettings)
+			m_GameplaySettings.Get("m_bPlatformIconNametag", showOnPC);
+		
 		if (data.m_eType == ENameTagEntityType.PLAYER)
 		{
-			if (playerController.SetPlatformImageTo(data.m_iPlayerID, iWidget))
+			if (playerController.SetPlatformImageTo(data.m_iPlayerID, iWidget, showOnPC : showOnPC))
 				data.SetVisibility(iWidget, true, 100, false);
 		}
 		else if (data.m_eType == ENameTagEntityType.VEHICLE)
@@ -130,7 +139,7 @@ class SCR_NTIconPlatform : SCR_NTIconBase
 			if (!data)
 				return; 
 			
-			if (playerController.SetPlatformImageTo(tagData.m_aPassengers[0].m_iPlayerID, iWidget))
+			if (playerController.SetPlatformImageTo(tagData.GetMainPlayerID(), iWidget, showOnPC : showOnPC))
 				data.SetVisibility(iWidget, true, 100, false);
 		}
 	}
@@ -154,9 +163,13 @@ class SCR_NTIconPlatform : SCR_NTIconBase
 		if (!playerController)
 			return;
 		
+		bool showOnPC;
+		if (m_GameplaySettings)
+			m_GameplaySettings.Get("m_bPlatformIconNametag", showOnPC);
+		
 		if (data.m_eType == ENameTagEntityType.PLAYER)
 		{
-			if (playerController.SetPlatformImageTo(data.m_iPlayerID, image))
+			if (playerController.SetPlatformImageTo(data.m_iPlayerID, image, showOnPC : showOnPC))
 				data.SetVisibility(image, true, 100, false);
 		} 
 		else if (data.m_eType == ENameTagEntityType.VEHICLE)
@@ -165,7 +178,7 @@ class SCR_NTIconPlatform : SCR_NTIconBase
 			if (!tagData)
 				return; 
 			
-			if (playerController.SetPlatformImageTo(tagData.m_aPassengers[0].m_iPlayerID, image))
+			if (playerController.SetPlatformImageTo(tagData.GetMainPlayerID(), image, showOnPC : showOnPC))
 				tagData.SetVisibility(image, true, 100, false);
 		}
 	}

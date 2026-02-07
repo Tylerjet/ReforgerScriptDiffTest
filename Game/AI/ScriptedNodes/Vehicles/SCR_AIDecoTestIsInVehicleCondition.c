@@ -26,11 +26,12 @@ class SCR_AIDecoTestIsInVehicleCondition : DecoratorTestScripted
 			return false;
 		}
 		
+		
+		
 		array<AIAgent> agents = {};
 		
 		ref array<IEntity> vehicles = {};
-		group.GetUsableVehicles(vehicles);
-		
+		group.GetGroupUtilityComponent().m_VehicleMgr.GetAllVehicleEntities(vehicles);
 		bool noAvailableVehicles = true;
 		foreach (IEntity vehicle: vehicles)
 		{

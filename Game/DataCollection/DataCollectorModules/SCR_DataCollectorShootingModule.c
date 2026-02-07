@@ -169,22 +169,19 @@ class SCR_DataCollectorShootingModule : SCR_DataCollectorModule
 		//~ Add an AI kill or friendly kill stats
 		if (instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER))
 		{
-			killerData.AddStat(SCR_EDataStats.AI_KILLS);
+			if (!instigatorContextData.IsEnemyKillPunished(SCR_EDisguisedKillingPunishment.WARCRIME))
+				killerData.AddStat(SCR_EDataStats.AI_KILLS);
+			//~ Killing while disguised is a warcrime
+			else 
+				killerData.AddStat(SCR_EDataStats.FRIENDLY_AI_KILLS);
+			
 			return;
 		}
 		else
 		{
-			//~ Friendly kills do not count for admins, GMs and possessed AI by GM
-			SCR_ECharacterControlType killerControlType = instigatorContextData.GetKillerCharacterControlType();
-			if (killerControlType == SCR_ECharacterControlType.UNLIMITED_EDITOR || killerControlType == SCR_ECharacterControlType.POSSESSED_AI)
-				return;
+			if (instigatorContextData.DoesPlayerKillCountAsTeamKill())
+				killerData.AddStat(SCR_EDataStats.FRIENDLY_AI_KILLS);
 			
-			//~ Friendly kills only counted if friendly fire is punished else the player can rank up a massive crime score
-			SCR_AdditionalGameModeSettingsComponent additionalGameModeSettings = SCR_AdditionalGameModeSettingsComponent.GetInstance();
-			if (additionalGameModeSettings && !additionalGameModeSettings.IsTeamKillingPunished())
-				return;
-				
-			killerData.AddStat(SCR_EDataStats.FRIENDLY_AI_KILLS);
 			return;
 		}	
 	}
@@ -220,22 +217,19 @@ class SCR_DataCollectorShootingModule : SCR_DataCollectorModule
 			//~ Add an AI kill or friendly kill stats
 			if (instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER))
 			{
-				killerData.AddStat(SCR_EDataStats.AI_KILLS);
+				if (!instigatorContextData.IsEnemyKillPunished(SCR_EDisguisedKillingPunishment.WARCRIME))
+					killerData.AddStat(SCR_EDataStats.AI_KILLS);
+				//~ Killing while disguised is a warcrime
+				else 
+					killerData.AddStat(SCR_EDataStats.FRIENDLY_AI_KILLS);
+				
 				return;
 			}
 			else
-			{
-				//~ Friendly kills do not count for admins, GMs and possessed AI by GM
-				SCR_ECharacterControlType killerControlType = instigatorContextData.GetKillerCharacterControlType();
-				if (killerControlType == SCR_ECharacterControlType.UNLIMITED_EDITOR || killerControlType == SCR_ECharacterControlType.POSSESSED_AI)
-					return;
+			{			
+				if (instigatorContextData.DoesPlayerKillCountAsTeamKill(possessedKillsCount: true))	
+					killerData.AddStat(SCR_EDataStats.FRIENDLY_AI_KILLS);
 				
-				//~ Friendly kills only counted if friendly fire is punished else the player can rank up a massive crime score
-				SCR_AdditionalGameModeSettingsComponent additionalGameModeSettings = SCR_AdditionalGameModeSettingsComponent.GetInstance();
-				if (additionalGameModeSettings && !additionalGameModeSettings.IsTeamKillingPunished())
-					return;
-				
-				killerData.AddStat(SCR_EDataStats.FRIENDLY_AI_KILLS);
 				return;
 			}
 		}
@@ -243,22 +237,19 @@ class SCR_DataCollectorShootingModule : SCR_DataCollectorModule
 		//~ Add kill or friendly kill stats
 		if (instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER))
 		{
-			killerData.AddStat(SCR_EDataStats.KILLS);
+			if (!instigatorContextData.IsEnemyKillPunished(SCR_EDisguisedKillingPunishment.WARCRIME))
+				killerData.AddStat(SCR_EDataStats.KILLS);
+			//~ Killing while disguised is a warcrime
+			else 
+				killerData.AddStat(SCR_EDataStats.FRIENDLY_KILLS);
+			
 			return;
 		}
 		else
 		{
-			//~ Friendly kills do not count for admins, GMs and possessed AI by GM
-			SCR_ECharacterControlType killerControlType = instigatorContextData.GetKillerCharacterControlType();
-			if (killerControlType == SCR_ECharacterControlType.UNLIMITED_EDITOR || killerControlType == SCR_ECharacterControlType.POSSESSED_AI)
-				return;
+			if (instigatorContextData.DoesPlayerKillCountAsTeamKill())
+				killerData.AddStat(SCR_EDataStats.FRIENDLY_KILLS);
 			
-			//~ Friendly kills only counted if friendly fire is punished else the player can rank up a massive crime score
-			SCR_AdditionalGameModeSettingsComponent additionalGameModeSettings = SCR_AdditionalGameModeSettingsComponent.GetInstance();
-			if (additionalGameModeSettings && !additionalGameModeSettings.IsTeamKillingPunished())
-				return;
-			
-			killerData.AddStat(SCR_EDataStats.FRIENDLY_KILLS);
 			return;
 		}
 			

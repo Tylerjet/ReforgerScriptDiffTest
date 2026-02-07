@@ -72,7 +72,7 @@ class SCR_EffectModule
 		vector transform[4];
 		m_effectPosition.GetLocalTransform(transform);
 		
-		ParticleEffectEntitySpawnParams spawnParams();
+		ParticleEffectEntitySpawnParams spawnParams = new ParticleEffectEntitySpawnParams();
 		spawnParams.UseFrameEvent = true;
 		spawnParams.Parent = m_owner;
 		spawnParams.PivotID = m_effectPosition.GetNodeId();
@@ -398,8 +398,7 @@ class SCR_BaseEffectParticleHelicopterRotorControlAction: SCR_BaseEffectParticle
 	const int RPM_THRESHOLD = 50;	//when to enable or disable the rotor wash effect
 	protected int m_iSignalID;
 	SignalsManagerComponent m_SignalManager;
-	Physics m_Physics;
-	Particles m_Effect;
+	ParticleEffectEntity m_EffectEntity;
 		
 	//------------------------------------------------------------------------------------------------
 	override void Init(notnull SCR_EffectModule module)
@@ -410,36 +409,50 @@ class SCR_BaseEffectParticleHelicopterRotorControlAction: SCR_BaseEffectParticle
 			return;
 
 		m_iSignalID = m_SignalManager.FindSignal(SIGNAL_RPM);
-		m_Physics = module.GetOwner().GetPhysics();
 	}	
 	
 	//------------------------------------------------------------------------------------------------
 	override void Update()
 	{
 		//PrintFormat("Signal value = %1", m_SignalManager.GetSignalValue(m_iSignalID));
-			
-		if ( !m_Effect && m_SignalManager.GetSignalValue(m_iSignalID) > RPM_THRESHOLD ) //engine is started, but effect hasn't been yet created
+
+		Particles particles;
+		if (m_EffectEntity)
+			particles = m_EffectEntity.GetParticles();
+
+		if (!particles && m_SignalManager.GetSignalValue(m_iSignalID) > RPM_THRESHOLD)	// engine is started, but effect hasn't been yet created
 		{
 			m_Module.TurnOn();
-		} else if ( m_Effect && m_SignalManager.GetSignalValue(m_iSignalID) < RPM_THRESHOLD )	//engine was already running. Now is turned off and RPM went down
+		}
+		else
+		if (particles && m_SignalManager.GetSignalValue(m_iSignalID) < RPM_THRESHOLD)	// engine was already running. Now is turned off and RPM went down
 		{
 			m_Module.TurnOff();	
-			m_Effect = null;
-		}	
-		
-		if (!m_Effect && m_Module.GetEmitter() )	
-			m_Effect = m_Module.GetEmitter().GetParticles();	//get the particles
-		
-				
-		if (m_Effect && m_Physics && m_ExhaustEndSpeedInM > 0)
+			m_EffectEntity = null;
+			particles = null;
+		}
+
+		if (!particles && m_Module.GetEmitter())
 		{
-			vector velocity_vector = m_Physics.GetVelocity();
-			float speed_m_per_s = velocity_vector.Length();
-			
-			float lifetime_scale = Math.Clamp( 1 - (speed_m_per_s / m_ExhaustEndSpeedInM) , 0 , 1 );
-			
- 			m_Effect.MultParam(-1, EmitterParam.LIFETIME,     lifetime_scale);
-			m_Effect.MultParam(-1, EmitterParam.LIFETIME_RND, lifetime_scale);
-		}		
+			m_EffectEntity = m_Module.GetEmitter();
+			if (m_EffectEntity)
+				particles = m_EffectEntity.GetParticles(); // get the particles
+		}
+
+		if (!particles)
+			return;
+
+		if (m_ExhaustEndSpeedInM <= 0)
+			return;
+		
+		Physics physics = m_Module.GetOwner().GetPhysics();
+		if (!physics)
+			return;
+
+		float speed_m_per_s = physics.GetVelocity().Length();
+		float lifetime_scale = Math.Clamp(1 - (speed_m_per_s / m_ExhaustEndSpeedInM), 0, 1);
+
+		particles.MultParam(-1, EmitterParam.LIFETIME,		lifetime_scale);
+		particles.MultParam(-1, EmitterParam.LIFETIME_RND,	lifetime_scale);
 	}
 }

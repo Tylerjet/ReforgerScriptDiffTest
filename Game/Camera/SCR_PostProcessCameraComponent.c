@@ -83,7 +83,7 @@ class SCR_CameraPostProcessEffect
 	private ResourceName m_MaterialPath;
 	
 	private int m_iCameraId;
-	private Material m_Material;
+	private ref Material m_Material;
 	
 	//------------------------------------------------------------------------------------------------
 	//! \return
@@ -125,7 +125,7 @@ class SCR_CameraPostProcessEffect
 		m_Material = Material.GetMaterial(material);
 		if (!m_Material)
 		{
-			Print(string.Format("Error when loading post-process material '%1'! Please check effect priority.", material), LogLevel.ERROR);
+			Print(string.Format("Error when loading post-process material '%1'!", material), LogLevel.ERROR);
 			DeleteEffect();
 			return;
 		}

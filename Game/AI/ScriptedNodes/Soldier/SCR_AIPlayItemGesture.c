@@ -3,7 +3,7 @@ class SCR_AIPlayItemGesture : AITaskScripted
 	[Attribute("", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EItemGesture) )]
 	protected EItemGesture m_eGesture;
 	
-	override string GetOnHoverDescription() { return "Calls CharacterControllerComponent.TryPlayItemGesture"; }
+	static override string GetOnHoverDescription() { return "Calls CharacterControllerComponent.TryPlayItemGesture"; }
 	override static bool VisibleInPalette() { return true; }
 	
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)

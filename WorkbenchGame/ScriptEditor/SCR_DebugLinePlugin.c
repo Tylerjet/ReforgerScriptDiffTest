@@ -1,40 +1,23 @@
 #ifdef WORKBENCH
-[WorkbenchPluginAttribute(name: "Insert Debug Line", description: "", shortcut: "Ctrl+Shift+D", wbModules: { "ScriptEditor" }, awesomeFontCode: 0xF1CD)]
+[WorkbenchPluginAttribute(name: "Debug Line Shortcut", description: "Insert a debug line, as formatted in its options", shortcut: "Ctrl+Shift+D", wbModules: { "ScriptEditor" }, awesomeFontCode: 0xF1CD)]
 class SCR_DebugLinePlugin : WorkbenchPlugin
 {
-	[Attribute(defvalue: "DEBUG LINE", desc: "Text shown at the beginning of each debug line.")]
-	protected string m_sPrefix;
+	[Attribute(defvalue: "[%1.%2] debug line (%4 L%5)", desc: "Text to be printed in the debug line"
+		+ "\n- %1 = class name (as string, hardcoded)"
+		+ "\n- %2 = method name (as string, hardcoded)"
+		+ "\n- %3 = file name (as preprocess command)"
+		+ "\n- %4 = file's full path (as preprocessor command)"
+		+ "\n- %5 = debug line number (as preprocessor command)", uiwidget: UIWidgets.EditBoxMultiline, category: "Format")]
+	protected string m_sFormat;
 
-	[Attribute(desc: "When enabled, debug text will be inserted at the cursor position instead of on a new line.")]
-	protected bool m_bInline;
+	[Attribute(defvalue: LogLevel.WARNING.ToString(), uiwidget: UIWidgets.ComboBox, desc: "Log level of the debug line",
+		enums: GetLogLevelEnumOptions(),
+		category: "Log Level"
+	)]
+	protected LogLevel m_eLogLevel;
 
-	[Attribute(desc: "When enabled, current script file name will be shown as full path, i.e., including directories.")]
-	protected bool m_bShowFullPath;
-
-	[Attribute(desc: "When enabled, debug line will include template for custom variables.")]
+	[Attribute(defvalue: "0", desc: "Make debug line use PrintFormat to output custom variables", category: "Format")]
 	protected bool m_bIncludeParams;
-
-	[Attribute(defvalue: SCR_Enum.GetDefault(LogLevel.DEBUG), uiwidget: UIWidgets.ComboBox, desc: "Log level of the debug line.", enums: ParamEnumArray.FromEnum(LogLevel))]
-	protected LogLevel m_LogLevel;
-
-	//------------------------------------------------------------------------------------------------
-	//! Get a formatted debug line
-	//! \param[in] fileFormat the file's display format - usually full path or just filename
-	//! \return the displayed debug output
-	protected string GetDebugLine(string fileFormat)
-	{
-		string prefix = m_sPrefix;
-		if (!prefix.IsEmpty())
-			prefix = "\"" + prefix + " | \" + ";
-
-		string lineText;
-		if (m_bIncludeParams)
-			lineText = "Print(string.Format(%1" + fileFormat + " + \":" + __LINE__ + " | %%1\", this), LogLevel.%2);";
-		else
-			lineText = "Print(%1" + fileFormat + " + \":\" + __LINE__, LogLevel.%2);";
-
-		return string.Format(lineText, prefix, typename.EnumToString(LogLevel, m_LogLevel));
-	}
 
 	//------------------------------------------------------------------------------------------------
 	override void Run()
@@ -48,46 +31,123 @@ class SCR_DebugLinePlugin : WorkbenchPlugin
 			return;
 		}
 
-		if (m_bShowFullPath)
-			fileFormat = "__FILE__";
-		else
-			fileFormat = "FilePath.StripPath(__FILE__)";
-
 		string lineText;
 		scriptEditor.GetLineText(lineText);
 
-		if (m_bInline)
+		int tabIndex = lineText.LastIndexOf(SCR_StringHelper.TAB);
+		if (lineText.EndsWith("{"))
+			tabIndex++;
+
+		string tabPrefix;
+		for (int i; i <= tabIndex; ++i)
 		{
-			lineText += GetDebugLine(fileFormat);
-			scriptEditor.SetLineText(lineText);
+			tabPrefix += SCR_StringHelper.TAB;
+		}
+
+		int nextLine = scriptEditor.GetCurrentLine() + 1;
+		string debugLine = tabPrefix + GetDebugLine(scriptEditor);
+		scriptEditor.InsertLine(debugLine, nextLine);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get a formatted debug line
+	//! \param[in] scriptEditor
+	//! \return the debug output ("Print(" + formatted text + ", " + logLevel + ");"
+	protected string GetDebugLine(notnull ScriptEditor scriptEditor)
+	{
+		string debugLine = m_sFormat;
+		debugLine.TrimInPlace();
+		if (!debugLine)
+		{
+			if (m_bIncludeParams)
+				return "PrintFormat(\"%1\", this);";
+			else
+				return "Print(\"test\");";
+		}
+
+		string className, methodName;
+
+		if (debugLine.Contains("%1"))
+		{
+			if (!className)
+				SCR_CopyClassAndMethodPlugin.GetCursorClassAndMethodNames(scriptEditor, className, methodName);
+
+			debugLine.Replace("%1", className);
+		}
+
+		if (debugLine.Contains("%2"))
+		{
+			if (!className) // methodName can be empty
+				SCR_CopyClassAndMethodPlugin.GetCursorClassAndMethodNames(scriptEditor, className, methodName);
+
+			debugLine.Replace("%2", methodName);
+		}
+
+		if (debugLine.Contains("%3"))
+			debugLine.Replace("%3", "\" + FilePath.StripPath(__FILE__) + \"");
+
+		if (debugLine.Contains("%4"))
+			debugLine.Replace("%4", "\" + __FILE__ + \"");
+
+		if (debugLine.Contains("%5"))
+			debugLine.Replace("%5", "\" + __LINE__ + \"");
+
+		if (m_bIncludeParams)
+		{
+			debugLine = "PrintFormat(\"" + debugLine + "\", this";
+			if (m_eLogLevel > -1 && m_eLogLevel != int.MAX)
+				debugLine += ", level: LogLevel." + typename.EnumToString(LogLevel, m_eLogLevel);
 		}
 		else
 		{
-			int tabIndex = lineText.LastIndexOf("\t");
-			if (lineText.EndsWith("{"))
-				tabIndex++;
-
-			string tabPrefix = string.Empty;
-			for (int i = 0; i <= tabIndex; i++)
-			{
-				tabPrefix += "\t";
-			}
-
-			int nextLine = scriptEditor.GetCurrentLine() + 1;
-			scriptEditor.InsertLine(tabPrefix + GetDebugLine(fileFormat), nextLine);
+			debugLine = "Print(\"" + debugLine + "\"";
+			if (m_eLogLevel > -1 && m_eLogLevel != int.MAX)
+				debugLine += ", LogLevel." + typename.EnumToString(LogLevel, m_eLogLevel);
 		}
+
+		debugLine += ");";
+
+		return debugLine;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return LogLevel ParamEnumArray, with a leading "no logLevel" value
+	protected static ParamEnumArray GetLogLevelEnumOptions()
+	{
+		typename e = LogLevel;
+		ParamEnumArray result = { new ParamEnum("No LogLevel (temporary Print)", "-1") };
+
+		int val;
+		string firstLetter;
+		string displayName;
+
+		for (int i, count = e.GetVariableCount(); i < count; ++i)
+		{
+			if (e.GetVariableType(i) == int && e.GetVariableValue(null, i, val))
+			{
+				displayName = e.GetVariableName(i);
+				firstLetter = displayName[0];
+				firstLetter.ToUpper(); // not needed as they are all uppercase
+				displayName.ToLower();
+				displayName = firstLetter + displayName.Substring(1, displayName.Length() - 1);
+				result.Insert(new ParamEnum(displayName, val.ToString()));
+			}
+		}
+
+		return result;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override void Configure()
 	{
-		Workbench.ScriptDialog("Configure 'Insert Debug Line' plugin", "", this);
+		Workbench.ScriptDialog("Configure the 'Insert Debug Line' plugin", "", this);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	[ButtonAttribute("Close")]
 	protected bool ButtonClose()
 	{
+		return true;
 	}
 }
 #endif // WORKBENCH

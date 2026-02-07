@@ -28,7 +28,7 @@ class SCR_AILimitStance : AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 	
 	//------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsOut = { STANCE_OUT_PORT };
@@ -46,5 +46,5 @@ class SCR_AILimitStance : AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------
-	override string GetOnHoverDescription() { return "Limits stance value within a range"; };
+	static override string GetOnHoverDescription() { return "Limits stance value within a range"; };
 }

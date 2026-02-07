@@ -40,6 +40,9 @@ class SCR_DamageManagerComponentClass : DamageManagerComponentClass
 
 class SCR_DamageManagerComponent : DamageManagerComponent
 {
+	[Attribute(defvalue: SCR_EBurningState.SMOKING_LIGHT.ToString(), uiwidget: UIWidgets.ComboBox, desc: "State from which vehicle will be considered on fire thus players will be able to extinguish it", enums: ParamEnumArray.FromEnum(SCR_EBurningState))]
+	protected SCR_EBurningState m_iMinimumBurningState;
+
 	protected static const int MIN_MOMENTUM_RESPONSE_INDEX = 1;
 	protected static const int MAX_MOMENTUM_RESPONSE_INDEX = 5;
 	protected static const int MIN_DESTRUCTION_RESPONSE_INDEX = 6;
@@ -194,25 +197,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 	{
 		return GetState() != EDamageState.DESTROYED;
 	}
-
-	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
-	// TODO: Convert to static method in SCR_PhysicsHelper
-	//------------------------------------------------------------------------------------------------
-	float CalculateMomentum(Contact contact, float ownerMass, float otherMass)
-	{
-		float dotMultiplier = vector.Dot(contact.VelocityAfter1.Normalized(), contact.VelocityBefore1.Normalized());
-		float momentumBefore = ownerMass * contact.VelocityBefore1.Length() * SIMULATION_IMPRECISION_MULTIPLIER;
-		float momentumAfter = ownerMass * contact.VelocityAfter1.Length() * dotMultiplier;
-		float momentumA = Math.AbsFloat(momentumBefore - momentumAfter);
-
-		dotMultiplier = vector.Dot(contact.VelocityAfter2.Normalized(), contact.VelocityBefore2.Normalized());
-		momentumBefore = otherMass * contact.VelocityBefore2.Length() * SIMULATION_IMPRECISION_MULTIPLIER;
-		momentumAfter = otherMass * contact.VelocityAfter2.Length() * dotMultiplier;
-		float momentumB = Math.AbsFloat(momentumBefore - momentumAfter);
-		return momentumA + momentumB;
-	}
-	//---- REFACTOR NOTE END ----
-
+	
 	//------------------------------------------------------------------------------------------------
 	// This method uses similar logic to the logic of DamageSurroundingHitzones, but not the same.
 	int GetSurroundingHitzones(vector origin, Physics physics, float maxDistance, out array<HitZone> outHitzones)
@@ -1023,7 +1008,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		if (!flammableHZ)
 			return false;
 
-		return flammableHZ.GetFireState() >= SCR_EBurningState.SMOKING_IGNITING;
+		return flammableHZ.GetFireState() >= m_iMinimumBurningState;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1045,7 +1030,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 			if (!flammableHZ)
 				continue;
 
-			if (flammableHZ.GetFireState() >= SCR_EBurningState.SMOKING_IGNITING)
+			if (flammableHZ.GetFireState() >= m_iMinimumBurningState)
 				return true;
 		}
 
@@ -1075,9 +1060,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		if (!trigger)
 			return;
 
-		if (instigator.GetInstigatorType() == InstigatorType.INSTIGATOR_PLAYER)
-			trigger.GetInstigator().SetInstigatorByPlayerID(instigator.GetInstigatorPlayerID());
-
+		trigger.SetInstigator(GetInstigator());
 		// Ignore own vehicle
 		array<IEntity> ignoreList = {GetOwner().GetRootParent()};
 
@@ -1153,7 +1136,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		float weight;
 		vector position;
 		vector averagePosition = owner.CoordToLocal(encapsulator.GetOwnerOrigin());
-		EntitySpawnParams spawnParams();
+		EntitySpawnParams spawnParams = new EntitySpawnParams();
 		spawnParams.Parent = owner;
 
 		// Get the weighed average position of explosion relative to encapsulator
@@ -1249,7 +1232,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 	{
 		float totalFuel;
 		vector explosionPosition = GetSecondaryExplosionPosition(SCR_FuelHitZone, totalFuel);
-		EntitySpawnParams spawnParams();
+		EntitySpawnParams spawnParams = new EntitySpawnParams();
 		spawnParams.Transform[3] = explosionPosition;
 		ResourceName secondaryExplosionPrefab = GetSecondaryExplosion(totalFuel, SCR_ESecondaryExplosionType.FUEL);
 		SecondaryExplosion(secondaryExplosionPrefab, instigator, spawnParams);
@@ -1281,7 +1264,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		if (fireParticles.IsEmpty())
 			return;
 
-		ParticleEffectEntitySpawnParams params();
+		ParticleEffectEntitySpawnParams params = new ParticleEffectEntitySpawnParams();
 		params.FollowParent = GetOwner();
 		params.Transform[3] = position;
 		params.PlayOnSpawn = true;
@@ -1400,6 +1383,13 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 	}
 
 #ifdef WORKBENCH
+
+	//------------------------------------------------------------------------------------------------
+	override int _WB_GetAfterWorldUpdateSpecs(IEntity owner, IEntitySource src)
+	{
+		return EEntityFrameUpdateSpecs.CALL_WHEN_ENTITY_VISIBLE;
+	}
+	
 	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 	// TODO: DrawDebug should only run when toggled on by user
 	//------------------------------------------------------------------------------------------------

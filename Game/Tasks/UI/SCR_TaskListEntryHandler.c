@@ -93,7 +93,7 @@ class SCR_TaskListEntryHandler : SCR_ButtonBaseComponent
 			{
 				m_wOutline.SetColor(faction.GetOutlineFactionColor());
 				m_wSymbol.SetColor(faction.GetOutlineFactionColor());
-				m_wLocalBackground.SetColor(UIColors.CONTRAST_COLOR);	
+				m_wLocalBackground.SetColor(UIColors.CONTRAST_COLOR);
 			}
 			else
 			{
@@ -104,23 +104,22 @@ class SCR_TaskListEntryHandler : SCR_ButtonBaseComponent
 		}
 		if (!m_Task.IsPriority())
 		{
+			m_wLocalBackground.LoadImageFromSet(0,m_sIconImageset, SCR_BaseTask.TASK_BG);
+			m_wOutline.LoadImageFromSet(0,m_sIconImageset, SCR_BaseTask.TASK_O);
+			m_wSymbol.LoadImageFromSet(0, m_Task.GetIconImageset(), m_Task.GetFullTaskIconName());
+			
 			if(m_Task.IsAssigned() && m_Task == m_LocalTask )
 			{
 				m_wOutline.SetColor(faction.GetOutlineFactionColor());
 				m_wSymbol.SetColor(faction.GetOutlineFactionColor());
-				m_wLocalBackground.SetColor(faction.GetFactionColor());	
+				m_wLocalBackground.SetColor(faction.GetFactionColor());
 			}
 			else
 			{
-			m_wLocalBackground.LoadImageFromSet(0,m_sIconImageset, SCR_BaseTask.TASK_BG);
-			m_wOutline.LoadImageFromSet(0,m_sIconImageset, SCR_BaseTask.TASK_O);
-			m_wSymbol.LoadImageFromSet(0, m_Task.GetIconImageset(), m_Task.GetFullTaskIconName());
-			m_wOutline.SetColor(faction.GetOutlineFactionColor());
-			m_wSymbol.SetColor(faction.GetOutlineFactionColor());
-			m_wLocalBackground.SetColor(Color.White);
+				m_wOutline.SetColor(faction.GetOutlineFactionColor());
+				m_wSymbol.SetColor(faction.GetOutlineFactionColor());
+				m_wLocalBackground.SetColor(Color.White);
 			}
-			
-			
 		}
 	}
 

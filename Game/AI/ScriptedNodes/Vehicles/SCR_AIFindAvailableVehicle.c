@@ -138,7 +138,7 @@ class SCR_AIFindAvailableVehicle: AITaskScripted
 	//------------------------------------------------------------------------------------------------
 	bool FilterEntities(IEntity ent) 
 	{
-		if (ent.FindComponent(BaseCompartmentManagerComponent) && SCR_AIVehicleUsability.VehicleCanMove(ent) && !SCR_AIVehicleUsability.VehicleIsOnFire(ent))
+		if (ent.FindComponent(BaseCompartmentManagerComponent) && (Turret.Cast(ent) || SCR_AIVehicleUsability.VehicleCanMove(ent)) && !SCR_AIVehicleUsability.VehicleIsOnFire(ent))
 			return true;
 		
 		return false;
@@ -150,11 +150,16 @@ class SCR_AIFindAvailableVehicle: AITaskScripted
 		SetVariableOut(PORT_VEHICLE_OUT, vehicleOut);
 		SetVariableOut(PORT_ROLE_OUT, compartmentTypeOut);
 		SetVariableOut(PORT_COMPARTMENT_OUT, compartment);
+		
 		if (m_bAddToList)
 		{
 			SCR_AIGroup group = SCR_AIGroup.Cast(owner);
 			if (group)
-				group.AddUsableVehicle(vehicleOut);
+			{
+				SCR_AIVehicleUsageComponent vehicleUsageComp = SCR_AIVehicleUsageComponent.FindOnNearestParent(vehicleOut, vehicleOut);
+				if (vehicleUsageComp)
+					group.GetGroupUtilityComponent().AddUsableVehicle(vehicleUsageComp);
+			}
 		}
 	}	
 		
@@ -182,13 +187,13 @@ class SCR_AIFindAvailableVehicle: AITaskScripted
     }
 	
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
 	{
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override string GetOnHoverDescription()
+	static override string GetOnHoverDescription()
 	{
 		return "SCR_AIFindAvailableVehicle: finds within radius of origin available compartments of vehicles with priority pilot>turret>cargo";
 	}

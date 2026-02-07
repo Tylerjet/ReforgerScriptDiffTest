@@ -404,7 +404,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 	int GetAuthorPlayerID()
 	{
 		if (!m_Author)
-			return -1;
+			return 0;
 		
 		return m_Author.m_iAuthorID;
 	}
@@ -657,11 +657,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 			SCR_ResourceGrid resourceGrid = GetGame().GetResourceGrid();
 			
 			resourceGrid.IncreaseGridUpdateId();
-			
-			if (resourceComponent.IsDynamic())
-				resourceGrid.UpdateResourceDynamicItem(resourceComponent);
-			else
-				resourceGrid.UpdateResourceStaticItem(resourceComponent);
+			resourceGrid.UpdateResourceItem(resourceComponent);
 		}
 		
 		//Inform Scheduler

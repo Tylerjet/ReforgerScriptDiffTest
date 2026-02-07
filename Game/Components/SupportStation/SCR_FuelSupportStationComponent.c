@@ -54,9 +54,9 @@ class SCR_FuelSupportStationComponent : SCR_BaseSupportStationComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool IsValid(IEntity actionOwner, IEntity actionUser, SCR_BaseUseSupportStationAction action, vector actionPosition, out ESupportStationReasonInvalid reasonInvalid, out int supplyCost)
+	override bool IsValid(IEntity actionOwner, IEntity actionUser, SCR_BaseUseSupportStationAction action, vector actionPosition, out ESupportStationReasonInvalid reasonInvalid, out int supplyAmount)
 	{
-		if (!super.IsValid(actionOwner, actionUser, action, actionPosition, reasonInvalid, supplyCost))
+		if (!super.IsValid(actionOwner, actionUser, action, actionPosition, reasonInvalid, supplyAmount))
 			return false;
 		
 		//~ Has no fuel to provide so not valid

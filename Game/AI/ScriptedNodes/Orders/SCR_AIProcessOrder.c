@@ -74,12 +74,12 @@ class SCR_AIProcessOrder: AITaskScripted
         return s_aVarsIn;
     }
 		
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
 	{
 		return true;
 	}	
 	
-	override string GetOnHoverDescription() 
+	static override string GetOnHoverDescription() 
 	{ 
 		return "Process order: reads order and gets type and data of order from it";
 	};

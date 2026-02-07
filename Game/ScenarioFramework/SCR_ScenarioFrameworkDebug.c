@@ -248,7 +248,7 @@ class SCR_ScenarioFrameworkDebug : ScriptAndConfig
 		if (!scenarioFrameworkSystem)
 			return;
 		
-		SCR_ScenarioFrameworkSystem.GetCallQueue().Clear();
+		SCR_ScenarioFrameworkSystem.GetCallQueuePausable().Clear();
 		scenarioFrameworkSystem.m_bDebugInit = true;
 		scenarioFrameworkSystem.m_iCurrentlySpawnedLayerTasks = 0;
 
@@ -262,7 +262,7 @@ class SCR_ScenarioFrameworkDebug : ScriptAndConfig
 		scenarioFrameworkSystem.m_aESFTaskTypeForRandomization.Clear();
 		scenarioFrameworkSystem.m_aSpawnedAreas.Clear();
 		scenarioFrameworkSystem.m_aDespawnedAreas.Clear();
-		scenarioFrameworkSystem.m_VariableMap.Clear();
+		scenarioFrameworkSystem.m_mVariableMap.Clear();
 
 		foreach (SCR_ScenarioFrameworkArea registeredArea : scenarioFrameworkSystem.m_aAreas)
 		{

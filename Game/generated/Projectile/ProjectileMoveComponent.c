@@ -26,6 +26,18 @@ class ProjectileMoveComponent: BaseProjectileComponent
 	* \warning This has to be performed on authority, and must be done after the shell is launched.
 	*/
 	proto external void SetRewindDuration(float duration);
+	/*!
+	* Gets the bullet speed coef of this bullet. Init speed gets created with muzzle bullet speed coef and this bullet speed coef. (Used for i.e. mortar charge rings)
+	* \return Bullet speed coef.
+	* \warning Value does not return total speed coef but just the value set on the bullet. For total: multiply bullet speed coef from muzzle with this value.
+	*/
+	proto external float GetBulletSpeedCoef();
+	/*!
+	* Sets the bullet speed coef of this bullet. Init speed gets created with muzzle bullet speed coef and this bullet speed coef. (Used for i.e. mortar charge rings)
+	* \param coef New bullet speed coef
+	* \warning Value does not set total speed coef but just the value set on the bullet. For total: multiply bullet speed coef from muzzle with this value.
+	*/
+	proto external void SetBulletCoef(float coef);
 }
 
 /*!

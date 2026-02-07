@@ -4,9 +4,16 @@ typedef func OnAmbientVehicleSpawnedDelegate;
 
 typedef ScriptInvokerBase<OnAmbientVehicleSpawnedDelegate> OnAmbientVehicleSpawnedInvoker;
 
-//------------------------------------------------------------------------------------------------
 class SCR_AmbientVehicleSystem : GameSystem
 {
+	override static void InitInfo(WorldSystemInfo outInfo)
+	{
+		outInfo
+			.SetAbstract(false)
+			.SetLocation(ESystemLocation.Server)
+			.AddPoint(ESystemPoint.FixedFrame);
+	}
+
 	protected static const int CHECK_INTERVAL = 3;					//s, how often should an individual spawnpoint be checked
 	protected static const int DESPAWN_TIMEOUT = 10000;				//ms
 	protected static const int PARKED_THRESHOLD = 5;				//m, how far away can the spawned vehicle moved before being considered used
@@ -171,7 +178,7 @@ class SCR_AmbientVehicleSystem : GameSystem
 		ChimeraWorld world = GetWorld();
 		WorldTimestamp currentTime = world.GetServerTimestamp();
 		int respawnPeriod = spawnpoint.GetRespawnPeriod();
-		
+
 		// Non-respawning vehicle has beed deleted by other means
 		// Ignore this spawnpoint from now on
 		if (!spawnedVeh && spawnpoint.GetIsSpawnProcessed() && respawnPeriod <= 0)
@@ -204,6 +211,8 @@ class SCR_AmbientVehicleSystem : GameSystem
 		// Only handle vehicles which are still on their spawnpoints
 		if (spawnedVeh && vector.DistanceXZ(spawnedVeh.GetOrigin(), location) > PARKED_THRESHOLD)
 		{
+			spawnpoint.RemoveInteractionHandlers(spawnedVeh);
+
 			// Non-respawning spawnpoints get depleted once the vehicle leaves the spawnpoint
 			if (spawnpoint.GetRespawnPeriod() <= 0)
 				spawnpoint.SetIsDepleted(true);
@@ -246,7 +255,7 @@ class SCR_AmbientVehicleSystem : GameSystem
 		}
 
 		// Delay is used so dying players don't see the despawn happen
-		if (spawnedVeh && playersFar)
+		if (spawnedVeh && playersFar && spawnpoint.IsDespawnAllowed())
 		{
 			WorldTimestamp despawnT = spawnpoint.GetDespawnTimer();
 

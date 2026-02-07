@@ -2,13 +2,16 @@
 class SCR_ScenarioFrameworkActionAddItemToInventory : SCR_ScenarioFrameworkActionBase
 {
 	[Attribute(desc: "Target entity (Optional if action is attached on Slot that spawns target entity)")]
-	ref SCR_ScenarioFrameworkGet		m_Getter;
+	ref SCR_ScenarioFrameworkGet m_Getter; 
 
 	[Attribute(desc: "Which Prefabs and how many out of each will be added to the inventory of target entity")]
 	ref array<ref SCR_ScenarioFrameworkPrefabFilterCountNoInheritance> m_aPrefabFilter;
 	
 	[Attribute(desc: "Name of the entity used for identification. If entity with given name exists suffix _numberOfAttemptToNameEntity is added.", category: "Asset")]
 	string m_sID;
+	
+	[Attribute(UIWidgets.CheckBox, desc: "If the entity with the same id exist in the world, it will be deleted and new entity will be give the set name. If this is not set the suffix _x will be added to newly spawned entity.", category: "Asset")]
+	bool m_bDeletePreviousInstance;
 
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate(IEntity object)
@@ -64,6 +67,15 @@ class SCR_ScenarioFrameworkActionAddItemToInventory : SCR_ScenarioFrameworkActio
 				
 				if (GetGame().GetWorld().FindEntityByName(m_sID))
 				{
+					if (m_bDeletePreviousInstance)
+					{
+						IEntity ent = GetGame().GetWorld().FindEntityByName(m_sID);
+						SCR_EntityHelper.DeleteEntityAndChildren(ent);
+						item.SetName(m_sID);
+						continue;
+					}
+					
+					
 					IDWithSuffix = m_sID;
 					while (GetGame().GetWorld().FindEntityByName(IDWithSuffix))
 	                {

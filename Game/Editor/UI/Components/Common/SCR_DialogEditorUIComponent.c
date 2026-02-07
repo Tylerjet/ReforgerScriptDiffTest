@@ -27,12 +27,6 @@ class SCR_DialogEditorUIComponent : SCR_BaseEditorUIComponent
 		else
 			w.SetFlags(WidgetFlags.NOFOCUS);
 	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void FocusWidget(Widget w)
-	{
-		GetGame().GetWorkspace().SetFocusedWidget(w);
-	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void SetLinkedWidgetVisibility(bool show)

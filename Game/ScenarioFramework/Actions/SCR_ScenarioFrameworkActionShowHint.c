@@ -93,6 +93,11 @@ class SCR_ScenarioFrameworkActionShowHint : SCR_ScenarioFrameworkActionBase
 		SCR_ScenarioFrameworkSystem scenarioFrameworkSystem = SCR_ScenarioFrameworkSystem.GetInstance();
 		if (!scenarioFrameworkSystem)
 			return;
+
+		// Resolve Alias
+		SCR_FactionAliasComponent factionAliasComponent = SCR_FactionAliasComponent.Cast(GetGame().GetFactionManager().FindComponent(SCR_FactionAliasComponent));
+		if (factionAliasComponent) 
+			m_sFactionKey = factionAliasComponent.ResolveFactionAlias(m_sFactionKey);	
 		
 		scenarioFrameworkSystem.ShowHint(m_sText, m_sTitle, m_iTimeout, m_sFactionKey, playerID);
 	}

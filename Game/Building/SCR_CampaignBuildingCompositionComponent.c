@@ -1,6 +1,29 @@
 [EntityEditorProps(category: "Game/Building", description: "Component attached to compositions.")]
 class SCR_CampaignBuildingCompositionComponentClass : ScriptComponentClass
 {
+	[Attribute(defvalue: "-1", desc: "This value defines length of a trace for placement obstruction check in meters. This value will be used for all entities in composition that has it's center bellow terrain level. Mainly composition foundations.")]
+	protected float m_fCustomObstructionValue;
+
+	//------------------------------------------------------------------------------------------------
+	static float GetProtectionRadius(notnull IEntityComponentSource componentSource)
+	{
+		float val;
+		componentSource.Get("m_fCustomObstructionValue", val);
+		return val;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	static IEntityComponentSource GetCampaignBuildingCompositionSource(notnull IEntitySource entitySource)
+	{
+		int componentsCount = entitySource.GetComponentCount();
+		for (int i = 0; i < componentsCount; i++)
+		{
+			IEntityComponentSource componentSource = entitySource.GetComponent(i);
+			if (componentSource.GetClassName().ToType().IsInherited(SCR_CampaignBuildingCompositionComponent))
+				return componentSource;
+		}
+		return null;
+	}
 }
 
 class SCR_CampaignBuildingCompositionComponent : ScriptComponent
@@ -19,6 +42,9 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 	protected int m_iCost;
 	protected int m_iPrefabId;
 	protected bool m_bInteractionLock;
+	
+	[RplProp()]
+	protected bool m_bPlaySoundOnDeletion;
 
 	[RplProp(onRplName: "OnCompositionSpawned")]
 	protected bool m_bCompositionIsSpawned;
@@ -208,7 +234,7 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 			SCR_EditableEntityComponent editable = SCR_EditableEntityComponent.Cast(GetOwner().FindComponent(SCR_EditableEntityComponent));
 			if (editable)
 				editable.SetEntityFlag(EEditableEntityFlag.SPAWN_UNFINISHED, false);
-			
+
 			SetDestroyEvents();
 		}
 
@@ -464,6 +490,12 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 		RplComponent rplComponent = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
 		return (rplComponent && rplComponent.IsProxy());
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetCanPlaySoundOnDeletion(bool val)
+	{
+		m_bPlaySoundOnDeletion = val;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
@@ -543,7 +575,7 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnDelete(IEntity owner)
 	{
-		if (!owner || !m_AudioSourceConfigurationDespawn || !m_AudioSourceConfigurationDespawn.IsValid())
+		if (!owner || !m_bPlaySoundOnDeletion || !m_AudioSourceConfigurationDespawn || !m_AudioSourceConfigurationDespawn.IsValid())
 			return;
 
 		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();

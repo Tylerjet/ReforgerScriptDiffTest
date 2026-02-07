@@ -191,7 +191,7 @@ class SCR_BaseTaskSupportEntity : GenericEntity
 		
 		SCR_BaseTask task = GetTaskManager().GetTask(taskID);
 		
-		if (!task)
+		if (!task || task.GetTaskState() == SCR_TaskState.FINISHED)
 			return;
 		
 		task.Finish();

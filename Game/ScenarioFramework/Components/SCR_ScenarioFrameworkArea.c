@@ -35,12 +35,6 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	[Attribute(desc: "Actions that will be activated when Trigger gets activated", category: "OnActivation")]
 	ref array<ref SCR_ScenarioFrameworkActionBase>	m_aTriggerActions;
 	
-	[Attribute(desc: "Should the dynamic Spawn/Despawn based on distance from observer cameras be enabled?", category: "Activation")]
-	bool m_bDynamicDespawn;
-
-	[Attribute(defvalue: "750", params: "0 inf", desc: "How close at least one observer camera must be in order to trigger spawn", category: "Activation")]
-	int m_iDynamicDespawnRange;
-
 	SCR_BaseTriggerEntity m_Trigger;
 	ref ScriptInvoker<SCR_ScenarioFrameworkArea, SCR_ScenarioFrameworkEActivationType>	m_OnTriggerActivated;
 	ref ScriptInvoker m_OnAreaInit = new ScriptInvoker();
@@ -50,37 +44,9 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	SCR_ScenarioFrameworkLayerTask m_LayerTask;
 	SCR_ScenarioFrameworkSlotTask m_SlotTask; 				//storing this one in order to get the task title and description
 
-	[Attribute(defvalue: "0", desc: "Show the debug shapes in Workbench", category: "Debug")]
-	protected bool m_bShowDebugShapesInWorkbench;
+	ref array<ref Tuple3<SCR_ScenarioFrameworkLayerBase, vector, int>> m_aSpawnedLayers = {};
+	ref array<ref Tuple3<SCR_ScenarioFrameworkLayerBase, vector, int>> m_aDespawnedLayers = {};
 
-	//------------------------------------------------------------------------------------------------
-	//! \return Indicates whether dynamic despawn is enabled or not.
-	bool GetDynamicDespawnEnabled()
-	{
-		return m_bDynamicDespawn;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \param[in] enabled Enables or disables dynamic despawning.
-	void SetDynamicDespawnEnabled(bool enabled)
-	{
-		m_bDynamicDespawn = enabled;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \return Represents dynamic despawn range.
-	int GetDynamicDespawnRange()
-	{
-		return m_iDynamicDespawnRange;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \param[in] range Represents distance in meters for dynamic despawning.
-	void SetDynamicDespawnRange(int range)
-	{
-		m_iDynamicDespawnRange = range;
-	}
-	
 	//------------------------------------------------------------------------------------------------
 	//! \return the current task assigned to the area.
 	SCR_BaseTask GetTask()
@@ -167,7 +133,6 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 		if (aSlotsOut.IsEmpty())
 			return null;
 
-		Math.Randomize(-1);
 		SCR_ScenarioFrameworkLayerBase layer = aSlotsOut.GetRandomElement();
 		if (layer)
 			layer.Init(this);
@@ -187,7 +152,6 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 			return null;
 
 		//there might be more layers in the area conforming to the task type (i.e. 2x the Truck task)
-		Math.Randomize(-1);
 		m_LayerTask = SCR_ScenarioFrameworkLayerTask.Cast(aSlotsOut.GetRandomElement());
 		if (m_LayerTask)
 			m_LayerTask.Init(this, SCR_ScenarioFrameworkEActivationType.ON_TASKS_INIT);
@@ -407,7 +371,9 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 		m_aChildren.RemoveItem(null);
 		foreach (SCR_ScenarioFrameworkLayerBase child : m_aChildren)
 		{
-			child.DynamicDespawn(this);
+			// Check if the child has its own Dynamic Despawn in place that is managed by the parent area and not the parent layer
+			if (!child.m_bDynamicDespawn)
+				child.DynamicDespawn(this);
 		}
 		
 		m_aChildren.Clear();
@@ -447,6 +413,156 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Prepares dynamic spawn/despawn for specific layer (Intended for runtime usage)
+	//! \param[in] layer
+	//! \param[in] staySpawned
+	void PrepareLayerSpecificDynamicDespawn(SCR_ScenarioFrameworkLayerBase layer, bool staySpawned = false, int despawnRange = 0)
+	{
+		layer.SetDynamicDespawnEnabled(true);
+		layer.SetDynamicDespawnRange(despawnRange);
+		
+		if (m_aDespawnedLayers.IsEmpty() && m_aSpawnedLayers.IsEmpty())
+			PrepareDynamicDespawn();
+
+		//If this method is called with staySpawned = false, layer will be added to m_aDespawnedLayers and gets despawned
+		if (!staySpawned)
+		{
+			m_aDespawnedLayers.Insert(new Tuple3<SCR_ScenarioFrameworkLayerBase, vector, int>(layer, layer.GetOwner().GetOrigin(), (despawnRange * despawnRange)));
+			layer.DynamicDespawn(layer);
+		}
+		else
+		{
+			m_aSpawnedLayers.Insert(new Tuple3<SCR_ScenarioFrameworkLayerBase, vector, int>(layer, layer.GetOwner().GetOrigin(), (despawnRange * despawnRange)));
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Removes dynamic spawn/despawn for specific layer (Intended for runtime usage)
+	//! \param[in] layer
+	//! \param[in] staySpawned
+	void RemoveLayerSpecificDynamicDespawn(SCR_ScenarioFrameworkLayerBase layer, bool staySpawned = false)
+	{
+		layer.SetDynamicDespawnEnabled(false);
+		
+		//If this method is called with staySpawned = false, layer will be despawned
+		if (!staySpawned)
+			layer.DynamicDespawn(layer);
+
+		for (int i = m_aDespawnedLayers.Count() - 1; i >= 0; i--)
+		{
+			Tuple3<SCR_ScenarioFrameworkLayerBase, vector, int> layerInfo = m_aDespawnedLayers[i];
+			if (layer == layerInfo.param1)
+				m_aDespawnedLayers.Remove(i);
+		}
+
+		for (int i = m_aSpawnedLayers.Count() - 1; i >= 0; i--)
+		{
+			Tuple3<SCR_ScenarioFrameworkLayerBase, vector, int> layerInfo = m_aSpawnedLayers[i];
+			if (layer == layerInfo.param1)
+				m_aSpawnedLayers.Remove(i);
+		}
+		
+		if (m_aDespawnedLayers.IsEmpty() && m_aSpawnedLayers.IsEmpty())
+			RemoveDynamicDespawn();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Prepares dynamic spawn/despawn for layers
+	void PrepareDynamicDespawn()
+	{
+		if (!m_bDynamicDespawn)
+			return;
+		
+		SCR_ScenarioFrameworkSystem scenarioFrameworkSystem = SCR_ScenarioFrameworkSystem.GetInstance();
+		if (!scenarioFrameworkSystem)
+			return;
+		
+		ExecuteDynamicDespawn(scenarioFrameworkSystem);
+		SCR_ScenarioFrameworkSystem.GetCallQueuePausable().CallLater(ExecuteDynamicDespawn, 1000 * scenarioFrameworkSystem.m_iUpdateRate, true, scenarioFrameworkSystem);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Removes dynamic spawn/despawn for layers
+	void RemoveDynamicDespawn()
+	{
+		if (!m_bDynamicDespawn)
+			return;
+		
+		SCR_ScenarioFrameworkSystem scenarioFrameworkSystem = SCR_ScenarioFrameworkSystem.GetInstance();
+		if (!scenarioFrameworkSystem)
+			return;
+		
+		SCR_ScenarioFrameworkSystem.GetCallQueuePausable().Remove(ExecuteDynamicDespawn);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Executes dynamic spawn/despawn for layers
+	void ExecuteDynamicDespawn(SCR_ScenarioFrameworkSystem scenarioFrameworkSystem)
+	{
+		if (!scenarioFrameworkSystem)
+			return;
+		
+		DynamicSpawnLayer(scenarioFrameworkSystem.m_aObservers);
+		DynamicDespawnLayer(scenarioFrameworkSystem.m_aObservers);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Goes over despawned layers and checks whether or not said area should spawn
+	void DynamicSpawnLayer(array<vector> observers)
+	{
+		Tuple3<SCR_ScenarioFrameworkLayerBase, vector, int> layerInfo;
+		for (int i = m_aDespawnedLayers.Count() - 1; i >= 0; i--)
+		{
+			layerInfo = m_aDespawnedLayers[i];
+			if (!layerInfo.param1)
+			{
+				continue;
+			}
+			
+			foreach (vector observerPos : observers)
+			{
+				if (vector.DistanceSqXZ(observerPos, layerInfo.param2) < layerInfo.param3)
+				{
+					layerInfo.param1.DynamicReinit();
+					m_aSpawnedLayers.Insert(layerInfo);
+					m_aDespawnedLayers.Remove(i);
+					break;
+				}
+			}
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Goes over spawned layers and checks whether or not said area should despawn
+	void DynamicDespawnLayer(array<vector> observers)
+	{
+		Tuple3<SCR_ScenarioFrameworkLayerBase, vector, int> layerInfo;
+		for (int i = m_aSpawnedLayers.Count() - 1; i >= 0; i--)
+		{
+			layerInfo = m_aSpawnedLayers[i];
+			if (!layerInfo.param1)
+				continue;
+			
+			bool observerInRange;
+			foreach (vector observerPos : observers)
+			{
+				if (vector.DistanceSqXZ(observerPos, layerInfo.param2) < layerInfo.param3)
+				{
+					observerInRange = true;
+					break;
+				}
+			}
+
+			if (!observerInRange)
+			{
+				layerInfo.param1.DynamicDespawn(null);
+				m_aDespawnedLayers.Insert(layerInfo);
+				m_aSpawnedLayers.Remove(i);
+			}
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Initializes area registration with ScenarioFrameworkSystem when game mode is valid.
 	//! \param[in] owner The owner represents the entity that initializes this script on its EOnInit event.
 	override void EOnInit(IEntity owner)
@@ -460,13 +576,25 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 			scenarioFrameworkSystem.RegisterArea(this);
 		
 		array<SCR_ScenarioFrameworkLayerBase> children = {};
-		GetAllLayers(children, SCR_ScenarioFrameworkEActivationType.ON_INIT);
+		GetAllLayers(children);
 		
 		foreach (SCR_ScenarioFrameworkLayerBase child : children)
 		{
+			if (child.GetActivationType() == SCR_ScenarioFrameworkEActivationType.ON_INIT)
+			{
 			child.Init(this, SCR_ScenarioFrameworkEActivationType.ON_INIT);
 			child.SetActivationType(SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT);
 		}
+			
+			if (!child.GetDynamicDespawnEnabled())
+				continue;
+			
+			int despawnRange = child.GetDynamicDespawnRange();
+			m_aDespawnedLayers.Insert(new Tuple3<SCR_ScenarioFrameworkLayerBase, vector, int>(child, child.GetOwner().GetOrigin(), (despawnRange * despawnRange)));
+		
+		if (!m_aDespawnedLayers.IsEmpty())
+			PrepareDynamicDespawn();
+	}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -505,34 +633,6 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 										m_fAreaRadius
 								);
 	}
-	
-#ifdef WORKBENCH
-	//------------------------------------------------------------------------------------------------
-	//! Draws debug shape based on m_bShowDebugShapeInWorkbench setting in Workbench after world update.
-	//! \param[in] owner The owner represents the entity (object) calling the method.
-	//! \param[in] timeSlice represents the time interval for which the method is called during each frame update.
-	override void _WB_AfterWorldUpdate(IEntity owner, float timeSlice)
-	{
-		DrawDebugShape(m_bShowDebugShapesInWorkbench);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Controls debug shape visibility in Workbench based on user input.
-	//! \param[in] owner The owner represents the entity (object) in the game world that triggers the method when its key value changes.
-	//! \param[in] src BaseContainer src represents input parameter containing key-value pairs related to the key changes in the Workbench.
-	//! \param[in] key Controls whether debug shapes are drawn in Workbench.
-	//! \param[in] ownerContainers Represents a list of containers related to the owner entity in the method.
-	//! \param[in] parent Parent represents the entity that owns the key change event, used for context in the method.
-	//! \return: Controls whether debug shapes are drawn in Workbench.
-	override bool _WB_OnKeyChanged(IEntity owner, BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent)
-	{
-		if (key == "m_bShowDebugShapesInWorkbench")
-			DrawDebugShape(m_bShowDebugShapesInWorkbench);
-		
-		return false;
-	}
-#endif	
-	
 	//------------------------------------------------------------------------------------------------
 	// constructor
 	//! \param[in] src

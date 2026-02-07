@@ -183,6 +183,20 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	void OnDeployChanged()
 	{
+		// No need for SFX on headless
+		if (!System.IsConsoleApp())
+		{
+			SCR_VehicleSoundComponent sndComp = SCR_VehicleSoundComponent.Cast(GetOwner().GetRootParent().FindComponent(SCR_VehicleSoundComponent));
+			
+			if (sndComp)
+			{
+				if (m_bIsDeployed)
+					sndComp.SoundEvent(SCR_SoundEvent.SOUND_MHQ_DEPLOY);
+				else
+					sndComp.SoundEvent(SCR_SoundEvent.SOUND_MHQ_DISMANTLE);
+			}
+		}
+
 		if (IsProxy())
 			return;
 		
@@ -322,9 +336,7 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 		{
 			m_StandaloneComponent.SetRadioRange(GetRadioRange());
 			m_StandaloneComponent.SetVehicle(SCR_EntityHelper.GetMainParent(GetOwner(), true));
-			
-			// Delay so map item can initialize
-			GetGame().GetCallqueue().CallLater(m_StandaloneComponent.SetParentFactionID, SCR_GameModeCampaign.MINIMUM_DELAY, false, m_iParentFaction);
+			m_StandaloneComponent.SetParentFactionID(m_iParentFaction);
 		}
 		
 		m_iSpawnpointId = Replication.FindId(m_SpawnPoint);

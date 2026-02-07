@@ -60,6 +60,8 @@ class SCR_AttachementAction : SCR_InventoryAction
 	//------------------------------------------------------------------------------------------------
     override bool CanBePerformedScript(IEntity user)
     {
+		if(!m_InventoryManager)
+			return false;
 		BaseInventoryStorageComponent storage = m_InventoryManager.FindStorageForItem(attachment);
 		if (!storage)
 			return false;

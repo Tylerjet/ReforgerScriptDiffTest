@@ -10,9 +10,23 @@ class SCR_FactionControlTriggerEntity: SCR_BaseFactionTriggerEntity
 	[Attribute("0.5", UIWidgets.Slider, "Limit for how large portion of trigger entities are friendly.\n\nExamples:\n1 = Only friendlies are present\n0 = Only enemies are present\n0.5 = Equal number of friendlies and enemies\n\nEvaluated only when at least some friendlies or enemies are inside.\nWhen the trigger is empty, condition for ratio = 0 won't activate the trigger.", category: "Faction Control Trigger", params: "0 1 0.1")]
 	protected float m_fFriendlyRatioLimit;
 	
+	[Attribute(desc: "Ignored Faction Keys that won't be used for any calculations for this trigger", category: "Faction Trigger")]
+	protected ref array<FactionKey> m_aIgnoredFactionKeys;
+	
 	protected int m_iFriendlyCount, m_iEnemyCount;
 	protected bool m_bResult;
 	protected bool m_bEvaluateResult;
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] ignoredFactionKeys that will be added to the ignored array
+	void AddIgnoredFactionKeys(notnull array<FactionKey> ignoredFactionKeys)
+	{
+		foreach (FactionKey factionKey : ignoredFactionKeys)
+		{
+			if (!m_aIgnoredFactionKeys.Contains(factionKey))
+				m_aIgnoredFactionKeys.Insert(factionKey);
+		}
+	}
 	
 	/*!
 	Get number of entities inside trigger for each side
@@ -64,10 +78,13 @@ class SCR_FactionControlTriggerEntity: SCR_BaseFactionTriggerEntity
 			Faction entFaction = factionAffiliation.GetAffiliatedFaction();
 			if (entFaction)
 			{
-				if (m_OwnerFaction.IsFactionEnemy(entFaction))
-					m_iEnemyCount++;
-				else
-					m_iFriendlyCount++;
+				if (!m_aIgnoredFactionKeys || m_aIgnoredFactionKeys.IsEmpty() || !m_aIgnoredFactionKeys.Contains(entFaction.GetFactionKey()))
+				{
+				    if (m_OwnerFaction.IsFactionEnemy(entFaction))
+				        m_iEnemyCount++;
+				    else
+				        m_iFriendlyCount++;
+				}
 			}
 		}
 		

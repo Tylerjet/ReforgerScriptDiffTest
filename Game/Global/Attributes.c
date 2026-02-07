@@ -14,7 +14,7 @@ class SCR_BaseContainerStaticTitleField : BaseContainerCustomTitle
 	//------------------------------------------------------------------------------------------------
 	void SCR_BaseContainerStaticTitleField(string customTitle = "")
 	{
-		customTitle.Trim();
+		customTitle.TrimInPlace();
 		m_sCustomTitle = customTitle;
 	}
 

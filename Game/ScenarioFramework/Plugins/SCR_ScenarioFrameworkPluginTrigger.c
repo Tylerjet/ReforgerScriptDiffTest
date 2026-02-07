@@ -6,6 +6,9 @@ class SCR_ScenarioFrameworkPluginTrigger : SCR_ScenarioFrameworkPlugin
 
 	[Attribute("0", UIWidgets.ComboBox, "By whom the trigger is activated", "", ParamEnumArray.FromEnum(SCR_EScenarioFrameworkTriggerActivation), category: "Trigger Activation")]
 	SCR_EScenarioFrameworkTriggerActivation m_eActivationPresence;
+	
+	[Attribute(desc: "Fill the entity names here for detection. Is combined with other filters using OR.", category: "Trigger")]
+	ref array<string> m_aSpecificEntityNames;
 
 	[Attribute(desc: "If SPECIFIC_CLASS is selected, fill the class name here.", category: "Trigger")]
 	ref array<string> m_aSpecificClassNames;
@@ -17,13 +20,19 @@ class SCR_ScenarioFrameworkPluginTrigger : SCR_ScenarioFrameworkPlugin
 	FactionKey m_sActivatedByThisFaction;
 
 	[Attribute(desc: "Here you can input custom trigger conditions that you can create by extending the SCR_CustomTriggerConditions", uiwidget: UIWidgets.Object)]
-	ref array<ref SCR_CustomTriggerConditions> m_aCustomTriggerConditions;
+	ref array<ref SCR_ScenarioFrameworkActivationConditionBase> m_aCustomTriggerConditions;
+	
+	[Attribute(defvalue: SCR_EScenarioFrameworkLogicOperators.AND.ToString(), UIWidgets.ComboBox, "Which Boolean Logic will be used for Custom Trigger Conditions.", "", enums: SCR_EScenarioFrameworkLogicOperatorHelper.GetParamInfo(), category: "Trigger")]
+	SCR_EScenarioFrameworkLogicOperators m_eCustomTriggerConditionLogic;
 	
 	[Attribute(defvalue: "1", UIWidgets.CheckBox, desc: "If you set some vehicle to be detected by the trigger, it will also search the inventory for vehicle prefabs/classes that are set", category: "Trigger")]
 	bool m_bSearchVehicleInventory;
 
 	[Attribute(defvalue: "1", UIWidgets.CheckBox, desc: "Activate the trigger once or everytime the activation condition is true?", category: "Trigger")]
 	bool m_bOnce;
+	
+	[Attribute(defvalue: "0", desc: "Activate the trigger once it is empty", category: "Trigger")]
+	bool m_bActivateOnEmpty;
 
 	[Attribute(defvalue: "1", UIWidgets.Slider, desc: "How frequently is the trigger updated and performing calculations. Lower numbers will decrease performance.", params: "0 86400 1", category: "Trigger")]
 	float m_fUpdateRate;
@@ -81,6 +90,11 @@ class SCR_ScenarioFrameworkPluginTrigger : SCR_ScenarioFrameworkPlugin
 			}
 			trigger = SCR_ScenarioFrameworkTriggerEntity.Cast(entity);
 		}
+		
+		// Resolve Alias
+		SCR_FactionAliasComponent factionAliasComponent = SCR_FactionAliasComponent.Cast(GetGame().GetFactionManager().FindComponent(SCR_FactionAliasComponent));
+		if (factionAliasComponent) 
+			m_sActivatedByThisFaction = factionAliasComponent.ResolveFactionAlias(m_sActivatedByThisFaction);
 
 		if (trigger)
 		{
@@ -88,10 +102,13 @@ class SCR_ScenarioFrameworkPluginTrigger : SCR_ScenarioFrameworkPlugin
 			trigger.SetActivationPresence(m_eActivationPresence);
 			trigger.SetOwnerFaction(m_sActivatedByThisFaction);
 			trigger.SetSpecificClassName(m_aSpecificClassNames);
+			trigger.AddSpecificEntityNameFilter(m_aSpecificEntityNames);
 			trigger.SetPrefabFilters(m_aPrefabFilter);
 			trigger.SetCustomTriggerConditions(m_aCustomTriggerConditions);
+			trigger.SetCustomTriggerConditionLogic(m_eCustomTriggerConditionLogic);
 			trigger.SetSearchVehicleInventory(m_bSearchVehicleInventory);
 			trigger.SetOnce(m_bOnce);
+			trigger.SetActivateOnEmpty(m_bActivateOnEmpty);
 			trigger.SetUpdateRate(m_fUpdateRate);
 			trigger.SetNotificationEnabled(m_bNotificationEnabled);
 			trigger.SetEnableAudio(m_bEnableAudio);
@@ -123,5 +140,28 @@ class SCR_ScenarioFrameworkPluginTrigger : SCR_ScenarioFrameworkPlugin
 		super.OnWBKeyChanged(object);
 		object.SetDebugShapeSize(m_fAreaRadius);
 		//src.Set("m_sAreaName", m_fAreaRadius);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override array<ref SCR_ScenarioFrameworkActionBase> GetActions()
+	{
+		array<ref SCR_ScenarioFrameworkActionBase>	combinedActions = {};
+		
+		foreach (SCR_ScenarioFrameworkActionBase action : m_aEntityEnteredActions)
+	    {
+	        combinedActions.Insert(action);
+   		}
+		
+		foreach (SCR_ScenarioFrameworkActionBase action : m_aEntityLeftActions)
+	    {
+	        combinedActions.Insert(action);
+   		}
+		
+		foreach (SCR_ScenarioFrameworkActionBase action : m_aFinishedActions)
+	    {
+	        combinedActions.Insert(action);
+   		}
+		
+		return combinedActions;
 	}
 }

@@ -9,7 +9,7 @@ class SCR_ProgressBarColorsUIComponent: ScriptedWidgetComponent
 	protected ProgressBarWidget m_ProgressBar;
 	protected ref Color m_DefaultColor;
 	
-	//override bool OnChange(Widget w, int x, int y, bool finished)
+	//override bool OnChange(Widget w, bool finished)
 	override bool OnUpdate(Widget w)
 	{
 		if (!m_ProgressBar) return false;

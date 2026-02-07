@@ -17,8 +17,11 @@ class ChimeraCharacter: GameEntity
 {
 	// Returns HUD display for this character
 	proto external BaseInfoDisplay GetInfoDisplay();
+	//! Returns ai controller
+	proto external AIControlComponent GetAIControlComponent();
 	//! Returns component which has animations controlling logic
 	proto external CharacterAnimationComponent GetAnimationComponent();
+	proto external CharacterCommandHandlerComponent GetCommandHandler();
 	//! Returns component which stores information about compartment used by character
 	proto external CompartmentAccessComponent GetCompartmentAccessComponent();
 	//! Returns component which has character controlling logic
@@ -37,6 +40,8 @@ class ChimeraCharacter: GameEntity
 	proto external vector EyePosition();
 	//! Returns the local position of eyes
 	proto external vector EyePositionModel();
+	//! Returns character head yaw and pitch in local space (in rads)
+	proto external vector GetAimRotationModel();
 	//! Returns component which controls head aiming
 	proto external AimingComponent GetHeadAimingComponent();
 	//! Returns component which controls weapon aiming
@@ -49,6 +54,11 @@ class ChimeraCharacter: GameEntity
 	proto external void DoPerformContinuousObjectAction(BaseUserAction pAction, float timeSlice);
 	//! Cancel action performed by the current character
 	proto external void DoCancelObjectAction(BaseUserAction pAction);
+
+	// callbacks
+
+	event void OnSpecialContact(IEntity other);
+	event void OnSpecialContactsChagned(notnull array<IEntity> contacts);
 }
 
 /*!

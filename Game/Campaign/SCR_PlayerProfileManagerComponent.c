@@ -22,7 +22,7 @@ class SCR_PlayerProfileManagerComponent : SCR_BaseGameModeComponent
 	protected ref map<int, ref CareerBackendData> m_mPlayerProfiles = null;
 	protected ref array<int> m_aPlayerIDsToLoadProfile = {};
 	protected float m_fCurrentRefreshTime = 1;
-	protected ref CampaignCallback m_Callback = new CampaignCallback();
+	protected ref SCR_BackendCallback m_Callback = new SCR_BackendCallback();
 	
 	//------------------------------------------------------------------------------------------------
 	protected Faction GetPlayerFaction(int playerID)
@@ -86,17 +86,9 @@ class SCR_PlayerProfileManagerComponent : SCR_BaseGameModeComponent
 
 		//~ Is a teamkill, so add teamkill to profile
 		if (instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_FRIENDLY_PLAYER))
-		{
-			//~ Friendly kills do not count for admins, GMs and possessed AI by GM
-			if (killerControlType == SCR_ECharacterControlType.UNLIMITED_EDITOR)
-				return;
-			
-			//~ Friendly kills only counted if friendly fire is punished
-			SCR_AdditionalGameModeSettingsComponent additionalGameModeSettings = SCR_AdditionalGameModeSettingsComponent.GetInstance();
-			if (additionalGameModeSettings && !additionalGameModeSettings.IsTeamKillingPunished())
-				return;
-			
-			killerProfile.AddKill(true);
+		{						
+			if (instigatorContextData.DoesPlayerKillCountAsTeamKill())
+				killerProfile.AddKill(true);
 			return;
 		}
 			

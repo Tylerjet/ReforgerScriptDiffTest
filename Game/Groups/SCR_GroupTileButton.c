@@ -141,6 +141,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 	protected const string PUBLIC_GROUP = "#AR-Player_Groups_Public";
 	protected const string JOIN_GROUP = "#AR-DeployMenu_JoinGroup";
 	protected const string REQUEST_JOIN_GROUP = "#AR-DeployMenu_RequestJoinGroup";
+	protected const string CUSTOM_GROUP_NAME_FORMAT = "#AR-Player_Groups_CustomName_Format"; 
 
 	protected const ResourceName GROUP_FLAG_SELECTION = "{7340FE3C6872C6D3}UI/layouts/Menus/GroupSlection/GroupFlagSelection.layout";
 
@@ -213,13 +214,18 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 
 			if (groupName.IsEmpty() || group.GetNameAuthorID() != 0 && socialComp.IsRestricted(group.GetNameAuthorID(), EUserInteraction.UserGeneratedContent))
 			{
-				squadName.SetTextFormat(format, company, platoon, squad, character);
+				squadName.SetTextFormat(WidgetManager.Translate(format, company, platoon, squad, character));
 			}
 			else
 			{
-				company = WidgetManager.Translate(company);
-				groupName = group.GetCustomName() + " (" + string.Format(format, company, platoon, squad, character) + ")";
-				squadName.SetText(groupName);
+				string customName = group.GetCustomName().Trim();
+				
+				if (customName.IsEmpty())
+					squadName.SetText(WidgetManager.Translate(format, company, platoon, squad, character));
+				else 
+					squadName.SetTextFormat(CUSTOM_GROUP_NAME_FORMAT, customName, WidgetManager.Translate(format, company, platoon, squad, character));
+				
+				//Translate is used because to change language the group menu has to be closed and then opened so it will renew.
 			}
 		}
 
@@ -254,7 +260,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 	void SetupSelectGroupFlagButton(SCR_AIGroup group)
 	{
 		if (!m_ParentSubMenu)
-		return;
+			return;
 
 		Widget groupImage = m_ParentSubMenu.GetRootWidget().FindAnyWidget("GroupImage");
 		if (!groupImage)
@@ -263,7 +269,9 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		SCR_GroupFlagImageComponent imageButton = SCR_GroupFlagImageComponent.Cast(groupImage.FindHandler(SCR_GroupFlagImageComponent));
 		if (!imageButton)
 			return;
-
+		
+		imageButton.SetVisible(true);
+		
 		imageButton.m_OnClicked.Insert(OnSelectGroupFlagButtonClicked);
 
 		SCR_Faction scrFaction = SCR_Faction.Cast(m_GroupFaction);
@@ -421,13 +429,16 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		
 		if (groupName.IsEmpty() || group.GetNameAuthorID() != 0 && socialComp.IsRestricted(group.GetNameAuthorID(), EUserInteraction.UserGeneratedContent))
 		{
-			squadName.SetTextFormat(format, company, platoon, squad, character);
+			squadName.SetTextFormat(WidgetManager.Translate(format, company, platoon, squad, character));
 		}
 		else
 		{
-			company = WidgetManager.Translate(company);
-			groupName = group.GetCustomName() + " (" + string.Format(format, company, platoon, squad, character) + ")";
-			squadName.SetText(groupName);
+			string customName = group.GetCustomName().Trim();
+			
+			if (customName.IsEmpty())
+				squadName.SetTextFormat(WidgetManager.Translate(format, company, platoon, squad, character));
+			else 
+				squadName.SetTextFormat(CUSTOM_GROUP_NAME_FORMAT, customName, WidgetManager.Translate(format, company, platoon, squad, character));
 		}
 
 		if (!group.GetCustomDescription().IsEmpty())
@@ -578,7 +589,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 
 		SetupOptionsCombo(playerTile);
 
-		playerName.SetText(GetGame().GetPlayerManager().GetPlayerName(playerID));
+		playerName.SetText(SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(playerID));
 		
 		SCR_PlayerController playerCtrl = SCR_PlayerController.Cast(GetGame().GetPlayerController());
 		if (playerCtrl)
@@ -610,7 +621,8 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 			if (!m_PlayerController) 
 				return;
 			
-			ResourceName TaskIconImageset = "{10C0A9A305E8B3A4}UI/Imagesets/Tasks/Task_Icons.imageset";	
+			// TODO: check for good const usage
+			const ResourceName TaskIconImageset = "{10C0A9A305E8B3A4}UI/Imagesets/Tasks/Task_Icons.imageset";	
 			SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 			if (!factionManager) 
 				return;
@@ -885,20 +897,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 
 		combo.SetCurrentItem(-1, false, false);
 	}
-
-	//------------------------------------------------------------------------------------------------
-	protected string GetGroupNameFormated(SCR_AIGroup group)
-	{
-		string groupName = group.GetCustomNameWithOriginal();
-		if (groupName.IsEmpty())
-		{
-			string company, platoon, squad, character, format;
-			group.GetCallsigns(company, platoon, squad, character, format);
-			groupName = string.Format(format, company, platoon, squad, character);
-		}
-		return groupName;
-	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	protected void CheckLeaderOptions()
 	{

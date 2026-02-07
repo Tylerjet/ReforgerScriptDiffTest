@@ -1,5 +1,12 @@
 class HandleUpdateVONControllersSystem: GameSystem
 {
+	override static void InitInfo(WorldSystemInfo outInfo)
+	{
+		outInfo
+			.SetAbstract(false)
+			.AddPoint(ESystemPoint.Frame);
+	}
+
 	protected ref array<SCR_VONController> m_Components = {};
 	
 	override protected void OnUpdate(ESystemPoint point)

@@ -19,11 +19,11 @@ class CoverQueryProperties
 
 	float m_fScoreWeightDirection;			// Weight of directivity. Increases score of covers with bigger angle between m_vSectorDir and cover pos.
 	float m_fScoreWeightDistance = 1.0;		// Weight of distance between sector center and cover
-	float m_fScoreWeightNavmeshRay = 1.0;	// Weight of navmesh direct ray trace. Increases score of covers which are not reachable in a straight line.
 
 	float m_fNmAreaCostScale = 1.0;			// Scale of navmesh area costs taken from navmesh project
 	
 	bool m_bCheckVisibility;				// When true, only covers which have direct visibility of m_vThreatPos will be returned
+	float m_fVisibilityTraceFraction = 0.5;	// When visibility check is enabled, vis. is considered good if the fraction of trace is above this value
 	
 	bool m_bSelectHighestScore;				// When true, cover with highest score is selected, otherwise lowest score cover is selected.
 }

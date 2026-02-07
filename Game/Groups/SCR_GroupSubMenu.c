@@ -266,7 +266,7 @@ class SCR_GroupSubMenu : SCR_GroupSubMenuBase
 				m_AcceptInviteButton.SetEnabled(false);
 				s_PlayerGroupController.SetGroupInviteID(-1);
 				return;	
-			}		
+			}
 			m_AcceptInviteButton.SetEnabled(true);	
 		}
 	}

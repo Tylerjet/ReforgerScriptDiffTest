@@ -14,11 +14,11 @@ class SCR_PlayerEditableEntityUIComponent : SCR_BaseEditableEntityUIComponent
 	//------------------------------------------------------------------------------------------------
 	protected void SetName(TextWidget nameWidget, int playerID)
 	{
-		string playerName = GetGame().GetPlayerManager().GetPlayerName(playerID);
+		string playerName = SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(playerID);
 		if (playerName.IsEmpty())
 			return;
 
-		nameWidget.SetText(GetGame().GetPlayerManager().GetPlayerName(playerID));
+		nameWidget.SetText(playerName);
 		GetGame().GetCallqueue().Remove(SetName);
 	}
 	

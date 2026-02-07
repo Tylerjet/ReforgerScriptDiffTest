@@ -44,5 +44,5 @@ class SCR_AISwitchMuzzle : SCR_AIWeaponHandlingBase
 	protected static ref TStringArray s_aVarsIn = {PORT_MUZZLE_ID};
 	override TStringArray GetVariablesIn() { return s_aVarsIn; }
 	
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }

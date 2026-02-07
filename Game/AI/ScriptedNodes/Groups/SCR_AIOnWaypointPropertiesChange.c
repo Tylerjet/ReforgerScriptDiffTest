@@ -85,14 +85,14 @@ class SCR_AIOnWaypointPropertiesChange: AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------------------
-	override string GetOnHoverDescription() 
+	static override string GetOnHoverDescription() 
 	{ 
 		return "OnWaypointPropertiesChange: keeps running until group has SCR_AIWaypoint - waypoint. \nThen it keeps running until this waypoint has changed its properties or moved to different position.";
 	}
 		
 	//------------------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() { return true;}
+	static override bool VisibleInPalette() { return true;}
 	
 	//------------------------------------------------------------------------------------------------------------
-	override bool CanReturnRunning() { return true;}
+	static override bool CanReturnRunning() { return true;}
 }

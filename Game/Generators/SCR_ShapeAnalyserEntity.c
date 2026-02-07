@@ -1,9 +1,9 @@
-[EntityEditorProps(category: "GameLib/Scripted", description: "", dynamicBox: true, visible: false)]
-class SCR_ShapeAnalyserEntityClass : /*SCR_*/GeneratorBaseEntityClass
+[EntityEditorProps(category: "GameLib/Scripted/Generator/Helper", description: "", dynamicBox: true, visible: false)]
+class SCR_ShapeAnalyserEntityClass : SCR_GeneratorBaseEntityClass
 {
 }
 
-class SCR_ShapeAnalyserEntity : /*SCR_*/GeneratorBaseEntity
+class SCR_ShapeAnalyserEntity : SCR_GeneratorBaseEntity
 {
 	[Attribute(defvalue: "1", category: "Shape", desc: "")]
 	protected bool m_bDrawErrors;
@@ -48,21 +48,22 @@ class SCR_ShapeAnalyserEntity : /*SCR_*/GeneratorBaseEntity
 	{
 		bool parentResult = super._WB_OnKeyChanged(src, key, ownerContainers, parent);
 
-		if (!parent)
-			return parentResult;
-
-		ShapeEntity parentShape = ShapeEntity.Cast(parent);
-		if (!parentShape)
+		if (!m_ParentShapeSource)
 			return parentResult;
 
 		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
-		if (!worldEditorAPI)
+		if (!worldEditorAPI || worldEditorAPI.UndoOrRedoIsRestoring())
+			return parentResult;
+
+		ShapeEntity parentShape = ShapeEntity.Cast(worldEditorAPI.SourceToEntity(m_ParentShapeSource));
+
+		if (!parentShape)
 			return parentResult;
 
 		src = worldEditorAPI.EntityToSource(this);
 		BaseContainerTools.WriteToInstance(this, src); // refresh attributes
 
-		Process(worldEditorAPI.EntityToSource(parent), parentShape);
+		Process(m_ParentShapeSource, parentShape);
 
 		return true;
 	}
@@ -72,13 +73,19 @@ class SCR_ShapeAnalyserEntity : /*SCR_*/GeneratorBaseEntity
 	{
 		super.OnShapeChangedInternal(shapeEntitySrc, shapeEntity, mins, maxes);
 
+		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
+		if (worldEditorAPI)
+			return;
+
+		shapeEntity = ShapeEntity.Cast(worldEditorAPI.SourceToEntity(m_ParentShapeSource));
+
 		Process(shapeEntitySrc, shapeEntity);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void Process(notnull IEntitySource shapeEntitySrc, notnull ShapeEntity shapeEntity)
 	{
-		SCR_ShapeAnalyser shapeAnalyser = new SCR_ShapeAnalyser(shapeEntity);
+		SCR_ShapeAnalyser shapeAnalyser = SCR_ShapeAnalyser.CreateFromShape(shapeEntity);
 
 		s_aDebugShapes = null;
 		s_aErrorShapes = null;
@@ -98,9 +105,9 @@ class SCR_ShapeAnalyserEntity : /*SCR_*/GeneratorBaseEntity
 	{
 		s_aDebugShapes = {};
 
-		array<ref SCR_Ray> pointRays = shapeAnalyser.GetPointRays();
-		array<ref SCR_Ray> middlePointRays = shapeAnalyser.GetMiddlePointRays();
-		array<ref SCR_Ray> tesselatedPointRays = shapeAnalyser.GetTesselatedPointRays();
+		array<ref SCR_Ray> pointRays = shapeAnalyser.GetAbsoluteAnchorPointRays();
+		array<ref SCR_Ray> middlePointRays = shapeAnalyser.GetAbsoluteMiddlePointRays();
+		array<ref SCR_Ray> tesselatedPointRays = shapeAnalyser.GetAbsoluteTesselatedPointRays();
 
 		int currentPointIndex = 0;
 		int currentMiddlePointIndex = 0;
@@ -147,8 +154,8 @@ class SCR_ShapeAnalyserEntity : /*SCR_*/GeneratorBaseEntity
 	//------------------------------------------------------------------------------------------------
 	protected void DrawErrorShapes(notnull SCR_ShapeAnalyser shapeAnalyser)
 	{
-		array<ref SCR_Ray> pointRays = shapeAnalyser.GetPointRays();
-		array<ref SCR_Ray> tesselatedPointRays = shapeAnalyser.GetTesselatedPointRays();
+		array<ref SCR_Ray> pointRays = shapeAnalyser.GetAbsoluteAnchorPointRays();
+		array<ref SCR_Ray> tesselatedPointRays = shapeAnalyser.GetAbsoluteTesselatedPointRays();
 
 		// error display
 		s_aErrorShapes = {};
@@ -223,8 +230,8 @@ class SCR_ShapeAnalyserEntity : /*SCR_*/GeneratorBaseEntity
 	//------------------------------------------------------------------------------------------------
 	protected void PrintDebugInfo(notnull SCR_ShapeAnalyser shapeAnalyser)
 	{
-		array<ref SCR_Ray> pointRays = shapeAnalyser.GetPointRays();
-		array<ref SCR_Ray> tesselatedPointRays = shapeAnalyser.GetTesselatedPointRays();
+		array<ref SCR_Ray> pointRays = shapeAnalyser.GetAbsoluteAnchorPointRays();
+		array<ref SCR_Ray> tesselatedPointRays = shapeAnalyser.GetAbsoluteTesselatedPointRays();
 		array<float> polygon2D = {};
 
 		array<float> stats = shapeAnalyser.GetStats();
@@ -238,7 +245,6 @@ class SCR_ShapeAnalyserEntity : /*SCR_*/GeneratorBaseEntity
 
 		float minAltATL = float.INFINITY, maxAltATL = -float.INFINITY;
 
-		float tmp;
 		SCR_Ray prevPointRay;
 		foreach (int i, SCR_Ray pointRay : tesselatedPointRays)
 		{
@@ -248,7 +254,7 @@ class SCR_ShapeAnalyserEntity : /*SCR_*/GeneratorBaseEntity
 				length3D += vector.Distance(prevPointRay.m_vPosition, pointRay.m_vPosition);
 			}
 
-			tmp = pointRay.m_vPosition[1] - GetWorld().GetSurfaceY(pointRay.m_vPosition[0], pointRay.m_vPosition[2]);
+			float tmp = pointRay.m_vPosition[1] - GetWorld().GetSurfaceY(pointRay.m_vPosition[0], pointRay.m_vPosition[2]);
 
 			if (tmp < minAltATL)
 				minAltATL = tmp;
@@ -274,11 +280,4 @@ class SCR_ShapeAnalyserEntity : /*SCR_*/GeneratorBaseEntity
 
 #endif // WORKBENCH
 
-	//------------------------------------------------------------------------------------------------
-	// constructor
-	//! \param[in] src
-	//! \param[in] parent
-	void SCR_ShapeAnalyserEntity(IEntitySource src, IEntity parent)
-	{
-	}
 }

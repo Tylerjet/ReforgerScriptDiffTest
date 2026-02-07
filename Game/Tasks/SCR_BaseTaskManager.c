@@ -808,14 +808,24 @@ class SCR_BaseTaskManager : GenericEntity
 				continue;
 			}
 			
-			writer.WriteBool(true);
-			
 			EntityPrefabData prefabData = task.GetPrefabData();
 			ResourceName resourceName;
 			if (prefabData)
 				resourceName = prefabData.GetPrefabName();
 			
-			writer.WriteResourceName(prefabData.GetPrefabName()); //Write prefab, then read it in load & spawn correct task
+			Resource resource = Resource.Load(resourceName);
+			if (!resource.IsValid())
+			{
+				// Invalid resouce name means we wouldn't be able to recreate the task on clients.
+				// As a result, we would start reading from incorrect place in the serialized buffer
+				// which is undefined behavior and could easily end-up crashing the game.
+				writer.WriteBool(false);
+				continue;
+			}
+			
+			writer.WriteBool(true);
+			
+			writer.WriteResourceName(resourceName); //Write prefab, then read it in load & spawn correct task
 			
 			task.Serialize(writer);
 		}
@@ -863,7 +873,7 @@ class SCR_BaseTaskManager : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	override bool RplLoad(ScriptBitReader reader)
 	{
-		int count;
+		const int count; // TODO: check for good const usage
 		LoadTasksForRpl(reader, count);
 		LoadTasksForRpl(reader, count);
 		

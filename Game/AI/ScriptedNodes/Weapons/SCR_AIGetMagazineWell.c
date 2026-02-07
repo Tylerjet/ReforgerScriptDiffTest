@@ -6,7 +6,7 @@ class SCR_AIGetMagazineWell: AITaskScripted
 	private BaseWeaponManagerComponent m_weaponManager;
 	
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() {return true;}
+	static override bool VisibleInPalette() {return true;}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(AIAgent owner)
@@ -45,7 +45,7 @@ class SCR_AIGetMagazineWell: AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override string GetOnHoverDescription() 
+	static override string GetOnHoverDescription() 
 	{ 
 		return "Returns MagazineWell of current weapon on Owner's controlled entity";
 	};

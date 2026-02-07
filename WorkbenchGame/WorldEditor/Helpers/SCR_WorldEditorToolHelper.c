@@ -297,12 +297,14 @@ class SCR_WorldEditorToolHelper
 	//! \param[in] mins min bounds for an axis-aligned bounding box (AABB) query in 3D space
 	//! \param[in] maxs max bounds for an axis-aligned bounding box (AABB) query in 3D space
 	//! \param[in] queryFlags is an enumeration representing filter options for entity query in AABB - see BaseWorld.QueryEntitiesByAABB
-	//! \return an array of entities within the specified AABB (Axis-Aligned Bounding Box) in the world
+	//! \return an array of entities within the specified AABB (Axis-Aligned Bounding Box) in the world or null on QueryEntitiesByAABB error
 	static array<IEntity> QueryEntitiesByAABB(notnull World world, vector mins, vector maxs, EQueryEntitiesFlags queryFlags = EQueryEntitiesFlags.ALL)
 	{
-		array<IEntity> result = {};
 		s_aTempEntities = {};
-		world.QueryEntitiesByAABB(mins, maxs, QueryEntitiesCallbackMethod, null, queryFlags);
+		if (!world.QueryEntitiesByAABB(mins, maxs, QueryEntitiesCallbackMethod, null, queryFlags))
+			return null;
+
+		array<IEntity> result = {};
 		result.Copy(s_aTempEntities);
 		s_aTempEntities = null;
 		return result;

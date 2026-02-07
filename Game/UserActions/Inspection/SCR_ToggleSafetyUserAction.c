@@ -29,6 +29,8 @@ class SCR_ToggleSafetyUserAction : SCR_InspectionUserAction
 			return false;
 		}
 
+		if (m_WeaponComponent.GetCurrentMuzzle() == NULL)
+			return false;
 		if (m_WeaponComponent.GetCurrentMuzzle().GetMuzzleType() != m_eMuzzleType)
 			return false;
 

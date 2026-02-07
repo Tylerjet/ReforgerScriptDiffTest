@@ -21,6 +21,6 @@ class SCR_ScenarioFrameworkActionPlaySoundOnEntity : SCR_ScenarioFrameworkAction
 		if (!scenarioFrameworkSystem)
 			return;
 
-		SCR_ScenarioFrameworkSystem.GetCallQueue().CallLater(scenarioFrameworkSystem.PlaySoundOnEntity, 2000, false, entity, m_sSound);
+		SCR_ScenarioFrameworkCallQueueSystem.GetCallQueueNonPausable().CallLater(scenarioFrameworkSystem.PlaySoundOnEntity, 2000, false, entity, m_sSound);
 	}
 }

@@ -5,6 +5,9 @@ class SCR_GameplaySettings : ModuleGameSettings
 
 	[Attribute(defvalue: "false", uiwidget: UIWidgets.CheckBox, desc: "Allow controls hints on screen.")]
 	bool m_b2DScopes;
+	
+	[Attribute(defvalue: "false", uiwidget: UIWidgets.CheckBox, desc: "Show nametag platform icon.")]
+	bool m_bPlatformIconNametag;
 
 	[Attribute(defvalue: "127.0.0.1", uiwidget: UIWidgets.EditBox, desc: "Last IP used for server connection.")]
 	string m_sLastIP;
@@ -222,14 +225,14 @@ class SCR_ControllerSettings : ModuleGameSettings
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, params: "0 2 0.01", desc: "Gyro vertical horizontal ratio")]
 	float m_fGyroVerticalHorizontalRatio;
 
-	[Attribute(defvalue: "0", uiwidget: UIWidgets.SpinBox, desc: "Gyro yaw direction")]
-	float m_fGyroDirectionYaw;
+	[Attribute(defvalue: SCR_Enum.GetDefault(SCR_EGyroAxisDirection.ENABLED), uiwidget: UIWidgets.ComboBox, desc: "Gyro yaw direction", enums: ParamEnumArray.FromEnum(SCR_EGyroAxisDirection))]
+	SCR_EGyroAxisDirection m_eGyroDirectionYaw;
 
-	[Attribute(defvalue: "0", uiwidget: UIWidgets.SpinBox, desc: "Gyro pitch direction")]
-	float m_fGyroDirectionPitch;
+	[Attribute(defvalue: SCR_Enum.GetDefault(SCR_EGyroAxisDirection.ENABLED), uiwidget: UIWidgets.ComboBox, desc: "Gyro pitch direction", enums: ParamEnumArray.FromEnum(SCR_EGyroAxisDirection))]
+	SCR_EGyroAxisDirection m_eGyroDirectionPitch;
 
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.SpinBox, desc: "Gyro roll direction")]
-	float m_fGyroDirectionRoll;
+	[Attribute(defvalue: SCR_Enum.GetDefault(SCR_EGyroAxisDirection.DISABLED), uiwidget: UIWidgets.ComboBox, desc: "Gyro roll direction", enums: ParamEnumArray.FromEnum(SCR_EGyroAxisDirection))]
+	SCR_EGyroAxisDirection m_eGyroDirectionRoll;
 }
 
 class SCR_RecentGames : ModuleGameSettings

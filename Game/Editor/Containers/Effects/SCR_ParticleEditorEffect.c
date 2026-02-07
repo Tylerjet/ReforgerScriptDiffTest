@@ -27,7 +27,7 @@ class SCR_ParticleEditorEffect: SCR_BaseEditorEffect
 				vector pos;
 				if (entities[0].GetPos(pos))
 				{
-					ParticleEffectEntitySpawnParams spawnParams();
+					ParticleEffectEntitySpawnParams spawnParams = new ParticleEffectEntitySpawnParams();
 					spawnParams.Transform[3] = pos;
 					spawnParams.UseFrameEvent = true;
 					ParticleEffectEntity.SpawnParticleEffect(m_Particle, spawnParams);
@@ -42,7 +42,7 @@ class SCR_ParticleEditorEffect: SCR_BaseEditorEffect
 				{
 					if (entity.GetPos(pos))
 					{
-						ParticleEffectEntitySpawnParams spawnParams();
+						ParticleEffectEntitySpawnParams spawnParams = new ParticleEffectEntitySpawnParams();
 						spawnParams.Transform[3] = pos;
 						spawnParams.UseFrameEvent = true;
 						ParticleEffectEntity.SpawnParticleEffect(m_Particle, spawnParams);

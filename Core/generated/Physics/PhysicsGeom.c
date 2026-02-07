@@ -12,7 +12,7 @@ Do not modify, this script is generated
 /*!
 Geometric shapes relevant for physics simulation
 */
-sealed class PhysicsGeom: pointer
+sealed class PhysicsGeom: global_pointer
 {
 	//! Destroys geometry
 	proto external void Destroy();

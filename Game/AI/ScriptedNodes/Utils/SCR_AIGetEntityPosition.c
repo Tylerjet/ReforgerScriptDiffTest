@@ -10,9 +10,9 @@ class SCR_AIGetEntityPosition : AITaskScripted
 	protected static const string ENTITY_PORT = "Entity";
 	protected static const string POSITION_PORT = "Position";
 	
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 	
-	override string GetOnHoverDescription()
+	static override string GetOnHoverDescription()
 	{
 		return "Returns position of entity with local and world space offset.";
 	}

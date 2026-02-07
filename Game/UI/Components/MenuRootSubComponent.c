@@ -15,15 +15,19 @@ class MenuRootSubComponent: ScriptedWidgetComponent
 	{
 		return m_Widget;
 	}
+	
 	/*!
 	Get menu of which the widget is part of.
 	\return Menu
 	*/
 	MenuRootBase GetMenu()
 	{
-		if (!m_Root) return null;
+		if (!m_Root)
+			return null;
+		
 		return m_Root.GetMenu();
 	}
+	
 	/*!
 	Get root component of this subcomponent,
 	\return Menu
@@ -53,7 +57,9 @@ class MenuRootSubComponent: ScriptedWidgetComponent
 	
 	override void HandlerAttached(Widget w)
 	{
-		if (SCR_Global.IsEditMode()) return; //--- Run-time only
+		if (SCR_Global.IsEditMode())
+			return; //--- Run-time only
+		
 		m_Widget = w;
 		
 		m_Root = MenuRootComponent.GetRootOf(m_Widget);
@@ -76,8 +82,10 @@ class MenuRootSubComponent: ScriptedWidgetComponent
 			GetGame().GetCallqueue().CallLater(HandlerAttachedScripted, 0, false, w);
 		}
 	}
+	
 	override void HandlerDeattached(Widget w)
 	{
-		if (m_Root) m_Root.RemoveComponent(this);
+		if (m_Root)
+			m_Root.RemoveComponent(this);
 	}
 };

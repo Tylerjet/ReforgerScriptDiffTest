@@ -84,7 +84,7 @@ class SCR_MapMarkerEntryConfig
 				widgetComp.SetAuthorVisible(false);
 			}
 			
-			widgetComp.SetAuthor(GetGame().GetPlayerManager().GetPlayerName(ownerID));
+			widgetComp.SetAuthor(SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(ownerID));
 		}
 	}
 	

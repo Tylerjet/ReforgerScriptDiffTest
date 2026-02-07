@@ -88,17 +88,26 @@ class SCR_EditableEntityCoreBudgetSetting
 		int budgetCostValue = GetMinBudgetCost();
 		if (budgetCost) budgetCostValue = Math.Max(budgetCost.GetBudgetValue(), budgetCostValue);
 		
+		const int previousBudget = m_iCurrentBudget;
 		m_iCurrentBudget = Math.Max(m_iCurrentBudget - budgetCostValue, 0);
 
-		return -budgetCostValue;
+		return previousBudget - m_iCurrentBudget;
 	}
 
 	int SubtractFromBudget(int budgetValue)
 	{
-		int budgetChange = Math.Min(m_iCurrentBudget, Math.Max(GetMinBudgetCost(), budgetValue));
-		m_iCurrentBudget -= budgetChange;
+		const int prevBudget = m_iCurrentBudget;
+		m_iCurrentBudget = Math.Max(m_iCurrentBudget - budgetValue, 0);
 
-		return budgetChange;
+		const int budgetChange = prevBudget - m_iCurrentBudget;
+		
+		#ifdef BUDGET_OPTIMIZATION_CHECKS
+		if(budgetChange != budgetValue)
+		{
+			Print("GM Budget got clamped at some point!", LogLevel.WARNING);
+		}
+
+		return -budgetChange;
 	}
 
 	void SetBudgetComponent(notnull SCR_BudgetEditorComponent budgetEditor)

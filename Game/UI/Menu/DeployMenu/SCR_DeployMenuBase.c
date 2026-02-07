@@ -144,7 +144,7 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 	protected int m_iPlayerId;
 	
 	protected bool m_bMapContextAllowed = true;
-	
+	protected bool m_bInitialSpawnPointSet = false;
 	protected bool m_bCanRespawnAtSpawnPoint;
 	
 	protected SCR_UIInfoSpawnRequestResult m_UIInfoSpawnRequestResult;
@@ -311,6 +311,13 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 			return;
 		
 		gameMode.PauseGame(pause, SCR_EPauseReason.MENU);
+
+		SCR_MenuSpawnLogic logic = SCR_MenuSpawnLogic.Cast(m_RespawnSystemComp.GetSpawnLogic());
+		if (logic.GetUseFadeEffect())
+		{
+			Widget fade = GetRootWidget().FindAnyWidget("FadeEffect");
+			fade.SetVisible(true);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -640,6 +647,16 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 		SCR_SpawnPoint sp = SCR_SpawnPoint.GetSpawnPointByRplId(m_iSelectedSpawnPointId);
 		if (sp)
 			GetGame().GetCallqueue().CallLater(SetInitialSpawnPoint, 0, false, m_iSelectedSpawnPointId); // called the next frame because of widget init order
+
+		SCR_MenuSpawnLogic logic = SCR_MenuSpawnLogic.Cast(m_RespawnSystemComp.GetSpawnLogic());
+		if (logic.GetUseFadeEffect())
+		{
+			Widget fade = GetRootWidget().FindAnyWidget("FadeEffect");
+			const int timeBeforeFade = 1000;
+			const float fadeTime = 0.3;
+			GetGame().GetCallqueue().CallLater(AnimateWidget.Opacity, timeBeforeFade, false, fade, 0, fadeTime, true);
+		}
+			
 	}
 	//---- REFACTOR NOTE END ----
 
@@ -674,6 +691,7 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 	protected void SetInitialSpawnPoint(RplId spawnPointId)
 	{
 		SCR_SpawnPoint sp = SCR_SpawnPoint.GetSpawnPointByRplId(m_iSelectedSpawnPointId);
+		m_bInitialSpawnPointSet = true;
 		SetSpawnPoint(spawnPointId, false);
 	}
 
@@ -708,7 +726,7 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 	//! Centers map to a specific spawn point.
 	protected void FocusOnPoint(notnull SCR_SpawnPoint spawnPoint, bool smooth = true)
 	{
-		if (!m_MapEntity || !m_MapEntity.IsOpen())
+		if (!m_bInitialSpawnPointSet || !m_MapEntity || !m_MapEntity.IsOpen())
 			return;
 
 		vector o = spawnPoint.GetOrigin();
@@ -716,13 +734,10 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 		float x, y;
 		m_MapEntity.WorldToScreen(o[0], o[2], x, y);
 
-		float xScaled = GetGame().GetWorkspace().DPIUnscale(x);
-		float yScaled = GetGame().GetWorkspace().DPIUnscale(y);
-
 		if (smooth)
 			m_MapEntity.PanSmooth(x, y);
 		else
-			m_MapEntity.SetPan(xScaled, yScaled);
+			m_MapEntity.PanSmooth(x, y, 0.001); // since SetPan doesn't work correctly in some cases, just PanSmooth super fast
 	}
 
 	//! Hides loading spinner widget.

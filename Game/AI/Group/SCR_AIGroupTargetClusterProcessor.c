@@ -136,6 +136,10 @@ class SCR_AIGroupTargetClusterProcessor : Managed
 		vector centerPos = 0.5*(s.m_vBBMin + s.m_vBBMax);
 		
 		bool playerControlled = m_Utility.m_Owner.IsSlave();
+
+		// Disregard if combat mode doesn't allow it	
+		if (m_Utility.GetCombatModeActual() == EAIGroupCombatMode.HOLD_FIRE)
+			return EAITargetClusterState.NONE;
 		
 		if (s.GetTimeSinceLastNewInformation() > s.m_fMaxAge_s)
 		{

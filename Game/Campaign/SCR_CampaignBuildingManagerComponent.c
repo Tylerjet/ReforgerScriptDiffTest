@@ -28,7 +28,7 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 	//! Note: Provider is saved to composition only when it's built from base.
 	[Attribute("0", UIWidgets.CheckBox, "If checked, only players of faction that match the owning faction of provider can disassemble composition")]
 	protected bool m_bSameFactionDisassembleOnly;
-	
+
 	[Attribute("1", UIWidgets.CheckBox, "If checked, players from the opposing faction will only be able to disassemble composition when the base it belongs is being captured")]
 	protected bool m_bDisassembleOnlyWhenCapturing;
 
@@ -38,13 +38,16 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 	[Attribute("", UIWidgets.ResourceNamePicker, desc: "Config with prefabs available to build. The config has to be the same as on Editor Mode - placing editor component..", params: "conf")]
 	protected ResourceName m_sPrefabsToBuildResource;
 
+	[Attribute("", UIWidgets.ResourcePickerThumbnail, desc: "This prefab will be spawned when composition is disassembled but has no provider where to return supply.", params: "et")]
+	protected ResourceName m_sPrefabToHoldSupplyOnRefund;
+
 	protected ref array<ResourceName> m_aPlaceablePrefabs = {};
 
 	protected SCR_EditableEntityCore m_EntityCore;
 	protected IEntity m_TemporaryProvider;
 	protected RplComponent m_RplComponent;
 	protected int m_iBuildingCycle
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! \return
 	SCR_CampaignBuildingCompositionOutlineManager GetOutlineManager()
@@ -71,7 +74,7 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 
 		if (!providerEntity)
 			return false;
-		
+
 		SetTemporaryProvider(null);
 
 		component = SCR_ResourceComponent.FindResourceComponent(providerEntity);
@@ -123,12 +126,12 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \return Can the enemy faction disassemble base structures ONLY while capturing. 
+	//! \return Can the enemy faction disassemble base structures ONLY while capturing.
 	bool CanDisassembleOnlyWhenCapturing()
 	{
 		return m_bDisassembleOnlyWhenCapturing;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Get supply component of the provider entity.
 	[Obsolete("SCR_CampaignBuildingManagerComponent.GetResourceComponent() should be used instead.")]
@@ -187,24 +190,26 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnEntityCoreBudgetUpdated(EEditableEntityBudget entityBudget, int originalBudgetValue, int budgetChange, int updatedBudgetValue, SCR_EditableEntityComponent entity)
 	{
- 		if (IsProxy())
+		if (IsProxy())
 			return;
-		
+
 		if (entityBudget != m_BudgetType)
 			return;
 
-		if (entity.GetOwner().IsLoaded())
+		// Continue with compositions placed in WB only when refund is about to happen.
+		if (entity.GetOwner().IsLoaded() && budgetChange > 0)
 			return;
-		
+
 		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 
 		if (campaign && campaign.IsSessionLoadInProgress())
 			return;
-		
+
 		int propBudgetValue;
 		array<ref SCR_EntityBudgetValue> budgets = {};
 		entity.GetEntityAndChildrenBudgetCost(budgets);
 
+		//get props budget value
 		foreach (SCR_EntityBudgetValue budget : budgets)
 		{
 			if (budget.GetBudgetType() != EEditableEntityBudget.PROPS)
@@ -216,10 +221,23 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 
 		IEntity entityOwner = entity.GetOwnerScripted();
 		SCR_ResourceComponent resourceComponent;
+		bool wasContainerSpawned;
 
+		// If resource component was not found on deconstruction, spawn a custom one , find again the resource component at this spawned box and fill it with refund supply.
 		if (!GetResourceComponent(entityOwner, resourceComponent))
+		{
+			//Spawn a resource holder only when the refunded object is a composition.
+			SCR_CampaignBuildingCompositionComponent compositionComponent = SCR_CampaignBuildingCompositionComponent.Cast(entityOwner.FindComponent(SCR_CampaignBuildingCompositionComponent));
+			if (compositionComponent && budgetChange < 0)
+			{
+				SpawnCustomResourceHolder(entityOwner, resourceComponent);
+				wasContainerSpawned = true;
+			}
+		}
+
+		if (!resourceComponent)
 			return;
-		
+
 		//~ Supplies not enabled so no need to remove any
 		if (!resourceComponent.IsResourceTypeEnabled())
 			return;
@@ -231,23 +249,32 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 
 		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(providerEntity.FindComponent(SCR_CampaignBuildingProviderComponent));
 
-		if (!providerComponent)
-			return;
-
 		if (budgetChange < 0)
 		{
 			budgetChange = Math.Round(budgetChange * m_iCompositionRefundPercentage * 0.01);
 
-			providerComponent.AddPropValue(-propBudgetValue);
+			if (providerComponent)
+				providerComponent.AddPropValue(-propBudgetValue);
 
-			SCR_ResourceGenerator generator = resourceComponent.GetGenerator(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+			if (wasContainerSpawned)
+			{
+				SCR_ResourceContainer container = resourceComponent.GetContainer(EResourceType.SUPPLIES);
 
-			if (generator)
-				generator.RequestGeneration(-budgetChange);
+				if (container)
+					container.SetResourceValue(-budgetChange);
+			}
+			else
+			{
+				SCR_ResourceGenerator generator = resourceComponent.GetGenerator(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+
+				if (generator)
+					generator.RequestGeneration(-budgetChange);
+			}
 		}
 		else
 		{
-			providerComponent.AddPropValue(propBudgetValue);
+			if (providerComponent)
+				providerComponent.AddPropValue(propBudgetValue);
 
 			SCR_ResourceConsumer consumer = resourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
 
@@ -257,21 +284,39 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	void SpawnCustomResourceHolder(IEntity entityOwner, out SCR_ResourceComponent component)
+	{
+		EntitySpawnParams spawnParams = new EntitySpawnParams();
+		spawnParams.TransformMode = ETransformMode.WORLD;
+		entityOwner.GetTransform(spawnParams.Transform);
+
+		Resource res = Resource.Load(m_sPrefabToHoldSupplyOnRefund);
+		if (!res.IsValid())
+			return;
+
+		IEntity resourceHolder = GetGame().SpawnEntityPrefab(res, GetGame().GetWorld(), spawnParams);
+		if (!resourceHolder)
+			return;
+
+		component = SCR_ResourceComponent.FindResourceComponent(resourceHolder);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
 		m_EntityCore = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
 		m_RplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
-		
+
 		GetPrefabListFromConfig();
-		
+
 		if (!GetGameMode().IsMaster())
 			return;
 		
-		SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
-		if (!core)
+		// Supplies are disabled in this mode. No need for an event.
+		if (!SCR_ResourceSystemHelper.IsGlobalResourceTypeEnabled(EResourceType.SUPPLIES))
 			return;
-		
-		m_EntityCore.Event_OnEntityBudgetUpdated.Insert(OnEntityCoreBudgetUpdated);
+
+		m_EntityCore.Event_OnEntityBudgetUpdatedPerEntity.Insert(OnEntityCoreBudgetUpdated);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -288,7 +333,7 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 	{
 		return (m_RplComponent && m_RplComponent.IsProxy());
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Load all the available compositions at the beginning of the game to be accessible without the building mode entity.
 	void GetPrefabListFromConfig()
@@ -373,7 +418,7 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 		// events
 		SCR_PlacingEditorComponent placingComponent = SCR_PlacingEditorComponent.Cast(modeEntity.FindComponent(SCR_PlacingEditorComponent));
 		placingComponent.GetOnPlaceEntityServer().Insert(EntitySpawnedByProvider);
-		
+
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (gameMode)
 			gameMode.GetOnPlayerDisconnected().Insert(PlayerDisconnected);
@@ -382,7 +427,7 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 		SetOnProviderDestroyedEvent(provider);
 		providerComponent.SetCheckProviderMove();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Event raised when the player disconnects
 	//! \param[in] playerId
@@ -393,7 +438,7 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (!gameMode)
 			return;
-		
+
 		gameMode.GetOnPlayerDisconnected().Remove(PlayerDisconnected);
 	}
 
@@ -576,7 +621,7 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 
 		providerComponent.RemoveCheckProviderMove();
 		RemoveOnPlayerDeathEvent(playerID);
-		
+
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (gameMode)
 			gameMode.GetOnPlayerDisconnected().Remove(PlayerDisconnected);
@@ -590,13 +635,13 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 	protected void ToggleEditorMode(notnull SCR_EditorManagerEntity editorManager)
 	{
 		EEditorMode mode = editorManager.GetCurrentMode();
-		
+
 		editorManager.Toggle();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void RemoveEditorMode(int playerID)
-	{		
+	{
 		SCR_EditorManagerEntity editorManager = GetEditorManagerEntity(playerID);
 		if (!editorManager)
 			return;

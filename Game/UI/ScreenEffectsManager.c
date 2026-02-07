@@ -26,7 +26,7 @@ class SCR_ScreenEffectsManager : SCR_InfoDisplayExtended
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void SettingsChanged()
+	protected void SettingsChanged()
 	{
 		array<BaseInfoDisplay> infoDisplays = {};
 		GetInfoDisplays(infoDisplays);
@@ -34,7 +34,12 @@ class SCR_ScreenEffectsManager : SCR_InfoDisplayExtended
 		{
 			SCR_BaseScreenEffect screenEffect = SCR_BaseScreenEffect.Cast(baseInfoDisplays);
 			if (screenEffect)
+			{
+				if (!screenEffect.GetRootWidget())
+					screenEffect.SetRootWidget(GetRootWidget());
+				
 				screenEffect.SettingsChanged();
+			}
 		}
 	}
 	
@@ -70,7 +75,7 @@ class SCR_ScreenEffectsManager : SCR_InfoDisplayExtended
 
 	//------------------------------------------------------------------------------------------------
 	//! Call ClearEffects() in every child inheriting from SCR_BaseScreenEffect
-	void ManagerClearEffects()
+	protected void ManagerClearEffects()
 	{
 		array<BaseInfoDisplay> infoDisplays = {};
 		GetInfoDisplays(infoDisplays);
@@ -80,6 +85,22 @@ class SCR_ScreenEffectsManager : SCR_InfoDisplayExtended
 			if (screenEffect)
 				screenEffect.ClearEffects();
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Return the effect is it exist
+	BaseInfoDisplay GetEffect(typename effectType)
+	{
+		array<BaseInfoDisplay> infoDisplays = {};
+		GetInfoDisplays(infoDisplays);
+		
+		foreach (BaseInfoDisplay baseInfoDisplays: infoDisplays)
+		{
+			if (baseInfoDisplays.Type() == effectType)
+				return baseInfoDisplays;
+		}
+
+		return null;
 	}
 
 	//------------------------------------------------------------------------------------------------

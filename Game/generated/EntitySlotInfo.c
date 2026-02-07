@@ -119,7 +119,7 @@ class EntitySlotInfo: PointInfo
 	proto external bool IsEnabled();
 	//! Returns currently attached entity or null if none
 	proto external IEntity GetAttachedEntity();
-	//! Returns the name of the EntitySlotInfo defined in the array of slots
+	//! Returns the name of the EntitySlotInfo defined in the array of slots. If empty will return the store name instead.
 	proto external string GetSourceName();
 	/*!
 	Updates attached entity's transformation by combining provided transformation with slot predefined local transformation

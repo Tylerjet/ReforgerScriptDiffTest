@@ -31,6 +31,14 @@ class InputBinding
 	proto external EInputBindingCaptureState GetCaptureState();
 	proto external BaseContainer FindContext(string contextName);
 	proto external BaseContainer FindAction(string actionName);
+	//! Start calibration process for device type
+	proto external void StartCalibration(EInputDeviceType deviceType);
+	//! Cancel running calibration process
+	proto external void StopCalibration();
+	//! Return status of calibration process
+	proto external EInputBindingCalibrationStatus GetCalibrationStatus();
+	//! Get specific min & max calibration data
+	proto external bool GetCalibrationData(EInputBindingCalibrationData dataType, out vector min, out vector max);
 	proto external void Save();
 	proto external bool GetConflicts(string actionName, out notnull array<int> keyBindIndices, out notnull array<string> conflictedActions, out notnull array<string> conflictedActionPresets, EInputDeviceType deviceType = EInputDeviceType.KEYBOARD, string preset = string.Empty);
 	proto external bool GetBindings(string actionName, out notnull array<string> bindings, EInputDeviceType deviceType = EInputDeviceType.KEYBOARD, string preset = string.Empty);

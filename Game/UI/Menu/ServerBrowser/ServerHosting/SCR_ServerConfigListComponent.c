@@ -103,7 +103,7 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 		
 		// Simple port 
 		if (m_SimplePortEdit)
-			m_SimplePortEdit.GetEditBoxComponent().m_OnChanged.Insert(OnSimplePortChanged);
+			m_SimplePortEdit.GetEditBoxComponent().m_OnWriteModeLeave.Insert(OnSimplePortChanged);
 		
 		// Scenarios
 		if (!m_ScenarioSelect)
@@ -422,12 +422,12 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 	{
 		m_bNameEdited = !text.IsEmpty();
 	}
-	
+
 	//-------------------------------------------------------------------------------------------	
-	protected void OnSimplePortChanged(SCR_EditBoxComponent edit, string text)
+	protected void OnSimplePortChanged(string text)
 	{
 		if (m_OnPortChanged)
-			m_OnPortChanged.Invoke(text);
+			m_OnPortChanged.Invoke(m_SimplePortEdit.ValueAsString());
 	}
 	
 	//-------------------------------------------------------------------------------------------

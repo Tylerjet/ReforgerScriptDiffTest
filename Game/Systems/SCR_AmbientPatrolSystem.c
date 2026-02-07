@@ -1,6 +1,14 @@
 //------------------------------------------------------------------------------------------------
 class SCR_AmbientPatrolSystem : GameSystem
 {
+	override static void InitInfo(WorldSystemInfo outInfo)
+	{
+		outInfo
+			.SetAbstract(false)
+			.SetLocation(ESystemLocation.Server)
+			.AddPoint(ESystemPoint.FixedFrame);
+	}
+
 	protected static const int CHECK_INTERVAL = 3;					//s, how often should an individual patrol spawn be checked
 	protected static const int DESPAWN_TIMEOUT = 10000;				//ms
 	protected static const int SPAWN_RADIUS_MIN_SQ = 500 * 500;		// Square value for distance checks

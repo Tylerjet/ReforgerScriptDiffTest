@@ -195,6 +195,25 @@ class SCR_SaveManagerCore: SCR_GameCoreBase
 	
 	//----------------------------------------------------------------------------------------
 	/*!
+	Delete a save file based on if it's local or workshop.
+	\param fileName Full save file name
+	\param isFromWorkshop Select if you want to delete workshop item or local save (needed due to same names)
+	\return True if the file was deleted
+	*/
+	bool Delete(string fileName, bool isFromWorkshop)
+	{
+		SCR_DSSessionCallback callback = FindCallback(fileName);
+		if (!callback)
+		{
+			Print(string.Format("SCR_SaveManagerCore: Cannot delete save file '%1', no rules found for it!", fileName), LogLevel.WARNING);
+			return false;
+		}
+		
+		return callback.Delete(fileName, isFromWorkshop);
+	}
+	
+	//----------------------------------------------------------------------------------------
+	/*!
 	Check if file of given type exists.
 	\param type Save type
 	\param customName Custom addition to file name (optional; applicable only to some save types)
@@ -316,7 +335,7 @@ class SCR_SaveManagerCore: SCR_GameCoreBase
 			string metaHeaderResource = metaStruct.GetHeaderResource();
 			string metaMissionId = SCR_SaveWorkshopManager.ScenarioGUIDToID(metaStruct.GetHeaderResource());
 			
-			string missionFullId = mission.Id();
+			ResourceName missionFullId = mission.Id();
 			string missionId = SCR_SaveWorkshopManager.ScenarioGUIDToID(missionFullId);
 			
 			if (metaMissionId != missionId)
@@ -349,7 +368,7 @@ class SCR_SaveManagerCore: SCR_GameCoreBase
 	}
 	///@}
 	
-	protected bool IsDownloaded(string fileName)
+	bool IsDownloaded(string fileName)
 	{
 		string ext;
 		FilePath.StripExtension(fileName, ext);
@@ -375,6 +394,13 @@ class SCR_SaveManagerCore: SCR_GameCoreBase
 		return !gameMode || gameMode.GetState() == SCR_EGameModeState.GAME;
 	}
 	
+	//----------------------------------------------------------------------------------------
+	bool ScenarioCanBeSaved()
+	{
+		SCR_SaveLoadComponent saveLoadComponent = SCR_SaveLoadComponent.GetInstance();
+		return saveLoadComponent && saveLoadComponent.ContainsStruct(SCR_EditorStruct);
+	}
+		
 	//----------------------------------------------------------------------------------------
 	/*!
 	Assign JSON struct to specific save type.
@@ -451,6 +477,17 @@ class SCR_SaveManagerCore: SCR_GameCoreBase
 			return null;
 	}
 	///@}
+	
+	//----------------------------------------------------------------------------------------
+	//! Return save type based on given name
+	ESaveType GetFileSaveType(string fileName)
+	{
+		SCR_DSSessionCallback callback = FindCallback(fileName);
+		if (!callback)
+			return -1;
+		
+		return callback.GetSaveType();
+	}
 	
 	//----------------------------------------------------------------------------------------
 	protected SCR_DSSessionCallback FindCallback(ESaveType type)
@@ -964,7 +1001,7 @@ class SCR_SaveManagerCore: SCR_GameCoreBase
 		string fileNameToLoad;
 		GameSessionStorage.s_Data.Find(GAME_SESSION_STORAGE_FILE_NAME_TO_LOAD, fileNameToLoad);
 
-		if (!fileNameToLoad.IsEmpty())
+		if (!fileNameToLoad.IsEmpty() && GetFileSaveType(fileNameToLoad) == ESaveType.USER)
 		{
 			WorldSaveItem itemToLoad = saveWorkshopManager.FindSaveItemBySaveFileName(fileNameToLoad);
 			saveWorkshopManager.SetCurrentSave(fileNameToLoad, itemToLoad);

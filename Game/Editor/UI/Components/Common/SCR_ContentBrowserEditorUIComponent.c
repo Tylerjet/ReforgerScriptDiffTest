@@ -122,6 +122,8 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 			m_ContentBrowserDialog.Close();
 	}
 	
+	//---- REFACTOR NOTE START: Using hardcoded 20
+	
 	override void ShowEntries(Widget contentWidget, int indexStart, int indexEnd)
 	{
 		WorkspaceWidget workspace = GetGame().GetWorkspace();
@@ -219,6 +221,8 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 		m_bAnimateEntries = false;
 		m_bBudgetPreviewUpdateEnabled = true;
 	}
+	
+	//---- REFACTOR NOTE END ----
 	
 	override int GetEntryCount()
 	{
@@ -451,10 +455,16 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 	//~ After Browser state is loaded
 	protected void OnBrowserEntriesFiltered()
 	{
-		m_SearchEditBox.SetValue(m_ContentBrowserManager.GetCurrentSearch());
-		
 		m_bAnimateEntries = true;
 		SetPage(m_ContentBrowserManager.GetPageIndex(), true);
+	}
+	
+	//~ After Browser state has reset filters
+	protected void OnBrowserStateCleared()
+	{
+		m_SearchEditBox.SetValue(m_ContentBrowserManager.GetCurrentSearch());
+		
+		OnBrowserEntriesFiltered()
 	}
 	
 	protected void OnMenuClosed()
@@ -657,7 +667,7 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 		}
 		
 		m_ContentBrowserManager.GetOnBrowserEntriesFiltered().Insert(OnBrowserEntriesFiltered);
-		m_ContentBrowserManager.GetOnBrowserStateCleared().Insert(OnBrowserEntriesFiltered);
+		m_ContentBrowserManager.GetOnBrowserStateCleared().Insert(OnBrowserStateCleared);
 		m_ContentBrowserManager.RefreshPreviewCost();
 		
 		SCR_UISoundEntity.SoundEvent(m_sSfxOnOpenDialog, true);
@@ -690,7 +700,7 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 
 			//~ State loading
 			m_ContentBrowserManager.GetOnBrowserEntriesFiltered().Remove(OnBrowserEntriesFiltered);
-			m_ContentBrowserManager.GetOnBrowserStateCleared().Remove(OnBrowserEntriesFiltered);
+			m_ContentBrowserManager.GetOnBrowserStateCleared().Remove(OnBrowserStateCleared);
 		}
 		
 		if (m_SearchEditBox)

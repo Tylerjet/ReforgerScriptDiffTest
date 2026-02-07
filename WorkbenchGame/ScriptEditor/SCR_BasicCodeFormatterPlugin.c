@@ -3,7 +3,7 @@
 //! \brief A Basic Code Formatter - use Ctrl+Shift+K to trigger.
 //! Ctrl+Alt+Shift+K can be used to force processing all the lines of the currently opened file.
 //! \see SCR_BasicCodeFormatterForcedPlugin
-//
+
 // ###############
 // It is recommended to be VERY CAREFUL with breakpoints here
 // as GetCurrentFile, GetLinesCount, GetLineText, SETLineText etc may target this file
@@ -34,7 +34,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 	[Attribute(defvalue: "1", desc: "Replace four-spaces tabs with the tab character and remove spaces mixed with tabs", category: "Formatting")]
 	protected bool m_bFixTabs;
 
-	[Attribute(defvalue: "1", desc: "Fix method separators (" + TWO_SLASHES + "---)", category: "Formatting")]
+	[Attribute(defvalue: "1", desc: "Fix method separators (" + SCR_StringHelper.DOUBLE_SLASH + "---)", category: "Formatting")]
 	protected bool m_bFixMethodSeparators;
 
 //	[Attribute(defvalue: "1", desc: "Replace consecutive empty lines with only one", category: "Formatting")]
@@ -84,15 +84,20 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 	[Attribute(defvalue: "scripts/xxx/generated/", desc: "Directories in which to avoid formatting (case-insensitive, no wildcards)", category: "Options")]
 	protected ref array<string> m_aExcludedDirectories;
 
-	[Attribute(defvalue: "<misspelt word>", desc: "Words that cannot be found in comments - usually helpful to find typos (e.g solider, lenght, etc)" /* f-bombs, etc */ + "\nA word cannot contain a space\nCase-insensitive", category: "Options")]
-	protected ref array<string> m_aForbiddenCommentWords; // no auto-fix because casing matters
+	[Attribute(desc: "Spell check config - set it to null to reset its default values", category: "Options")]
+	protected ref SCR_BasicCodeFormatterSpellCheckConfig m_SpellCheckConfig;
+
+	[Attribute(defvalue: "1", desc: "Whether or not display flagged words details in the report", category: "Options")]
+	protected bool m_bShowSpellCheckFindingsDetails;
 
 	/*
 		Category: Advanced
 	*/
 
-	[Attribute(defvalue: DEFAULT_DIFF_CMD, desc: "The command line used to generate the diff file", category: "Advanced")]
+	[Attribute(defvalue: DEFAULT_DIFF_CMD, desc: "The command line used to generate the diff file\n%1 = absolute target filepath\n%2 = absolute destination filepath", category: "Advanced")]
 	protected string m_sDiffCommand;
+
+	// member variables
 
 	protected ref array<ref array<string>> m_aGeneralFormatting_Start;
 	protected ref array<ref array<string>> m_aGeneralFormatting_Middle;
@@ -114,26 +119,35 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 	protected ref map<string, string> m_mVariableTypePrefixesStart;
 	protected ref map<string, string> m_mVariableTypePrefixesEnd;
 
-	protected static const int LINE_NUMBER_LIMIT = 10;			//!< used by JoinLineNumbers to limit the amount of shown line number groups
+	//! mistake-correction map; mistake can contain star(s)
+	protected ref map<string, string> m_mForbiddenWords;		// detection only, no replacement due to casing
+
+	// constants
+
+	protected static const int LINE_NUMBER_LIMIT = 12;			//!< used by JoinLineNumbers to limit the amount of shown line number groups
 	protected static const string LINE_NUMBER_RANGE = "%1-%2";	//!< used by JoinLineNumbers to give a line range (e.g 5-17, 2001-2013, etc)
 
-	protected static const string SPACE = SCR_StringHelper.SPACE;
-	protected static const string TWO_SPACES = SPACE + SPACE;
-	protected static const string FOUR_SPACES = SPACE + SPACE + SPACE + SPACE;
-	protected static const string TAB = SCR_StringHelper.TAB;
+	protected static const string LOG_SEPARATOR = "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -";
 	protected static const string BRACKET_OPEN = "{";			// avoids {} Script Editor indent shenanigans
 	protected static const string BRACKET_CLOSE = "}";
-	protected static const string TWO_SLASHES = "/" + "/";		// avoids Script Editor "//" highlight shenanigans
 	protected static const string MEMBER_PREFIX = "m_";
 	protected static const string STATIC_PREFIX = "s_";
 
-	// "varName' '= 42", "varName, otherVarName", "varName= 42", "varName;" - tabs are replaced by spaces in HasBadVariableNaming
-	protected static const ref array<string> VARIABLE_NAME_ENDING = { SPACE, ",", "=", ";", "/" }; // technically, "everything but [a-zA-Z0-9_] and []"
+	// can be string-hardcoded without too much risks
+	protected static const ref array<string> NATIVE_TYPES = {
+		"bool", "float", "int", "string", "typename", "vector",
+		"FactionKey", "LocalizedString", "ResourceName",
+	};
 
-	protected static const string METHOD_SEPARATOR = TWO_SLASHES + "------------------------------------------------------------------------------------------------";
+	// "varName' '= 42", "varName, otherVarName", "varName= 42", "varName;" - tabs are replaced by spaces in HasBadVariableNaming
+	protected static const ref array<string> VARIABLE_NAME_ENDING = { SCR_StringHelper.SPACE, ",", "=", ";", SCR_StringHelper.SLASH }; // technically, "everything but [a-zA-Z0-9_] and []"
+
+	protected static const string METHOD_SEPARATOR = SCR_StringHelper.DOUBLE_SLASH + "------------------------------------------------------------------------------------------------";
 	protected static const string DIFF_FILENAME = "tempDiffFile.txt";
+
+	// TODO: start /B svn diff "%1" > "%2" + delay? ResourceManager.WaitForFile?
 	protected static const string DEFAULT_DIFF_CMD = "cmd /c svn diff \"%1\" > \"%2\""; // %1 = absolute target filepath, %2 = absolute destination filepath
-	protected static const ref array<string> FORMAT_IGNORE = { TWO_SLASHES, "/" + "*", "\"" };	// avoids Script Editor comment shenanigans
+	protected static const ref array<string> FORMAT_IGNORE = { SCR_StringHelper.DOUBLE_SLASH, SCR_StringHelper.SLASH + "*", SCR_StringHelper.DOUBLE_QUOTE };
 	protected static const ref array<string> FORCED_PREFIXES = { "SCR_" };
 	protected static const ref array<string> EXCLUDED_DIRECTORIES = {
 		"scripts/Core/generated/",
@@ -142,6 +156,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 		"scripts/WorkbenchGameCommon/generated/",
 	};
 	protected static const string GENERATED_SCRIPT_WARNING = "Do not modify, this script is generated"; // must be the exact line, tabs included if any
+	protected static const ResourceName SPELLCHECK_CONFIG = "{53D7DE332A43449F}Configs/Workbench/ScriptEditor/BasicCodeFormatterPlugin/BasicCodeFormatterSpellCheckConfig.conf";
 
 	//------------------------------------------------------------------------------------------------
 	//! Running method
@@ -240,8 +255,8 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			if (!excludedDirectory)
 				continue;
 
-			if (!excludedDirectory.EndsWith("/"))			// add final slash
-				excludedDirectory += "/";
+			if (!excludedDirectory.EndsWith(SCR_StringHelper.SLASH))			// add final slash
+				excludedDirectory += SCR_StringHelper.SLASH;
 
 			m_aExcludedDirectories[i] = excludedDirectory;	// update user setting
 
@@ -249,55 +264,49 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			m_aForbiddenDirectories.Insert(excludedDirectory);
 		}
 
-		// lowercase detection
-		if (!m_aForbiddenCommentWords || m_aForbiddenCommentWords.IsEmpty())
-		{
-			m_aForbiddenCommentWords = {
-				"availible",		// available
-				"availibles",		// availables
-				"comit",			// commit
-				"comited",			// committed
-				"comitted",			// committed
-				"commited",			// committed
-				"dammage",			// damage
-				"dammages",			// damages
-				"hitzone",			// hit zone
-				"hitzones",			// hit zones
-				"informations",		// information (uncountable)
-				"inherented",		// inherited
-				"inherenting",		// inheriting
-				"inherents",		// inherits
-				"lenght",			// length
-				"lenghts",			// lengths
-				"overidden",		// overridden
-				"overiden",			// overridden
-				"overriden",		// overridden
-				"plazer",			// player (QWERTZ)
-				"recieve",			// receive
-				"reciever",			// receiver
-				"recievers",		// receivers
-				"recieves",			// receives
-				"solider",			// soldier
-				"soliders",			// soldiers
-			};
-		}
+		if (m_mForbiddenWords)
+			m_mForbiddenWords.Clear();
 		else
+			m_mForbiddenWords = new map<string, string>();
+
+		if (!m_SpellCheckConfig)
+			m_SpellCheckConfig = SCR_ConfigHelperT<SCR_BasicCodeFormatterSpellCheckConfig>.GetConfigObject(SPELLCHECK_CONFIG);
+
+		if (m_SpellCheckConfig && m_SpellCheckConfig.m_aEntries)
 		{
-			string value;
-			for (int i = m_aForbiddenCommentWords.Count() - 1; i >= 0; --i)
+			foreach (SCR_BasicCodeFormatterSpellCheckConfig_ForbiddenWordEntry entry : m_SpellCheckConfig.m_aEntries)
 			{
-				value = m_aForbiddenCommentWords[i];
-				if (!value.Trim())
-				{
-					m_aForbiddenCommentWords.RemoveOrdered(i);
+				if (!entry.m_bEnabled)
 					continue;
+
+				string mistake = SCR_StringHelper.Filter(entry.m_sMistake, SCR_StringHelper.ALPHANUMERICAL + SCR_StringHelper.STAR);
+				if (!mistake) // .IsEmpty()
+					continue;
+
+				// case-insensitive
+				mistake.ToLower();
+
+				if (m_mForbiddenWords.Contains(mistake))
+					continue;
+
+				string correction = entry.m_sCorrection;
+				correction.TrimInPlace();
+				if (correction)
+					correction = string.Format("use \"%1\" instead", correction);
+
+				string comment = entry.m_sComment;
+				comment.TrimInPlace();
+
+				if (comment) // !.IsEmpty()
+				{
+					if (correction) // !.IsEmpty()
+						correction = string.Format("%1 (%2)", correction, comment);
+					else
+						correction = comment;
 				}
 
-				value.ToLower();
-				m_aForbiddenCommentWords[i] = value;
+				m_mForbiddenWords.Insert(mistake, correction);
 			}
-
-			m_aForbiddenCommentWords.Sort();
 		}
 	}
 
@@ -320,11 +329,11 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 		string absoluteAddonDirectory;
 		if (!SCR_AddonTool.GetAddonAbsolutePath(m_iAddon, string.Empty, absoluteAddonDirectory, true))
 		{
-			Print("Wrong addon selected: " + SCR_AddonTool.GetAddonIndex(m_iAddon) + " (read-only?)", LogLevel.ERROR);
+			Print("Wrong addon selected: " + SCR_AddonTool.GetAddonID(m_iAddon) + " (read-only?)", LogLevel.ERROR);
 			return;
 		}
 
-		string addonName = SCR_AddonTool.GetAddonIndex(m_iAddon);
+		string addonName = SCR_AddonTool.GetAddonID(m_iAddon);
 		array<ResourceName> scriptFiles = SCR_WorldEditorToolHelper.SearchWorkbenchResources({ "c" }, null, SCR_AddonTool.ToFileSystem(addonName));
 
 		array<string> relativeFilePaths = {};
@@ -341,17 +350,16 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			return;
 		}
 
-		SCR_BasicCodeFormatterPluginOKCancelDialog okCancelDialog = new SCR_BasicCodeFormatterPluginOKCancelDialog();
 		if (!Workbench.ScriptDialog(
 				"Warning",
 				"You are about to format " + editableScriptsCount + " \"" + addonName + "\" addon script files.\n\n" + "Continue?",
-				okCancelDialog)
+				new SCR_OKCancelWorkbenchDialog())
 		)
 			return;
 
 		array<ref SCR_BasicCodeFormatterPluginFileReport> reports = ProcessFiles(relativeFilePaths, true);
 
-		if (m_iMaxLoggedReports == 0)
+		if (m_iMaxLoggedReports < 1)
 			return;
 
 		int displayedReports;
@@ -412,7 +420,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 		{
 			if (relativeFilePath.StartsWith(forbiddenDir))
 			{
-				Print("File is in excluded directory, skipping (" + forbiddenDir + ") - " + relativeFilePath, LogLevel.NORMAL);
+				PrintFormat("File is in excluded directory, skipping (%1) - %2", forbiddenDir, relativeFilePath, level: LogLevel.NORMAL);
 				return null;
 			}
 		}
@@ -437,17 +445,25 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 		bool isPreviousLineEmptyLine;
 		bool emptyLineGroupLogged;
 
+		bool isInRepository;
+
 		if (m_bOnlyFormatModifiedLines && !isReadOnly)
 		{
 			report.m_iDiffTime = System.GetTickCount();
-			report.m_aDiffLines = GetFileModifiedLineNumbers(absoluteFilePath);
+			report.m_aDiffLines = GetFileModifiedLineNumbers(absoluteFilePath, isInRepository);
 			report.m_iDiffTime = System.GetTickCount(report.m_iDiffTime);
 
-			if (report.m_aDiffLines && report.m_aDiffLines.IsEmpty()) // if no changes are done, check the whole file
-				report.m_aDiffLines = null;
+			if (report.m_aDiffLines && report.m_aDiffLines.IsEmpty()) // no changes found
+			{
+				if (isInRepository)	// an unchanged committed file must not be formatted
+					doGeneralFormatting = false;
+				else				// a non-committed file gets fully checked
+					report.m_aDiffLines = null;
+			}
 		}
 
-		array<string> pieces;
+		array<string> pieces; // instanciation not needed (see GetIndentAndLineContentAsPieces)
+		array<string> friendlyWords = {};
 		/*
 			Start
 		*/
@@ -458,7 +474,8 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 
 		if (lines.Contains(GENERATED_SCRIPT_WARNING))
 		{
-			Print("Skipping " + relativeFilePath, LogLevel.NORMAL);
+			Print("Skipping generated script " + relativeFilePath, LogLevel.NORMAL);
+			return null;
 		}
 
 		ScriptEditor scriptEditor = Workbench.GetModule(ScriptEditor);
@@ -469,7 +486,6 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 		bool prevFormatThisLine;
 		string prevFullLine;
 		string prevContent;
-		array<string> commentPieces = {};
 		foreach (int lineNumber, string fullLine : lines)
 		{
 			int lineNumberPlus1 = lineNumber + 1;
@@ -478,7 +494,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			{
 				prevFormatThisLine = formatThisLine; // false
 				prevFullLine = fullLine;
-				prevContent = SCR_StringHelper.TrimLeft(fullLine.Trim());
+				prevContent = fullLine.Trim();
 				continue;
 			}
 
@@ -514,8 +530,8 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 
 				if (m_bFixTabs)
 				{
-					int fourSpacesReplaced = indentation.Replace(FOUR_SPACES, TAB);
-					int spaceInTabsReplaced = indentation.Replace(SPACE, string.Empty);
+					int fourSpacesReplaced = indentation.Replace(SCR_StringHelper.QUADRUPLE_SPACE, SCR_StringHelper.TAB);
+					int spaceInTabsReplaced = indentation.Replace(SCR_StringHelper.SPACE, string.Empty);
 
 					if (fourSpacesReplaced > 0 || spaceInTabsReplaced > 0)
 					{
@@ -527,7 +543,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 
 				if (m_bFixMethodSeparators)
 				{
-					if (piecesCount == 1 && pieces[0].StartsWith(TWO_SLASHES + "---") && pieces[0].EndsWith("---") && !SCR_StringHelper.Filter(pieces[0], "/-", true) && pieces[0] != METHOD_SEPARATOR)
+					if (piecesCount == 1 && pieces[0].StartsWith(SCR_StringHelper.DOUBLE_SLASH + "---") && pieces[0].EndsWith("---") && !SCR_StringHelper.Filter(pieces[0], "/-", true) && pieces[0] != METHOD_SEPARATOR)
 					{
 						pieces.Set(0, METHOD_SEPARATOR);
 						report.m_iMethodSeparatorFixedTotal++;
@@ -541,46 +557,56 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			string finalContent = SCR_StringHelper.Join(string.Empty, pieces);
 			if (reportFindings)
 			{
-				if (indentation != TAB && finalContent.StartsWith(TWO_SLASHES + "---") && finalContent.EndsWith("---"))
+				if (indentation != SCR_StringHelper.TAB && finalContent.StartsWith(SCR_StringHelper.DOUBLE_SLASH + "---") && finalContent.EndsWith("---"))
 					report.m_aBadSeparatorFound.Insert(lineNumberPlus1);
+
+				string fullLineLC = SCR_StringHelper.FormatValueNameToUserFriendly(fullLine);
+				fullLineLC.ToLower();
+				fullLineLC.Split(SCR_StringHelper.SPACE, friendlyWords, true);
+				foreach (string friendlyWord : friendlyWords) // all lowercase
+				{
+					foreach (string forbiddenWord, string correction : m_mForbiddenWords)
+					{
+						if (SCR_StringHelper.SimpleStarSearchMatches(friendlyWord, forbiddenWord, false, false))
+						{
+							if (report.m_mForbiddenWordFound.Contains(forbiddenWord))
+								report.m_mForbiddenWordFound.Get(forbiddenWord).Insert(lineNumberPlus1);
+							else
+								report.m_mForbiddenWordFound.Insert(forbiddenWord, { lineNumberPlus1 });
+
+							break; // one match per word is enough
+						}
+					}
+				}
 
 				string findingsString = finalContent.Trim();
 				bool isCurrentLineEmpty = !findingsString; // !IsEmpty for perf
-				if (!emptyLineGroupLogged && isPreviousLineEmptyLine && isCurrentLineEmpty)
+				if (isPreviousLineEmptyLine)
 				{
-					report.m_aDoubleEmptyLineFound.Insert(lineNumber); // previous line number
-					emptyLineGroupLogged = true;
+					if (isCurrentLineEmpty)
+					{
+						if (!emptyLineGroupLogged)
+						{
+							report.m_aDoubleEmptyLineFound.Insert(lineNumber); // previous line number
+							emptyLineGroupLogged = true;
+						}
+					}
+					else
+					{
+						emptyLineGroupLogged = false;
+					}
 				}
 
 				isPreviousLineEmptyLine = isCurrentLineEmpty;
 
-				emptyLineGroupLogged = false;
-
 				findingsString = string.Empty;
-				bool forbiddenWordFound = false;
 				foreach (string piece : pieces)
 				{
-					if (SCR_StringHelper.StartsWithAny(piece, FORMAT_IGNORE)) // check comment words
-					{
-						if (forbiddenWordFound)
-							continue;
+					if (piece.StartsWith(SCR_StringHelper.DOUBLE_SLASH))
+						break; // cheaper
 
-						piece.ToLower();
-						piece.Split(" ", commentPieces, true);
-						foreach (string forbiddenCommentWord : m_aForbiddenCommentWords)
-						{
-							if (commentPieces.Contains(forbiddenCommentWord))
-							{
-								report.m_aForbiddenCommentWordFound.Insert(lineNumberPlus1);
-								forbiddenWordFound = true;
-								break;
-							}
-						}
-					}
-					else // just add for below checks
-					{
+					if (!SCR_StringHelper.StartsWithAny(piece, FORMAT_IGNORE)) // don't check comments
 						findingsString += piece;
-					}
 				}
 
 				if (findingsString) // !IsEmpty for perf
@@ -609,7 +635,11 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 						}
 					}
 
-					if (lineNumber < linesCount - 1 && SCR_StringHelper.StartsWithAny(findingsString, m_aForForEachWhileArray))
+					if (
+						lineNumber < linesCount - 1
+						&& SCR_StringHelper.StartsWithAny(findingsString, m_aForForEachWhileArray)
+						&& SCR_StringHelper.CountOccurrences(findingsString, "(") == SCR_StringHelper.CountOccurrences(findingsString, ")") // e.g multiline "while"
+					)
 					{
 						string nextLine = lines[lineNumberPlus1];
 						if (!nextLine.Trim().StartsWith(BRACKET_OPEN))
@@ -619,15 +649,26 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 					if (SCR_StringHelper.StartsWithAny(findingsString, m_aIfForForEachWhileArray) && SCR_StringHelper.EndsWithAny(findingsString, m_aEndBracketSemicolonArray))
 						report.m_aOneLinerFound.Insert(lineNumberPlus1);
 
-					if ((prevFormatThisLine || !prevContent.StartsWith("[Attribute(")) && HasBadVariableNaming(indentation, findingsString)) // )] // do not suggest renaming existing attributes, they are most likely public by now
+					if (!prevContent.StartsWith("[Attribute(") && HasBadVariableNaming(indentation, findingsString)) // )] // do not suggest renaming existing attributes, they are most likely public by now
 						report.m_aBadVariableNamingFound.Insert(lineNumberPlus1);
 
 					if (SCR_StringHelper.ContainsAny(findingsString, m_aScriptInvokerArray))
 						report.m_aBadScriptInvokerFound.Insert(lineNumberPlus1);
 
-					if (findingsString.EndsWith(";") &&
-						(findingsString.StartsWith("Print(") && !(findingsString.Contains("LogLevel.") || findingsString.Contains("logLevel)"))) || findingsString.StartsWith("PrintFormat("))
-						report.m_aWildPrintFound.Insert(lineNumberPlus1);
+					if (findingsString.StartsWith("Print") && findingsString.EndsWith(";"))
+					{
+						if (findingsString.StartsWith("Print(")) // )
+						{
+							if (!findingsString.Contains("LogLevel.") && !findingsString.Contains("logLevel)"))
+								report.m_aWildPrintFound.Insert(lineNumberPlus1);
+						}
+						else
+						if (findingsString.StartsWith("PrintFormat(")) // )
+						{
+							if (!findingsString.Contains("level:"))
+								report.m_aWildPrintFound.Insert(lineNumberPlus1);
+						}
+					}
 
 					if (SCR_StringHelper.StartsWithAny(findingsString, m_aPrefixLineChecks) && !SCR_StringHelper.StartsWithAny(findingsString, m_aPrefixChecks))
 						report.m_aNonPrefixedClassOrEnumFound.Insert(lineNumberPlus1);
@@ -731,32 +772,39 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 
 			if (report.m_iLinesEdited > 0)
 				reportArray.Insert(string.Format("%1 lines changed", report.m_iLinesEdited));
+
 			if (!report.m_aTrimmings.IsEmpty())
 				reportArray.Insert(report.m_aTrimmings.Count().ToString() + " line trimmings"); // at line(s) " + JoinLineNumbers(report.m_aTrimmings));
+
 			if (!report.m_aFixedIndentations.IsEmpty())
 				reportArray.Insert(report.m_aFixedIndentations.Count().ToString() + "× indent fixes at lines " + JoinLineNumbers(report.m_aFixedIndentations));
+
 			if (report.m_iGeneralFormattingTotal > 0)
 				reportArray.Insert(string.Format("%1 formattings", report.m_iGeneralFormattingTotal));
+
 			if (report.m_iEndSpacesRemovedTotal > 0)
 				reportArray.Insert(string.Format("%1 end spaces trimming", report.m_iEndSpacesRemovedTotal));
+
 			if (report.m_iFourSpacesReplacedTotal > 0)
 				reportArray.Insert(string.Format("%1 4-spaces indent -> tabs replaced", report.m_iFourSpacesReplacedTotal));
+
 			if (report.m_iSpaceInTabsReplacedTotal > 0)
 				reportArray.Insert(string.Format("%1 space(s) in indentation removed", report.m_iSpaceInTabsReplacedTotal));
+
 			if (report.m_iMethodSeparatorFixedTotal > 0)
 				reportArray.Insert(string.Format("%1 method separators fixed", report.m_iMethodSeparatorFixedTotal));
 
 			if (report.m_bHasAddedFinalLineReturn)
 				reportArray.Insert("added final newline");
 
-			string reportLine;
+			string reportLine = "";
 			if (m_bDemoMode && !reportArray.IsEmpty())
-				reportLine = "[DEMO] ";
+				reportLine = "<span style='color: turquoise'>[DEMO]</span> ";
 
 			if (report.m_bIsPluginFile)
-				reportLine += "[PLUGIN FILE] ";
+				reportLine += "<span style='color: orange'>[PLUGIN FILE]</span> ";
 
-			reportLine += FilePath.StripPath(report.m_sRelativeFilePath) + " - ";
+			reportLine += "<strong>" + FilePath.StripPath(report.m_sRelativeFilePath) + "</strong> - ";
 
 			if (reportArray.IsEmpty())
 				reportLine += "no fixes to report";
@@ -772,18 +820,18 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 
 			reportLine += " - total: " + (report.m_iReadTime + report.m_iFormatTime + report.m_iDiffTime) + " ms)";
 
-			Print("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -", LogLevel.NORMAL);
+			Print((string)LOG_SEPARATOR, LogLevel.NORMAL);
 			Print((string)reportLine, LogLevel.NORMAL); // cast prevents "string reportLine = " print prefix
 
 			if (report.m_aDiffLines && !report.m_aDiffLines.IsEmpty())
 			{
 				int diffLinesCount = report.m_aDiffLines.Count();
 				float percentage = diffLinesCount / report.m_iLinesTotal * 100;
-				Print("Checking (" + diffLinesCount + "/" + report.m_iLinesTotal + ") edited lines " + JoinLineNumbers(report.m_aDiffLines) + " (" + percentage.ToString(lenDec: 2) + "%)", LogLevel.NORMAL); // not really ISO 31-0 compatible...
+				PrintFormat("Checked (%1/%2) edited lines %3 (%4%%)", diffLinesCount, report.m_iLinesTotal, JoinLineNumbers(report.m_aDiffLines), percentage.ToString(lenDec: 2), level: LogLevel.NORMAL); // not really ISO 31-0 compatible...
 			}
 			else
 			{
-				Print("Checking all " + report.m_iLinesTotal + " lines (100% of the file)", LogLevel.NORMAL);
+				Print("Checked all " + report.m_iLinesTotal + " lines (100% of the file)", LogLevel.NORMAL);
 			}
 		}
 
@@ -793,7 +841,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 				PrintFinding("new instance(s) without ()", report.m_aNewWithoutParentheseFound, "always use parentheses when instanciating a class");
 
 			if (!report.m_aUselessRefFound.IsEmpty())
-				PrintFinding("ref something", report.m_aUselessRefFound, "ref is not needed in script scope, only on class declaration");
+				PrintFinding("ref something", report.m_aUselessRefFound, "ref is not needed in script scope, only on class instance declaration");
 
 			if (!report.m_aNewArrayFound.IsEmpty())
 				PrintFinding("'new array<>'", report.m_aNewArrayFound, "replace by {} whenever possible");
@@ -826,13 +874,88 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 				PrintFinding("raw ScriptInvoker", report.m_aBadScriptInvokerFound, "use typed ScriptInvokerBase<> - see SCR_ScriptInvokerHelper.c for examples");
 
 			if (!report.m_aWildPrintFound.IsEmpty())
-				PrintFinding("wild Print()", report.m_aWildPrintFound, "use Print (not PrintFormat) with LogLevel.XXX to show this is not a debug print");
+				PrintFinding("wild Print()", report.m_aWildPrintFound, "use Print with LogLevel.XXX (or PrintFormat with level: LogLevel.XXX) to show this is not a temporary debug print");
 
 			if (!report.m_aNonPrefixedClassOrEnumFound.IsEmpty())
-				PrintFinding("non-prefixed class/enum", report.m_aNonPrefixedClassOrEnumFound, "classes and enums should be prefixed; see the settings to setup accepted prefixes (current " + SCR_StringHelper.Join(", ", m_aAcceptedScriptPrefixes) + ")");
+			{
+				array<string> prefixes;
+				if (m_aAcceptedScriptPrefixes.IsEmpty())
+					prefixes = FORCED_PREFIXES;
+				else
+					prefixes = m_aAcceptedScriptPrefixes;
 
-			if (!report.m_aForbiddenCommentWordFound.IsEmpty())
-				PrintFinding("forbidden comment word", report.m_aForbiddenCommentWordFound, "an invalid word has been spotted (see Options -> Forbidden Comment Words)");
+				PrintFinding("non-prefixed class/enum", report.m_aNonPrefixedClassOrEnumFound, "classes and enums should be prefixed; see the settings to setup accepted prefixes (currently \"" + SCR_StringHelper.Join("\", \"", prefixes) + "\")");
+			}
+
+			if (!report.m_mForbiddenWordFound.IsEmpty())
+			{
+				const string description = "flagged words";
+				if (m_bShowSpellCheckFindingsDetails)
+				{
+					int count;
+					array<string> mapKeys = {}; // SCR_MapHelperT<string, ref array<int>>.GetKeys(report.m_mForbiddenWordFound);
+					foreach (string key, array<int> lineNumbers : report.m_mForbiddenWordFound)
+					{
+						mapKeys.Insert(key);
+						count += lineNumbers.Count();
+					}
+
+					PrintFormat(
+						"<span style='color: #DAD; font-weight: bold'>%1×</span> %2 found; see Options > Spell Check Config:",
+						count,
+						description,
+						level: LogLevel.NORMAL);
+
+					mapKeys.Sort();
+					array<int> lineNumbers;
+					foreach (string mapKey : mapKeys)
+					{
+						string tip = string.Format("\"%1\" is not an accepted word", mapKey);
+						string correction;
+						if (m_mForbiddenWords.Find(mapKey, correction))
+						{
+							correction.TrimInPlace();
+							if (correction) // !.IsEmpty()
+								tip += "; " + correction;
+						}
+
+						tip.TrimInPlace();
+						if (tip) // !.IsEmpty()
+							tip = " - " + tip;
+
+						lineNumbers = report.m_mForbiddenWordFound.Get(mapKey);
+						int lineNumbersCount = lineNumbers.Count();
+						for (int i = lineNumbersCount - 1; i >= 0; i--)
+						{
+							if (lineNumbers.Find(lineNumbers[i]) != i)
+								lineNumbers.RemoveOrdered(i);
+						}
+
+						PrintFormat(
+							"- <span style='color: #DAD; font-weight: bold'>%1×</span> %2 found at line(s) <span style='color: #FDA'>%3</span>%4",
+							lineNumbersCount,
+							string.Format("\"%1\"", mapKey),
+							JoinLineNumbers(lineNumbers),
+							tip,
+							level: LogLevel.NORMAL);
+					}
+				}
+				else // no details version
+				{
+					array<string> mapKeys = {};
+					array<int> finalLineNumbers = {};
+					foreach (string mapKey, array<int> lineNumbers : report.m_mForbiddenWordFound)
+					{
+						mapKeys.Insert(mapKey);
+						finalLineNumbers.InsertAll(lineNumbers);
+					}
+
+					mapKeys.Sort();
+					SCR_ArrayHelperT<int>.RemoveDuplicates(finalLineNumbers);
+
+					PrintFinding(string.Format("%1 lines (%2 variations)", description, mapKeys.Count()), finalLineNumbers, string.Format("see Options > Spell Check Config (%1)", SCR_StringHelper.Join(", ", mapKeys)));
+				}
+			}
 		}
 	}
 
@@ -847,14 +970,14 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 		if (piecesCount < 1)
 			return 0;
 
-		// a semicolon was needed at one point due to Doxygen, now not anymore (reverting such changes)
+		// a semicolon used to be placed after a class, not anymore
 		if (!indentation && pieces[0].StartsWith(BRACKET_CLOSE + ";")) // !IsEmpty for perf
 		{
 			pieces[0] = SCR_StringHelper.ReplaceTimes(pieces[0], BRACKET_CLOSE + ";", BRACKET_CLOSE, 1);
 			return 1;
 		}
 
-		if (pieces[0].StartsWith(TWO_SLASHES)) // don't format (inline) comments
+		if (pieces[0].StartsWith(SCR_StringHelper.DOUBLE_SLASH)) // don't format (inline) comments
 			return 0;
 
 		int replacements;
@@ -887,7 +1010,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 
 				if (replaceWith.Contains(toReplace))
 				{
-					Print(FilePath.StripPath(__FILE__) + ":" + __LINE__ + " - safety exit! " + toReplace + "/" + replaceWith, LogLevel.WARNING);
+					PrintFormat("%1:%2 - safety exit! %3/%4", FilePath.StripPath(__FILE__), __LINE__, toReplace, replaceWith, level: LogLevel.WARNING);
 					continue;
 				}
 
@@ -912,16 +1035,16 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			{
 				hasChanged = false;
 				int colonIndex = startPiece.IndexOf(":");
-				if (startPiece[colonIndex - 1] != SPACE)
+				if (startPiece[colonIndex - 1] != SCR_StringHelper.SPACE)
 				{
-					startPiece = SCR_StringHelper.InsertAt(startPiece, SPACE, colonIndex);
+					startPiece = SCR_StringHelper.InsertAt(startPiece, SCR_StringHelper.SPACE, colonIndex);
 					hasChanged = true;
 				}
 
 				colonIndex = startPiece.IndexOf(":");
-				if (colonIndex < startPiece.Length() -1 && startPiece[colonIndex + 1] != SPACE)
+				if (colonIndex < startPiece.Length() -1 && startPiece[colonIndex + 1] != SCR_StringHelper.SPACE)
 				{
-					startPiece = SCR_StringHelper.InsertAt(startPiece, SPACE, colonIndex + 1);
+					startPiece = SCR_StringHelper.InsertAt(startPiece, SCR_StringHelper.SPACE, colonIndex + 1);
 					hasChanged = true;
 				}
 
@@ -950,7 +1073,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 
 				if (replaceWith.Contains(toReplace))
 				{
-					Print(FilePath.StripPath(__FILE__) + ":" + __LINE__ + " - safety exit! " + toReplace + "/" + replaceWith, LogLevel.WARNING);
+					PrintFormat("%1:%2 - safety exit! %3/%4", FilePath.StripPath(__FILE__), __LINE__, toReplace, replaceWith, level: LogLevel.WARNING);
 					continue;
 				}
 
@@ -992,7 +1115,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 
 				if (replaceWith.Contains(toReplace))
 				{
-					Print(FilePath.StripPath(__FILE__) + ":" + __LINE__ + " - safety exit! " + toReplace + "/" + replaceWith, LogLevel.WARNING);
+					PrintFormat("%1:%2 - safety exit! %3/%4", FilePath.StripPath(__FILE__), __LINE__, toReplace, replaceWith, level: LogLevel.WARNING);
 					continue;
 				}
 
@@ -1048,9 +1171,9 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 				if (i < length - 1)
 					nextChar = piece[i + 1];
 
-				if ((character == "," || character == ";") && (nextChar != SPACE && nextChar != TAB && nextChar != "\"")) // tab = beware of line end + tab + comment
+				if ((character == "," || character == ";") && (nextChar != SCR_StringHelper.SPACE && nextChar != SCR_StringHelper.TAB && nextChar != SCR_StringHelper.DOUBLE_QUOTE)) // tab = beware of line end + tab + comment
 				{
-					piece = SCR_StringHelper.InsertAt(piece, SPACE, i + 1);
+					piece = SCR_StringHelper.InsertAt(piece, SCR_StringHelper.SPACE, i + 1);
 					i++;
 					length++;
 					replacements++;
@@ -1058,14 +1181,14 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 				}
 
 				// after this point is for "check before"
-				if (i == 0)
+				if (i < 1)
 					continue;
 
-				if (character == "+" || character == "-" || character == "*" || character == "/")
+				if (character == "+" || character == SCR_StringHelper.DASH || character == "*" || character == SCR_StringHelper.SLASH)
 				{
 					if (SCR_StringHelper.DIGITS.Contains(prevChar))
 					{
-						piece = SCR_StringHelper.InsertAt(piece, SPACE, i);
+						piece = SCR_StringHelper.InsertAt(piece, SCR_StringHelper.SPACE, i);
 						length++;
 						replacements++;
 						continue;
@@ -1075,7 +1198,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 					{
 						if (!(character == "-" && !(SCR_StringHelper.DIGITS.Contains(prevChar) || (i > 1 && SCR_StringHelper.DIGITS.Contains(piece[i - 2]))))) // exception for values like -1
 						{
-							piece = SCR_StringHelper.InsertAt(piece, SPACE, i + 1);
+							piece = SCR_StringHelper.InsertAt(piece, SCR_StringHelper.SPACE, i + 1);
 							i++;
 							length++;
 							replacements++;
@@ -1169,7 +1292,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 	//! \param[in] fullLine the line's content
 	//! \param[out] indentation gets the left spacing (tabs and spaces)
 	//! \param[out] content gets the text
-	protected static void GetIndentAndLineContent(string fullLine, out string indentation, out string content)
+	static void GetIndentAndLineContent(string fullLine, out string indentation, out string content)
 	{
 		int lineLength = fullLine.Length();
 		if (lineLength < 1)
@@ -1240,11 +1363,11 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			/*
 				string management
 			*/
-			if (!isInCommentBlock && currentChar == "\"")
+			if (!isInCommentBlock && currentChar == SCR_StringHelper.DOUBLE_QUOTE)
 			{
 				if (isInString)
 				{
-					if (previousChar != "\\") // not escaped
+					if (previousChar != SCR_StringHelper.ANTISLASH) // not escaped
 					{
 						pieces.Insert(currentContent + currentChar);
 						currentContent = string.Empty;
@@ -1264,7 +1387,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			/*
 				comment management
 			*/
-			if (!isInString && currentChar == "/")
+			if (!isInString && currentChar == SCR_StringHelper.SLASH)
 			{
 				if (isInCommentBlock)
 				{
@@ -1286,7 +1409,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 						continue;
 					}
 					else
-					if (nextChar == "/" && !isInString) // the rest is comment
+					if (nextChar == SCR_StringHelper.SLASH) // the rest is comment
 					{
 						if (currentContent) // !IsEmpty for perf
 							pieces.Insert(currentContent);
@@ -1311,19 +1434,19 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 	protected bool HasBadVariableNaming(string indentation, string findingsString)
 	{
 		// only interested in one-tab variables :) (aka member variables)
-		if (indentation != TAB)
+		if (indentation != SCR_StringHelper.TAB)
 			return false;
 
 		if (findingsString.StartsWith("[")
 			|| findingsString.StartsWith("#")
 			|| findingsString.EndsWith(")")
-			|| findingsString.EndsWith(",")
-			|| findingsString.Contains(":"))
+			|| findingsString.EndsWith(SCR_StringHelper.COMMA)
+			|| findingsString.Contains(SCR_StringHelper.COLON))
 			return false;
 
-		findingsString.Replace(TAB, SPACE);
+		findingsString.Replace(SCR_StringHelper.TAB, SCR_StringHelper.SPACE);
 		array<string> pieces = {};
-		findingsString.Split(SPACE, pieces, true);
+		findingsString.Split(SCR_StringHelper.SPACE, pieces, true);
 		int piecesCount = pieces.Count();
 		if (piecesCount < 2)
 			return false;
@@ -1335,9 +1458,9 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			|| pieces.Contains("void")
 			|| pieces.Contains("event")
 			|| pieces.Contains("proto")
-			|| pieces.Contains("external") // that's a method
+			|| pieces.Contains("external")	// that's a method
 			|| pieces.Contains("new")
-			|| pieces.Contains("return")) // that's a global method's assignation
+			|| pieces.Contains("return"))	// that's a global method's assignation
 			return false;
 
 		bool isProtected = pieces.RemoveItemOrdered("protected");
@@ -1365,11 +1488,11 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 		{
 			type += pieces[0];
 			pieces.RemoveOrdered(0);
-			if (SCR_StringHelper.CountOccurrences(type, "<") - SCR_StringHelper.CountOccurrences(type, ">") == 0)
+			if (SCR_StringHelper.CountOccurrences(type, "<") - SCR_StringHelper.CountOccurrences(type, ">") < 1)
 				break;
 		}
 
-		string rest = SCR_StringHelper.Join(" ", pieces, false).Trim();
+		string rest = SCR_StringHelper.Join(SCR_StringHelper.SPACE, pieces, false).Trim();
 		if (!rest)
 			return false; // can't create a false positive on e.g protected string\n m_sValue;
 
@@ -1383,14 +1506,14 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 		{
 			varName = rest.Substring(0, indexEnd).Trim();
 			rest = rest.Substring(indexEnd, rest.Length() - indexEnd).Trim();
-			if (!rest.Contains("=") && !rest.Contains(";")) // should cut most of it
+			if (!rest.Contains("=") && !rest.Contains(SCR_StringHelper.SEMICOLON)) // should cut most of it
 				return false;
 		}
 
 		if (varName.Length() < 3)
 			return true;
 
-		if (!varName || !SCR_StringHelper.CheckCharacters(varName, true, true, true, true))
+		if (!SCR_StringHelper.CheckCharacters(varName, true, true, true, true))
 			return false;
 
 		if (isConst)
@@ -1527,17 +1650,23 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 	protected void PrintFinding(string description, notnull array<int> lineNumbers, string tip = string.Empty)
 	{
 		description.TrimInPlace();
-		tip.TrimInPlace();
 		if (lineNumbers.IsEmpty())
 		{
 			Print("No " + description + " found", LogLevel.NORMAL);
 			return;
 		}
 
+		tip.TrimInPlace();
 		if (tip) // !IsEmpty for perf
 			tip = " - " + tip;
 
-		Print(lineNumbers.Count().ToString() + "× " + description + " found at line(s) " + JoinLineNumbers(lineNumbers) + tip, LogLevel.NORMAL);
+		PrintFormat(
+			"<span style='color: #DAD; font-weight: bold'>%1×</span> %2 found at line(s) <span style='color: #FDA'>%3</span>%4",
+			lineNumbers.Count(),
+			description,
+			JoinLineNumbers(lineNumbers),
+			tip,
+			level: LogLevel.NORMAL);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1545,9 +1674,12 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 	//! This method creates a temporary txt file next to the analysed one containing the diff result
 	//! The temporary txt file is deleted (if everything goes well) after its parsing
 	//! \param[in] absoluteFilePath the ABSOLUTE file path (e.g C:/ArmaReforger/Data/scripts/myFile.c)
+	//! \param[in] isInRepository
 	//! \return array of line numbers (first line = 1!), empty on no changes / new file, null on error
-	protected array<int> GetFileModifiedLineNumbers(string absoluteFilePath)
+	protected array<int> GetFileModifiedLineNumbers(string absoluteFilePath, out bool isInRepository)
 	{
+		isInRepository = false;
+
 		if (!FileIO.FileExists(absoluteFilePath))
 		{
 			Print("Absolute file does not exist, skipping diff for \"" + absoluteFilePath + "\"", LogLevel.ERROR);
@@ -1555,8 +1687,8 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 		}
 
 		string absoluteFileDirectory = FilePath.StripFileName(absoluteFilePath);
-		if (!absoluteFileDirectory.EndsWith("/"))
-			absoluteFileDirectory += "/";
+		if (!absoluteFileDirectory.EndsWith(SCR_StringHelper.SLASH))
+			absoluteFileDirectory += SCR_StringHelper.SLASH;
 
 		string absoluteCmdOutputFilePath = absoluteFileDirectory + DIFF_FILENAME;
 		string commandLine = string.Format(m_sDiffCommand, absoluteFilePath, absoluteCmdOutputFilePath);
@@ -1581,6 +1713,8 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			Print("Temp diff file does not exist", LogLevel.ERROR);
 			return null;
 		}
+
+		isInRepository = true;
 
 		bool started;
 		int lineNumber;
@@ -1632,7 +1766,10 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 	//------------------------------------------------------------------------------------------------
 	protected override void Configure()
 	{
-		Workbench.ScriptDialog("Configure 'Basic Code formatter' plugin", "Formats code, basically.", this);
+		if (!m_SpellCheckConfig)
+			m_SpellCheckConfig = SCR_ConfigHelperT<SCR_BasicCodeFormatterSpellCheckConfig>.GetConfigObject(SPELLCHECK_CONFIG);
+
+		Workbench.ScriptDialog("Configure 'Basic Code Formatter' plugin", "Formats code, basically.", this);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1664,7 +1801,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 
 		// line middle
 		m_aGeneralFormatting_Middle = {};
-		m_aGeneralFormatting_Middle.Insert({ TWO_SPACES,	SPACE });			// double spaces
+		m_aGeneralFormatting_Middle.Insert({ SCR_StringHelper.DOUBLE_SPACE,	SCR_StringHelper.SPACE });			// double spaces
 		m_aGeneralFormatting_Middle.Insert({ ";;",			";" });				// double semi-colon (so, colon?)
 		// m_aGeneralFormatting_Middle.Insert({ " , ",			", " });
 		// m_aGeneralFormatting_Middle.Insert({ " ; ",			"; " });
@@ -1675,6 +1812,13 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 		m_aGeneralFormatting_Middle.Insert({ " NULL)",		" null)" });
 		m_aGeneralFormatting_Middle.Insert({ "{ }",			"{}" });
 		m_aGeneralFormatting_Middle.Insert({ "array <",		"array<" });
+		foreach (string nativeType : NATIVE_TYPES)
+		{
+			m_aGeneralFormatting_Middle.Insert({ "<ref " + nativeType + ">",		"<" + nativeType + ">" });
+			m_aGeneralFormatting_Middle.Insert({ "<ref " + nativeType + ",",		"<" + nativeType + "," });
+			m_aGeneralFormatting_Middle.Insert({ ", ref " + nativeType + ">",		", " + nativeType + ">" });
+			m_aGeneralFormatting_Middle.Insert({ ", ref " + nativeType + ",",		", " + nativeType + "," });
+		}
 		// m_aGeneralFormatting_Middle.Insert({ "autoptr ",	string.Empty });	// useless as all classes inherit from Managed and are therefore managed by ARC - WARNING - autoptr can be used as a substitute to ref!!
 		m_aGeneralFormatting_Middle.Insert({ "( ",			"(" });
 		m_aGeneralFormatting_Middle.Insert({ " )",			")" });
@@ -1693,7 +1837,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 		{
 			m_aForbiddenDivisions.Insert(" / " + forbiddenDivisor + ";");
 			m_aForbiddenDivisions.Insert(" / " + forbiddenDivisor + ")");
-			m_aForbiddenDivisions.Insert(" / " + forbiddenDivisor + SPACE);
+			m_aForbiddenDivisions.Insert(" / " + forbiddenDivisor + SCR_StringHelper.SPACE);
 		}
 
 		m_aPrefixLineChecks = { "class ", "enum " };
@@ -1769,17 +1913,17 @@ class SCR_BasicCodeFormatterPluginFileReport
 	ref array<int> m_aBadScriptInvokerFound = {};
 	ref array<int> m_aWildPrintFound = {};
 	ref array<int> m_aNonPrefixedClassOrEnumFound = {};
-	ref array<int> m_aForbiddenCommentWordFound = {};
+	ref map<string, ref array<int>> m_mForbiddenWordFound = new map<string, ref array<int>>();
 
 	//------------------------------------------------------------------------------------------------
 	//! Check if the report has anything... to report
-	//! \return true if there is nothing to report, false otherise
+	//! \return true if there is nothing to report, false otherwise
 	bool IsClean()
 	{
 		if (m_iLinesEdited != 0)
 			return false;
 
-		bool are15ArraysAllEmpty =
+		bool are15ElementsAllEmpty =
 			m_aBadSeparatorFound.IsEmpty() &&
 			m_aDoubleEmptyLineFound.IsEmpty() &&
 			m_aNewWithoutParentheseFound.IsEmpty() &&
@@ -1794,9 +1938,9 @@ class SCR_BasicCodeFormatterPluginFileReport
 			m_aBadScriptInvokerFound.IsEmpty() &&
 			m_aWildPrintFound.IsEmpty() &&
 			m_aNonPrefixedClassOrEnumFound.IsEmpty() &&
-			m_aForbiddenCommentWordFound.IsEmpty();
+			m_mForbiddenWordFound.IsEmpty();
 
-		return are15ArraysAllEmpty;
+		return are15ElementsAllEmpty;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1805,23 +1949,6 @@ class SCR_BasicCodeFormatterPluginFileReport
 	{
 		m_sRelativeFilePath = relativeFilePath;
 		m_bIsPluginFile = isPluginFile; // check not done here in case this class gets moved away from the plugin file
-	}
-}
-
-class SCR_BasicCodeFormatterPluginOKCancelDialog
-{
-	//------------------------------------------------------------------------------------------------
-	[ButtonAttribute("OK", true)]
-	protected bool ButtonOK()
-	{
-		return true;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	[ButtonAttribute("Cancel")]
-	protected bool ButtonCancel()
-	{
-		return false;
 	}
 }
 
@@ -1854,4 +1981,5 @@ class SCR_BasicCodeFormatterForcedPlugin : WorkbenchPlugin
 		formatterPlugin.RunForced();
 	}
 }
+
 #endif // WORKBENCH

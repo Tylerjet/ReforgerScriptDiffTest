@@ -1,41 +1,13 @@
-class SCR_ActionContextUIInfo : UIInfo
+class SCR_ActionContextUIInfo : SCR_ActionUIInfo
 {
 	[Attribute("{BF5FA7B21D658280}UI/layouts/HUD/InteractionSystem/ContextBasicInteractionBlip.layout", UIWidgets.ResourceNamePicker, "Layout", "layout")]
 	protected ResourceName m_sLayoutName;
-
-	protected const string DEFAULT_ICON = "use";
 
 	protected Widget m_wAssignedWidget;
 
 	// Invokes when a Widget is assigned to the context this UIInfo is part of
 	// Passes the assigned Widget so it can be used in other scripts
 	protected ref ScriptInvokerWidget m_OnWidgetAssigned;
-
-	//------------------------------------------------------------------------------------------------
-	//! Set icon to given image widgets.
-	//! \param[in] ImageWidget Target image widget
-	//! \param[in] ImageWidget Target glow widget. Can be null
-	//! \return True when the image was set
-	bool SetIconTo(ImageWidget imageWidget, ImageWidget glowWidget = null)
-	{
-		if (!imageWidget)
-			return false;
-
-		ResourceName icon = GetIconPath();
-
-		// If no Icon is defined, use the default one.
-		if (!icon)
-			icon = UIConstants.ICONS_IMAGE_SET;
-
-		string ext;
-		FilePath.StripExtension(icon, ext);
-		if (ext == "imageset")
-			imageWidget.LoadImageFromSet(0, icon, DEFAULT_ICON);
-		else
-			imageWidget.LoadImageTexture(0, icon);
-
-		return true;
-	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Get the layout which will be shwon for the context

@@ -14,6 +14,8 @@ class SCR_ForestGeneratorRectangle
 	int m_iY;
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[out] mins "bottom-left" AABB point
+	//! \param[out] maxs "top-right" AABB point
 	void GetBounds(out vector mins, out vector maxs)
 	{
 		array<vector> points = {};

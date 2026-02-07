@@ -23,7 +23,7 @@ class SCR_AIGetRandomPointWithExclude: AITaskScripted
 	protected int m_iIterationCount;
 
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() 
+	static override bool VisibleInPalette() 
 	{
 		return true;
 	}
@@ -115,7 +115,7 @@ class SCR_AIGetRandomPointWithExclude: AITaskScripted
 	}
 		
 	//------------------------------------------------------------------------------------------------
-	override protected string GetOnHoverDescription()
+	static override protected string GetOnHoverDescription()
 	{
 		return "Returns random position in circle that does not lie inside an exclusion circle. Center is taken from Entity variable or from SearchCenter variable";
 	}

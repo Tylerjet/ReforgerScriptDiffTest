@@ -19,15 +19,6 @@ class SCR_TutorialDeployMobileAssembly : ScriptedUserAction
 	override event void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity)
 	{
 		m_bIsActive = !m_bIsActive;
-		
-		SCR_VehicleSoundComponent sndComp = SCR_VehicleSoundComponent.Cast(pOwnerEntity.GetRootParent().FindComponent(SCR_VehicleSoundComponent));
-		if(sndComp)
-		{
-			if(m_bIsActive)
-				sndComp.SoundEvent(SCR_SoundEvent.SOUND_MHQ_DEPLOY);
-			else
-				sndComp.SoundEvent(SCR_SoundEvent.SOUND_MHQ_DISMANTLE);
-		}	
 	}
 	
 	//------------------------------------------------------------------------------------------------

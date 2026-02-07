@@ -71,13 +71,13 @@ class SCR_AIGetSidePosition: AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
 	{
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override protected string GetOnHoverDescription()
+	static override protected string GetOnHoverDescription()
 	{
 		return "Returns position from owner entity that is either on random side of the direction towards enemy pos or the keeps the same side as previously if KeepSide is true";
 	}

@@ -1,6 +1,7 @@
 class SCR_AIOpenDoor : AITaskScripted
 {
 	static const string PORT_DOOR_ENTITY = "DoorEntity";
+	static const float ANGLE_EPSILON = 0.01;
 	
 	[Attribute("0")]
 	protected bool m_bOpenSiblingDoors;
@@ -24,6 +25,8 @@ class SCR_AIOpenDoor : AITaskScripted
 		if (!actionPerformer)
 			actionPerformer = owner;
 		
+		bool isOpened = true;
+
 		foreach (ScriptedUserAction action : doorActions)
 		{
 			IEntity actionOwner = action.GetOwner();
@@ -32,12 +35,22 @@ class SCR_AIOpenDoor : AITaskScripted
 			DoorComponent doorComp = DoorComponent.Cast(actionOwner.FindComponent(DoorComponent));
 			if (!doorComp)
 				continue;
-				
-			if (!doorComp.IsOpen() && !doorComp.IsOpening())
-				action.PerformAction(actionOwner, actionPerformer);
-		}
 			
-		return ENodeResult.SUCCESS;
+			float angle = doorComp.GetAngleRange();
+			float state = doorComp.GetDoorState();
+			
+			bool isTotallyOpen = Math.AbsFloat(doorComp.GetAngleRange() - doorComp.GetDoorState()) < ANGLE_EPSILON;
+			
+			if (!isTotallyOpen && !doorComp.IsOpening())
+			{
+				action.PerformAction(actionOwner, actionPerformer);			
+				isOpened = false
+			}
+		}
+		if (isOpened)
+			return ENodeResult.SUCCESS;
+		else
+			return ENodeResult.RUNNING;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -90,9 +103,9 @@ class SCR_AIOpenDoor : AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette() { return true; }
+	protected static override bool VisibleInPalette() { return true; }
 	
-	protected override string GetOnHoverDescription() { return "Opens the given door. Can also open its sibling doors"; }
+	protected static override string GetOnHoverDescription() { return "Opens the given door. Can also open its sibling doors"; }
 	
 	protected static ref TStringArray s_aVarsIn = {	PORT_DOOR_ENTITY };
 	override TStringArray GetVariablesIn() { return s_aVarsIn; }

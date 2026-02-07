@@ -29,7 +29,7 @@ class AIAgent: GenericController
 	* AIAgent won't be able to reach MaxLOD unless set by PermanentLOD;
 	* Warning: If the AIAgent is in LOD10 this won't change it;
 	*/
-	proto external void PreventMaxLOD();
+	proto external void PreventMaxLOD(float preventTime = -1);
 	proto external void AllowMaxLOD();
 	/*
 	* AIAgents get disabled in MaxLOD by default.

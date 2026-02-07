@@ -13,17 +13,20 @@ class SCR_ArsenalItem : SCR_BaseEntityCatalogData
 	[Attribute("10", desc: "Supply cost of item when using the resupply action and/or taking them from the arsenal inventory. Note in overwrite arsenal config this value is ignored and still taken from catalog.\n\nAny weapon should have their base cost as the attachment cost will be calculated by the system on init and on refund (Supports Item mode WEAPON and WEAPON_VARIANTS only to save performance)", params: "0 inf 1")]
 	protected int m_iSupplyCost;
 	
-	[Attribute(desc: "Display data for SCR_ArsenalDisplayComponent. If Arsenal item has display data of the correct type for the entity with SCR_ArsenalDisplayComponent than it can be displayed on said entity")]
+	[Attribute(desc: "Display data for SCR_ArsenalDisplayComponent. If Arsenal item has display data of the correct type for the entity with SCR_ArsenalDisplayComponent then it can be displayed on said entity")]
 	protected ref array<ref SCR_ArsenalItemDisplayData> m_aArsenalDisplayData;
 	
 	[Attribute(desc: "Depending on the settings of the arsenal component arsenal items can have an alternative supply cost. So it will take the cost of the alternative rather than the default cost. \n\nIf an Arsenal is not cost type default and the arsenal item does not have that cost type defined than it will still use the default cost.\n\nIf multiple entries have the same value than the last in the array will be used")]
 	protected ref array<ref SCR_ArsenalAlternativeCostData> m_aArsenalAlternativeCostData;
 	
+	[Attribute(SCR_ECharacterRank.PRIVATE.ToString(), desc: "Player must meet or exceed this rank in order to purchase this item", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(SCR_ECharacterRank))]
+	protected SCR_ECharacterRank m_eRequiredRank;
+	
 	//~ Any attachements on the weapon or additional costs are saved for performance on cost calculation
 	protected ref array<SCR_ArsenalItem> m_aAdditionalCosts;
 	protected ref array<SCR_NonArsenalItemCostCatalogData> m_aNonArsenalAdditionalCosts;
 	
-	protected ref map<SCR_EArsenalSupplyCostType, int> m_mArsenalAlternativeCostData;
+	protected ref map<SCR_EArsenalSupplyCostType, ref SCR_ArsenalAlternativeCostData> m_mArsenalAlternativeCostData;
 	
 	protected SCR_EntityCatalogEntry m_EntryParent;
 	protected ref Resource m_ItemResource;
@@ -81,6 +84,13 @@ class SCR_ArsenalItem : SCR_BaseEntityCatalogData
 		return null;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return Rank required of player in order to obtain the item from the arsenal. Only valid when Item's ranks are required
+	SCR_ECharacterRank GetRequiredRank()
+	{
+		return m_eRequiredRank;
+	}
+	
 	//--------------------------------- Direct Getter general or any faction ---------------------------------\\
 
 	//------------------------------------------------------------------------------------------------
@@ -114,12 +124,53 @@ class SCR_ArsenalItem : SCR_BaseEntityCatalogData
 		
 		if (supplyCostType != SCR_EArsenalSupplyCostType.DEFAULT && m_mArsenalAlternativeCostData != null)
 		{
-			int returnValue; 
-			if (m_mArsenalAlternativeCostData.Find(supplyCostType, returnValue))
-				return returnValue + additionalCost;
+			SCR_ArsenalAlternativeCostData alternativeCost; 
+			if (m_mArsenalAlternativeCostData.Find(supplyCostType, alternativeCost))
+				return alternativeCost.m_iSupplyCost + additionalCost;
 		}
 		
 		return m_iSupplyCost + additionalCost;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetSupplyRefundAmount(SCR_EArsenalSupplyCostType supplyCostType, bool addAdditionalCosts = true)
+	{
+		int additionalCost;
+		
+		if (addAdditionalCosts)
+		{
+			//~ Get the cost of any attachments on the item that are not in arsenal but still have a cost
+			if (m_aNonArsenalAdditionalCosts)
+			{
+				foreach (SCR_NonArsenalItemCostCatalogData data : m_aNonArsenalAdditionalCosts)
+				{
+					additionalCost += data.GetSupplyCost(supplyCostType);
+				}
+			}
+			//~ Get the cost of any attachments on the item that can be in the arsenal
+			if (m_aAdditionalCosts)
+			{
+				foreach (SCR_ArsenalItem data : m_aAdditionalCosts)
+				{
+					additionalCost += data.GetSupplyRefundAmount(supplyCostType);
+				}
+			}
+		}
+		
+		if (supplyCostType != SCR_EArsenalSupplyCostType.DEFAULT && m_mArsenalAlternativeCostData != null)
+		{
+			SCR_ArsenalAlternativeCostData alternativeCost; 
+			if (m_mArsenalAlternativeCostData.Find(supplyCostType, alternativeCost))
+				return alternativeCost.GetRefundAmount() + additionalCost;
+		}
+		
+		return GetRefundAmountValue() + additionalCost;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected int GetRefundAmountValue()
+	{
+		return m_iSupplyCost;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -132,7 +183,7 @@ class SCR_ArsenalItem : SCR_BaseEntityCatalogData
 		//~ Save alternative costs in map and delete the array
 		if (!m_aArsenalAlternativeCostData.IsEmpty())
 		{
-			m_mArsenalAlternativeCostData = new map<SCR_EArsenalSupplyCostType, int>();
+			m_mArsenalAlternativeCostData = new map<SCR_EArsenalSupplyCostType, ref SCR_ArsenalAlternativeCostData>();
 		
 			foreach (SCR_ArsenalAlternativeCostData data : m_aArsenalAlternativeCostData)
 			{
@@ -140,7 +191,7 @@ class SCR_ArsenalItem : SCR_BaseEntityCatalogData
 				if (data.m_eAlternativeCostType == SCR_EArsenalSupplyCostType.DEFAULT)
 					continue;
 				
-				m_mArsenalAlternativeCostData.Insert(data.m_eAlternativeCostType, data.m_iSupplyCost);
+				m_mArsenalAlternativeCostData.Insert(data.m_eAlternativeCostType, data);
 			}
 			
 			//~ Delete array
@@ -198,7 +249,10 @@ class SCR_ArsenalItem : SCR_BaseEntityCatalogData
 				attachmentEntry = catalog.GetEntryWithPrefab(attachmentPrefab);
 				if (!attachmentEntry)
 				{
+					#ifdef WORKBENCH
+					//~ Print if in workbench
 					Print("Catalog Entry Arsenal Item: '" + WidgetManager.Translate(entry.GetEntityName()) + "' has an attachment which is not in the same catalog thus cannot get the supply cost of. Attachment: '" + attachmentPrefab + "'", LogLevel.VERBOSE);
+					#endif
 					continue;
 				}
 				
@@ -237,7 +291,6 @@ class SCR_ArsenalItem : SCR_BaseEntityCatalogData
 	}
 }
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(), BaseContainerCustomEnumWithValue(SCR_EArsenalSupplyCostType, "m_eAlternativeCostType", "m_iSupplyCost", "1", "%1 - Supply cost: %2")]
 class SCR_ArsenalAlternativeCostData
 {
@@ -246,4 +299,23 @@ class SCR_ArsenalAlternativeCostData
 	
 	[Attribute("1", desc: "Alternative supply cost", params: "0 inf")]
 	int m_iSupplyCost;
+	
+	//------------------------------------------------------------------------------------------------
+	int GetRefundAmount()
+	{
+		return m_iSupplyCost;
+	}
+}
+
+[BaseContainerProps(), BaseContainerCustomEnumWithValue(SCR_EArsenalSupplyCostType, "m_eAlternativeCostType", "m_iSupplyCost", "1", "%1 - Supply cost: %2")]
+class SCR_ArsenalAlternativeCostSellAmountData : SCR_ArsenalAlternativeCostData
+{
+	[Attribute("1", desc: "Alternative supply refund amount. Supply refundmultiplier is still added to it", params: "0 inf")]
+	protected int m_iSupplyRefundAmount;
+	
+	//------------------------------------------------------------------------------------------------
+	override int GetRefundAmount()
+	{
+		return m_iSupplyRefundAmount;
+	}
 }

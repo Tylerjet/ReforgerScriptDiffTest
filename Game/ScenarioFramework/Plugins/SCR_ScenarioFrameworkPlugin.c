@@ -31,4 +31,8 @@ class SCR_ScenarioFrameworkPlugin : ScriptAndConfig
 	void OnWBKeyChanged(SCR_ScenarioFrameworkLayerBase object)
 	{
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return[out] Actions
+	array<ref SCR_ScenarioFrameworkActionBase> GetActions();
 }

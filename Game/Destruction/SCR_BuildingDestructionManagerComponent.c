@@ -109,13 +109,14 @@ class SCR_BuildingDestructionManagerComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! \return array of typenames to be excluded from entity query
-	array<string> GetExcludedQueryTypes()
+	array<typename> GetExcludedQueryTypes()
 	{
-		array<string> outArray = {};
+		array<typename> outArray = {};
 		if (!m_BuildingDestructionConfig)
 			return outArray;
 		else 
-			outArray.Copy(m_BuildingDestructionConfig.m_aExcludedEntityQueryTypes);
+			outArray.Copy(m_BuildingDestructionConfig.m_aExcludedEntityQueryTypenames);
+
 		return outArray;
 	}
 	

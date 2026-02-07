@@ -4,7 +4,7 @@ class SCR_AIGetSmartActionComponent : AITaskScripted
 	static const string COMPONENT_PORT = "SmartActionComponent";	
 	
 	//------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}
@@ -89,7 +89,7 @@ class SCR_AIGetSmartActionComponent : AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Returns SmartActionComponent set on waypoint, fails if waypoint is not set properly (entity or tag is missing).";
 	}	

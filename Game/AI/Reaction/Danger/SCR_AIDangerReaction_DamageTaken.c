@@ -5,20 +5,15 @@ class SCR_AIDangerReaction_DamageTaken : SCR_AIDangerReaction
 	{
 		if (dangerEvent.GetVictim() != utility.m_OwnerEntity)
 			return false;
-		// amount of dmg to threatsystem
 		
 		IEntity shooter = dangerEvent.GetObject();
-		vector shooterPos;
-		if (shooter)
-			shooterPos = shooter.GetOrigin();
 		
-		float dist = vector.Distance(shooterPos, utility.GetOrigin());
+		if (!shooter)
+			return false;
 		
-
-		if (utility.m_CombatComponent.GetCurrentTarget() == null && dist > SCR_AICombatComponent.LONG_RANGE_COMBAT_DISTANCE && shooter)
-		{
-			utility.AddAction(new SCR_AIMoveFromUnknownFire(utility, null, shooterPos, shooter));
-		}
+		vector shooterPos = shooter.GetOrigin();
+		
+		utility.m_SectorThreatFilter.OnDamageTaken(shooterPos);
 		
 		return true;
 	}

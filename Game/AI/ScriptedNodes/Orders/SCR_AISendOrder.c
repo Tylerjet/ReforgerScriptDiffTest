@@ -27,7 +27,7 @@ class SCR_AISendOrder: SCR_AISendMessageGeneric
         return s_aVarsIn2;
     }
 	
-	override string GetOnHoverDescription() 
+	static override string GetOnHoverDescription() 
 	{ 
 		return "Obsolete! Use SCR_AISendOrder_... instead!";	
 	};

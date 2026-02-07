@@ -231,6 +231,11 @@ class SCR_AIGetAimErrorOffset: AITaskScripted
 		float sigma;
 		switch (skill)
 		{
+			case EAISkill.NOOB :
+			{
+				sigma = 4;
+				break;
+			}
 			case EAISkill.ROOKIE :
 			{
 				sigma = 2;
@@ -396,9 +401,9 @@ class SCR_AIGetAimErrorOffset: AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-    override bool VisibleInPalette() {return true;}
+    static override bool VisibleInPalette() {return true;}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription() {return "Get aiming error position from the center of the target";}
+	protected static override string GetOnHoverDescription() {return "Get aiming error position from the center of the target";}
 };
 

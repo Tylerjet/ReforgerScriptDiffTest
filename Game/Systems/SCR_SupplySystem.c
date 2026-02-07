@@ -1,5 +1,11 @@
 class SCR_SupplySystem : SCR_ResourceSystem
 {
+	override static void InitInfo(WorldSystemInfo outInfo)
+	{
+		super.InitInfo(outInfo);
+		outInfo.AddPoint(ESystemPoint.FixedFrame);
+	}
+
 	[Attribute()]
 	protected ResourceName m_sSupplyEffectsConfig;
 	protected ref SCR_SupplyEffectsConfig m_SupplyEffects;

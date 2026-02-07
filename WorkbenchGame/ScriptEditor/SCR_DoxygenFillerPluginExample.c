@@ -1,4 +1,4 @@
-#ifdef UNDEFINED_MACRO
+#ifdef DEBUG
 class SCR_DoxygenFillerPlugin_TestA
 {
 	// no return value, no comment, no separator
@@ -10,7 +10,7 @@ class SCR_DoxygenFillerPlugin_TestA
 	bool Method3(); // Not documented, with separator
 
 	//! Already documented, without separator
-	int Method5();
+	int GetNumberOfFingers();
 
 	//------------------------------------------------------------------------------------------------
 	//! Already documented, with separator
@@ -40,7 +40,14 @@ class SCR_DoxygenFillerPlugin_TestC
 {
 	array<ref SCR_Faction> Copy1(notnull array<ref SCR_Faction> factions, map<int, string> useless);
 	map<int, ref SCR_Faction> Copy2(array<ref SCR_Faction> factions, map<int, string> useless);
-	void SetIsPlayable(bool isPlayable, bool killPlayersIfNotPlayable = false);
+	void SetIsPlayable1(bool isPlayable, bool killPlayersIfNotPlayable = false);
+
+	//------------------------------------------------------------------------------------------------
+	[Obsolete()]
+	void AnObsoleteMethod()
+	{
+		Print("OK");
+	}
 
 	//------------------------------------------------------------------------------------------------
 	// Called everywhere, used to generate initial data for this faction
@@ -49,7 +56,7 @@ class SCR_DoxygenFillerPlugin_TestC
 	int GetOrder();
 
 	void ~SCR_DoxygenFillerPlugin_TestC();
-	void SetIsPlayable(bool isPlayable, bool killPlayersIfNotPlayable = false);
+	void SetIsPlayable2(bool isPlayable, bool killPlayersIfNotPlayable = false);
 	void SCR_DoxygenFillerPlugin_TestC(int count);
 }
-#endif // UNDEFINED_MACRO
+#endif // DEBUG

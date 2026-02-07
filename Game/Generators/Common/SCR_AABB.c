@@ -1,5 +1,5 @@
 //! Axis-Aligned Bounding Box
-//! Used by generators
+//! Used by generators and Import Shapefile Tool
 class SCR_AABB
 {
 	vector m_vMin;
@@ -7,6 +7,9 @@ class SCR_AABB
 	vector m_vDimensions; // width, height, depth
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] other
+	//! \return
 	bool DetectCollision2D(SCR_AABB other)
 	{
 		return
@@ -17,6 +20,8 @@ class SCR_AABB
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] points
 	void SCR_AABB(notnull array<vector> points)
 	{
 		if (points.IsEmpty())

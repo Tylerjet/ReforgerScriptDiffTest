@@ -13,6 +13,20 @@ class SCR_AISuppressActivity : SCR_AIActivityBase
 	}
 	
 	//-------------------------------------------------------------------------------------------------
+	override void OnActionFailed()
+	{
+		super.OnActionFailed();
+		SendCancelMessagesToAllAgents();
+	}
+	
+	//-------------------------------------------------------------------------------------------------
+	override void OnActionCompleted()
+	{
+		super.OnActionCompleted();
+		SendCancelMessagesToAllAgents();
+	}
+	
+	//-------------------------------------------------------------------------------------------------
 	override void OnActionDeselected()
 	{
 		super.OnActionDeselected();

@@ -1,5 +1,12 @@
 class VehiclesDustSystem: GameSystem
 {
+	override static void InitInfo(WorldSystemInfo outInfo)
+	{
+		outInfo
+			.SetAbstract(false)
+			.AddPoint(ESystemPoint.Frame);
+	}
+
 	protected ref array<SCR_VehicleDustPerWheel> m_Components = {};
 	
 	override protected void OnUpdate(ESystemPoint point)

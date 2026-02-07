@@ -2,6 +2,7 @@ class SCR_AIAnimationWaypointClass: SCR_AIWaypointClass
 {
 };
 
+//------------------------------------------------------------------------------------------------
 class SCR_AIAnimationParameters
 {
 	vector m_vAnimationLocalTransform[4];
@@ -9,6 +10,7 @@ class SCR_AIAnimationParameters
 	ref SCR_AIAnimation_Base m_oAnimationClass;
 }
 
+//------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
 class SCR_AIAnimationWaypointParameters
 {
@@ -44,9 +46,10 @@ class SCR_AIAnimationWaypointParameters
 		m_Parameters.m_vAnimationLocalTransform = animationTransform;
 		m_Parameters.m_fAnimationDuration = animationDuration;
 		m_Parameters.m_oAnimationClass = animationClass;
-	}	
+	}
 };
 
+//------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
 class SCR_AIAnimationScript
 {
@@ -137,10 +140,17 @@ class SCR_AIAnimationScript
 	}
 };
 
+//------------------------------------------------------------------------------------------------
+void SCR_AIOnAnimationBehaviorAction(AIAgent agent, bool startingAnimation, int animationIndex);
+typedef func SCR_AIOnAnimationBehaviorAction;
+
+//------------------------------------------------------------------------------------------------
 class SCR_AIAnimationWaypoint : SCR_AIWaypoint
 {
 	[Attribute("", UIWidgets.Object, "List of group members scripts - what to do on this waypoint, each member has array of animations on locations")]
 	ref array<ref SCR_AIAnimationScript> m_aAnimationScripts;
+	
+	protected ref ScriptInvokerBase<SCR_AIOnAnimationBehaviorAction> m_OnAnimationBehaviorAction; // called if any of the waypoint's users (characters) start or stop animation
 	
 	//----------------------------------------------------------------------------------------
 	void AddAnimationScript(notnull SCR_AIAnimationScript animationScript, int animationIndex = -1)
@@ -166,6 +176,14 @@ class SCR_AIAnimationWaypoint : SCR_AIWaypoint
 	{
 		return new SCR_AIAnimationWaypointState(groupUtilityComp, this);
 	}	
+	
+	//----------------------------------------------------------------------------------------
+	ScriptInvokerBase<SCR_AIOnAnimationBehaviorAction> GetOnAnimationBehaviorAction()
+	{
+		if (!m_OnAnimationBehaviorAction)
+			m_OnAnimationBehaviorAction = new ScriptInvokerBase<SCR_AIOnAnimationBehaviorAction>();
+		return m_OnAnimationBehaviorAction; 
+	}
 };
 
 //------------------------------------------------------------------------------------------------

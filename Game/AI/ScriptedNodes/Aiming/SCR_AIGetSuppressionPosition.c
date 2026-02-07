@@ -91,13 +91,13 @@ class SCR_AIGetSuppressionPosition: AITaskScripted
     }
 	
 	//------------------------------------------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Calculate position to shoot at during suppressive fire";
 	}
 	
 	//------------------------------------------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() 
+	static override bool VisibleInPalette() 
 	{
 		return true;
 	}

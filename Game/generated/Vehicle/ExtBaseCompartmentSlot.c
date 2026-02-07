@@ -13,7 +13,7 @@ class ExtBaseCompartmentSlot: ScriptAndConfig
 {
 	proto external int GetAddUserActions(out notnull array<CompartmentUserAction> outAddUserActions);
 	proto external bool IsPiloting();
-	proto external void SetAutoConnectTurret(string name, array<string> aContextIDs);
+	proto external bool IsOccupantTurnedOut();
 	proto external string GetAutoConnectTurret();
 	proto external IEntity GetOwner();
 	proto external BaseControllerComponent GetController();
@@ -29,6 +29,8 @@ class ExtBaseCompartmentSlot: ScriptAndConfig
 	proto external bool IsReserved();
 	proto external bool IsReservedBy(IEntity ent);
 	proto external void SetReserved(IEntity ent);
+	proto external bool CanTurnOut();
+	proto external int GetTurnOutDoorIndex();
 	proto external EntitySlotInfo GetPassengerPointInfo();
 	proto external bool GetForceFreeLook();
 	proto external bool GetMouseSteering();
@@ -62,8 +64,9 @@ class ExtBaseCompartmentSlot: ScriptAndConfig
 	proto external PointInfo GetOverridenExitPointInfo();
 	proto external bool ShouldSkipCharacterDoorAnimationsFromSeat();
 	proto external string GetCompartmentUniqueName();
-	proto external void AttachTurret(TurretControllerComponent turretController, array<string> aContextIDs);
+	proto external void AttachTurret(TurretControllerComponent turretController, ETurretContextID contextIDs);
 	proto external void DetachTurret();
+	proto external TurretControllerComponent GetAttachedTurret();
 
 	// callbacks
 

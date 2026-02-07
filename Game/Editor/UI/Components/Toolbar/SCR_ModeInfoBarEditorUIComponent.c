@@ -53,10 +53,12 @@ class SCR_ModeInfoBarEditorUIComponent : ScriptedWidgetComponent
 		
 		if (GetGame().InPlayMode())
 		{
-			bool show = false;
+			bool show = GetGame().GetSaveManager().ScenarioCanBeSaved();
 			
-			if (SCR_EditorManagerEntity.GetInstance())
-				show = SCR_EditorManagerEntity.GetInstance().GetCurrentMode() == EEditorMode.EDIT;
+			SCR_EditorManagerEntity editorManagerEntity = SCR_EditorManagerEntity.GetInstance();
+			
+			if (show && editorManagerEntity)
+				show = editorManagerEntity.GetCurrentMode() == EEditorMode.EDIT;
 			
 			if (m_EditedSaveUI)
 				m_EditedSaveUI.GetRootWidget().SetVisible(show);

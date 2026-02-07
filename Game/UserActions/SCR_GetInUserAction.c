@@ -89,7 +89,7 @@ class SCR_GetInUserAction : SCR_CompartmentUserAction
 			}
 		}
 		
-		if (compartment.GetOccupant())
+		if (compartment.GetOccupant() || m_CompartmentManager.IsGetInAndOutBlockedByDoorUser(GetRelevantDoorIndex(user)))
 		{
 			SetCannotPerformReason("#AR-UserAction_SeatOccupied");
 			return false;
@@ -121,6 +121,14 @@ class SCR_GetInUserAction : SCR_CompartmentUserAction
 		BaseCompartmentSlot compartment = GetCompartmentSlot();
 		if (!compartment)
 			return false;
+
+		ChimeraCharacter occupant = ChimeraCharacter.Cast(compartment.GetOccupant());
+		if (occupant)
+		{
+			CharacterControllerComponent controller = occupant.GetCharacterController();
+			if (controller && controller.GetLifeState() != ECharacterLifeState.ALIVE)
+				return false;
+		}
 		
 		ChimeraCharacter character = ChimeraCharacter.Cast(user);
 		if (character && character.IsInVehicle())

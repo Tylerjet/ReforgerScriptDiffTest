@@ -37,5 +37,5 @@ class SCR_AISendGoalMessageGenerated : AITaskScripted
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() { return false; }	
+	static override bool VisibleInPalette() { return false; }	
 }

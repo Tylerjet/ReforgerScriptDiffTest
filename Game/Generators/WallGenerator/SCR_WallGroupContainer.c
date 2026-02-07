@@ -10,40 +10,45 @@ class SCR_WallGroupContainer
 	protected ref array<float> m_aLengths = {};
 
 	protected ref array<ref SCR_WallGroup> m_aWallGroups = {}; // sorted by ascending length
-	protected WallGeneratorEntity m_WallGenerator;
 
 	//------------------------------------------------------------------------------------------------
+	//! \return true if empty, false otherwise
 	bool IsEmpty()
 	{
 		return m_aWallGroups.IsEmpty();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	SCR_WallPair GetRandomWall(float biggestSmallerThan = -1)
+	//! \param[in] biggestSmallerThan value under which the biggest wall must be (exclusive, using <)
+	//! \return a random wall of the max wanted size or null if not found
+	SCR_WallPair GetRandomWall(float biggestSmallerThan, float value01)
 	{
-		for (int i = m_aLengths.Count() - 1; i >= 0; i--) // find the longest wall which is smaller than given amount
+		for (int i = m_aLengths.Count() - 1; i >= 0; --i) // find the longest wall which is smaller than given amount
 		{
 			if (m_aLengths[i] < biggestSmallerThan)
-				return m_aWallGroups[i].GetRandomWall();
+				return m_aWallGroups[i].GetRandomWall(value01);
 		}
 
 		return null;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Goes through walls and prepares a data structure that's used during wall generation
-	void PrepareWallGroups(notnull array<ref WallLengthGroup> groups, bool forward, string middleObj, WorldEditorAPI api)
+	//! Goes through walls and prepares a data structure that is used during wall generation
+	//! \param[in] groups
+	//! \param[in] forward
+	//! \param[in] middleObj
+	void PrepareWallGroups(notnull array<ref WallLengthGroup> groups, bool forward, string middleObj)
 	{
 		m_aWallGroups.Clear();
 
 		array<ref SCR_WallGroup> wallGroupsTmp = {};
 
-		int forwardAxis = 2;
-		if (forward)
-			forwardAxis = 0;
+		int forwardAxis;
+		if (!forward)
+			forwardAxis = 2;
 
 		if (!middleObj.IsEmpty())
-			m_fMiddleObjectLength = WallGeneratorEntity.MeasureEntity(middleObj, forwardAxis, api);
+			m_fMiddleObjectLength = WallGeneratorEntity.MeasureEntity(middleObj, forwardAxis);
 
 		SCR_WallGroup wallGroup;
 		SCR_WallPair wallPair;
@@ -61,7 +66,7 @@ class SCR_WallGroupContainer
 				wallPair.m_fPrePadding = pair.m_fPrePadding;
 				wallGroup.m_aWeights.Insert(pair.m_fWeight);
 
-				wallLength = WallGeneratorEntity.MeasureEntity(wallPair.m_sWallAsset, forwardAxis, api);
+				wallLength = WallGeneratorEntity.MeasureEntity(wallPair.m_sWallAsset, forwardAxis);
 				// wallLength += wallPair.m_fPostPadding;
 				wallPair.m_fWallLength = wallLength;
 
@@ -79,19 +84,16 @@ class SCR_WallGroupContainer
 			}
 		}
 
-		float smallestSize;
-		int smallestIndex;
-
 		// order groups by length
 		while (!wallGroupsTmp.IsEmpty())
 		{
-			smallestSize = float.MAX;
-			smallestIndex = 0;
-			foreach (int i, SCR_WallGroup g : wallGroupsTmp)
+			float smallestSize = float.MAX;
+			float smallestIndex;
+			foreach (int i, SCR_WallGroup groupTmp : wallGroupsTmp)
 			{
-				if (g.m_fWallLength < smallestSize)
+				if (groupTmp.m_fWallLength < smallestSize)
 				{
-					smallestSize = g.m_fWallLength;
+					smallestSize = groupTmp.m_fWallLength;
 					if (smallestSize < m_fSmallestWall)
 						m_fSmallestWall = smallestSize;
 
@@ -103,27 +105,13 @@ class SCR_WallGroupContainer
 			m_aLengths.Insert(wallGroupsTmp[smallestIndex].m_fWallLength);
 			wallGroupsTmp.Remove(smallestIndex);
 		}
-
-		if (m_WallGenerator && m_WallGenerator.m_bDebug)
-		{
-			foreach (SCR_WallGroup group : m_aWallGroups)
-			{
-				Print(group.m_fWallLength, LogLevel.NORMAL);
-				foreach (SCR_WallPair pair : group.m_aWallPairs)
-				{
-					Print(pair.m_sWallAsset, LogLevel.NORMAL);
-					Print(pair.m_fWallWeight, LogLevel.NORMAL);
-				}
-			}
-		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	// constructor
-	void SCR_WallGroupContainer(WorldEditorAPI api, array<ref WallLengthGroup> items, bool forward, string middleObj, WallGeneratorEntity ent)
+	void SCR_WallGroupContainer(notnull array<ref WallLengthGroup> items, bool forward, string middleObj)
 	{
-		m_WallGenerator = ent;
-		PrepareWallGroups(items, forward, middleObj, api);
+		PrepareWallGroups(items, forward, middleObj);
 	}
 }
 #endif // WORKBENCH

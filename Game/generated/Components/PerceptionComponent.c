@@ -28,7 +28,7 @@ class PerceptionComponent: AIComponentEntity
 	proto external BaseTarget GetClosestTarget(ETargetCategory category, float timeSinceSeenMax, float timeSinceDetectedMax);
 	//! Sets perception factor - how good this AI can recognize enemy, independent of enemy state. 1.0 is standard value. Bigger value means faster recognition.
 	proto external void SetPerceptionFactor(float value);
-	// Returns the desired update interval of Perception Component. It depends on LOD level.
+	// Returns the desired update interval of Perception Component, as configured in PerceptionSystem. It depends on LOD level.
 	proto external float GetUpdateInterval();
 	proto external IEntity GetFriendlyInLineOfFire();
 	proto external void SetFriendlyFireCheck(bool on);

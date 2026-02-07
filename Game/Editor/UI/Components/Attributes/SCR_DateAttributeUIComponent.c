@@ -33,6 +33,7 @@ class SCR_DateAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 	
 	protected TimeAndWeatherManagerEntity m_TimeAndWeatherManager;
 	
+	//---- REFACTOR NOTE START: Hardcoded numbers
 	
 	override void Init(Widget w, SCR_BaseEditorAttribute attribute)
 	{	
@@ -148,6 +149,8 @@ class SCR_DateAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 		
 		super.SetFromVar(var);
 	}
+	
+	//---- REFACTOR NOTE END ----
 	
 	protected void CreateDayList(SCR_ComboBoxIconComponent comboBox, int currentMonth, int currentYear, bool setMoonIcon = true)
 	{		
@@ -295,7 +298,7 @@ class SCR_DateAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 		GetCorrectComboBox("y").SetCurrentItem(date[2]);
 	}
 	
-	override bool OnChange(Widget w, int x, int y, bool finished)
+	override bool OnChangeInternal(Widget w, int x, int y, bool finished)
 	{		
 		SCR_BaseEditorAttribute attribute = GetAttribute();
 		
@@ -306,7 +309,7 @@ class SCR_DateAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 		vector date = Vector(GetCorrectComboBox("d").GetCurrentIndex(), GetCorrectComboBox("m").GetCurrentIndex(), GetCorrectComboBox("y").GetCurrentIndex());
 		var.SetVector(date);
 		
-		super.OnChange(w, x, y, finished);
+		super.OnChangeInternal(w, x, y, finished);
 		return false;
 	}
 	
@@ -318,7 +321,7 @@ class SCR_DateAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 
 		UpdateDateMoonPhaseIcon();
 		
-		OnChange(null, 0, 0, false);
+		OnChangeInternal(null, 0, 0, false);
 	}
 	
 	//------------------------------------------------------------------------------------------------\

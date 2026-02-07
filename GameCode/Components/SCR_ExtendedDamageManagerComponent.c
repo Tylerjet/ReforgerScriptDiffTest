@@ -71,28 +71,7 @@ class SCR_ExtendedDamageManagerComponent : ExtendedDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	array<ref PersistentDamageEffect> GetAllPersistentEffectsOnHitZone(HitZone hitzone)
-	{
-		array<ref PersistentDamageEffect> damageEffects = {};
-
-		GetPersistentEffects(damageEffects);
-
-		if (damageEffects.IsEmpty())
-			return damageEffects;
-
-		array<ref PersistentDamageEffect> allEffectsOnHitZone = {};
-
-		foreach (ref PersistentDamageEffect effect : damageEffects)
-		{
-			if (effect.GetAffectedHitZone() == hitzone)
-				allEffectsOnHitZone.Insert(effect);
-		}
-
-		return allEffectsOnHitZone;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	array<ref PersistentDamageEffect> FilterEffectsByHitZone(array<ref PersistentDamageEffect> damageEffects, HitZone hitzone)
+	array<ref PersistentDamageEffect> FilterEffectsByHitZone(array<ref PersistentDamageEffect> damageEffects, notnull HitZone hitZone)
 	{
 		array<ref PersistentDamageEffect> filteredDamageEffects = {};
 
@@ -101,7 +80,7 @@ class SCR_ExtendedDamageManagerComponent : ExtendedDamageManagerComponent
 
 		foreach (ref PersistentDamageEffect effect : damageEffects)
 		{
-			if (effect.GetAffectedHitZone() == hitzone)
+			if (effect.GetAffectedHitZone() == hitZone)
 				filteredDamageEffects.Insert(effect);
 		}
 
@@ -109,20 +88,28 @@ class SCR_ExtendedDamageManagerComponent : ExtendedDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	array<ref PersistentDamageEffect> GetAllPersistentEffectsOfType(typename effectTypename)
+	array<ref SCR_PersistentDamageEffect> GetAllPersistentEffectsOfType(typename effectTypeName, bool includeInheritedTypes = false)
 	{
-		array<ref PersistentDamageEffect> damageEffects = {};
+		array<ref SCR_PersistentDamageEffect> damageEffects = {};
+		
+		if (!includeInheritedTypes)
+		{
+			FindAllDamageEffectsOfType(effectTypeName, damageEffects);
+			return damageEffects;
+		}
 
 		GetPersistentEffects(damageEffects);
 
 		if (damageEffects.IsEmpty())
 			return damageEffects;
 
-		array<ref PersistentDamageEffect> allEffectsOfType = {};
+		array<ref SCR_PersistentDamageEffect> allEffectsOfType = {};
 
-		foreach (ref PersistentDamageEffect effect : damageEffects)
+		foreach (ref SCR_PersistentDamageEffect effect : damageEffects)
 		{
-			if (effect.ClassName() == effectTypename.ToString())
+			if (effect.Type() == effectTypeName)
+				allEffectsOfType.Insert(effect);
+			else if (includeInheritedTypes && effect.IsInherited(effectTypeName))
 				allEffectsOfType.Insert(effect);
 		}
 
@@ -130,14 +117,14 @@ class SCR_ExtendedDamageManagerComponent : ExtendedDamageManagerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	array<ref PersistentDamageEffect> FilterEffectsByType(array<ref PersistentDamageEffect> damageEffects, typename effectTypename)
+	array<ref SCR_PersistentDamageEffect> FilterEffectsByType(array<ref SCR_PersistentDamageEffect> damageEffects, typename effectTypename)
 	{
-		array<ref PersistentDamageEffect> filteredDamageEffects = {};
+		array<ref SCR_PersistentDamageEffect> filteredDamageEffects = {};
 
 		if (damageEffects.IsEmpty())
 			return filteredDamageEffects;
 
-		foreach (ref PersistentDamageEffect effect : damageEffects)
+		foreach (ref SCR_PersistentDamageEffect effect : damageEffects)
 		{
 			if (effect.ClassName() == effectTypename.ToString())
 				filteredDamageEffects.Insert(effect);

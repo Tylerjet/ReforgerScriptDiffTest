@@ -7,84 +7,132 @@ class SCR_CopyClassAndMethodPlugin : WorkbenchPlugin
 	{
 		ScriptEditor scriptEditor = Workbench.GetModule(ScriptEditor);
 
-		string fileName;
-		scriptEditor.GetCurrentFile(fileName);
+		string className, methodName;
+		if (!GetCursorClassAndMethodNames(scriptEditor, className, methodName))
+		{
+			Print("Nothing copied to clipboard, the current line is not inside of a class.", LogLevel.DEBUG);
+			return;
+		}
 
+		string result;
+		if (methodName) // !IsEmpty
+			result = string.Format("%1.%2()", className, methodName);
+		else
+			result = className;
+
+		System.ExportToClipboard(result);
+		Print(string.Format("Copied to clipboard: \"%1\"", result), LogLevel.DEBUG);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get the current class name / class + method name where the cursor is
+	//! \param[in] scriptEditor a ScriptEditor instance
+	//! \param[out] className
+	//! \param[out] methodName is emptied if not in method
+	//! \return true on success, false otherwise
+	static bool GetCursorClassAndMethodNames(notnull ScriptEditor scriptEditor, out string className, out string methodName)
+	{
+		string line;
+		array<string> lines = {};
+		for (int lineId, lineCount = scriptEditor.GetCurrentLine() + 1; lineId < lineCount; ++lineId)
+		{
+			scriptEditor.GetLineText(line, lineId);
+			lines.Insert(line);
+		}
+
+		return GetLineClassAndMethodNames(lines, scriptEditor.GetCurrentLine(), className, methodName);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] lines
+	//! \param[in] lineId
+	//! \param[in] cursorLineId
+	//! \param[out] className
+	//! \param[out] methodName
+	//! \return
+	static bool GetLineClassAndMethodNames(notnull array<string> lines, int cursorLineId, out string className, out string methodName)
+	{
 		const string bracketOpen = "{";
 		const string bracketClose = "}";
 		const string commentOpen = "/" + "*";
 		const string commentClose = "*" + "/";
 
 		//--- Get scope hierarchy
-		string text;
 		array<int> scopes = {};
 		bool isComment;
-		bool extended;
-		for (int l = 0, lineCount = scriptEditor.GetCurrentLine(); l < lineCount; l++)
+		int linesCount = cursorLineId;
+
+		foreach (int lineId, string line : lines)
 		{
-			scriptEditor.GetLineText(text, l);
-			text.Replace(" ", string.Empty);
-			text.Replace("\t", string.Empty);
+			if (lineId == linesCount)
+				break;
+
+			line.Replace(SCR_StringHelper.SPACE, string.Empty);
+			line.Replace(SCR_StringHelper.TAB, string.Empty);
 
 			if (!isComment)
 			{
-				if (text.StartsWith(bracketOpen))
-					scopes.Insert(l - 1);
-				else if (text.StartsWith(bracketClose))
-					scopes.Resize(scopes.Count() - 1);
-				else if (text.StartsWith(commentOpen))
+				if (line.StartsWith(bracketOpen))
+				{
+					scopes.Insert(lineId - 1);
+				}
+				else if (line.StartsWith(bracketClose))
+				{
+					if (!scopes.IsEmpty())
+						scopes.Resize(scopes.Count() - 1);
+				}
+				else if (line.StartsWith(commentOpen))
+				{
 					isComment = true;
+				}
 			}
-			else if (text.StartsWith(commentClose))
+			else if (line.StartsWith(commentClose))
 			{
 				isComment = false;
-			}
-
-			//--- When a method is on the current line or on the line above, extend the search to include it
-			if (!extended && l == lineCount - 1 && scopes.Count() == 1)
-			{
-				lineCount += 2;
-				extended = true;
 			}
 		}
 
 		if (scopes.IsEmpty())
-			scopes.Insert(scriptEditor.GetCurrentLine());
+			scopes.Insert(cursorLineId);
 
-		string result;
-		string className;
-		scriptEditor.GetLineText(className, scopes[0]);
+		string line = lines[scopes[0]];
 
 		array<string> lineArray = {};
-		className.Split(" ", lineArray, false);
+		line.Split(SCR_StringHelper.SPACE, lineArray, false);
+		lineArray.RemoveItemOrdered("modded");
+		lineArray.RemoveItemOrdered("sealed");
 		if (lineArray.Count() < 2)
-		{
-			Print("Nothing copied to clipboard, selected line is not inside of a class.", LogLevel.DEBUG);
-			return;
-		}
+			return false;
 
 		className = lineArray[1];
 		className.Replace(":", string.Empty);
+		className.TrimInPlace();
 
 		if (scopes.Count() == 1)
-			scopes.Insert(scriptEditor.GetCurrentLine());
+			scopes.Insert(cursorLineId);
 
-		string methodName;
-		scriptEditor.GetLineText(methodName, scopes[1]);
-		methodName.Split("(", lineArray, false);
+		if (!lines.IsIndexValid(scopes[1]))
+		{
+			methodName = string.Empty;
+			return true;
+		}
+
+		if (lines[scopes[1]].Trim().StartsWith(bracketOpen))
+			scopes[1] = scopes[1] - 1;
+
+		// methodName = lines[scopes[1]];
+		lines[scopes[1]].Split("(", lineArray, false);
 		if (lineArray.Count() >= 2)
 		{
 			methodName = lineArray[0];
-			methodName.Split(" ", lineArray, false);
-			if (lineArray.Count() >= 2)
-				result = string.Format("%1.%2()", className, lineArray[lineArray.Count() - 1]);
+			methodName.Split(SCR_StringHelper.SPACE, lineArray, false);
+			if (lineArray.Count() > 1)
+				methodName = lineArray[lineArray.Count() - 1];
+			else
+				methodName = string.Empty;
 		}
 
-		if (result.IsEmpty())
-			result = className;
-
-		Print(string.Format("Copied to clipboard: \"%1\"", result), LogLevel.DEBUG);
-		System.ExportToClipboard(result);
+		return true;
 	}
 }
 #endif // WORKBENCH

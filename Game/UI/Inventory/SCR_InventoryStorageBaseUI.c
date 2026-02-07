@@ -1774,7 +1774,10 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 			return;
 
 		if ( m_wDropContainer )
+		{
 			m_wDropContainer.SetVisible( bShow );
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_FE_BUTTON_HOVER);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------

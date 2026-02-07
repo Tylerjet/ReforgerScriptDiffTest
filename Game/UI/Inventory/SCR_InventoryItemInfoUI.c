@@ -5,13 +5,12 @@
 //! Inventory Slot UI Layout
 class SCR_InventoryItemInfoUI : ScriptedWidgetComponent
 {
-
-	private Widget							m_infoWidget;
-	private VerticalLayoutWidget			m_wHintWidget;
-	private TextWidget						m_wTextName;
-	private TextWidget						m_wTextDescription;
-	private TextWidget						m_wTextWeight;
-	private ImageWidget 					m_wItemIcon;
+	protected Widget						m_infoWidget;
+	protected VerticalLayoutWidget			m_wHintWidget;
+	protected TextWidget					m_wTextName;
+	protected TextWidget					m_wTextDescription;
+	protected TextWidget					m_wTextWeight;
+	protected ImageWidget 					m_wItemIcon;
 	protected SCR_SlotUIComponent			m_pFrameSlotUI;
 	protected Widget 						m_wWidgetUnderCursor;
 	protected bool 							m_bForceShow;
@@ -19,7 +18,10 @@ class SCR_InventoryItemInfoUI : ScriptedWidgetComponent
 	protected ResourceName					m_sAmmoTypeConfig = "{8D3E102893955B15}Configs/Inventory/ItemHints/MagazineAmmoType.conf";
 	protected ref SCR_AmmoTypeInfoConfig	m_AmmoTypeConf;
 	
-	private string 							m_sHintLayout = "{9996B50BE8DFED5F}UI/layouts/Menus/Inventory/InventoryItemHintElement.layout";
+	protected const string 					m_sHintLayout = "{9996B50BE8DFED5F}UI/layouts/Menus/Inventory/InventoryItemHintElement.layout";
+	
+	protected const string 					m_sIdentityItemLayout = "{9168128FD3D1FBC2}UI/layouts/Menus/Inventory/InventoryIdentityItem.layout";
+	protected const string					m_sIdentityWidgetHolderName = "IdentityHolder";
 	
 					
 	//------------------------------------------------------------------------ USER METHODS ------------------------------------------------------------------------							
@@ -248,18 +250,64 @@ class SCR_InventoryItemInfoUI : ScriptedWidgetComponent
 		else
 			SetWeight( fWeight.ToString() );
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Creates the identity UI when hovering over the identity item in the player inventory
+	//! \param[in] identityItemComponent Identity component of the linked character
+	void CreateIdentityUI(SCR_IdentityInventoryItemComponent identityItemComponent)
+	{
+		if (!m_infoWidget)
+			return;
+		
+		Widget identityHolder = m_infoWidget.FindAnyWidget(m_sIdentityWidgetHolderName);
+		if (!identityHolder)
+			return;
+		
+		//~ Clear existing identity if any
+		SCR_WidgetHelper.RemoveAllChildren(identityHolder);
+		
+		//~ Check if can create Identity
+		if (!identityItemComponent)
+			return;
+		
+		SCR_ExtendedIdentityComponent linkedIdentity = identityItemComponent.GetLinkedExtendedIdentity();
+		if (!linkedIdentity)
+			return;
+		
+		SCR_IdentityBio identityBio = linkedIdentity.GetIdentityBio();
+		if (!identityBio)
+			return;
+		
+		WorkspaceWidget workspace = GetGame().GetWorkspace();
+		
+		//~ Create Identity
+		Widget createdWidget = workspace.CreateWidgets(m_sIdentityItemLayout, identityHolder);
+		if (!createdWidget)
+			return;
+		
+		SCR_InventoryIdentityItemWidgetComponent identityItemWidgetComponent = SCR_InventoryIdentityItemWidgetComponent.Cast(createdWidget.FindHandler(SCR_InventoryIdentityItemWidgetComponent));
+		if (!identityItemWidgetComponent)
+		{
+			delete createdWidget;
+			return;
+		}
+		
+		identityItemWidgetComponent.SetIdentityData(identityItemComponent, linkedIdentity, identityBio);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached( Widget w )
 	{
 		if( !w )
 			return;
+		
 		m_infoWidget		= w;
 		m_wHintWidget		= VerticalLayoutWidget.Cast( w.FindAnyWidget( "VerticalHintParent" ) );
 		m_wTextName 		= TextWidget.Cast( w.FindAnyWidget( "ItemInfo_name" ) );
 		m_wTextDescription 	= TextWidget.Cast( w.FindAnyWidget( "ItemInfo_description" ) );
 		m_wTextWeight 		= TextWidget.Cast( w.FindAnyWidget( "ItemInfo_weight" ) );
 		m_wItemIcon 		= ImageWidget.Cast(w.FindAnyWidget("ItemInfo_icon"));
+		
 		Widget wItemInfo	= m_infoWidget.FindAnyWidget( "ItemInfo" );
 		if ( !wItemInfo )
 			return;

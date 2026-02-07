@@ -555,7 +555,12 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 	//! \return
 	Faction GetCapturingFaction()
 	{
-		return GetGame().GetFactionManager().GetFactionByKey(m_sCapturingFaction);
+		FactionManager fManager = GetGame().GetFactionManager();
+		
+		if (!fManager)
+			return null;
+		
+		return fManager.GetFactionByKey(m_sCapturingFaction);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -752,6 +757,13 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 	//!
 	void OnCapturingFactionChanged()
 	{
+		foreach (SCR_MilitaryBaseLogicComponent comp : m_aSystems)
+		{
+			if (!comp)
+				continue;
+
+			comp.OnCapturingFactionChanged(m_sCapturingFaction);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------

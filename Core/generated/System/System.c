@@ -158,7 +158,7 @@ sealed class System
 	\param dstWidth				width of destination image, 0 means the srcWidth is used
 	\param dstHeight			height of destination image, 0 means the srcHeight is used
 	*/
-	static proto void MakeScreenshotRawData(ScreenshotRawDataCallback callback, int posX, int posY, int srcWidth, int srcHeight, int dstWidth, int dstHeight);
+	static proto void MakeScreenshotRawData(ScreenshotRawDataCallback scriptCallback, int posX, int posY, int srcWidth, int srcHeight, int dstWidth, int dstHeight);
 	/*!
 	Take screenshot on specified position and size. dstWidth x dstHeight point to final image size,
 	if they are zero then they equal to srcWidth x srcHeight. The callback receives a full texture
@@ -171,7 +171,7 @@ sealed class System
 	\param dstWidth				width of destination image, 0 means the srcWidth is used
 	\param dstHeight			height of destination image, 0 means the srcHeight is used
 	*/
-	static proto void MakeScreenshotTexture(ScreenshotTextureCallback callback, int posX, int posY, int srcWidth, int srcHeight, int dstWidth, int dstHeight);
+	static proto void MakeScreenshotTexture(ScreenshotTextureCallback scriptCallback, int posX, int posY, int srcWidth, int srcHeight, int dstWidth, int dstHeight);
 	/*!
 	Returns actual fps (average in last 10 frames)
 	*/

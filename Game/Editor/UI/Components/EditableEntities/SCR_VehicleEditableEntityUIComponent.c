@@ -76,7 +76,7 @@ class SCR_VehicleEditableEntityUIComponent : SCR_BaseEditableEntityUIComponent
 		if (playerEntity)
 			m_VehicleOwningPlayer = SCR_EditableCharacterComponent.Cast(playerEntity.FindComponent(SCR_EditableCharacterComponent));
 
-		string playerName = playerManager.GetPlayerName(playerID);
+		string playerName = SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(playerID);
 		int playerCount = m_VehicleComponent.GetPlayerCountInVehicle();
 
 		if (playerCount > 1)

@@ -80,6 +80,8 @@ class InventoryItemComponent: GameComponent
 
 	// callbacks
 
+	// It should be called with a right return value to change the visibility of entities with hierarchy according to needs.
+	event protected bool ShouldChangeVisibilityOfHierarchy() { return false; };
 	//! implement custom visibility behavior in vicinity
 	event protected bool ShouldHideInVicinity();
 	//! Override final transformation of dropped item, return true in case transformation should be applied

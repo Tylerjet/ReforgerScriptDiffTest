@@ -323,7 +323,7 @@ class SCR_GamepadScrollComponent : SCR_ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void SetEnabled_Internal(bool enabled)
+	protected void SetEnabled_Internal(bool enabled)
 	{
 		GetGame().GetCallqueue().Remove(OnEachFrame);
 

@@ -45,7 +45,7 @@ class SCR_AIGetWaypointParameters : AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette() { return true; }
+	protected static override bool VisibleInPalette() { return true; }
 	
 	protected static ref TStringArray s_aVarsIn = {
 		PORT_WAYPOINT_IN

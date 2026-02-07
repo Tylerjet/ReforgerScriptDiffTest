@@ -1,41 +1,67 @@
-class SCR_AISetStance : SCR_AICharacterStats
+//! Sets stance of character.
+//! Also before doing so, it checks restriction from group info component, and from settings component.
+class SCR_AISetStance : AITaskScripted
 {
-	[Attribute("0", UIWidgets.ComboBox, "Desired character stance", "", ParamEnumArray.FromEnum(ECharacterStance) )]
-	private ECharacterStance m_eStance;
-
-	static const string STANCE_PORT = "Stance";
+	// Inputs
+	protected static const string STANCE_PORT = "Stance";
 	
-	private CharacterControllerComponent m_CharacterController;
-
+	protected CharacterControllerComponent m_CharacterController;
+	protected SCR_AICharacterSettingsComponent m_SettingsComp;
+	
+	[Attribute("0", UIWidgets.ComboBox, "Desired character stance", "", ParamEnumArray.FromEnum(ECharacterStance) )]
+	protected ECharacterStance m_eStance;
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnInit(AIAgent owner)
+	{
+		super.OnInit(owner);
+		
+		m_SettingsComp = SCR_AICharacterSettingsComponent.Cast(owner.FindComponent(SCR_AICharacterSettingsComponent));
+		
+		IEntity myEntity = owner.GetControlledEntity();
+		if(myEntity)
+		{
+			m_CharacterController = CharacterControllerComponent.Cast(owner.GetControlledEntity().FindComponent(CharacterControllerComponent));
+			if (!m_CharacterController)
+				NodeError(this, owner, "Can't find CharacterControllerComponent.");
+		}	
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{
-		if (!m_AIInfo || !m_CharacterController)
+		if (!m_CharacterController)
 			return ENodeResult.FAIL;
 		
 		ECharacterStance stance;
-		ECharacterStance allowedStance;
 		
-		if(!GetVariableIn(STANCE_PORT,stance))
+		if(!GetVariableIn(STANCE_PORT, stance))
 			stance = m_eStance;
 		
+		// Stance is first limited by this character's group
 		AIGroup group = owner.GetParentGroup();
-		if (!group)
-			return ENodeResult.SUCCESS;
+		if (group)
+		{
+			SCR_AIGroupInfoComponent groupInfoComp = SCR_AIGroupInfoComponent.Cast(group.FindComponent(SCR_AIGroupInfoComponent));
+			if (groupInfoComp)
+				stance = groupInfoComp.GetAllowedStance(stance);
+		}
 		
-		SCR_AIGroupInfoComponent groupInfoComp = SCR_AIGroupInfoComponent.Cast(group.FindComponent(SCR_AIGroupInfoComponent));
-		if (!groupInfoComp)
-			return ENodeResult.FAIL;
+		// Check if stance is restricted by settings
+		SCR_AICharacterStanceSettingBase stanceSetting = null;
+		if (m_SettingsComp)
+			stanceSetting = SCR_AICharacterStanceSettingBase.Cast(m_SettingsComp.GetCurrentSetting(SCR_AICharacterStanceSettingBase));
 		
-		allowedStance = groupInfoComp.GetAllowedStance(stance);
+		if (stanceSetting)
+			stance = stanceSetting.GetStance(stance);
 		
-		SCR_AIStanceHandling.SetStance(m_AIInfo, m_CharacterController, allowedStance);
+		SCR_AIStanceHandling.SetStance(m_CharacterController, stance);
 
 		return ENodeResult.SUCCESS;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() {return true;}
+	static override bool VisibleInPalette() {return true;}
 
 	//------------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsIn = {
@@ -53,17 +79,10 @@ class SCR_AISetStance : SCR_AICharacterStats
 		s = s + string.Format("m_eStance: %1\n", typename.EnumToString(ECharacterStance, m_eStance));
 		return s;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	override void OnInit(AIAgent owner)
+	override static string GetOnHoverDescription()
 	{
-		super.OnInit(owner);
-		
-		if(owner.GetControlledEntity())
-		{
-			m_CharacterController = CharacterControllerComponent.Cast(owner.GetControlledEntity().FindComponent(CharacterControllerComponent));
-			if (!m_CharacterController)
-				NodeError(this, owner, "Can't find CharacterControllerComponent.");
-		}	
+		return "Sets stance of character. Also checks restriction from group info component, and from settings component.";
 	}
 };

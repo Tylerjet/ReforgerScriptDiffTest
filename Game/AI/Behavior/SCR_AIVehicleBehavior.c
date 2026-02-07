@@ -16,6 +16,13 @@ class SCR_AIVehicleBehavior : SCR_AIBehaviorBase
 		m_Vehicle.Init(m_aParams, vehicleEntity);
 	}
 	
+	//---------------------------------------------------------------------------------------------------------------------------------
+	override int GetCause()
+	{
+		// Most of the time we get into vehicle because group told so
+		return SCR_EAIBehaviorCause.GROUP_GOAL;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnActionSelected() 
 	{

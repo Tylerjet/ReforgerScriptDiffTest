@@ -1,6 +1,7 @@
 [BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
 class SCR_KillfeedTypeEditorAttribute : SCR_BaseFloatValueHolderEditorAttribute
 {	
+	//------------------------------------------------------------------------------------------------
 	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)
 	{		
 		BaseGameMode gamemode = BaseGameMode.Cast(item);
@@ -25,6 +26,7 @@ class SCR_KillfeedTypeEditorAttribute : SCR_BaseFloatValueHolderEditorAttribute
 		return null;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override int GetEntries(notnull array<ref SCR_BaseEditorAttributeEntry> outEntries)
 	{
 		FillValues();
@@ -32,6 +34,7 @@ class SCR_KillfeedTypeEditorAttribute : SCR_BaseFloatValueHolderEditorAttribute
 		return outEntries.Count();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void FillValues()
 	{
 		BaseGameMode gameMode = GetGame().GetGameMode();
@@ -57,14 +60,20 @@ class SCR_KillfeedTypeEditorAttribute : SCR_BaseFloatValueHolderEditorAttribute
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void UpdateInterlinkedVariables(SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, bool isInit = false)
 	{
 		if (isInit)
+		{
 			manager.SetAttributeAsSubAttribute(SCR_KillfeedReceiveTypeEditorAttribute);
+			manager.SetAttributeAsSubAttribute(SCR_FriendlyFireKillfeedTypeEditorAttribute);
+		}
 				
 		manager.SetAttributeEnabled(SCR_KillfeedReceiveTypeEditorAttribute, var && var.GetInt() != 0);
+		manager.SetAttributeEnabled(SCR_FriendlyFireKillfeedTypeEditorAttribute, var && var.GetInt() != 0);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)
 	{
 		if (!var) 

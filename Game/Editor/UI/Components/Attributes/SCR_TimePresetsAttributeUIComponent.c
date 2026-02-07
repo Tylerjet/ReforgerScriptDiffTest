@@ -20,11 +20,11 @@ class SCR_TimePresetsAttributeUIComponent: SCR_ButtonBoxAttributeUIComponent
 		m_bIsReseting = false;
 	}
 	
-	override bool OnChange(Widget w, int x, int y, bool finished)
+	override bool OnChangeInternal(Widget w, int x, int y, bool finished)
 	{	
 		if (m_bIsReseting)
 			return false;
 		else 
-			return super.OnChange(w, x, y, finished);
+			return super.OnChangeInternal(w, x, y, finished);
 	}
 };

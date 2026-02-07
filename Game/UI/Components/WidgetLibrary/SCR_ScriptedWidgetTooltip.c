@@ -29,6 +29,7 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 
 	// Const
 	private const float DISTANCE_THRESHOLD = 0.001;
+	private const int DELAYED_INIT_WAIT_FRAMES = 2;
 
 	// Static
 	protected static WidgetAnimationPosition m_PositionAnimation;
@@ -45,6 +46,8 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 	protected static ref ScriptInvokerTooltip m_OnTooltipHide;		// Called after removing the content widget
 
 	//---- REFACTOR NOTE END ----
+	
+	protected const string DEBUG_BORDER_NAME = "DebugBorder";
 	
 	//! ---- OVERRIDES ----
 	//------------------------------------------------------------------------------------------------
@@ -66,11 +69,20 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 		BaseContainer container = rsc.GetResource().ToBaseContainer();
 		SCR_ScriptedWidgetTooltipPresets presets = SCR_ScriptedWidgetTooltipPresets.Cast(BaseContainerTools.CreateInstanceFromContainer(container));
 
+		if (!presets)
+		{
+			ForceHidden();
+			return;
+		}
+		
 		// Find preset
 		m_Preset = presets.FindPreset(m_sPresetTag);
 
 		if (!m_Preset)
+		{
+			ForceHidden();
 			return;
+		}
 		
 		// Setup
 		m_wWorkspace = pWorkspace;
@@ -81,7 +93,7 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 		else
 			m_wHoverWidget = pWorkspace.GetFocusedWidget();
 		
-		if(m_OnTooltipShowInit)
+		if (m_OnTooltipShowInit)
 			m_OnTooltipShowInit.Invoke(this);
 		
 		// Proxy initialization
@@ -91,7 +103,8 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 		FrameSlot.SetSize(pToolTipWidget, m_Preset.m_vSize[0], m_Preset.m_vSize[1]);
 		FrameSlot.SetSizeToContent(pToolTipWidget, m_Preset.m_bSizeToContent);
 	
-		Widget debugBorder = pToolTipWidget.FindAnyWidget("DebugBorder");
+		// TODO: debug visualization of paddings vs tooltip whole area
+		Widget debugBorder = pToolTipWidget.FindAnyWidget(DEBUG_BORDER_NAME);
 		
 		#ifdef WORKBENCH
 			bool showDebug = m_Preset.m_bShowDebugBorder;
@@ -118,8 +131,8 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 		// Determine and cache the correct content position inside the proxy
 		InitContentPosition();
 		
-		// Cache desired position and instantly place the tooltip there
-		UpdatePosition(true, false, true);
+		// Wait for the new screen to have a screen presence, as on controller the tooltip gets triggered as soon as Enfusions flags the widget as focused, even if the hierarchy has not finished initializing yet
+		DelayedPositionInit(DELAYED_INIT_WAIT_FRAMES);
 
 		// Fade in
 		if (m_Preset.m_fFadeInSpeed > 0)
@@ -153,6 +166,21 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 	}
 	
 	//! ---- PROTECTED ----
+	//------------------------------------------------------------------------------------------------
+	protected void DelayedPositionInit(int totalFrames)
+	{
+		if (totalFrames <= 0)
+		{
+			// Cache desired position and instantly place the tooltip there
+			UpdatePosition(true, false, true);
+			
+			return;
+		}
+		
+		totalFrames--;
+		GetGame().GetCallqueue().Call(DelayedPositionInit, totalFrames);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	protected void Update()
 	{
@@ -676,6 +704,8 @@ class SCR_TooltipPositionPreset
 		if (overflowType == SCR_ETooltipOverflowType.NONE)
 			return false;
 
+		// TODO: "ignore" option for debugging
+		// TODO: there seems to be an issue with overflow calculations on tooltips spawned when mouse is very close to screen edges, causing the tooltip to think it's overflowing while still far from the edge
 		// -- Handle overflow --
 		// Invert
 		if (m_eOverflowHandling == SCR_ETooltipOverflowHandling.INVERT)

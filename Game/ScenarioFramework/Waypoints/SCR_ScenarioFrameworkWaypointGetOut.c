@@ -2,7 +2,7 @@
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkWaypointGetOut : SCR_ScenarioFrameworkWaypointScripted
 {
-	[Attribute(defvalue: "9", desc: "Radius in m")]
+	[Attribute(defvalue: "9", uiwidget: UIWidgets.Slider, desc: "Radius in m")]
 	float m_fCompletionRadius;
 
 	[Attribute(defvalue: "{C40316EE26846CAB}Prefabs/AI/Waypoints/AIWaypoint_GetOut.et", desc: "In Default, it will use specific prefab for each class, but here you can change it if you know what you are doing")]

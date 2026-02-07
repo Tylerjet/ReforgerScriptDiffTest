@@ -26,7 +26,7 @@ class SCR_AIGetEntityWaypointParameters : SCR_AIGetWaypointParameters
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Returns entity waypoint Entity parameter";
 	}

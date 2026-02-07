@@ -32,14 +32,15 @@ class CharacterCamera3rdPersonBase extends CharacterCameraBase
 	override void OnUpdate(float pDt, out ScriptedCameraItemResult pOutResult)
 	{
 		pOutResult.m_vBaseAngles = GetBaseAngles();
+		bool isLinked = m_CharacterAnimationComponent.PhysicsIsLinked();
 		
 		//! update fov
 		m_fFOV = GetBaseFOV();
-
+		
 		//! yaw pitch roll vector
 		vector lookAngles = m_CharacterHeadAimingComponent.GetLookAngles();
 
-		if (!m_bIgnoreCharacterPitch)
+		if (!m_bIgnoreCharacterPitch && !isLinked)
 			lookAngles[1] = lookAngles[1] + m_OwnerCharacter.GetLocalYawPitchRoll()[1];
 
 		//! apply to rotation matrix
@@ -81,20 +82,20 @@ class CharacterCamera3rdPersonBase extends CharacterCameraBase
 			msOffset[0] = msOffset[0] + shoulderDist;
 		}
 		
-		// character matrix
 		vector charMat[4];
-		m_OwnerCharacter.GetTransform(charMat);
+		m_CharacterAnimationComponent.PhysicsGetTransformLS(charMat);
 		
 		//! apply velocity
-		vector velocity = m_ControllerComponent.GetVelocity();		
+		vector velocity = m_CharacterAnimationComponent.PhysicsGetLocalVelocityXZ();		
 		velocity = velocity.InvMultiply3(charMat);
 		for (int i = 0; i < 3; i++)
 		{
 			velocity[i] = Math.Clamp(velocity[i], -m_vMaxVelocity[i], m_vMaxVelocity[i]);
 		}
 		m_v3rd_VelocityAdd += (velocity - m_v3rd_VelocityAdd) * pDt * 2;
-		
+			
 		msOffset = msOffset + m_v3rd_VelocityAdd * -0.05;
+		
 		// ls offset + ms offset + shoulder width			
 		pOutResult.m_CameraTM[3]		= pOutResult.m_CameraTM[3] + pOutResult.m_CameraTM[0] * lsOffset[0] + pOutResult.m_CameraTM[1] * lsOffset[1] + pOutResult.m_CameraTM[2] * lsOffset[2] + msOffset;
 		
@@ -112,7 +113,16 @@ class CharacterCamera3rdPersonBase extends CharacterCameraBase
 		
 		pOutResult.m_CameraTM[3][1] = m_fYoffsetPrevFrame * yDelta;
 		
-		m_fBobScale = m_CharacterCameraHandler.AddViewBobToTransform(pOutResult.m_CameraTM, 1, true);
+				
+		if (isLinked)
+		{
+			vector headMat[4];
+			Math3D.AnglesToMatrix(Vector(m_OwnerCharacter.GetAimRotationModel()[0] * Math.RAD2DEG, 0, 0), headMat);
+	
+			Math3D.MatrixMultiply4(headMat, pOutResult.m_CameraTM, pOutResult.m_CameraTM);
+		}
+		
+		m_fBobScale = m_CharacterCameraHandler.AddViewBobToTransform(pOutResult.m_CameraTM, 1, !isLinked);
 		// follow hip bone when ragdolling
 		if(m_OwnerCharacter.GetAnimationComponent().IsRagdollActive())
 		{
@@ -123,9 +133,9 @@ class CharacterCamera3rdPersonBase extends CharacterCameraBase
 		//! store distance 
 		pOutResult.m_fDistance 				= m_fDistance;
 		pOutResult.m_iDirectBoneMode		= EDirectBoneMode.None;
-		pOutResult.m_fUseHeading 			= 1.0;
-		pOutResult.m_fShoulderDist			= m_fShoulderLROffset;
+		pOutResult.m_fShoulderDist			= GetShoulderDistance();
 		pOutResult.m_fNearPlane	 			= 0.04;
+		pOutResult.m_fUseHeading			= !isLinked;
 		pOutResult.m_fPositionModelSpace 	= 1.0;
 		pOutResult.m_pWSAttachmentReference = null;
 		pOutResult.m_pOwner 				= m_OwnerCharacter;

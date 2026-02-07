@@ -4,6 +4,11 @@ typedef ScriptInvokerBase<OnCoverageChangedDelegate> OnCoverageChangedInvoker;
 
 class SCR_RadioCoverageSystem : GameSystem
 {
+	override static void InitInfo(WorldSystemInfo outInfo)
+	{
+		outInfo.SetAbstract(false);
+	}
+
 	protected bool m_bSignalSignature;
 	protected bool m_bUpdateCoverage;
 	protected bool m_bForcedPause;

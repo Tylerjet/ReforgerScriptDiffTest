@@ -17,6 +17,7 @@ class SCR_BasePrefabSpawner : GenericEntity
 	{
 		if (!Replication.IsServer())
 			return;
+
 		if (CanSpawn())
 			Spawn();
 	}
@@ -31,8 +32,9 @@ class SCR_BasePrefabSpawner : GenericEntity
 		BaseWorld myWorld = GetGame().GetWorld();
 		if (!myWorld || m_rnPrefab.IsEmpty())
 			return false;
+
 		Resource res = Resource.Load(m_rnPrefab);
-		EntitySpawnParams params();
+		EntitySpawnParams params = new EntitySpawnParams();
 
 		vector mat[4];
 		GetWorldTransform(mat);

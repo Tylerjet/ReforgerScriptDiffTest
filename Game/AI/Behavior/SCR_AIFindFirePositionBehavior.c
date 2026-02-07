@@ -15,6 +15,12 @@ class SCR_AIFindFirePositionBehavior : SCR_AIBehaviorBase
 	
 	EAIUnitType m_eTargetUnitType;
 	
+	//---------------------------------------------------------------------------------------------------------------------------------
+	override int GetCause()
+	{
+		return SCR_EAIBehaviorCause.COMBAT;
+	}
+	
 	//----------------------------------------------------------------------------------------------------------------
 	void InitParameters(vector targetPos, float minDistance, float maxDistance, float duration)
 	{
@@ -120,7 +126,7 @@ class SCR_AIGetFindFirePositionNextPos : SCR_AIActionTask
 	}
 	
 	//-----------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 	
 	//-----------------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsOut = { PORT_NEXT_POSITION };
@@ -132,5 +138,5 @@ class SCR_AIGetFirePositionBehaviorParameters : SCR_AIGetActionParameters
 	static ref TStringArray s_aVarsOut = (new SCR_AIFindFirePositionBehavior(null, null, vector.Zero, 0, 0, 0, 0)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 };

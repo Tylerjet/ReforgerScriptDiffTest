@@ -3,9 +3,9 @@
 //! Inventory Slot UI Layout
 class SCR_InventorySlotWeaponSlotsUI : SCR_InventorySlotUI
 {
-	private static ResourceName m_sPrimaryWeaponSlot = "{71DBF62B460D7EBC}UI/Textures/InventoryIcons/InvenorySlot-Primary-Outline_UI.edds";
-	private static ResourceName m_sSecondaryWeaponSlot = "{694BB85E95CC205A}UI/Textures/InventoryIcons/InvenorySlot-Secondary_Outline_UI.edds";
-	private static ResourceName m_sGrenadeWeaponSlot = "{8B507AB33B69C40E}UI/Textures/InventoryIcons/InvenorySlot-Grenade-Outline_UI.edds";
+	private static ResourceName m_sPrimaryWeaponSlot = "{CDE4B2BF08F5EA5F}UI/Textures/InventoryIcons/InvenorySlot-Primary_UI.edds";
+	private static ResourceName m_sSecondaryWeaponSlot = "{D08526F28B9ACAB9}UI/Textures/InventoryIcons/InvenorySlot-Secondary_UI.edds";
+	private static ResourceName m_sGrenadeWeaponSlot = "{E841B37EB8382114}UI/Textures/InventoryIcons/InvenorySlot-Grenade_UI.edds";
 	
 	protected string m_sWeaponSlotType;
 	protected ImageWidget m_wGamepadHintSmall;

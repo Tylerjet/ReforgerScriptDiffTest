@@ -24,10 +24,10 @@ class SCR_AISetBehaviorAllowLook : AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------	
-	protected override bool VisibleInPalette() {return true;}
+	protected static override bool VisibleInPalette() {return true;}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription() {return "Sets value of m_bAllowLook in current behavior.";}
+	protected static override string GetOnHoverDescription() {return "Sets value of m_bAllowLook in current behavior.";}
 	
 	//------------------------------------------------------------------------------------------------
 	override string GetNodeMiddleText()

@@ -75,7 +75,7 @@ class SCR_ModDetailsAdditionalInfoDialog : SCR_ConfigurableDialogUi
 		string license = item.License();
 		string customLicenseText = item.LicenseText();
 		
-		m_Widgets.m_wVerticalLayoutLicense.SetVisible(visible && !license.IsEmpty());
+		m_Widgets.m_wVerticalLayoutLicense.SetVisible(visible);
 		m_Widgets.m_wLicenseName.SetText(license);
 		
 		m_Widgets.m_wLicenseContentOverlay.SetVisible(!customLicenseText.IsEmpty());

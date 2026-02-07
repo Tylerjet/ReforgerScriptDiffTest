@@ -1,114 +1,192 @@
-class SCR_WeightedArray<Class TValue>: Managed
+class SCR_WeightedArray<Class TValue>
 {
-	protected ref array<TValue> m_Values = new array<TValue>();
-	protected ref array<float> m_Weights = new array<float>();
-	protected float m_TotalWeight;
-	
+	protected ref array<TValue> m_aValues = {};
+	protected ref array<float> m_aWeights = {};
+	protected float m_fTotalWeight;
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[out] outValue
+	//! \return
 	int GetRandomValue(out TValue outValue)
 	{
-		float weightedValue = Math.RandomFloat(0, m_TotalWeight);
+		float weightedValue = Math.RandomFloat(0, m_fTotalWeight);
 		return GetWeightedValue(outValue, weightedValue);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[out] outValue
+	//! \param[in] randomGenerator
+	//! \return
 	int GetRandomValue(out TValue outValue, RandomGenerator randomGenerator)
 	{
-		float weightedValue = randomGenerator.RandFloatXY(0, m_TotalWeight);
+		float weightedValue = randomGenerator.RandFloatXY(0, m_fTotalWeight);
 		return GetWeightedValue(outValue, weightedValue);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[out] outValue
+	//! \param[in] weightedValue
+	//! \return
 	int GetWeightedValue(out TValue outValue, float weightedValue)
 	{
 		float weight;
-		for (int i = 0, count = m_Values.Count(); i < count; i++)
+		for (int i, count = m_aValues.Count(); i < count; i++)
 		{
-			weight += m_Weights[i];
+			weight += m_aWeights[i];
 			if (weightedValue < weight)
 			{
-				outValue = m_Values[i];
+				outValue = m_aValues[i];
 				return i;
 			}
 		}
 		return -1;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetTotalWeight()
 	{
-		return m_TotalWeight;
+		return m_fTotalWeight;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] n
+	//! \return
 	TValue Get(int n)
 	{
-		return m_Values.Get(n);
+		return m_aValues.Get(n);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] n
+	//! \param[in] value
 	void Set(int n, TValue value)
 	{
-		m_Values.Set(n, value);
+		m_aValues.Set(n, value);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] value
+	//! \param[in] weight
+	//! \return
 	int Insert(TValue value, float weight)
 	{
-		m_Weights.Insert(weight);
-		m_TotalWeight += weight;
-		return m_Values.Insert(value);
+		m_aWeights.Insert(weight);
+		m_fTotalWeight += weight;
+		return m_aValues.Insert(value);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] i
 	void Remove(int i)
 	{
-		m_TotalWeight -= m_Weights[i];
-		m_Values.Remove(i);
-		m_Weights.Remove(i);
+		m_fTotalWeight -= m_aWeights[i];
+		m_aValues.Remove(i);
+		m_aWeights.Remove(i);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] i
 	void RemoveOrdered(int i)
 	{
-		m_TotalWeight -= m_Weights[i];
-		m_Values.RemoveOrdered(i);
-		m_Weights.RemoveOrdered(i);
+		m_fTotalWeight -= m_aWeights[i];
+		m_aValues.RemoveOrdered(i);
+		m_aWeights.RemoveOrdered(i);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] i
+	//! \return
 	float GetWeight(int i)
 	{
-		return m_Weights[i];
+		return m_aWeights[i];
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] i
+	//! \return
 	TValue GetValue(int i)
 	{
-		return m_Values[i];
+		return m_aValues[i];
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	int Count()
 	{
-		return m_Values.Count();
+		return m_aValues.Count();
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsEmpty()
 	{
-		return m_Values.IsEmpty();
+		return m_aValues.IsEmpty();
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] value
+	//! \return
 	bool Contains(TValue value)
 	{
-		return m_Values.Contains(value);
+		return m_aValues.Contains(value);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] value
+	//! \return
 	int Find(TValue value)
 	{
-		return m_Values.Find(value);
+		return m_aValues.Find(value);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] from
+	//! \return
 	int CopyFrom(notnull SCR_WeightedArray<TValue> from)
 	{
 		Clear();
 		int count = from.Count();
-		for (int i = 0; i < count; i++)
+		for (int i; i < count; i++)
 		{
-			m_Weights.Insert(from.m_Weights[i]);
-			m_Values.Insert(from.m_Values[i]);
+			m_aWeights.Insert(from.m_aWeights[i]);
+			m_aValues.Insert(from.m_aValues[i]);
 		}
 		return count;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
 	void Clear()
 	{
-		m_Weights.Clear();
-		m_Values.Clear();
+		m_aWeights.Clear();
+		m_aValues.Clear();
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[out] outArray
+	//! \return
 	int ToArray(out notnull array<TValue> outArray)
 	{
-		return outArray.Copy(m_Values);
+		return outArray.Copy(m_aValues);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
 	void Debug()
 	{
-		PrintFormat("H_WeightedArray count: %1, total weight: %2", Count(), GetTotalWeight());
+		PrintFormat("H_WeightedArray count: %1, total weight: %2", Count(), GetTotalWeight(), level: LogLevel.NORMAL);
 		for (int i, count = Count(); i < count; i++)
 		{
-			PrintFormat("[%1] => %2: %3", i, m_Weights[i], m_Values[i]);
+			PrintFormat("[%1] => %2: %3", i, m_aWeights[i], m_aValues[i], level: LogLevel.NORMAL);
 		}
 	}
 }

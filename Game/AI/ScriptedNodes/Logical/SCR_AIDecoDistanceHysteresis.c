@@ -73,13 +73,13 @@ class SCR_AIDecoDistanceHysteresis : DecoratorScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "SCR_AIDecoDistanceHysteresis: Checks distance to entity within boundaries and in circumference it returns value according to history of moving";
 	}

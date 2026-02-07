@@ -29,6 +29,8 @@ class SCR_ActionsRadialMenuEditorComponent : SCR_BaseEditorComponent
 	[Attribute()]
 	protected string m_sAddCommandActionName;
 	
+	//---- REFACTOR NOTE START: Implementation of multiple radial menus is not very modular ----
+	
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] oldDevice
 	//! \param[in] newDevice
@@ -245,5 +247,6 @@ class SCR_ActionsRadialMenuEditorComponent : SCR_BaseEditorComponent
 			return;
 #endif
 	}
+	//---- REFACTOR NOTE END ----
 }
 //! \}

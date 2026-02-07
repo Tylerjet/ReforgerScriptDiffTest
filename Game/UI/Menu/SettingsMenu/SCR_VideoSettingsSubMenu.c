@@ -187,7 +187,8 @@ class SCR_VideoSettingsSubMenu : SCR_SettingsSubMenuBase
 		if (!textureDetail)
 			return;
 
-		float value, min, max, step, item;
+		const float item; // TODO: check for good const usage
+		float value, min, max, step;
 		m_ResourceManager.Get("TextureDetail", value);
 		m_ResourceManager.GetLimits(item, min, max, step);
 
@@ -223,7 +224,8 @@ class SCR_VideoSettingsSubMenu : SCR_SettingsSubMenuBase
 		if (!m_ResourceManager)
 			return;
 
-		float min, max, step, item;
+		const float item; // TODO: check for good const usage
+		float min, max, step;
 		m_ResourceManager.GetLimits(item, min, max, step);
 
 		int current = max - i;

@@ -1,6 +1,15 @@
 [BaseContainerProps()]
 class SCR_TutorialLogic_SeizingCourse : SCR_BaseTutorialCourseLogic
 {
+	protected const ResourceName COMMS_PREFAB = "{F7DC8BB193BCAF44}PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_Antenna_S_US_01.et";
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnEntitySpawned(IEntity ent)
+	{
+		if (ent && ent.GetPrefabData().GetPrefabName() == COMMS_PREFAB)
+			ent.SetName("BUILDING_ANTENNA");
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnCourseStart()
 	{
@@ -110,7 +119,10 @@ class SCR_TutorialLogic_SeizingCourse : SCR_BaseTutorialCourseLogic
 		//Fix targets
 		SCR_TutorialGamemodeComponent tutorial = SCR_TutorialGamemodeComponent.GetInstance();
 		if (tutorial)
+		{
 			tutorial.SetupTargets("base_target1", null, ETargetState.TARGET_DOWN, false);
+			tutorial.GetOnEntitySpawned().Insert(OnEntitySpawned);
+		}
 		
 		//Reset MHQ interaction
 		IEntity mobilehq = GetGame().GetWorld().FindEntityByName("Tutorial_MobileHQ");
@@ -234,6 +246,10 @@ class SCR_TutorialLogic_SeizingCourse : SCR_BaseTutorialCourseLogic
 	//------------------------------------------------------------------------------------------------
 	override void OnCourseEnd()
 	{
+		SCR_TutorialGamemodeComponent tutorial = SCR_TutorialGamemodeComponent.GetInstance();
+		if (tutorial)
+			tutorial.GetOnEntitySpawned().Remove(OnEntitySpawned);
+		
 		SCR_TutorialFakeBaseComponent fakeBaseComponent;
 		IEntity fakeBase;
 		

@@ -160,7 +160,7 @@ class SCR_GenerateWindowsPrefabsTool : WorldEditorTool
 		string absoluteSaveDir;
 		if (!SCR_AddonTool.GetAddonAbsolutePath(m_iAddonToUse, saveDirectory, absoluteSaveDir))
 		{
-			Print("Wrong path: " + SCR_AddonTool.GetAddonIndex(m_iAddonToUse) + saveDirectory.GetPath(), LogLevel.WARNING);
+			Print("Wrong path: " + SCR_AddonTool.GetAddonID(m_iAddonToUse) + saveDirectory.GetPath(), LogLevel.WARNING);
 			return;
 		}
 
@@ -309,7 +309,7 @@ class SCR_GenerateWindowsPrefabsTool : WorldEditorTool
 		string absoluteSaveDir;
 		if (!SCR_AddonTool.GetAddonAbsolutePath(m_iAddonToUse, m_sGlassSavePath, absoluteSaveDir))
 		{
-			Print("Wrong path: " + SCR_AddonTool.GetAddonIndex(m_iAddonToUse) + m_sGlassSavePath.GetPath(), LogLevel.WARNING);
+			Print("Wrong path: " + SCR_AddonTool.GetAddonID(m_iAddonToUse) + m_sGlassSavePath.GetPath(), LogLevel.WARNING);
 			return;
 		}
 

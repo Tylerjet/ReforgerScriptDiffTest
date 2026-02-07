@@ -13,8 +13,8 @@ class SCR_DeathMatchGameOverScreenInfo: SCR_BaseGameOverScreenInfo
 			return super.GetSubtitleParam(playerId, otherPlayerIds);
 		
 		if (m_bGetWinningSubtitleParam)
-			return playerManager.GetPlayerName(otherPlayerIds[0]);
+			return SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(otherPlayerIds[0]);
 		else 
-			return playerManager.GetPlayerName(playerId);
+			return SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(playerId);
 	}
 };

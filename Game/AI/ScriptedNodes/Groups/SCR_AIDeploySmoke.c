@@ -5,7 +5,7 @@ class SCR_AIDeploySmokeCover : AITaskScripted
 	static const int MAX_SMOKE_POSITION_COUNT = 3; // Max number of smoke grenades that can be thrown at one time to create smoke cover wall
 	
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() {return true;}
+	static override bool VisibleInPalette() {return true;}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(AIAgent owner)
@@ -40,7 +40,7 @@ class SCR_AIDeploySmokeCover : AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override protected bool CanReturnRunning() { return false; }
+	static override protected bool CanReturnRunning() { return false; }
 	
 	//------------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsOut = {};
@@ -51,7 +51,7 @@ class SCR_AIDeploySmokeCover : AITaskScripted
 	override TStringArray GetVariablesIn() { return s_aVarsIn; }
 	
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Getter returns group member available for specific role";
 	}	

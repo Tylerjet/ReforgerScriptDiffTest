@@ -18,6 +18,9 @@ class SCR_BaseDeployableInventoryItemComponent : ScriptComponent
 	[Attribute(defvalue: "1", category: "General")]
 	protected bool m_bEnableSounds;
 
+	[Attribute(desc: "Should this entity be deleted when replacement prefab is destroyed.")]
+	protected bool m_bDeleteWhenDestroyed;
+
 	[RplProp(onRplName: "OnRplDeployed")]
 	protected bool m_bIsDeployed;
 
@@ -62,6 +65,8 @@ class SCR_BaseDeployableInventoryItemComponent : ScriptComponent
 	void OnCompositionDestroyed(IEntity instigator)
 	{
 		Dismantle(instigator);
+		if (m_bDeleteWhenDestroyed)//delay entity deltion to ensure that rpc calls will be able to complete
+			GetGame().GetCallqueue().CallLater(RplComponent.DeleteRplEntity, param1: GetOwner(), param2: false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -261,5 +266,26 @@ class SCR_BaseDeployableInventoryItemComponent : ScriptComponent
 		super.OnPostInit(owner);
 		SetEventMask(GetOwner(), EntityEvent.INIT);
 		m_RplComponent = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnDelete(IEntity owner)
+	{
+		super.OnDelete(owner);
+
+		if (m_OnDeployedStateChanged)
+			m_OnDeployedStateChanged.Invoke(false);
+
+		if (!m_bIsDeployed || !m_RplComponent || m_RplComponent.IsProxy())
+			return;
+
+		if (!m_ReplacementEntity || m_ReplacementEntity.IsDeleted())
+			return;
+
+		RplComponent rplComp = RplComponent.Cast(m_ReplacementEntity.FindComponent(RplComponent));
+		if (!rplComp)
+			return;
+
+		rplComp.DeleteRplEntity(m_ReplacementEntity, false);
 	}
 }

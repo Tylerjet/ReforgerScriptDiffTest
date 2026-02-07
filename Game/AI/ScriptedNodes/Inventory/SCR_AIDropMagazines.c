@@ -62,7 +62,7 @@ class SCR_AIDropMagazines : AITaskScripted
 	}
 	
 	//--------------------------------------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}
@@ -74,7 +74,7 @@ class SCR_AIDropMagazines : AITaskScripted
 	}	
 	
 	//--------------------------------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "AI task that drops all magazines of specified MagazineWell type.";
 	}

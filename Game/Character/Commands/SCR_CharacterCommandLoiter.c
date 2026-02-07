@@ -33,7 +33,7 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 			return;
 		}
 		
-		if (m_customAnimData.m_CustomCommand != -1 && m_customAnimData.m_GraphName != string.Empty)
+		if (m_customAnimData.m_GraphBindingName != string.Empty && m_customAnimData.m_GraphName != string.Empty)
 		{
 			PreAnim_SetAttachment(m_customAnimData.m_GraphBindingName, m_customAnimData.m_GraphName, m_customAnimData.m_GraphInstanceName, "MasterControl");
 		}
@@ -57,7 +57,13 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 	{
 		StopLoitering(true);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	override bool ShouldForceFreeLook()
+	{
+		return true;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	override bool IsRootMotionControlled()
 	{

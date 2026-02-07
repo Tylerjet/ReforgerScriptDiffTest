@@ -16,6 +16,11 @@ class TurretComponentClass: AimingComponentClass
 class TurretComponent: AimingComponent
 {
 	proto external BaseSightsComponent GetSights();
+	//! Returns true if the turret entity itself is physically rotated rather than just one of its bones.
+	//! If it's just bones rotating, the turret entity transform would remain unchanged.
+	//! This happens e.g. when the turret is rotated via ProceduralAnimationComponent that rotates
+	//! the turret via the "Scene_Root" bone.
+	proto external bool HasRootRotation();
 	proto external bool HasMoveableBase();
 	proto external PointInfo GetCameraAttachmentSlot();
 	proto external bool IsVehicleMounted();

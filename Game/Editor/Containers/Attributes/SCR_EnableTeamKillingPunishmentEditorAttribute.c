@@ -4,8 +4,6 @@ class SCR_EnableTeamKillingPunishmentEditorAttribute : SCR_BaseEditorAttribute
 	//------------------------------------------------------------------------------------------------
 	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)
 	{
-		return null;
-		
 		if (!IsGameMode(item))
 			return null;
 		
@@ -14,6 +12,20 @@ class SCR_EnableTeamKillingPunishmentEditorAttribute : SCR_BaseEditorAttribute
 			return null;
 		
 		return SCR_BaseEditorAttributeVar.CreateBool(additionalGameSettings.IsTeamKillingPunished());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void UpdateInterlinkedVariables(SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, bool isInit = false)
+	{
+		SCR_BaseEditorAttributeVar perceivedFactionVar;
+		manager.GetAttributeVariable(SCR_SetPerceivedCharacterFactionEditorAttribute, perceivedFactionVar);
+		
+		bool perceivedFactionEnabled;
+		
+		if (perceivedFactionVar)
+			perceivedFactionEnabled = perceivedFactionVar.GetInt() != 0;
+		
+		manager.SetAttributeEnabled(SCR_PunishKillingWhenDesguisedEditorAttribute, perceivedFactionEnabled && var.GetBool());
 	}
 	
 	//------------------------------------------------------------------------------------------------

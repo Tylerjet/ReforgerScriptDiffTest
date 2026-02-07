@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------------------------
-[BaseContainerProps()]
+[BaseContainerProps(), SCR_BaseGroupCommandTitleField("m_sCommandName")]
 class SCR_BaseGroupCommand : SCR_BaseRadialCommand
 {
 	[Attribute(defvalue: "1", desc: "Will the command be shown to leader?")]

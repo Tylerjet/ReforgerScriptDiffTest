@@ -39,17 +39,17 @@ class SCR_AISetCompartmentAccessible : AITaskScripted
 		return s_aVarsIn;
 	};
 	
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
 	{
 		return true;
 	};
 	
-	override string GetOnHoverDescription()
+	static override string GetOnHoverDescription()
 	{
 		return "SetCompartmnetAccessible: makes the compartment accessible by other AIs OnAbort";
 	};
 	
-	override bool CanReturnRunning()
+	static override bool CanReturnRunning()
 	{
 		return true;
 	};

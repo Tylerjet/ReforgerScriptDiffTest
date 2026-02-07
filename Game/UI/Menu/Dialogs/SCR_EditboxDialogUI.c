@@ -44,12 +44,12 @@ class SCR_EditboxDialogUi : SCR_ConfigurableDialogUi
 		{
 			GetGame().GetWorkspace().SetFocusedWidget(m_Editbox.GetRootWidget());
 			m_Editbox.m_OnTextChange.Insert(OnTextChange);
-			m_Editbox.m_OnWriteModeLeave.Insert(OnWriteModeLeave);
+			m_Editbox.m_OnWriteModeLeave.Insert(OnWriteModeLeaveInternal);
 		}
 	}
 	
 	//----------------------------------------------------------------------------------------
-	protected void OnWriteModeLeave(string text)
+	protected void OnWriteModeLeaveInternal(string text)
 	{
 		m_OnWriteModeLeave.Invoke(m_Editbox.GetValue());
 	}

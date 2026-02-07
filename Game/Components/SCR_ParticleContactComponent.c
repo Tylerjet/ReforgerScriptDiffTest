@@ -127,7 +127,7 @@ class SCR_ParticleContactComponent : ScriptComponent
 			
 			if (prefabData.m_Particle != string.Empty)
 			{
-				ParticleEffectEntitySpawnParams spawnParams();
+				ParticleEffectEntitySpawnParams spawnParams = new ParticleEffectEntitySpawnParams();
 				spawnParams.UseFrameEvent = true;
 				
 				if (prefabData.m_bParticleOriented)	

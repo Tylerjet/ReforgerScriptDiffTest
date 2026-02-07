@@ -34,11 +34,6 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 
 	static const ref ScriptInvoker s_OnTaskSetup = new ScriptInvoker();
 
-#ifdef WORKBENCH
-	[Attribute(defvalue: "0", desc: "Show the debug shapes in Workbench", category: "Debug")]
-	protected bool							m_bShowDebugShapesInWorkbench;
-#endif
-
 	//------------------------------------------------------------------------------------------------
 	//! \return Layer task state in current task layer.
 	SCR_TaskState GetLayerTaskState()
@@ -138,7 +133,7 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 		
 		m_Task = null;
 		m_SupportEntity = null;
-		m_eLayerTaskState = SCR_TaskState.OPENED;
+		SetLayerTaskState(SCR_TaskState.OPENED);
 		m_bTaskResolvedBeforeLoad = false;
 		
 		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization);
@@ -218,8 +213,6 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 	//! \param[in] newState Triggers actions on task finish state change.
 	void OnTaskStateChanged(SCR_TaskState previousState, SCR_TaskState newState)
 	{
-		m_eLayerTaskState = newState;
-
 		if (newState == SCR_TaskState.FINISHED && !m_bTaskResolvedBeforeLoad)
 		{
 			foreach (SCR_ScenarioFrameworkActionBase triggerAction : m_aTriggerActionsOnFinish)
@@ -281,6 +274,8 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 	//! \param[in] layer for which this task is to be initialized
 	void InitTask(SCR_ScenarioFrameworkLayerBase layer)
 	{
+		GetOnAllChildrenSpawned().Remove(InitTask);
+		
 		//If m_Task already exists, we are reiniting it, not creating new one
 		if (m_Task)
 		{
@@ -322,11 +317,13 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 				}
 				else if (m_eLayerTaskState == SCR_TaskState.CANCELLED)
 				{
+					m_bTaskResolvedBeforeLoad = true;
 					m_SlotTask.SetTaskResolvedBeforeLoad(true);
 					m_SupportEntity.FailTask(m_Task);
 				}
 				else if (m_eLayerTaskState == SCR_TaskState.REMOVED)
 				{
+					m_bTaskResolvedBeforeLoad = true;
 					m_SlotTask.SetTaskResolvedBeforeLoad(true);
 					m_SupportEntity.CancelTask(m_Task.GetTaskID());
 				}
@@ -361,11 +358,13 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 			}
 			else if (m_eLayerTaskState == SCR_TaskState.CANCELLED)
 			{
+				m_bTaskResolvedBeforeLoad = true;
 				m_SlotTask.SetTaskResolvedBeforeLoad(true);
 				m_SupportEntity.FailTask(m_Task);
 			}
 			else if (m_eLayerTaskState == SCR_TaskState.REMOVED)
 			{
+				m_bTaskResolvedBeforeLoad = true;
 				m_SlotTask.SetTaskResolvedBeforeLoad(true);
 				m_SupportEntity.CancelTask(m_Task.GetTaskID());
 			}
@@ -489,33 +488,6 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 		//---- REFACTOR NOTE END ----
 	}
 
-#ifdef WORKBENCH
-	//------------------------------------------------------------------------------------------------
-	//! Draws debug shape based on m_bShowDebugShapesInWorkbench setting in Workbench after world update.
-	//! \param[in] owner The owner represents the entity (object) calling the method.
-	//! \param[in] timeSlice TimeSlice represents the time interval for which the method is called during each frame update.
-	override void _WB_AfterWorldUpdate(IEntity owner, float timeSlice)
-	{
-		DrawDebugShape(m_bShowDebugShapesInWorkbench);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Controls debug shape visibility in Workbench based on user input.
-	//! \param[in] owner The owner represents the entity (object) in the game world that triggers the key change event, which in turn calls this
-	//! \param[in] src is the prefab of owner entity
-	//! \param[in] key corresponds with the workbench attribute.
-	//! \param[in] ownerContainers Represents a list of containers related to the owner entity in the method.
-	//! \param[in] parent Parent represents the parent entity.
-	//! \return bool
-	override bool _WB_OnKeyChanged(IEntity owner, BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent)
-	{
-		if (key == "m_bShowDebugShapesInWorkbench")
-			DrawDebugShape(m_bShowDebugShapesInWorkbench);
-
-		return false;
-	}
-#endif
-	
 	//------------------------------------------------------------------------------------------------
 	//! Removes task from support entity and despawns if in edit mode or task is cancelled.
 	void ~SCR_ScenarioFrameworkLayerTask()

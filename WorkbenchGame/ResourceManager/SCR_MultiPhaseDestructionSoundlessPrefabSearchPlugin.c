@@ -287,7 +287,7 @@ class SCR_MultiPhaseDestructionSoundlessPrefabSearchPlugin : WorkbenchPlugin
 			destructibleDestroySpawnObjectDebrisCount +
 			destructibleDestructionPhaseDebrisCount;
 
-		Print("" + total + "/" + resourceNames.Count() + " Prefabs found using NONE as Destruction's Material Sound Type", LogLevel.NORMAL);
+		PrintFormat("%1/%2 Prefabs found using NONE as Destruction's Material Sound Type", total, resourceNames.Count(), level: LogLevel.NORMAL);
 
 		if (genericCount > 0)
 			Print("" + genericCount + " Generic Entities", LogLevel.NORMAL);
@@ -305,12 +305,14 @@ class SCR_MultiPhaseDestructionSoundlessPrefabSearchPlugin : WorkbenchPlugin
 			Print("" + destructibleDestructionPhaseDebrisCount + " Destructible Entity DestructionPhase Debris", LogLevel.NORMAL);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	[ButtonAttribute("Process", true)]
 	protected bool ButtonOK()
 	{
 		return true;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	[ButtonAttribute("Cancel")]
 	protected bool ButtonCancel()
 	{

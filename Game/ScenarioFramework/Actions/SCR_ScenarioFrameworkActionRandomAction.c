@@ -12,16 +12,12 @@ class SCR_ScenarioFrameworkActionRandomAction : SCR_ScenarioFrameworkActionBase
 
 		if (!m_aActions || m_aActions.IsEmpty())
 			return;
-		
-		Math.Randomize(-1);
+
 		SCR_ScenarioFrameworkActionBase randomAction = m_aActions.GetRandomElement();
 		if (randomAction)
-		{
 			randomAction.Init(object);
-			randomAction.OnActivate(object);
-		}	
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override array<ref SCR_ScenarioFrameworkActionBase> GetSubActions()
 	{

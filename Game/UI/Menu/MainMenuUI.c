@@ -243,8 +243,8 @@ class MainMenuUI : ChimeraMenuBase
 	{
 		if (!IsFocused())
 			return;
-
-		GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.FeedbackDialog);
+		
+		SCR_FeedbackDialogUI.OpenFeedbackDialog();
 	}
 
 	//------------------------------------------------------------------------------------------------

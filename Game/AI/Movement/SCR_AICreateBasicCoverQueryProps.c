@@ -47,11 +47,6 @@ class SCR_AICreateBasicCoverQueryProps : AITaskScripted
 		m_CoverQueryProps.m_bSelectHighestScore = m_bSelectHighestScoreCover;
 		m_CoverQueryProps.m_iMaxCoversToCheck = SCR_AIFindCover.MAX_COVERS_LOW_PRIORITY;
 		
-		if (m_bSelectHighestScoreCover)
-			m_CoverQueryProps.m_fScoreWeightNavmeshRay = 0.2;
-		else
-			m_CoverQueryProps.m_fScoreWeightNavmeshRay = 5;
-		
 		SetVariableOut(PORT_COVER_QUERY_PROPERTIES, m_CoverQueryProps);
 		
 		return ENodeResult.SUCCESS;
@@ -60,7 +55,7 @@ class SCR_AICreateBasicCoverQueryProps : AITaskScripted
 	
 	
 	//---------------------------------------------------------------
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 	
 	protected static ref TStringArray s_aVarsIn = {
 		PORT_POSITION,
@@ -73,5 +68,5 @@ class SCR_AICreateBasicCoverQueryProps : AITaskScripted
 	};
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
-	override string GetOnHoverDescription() { return "Creates CoverQueryProperties for basic circular query without threat visibility checking"; }
+	static override string GetOnHoverDescription() { return "Creates CoverQueryProperties for basic circular query without threat visibility checking"; }
 }

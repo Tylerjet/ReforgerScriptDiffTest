@@ -207,16 +207,16 @@ class SCR_AIPerformSmartHealing : AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool CanReturnRunning() { return true; }
+	static override bool CanReturnRunning() { return true; }
 	
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Uses smart healing action and is running until it finishes.";
 	}

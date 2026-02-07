@@ -7,6 +7,8 @@ class SCR_ArsenalInventorySlotUI : SCR_InventorySlotUI
 	protected const string STORED_RESOURCES_WIDGET_NAME = "SuppliesStored";
 	protected const string AVAILABLE_RESOURCES_WIDGET_NAME = "SuppliesAvailable";
 	protected const string COST_RESOURCES_WIDGET_NAME = "SuppliesCost";
+	protected const string RANK_ICON_WIDGET_NAME = "RankIcon";
+	protected const string AMMOTYPE_WIDGET_NAME = "AmmoTypeContainer";
 	
 	protected Widget m_CostResourceHolder;
 	protected TextWidget m_CostResourceHolderText;
@@ -19,6 +21,7 @@ class SCR_ArsenalInventorySlotUI : SCR_InventorySlotUI
 	protected SCR_ResourceContainer m_ResourceContainer;
 	
 	protected float m_fSupplyCost;
+	protected SCR_ECharacterRank m_eRequiredRank;	
 	
 	//------------------------------------------------------------------------------------------------
 	SCR_ResourceComponent GetArsenalResourceComponent()
@@ -105,6 +108,53 @@ class SCR_ArsenalInventorySlotUI : SCR_InventorySlotUI
 			resourceContainer = resourceComponent.GetContainer(EResourceType.SUPPLIES);
 		
 		UpdateTotalResources(GetTotalResources());
+		
+		SetItemRank();
+		
+		//Widget ammoTypeWidget = m_widget.FindAnyWidget(AMMOTYPE_WIDGET_NAME);
+		//if (ammoTypeWidget)
+		//	ammoTypeWidget.SetVisible(true);
+		
+		ImageWidget rankIcon = ImageWidget.Cast(m_widget.FindAnyWidget(RANK_ICON_WIDGET_NAME));
+		if (!rankIcon)
+			return;
+
+		rankIcon.SetVisible(false);
+		
+		//~ No rank required
+		if (m_eRequiredRank < 0)
+			return;
+		
+		//~ Get the rank icon and set it and disable the slot
+		IEntity localPlayerEntity = SCR_PlayerController.GetLocalControlledEntity();
+		if (!localPlayerEntity || m_eRequiredRank <= SCR_CharacterRankComponent.GetCharacterRank(localPlayerEntity))
+			return;
+
+		SetItemAvailability(false);
+		rankIcon.SetVisible(true);
+		
+		//~ Hide ammo type
+		//if (ammoTypeWidget)
+		//	ammoTypeWidget.SetVisible(false);
+		
+		ResourceName rankIconImageSet = SCR_XPInfoDisplay.GetRankIconImageSet();
+		if (rankIconImageSet.IsEmpty())
+			return;
+		
+		FactionAffiliationComponent playerFactionAffiliation = FactionAffiliationComponent.Cast(localPlayerEntity.FindComponent(FactionAffiliationComponent));
+		if (!playerFactionAffiliation)
+			return;
+		
+		SCR_Faction playerFaction = SCR_Faction.Cast(playerFactionAffiliation.GetAffiliatedFaction());
+		if (!playerFaction)
+			return;
+		
+		string rankInsignia = playerFaction.GetRankInsignia(m_eRequiredRank);
+		if (rankInsignia.IsEmpty())
+			return;
+		
+		//~ Set rank icon
+		rankIcon.LoadImageFromSet(0, rankIconImageSet, rankInsignia);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -157,6 +207,13 @@ class SCR_ArsenalInventorySlotUI : SCR_InventorySlotUI
 	override bool IsDraggable()
 	{
 		return m_bIsAvailable && super.IsDraggable();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return If the slot is locked or not
+	bool IsAvailable()
+	{
+		return m_bIsAvailable;
 	}
 	
  	//------------------------------------------------------------------------------------------------
@@ -239,11 +296,62 @@ class SCR_ArsenalInventorySlotUI : SCR_InventorySlotUI
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected void SetItemRank()
+	{
+		m_eRequiredRank = -1;
+		
+		if (!m_pItem || !m_pItem.GetOwner())
+			return;
+		
+		SCR_ArsenalManagerComponent arsenalManager;
+		if (!SCR_ArsenalManagerComponent.GetArsenalManager(arsenalManager) || !arsenalManager.AreItemsRankLocked())
+			return;
+		
+		//~ TODO: This should be merged with total Resources to only update once!!!
+		SCR_EntityCatalogManagerComponent entityCatalogManager = SCR_EntityCatalogManagerComponent.GetInstance();
+		if (!entityCatalogManager)
+			return;
+		
+		IEntity storageEnt = GetStorageUI().GetCurrentNavigationStorage().GetOwner();
+		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.Cast(storageEnt.FindComponent(SCR_ArsenalComponent));
+		
+		SCR_Faction faction;
+		if (arsenalComponent)
+			faction = arsenalComponent.GetAssignedFaction();
+		
+		Resource resource = Resource.Load(m_pItem.GetOwner().GetPrefabData().GetPrefabName());
+		if (!resource.IsValid())
+			return;
+		
+		SCR_EntityCatalogEntry entry;
+		if (faction)
+			entry = entityCatalogManager.GetEntryWithPrefabFromFactionCatalog(EEntityCatalogType.ITEM, resource.GetResource().GetResourceName(), faction);
+		else 
+			entry = entityCatalogManager.GetEntryWithPrefabFromAnyCatalog(EEntityCatalogType.ITEM, resource.GetResource().GetResourceName());
+		
+		if (!entry)
+			return;
+		
+		SCR_ArsenalItem data = SCR_ArsenalItem.Cast(entry.GetEntityDataOfType(SCR_ArsenalItem));
+		if (!data)
+			return;
+		
+		m_eRequiredRank = data.GetRequiredRank();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return Get the required rank for the item in the arsenal slot
+	SCR_ECharacterRank GetRequiredRank()
+	{
+		return m_eRequiredRank;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void SCR_ArsenalInventorySlotUI(InventoryItemComponent pComponent = null, SCR_InventoryStorageBaseUI pStorageUI = null, bool bVisible = true, int iSlotIndex = -1, SCR_ItemAttributeCollection pAttributes = null)
 	{
 	}
 	
-	//-------------------------------------S-----------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	void ~SCR_ArsenalInventorySlotUI()
 	{
 		SCR_InventoryStorageBaseUI.ARSENAL_SLOT_STORAGES.Remove(this);

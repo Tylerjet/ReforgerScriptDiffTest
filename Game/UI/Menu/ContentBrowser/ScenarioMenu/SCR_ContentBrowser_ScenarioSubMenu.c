@@ -492,7 +492,7 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 		}
 
 		// Reset scroll position
-		m_Widgets.m_ScenarioScroll.SetSliderPos(0, 0, true);
+		m_Widgets.m_ScenarioScroll.SetSliderPos(0, 0);
 	}
 
 	//------------------------------------------------------------------------------------------------

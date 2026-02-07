@@ -31,13 +31,13 @@ class SCR_AIVisualizeDebug : SCR_AIDebugTask
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "BT node for vizualize debug messsages in workbench. String can be in In port or as parameter";
 	}

@@ -13,12 +13,18 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 	SCR_AICombatComponent m_CombatComponent;
 	PerceptionComponent m_PerceptionComponent;
 	SCR_MailboxComponent m_Mailbox;
+	SCR_AICharacterSettingsComponent m_SettingsComponent;
 	
 	ref SCR_AIThreatSystem m_ThreatSystem;
+	ref SCR_AISectorThreatFilter m_SectorThreatFilter;
 	ref SCR_AILookAction m_LookAction;
 	ref SCR_AICommsHandler m_CommsHandler;
 	ref SCR_AIBehaviorBase m_CurrentBehavior; //!< Used for avoiding constant casting, outside of this class use GetCurrentBehavior()
 	ref SCR_AICombatMoveState m_CombatMoveState;
+	ref SCR_AIMovementDetector m_MovementDetector; // Used by GetSubformationLeaderMoving()
+	
+	// CallQueue of this AI. It gets updated from EvaluateBehavior, so that it's synchronous with other AI logic.
+	protected ref ScriptCallQueue m_Callqueue;
 	
 	protected ref BaseTarget m_UnknownTarget;
 	protected float m_fReactionUnknownTargetTime_ms; //!< WorldTime timestamp
@@ -53,8 +59,13 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 		float deltaTime = time - m_fLastUpdateTime;
 		m_fLastUpdateTime = time;
 
+		// Update call queue.
+		// It must be updated before evaluation of behaviors.
+		m_Callqueue.Tick(0.001 * deltaTime);
+		
 		// Create events from commands, danger events, new targets
 		m_ThreatSystem.Update(this, deltaTime);
+		m_SectorThreatFilter.Update(0.001 * deltaTime);
 		m_CombatComponent.UpdatePerceptionFactor(m_PerceptionComponent, m_ThreatSystem);
 
 		// Read messages
@@ -145,8 +156,9 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 		}
 		
 		BaseTarget retreatTarget = m_CombatComponent.GetRetreatTarget();
-		if (retreatTarget && 
-			((selectedTargetChanged && !selectedTarget && retreatTarget) || // Nothing to attack any more and must retreat from some target
+		if (retreatTarget &&
+			(compartmentChanged ||
+			(selectedTargetChanged && !selectedTarget && retreatTarget) || // Nothing to attack any more and must retreat from some target
 			(!selectedTarget && retreatTargetChanged))) // Not attacking anything and must retreat from a different target
 		{
 			if (m_ConfigComponent.m_Reaction_RetreatFromTarget)
@@ -198,6 +210,113 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Returns true if we should be mindful about our formation overall
+	bool ShouldKeepFormation()
+	{
+		return HasActionOfType(SCR_AIMoveInFormationBehavior);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns state of m_MovementDetector of our subformation leader.
+	//! See SCR_AIMovementFilter class.
+	bool GetSubformationLeaderMoving()
+	{
+		SCR_ChimeraAIAgent leaderAgent = SCR_ChimeraAIAgent.Cast(GetSubformationLeaderAgent());
+		
+		if (!leaderAgent)
+			return false;
+		
+		return leaderAgent.m_UtilityComponent.m_MovementDetector.GetMoving();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool GetNearSubformationLeader()
+	{
+		vector myPos = m_OwnerEntity.GetOrigin();
+		AIAgent subformationLeaderAgent = GetSubformationLeaderAgent();
+		
+		if (!subformationLeaderAgent)
+			return false;
+		
+		IEntity subformationLeaderEntity = subformationLeaderAgent.GetControlledEntity();
+		
+		if (!subformationLeaderEntity)
+			return false;
+		
+		vector leaderPos = subformationLeaderEntity.GetOrigin();
+		float distance = vector.DistanceSq(myPos, leaderPos);
+		return distance < 20*20;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns leader agent of subformation of this agent
+	protected AIAgent GetSubformationLeaderAgent()
+	{
+		AIAgent myAgent = GetAIAgent();
+		SCR_AIGroup myGroup = SCR_AIGroup.Cast(myAgent.GetParentGroup());
+		
+		// No group - no leader agent
+		if (!myGroup)
+			return null;
+		
+		// Check our subformation
+		AIGroupMovementComponent movementComp = AIGroupMovementComponent.Cast(myGroup.GetMovementComponent());
+		int moveHandlerId = movementComp.GetAgentMoveHandlerId(myAgent);
+		bool formationDisplaced = movementComp.IsFormationDisplaced(moveHandlerId);
+		
+		SCR_AIGroup masterGroup = myGroup.GetMaster();
+		
+		if (formationDisplaced && masterGroup)
+		{
+			// This is only possible for player-led formation
+			
+			int leaderId = masterGroup.GetLeaderID();
+			IEntity leaderEntity = GetGame().GetPlayerManager().GetPlayerControlledEntity(leaderId);
+			AIControlComponent controlComp = AIControlComponent.Cast(leaderEntity.FindComponent(AIControlComponent));
+			
+			if (!controlComp)
+				return null;
+			
+			return controlComp.GetAIAgent();
+		}
+		
+		// Formation is not displaced - get our group's leader
+		// Either moving as slave group or as master group, but it doesn't matter, either way get our leader
+		return myGroup.GetLeaderAgent();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns true if this agent is leader of its subformation
+	bool IsSubformationLeader()
+	{
+		AIAgent myAgent = GetAIAgent();
+		SCR_AIGroup myGroup = SCR_AIGroup.Cast(myAgent.GetParentGroup());
+
+		if (!myGroup)
+			return false;
+		
+		AIGroupMovementComponent movementComp = AIGroupMovementComponent.Cast(myGroup.GetMovementComponent());
+		
+		if (!movementComp)
+			return false;
+		
+		int moveHandlerId = movementComp.GetAgentMoveHandlerId(myAgent);
+		
+		bool formationDisplaced = movementComp.IsFormationDisplaced(moveHandlerId);
+		
+		// If formation is displaced, then we can't be leader of it
+		if (formationDisplaced)
+			return false;
+		
+		// Formation is not displaced - find our index in formation
+		array<AIAgent> agentsInHandler = {};
+		movementComp.GetAgentsInHandler(agentsInHandler, moveHandlerId);
+		int myIndexInHandler = agentsInHandler.Find(myAgent);
+		
+		return myIndexInHandler == 0;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Independent attacking with movement is allowed only when group combat move is not present or unit state is EUnitState.IN_TURRET
 	//!
 	//! \return
@@ -214,6 +333,12 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 	SCR_AIBehaviorBase GetCurrentBehavior()
 	{
 		return m_CurrentBehavior;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_CharacterControllerComponent GetCharacterController()
+	{
+		return m_OwnerController;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -250,12 +375,12 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 		if (behavior)
 			relatedActivity = SCR_AIActivityBase.Cast(behavior.GetRelatedGroupActivity());
 		
-		float score = action.Evaluate();
+		float priority = action.GetPriority();
 		float priorityLevel = action.EvaluatePriorityLevel();
 		IEntity vehicle = compartmentAccess.GetCompartment().GetOwner();
 		ECompartmentType compartmentType = SCR_AICompartmentHandling.CompartmentClassToType(compartmentAccess.GetCompartment().Type());
-		AddAction(new SCR_AIGetOutVehicle(this, relatedActivity, vehicle, priority: score + 100, priorityLevel: priorityLevel));
-		AddAction(new SCR_AIGetInVehicle(this, relatedActivity, vehicle, compartmentAccess.GetCompartment(), roleInVehicle: compartmentType, priority: score, priorityLevel: priorityLevel));
+		AddAction(new SCR_AIGetOutVehicle(this, relatedActivity, vehicle, priority: priority + 100, priorityLevel: priorityLevel));
+		AddAction(new SCR_AIGetInVehicle(this, relatedActivity, vehicle, compartmentAccess.GetCompartment(), roleInVehicle: compartmentType, priority: priority, priorityLevel: priorityLevel));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -272,20 +397,28 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 		if (!m_OwnerEntity)
 			return;
 
+		m_Callqueue = new ScriptCallQueue();
 		m_AIInfo = SCR_AIInfoComponent.Cast(agent.FindComponent(SCR_AIInfoComponent));
 		m_CombatComponent = SCR_AICombatComponent.Cast(m_OwnerEntity.FindComponent(SCR_AICombatComponent));
 		m_PerceptionComponent = PerceptionComponent.Cast(m_OwnerEntity.FindComponent(PerceptionComponent));
 		m_OwnerController = SCR_CharacterControllerComponent.Cast(m_OwnerEntity.FindComponent(SCR_CharacterControllerComponent));
 		m_FactionComponent = FactionAffiliationComponent.Cast(m_OwnerEntity.FindComponent(FactionAffiliationComponent));
 		m_ThreatSystem = new SCR_AIThreatSystem(this);
+		m_SectorThreatFilter = new SCR_AISectorThreatFilter(m_OwnerEntity);
 		m_AIInfo.InitThreatSystem(m_ThreatSystem); // let the AIInfo know about the threat system - move along with creating threat system instance!
 		m_LookAction = new SCR_AILookAction(this, false); // LookAction is not regular behavior and is evaluated separately
-		m_ConfigComponent.AddDefaultBehaviors(this);
 		m_Mailbox = SCR_MailboxComponent.Cast(owner.FindComponent(SCR_MailboxComponent));
+		m_SettingsComponent = SCR_AICharacterSettingsComponent.Cast(owner.FindComponent(SCR_AICharacterSettingsComponent));
 		m_CommsHandler = new SCR_AICommsHandler(m_OwnerEntity, agent);
 		m_CombatMoveState = new SCR_AICombatMoveState();
+		m_MovementDetector = new SCR_AIMovementDetector(m_OwnerEntity);
+		
+		// Subscribe to events
 		m_AIInfo.m_OnCompartmentEntered.Insert(OnCompartmentEntered);
 		m_AIInfo.m_OnCompartmentLeft.Insert(OnCompartmentLeft);
+		
+		// Add default behaviors after the rest is initialized
+		m_ConfigComponent.AddDefaultBehaviors(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -327,6 +460,7 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 	override void EOnDiag(IEntity owner, float timeSlice)
 	{
 		m_CommsHandler.EOnDiag(timeSlice);
+		m_SectorThreatFilter.EOnDiag(timeSlice);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -334,6 +468,13 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 	vector GetOrigin()
 	{
 		return m_OwnerEntity.GetOrigin();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns CallQueue of this AI. It gets updated from EvaluateBehavior, so that it's synchronous with other AI logic.
+	ScriptCallQueue GetCallqueue()
+	{
+		return m_Callqueue;
 	}
 	
 	//------------------------------------------------------------------------------------------------

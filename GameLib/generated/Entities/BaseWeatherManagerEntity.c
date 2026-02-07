@@ -236,7 +236,7 @@ class BaseWeatherManagerEntity: GenericEntity
 	Sets the current time of the day.
 	Only issuable by the authority.
 	Automatically broadcast to all clients.
-	\param hours Time fraction in hours <0.0, 24.0>
+	\param hours24 Time fraction in hours <0.0, 24.0>
 	\param immediateChange Whether change should be applied immediately, forcing recomputation. This should be true only in case of editor and similar items.
 	\return Returns true when command is issued successfully, false otherwise.
 	Example:
@@ -308,13 +308,11 @@ class BaseWeatherManagerEntity: GenericEntity
 	*/
 	proto external bool SetDate(int year, int month, int day, bool immediateChange = false);
 	/*!
-	Retrieves the current date (year/month/day).
-	\return Returns Current date (Year, Month in 1-12 range, Day in 1-31 range)
+	Retrieves the current date (Year, Month in 1-12 range, Day in 1-31 range).
 	*/
 	proto void GetDate(out int year, out int month, out int day);
 	/*!
 	Retrieves the current time of the day.
-	\return Returns script wrapper for time
 	Example:
 	@code
 	SetTimeOfTheDay(16.5);

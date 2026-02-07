@@ -1,30 +1,37 @@
 #ifdef WORKBENCH
-[WorkbenchToolAttribute("Destruction indices assign tool", "Automatically assigns response indices to destructible objects", awesomeFontCode: 0xF7E4)]
+[WorkbenchToolAttribute(
+	name: "Destruction indices assign tool",
+	description: "Automatically assigns response indices to destructible objects\n\n" +
+	"- button  1 = Fix phases\n" +
+	"- button  2 = Print all destructible resource names\n" +
+	"- button  3 = Revert to parent\n" +
+	"- button  4 = Update Prefabs\n" +
+	"- button  5 = Remove phases\n" +
+	"- button  6 = Filter Prefabs\n" +
+	"- button  7 = Show Mass\n" +
+	"- button  8 = Convert Prefabs\n" +
+	"- button  9 = Assign Indices\n" +
+	"- button 10 = Set building destruction effects - TODO",
+	awesomeFontCode: 0xF7E4)]
 class SCR_DestructionIndicesAssignTool : WorldEditorTool
 {
-	[Attribute()]
+	[Attribute(category: "General")]
 	protected ref array<ref SCR_MassResponseIndexPair> m_aPairs;
 
-	[Attribute()]
+	[Attribute(category: "General")]
 	protected ref array<string> m_aProperties;
 
-	protected static const ref array<string> EXTENSIONS = { "et" };
-	protected static const ref array<string> DESTRUCTIBLE_COMPONENT_CLASSES = { "SCR_DestructionDamageManagerComponent", "SCR_DestructionMultiPhaseComponent" };
+	protected const ref array<string> EXTENSIONS = { "et" };
+	protected const ref array<string> DESTRUCTIBLE_COMPONENT_CLASSES = { "SCR_DestructionDamageManagerComponent", "SCR_DestructionMultiPhaseComponent" };
 	protected const string DESTRUCTION_COMPONENT_CLASS = "SCR_DestructionMultiPhaseComponent";
 	protected const string PHYSICS_COMPONENT = "RigidBody";
 
-	protected ref SCR_IndicesAssignToolHandler m_Handler;
-
 	//------------------------------------------------------------------------------------------------
-	[ButtonAttribute("Fix phases")]
-	protected void FixPhases()
+	[ButtonAttribute("1 FP")]
+	protected void FixPhasesButton()
 	{
 		m_API.BeginEntityAction();
-		SearchResourcesFilter filter = new SearchResourcesFilter();
-		filter.fileExtensions = EXTENSIONS;
-		filter.rootPath = "Prefabs";
-		ResourceDatabase.SearchResources(filter, m_Handler.Callback);
-		array<ResourceName> resourceNames = m_Handler.GetResourceNames();
+		array<ResourceName> resourceNames = SCR_WorldEditorToolHelper.SearchWorkbenchResources(EXTENSIONS);
 
 		Resource resource;
 		BaseResourceObject baseResourceObject;
@@ -38,10 +45,8 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 		{
 			for (int i = count - 1; i >= 0; i--)
 			{
-				ResourceName resourceName = resourceNames[i];
-
 				// Only in prefabs folder
-				if (!resourceName.Contains("Prefabs/"))// || !resourceName.Contains("BrickWall_01/BrickWall_01_white_2m.et"))
+				if (!resourceNames[i].Contains("Prefabs/"))// || !resourceNames[i].Contains("BrickWall_01/BrickWall_01_white_2m.et"))
 				{
 					count--;
 					resourceNames.Remove(i);
@@ -49,8 +54,8 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 				}
 
 				// Validation
-				resource = Resource.Load(resourceName);
-				if (!resource.IsValid())
+				resource = Resource.Load(resourceNames[i]);
+				if (!resource)
 				{
 					count--;
 					resourceNames.Remove(i);
@@ -98,20 +103,20 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 				if (parent.GetClassName() == "SCR_DestructibleEntity" && resourceNames.Find(parent.GetResourceName()) != -1)
 					continue; // has parent that wasn't handled yet, keep in array & count, so we determine this prefab later
 
-				if (resourceName == "{A00A15B03B48A2AF}Prefabs/Structures/Walls/Brick/BrickWall_01/BrickWall_01_8m.et")
-					Print("Test", LogLevel.NORMAL);
+				if (resourceNames[i] == "{A00A15B03B48A2AF}Prefabs/Structures/Walls/Brick/BrickWall_01/BrickWall_01_8m.et")
+					Print("Test");
 
 				parentEntitySource = parent.ToEntitySource();
 				phasesList = baseContainer.GetObjectArray("DamagePhases");
 				parentPhasesList = parent.GetObjectArray("DamagePhases");
 
-				if (resourceName == "{A00A15B03B48A2AF}Prefabs/Structures/Walls/Brick/BrickWall_01/BrickWall_01_8m.et")
+				if (resourceNames[i] == "{A00A15B03B48A2AF}Prefabs/Structures/Walls/Brick/BrickWall_01/BrickWall_01_8m.et")
 				{
-					Print(parentPhasesList.Count(), LogLevel.NORMAL);
-					Print(parent.GetResourceName(), LogLevel.NORMAL);
+					Print(parentPhasesList.Count());
+					Print(parent.GetResourceName());
 				}
 
-				if (parentPhasesList && parentPhasesList.Count() > 0)
+				if (parentPhasesList && parentPhasesList.Count() != 0)
 				{
 					// Parent has some phases, we have to redo the current objects phases
 					//if (entitySource.IsVariableSetDirectly("DamagePhases"))
@@ -131,14 +136,12 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 				continue;
 			}
 		}
+
 		m_API.EndEntityAction();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] source
-	//! \param[in] componentSource
-	void ConvertPhases(IEntitySource source, IEntityComponentSource componentSource)
+	protected void ConvertPhases(IEntitySource source, IEntityComponentSource componentSource)
 	{
 		array<ref SCR_DamagePhaseData> parentDamagePhases;
 		BaseContainer parentContainer = source.GetAncestor();
@@ -162,7 +165,7 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 
 		array<ref ContainerIdPathEntry> path = {};
 		bool phaseExists = false;
-		foreach (int j, SCR_DamagePhaseData damagePhaseData : damagePhases)
+		for (int j = 0; j < damagePhasesCount; j++)
 		{
 			if (j == damagePhasesCount - 1) // Last phase
 				break;
@@ -170,13 +173,12 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 			phaseExists = false;
 			if (parentDamagePhases && parentDamagePhases.IsIndexValid(j))
 			{
-				foreach (SCR_DamagePhaseData parentDamagePhaseData : parentDamagePhases)
+				for (int k = parentDamagePhases.Count() - 1; k >= 0; k--)
 				{
-					if (parentDamagePhaseData.m_fPhaseHealth == damagePhaseData.m_fPhaseHealth)
+					if (parentDamagePhases[k].m_fPhaseHealth == damagePhases[j].m_fPhaseHealth)
 					{
 						// Same phase most likely
 						phaseExists = true;
-						break;
 					}
 				}
 			}
@@ -192,21 +194,21 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 			// Set variables of the damage phase
 			if (parentDamagePhases && parentDamagePhases.IsIndexValid(j))
 			{
-				if (parentDamagePhases[j].m_PhaseModel != damagePhaseData.m_PhaseModel)
-					m_API.SetVariableValue(source, path, "m_sPhaseModel", damagePhaseData.m_PhaseModel);
+				if (parentDamagePhases[j].m_PhaseModel != damagePhases[j].m_PhaseModel)
+					m_API.SetVariableValue(source, path, "m_sPhaseModel", damagePhases[j].m_PhaseModel);
 			}
 
 			m_API.SetVariableValue(source, path, "Threshold", healthNormalized.ToString());
-			healthNormalized -= damagePhaseData.m_fPhaseHealth / totalHealth; // This will define next phase health normalized
+			healthNormalized -= damagePhases[j].m_fPhaseHealth / totalHealth; // This will define next phase health normalized
 
 			//m_API.ClearVariableValue(source, path, "m_aPhaseDestroySpawnObjects");
 
 			// Use effects of the next phase as exit particles
 			if (j + 1 < damagePhasesCount)
 			{
-				for (int k = 0, objectsCount = damagePhases[j + 1].m_PhaseDestroySpawnObjects.Count(); k < objectsCount; k++)
+				foreach (int k, SCR_BaseSpawnable spawnObject : damagePhases[j + 1].m_PhaseDestroySpawnObjects)
 				{
-					damagePhases[j + 1].m_PhaseDestroySpawnObjects[k].CopyToSource(m_API, source, path, k, "m_aPhaseDestroySpawnObjects");
+					spawnObject.CopyToSource(m_API, source, path, k, "m_aPhaseDestroySpawnObjects");
 				}
 			}
 			else
@@ -214,9 +216,9 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 				array<ref SCR_BaseSpawnable> destroySpawnObjects = {};
 				componentSource.Get("m_DestroySpawnObjects", destroySpawnObjects);
 
-				for (int k = 0, objectsCount = destroySpawnObjects.Count(); k < objectsCount; k++)
+				foreach (int k, SCR_BaseSpawnable destroySpawnObject : destroySpawnObjects)
 				{
-					destroySpawnObjects[k].CopyToSource(m_API, source, path, k, "m_aPhaseDestroySpawnObjects");
+					destroySpawnObject.CopyToSource(m_API, source, path, k, "m_aPhaseDestroySpawnObjects");
 				}
 			}
 
@@ -225,14 +227,10 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 	}
 
 	//------------------------------------------------------------------------------------------------
-	[ButtonAttribute("Print all destructible resource names")]
-	protected void PrintAllDestructibleResourceNames()
+	[ButtonAttribute("2 PADRN")]
+	protected void PrintAllDestructibleResourceNamesButton()
 	{
-		SearchResourcesFilter filter = new SearchResourcesFilter();
-		filter.fileExtensions = EXTENSIONS;
-		filter.rootPath = "$ArmaReforger:Prefabs";
-		ResourceDatabase.SearchResources(filter, m_Handler.Callback);
-		array<ResourceName> resourceNames = m_Handler.GetResourceNames();
+		array<ResourceName> resourceNames = SCR_WorldEditorToolHelper.SearchWorkbenchResources(EXTENSIONS, rootPath: "$ArmaReforger:Prefabs");
 
 		Resource resource;
 		BaseResourceObject baseResourceObject;
@@ -282,16 +280,16 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 		BallisticInfo ballisticInfo;
 
 		float totalDensity;
-		int densitiesCount;
+		int j, densitiesCount;
 
 		for (int i = physics.GetNumGeoms() - 1; i >= 0; i--)
 		{
 			surfaces.Clear();
 			physics.GetGeomSurfaces(i, surfaces);
 
-			foreach (SurfaceProperties surfaceProperty : surfaces)
+			for (j = surfaces.Count() - 1; i >= 0; i--)
 			{
-				gameMaterial = surfaceProperty;
+				gameMaterial = surfaces[j];
 				if (!gameMaterial)
 					continue;
 
@@ -304,27 +302,22 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 			}
 		}
 
-		if (densitiesCount == 0)
+		if (densitiesCount != 0)
+			return totalDensity / densitiesCount;
+		else
 			return 0;
-
-		return totalDensity / densitiesCount;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	[ButtonAttribute("Revert to parent")]
-	protected void RevertToParent()
+	[ButtonAttribute("3 RTP")]
+	protected void RevertToParentButton()
 	{
 		m_API.BeginEntityAction();
-		SearchResourcesFilter filter = new SearchResourcesFilter();
-		filter.fileExtensions = EXTENSIONS;
-		filter.rootPath = "Prefabs";
-		ResourceDatabase.SearchResources(filter, m_Handler.Callback);
-		array<ResourceName> resourceNames = m_Handler.GetResourceNames();
+		array<ResourceName> resourceNames = SCR_WorldEditorToolHelper.SearchWorkbenchResources(EXTENSIONS, rootPath: "Prefabs");
 		//array<ResourceName> resourceNames = {};
 		//resourceNames.Insert("{AAAF45FD8D585128}Prefabs/Structures/Walls/Brick/BrickWall_02/BrickWall_02_8m.et");
 		//resourceNames.Insert("{F0F75F23D500A3F2}Prefabs/Props/Agriculture/Beehive_01/Dst/Beehive_01_dst_01_blue.et");
 
-		ResourceName resourceName;
 		Resource resource;
 		BaseResourceObject baseResourceObject;
 		BaseContainer baseContainer;
@@ -334,17 +327,16 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 		string parentValue, childValue, defaultValue;
 		for (int i = resourceNames.Count() - 1; i >= 0; i--)
 		{
-			resourceName = resourceNames[i];
 			// Only in prefabs folder
-			if (!resourceName.Contains("Prefabs/"))
+			if (!resourceNames[i].Contains("Prefabs/"))
 			{
 				resourceNames.Remove(i);
 				continue;
 			}
 
 			// Validation
-			resource = Resource.Load(resourceName);
-			if (!resource.IsValid())
+			resource = Resource.Load(resourceNames[i]);
+			if (!resource)
 			{
 				resourceNames.Remove(i);
 				continue;
@@ -383,7 +375,7 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 
 			parent = entitySource.GetAncestor();
 
-			foreach (string property : m_aProperties)
+			foreach (int j, string property : m_aProperties)
 			{
 				if (!entitySource.IsVariableSetDirectly(property)) // Variable is not set directly, we don't need to clear it
 					continue;
@@ -391,12 +383,12 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 				entitySource.Get(property, childValue);
 				entitySource.GetDefaultAsString(property, defaultValue);
 
-				if (resourceName == "{B31031F1F682586E}Prefabs/Props/Furniture/BenchWooden_02_Base.et")
+				if (resourceNames[i] == "{B31031F1F682586E}Prefabs/Props/Furniture/BenchWooden_02_Base.et")
 				{
 					if (property == "MaxHealth")
 					{
-						Print(defaultValue, LogLevel.NORMAL);
-						Print(childValue, LogLevel.NORMAL);
+						Print(defaultValue);
+						Print(childValue);
 					}
 				}
 
@@ -405,7 +397,7 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 					m_API.ClearVariableValue(entitySource, null, property); // Thus we can clear the variable when set directly
 					/*if (!parent || parent.GetClassName() != "SCR_DestructibleEntity") // Has no parent or inherits the value from same type parent
 					{
-						m_API.ClearVariableValue(entitySource, null, m_aProperties[j]); // Thus we can clear the variable when set directly
+						m_API.ClearVariableValue(entitySource, null, property); // Thus we can clear the variable when set directly
 						continue;
 					}*/
 				}
@@ -423,7 +415,6 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 			// If there is parent prefab, clear these two variables, because we want the inherited version
 			if (entitySource.IsVariableSetDirectly("FirstDestructionPhase") && parent.IsVariableSetDirectly("FirstDestructionPhase"))
 				m_API.ClearVariableValue(entitySource, null, "FirstDestructionPhase");
-
 			if (entitySource.IsVariableSetDirectly("LastDestructionPhase") && parent.IsVariableSetDirectly("LastDestructionPhase"))
 				m_API.ClearVariableValue(entitySource, null, "LastDestructionPhase");
 		}
@@ -433,15 +424,11 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 
 	//------------------------------------------------------------------------------------------------
 	// Adds all models to the phases destroy objects
-	[ButtonAttribute("Update prefabs")]
-	protected void UpdatePrefabs()
+	[ButtonAttribute("4 UP")]
+	protected void UpdatePrefabsButton()
 	{
 		m_API.BeginEntityAction();
-		SearchResourcesFilter filter = new SearchResourcesFilter();
-		filter.fileExtensions = EXTENSIONS;
-		filter.rootPath = "Prefabs";
-		ResourceDatabase.SearchResources(filter, m_Handler.Callback);
-		array<ResourceName> resourceNames = m_Handler.GetResourceNames();
+		array<ResourceName> resourceNames = SCR_WorldEditorToolHelper.SearchWorkbenchResources(EXTENSIONS, rootPath: "Prefabs");
 
 		Resource resource;
 		BaseResourceObject baseResourceObject;
@@ -506,15 +493,15 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 
 			BaseContainer phaseObject;
 			path.Insert(new ContainerIdPathEntry("FirstDestructionPhase"));
-			if (damagePhasesCount != 0)
+			if (damagePhasesCount > 0)
 			{
 				// Clear the array first
 				phaseObject = entitySource.GetObject("FirstDestructionPhase");
 				ClearArrayOfPhaseEffects(phaseObject, path, entitySource);
 
-				for (int j = 0, objectsCount = damagePhases[0].m_PhaseDestroySpawnObjects.Count(); j < objectsCount; j++)
+				foreach (int j, SCR_BaseSpawnable spawnObject : damagePhases[0].m_PhaseDestroySpawnObjects)
 				{
-					damagePhases[0].m_PhaseDestroySpawnObjects[j].CopyToSource(m_API, entitySource, path, j, "m_aPhaseDestroySpawnObjects");
+					spawnObject.CopyToSource(m_API, entitySource, path, j, "m_aPhaseDestroySpawnObjects");
 				}
 			}
 			// End of first phase setup
@@ -530,9 +517,9 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 				phaseObject = entitySource.GetObject("LastDestructionPhase");
 				ClearArrayOfPhaseEffects(phaseObject, path, entitySource);
 
-				for (int j = 0, objectCount = destroySpawnObjects.Count(); j < objectCount; j++)
+				foreach (int j, SCR_BaseSpawnable spawnObject : destroySpawnObjects)
 				{
-					destroySpawnObjects[j].CopyToSource(m_API, entitySource, path, j, "m_aPhaseDestroySpawnObjects");
+					spawnObject.CopyToSource(m_API, entitySource, path, j, "m_aPhaseDestroySpawnObjects");
 				}
 
 				path.Clear();
@@ -543,11 +530,10 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 			for (int j = 0; j < damagePhasesCount; j++)
 			{
 				if (j == damagePhasesCount - 1) // Last phase
-				{
 					continue;
-				}
-				else //Regular phase - not first, not last
-					path.Insert(new ContainerIdPathEntry("DamagePhases", j));
+
+				// Regular phase - not first, not last
+				path.Insert(new ContainerIdPathEntry("DamagePhases", j));
 
 				// Set variables of the damage phase
 				// Use effects of the next phase as exit particles
@@ -557,9 +543,9 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 					phaseObject = phasesList.Get(j);
 					ClearArrayOfPhaseEffects(phaseObject, path, entitySource);
 
-					for (int k = 0, objectsCount = damagePhases[j + 1].m_PhaseDestroySpawnObjects.Count(); k < objectsCount; k++)
+					foreach (int k, SCR_BaseSpawnable spawnObject : damagePhases[j + 1].m_PhaseDestroySpawnObjects)
 					{
-						damagePhases[j + 1].m_PhaseDestroySpawnObjects[k].CopyToSource(m_API, entitySource, path, k, "m_aPhaseDestroySpawnObjects");
+						spawnObject.CopyToSource(m_API, entitySource, path, k, "m_aPhaseDestroySpawnObjects");
 					}
 				}
 				else
@@ -571,9 +557,9 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 					phaseObject = phasesList.Get(j);
 					ClearArrayOfPhaseEffects(phaseObject, path, entitySource);
 
-					for (int k = 0, objectsCount = destroySpawnObjects.Count(); k < objectsCount; k++)
+					foreach (int k, SCR_BaseSpawnable spawnObject : destroySpawnObjects)
 					{
-						destroySpawnObjects[k].CopyToSource(m_API, entitySource, path, k, "m_aPhaseDestroySpawnObjects");
+						spawnObject.CopyToSource(m_API, entitySource, path, k, "m_aPhaseDestroySpawnObjects");
 					}
 				}
 
@@ -588,15 +574,11 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 	//------------------------------------------------------------------------------------------------
 	// Removes duplicate phases (where model is the same)
 	// Recalculates phase thresholds if there are some phases with the same threshold (inheritance issues after conversion)
-	[ButtonAttribute("Remove phases")]
-	protected void RemovePhases()
+	[ButtonAttribute("5 RP")]
+	protected void RemovePhasesButton()
 	{
 		m_API.BeginEntityAction();
-		SearchResourcesFilter filter = new SearchResourcesFilter();
-		filter.fileExtensions = EXTENSIONS;
-		filter.rootPath = "Prefabs/";
-		ResourceDatabase.SearchResources(filter, m_Handler.Callback);
-		array<ResourceName> resourceNames = m_Handler.GetResourceNames();
+		array<ResourceName> resourceNames = SCR_WorldEditorToolHelper.SearchWorkbenchResources(EXTENSIONS, rootPath: "Prefabs");
 
 		Resource resource;
 		BaseResourceObject baseResourceObject;
@@ -651,6 +633,7 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 				continue;
 			}
 
+			array<ref ContainerIdPathEntry> path = {};
 			BaseContainer phaseObject;
 			BaseContainerList phasesList;
 			phasesList = entitySource.GetObjectArray("DamagePhases");
@@ -670,7 +653,7 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 
 				if (phaseModels.Contains(phaseModel))
 				{
-					m_API.RemoveObjectArrayVariableMember(entitySource, null, "DamagePhases", j);
+					m_API.RemoveObjectArrayVariableMember(entitySource, path, "DamagePhases", j);
 					phasesList = entitySource.GetObjectArray("DamagePhases");
 					phasesCount = phasesList.Count();
 					j--;
@@ -693,12 +676,12 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 			destructionComponent.Get("m_aDamagePhases", damagePhases);
 			float totalHealth = GetPhasesTotalHealth(destructionComponent, damagePhases);
 			float healthNormalized = 1;
+//			float currentPhaseHealth;
 
-			array<ref ContainerIdPathEntry> path = {};
-			foreach (int j, SCR_DamagePhaseData damagePhaseData : damagePhases)
+			for (int j = 0; j < phasesCount; j++)
 			{
 				path.Insert(new ContainerIdPathEntry("DamagePhases", j));
-				healthNormalized -= damagePhaseData.m_fPhaseHealth / totalHealth;
+				healthNormalized -= damagePhases[j].m_fPhaseHealth / totalHealth;
 				m_API.SetVariableValue(entitySource, path, "Threshold", healthNormalized.ToString());
 				path.Clear();
 			}
@@ -708,10 +691,6 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] phaseObject
-	//! \param[in] path
-	//! \param[in] entitySource
 	void ClearArrayOfPhaseEffects(BaseContainer phaseObject, array<ref ContainerIdPathEntry> path, IEntitySource entitySource)
 	{
 		if (!phaseObject)
@@ -721,21 +700,17 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 		if (!effectsList)
 			return;
 
-		for (int i = 0, count = effectsList.Count(); i < count; i++)
+		for (int i = effectsList.Count() - 1; i >= 0; --i)
 		{
 			m_API.RemoveObjectArrayVariableMember(entitySource, path, "m_aPhaseDestroySpawnObjects", 0);
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
-	[ButtonAttribute("Filter prefabs")]
-	protected void FilterPrefabs()
+	[ButtonAttribute("6 FP")]
+	protected void FilterPrefabsButton()
 	{
-		SearchResourcesFilter filter = new SearchResourcesFilter();
-		filter.fileExtensions = EXTENSIONS;
-		filter.rootPath = "Prefabs/";
-		ResourceDatabase.SearchResources(filter, m_Handler.Callback);
-		array<ResourceName> resourceNames = m_Handler.GetResourceNames();
+		array<ResourceName> resourceNames = SCR_WorldEditorToolHelper.SearchWorkbenchResources(EXTENSIONS, rootPath: "Prefabs");
 
 		array<string> componentClassNames = {};
 		componentClassNames.Insert("SCR_DestructionMultiPhaseComponent");
@@ -748,43 +723,36 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 		componentClassNames.Insert("ActionsManagerComponent");
 		FilterByComponents(outResourceNames, resourceNames, componentClassNames, true);
 
-		Print(resourceNames.Count(), LogLevel.NORMAL);
-		string resName;
-		int indexOfStart, indexOfEnd, length;
-		for (int i = resourceNames.Count() - 1; i >= 0; i--)
+		Print("" + resourceNames.Count() + " resources", LogLevel.NORMAL);
+		foreach (ResourceName resourceName : resourceNames)
 		{
-			resName = resourceNames[i];
-			if (resName.Contains("Glass") || resName.Contains("Lamp"))
+			if (resourceName.Contains("Glass") || resourceName.Contains("Lamp"))
 				continue;
 
-			indexOfStart = resName.IndexOf("{") + 1;
-			indexOfEnd = resName.IndexOf("}");
-			length = indexOfEnd - indexOfStart;
-			//resName = resName.Substring(indexOfStart, length);
-			Print(resName.Substring(indexOfStart, length), LogLevel.NORMAL);
+			int startIndex = resourceName.IndexOf("{") + 1;
+			int endIndex = resourceName.IndexOf("}");
+			int length = endIndex - startIndex;
+			Print(resourceName.Substring(startIndex, length));
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
-	[ButtonAttribute("Show Mass")]
-	protected void ShowMass()
+	[ButtonAttribute("7 SM")]
+	protected void ShowMassButton()
 	{
-		IEntity entity = m_API.SourceToEntity(m_API.GetSelectedEntity());
+		IEntitySource entitySource = m_API.GetSelectedEntity();
+		IEntity entity = m_API.SourceToEntity(entitySource);
 		float volume = MeshObjectVolumeCalculator.GetVolumeFromColliders(entity, EPhysicsLayerDefs.FireGeometry);
 		float density = CalculateDensity(entity);
-		Print(density * 1000 * volume, LogLevel.NORMAL);
+		Print(density * 1000 * volume);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	[ButtonAttribute("Convert prefabs")]
-	protected void ConvertPrefabs()
+	[ButtonAttribute("8 CP")]
+	protected void ConvertPrefabsButton()
 	{
 		m_API.BeginEntityAction();
-		SearchResourcesFilter filter = new SearchResourcesFilter();
-		filter.fileExtensions = EXTENSIONS;
-		filter.rootPath = "Prefabs/";
-		ResourceDatabase.SearchResources(filter, m_Handler.Callback);
-		array<ResourceName> resourceNames = m_Handler.GetResourceNames();
+		array<ResourceName> resourceNames = SCR_WorldEditorToolHelper.SearchWorkbenchResources(EXTENSIONS, rootPath: "Prefabs");
 
 		array<string> componentClassNames = {};
 		componentClassNames.Insert("SCR_DestructionMultiPhaseComponent");
@@ -802,9 +770,12 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 		bool deleteAfterFinalPhase = false;
 		SCR_EMaterialSoundTypeBreak materialSoundType;
 		float momentumToDamage;
-		for (int i = outResourceNames.Count() - 1; i >= 0; i--)
+		foreach (ResourceName resourceName : outResourceNames)
 		{
-			resource = Resource.Load(outResourceNames[i]);
+			resource = Resource.Load(resourceName);
+			if (!resource) // test
+				continue;
+
 			baseResource = resource.GetResource();
 			source = baseResource.ToEntitySource();
 
@@ -822,10 +793,10 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 
 			if (source.GetClassName() != "SCR_DestructibleEntity")
 			{
-				Print("The following prefab is not SCR_DestructibleEntity type!", LogLevel.WARNING);
-				Print("Cannot convert!", LogLevel.WARNING);
-				Print(source.GetClassName(), LogLevel.WARNING);
-				Print(source.GetResourceName(), LogLevel.WARNING);
+				Print("The following prefab is not SCR_DestructibleEntity type!");
+				Print("Cannot convert!");
+				Print(source.GetClassName());
+				Print(source.GetResourceName());
 				continue;
 			}
 
@@ -905,11 +876,11 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 			path.Insert(new ContainerIdPathEntry("FirstDestructionPhase"));
 			m_API.SetVariableValue(source, path, "m_sPhaseModel", firstPhaseResourceName);
 
-			if (damagePhasesCount != 0)
+			if (damagePhasesCount > 0)
 			{
-				for (int k = 0, objectsCount = damagePhases[0].m_PhaseDestroySpawnObjects.Count(); k < objectsCount; k++)
+				foreach (int k, SCR_BaseSpawnable spawnObject : damagePhases[0].m_PhaseDestroySpawnObjects)
 				{
-					damagePhases[0].m_PhaseDestroySpawnObjects[k].CopyToSource(m_API, source, path, k, "m_aPhaseDestroySpawnObjects");
+					spawnObject.CopyToSource(m_API, source, path, k, "m_aPhaseDestroySpawnObjects");
 				}
 			}
 			// End of first phase setup
@@ -932,9 +903,9 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 				componentSource.Get("m_DestroySpawnObjects", destroySpawnObjects);
 				path.Insert(new ContainerIdPathEntry("LastDestructionPhase"));
 
-				for (int j = 0, objectCount = destroySpawnObjects.Count(); j < objectCount; j++)
+				foreach (int j, SCR_BaseSpawnable spawnObject : destroySpawnObjects)
 				{
-					destroySpawnObjects[j].CopyToSource(m_API, source, path, j, "m_aPhaseDestroySpawnObjects");
+					spawnObject.CopyToSource(m_API, source, path, j, "m_aPhaseDestroySpawnObjects");
 				}
 
 				m_API.SetVariableValue(source, path, "Threshold", "0");
@@ -970,9 +941,9 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 				// Use effects of the next phase as exit particles
 				if (j + 1 < damagePhasesCount)
 				{
-					for (int k = 0, objectsCount = damagePhases[j + 1].m_PhaseDestroySpawnObjects.Count(); k < objectsCount; k++)
+					foreach (int k, SCR_BaseSpawnable spawnObject : damagePhases[j + 1].m_PhaseDestroySpawnObjects)
 					{
-						damagePhases[j + 1].m_PhaseDestroySpawnObjects[k].CopyToSource(m_API, source, path, k, "m_aPhaseDestroySpawnObjects");
+						spawnObject.CopyToSource(m_API, source, path, k, "m_aPhaseDestroySpawnObjects");
 					}
 				}
 				else
@@ -980,9 +951,9 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 					array<ref SCR_BaseSpawnable> destroySpawnObjects = {};
 					componentSource.Get("m_DestroySpawnObjects", destroySpawnObjects);
 
-					for (int k = 0, objectsCount = destroySpawnObjects.Count(); k < objectsCount; k++)
+					foreach (int k, SCR_BaseSpawnable spawnObject : destroySpawnObjects)
 					{
-						destroySpawnObjects[k].CopyToSource(m_API, source, path, k, "m_aPhaseDestroySpawnObjects");
+						spawnObject.CopyToSource(m_API, source, path, k, "m_aPhaseDestroySpawnObjects");
 					}
 				}
 
@@ -1003,8 +974,6 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] source
-	//! \return
 	BaseContainer GetHitZone(IEntitySource source)
 	{
 		IEntityComponentSource componentSource;
@@ -1025,27 +994,20 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] componentSource
-	//! \param[in] phases
-	//! \return
 	float GetPhasesTotalHealth(IEntityComponentSource componentSource, array<ref SCR_DamagePhaseData> phases)
 	{
 		float health;
 		componentSource.Get("m_fBaseHealth", health);
 
-		for (int i = phases.Count() - 1; i >= 0; i--)
+		foreach (SCR_DamagePhaseData phase : phases)
 		{
-			health += phases[i].m_fPhaseHealth;
+			health += phase.m_fPhaseHealth;
 		}
 
 		return health;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] source
-	//! \param[in] componentType
-	//! \return
 	IEntityComponentSource FindComponent(IEntitySource source, string componentType)
 	{
 		for (int i = source.GetComponentCount() - 1; i >= 0; i--)
@@ -1058,9 +1020,6 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[out] to
-	//! \param[in] from
 	void CopySpawnObjectsArray(out array<ref SCR_BaseSpawnable> to, array<ref SCR_BaseSpawnable> from)
 	{
 		foreach (SCR_BaseSpawnable object : from)
@@ -1100,9 +1059,9 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 		Resource resource;
 		BaseResourceObject baseResource;
 		IEntitySource source;
-		for (int i = resourceNames.Count() - 1; i >= 0; i--)
+		foreach (ResourceName resourceName : resourceNames)
 		{
-			resource = Resource.Load(resourceNames[i]);
+			resource = Resource.Load(resourceName);
 			if (!resource)
 				continue;
 
@@ -1112,7 +1071,7 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 
 			source = baseResource.ToEntitySource();
 			if (source && source.GetClassName() == className)
-				outResourceNames.Insert(resourceNames[i]);
+				outResourceNames.Insert(resourceName);
 		}
 	}
 
@@ -1163,15 +1122,12 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 	}
 
 	//------------------------------------------------------------------------------------------------
-	[ButtonAttribute("Assign Indices")]
-	protected void AssignIndices()
+	[ButtonAttribute("9 AI")]
+	protected void AssignIndicesButton()
 	{
 		Debug.BeginTimeMeasure();
-		SearchResourcesFilter filter = new SearchResourcesFilter();
-		filter.fileExtensions = EXTENSIONS;
-		ResourceDatabase.SearchResources(filter, m_Handler.Callback);
 
-		array<ResourceName> resourceNames = m_Handler.GetResourceNames();
+		array<ResourceName> resourceNames = SCR_WorldEditorToolHelper.SearchWorkbenchResources(EXTENSIONS);
 
 		Resource resource;
 		BaseResourceObject baseResource;
@@ -1231,12 +1187,14 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 
 			if (!hasDestruction || !hasPhysics)
 				continue;
-
+			
 			runtimeSource = m_API.CreateEntity(resourceNames[i], "", 0, null, vector.Zero, vector.Zero);
 			if (!runtimeSource)
 				continue;
 
-			volume = MeshObjectVolumeCalculator.GetVolumeFromColliders(m_API.SourceToEntity(runtimeSource), EPhysicsLayerDefs.FireGeometry);
+			entity = m_API.SourceToEntity(runtimeSource);
+
+			volume = MeshObjectVolumeCalculator.GetVolumeFromColliders(entity, EPhysicsLayerDefs.FireGeometry);
 
 			density = CalculateDensity(entity);
 
@@ -1244,17 +1202,20 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 
 			for (l = 0; l < pairsCount; l++)
 			{
-				if (mass < m_aPairs[l].GetMass())
+				if (mass < m_aPairs[l].m_fMass)
 				{
-					indexName = m_aPairs[l].GetIndexName();
+					indexName = m_aPairs[l].m_sIndexName;
 					break;
 				}
-				else if (l == pairsCount - 1) //last pair, mass is bigger than last entry -> set max response index
+				else if (l == pairsCount - 1) // last pair, mass is bigger than last entry -> set max response index
+				{
 					indexName = SCR_DamageManagerComponent.MAX_DESTRUCTION_RESPONSE_INDEX_NAME;
+				}
 			}
 
 			//Edit prefab here
 			m_API.SetVariableValue(source, entryPath, "ResponseIndex", indexName);
+
 			m_API.DeleteEntity(runtimeSource);
 		}
 
@@ -1264,10 +1225,10 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// constructor
-	void SCR_DestructionIndicesAssignTool()
+	[ButtonAttribute("10 SBDE")]
+	protected void SetBuildingDestructionEffectButton()
 	{
-		m_Handler = new SCR_IndicesAssignToolHandler();
+		// TODO
 	}
 }
 
@@ -1275,62 +1236,12 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 class SCR_MassResponseIndexPair
 {
 	[Attribute(desc: "Objects with smaller weight will have this index. [kg]")]
-	protected float m_fMass;
+	float m_fMass;
 
 	[Attribute(desc: "Refer to physics settings of the project.")]
-	protected int m_iIndex;
+	int m_iIndex;
 
 	[Attribute(desc: "Refer to physics settings of the project.")]
-	protected string m_sIndexName;
-
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	float GetMass()
-	{
-		return m_fMass;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	string GetIndexName()
-	{
-		return m_sIndexName;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	int GetIndex()
-	{
-		return m_iIndex;
-	}
-}
-
-class SCR_IndicesAssignToolHandler
-{
-	protected SCR_DestructionIndicesAssignTool m_Tool;
-	protected ref array<ResourceName> m_aResourceNames = {};
-
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	array<ResourceName> GetResourceNames()
-	{
-		return m_aResourceNames;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \param[in] tool
-	void SetTool(SCR_DestructionIndicesAssignTool tool)
-	{
-		m_Tool = tool;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] resName
-	//! \param[in] filePath
-	void Callback(ResourceName resName, string filePath = "")
-	{
-		m_aResourceNames.Insert(resName);
-	}
+	string m_sIndexName;
 }
 #endif // WORKBENCH

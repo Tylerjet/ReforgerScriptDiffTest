@@ -99,13 +99,13 @@ class SCR_RepairSupportStationComponent : SCR_BaseDamageHealSupportStationCompon
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override int GetSupplyCostAction(IEntity actionOwner, IEntity actionUser, SCR_BaseUseSupportStationAction action)
+	protected override int GetSupplyAmountAction(IEntity actionOwner, IEntity actionUser, SCR_BaseUseSupportStationAction action)
 	{
 		if (!AreSuppliesEnabled())
 			return 0;
 		
 		if (!m_aDoTTypesHealed.Contains(EDamageType.FIRE))
-			return super.GetSupplyCostAction(actionOwner, actionUser, action);
+			return super.GetSupplyAmountAction(actionOwner, actionUser, action);
 		
 		EDamageType activeDoT;
 		array<HitZone> hitZones = {};
@@ -117,7 +117,7 @@ class SCR_RepairSupportStationComponent : SCR_BaseDamageHealSupportStationCompon
 			return m_iSupplyCostPerFireRateReduction + m_iBaseSupplyCostOnUse;
 		
 		//~ Not on fire so return normal supply cost action
-		return super.GetSupplyCostAction(actionOwner, actionUser, action);
+		return super.GetSupplyAmountAction(actionOwner, actionUser, action);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -133,7 +133,7 @@ class SCR_RepairSupportStationComponent : SCR_BaseDamageHealSupportStationCompon
 			if (AreSuppliesEnabled())
 			{
 				//~ Failed to consume supplies, meaning there weren't enough supplies for the action
-				if (!OnConsumeSuppliesServer(GetSupplyCostAction(actionOwner, actionUser, action)))
+				if (!OnConsumeSuppliesServer(GetSupplyAmountAction(actionOwner, actionUser, action)))
 					return;
 			}
 			

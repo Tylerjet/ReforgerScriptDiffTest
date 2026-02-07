@@ -24,11 +24,14 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 
 	protected bool m_bCanBeCreated = true;
 	protected SCR_CampaignBuildingEditorComponent m_CampaignBuildingComponent;
-	protected SCR_FreeRoamBuildingClientTriggerEntity m_AreaTrigger;
+	protected ScriptedGameTriggerEntity m_AreaTrigger;
 	protected IEntity m_Provider;
 	protected ECantBuildNotificationType m_eBlockingReason;
 	protected SCR_EditablePreviewEntity m_PreviewEnt;
 
+	
+	//different because this cant be a global map, but one map per base, probably gotta put this somewhere else lol
+	ref map<EEditableEntityBudget, int> m_accumulatedCampaignBudgetChanges = new map<EEditableEntityBudget, int>;
 	//------------------------------------------------------------------------------------------------
 	//! Return the base which belongs to a provider (if any)
 	protected bool GetProviderBase(out SCR_MilitaryBaseComponent base)
@@ -87,6 +90,26 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 		buildingManagerComponent.SetTemporaryProvider(m_CampaignBuildingComponent.GetProviderEntity());
 	}
 
+	//-----------------------------------------------------------------------------------------------
+	override bool IsThereEnoughBudgetToSpawn(IEntityComponentSource entitySource)
+	{	
+		if(!entitySource)
+			return false;
+		
+		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(m_Provider.FindComponent(SCR_CampaignBuildingProviderComponent));
+		if (!providerComponent)
+			return true;
+		
+		///-------------------------------
+		array<ref SCR_EntityBudgetValue> budgetCosts = {};
+		map<EEditableEntityBudget, int> tempBudgetAggregation = m_accumulatedBudgetChanges;
+		SCR_EditableEntityCoreBudgetSetting budgetSettings;
+		
+		m_BudgetManager.GetBudgetCostsDontDiscardCampaignBudget(entitySource, budgetCosts);	
+
+		return providerComponent.IsThereEnoughBudgetToSpawn(budgetCosts);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnEntityCreatedServer(array<SCR_EditableEntityComponent> entities)
 	{
@@ -278,16 +301,6 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Check if the preview is outisde of the building radius. if preview doesn't exist return false - preview doesn't exist on server and the same CanCreateEntity is used on server too.
-	bool IsPreviewOutOfRange()
-	{
-		if (!m_AreaTrigger || !m_PreviewEnt)
-			return false;
-
-		return (vector.DistanceSqXZ(m_AreaTrigger.GetOrigin(), m_PreviewEnt.GetOrigin()) >= m_AreaTrigger.GetSphereRadius() * m_AreaTrigger.GetSphereRadius());
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! Search for the outline that is assigned to this composition to be spawned.
 	ResourceName GetOutlineToSpawn(notnull SCR_EditableEntityComponent entity)
 	{
@@ -316,7 +329,7 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 			return false;
 		}
 
-		if (obstructionComponent.IsPreviewOutOfRange(outNotification))
+		if (obstructionComponent.IsPreviewOutOfRange(m_InstantPlacingParam, outNotification))
 		{
 			previewStateToShow = SCR_EPreviewState.BLOCKED;
 			return false;

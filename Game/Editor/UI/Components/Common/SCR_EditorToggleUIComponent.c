@@ -56,12 +56,12 @@ class SCR_EditorToggleUIComponent : ScriptedWidgetComponent
 	{
 		m_bCharging = false;
 		m_Blur.SetVisible(false);
+		m_Widget.SetVisible(false);
 		
 		if (m_RadialProcessBar.GetProgress() == m_RadialProcessBar.GetMaxProgress() || m_RadialProcessBar.GetProgress() <= m_RadialProcessBar.GetMinProgress())
 			return;
 		
 		m_RadialProcessBar.InstantProgressMaxMin(false);
-		m_Widget.SetVisible(false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -88,7 +88,7 @@ class SCR_EditorToggleUIComponent : ScriptedWidgetComponent
 
 	//------------------------------------------------------------------------------------------------
 	protected void WaitEnd()
-	{	
+	{
 		m_RadialProcessBar.SetProgress(m_RadialProcessBar.GetMinProgress());
 		
 		if (m_AutoInit.IsVisible())
@@ -105,7 +105,7 @@ class SCR_EditorToggleUIComponent : ScriptedWidgetComponent
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnRadialProgressFadeDone(SCR_ImageRadialProgressBarUIComponent radial, bool isFadeIn)
-	{				
+	{
 		if (!m_bCharging && !isFadeIn)
 		{
 			m_RadialProcessBar.InstantProgressMaxMin(false);
@@ -249,7 +249,7 @@ class SCR_EditorToggleUIComponent : ScriptedWidgetComponent
 		if (inputManager)
 		{
 			inputManager.RemoveActionListener("EditorToggle", EActionTrigger.VALUE, OnEditorToggleValue);
-			inputManager.RemoveActionListener("EditorToggle", EActionTrigger.UP, OnEditorToggleDone);	
+			inputManager.RemoveActionListener("EditorToggle", EActionTrigger.UP, OnEditorToggleDone);
 			
 		}
 		

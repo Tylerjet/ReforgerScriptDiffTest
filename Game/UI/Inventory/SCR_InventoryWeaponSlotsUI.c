@@ -169,8 +169,8 @@ class SCR_InventoryWeaponSlotsUI : SCR_InventoryStorageBaseUI
 	override protected void SortSlots()
 	{
 		int iWidgetColumnSize, iWidgetRowSize;
-		int iPageCounter = 0;				
-		int iRelativeOffset = 0; 				//if there's an item taking more than one slot, offset the following items to the right
+		const int iPageCounter = 0;				// TODO: check for good const usage
+		int iRelativeOffset = 0; 				// if there's an item taking more than one slot, offset the following items to the right
 
 		//reset all elements to 0 - free it
 		m_iMatrix.Reset(); 		

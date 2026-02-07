@@ -150,6 +150,8 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 		{
 			m_bDeliveryItemFound = true;
 			SetState(SCR_TaskState.PROGRESSED);
+			if (m_LayerTask)
+				m_LayerTask.SetLayerTaskState(SCR_TaskState.PROGRESSED);
 		}
 	}
 	
@@ -163,6 +165,8 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 			return;
 
 		SetState(SCR_TaskState.UPDATED);
+		if (m_LayerTask)
+				m_LayerTask.SetLayerTaskState(SCR_TaskState.UPDATED);
 		UpdateTaskTitleAndDescription(0);
 	}
 
@@ -240,7 +244,7 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 		}
 					
 		//We want to delay position movement of the Task marker on the map by given time
-		SCR_ScenarioFrameworkSystem.GetCallQueue().CallLater(MoveTaskMarkerPosition, 1000 * layerTaskDeliver.GetIntelMapMarkerUpdateDelay(), false);
+		SCR_ScenarioFrameworkSystem.GetCallQueuePausable().CallLater(MoveTaskMarkerPosition, 1000 * layerTaskDeliver.GetIntelMapMarkerUpdateDelay(), false);
 	}
 	
 	//------------------------------------------------------------------------------------------------

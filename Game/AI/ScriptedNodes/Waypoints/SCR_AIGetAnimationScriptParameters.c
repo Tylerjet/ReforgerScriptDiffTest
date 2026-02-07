@@ -48,7 +48,7 @@ class SCR_AIGetAnimationScriptParameters : AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette() { return true; }
+	protected static override bool VisibleInPalette() { return true; }
 	
 	//------------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsOut = {
@@ -76,7 +76,7 @@ class SCR_AIGetAnimationScriptParameters : AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override string GetOnHoverDescription()
+	static override string GetOnHoverDescription()
 	{
 		return "GetAnimationScriptParameters: Gets position, direction of FORWARD vector and duration of provided AIAnimationScript";
 	}

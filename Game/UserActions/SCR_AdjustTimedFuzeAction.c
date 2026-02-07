@@ -25,7 +25,7 @@ class SCR_AdjustTimedFuzeAction : SCR_AdjustSignalAction
 		if (!actionInfo)
 			return false;
 
-		outName = WidgetManager.Translate(actionInfo.GetName(), m_fTargetValue);
+		outName = WidgetManager.Translate(actionInfo.GetName(), m_ChargeComp.GetFuzeTime());
 		return true;
 	}
 
@@ -43,16 +43,10 @@ class SCR_AdjustTimedFuzeAction : SCR_AdjustSignalAction
 	//! Only available for actions for which HasLocalEffectOnly returns false.
 	override protected bool OnSaveActionData(ScriptBitWriter writer)
 	{
-		bool noChanges = float.AlmostEqual(m_fTargetValue, m_ChargeComp.GetFuzeTime());
-		writer.WriteBool(noChanges);
-		if (noChanges)
+		if (float.AlmostEqual(m_fTargetValue, m_ChargeComp.GetFuzeTime()))
 			return false;
 
-		writer.WriteIntRange(m_fTargetValue, GetMinimumValue(), GetMaximumValue());
-		if (m_ChargeComp)
-			m_ChargeComp.SetFuzeTime(m_fTargetValue);
-
-		return true;
+		return super.OnSaveActionData(writer);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -61,18 +55,7 @@ class SCR_AdjustTimedFuzeAction : SCR_AdjustSignalAction
 	//! Only triggered if the sender wrote anyting to the buffer.
 	override protected bool OnLoadActionData(ScriptBitReader reader)
 	{
-		if (m_bIsAdjustedByPlayer)
-			return true;
-
-		bool noChanges;
-		reader.ReadBool(noChanges);
-		if (noChanges)
-			return true;
-
-		int outVal;
-		reader.ReadIntRange(outVal, GetMinimumValue(), GetMaximumValue());
-		m_fTargetValue = outVal;
-		if (float.AlmostEqual(m_fTargetValue, m_ChargeComp.GetFuzeTime()))
+		if (!super.OnLoadActionData(reader))
 			return false;
 
 		if (m_ChargeComp)

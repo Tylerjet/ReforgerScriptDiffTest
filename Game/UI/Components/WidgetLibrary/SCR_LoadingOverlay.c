@@ -317,10 +317,9 @@ class SCR_LoadingOverlay : ScriptedWidgetComponent
 	{
 		return true;
 	}
-	override bool OnModalResult(Widget w, int x, int y, int code, int result) {return true;}
+	override bool OnModalClosed(Widget modalRoot) {return true;}
 	override bool OnDoubleClick(Widget w, int x, int y, int button) {return true;}
-	override bool OnSelect(Widget w, int x, int y) {return true;}
-	override bool OnItemSelected(Widget w, int x, int y, int row, int column, int oldRow, int oldColumn) {return true;}
+	override bool OnItemSelected(Widget w, int row, int column, int oldRow, int oldColumn) {return true;}
 	override bool OnFocus(Widget w, int x, int y)	{ return true; }
 	override bool OnFocusLost(Widget w, int x, int y) {	return true; }
 	override bool OnMouseEnter(Widget w, int x, int y) {return true;}
@@ -330,11 +329,8 @@ class SCR_LoadingOverlay : ScriptedWidgetComponent
 	override bool OnMouseButtonUp(Widget w, int x, int y, int button) {return true;}
 	//! control is one of ControlID
 	override bool OnController(Widget w, int control, int value) {return true;}
-	override bool OnKeyDown(Widget w, int x, int y, int key) {return true;}
-	override bool OnKeyUp(Widget w, int x, int y, int key) {return true;}
-	override bool OnKeyPress(Widget w, int x, int y, int key) {return true;}
-	override bool OnChange(Widget w, int x, int y, bool finished) {return true;}
-	override bool OnResize(Widget w, int x, int y) {return true;}
+	override bool OnChar(Widget w, int charCode) {return true;}
+	override bool OnChange(Widget w, bool finished) {return true;}
 	override bool OnModalClickOut(Widget modalRoot, int x, int y, int button) {return true;}
 
 };

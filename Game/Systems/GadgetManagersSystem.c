@@ -1,5 +1,12 @@
 class GadgetManagersSystem : GameSystem
 {
+	override static void InitInfo(WorldSystemInfo outInfo)
+	{
+		outInfo
+			.SetAbstract(false)
+			.AddPoint(ESystemPoint.Frame);
+	}
+
 	protected bool m_bUpdating = false;
 	protected ref array<SCR_GadgetManagerComponent> m_Components = {};
 	protected ref array<SCR_GadgetManagerComponent> m_DeletedComponents = {};

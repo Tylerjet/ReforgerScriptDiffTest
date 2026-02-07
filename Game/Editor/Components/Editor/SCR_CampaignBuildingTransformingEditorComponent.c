@@ -178,6 +178,11 @@ class SCR_CampaignBuildingTransformingEditorComponent : SCR_TransformingEditorCo
 		m_LastRejectedPivot = null;
 	}
 	
+	SCR_EditableEntityComponent GetEditedPivot()
+	{
+		return m_EditedPivot;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	override void ConfirmEditingServer(SCR_EditorPreviewParams params, int playerID)

@@ -47,7 +47,7 @@ class SCR_AIInspectWeapon: AITaskScripted
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
 	{
 		return true;
 	}

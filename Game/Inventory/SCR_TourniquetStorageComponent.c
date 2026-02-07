@@ -188,8 +188,8 @@ class SCR_TourniquetStorageComponent : SCR_EquipmentStorageComponent
 		if (success)
 		{
 			SCR_HitZone hitZone;
-			array<ref PersistentDamageEffect> tourniquetEffects = damageMgr.GetAllPersistentEffectsOfType(SCR_TourniquetDamageEffect);
-			foreach (PersistentDamageEffect effect : tourniquetEffects)
+			array<ref SCR_PersistentDamageEffect> tourniquetEffects = damageMgr.GetAllPersistentEffectsOfType(SCR_TourniquetDamageEffect);
+			foreach (SCR_PersistentDamageEffect effect : tourniquetEffects)
 			{
 				hitZone = SCR_HitZone.Cast(effect.GetAffectedHitZone());
 				if (!hitZone)

@@ -12,6 +12,9 @@ class SCR_WLibComponentBase : SCR_ScriptedWidgetComponent
 
 	[Attribute(SCR_SoundEvent.CLICK, UIWidgets.EditBox, "")]
 	protected string m_sSoundClicked;
+	
+	[Attribute(SCR_SoundEvent.SOUND_INV_CLOSE,"Sound used for closing container")]
+	protected string m_sSoundContainerClosed;
 
 	[Attribute(defvalue: "0.2", UIWidgets.EditBox, "How fast each animation proceeds")]
 	protected float m_fAnimationTime;
@@ -24,6 +27,8 @@ class SCR_WLibComponentBase : SCR_ScriptedWidgetComponent
 
 	protected float m_fAnimationRate;
 
+	protected ref Managed m_UserData; // User data - can be accessed with SetData, GetData
+	
 	static const float START_ANIMATION_RATE = 10001; 	// Custom rate that creates instant animations and supress sounds playing at start
 	static const float START_ANIMATION_PERIOD = 250; // Time since start in ms without sounds and animations
 
@@ -166,6 +171,7 @@ class SCR_WLibComponentBase : SCR_ScriptedWidgetComponent
 	string GetClickedSound()
 	{
 		return m_sSoundClicked;
+				
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -212,6 +218,22 @@ class SCR_WLibComponentBase : SCR_ScriptedWidgetComponent
 	void SetDisabledOpacity(float newDisabledOpacity)
 	{
 		m_fDisabledOpacity = newDisabledOpacity;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Store custom data
+	//! \param[in] data
+	void SetData(Managed data)
+	{
+		m_UserData = data;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get stored data
+	//! \return data if set, null otherwise
+	Managed GetData()
+	{
+		return m_UserData;
 	}
 };
 

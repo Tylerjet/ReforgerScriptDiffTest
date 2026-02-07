@@ -55,7 +55,7 @@ class SCR_CommunitySubMenu : SCR_SubMenuBase
 		super.OnMenuUpdate(tDelta);
 		
 		if (m_Send)
-			m_Send.SetEnabled(m_Feedback.GetValue() != string.Empty && FeedbackDialogUI.CanSendFeedback());
+			m_Send.SetEnabled(m_Feedback.GetValue() != string.Empty && SCR_FeedbackDialogUI.CanSendFeedback());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -63,7 +63,7 @@ class SCR_CommunitySubMenu : SCR_SubMenuBase
 	{
 		super.OnTabHide();
 		
-		FeedbackDialogUI.ClearFeedback();
+		SCR_FeedbackDialogUI.ClearFeedback();
 
 		if (m_TermsOfService)
 			m_TermsOfService.SetVisible(false);
@@ -74,10 +74,10 @@ class SCR_CommunitySubMenu : SCR_SubMenuBase
 	{
 		super.OnTabRemove();
 		
-		FeedbackDialogUI.ClearFeedback();
+		SCR_FeedbackDialogUI.ClearFeedback();
 	}
 	
-	// Setup type and category combos according to FeedbackDialogUI constants
+	// Setup type and category combos according to SCR_FeedbackDialogUI constants
 	//------------------------------------------------------------------------------------------------
 	protected void SetupCategories()
 	{
@@ -90,12 +90,12 @@ class SCR_CommunitySubMenu : SCR_SubMenuBase
 		m_FeedbackType.ClearAll();
 
 
-		foreach (string s : FeedbackDialogUI.CATEGORY_NAMES)
+		foreach (string s : SCR_FeedbackDialogUI.CATEGORY_NAMES)
 		{
 			m_FeedbackCategory.AddItem(s);
 		}
 
-		foreach (string s : FeedbackDialogUI.TYPE_NAMES)
+		foreach (string s : SCR_FeedbackDialogUI.TYPE_NAMES)
 		{
 			m_FeedbackType.AddItem(s);
 		}
@@ -140,7 +140,7 @@ class SCR_CommunitySubMenu : SCR_SubMenuBase
 		m_Feedback.SetValue(string.Empty);
 
 		// Send feedback
-		FeedbackDialogUI.SendFeedback(content, m_FeedbackType.GetCurrentIndex(), m_FeedbackCategory.GetCurrentIndex());
+		SCR_FeedbackDialogUI.SendFeedback(content, m_FeedbackType.GetCurrentIndex(), m_FeedbackCategory.GetCurrentIndex(), false);
 	}
 	
 	//------------------------------------------------------------------------------------------------

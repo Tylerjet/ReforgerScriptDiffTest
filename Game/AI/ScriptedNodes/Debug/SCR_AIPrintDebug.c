@@ -8,7 +8,7 @@ class SCR_AIPrintDebug : SCR_AIDebugTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}
@@ -31,7 +31,7 @@ class SCR_AIPrintDebug : SCR_AIDebugTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "BT node for printing debug messsages. String can be in In port or as parameter";
 	}

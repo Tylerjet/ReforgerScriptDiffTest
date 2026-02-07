@@ -8,7 +8,7 @@ class SCR_GenerateControlsSchemePlugin : WorkbenchPlugin
 	[Attribute(defvalue: "$profile:GenerateControlsScheme/", desc: "Directory at which the scheme will be saved")]
 	protected string m_sDirectory;
 
-	//[Attribute("2", UIWidgets.ComboBox, "", enums: ParamEnumArray.FromEnum(SCR_EGenerateControlsSchemeType))]
+	//[Attribute("2", UIWidgets.ComboBox, "", enumType: SCR_EGenerateControlsSchemeType)]
 	protected SCR_EGenerateControlsSchemeType m_eType = SCR_EGenerateControlsSchemeType.GAMEPAD;
 
 	[Attribute(defvalue: "1", desc: "Font size multiplier. Use a smaller font when action names are too long and overflow from the image.")]

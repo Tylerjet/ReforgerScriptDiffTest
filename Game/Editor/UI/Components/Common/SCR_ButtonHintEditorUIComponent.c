@@ -1,5 +1,7 @@
 class SCR_ButtonHintEditorUIComponent : MenuRootSubComponent
 {
+	//---- REFACTOR NOTE START: Conditions might be using more generic behavior? 
+	
 	protected const int CONDITION_DEVICE = 1;
 	protected const int CONDITION_FOCUS = 2;
 	
@@ -40,6 +42,8 @@ class SCR_ButtonHintEditorUIComponent : MenuRootSubComponent
 		
 		RefreshVisibility();
 	}
+	
+	//---- REFACTOR NOTE END ----
 
 	//------------------------------------------------------------------------------------------------
 	override protected bool IsUnique()

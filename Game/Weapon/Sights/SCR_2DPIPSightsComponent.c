@@ -88,21 +88,25 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	[Attribute("1.05", UIWidgets.Slider, "PIP reticle additional scale to compensate discrepancy between camera and reticle\n[x]", params: "0.01 10 0.00001", category: "PiPSights", precision: 5)]
 	protected float m_fReticlePIPScale;
 
-	[Attribute("0.0", UIWidgets.Slider, "Offset when not unfocused to improve view\n[m]", params: "-1 1 0.001", category: "PiPSights")]
-	protected float m_fMainCameraOffsetUnfocused;
+	[Attribute("0 0 0", UIWidgets.Slider, "Offset when not unfocused to improve view\n[m]", params: "-1 1 0.001", category: "PiPSights")]
+	protected vector m_vMainCameraOffsetUnfocused;
 
 	[Attribute("1.0", UIWidgets.Slider, "PIP objective inner edge. Should be lower than max\n[x]", params: "0.001 10 0.00001", category: "PiPSights-Parallax", precision: 5)]
 	protected float m_fObjectivePIPEdgeMin;
 
-	[Attribute("1.05", UIWidgets.Slider, "PIP objective outer edge\[x]", params: "0.001 10 0.00001", category: "PiPSights-Parallax", precision: 5)]
+	[Attribute("1.05", UIWidgets.Slider, "PIP objective outer edge\n[x]", params: "0.001 10 0.00001", category: "PiPSights-Parallax", precision: 5)]
 	protected float m_fObjectivePIPEdgeMax;
 
 	[Attribute("{5366CEDE2A151631}Terrains/Common/Water/UnderWater/oceanUnderwater.emat", UIWidgets.ResourcePickerThumbnail, "Underwater postprocess material\n", params: "emat", category: "PiPSights")]
 	protected ResourceName m_sUnderwaterPPMaterial;
 
+	[Attribute("{FA4DE95A7276143D}Common/Postprocess/rain.emat", UIWidgets.ResourcePickerThumbnail, "Rain postprocess material\n", params: "emat", category: "PiPSights")]
+	protected ResourceName m_sRainPPMaterial;
+
 	protected int m_iLastProjectionFrame = -1;
 	protected vector m_vScreenScopeCenter;
 	protected float m_fScreenScopeRadiusSq;
+	protected float m_fScreenScopeRadius;
 	protected float m_fReticleScale;
 	protected float m_fEdgeScale = 1;
 	protected float m_fParallaxX;
@@ -146,6 +150,27 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		float screenDistanceSq = vector.DistanceSq(screenPosition, m_vScreenScopeCenter);
 		return screenDistanceSq < m_fScreenScopeRadiusSq;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Calculate the radius of PIP sight in screen coordinates
+	//------------------------------------------------------------------------------------------------
+	float GetSightsRadiusScreen()
+	{
+		BaseWorld world = GetGame().GetWorld();
+
+		WorkspaceWidget workspaceWidget = GetGame().GetWorkspace();
+
+		vector sightsRear = GetSightsRearPosition();
+		vector scopeScreenCenter = workspaceWidget.ProjWorldToScreen(sightsRear, world);
+		scopeScreenCenter[2] = 0;
+
+		vector extent = workspaceWidget.ProjWorldToScreen(sightsRear + GetOwner().GetWorldTransformAxis(0) * m_fScopeRadius, world);
+		extent[2] = 0;
+
+		m_fScreenScopeRadius = vector.Distance(extent, scopeScreenCenter);
+
+		return m_fScreenScopeRadius;
+	}
 
 	//! The root layout hierarchy widget for PIP
 	protected ref Widget m_wPIPRoot;
@@ -163,7 +188,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	//! The camera to be used by this pip component
 	protected SCR_PIPCamera m_PIPCamera;
 
-	Material 	m_pMaterial;
+	ref Material m_pMaterial;
 	int			m_iVignetteCenterXIndex	= -1;
 	int			m_iVignetteCenterYIndex	= -1;
 	int			m_iVignettePowerIndex	= -1;
@@ -255,17 +280,17 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	float GetMainCameraOffset()
+	vector GetMainCameraOffset()
 	{
 		CameraManager cameraManager = GetGame().GetCameraManager();
 		if (!cameraManager)
-			return 0;
+			return vector.Zero;
 
 		PlayerCamera camera = PlayerCamera.Cast(cameraManager.CurrentCamera());
 		if (camera)
-			return Math.Lerp(m_fMainCameraOffsetUnfocused, 0, camera.GetFocusMode());
+			return vector.Lerp(m_vMainCameraOffsetUnfocused, vector.Zero, camera.GetFocusMode());
 
-		return 0;
+		return vector.Zero;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -407,12 +432,13 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 				m_wRenderTargetTextureWidget.SetGUIWidget(owner, m_iGuiIndex);
 
 			if (m_pMaterial)
-			{
 				GetGame().GetWorld().SetCameraPostProcessEffect(m_iCameraIndex, 10, PostProcessEffectType.HDR, m_rScopeHDRMatrial);
-			}
 
 			if (m_sUnderwaterPPMaterial != string.Empty)
 				GetGame().GetWorld().SetCameraPostProcessEffect(m_iCameraIndex, 2, PostProcessEffectType.UnderWater, m_sUnderwaterPPMaterial);
+
+			if (m_sRainPPMaterial != string.Empty)
+				GetGame().GetWorld().SetCameraPostProcessEffect(m_iCameraIndex, 4, PostProcessEffectType.Rain, m_sRainPPMaterial);
 
 			s_bIsPIPActive = true;
 			m_bPIPIsEnabled = true;
@@ -927,6 +953,12 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 
 	#ifdef WORKBENCH
 	//------------------------------------------------------------------------------------------------
+	override int _WB_GetAfterWorldUpdateSpecs(IEntity owner, IEntitySource src)
+	{
+		return EEntityFrameUpdateSpecs.CALL_WHEN_ENTITY_VISIBLE;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected override void _WB_AfterWorldUpdate(IEntity owner, float timeSlice)
 	{
 		const ShapeFlags shapeFlags = ShapeFlags.ONCE | ShapeFlags.NOZBUFFER | ShapeFlags.TRANSP | ShapeFlags.DOUBLESIDE | ShapeFlags.NOOUTLINE;
@@ -1039,7 +1071,6 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		Destroy();
 		if (m_pMaterial)
 		{
-			m_pMaterial.Release();
 			m_pMaterial = null;
 		}
 

@@ -10,9 +10,9 @@ class SCR_AIBaseTargetToTargetInfo : AITaskScripted
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	ref SCR_AITargetInfo m_TargetInfo;
 		
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 	
-	override string GetOnHoverDescription() { return "Converts baseTarget object instance to SCR_AITarget info object instance"; };
+	static override string GetOnHoverDescription() { return "Converts baseTarget object instance to SCR_AITarget info object instance"; };
 	
 	//---------------------------------------------------------------------------------------
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)

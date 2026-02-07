@@ -12,18 +12,6 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 	[Attribute("Base_ColorOverlay")]
 	protected string m_sBackgroundColorOverlayName;
 	
-	[Attribute("#AR-PauseMenu_ReturnTitle", uiwidget: UIWidgets.LocaleEditBox)]
-	protected LocalizedString m_sMainMenuPopUpTitle;
-	
-	[Attribute("#AR-PauseMenu_ReturnText", uiwidget: UIWidgets.LocaleEditBox)]
-	protected LocalizedString m_sMainMenuPopUpMessage;
-	
-	[Attribute(UIConstants.ICONS_IMAGE_SET, params: "imageset")]
-	protected ResourceName m_sMainMenuPopUpImageSet;
-	
-	[Attribute("exit")]
-	protected string m_sMainMenuPopUpImage;
-	
 	[Attribute(UIConstants.BUTTON_BACK)]
 	protected string m_sBackButtonName;
 	
@@ -197,17 +185,6 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 	{
 		OnGameEnd();
 		GameStateTransitions.RequestGameplayEndTransition();
-	}
-	
-	/*!
-	Sets the popup dialog text created in GameOverScreenInput
-	\param popup dialog to set the text of
-	*/
-	void SetMainMenuPopUpTexts(DialogUI popup)
-	{
-		popup.SetMessage(m_sMainMenuPopUpMessage);
-		popup.SetTitle(m_sMainMenuPopUpTitle);
-		popup.SetTitleIcon(m_sMainMenuPopUpImageSet, m_sMainMenuPopUpImage);
 	}
 	
 	//~ Removes itself from hierargy on game end just in cause

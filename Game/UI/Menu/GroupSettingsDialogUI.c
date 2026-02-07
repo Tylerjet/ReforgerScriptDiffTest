@@ -40,6 +40,8 @@ class GroupSettingsDialogUI: DialogUI
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuClose()
 	{
+		super.OnMenuClose();
+		
 		if (m_CallbackGetPrivilege)
 			m_CallbackGetPrivilege.m_OnResult.Remove(OnPrivilegeCallback);
 	}

@@ -39,7 +39,7 @@ class SCR_AIWaitCombatMoveRequest : AITaskScripted
 	};
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
-	override bool CanReturnRunning() { return true; }
+	static override bool CanReturnRunning() { return true; }
 	
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }

@@ -215,8 +215,8 @@ class SCR_SoundManagerEntity : GenericEntity
 	\param mat Sound will be played using this transformation matrix
 	*/	
 	private void PlaySoundEvent(SCR_AudioSource audioSource, vector mat[4])
-	{
-		if (m_SoundWorld)
+	{		
+		if (m_SoundWorld && !SCR_Enum.HasFlag(audioSource.m_AudioSourceConfiguration.m_eFlags, EAudioSourceConfigurationFlag.ExteriorSource))
 		{
 			audioSource.m_InteriorRequestCallback = new SCR_InteriorRequestCallback(audioSource);
 			audioSource.SetTransformation(mat);
@@ -282,7 +282,7 @@ class SCR_SoundManagerEntity : GenericEntity
 	{		
 		foreach (SCR_AudioSource audioSource : m_aAudioSource)
 		{
-			audioSource.Terminate();
+			audioSource.Terminate(false);
 		}
 	}
 		

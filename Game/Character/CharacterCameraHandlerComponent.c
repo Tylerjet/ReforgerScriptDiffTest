@@ -11,7 +11,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	//! Progress of recoil based camera shake
 	protected ref SCR_RecoilCameraShakeProgress m_pRecoilShake = new SCR_RecoilCameraShakeProgress();
 	
-	protected ref ScriptInvoker m_OnThirdPersonSwitch = new ScriptInvoker();
+	protected ref ScriptInvokerVoid m_OnThirdPersonSwitch = new ScriptInvokerVoid();
 	protected static float s_fOverlayCameraFOV;
 	protected static float s_fADSSensitivity = 1.0;
 	
@@ -407,12 +407,12 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 				m_AnimationComponent.SetAnimationLayerFPP();
 		}
 		
-		m_OnThirdPersonSwitch.Invoke();		
+		m_OnThirdPersonSwitch.Invoke(isInThirdPerson);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! \return
-	ScriptInvoker GetThirdPersonSwitchInvoker()
+	ScriptInvokerVoid GetThirdPersonSwitchInvoker()
 	{
 		return m_OnThirdPersonSwitch;
 	}
@@ -440,7 +440,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		
 		m_fCameraSlideFilter = Math.SmoothCD(m_fCameraSlideFilter, m_fTargetSlide, m_fCameraSlideFilterVelocity, m_fSlideTime, 1000, pDt);
 		float currDiff = Math.AbsFloat(m_fTargetSlide - m_fCameraSlideFilter);
-		if (currDiff <= sm_fDistanceEpsilon)
+		if (currDiff <= DISTANCE_EPSILON)
 			m_fCameraSlideFilter = m_fTargetSlide;
 		
 		m_InputManager.ActivateContext("PlayerCameraContext");
@@ -608,7 +608,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		//  Collisions when close to a wall under a sharp angle, collisions when between two vehicles (<1m gap)
 		//  Smoothness of transitions and slide/distance smoothing
 		
-		if (pOutResult.m_fDistance == 0.0)
+		if (pOutResult.m_fDistance <= MIN_TRACE_DISTANCE)
 		{
 			m_fCameraDistanceFilter = 0.0;
 			ResetSlide();
@@ -622,7 +622,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 			Math3D.MatrixIdentity4(ownerTransformWS);
 		
 		vector resultWorldTransform[4]; // If pOutResult.m_CameraTM is in someone's model space, this transforms it back to world space.
-		if (pOutResult.m_pWSAttachmentReference)
+		if (pOutResult.m_pWSAttachmentReference && pOutResult.m_pWSAttachmentReference.GetOwner())
 			pOutResult.m_pWSAttachmentReference.GetOwner().GetWorldTransform(resultWorldTransform);
 		else if (owner)
 			owner.GetWorldTransform(resultWorldTransform);
@@ -652,11 +652,10 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		
 		if (pOutResult.m_pWSAttachmentReference)
 		{
-			// If pOutResult.m_pWSAttachmentReference has value, the matrix was supplied in PointInfo space. Here we transform
-			// it to model's space (and can then use resultWorldTransform to translate into world space).
-			owner = pOutResult.m_pWSAttachmentReference.GetOwner();
+			// If pOutResult.m_pWSAttachmentReference has value, the matrix was supplied in PointInfo space
+			// Here we transform it to world space because we want the camera to follow the attachment reference without being owned by it
 			vector wsAttachmentWorldTransform[4];
-			pOutResult.m_pWSAttachmentReference.GetModelTransform(wsAttachmentWorldTransform);
+			pOutResult.m_pWSAttachmentReference.GetWorldTransform(wsAttachmentWorldTransform);
 			Math3D.MatrixMultiply4(wsAttachmentWorldTransform, camTransformLS, camTransformLS);
 		}
 		
@@ -691,7 +690,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 				
 				Math3D.MatrixMultiply4(charRot, camTransformLS, camTransformLS);
 				
-				if (pOutResult.m_fDistance == 0.0)
+				if (pOutResult.m_fDistance <= MIN_TRACE_DISTANCE)
 					camTransformLS[3] = basePos;
 			}
 			
@@ -711,12 +710,12 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		else
 			Math3D.MatrixMultiply4(resultWorldTransform, camTransformLS, camTransformWS);
 		
-		if (pOutResult.m_bAllowCollisionSolver && !isKeyframe && pOutResult.m_fDistance > 0.0)
+		if (pOutResult.m_bAllowCollisionSolver && !isKeyframe && pOutResult.m_fDistance > MIN_TRACE_DISTANCE)
 		{
 			// We always make the traces a bit longer than they need to be and "anticipate" if it is going to collide.
 			// This way we can make the camera movement a bit smoother. This number says by how much they will be longer.
-			float SIDE_TRACE_MARGIN_MULTIPLIER = 2.0;
-			float BACK_TRACE_MARGIN_MULTIPLIER = 1.25;
+			const float SIDE_TRACE_MARGIN_MULTIPLIER = 2.0; // TODO: check for good const usage
+			const float BACK_TRACE_MARGIN_MULTIPLIER = 1.25; // TODO: check for good const usage
 			
 			// Exclude all character-related entities from any tracing.
 			array<IEntity> excludeArray = {m_OwnerCharacter};
@@ -744,16 +743,18 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 			param.LayerMask = TRACE_LAYER_CAMERA;
 			
 			// 1. Sideways collision (translating the camera to left/right from character).
-			vector sideTraceStart = Vector(hipBoneWS[3][0], camTransformWS[3][1], hipBoneWS[3][2]);
+			vector headBoneTM[4];
+			m_OwnerCharacter.GetAnimation().GetBoneMatrix(m_iHeadBoneIndex, headBoneTM);
+			
+			float headBoneHeight = headBoneTM[3][1];
+			vector sideTraceStart = camTransformWS[3] - camTransformWS[0] * pOutResult.m_fShoulderDist; // start trace at head position on the camera plane
 			vector sideTraceEnd = camTransformWS[3];
 			
 			vector sideTraceDiff = sideTraceEnd - sideTraceStart;
 			
-			// Set up the side trace, we also limit the Y position of the trace end - otherwise, if the character jumps and
-			// the margin is high, the trace will point downwards.
+			// Set up the side trace
 			param.Start = sideTraceStart;
 			param.End = sideTraceStart + SIDE_TRACE_MARGIN_MULTIPLIER * sideTraceDiff; 
-			param.End[1] = sideTraceStart[1] + sideTraceDiff[1];
 	
 			float rightTrace = world.TraceMove(param, null);
 			
@@ -780,17 +781,17 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 			const int N = 4;
 			vector traceMat[N];
 			float rayBackTrace[N];
-			SCR_Math3D.LookAt(backTraceStart, backTraceEnd, {0, 1, 0}, traceMat); // Get a transform with Z axis facing the ray direction.
-			vector traceOffset[N] = {
+			SCR_Math3D.LookAt(backTraceStart, backTraceEnd, { 0, 1, 0 }, traceMat); // Get a transform with Z axis facing the ray direction.
+			vector traceOffsets[N] = {
 				TRACE_RADIUS *  traceMat[0],
 				TRACE_RADIUS *  traceMat[1],
 				TRACE_RADIUS * -traceMat[0],
 				TRACE_RADIUS * -traceMat[1]
 			};
 
-			if (pOutResult.m_fPositionModelSpace <= 2.0 && pOutResult.m_fDistance > 0.001)
+			if (pOutResult.m_fPositionModelSpace <= 2.0 && pOutResult.m_fDistance > MIN_TRACE_DISTANCE)
 			{
-				TraceParam rayParam();
+				TraceParam rayParam = new TraceParam();
 				rayParam.ExcludeArray = excludeArray;
 				rayParam.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
 				rayParam.LayerMask = TRACE_LAYER_CAMERA;
@@ -798,13 +799,15 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 				backTrace = 1;
 				for (int i = 0; i < N; ++i)
 				{
-					rayParam.Start = backTraceStart + traceOffset[i];
-					rayParam.End = backTraceEnd + traceOffset[i];
+					rayParam.Start = backTraceStart + traceOffsets[i];
+					rayParam.End = backTraceEnd + traceOffsets[i];
+
 					rayBackTrace[i] = world.TraceMove(rayParam, null);
 					backTrace = Math.Min(backTrace, rayBackTrace[i]);
 				}
+
 				if (backTrace < 1)
-					Math.Max(0, backTrace - TRACE_RADIUS); // Push the point inwards by TRACE_RADIUS amount, approximating a sphere trace.
+					backTrace = Math.Max(0, backTrace - TRACE_RADIUS); // Push the point inwards by TRACE_RADIUS amount, approximating a sphere trace.
 
 				// Unlike with slide, distance will not move "in anticipation", so we can directly multiply this value and compare it to 1.
 				// We still want to have it a bit longer though, to cover the param.Radius margin.
@@ -812,10 +815,10 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 				
 				float newDistance = pOutResult.m_fDistance * Math.Min(1.0, backTrace);
 				
-				if (newDistance < sm_fDistanceEpsilon)
+				if (newDistance < DISTANCE_EPSILON)
 					newDistance = 0.0;
 				
-				if (Math.AbsFloat(m_fCameraDistanceFilter - newDistance) < sm_fDistanceEpsilon && m_fCameraDistanceFilterVel != 0.0)
+				if (Math.AbsFloat(m_fCameraDistanceFilter - newDistance) < DISTANCE_EPSILON && m_fCameraDistanceFilterVel != 0.0)
 					m_fCameraDistanceFilterVel = 0.0;
 				
 				// Set distance smoothing.
@@ -839,8 +842,8 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		
 				for (int i = 0; i < N; ++i)
 				{
-					vector rayStart = backTraceStart + traceOffset[i];
-					vector rayEnd = backTraceEnd + traceOffset[i];
+					vector rayStart = backTraceStart + traceOffsets[i];
+					vector rayEnd = backTraceEnd + traceOffsets[i];
 					
 					Shape.CreateSphere(ARGB(255, 150, 0, 255), shFlags, rayStart, param.Radius * 0.2);				// PURPLE
 					Shape.CreateSphere(ARGB(255, 0, 255, 255), shFlags, vector.Lerp(rayStart, rayEnd, Math.Lerp(0.05, 0.4, backTrace) * rayBackTrace[i]), param.Radius * 0.1);
@@ -856,7 +859,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		// Return the camera position in local space with applied slide, distance is applied only if camera is in world space.
 		Math3D.MatrixCopy(camTransformLS, resCamTM);
 		
-		if (pOutResult.m_fPositionModelSpace < 2.0 && pOutResult.m_fDistance > 0.0)
+		if (pOutResult.m_fPositionModelSpace < 2.0 && pOutResult.m_fDistance > MIN_TRACE_DISTANCE)
 		{
 			vector camBoomDir = pOutResult.m_vBacktraceDir.Multiply3(charRot);
 			camBoomDir = vector.Lerp(resCamTM[2], camBoomDir, pOutResult.m_fUseBacktraceDir);
@@ -999,8 +1002,6 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	private CharacterIdentityComponent m_IdentityComponent;
 	private CharacterCommandHandlerComponent m_CmdHandler;
 	
-	static private float sm_fDistanceEpsilon = 0.0001;
-	
 	private bool	m_bApplySmoothedSlideThisFrame = true;
 	private float	m_fTargetSlide = 1;
 	private float	m_fSlideTime = 0.4;	
@@ -1022,6 +1023,9 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	private bool	m_b3rdCollision_UseLeftShoulder = false;
 
 	private ref CharacterMovementState m_CharMovementState = new CharacterMovementState();
+
+	private static const float DISTANCE_EPSILON = 0.0001;
+	private static const float MIN_TRACE_DISTANCE = 0.001; //!< exclusive
 
 	//------------------------------------------------------------------------------------------------
 	private void ResetSlide()

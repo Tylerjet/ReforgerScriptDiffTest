@@ -5,6 +5,7 @@ class SCR_Tutorial_Seizing_Select_AntennaClass : SCR_BaseTutorialStageClass
 
 class SCR_Tutorial_Seizing_Select_Antenna : SCR_BaseTutorialStage
 {
+	protected string m_sSpawnedEntityName = "BUILDING_ANTENNA";
 	protected Widget m_wHighlight;
 	protected bool m_bPreviewSelected;
 	//------------------------------------------------------------------------------------------------
@@ -33,7 +34,7 @@ class SCR_Tutorial_Seizing_Select_Antenna : SCR_BaseTutorialStage
 	//------------------------------------------------------------------------------------------------
 	override protected bool GetIsFinished()
 	{
-		return m_bPreviewSelected;
+		return m_bPreviewSelected || GetGame().GetWorld().FindEntityByName(m_sSpawnedEntityName);
 	}
 	
 	//------------------------------------------------------------------------------------------------

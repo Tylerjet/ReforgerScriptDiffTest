@@ -6,6 +6,12 @@ class SCR_AIHealWaitBehavior : SCR_AIBehaviorBase
 {
 	ref SCR_BTParam<IEntity> m_HealProvider = new SCR_BTParam<IEntity>(SCR_AIActionTask.ENTITY_PORT);
 	
+	//---------------------------------------------------------------------------------------------------------------------------------
+	override int GetCause()
+	{
+		return SCR_EAIBehaviorCause.DANGER_MEDIUM;
+	}
+	
 	//-------------------------------------------------------------------------------------------------------------------------------
 	void InitParameters(IEntity healProvider)
 	{
@@ -21,6 +27,7 @@ class SCR_AIHealWaitBehavior : SCR_AIBehaviorBase
 		m_sBehaviorTree = "{AAB70A7FFF8BB63C}AI/BehaviorTrees/Chimera/Soldier/Behavior_HealWait.bt";
 	}
 	
+	//---------------------------------------------------------------------------------------------------------------------------------
 	override void OnActionCompleted()
 	{
 		super.OnActionCompleted();

@@ -250,7 +250,7 @@ class SCR_PositionalLightSourceInsect : SCR_PositionalInsectType
 			if (m_aActiveEntities.Contains(entity))
 				continue;
 			
-			ParticleEffectEntitySpawnParams spawnParams();
+			ParticleEffectEntitySpawnParams spawnParams = new ParticleEffectEntitySpawnParams();
 			vector mat[4];
 			entity.GetWorldTransform(mat);
 			vector position = mat[3];
@@ -325,7 +325,7 @@ class SCR_PositionalAmbientLeafParticles : SCR_PositionalInsectType
 
 			int foliageHeight = treeClass.m_iFoliageHeight * entity.GetScale();
 
-			ParticleEffectEntitySpawnParams spawnParams();
+			ParticleEffectEntitySpawnParams spawnParams = new ParticleEffectEntitySpawnParams();
 			vector mat[4];
 			entity.GetWorldTransform(mat);
 			
@@ -399,7 +399,7 @@ class SCR_PositionalGenericInsect : SCR_PositionalInsectType
 			if (m_aActiveEntities.Contains(entity))
 				continue;
 			
-			ParticleEffectEntitySpawnParams spawnParams();
+			ParticleEffectEntitySpawnParams spawnParams = new ParticleEffectEntitySpawnParams();
 			vector mat[4];
 			entity.GetWorldTransform(mat);
 			

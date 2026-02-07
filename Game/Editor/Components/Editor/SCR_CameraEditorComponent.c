@@ -161,7 +161,7 @@ class SCR_CameraEditorComponent : SCR_BaseEditorComponent
 	{
 		delete m_Camera;
 		
-		if (GetOwner().IsRemoved())
+		if (GetOwner().IsDeleted())
 			return;
 		
 		EntitySpawnParams spawnParams = new EntitySpawnParams();

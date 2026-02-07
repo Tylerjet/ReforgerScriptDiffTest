@@ -23,12 +23,12 @@ class SCR_AIIsValidAction : DecoratorScripted
 		return state != EAIActionState.COMPLETED && state != EAIActionState.FAILED;
 	}
 
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}
 	
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Test if current action is still valid, or it was already completed or failed";
 	}

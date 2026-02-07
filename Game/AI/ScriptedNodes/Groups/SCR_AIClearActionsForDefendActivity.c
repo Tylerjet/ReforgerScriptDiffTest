@@ -23,7 +23,7 @@ class SCR_AIClearActionsForDefendActivity: AITaskScripted
 	protected SCR_AIDefendActivity m_RelatedActivity;
 	
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() {return true;}
+	static override bool VisibleInPalette() {return true;}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(AIAgent owner)
@@ -135,11 +135,11 @@ class SCR_AIClearActionsForDefendActivity: AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override string GetOnHoverDescription()
+	static override string GetOnHoverDescription()
 	{
 		return "ClearActionsForDefendActivity: Goes over all group members and makes them leave the actions they were assigned to. Returns RUNNING until all canceled behaviors are done.";
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool CanReturnRunning() {	return true;	}
+	static override bool CanReturnRunning() {	return true;	}
 }

@@ -19,8 +19,8 @@ class SCR_DesaturationEffect : SCR_BaseScreenEffect
 
 	// Character
 	protected ChimeraCharacter m_pCharacterEntity;
-	protected SCR_CharacterBloodHitZone									m_pBloodHZ;
-	protected SCR_CharacterDamageManagerComponent						m_pDamageManager;
+	protected SCR_CharacterBloodHitZone									m_BloodHZ;
+	protected SCR_CharacterDamageManagerComponent						m_DamageManager;
 	protected bool m_bLocalPlayerOutsideCharacter;
 	
 	//------------------------------------------------------------------------------------------------
@@ -47,12 +47,12 @@ class SCR_DesaturationEffect : SCR_BaseScreenEffect
 		if (!m_pCharacterEntity)
 			return;
 		
-		m_pDamageManager = SCR_CharacterDamageManagerComponent.Cast(m_pCharacterEntity.GetDamageManager());
-		if (!m_pDamageManager)
+		m_DamageManager = SCR_CharacterDamageManagerComponent.Cast(m_pCharacterEntity.GetDamageManager());
+		if (!m_DamageManager)
 			return;
 		
 		// define hitzones for later getting
-		m_pBloodHZ = m_pDamageManager.GetBloodHitZone();
+		m_BloodHZ = m_DamageManager.GetBloodHitZone();
 		
 		m_pCharacterEntity.GetWorld().SetCameraPostProcessEffect(m_pCharacterEntity.GetWorld().GetCurrentCameraId(), COLORS_PP_PRIORITY, PostProcessEffectType.Colors, DESATURATION_EMAT);
 	}
@@ -70,18 +70,18 @@ class SCR_DesaturationEffect : SCR_BaseScreenEffect
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void UpdateEffect(float timeSlice)
+	protected override void UpdateEffect(float timeSlice)
 	{
 		AddDesaturationEffect();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void AddDesaturationEffect()
+	protected void AddDesaturationEffect()
 	{
-		if (!m_pBloodHZ)
+		if (!m_BloodHZ)
 			return;
 
-		float bloodLevel = Math.InverseLerp(m_fDesaturationEnd, m_fDesaturationStart, m_pBloodHZ.GetHealthScaled());
+		float bloodLevel = Math.InverseLerp(m_fDesaturationEnd, m_fDesaturationStart, m_BloodHZ.GetHealthScaled());
 
 		s_fSaturation = Math.Clamp(bloodLevel, 0, 1);
 		s_bEnableSaturation = s_fSaturation < 1;

@@ -67,13 +67,15 @@ class SCR_BaseTooltipTargetEditorUIComponent : SCR_BaseEditorUIComponent
 	//------------------------------------------------------------------------------------------------
 	override bool OnMouseEnter(Widget w, int x, int y)
 	{
-		return OnFocus(w, x, y);
+		ShowTooltip();
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
 	{
-		return OnFocusLost(w, x, y);
+		HideTooltip();
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------

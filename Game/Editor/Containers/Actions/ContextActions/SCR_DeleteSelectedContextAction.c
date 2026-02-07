@@ -9,6 +9,7 @@ class SCR_DeleteSelectedContextAction : SCR_SelectedEntitiesContextAction
 	{
 		return CanBePerformed(selectedEntity, cursorWorldPosition, flags);
 	}
+	
 	override bool CanBePerformed(SCR_EditableEntityComponent selectedEntity, vector cursorWorldPosition, int flags)
 	{
 		//--- Prevent deleting players. Check the entity and compartments directly; don't rely on PLAYER state, as PLAYER filter may not be present in this editor mode.
@@ -64,6 +65,7 @@ class SCR_DeleteSelectedContextAction : SCR_SelectedEntitiesContextAction
 			&& !selectedEntity.HasEntityFlag(EEditableEntityFlag.NON_INTERACTIVE);
 			//&& !selectedEntity.HasEntityState(EEditableEntityState.PLAYER);
 	}
+	
 	override void Perform(SCR_EditableEntityComponent selectedEntity, vector cursorWorldPosition)
 	{
 		if (selectedEntity)

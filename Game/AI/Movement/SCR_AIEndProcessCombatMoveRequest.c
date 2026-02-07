@@ -58,5 +58,5 @@ class SCR_AIEndProcessCombatMoveRequest : AITaskScripted
 		return s_aVarsIn;
 	}
 	
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }

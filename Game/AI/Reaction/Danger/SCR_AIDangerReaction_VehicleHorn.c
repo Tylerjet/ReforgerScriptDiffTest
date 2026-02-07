@@ -34,7 +34,7 @@ class SCR_AIDangerReaction_VehicleHorn : SCR_AIDangerReaction
 			return false;
 		
 		//Enemy car
-		if(agent.IsEnemy(vehicleObject))
+		if(agent.IsPerceivedEnemy(vehicleObject))
 		{
 			//Orientate towards the sound origin
 			utility.m_LookAction.LookAt(dangerEvent.GetPosition(), utility.m_LookAction.PRIO_DANGER_EVENT);

@@ -60,7 +60,7 @@ class ScriptModule
 	\param errorLine output from compiler
 	\returns Loaded scripted module
 	*/
-	static proto ref ScriptModule CompileScript(ScriptModule pParentModule, string text, out string errorText, out int errorLine);
+	static proto ref ScriptModule CompileScript(ScriptModule parentModule, string text, out string errorText, out int errorLine);
 }
 
 /*!

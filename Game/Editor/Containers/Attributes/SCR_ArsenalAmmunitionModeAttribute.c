@@ -30,6 +30,8 @@ class SCR_ArsenalAmmunitionModeAttribute : SCR_BaseFloatValueHolderEditorAttribu
 		return SCR_BaseEditorAttributeVar.CreateInt(weaponsAmmunitionIndex);
 	}
 	
+	//---- REFACTOR NOTE START: weaponsAmmunitionIndex seem oddly specific but hard to understand ----
+	
 	//------------------------------------------------------------------------------------------------
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)
 	{
@@ -69,4 +71,6 @@ class SCR_ArsenalAmmunitionModeAttribute : SCR_BaseFloatValueHolderEditorAttribu
 		
 		arsenalComponent.SetSupportedArsenalItemModes(itemMode);
 	}
+	
+	//---- REFACTOR NOTE END ----
 }

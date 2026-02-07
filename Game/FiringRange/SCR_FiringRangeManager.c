@@ -484,7 +484,7 @@ class SCR_FiringRangeManager : ScriptedGameTriggerEntity
 	{
 		auto pm = GetGame().GetPlayerManager();
 		int iPlayerID = pm.GetPlayerIdFromControlledEntity(ent);
-		return pm.GetPlayerName(iPlayerID);
+		return SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(iPlayerID);
 	}
 	
 	//------------------------------------------------------------------------------------------------

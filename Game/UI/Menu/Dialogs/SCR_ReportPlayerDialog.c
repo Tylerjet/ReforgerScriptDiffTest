@@ -48,7 +48,7 @@ class SCR_ReportPlayerDialog : SCR_ConfigurableDialogUi
 		if (!reportedPlayerName)
 			return;
 		
-		string name = GetGame().GetPlayerManager().GetPlayerName(m_iReportedPlayedID);
+		string name = SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(m_iReportedPlayedID);
 		reportedPlayerName.SetText(name);
     }
 	
@@ -140,6 +140,21 @@ class SCR_ReportReasonComponent : ScriptedWidgetComponent
 {
 	[Attribute(SCR_EReportReason.CHEATING.ToString(), UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_EReportReason))]
 	protected SCR_EReportReason m_eReason;
+	
+	[Attribute("Content", UIWidgets.EditBox, "Widget in which the text of the reason is placed")]
+	protected string m_sReasonTextWidget;
+	
+	[Attribute("", UIWidgets.EditBox, "ID of the localized string for the report reason")]
+	protected string m_sReasonLocalizedTextID;
+	
+	//------------------------------------------------------------------------------------------------
+	override void HandlerAttached(Widget w)
+	{		
+		TextWidget textWidget = TextWidget.Cast(w.FindAnyWidget(m_sReasonTextWidget));
+		if (!textWidget)
+			return;
+		textWidget.SetText(m_sReasonLocalizedTextID);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	SCR_EReportReason GetReason()

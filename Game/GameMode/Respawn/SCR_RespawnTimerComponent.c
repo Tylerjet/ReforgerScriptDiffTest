@@ -280,7 +280,7 @@ class SCR_RespawnTimerComponent : SCR_BaseGameModeComponent
 				isFinished = "True";
 
 			string playerIdentifier = playerId.ToString();
-			string playerName = playerManager.GetPlayerName(playerId);
+			string playerName = SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(playerId);
 			string time = timer.GetRemainingTime(timeNow).ToString();
 			string obj = timer.ToString();
 

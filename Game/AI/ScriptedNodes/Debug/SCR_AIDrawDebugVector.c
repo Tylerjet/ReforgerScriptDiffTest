@@ -17,7 +17,7 @@ class SCR_AIDrawDebugVector: AITaskScripted
     }
 	
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
     {
         return true;
     }
@@ -41,7 +41,7 @@ class SCR_AIDrawDebugVector: AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Draws a vector from Start to End";
 	}	

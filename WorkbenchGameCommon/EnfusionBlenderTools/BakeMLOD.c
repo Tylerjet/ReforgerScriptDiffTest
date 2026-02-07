@@ -120,12 +120,23 @@ class BakeMLODPlugin : WorkbenchPlugin
 		operatorDescription.AddParam("fix_ray_miss_extents", startBakeDialog.m_eFixRayExtents);
 		operatorDescription.AddParam("super_sampling", superSamplingSize);
 		
+		
 		if (startBakeDialog.Type() == StartBakeDialogXOB)
 		{
-			operatorDescription.blIDName = "ebt.bake_workbench_background_xob_mlod";
 			StartBakeDialogXOB dialog = StartBakeDialogXOB.Cast(startBakeDialog);
+			
+			string absTexturePath = "";
+			// When you wanna get absolute path but no param, then it will give you the root of... The last addon?
+			if(dialog.m_sTexturePath != "")
+			{
+				Workbench.GetAbsolutePath(dialog.m_sTexturePath,absTexturePath);
+			}
+			operatorDescription.blIDName = "ebt.bake_workbench_background_xob_mlod";
 			operatorDescription.AddParam("re_uv", dialog.m_bReUV);
 			operatorDescription.AddParam("skip_transparent", dialog.m_bSkipTransparent);
+			operatorDescription.AddParam("create_new_texture", dialog.m_bCreateNewTexture);
+			operatorDescription.AddParam("texture_name",dialog.m_sTextureName);
+			operatorDescription.AddParam("texture_path",absTexturePath);
 		}
 		else
 		{
@@ -264,6 +275,16 @@ class StartBakeDialogXOB : StartBakeDialog
 
 	[Attribute("False", UIWidgets.EditBox, "", category : "Settings")]
 	bool m_bReUV;
+	
+	[Attribute(uiwidget: UIWidgets.FileNamePicker, desc: "Root directory to search", params:"unregFolders", category : "New Texture")]
+	string m_sTexturePath;
+	
+	[Attribute("", UIWidgets.Auto, desc:"Name of the new texture",category: "New Texture")]
+	string m_sTextureName;
+	
+	[Attribute("", UIWidgets.EditBox, "", category: "Settings")]
+	bool m_bCreateNewTexture;
+	
 
 }
 
@@ -503,7 +524,7 @@ class OverrideMeshObjectMaterial : NetApiHandler
 		ResourceName materialResourceName = materialMeta.GetResourceID();
 
 		BaseContainerList prefabMaterials = prefabMeshObject.GetObjectArray("Materials");
-
+    
 		if (prefabMaterials.Count() != 0)
 		{
 			for (int i = 0; i < prefabMaterials.Count(); i++)

@@ -15,6 +15,8 @@ class SCR_GameOverScreenManagerComponent : SCR_BaseGameModeComponent
 	[Attribute("{144919871D65F121}UI/layouts/HUD/GameOver/EndScreen/EndScreen.layout", params: "layout")]
 	protected ResourceName m_sGameOverScreenBasePrefab;
 	
+	protected ResourceName m_sGameOverScreenOverwritePrefab;
+	
 	//Editor only
 	protected bool m_bListeningToEditorCalledEndGame = false;
 	protected EGameOverTypes m_iEditorSetGameOverType;
@@ -42,6 +44,14 @@ class SCR_GameOverScreenManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Sets which background will be used in the game over screen
+	//! param[in] overWriteLayout Layout that will be used instead of basic game over screen
+	void SetGameOverScreenOverWrite(ResourceName overWriteLayout)
+	{
+		m_sGameOverScreenOverwritePrefab = overWriteLayout;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Called when end game is called on GameMode
 	//! Fade the endgame screen but retain control
 	//! Once the fade in is done the end screen will be shown
@@ -52,7 +62,12 @@ class SCR_GameOverScreenManagerComponent : SCR_BaseGameModeComponent
 		if (!hudManager)
 			return;
 		
-		m_EndScreenFade = hudManager.CreateLayout(m_sGameOverScreenBasePrefab, EHudLayers.ALWAYS_TOP, 0);
+		ResourceName gameOverscreen = m_sGameOverScreenBasePrefab;
+		
+		if (!m_sGameOverScreenOverwritePrefab.IsEmpty())
+			gameOverscreen = m_sGameOverScreenOverwritePrefab;
+		
+		m_EndScreenFade = hudManager.CreateLayout(gameOverscreen, EHudLayers.ALWAYS_TOP, 0);
 		SCR_FadeUIComponent fadeComponent = SCR_FadeUIComponent.Cast(m_EndScreenFade.FindHandler(SCR_FadeUIComponent));
 		
 		if (!fadeComponent)
@@ -140,7 +155,7 @@ class SCR_GameOverScreenManagerComponent : SCR_BaseGameModeComponent
 				if (!m_bIsPlayingGameOverAudio)
 					s_OnEndGame.Invoke(gameOverScreenInfo.GetOneShotAudio(m_FactionPlayer, m_aWinningFactions));
 				
-				SCR_GameOverScreenUIComponent gameOverScreen = OpenGameOverScreen(gameOverScreenInfo.GetGameOverContentLayout(), endData, gameOverScreenInfo.GetTitle(m_FactionPlayer, m_aWinningFactions), gameOverScreenInfo.GetSubtitle(m_FactionPlayer, m_aWinningFactions), gameOverScreenInfo.GetDebriefing(m_FactionPlayer, m_aWinningFactions), gameOverScreenInfo.GetImage(m_FactionPlayer, m_aWinningFactions), gameOverScreenInfo.GetIcon(m_FactionPlayer, m_aWinningFactions), gameOverScreenInfo.GetVignetteColor(m_FactionPlayer, m_aWinningFactions), gameOverScreenInfo.GetTitleParam(m_FactionPlayer, m_aWinningFactions), gameOverScreenInfo.GetSubtitleParam(m_FactionPlayer, m_aWinningFactions), gameOverScreenInfo.GetDebriefingParam(m_FactionPlayer, m_aWinningFactions));
+				SCR_GameOverScreenUIComponent gameOverScreen = OpenGameOverScreen(gameOverScreenInfo.GetGameOverContentLayout(), gameOverScreenInfo, endData, gameOverScreenInfo.GetTitle(m_FactionPlayer, m_aWinningFactions), gameOverScreenInfo.GetSubtitle(m_FactionPlayer, m_aWinningFactions), gameOverScreenInfo.GetDebriefing(m_FactionPlayer, m_aWinningFactions), gameOverScreenInfo.GetImage(m_FactionPlayer, m_aWinningFactions), gameOverScreenInfo.GetIcon(m_FactionPlayer, m_aWinningFactions), gameOverScreenInfo.GetVignetteColor(m_FactionPlayer, m_aWinningFactions), gameOverScreenInfo.GetTitleParam(m_FactionPlayer, m_aWinningFactions), gameOverScreenInfo.GetSubtitleParam(m_FactionPlayer, m_aWinningFactions), gameOverScreenInfo.GetDebriefingParam(m_FactionPlayer, m_aWinningFactions));
 				gameOverScreenInfo.GameOverUICustomization(gameOverScreen, m_FactionPlayer, m_aWinningFactions);
 				return gameOverScreen;
 			}
@@ -149,7 +164,7 @@ class SCR_GameOverScreenManagerComponent : SCR_BaseGameModeComponent
 				if (!m_bIsPlayingGameOverAudio)
 					s_OnEndGame.Invoke(gameOverScreenInfo.GetOneShotAudio(m_iPlayerId, m_aWinningPlayers));
 
-				SCR_GameOverScreenUIComponent gameOverScreen = OpenGameOverScreen(gameOverScreenInfo.GetGameOverContentLayout(), endData, gameOverScreenInfo.GetTitle(m_iPlayerId, m_aWinningPlayers), gameOverScreenInfo.GetSubtitle(m_iPlayerId, m_aWinningPlayers), gameOverScreenInfo.GetDebriefing(m_iPlayerId, m_aWinningPlayers), gameOverScreenInfo.GetImage(m_iPlayerId, m_aWinningPlayers), gameOverScreenInfo.GetIcon(m_iPlayerId, m_aWinningPlayers), gameOverScreenInfo.GetVignetteColor(m_iPlayerId, m_aWinningPlayers), gameOverScreenInfo.GetTitleParam(m_iPlayerId, m_aWinningPlayers), gameOverScreenInfo.GetSubtitleParam(m_iPlayerId, m_aWinningPlayers), gameOverScreenInfo.GetDebriefingParam(m_iPlayerId, m_aWinningPlayers));
+				SCR_GameOverScreenUIComponent gameOverScreen = OpenGameOverScreen(gameOverScreenInfo.GetGameOverContentLayout(), gameOverScreenInfo, endData, gameOverScreenInfo.GetTitle(m_iPlayerId, m_aWinningPlayers), gameOverScreenInfo.GetSubtitle(m_iPlayerId, m_aWinningPlayers), gameOverScreenInfo.GetDebriefing(m_iPlayerId, m_aWinningPlayers), gameOverScreenInfo.GetImage(m_iPlayerId, m_aWinningPlayers), gameOverScreenInfo.GetIcon(m_iPlayerId, m_aWinningPlayers), gameOverScreenInfo.GetVignetteColor(m_iPlayerId, m_aWinningPlayers), gameOverScreenInfo.GetTitleParam(m_iPlayerId, m_aWinningPlayers), gameOverScreenInfo.GetSubtitleParam(m_iPlayerId, m_aWinningPlayers), gameOverScreenInfo.GetDebriefingParam(m_iPlayerId, m_aWinningPlayers));
 				gameOverScreenInfo.GameOverUICustomization(gameOverScreen, m_iPlayerId, m_aWinningPlayers);
 				return gameOverScreen;
 			}
@@ -158,13 +173,13 @@ class SCR_GameOverScreenManagerComponent : SCR_BaseGameModeComponent
 		{
 			if (m_bIsFactionVictory)
 			{
-				SCR_GameOverScreenUIComponent gameOverScreen = OpenGameOverScreen(gameOverScreenInfo.GetGameOverContentLayout(), endData, gameOverScreenInfo.GetTitle(m_FactionPlayer, m_aWinningFactions));
+				SCR_GameOverScreenUIComponent gameOverScreen = OpenGameOverScreen(gameOverScreenInfo.GetGameOverContentLayout(), gameOverScreenInfo, endData, gameOverScreenInfo.GetTitle(m_FactionPlayer, m_aWinningFactions));
 				gameOverScreenInfo.GameOverUICustomization(gameOverScreen, m_FactionPlayer, m_aWinningFactions);
 				return gameOverScreen;
 			}
 			else 
 			{
-				SCR_GameOverScreenUIComponent gameOverScreen = OpenGameOverScreen(gameOverScreenInfo.GetGameOverContentLayout(), endData, gameOverScreenInfo.GetTitle(m_iPlayerId, m_aWinningPlayers));
+				SCR_GameOverScreenUIComponent gameOverScreen = OpenGameOverScreen(gameOverScreenInfo.GetGameOverContentLayout(), gameOverScreenInfo, endData, gameOverScreenInfo.GetTitle(m_iPlayerId, m_aWinningPlayers));
 				gameOverScreenInfo.GameOverUICustomization(gameOverScreen, m_iPlayerId, m_aWinningPlayers);
 				return gameOverScreen;
 			}
@@ -400,6 +415,7 @@ class SCR_GameOverScreenManagerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	//! Open end screen
 	//! \param[in] contentLayout
+	//! \param[in] gameOverInfo
 	//! \param[in] endData
 	//! \param[in] title title of game over screen
 	//! \param[in] subtitle subtitle of game over screen
@@ -411,7 +427,7 @@ class SCR_GameOverScreenManagerComponent : SCR_BaseGameModeComponent
 	//! \param[in] subtitleParam subtitle param %1
 	//! \param[in] debriefingParam debriefing param %1
 	//! \return Widget endscreen widget
-	SCR_GameOverScreenUIComponent OpenGameOverScreen(ResourceName contentLayout, SCR_GameModeEndData endData, LocalizedString title = string.Empty, LocalizedString subtitle = string.Empty, LocalizedString debriefing = string.Empty, ResourceName imageTexture = ResourceName.Empty, ResourceName icon = ResourceName.Empty, Color vignetteColor = null, string titleParam = string.Empty, string subtitleParam = string.Empty, string debriefingParam = string.Empty)
+	SCR_GameOverScreenUIComponent OpenGameOverScreen(ResourceName contentLayout, SCR_BaseGameOverScreenInfo gameOverInfo, SCR_GameModeEndData endData, LocalizedString title = string.Empty, LocalizedString subtitle = string.Empty, LocalizedString debriefing = string.Empty, ResourceName imageTexture = ResourceName.Empty, ResourceName icon = ResourceName.Empty, Color vignetteColor = null, string titleParam = string.Empty, string subtitleParam = string.Empty, string debriefingParam = string.Empty)
 	{
 		SCR_HUDManagerComponent hudManager = GetGame().GetHUDManager();
 		if (!hudManager)
@@ -420,13 +436,18 @@ class SCR_GameOverScreenManagerComponent : SCR_BaseGameModeComponent
 		//This is just temporary hopefully. This bypasses a lot of the code here and in other files. If one wants to change the layout, do it in Menu Config.
 		MenuBase menu = GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.EndgameScreen, 0, true);
 		
-		Widget screen = menu.GetRootWidget();
+		ResourceName gameOverscreen = m_sGameOverScreenBasePrefab;
+		
+		if (!m_sGameOverScreenOverwritePrefab.IsEmpty())
+			gameOverscreen = m_sGameOverScreenOverwritePrefab;
+		
+		Widget screen = GetGame().GetWorkspace().CreateWidgets(gameOverscreen, menu.GetRootWidget());
 				
 		SCR_GameOverScreenUIComponent screenUIComponent = SCR_GameOverScreenUIComponent.Cast(screen.FindHandler(SCR_GameOverScreenUIComponent));
 		
 		if (screenUIComponent)
 		{
-			SCR_GameOverScreenUIContentData content = new SCR_GameOverScreenUIContentData(contentLayout, endData, title, subtitle, debriefing, imageTexture, icon, vignetteColor, titleParam, subtitleParam, debriefingParam);
+			SCR_GameOverScreenUIContentData content = new SCR_GameOverScreenUIContentData(contentLayout, gameOverInfo, endData, title, subtitle, debriefing, imageTexture, icon, vignetteColor, titleParam, subtitleParam, debriefingParam);
 			screenUIComponent.InitGameOverScreen(content);
 		}
 
@@ -541,6 +562,7 @@ class SCR_GameOverScreenManagerComponent : SCR_BaseGameModeComponent
 class SCR_GameOverScreenUIContentData
 {
 	ResourceName m_sGameOverLayout;
+	SCR_BaseGameOverScreenInfo m_GameOverInfo;
 	ref SCR_GameModeEndData m_EndGameData;
 	LocalizedString m_sTitle;
 	LocalizedString m_sSubtitle; 
@@ -555,6 +577,7 @@ class SCR_GameOverScreenUIContentData
 	//------------------------------------------------------------------------------------------------
 	// constructor
 	//! \param[in] gameOverLayout
+	//! \param[in] gameOverInfo
 	//! \param[in] endGameData
 	//! \param[in] title
 	//! \param[in] subtitle
@@ -565,9 +588,10 @@ class SCR_GameOverScreenUIContentData
 	//! \param[in] titleParam
 	//! \param[in] subtitleParam
 	//! \param[in] debriefingParam
-	void SCR_GameOverScreenUIContentData(ResourceName gameOverLayout, SCR_GameModeEndData endGameData, LocalizedString title = string.Empty, LocalizedString subtitle = string.Empty, LocalizedString debriefing = string.Empty, ResourceName imageTexture = ResourceName.Empty, ResourceName icon = ResourceName.Empty, Color vignetteColor = null, string titleParam = string.Empty, string subtitleParam = string.Empty, string debriefingParam = string.Empty)
+	void SCR_GameOverScreenUIContentData(ResourceName gameOverLayout, SCR_BaseGameOverScreenInfo gameOverInfo, SCR_GameModeEndData endGameData, LocalizedString title = string.Empty, LocalizedString subtitle = string.Empty, LocalizedString debriefing = string.Empty, ResourceName imageTexture = ResourceName.Empty, ResourceName icon = ResourceName.Empty, Color vignetteColor = null, string titleParam = string.Empty, string subtitleParam = string.Empty, string debriefingParam = string.Empty)
 	{
 		m_sGameOverLayout = gameOverLayout;
+		m_GameOverInfo = gameOverInfo;
 		m_EndGameData = endGameData;
 		m_sTitle = title;
 		m_sSubtitle = subtitle;

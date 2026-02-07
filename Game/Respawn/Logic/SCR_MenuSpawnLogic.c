@@ -7,6 +7,12 @@ class SCR_MenuSpawnLogic : SCR_SpawnLogic
 	[Attribute("{A1CE9D1EC16DA9BE}UI/layouts/Menus/MainMenu/SplashScreen.layout", desc: "Layout shown before deploy menu opens on client")]
 	protected ResourceName m_sLoadingLayout;
 
+	[Attribute("0", desc: "Delay opening deploy menu until player has a spawn point available")]
+	protected bool m_bWaitForSpawnPoints;
+
+	[Attribute("0", desc: "If true, use a fade effect when deploy map is open")]
+	protected bool m_bUseFadeEffect;
+
 	protected Widget m_wLoadingPlaceholder;
 	protected SCR_LoadingSpinner m_LoadingPlaceholder;
 
@@ -58,6 +64,11 @@ class SCR_MenuSpawnLogic : SCR_SpawnLogic
 	{
 		if (m_sForcedFaction.IsEmpty())
 			return false;
+		
+		// Resolve Alias
+		SCR_FactionAliasComponent factionAliasComponent = SCR_FactionAliasComponent.Cast(GetGame().GetFactionManager().FindComponent(SCR_FactionAliasComponent));
+		if (factionAliasComponent) 
+			m_sForcedFaction = factionAliasComponent.ResolveFactionAlias(m_sForcedFaction);
 
 		faction = GetGame().GetFactionManager().GetFactionByKey(m_sForcedFaction);
 		if (!faction)
@@ -102,5 +113,23 @@ class SCR_MenuSpawnLogic : SCR_SpawnLogic
 		m_wLoadingPlaceholder.RemoveFromHierarchy();
 		m_wLoadingPlaceholder = null;
 		m_LoadingPlaceholder = null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool GetWaitForSpawnPoints()
+	{
+		return m_bWaitForSpawnPoints;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool GetUseFadeEffect()
+	{
+		return m_bUseFadeEffect;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ~SCR_MenuSpawnLogic()
+	{
+		DestroyLoadingPlaceholder();
 	}
 };

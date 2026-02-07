@@ -105,19 +105,19 @@ class SCR_AIPerformSmartUserAction : AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override bool CanReturnRunning()
+	protected static override bool CanReturnRunning()
 	{
 		return true;
 	}
 	
 	// -----------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Performs specified smart action on target entity. Both must be specified. It can either perform it OnSimulate (default) or OnAbort.";
 	}

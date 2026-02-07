@@ -7,6 +7,7 @@ class SCR_Tutorial_CombatEngineering_SelectPrefab_1 : SCR_BaseTutorialStage
 {
 	protected Widget m_wHighlight;
 	protected bool m_bPreviewSelected;
+	protected string m_sSpawnedEntityName = "BUILDING_VEHICLE";
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
 	{
@@ -33,7 +34,7 @@ class SCR_Tutorial_CombatEngineering_SelectPrefab_1 : SCR_BaseTutorialStage
 	//------------------------------------------------------------------------------------------------
 	override protected bool GetIsFinished()
 	{
-		return m_bPreviewSelected;
+		return m_bPreviewSelected || GetGame().GetWorld().FindEntityByName(m_sSpawnedEntityName);
 	}
 	
 	//------------------------------------------------------------------------------------------------

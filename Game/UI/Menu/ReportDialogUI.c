@@ -51,7 +51,7 @@ class ReportDialogUI: DialogUI
 		
 		if(m_InputField)
 		{
-			m_InputField.m_OnWriteModeLeave.Insert(OnWriteModeLeave);
+			m_InputField.m_OnWriteModeLeave.Insert(OnWriteModeLeaveInternal);
 			m_InputField.m_OnTextChange.Insert(OnTextChange);
 		}
 		
@@ -173,7 +173,7 @@ class ReportDialogUI: DialogUI
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnWriteModeLeave(string text)
+	protected void OnWriteModeLeaveInternal(string text)
 	{
 		OnTextChange(text);
 	}

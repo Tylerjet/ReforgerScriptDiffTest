@@ -30,13 +30,13 @@ class SCR_AIIsTargetVisible : DecoratorScripted
 	}
 	
 	//-----------------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}	
 	
 	//-----------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "IsTargetVisible: Checks if target is visible. The check is performed through Combat Component.";
 	}

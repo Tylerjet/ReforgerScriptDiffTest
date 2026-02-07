@@ -55,7 +55,7 @@ class CharacterCameraADSVehicle extends CharacterCameraADS
 	{
 		OnBlendingOut(1.0);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	override protected void OnBlendingIn(float blendAlpha)
 	{
@@ -64,7 +64,12 @@ class CharacterCameraADSVehicle extends CharacterCameraADS
 
 		// Only enable if not enabled
 		if (m_TurretController && !m_TurretController.GetCurrentSightsADS())
+		{
 			m_TurretController.SetCurrentSightsADS(true);
+			
+			SCR_OptimizedMuzzleEffectComponent.OptimizeMuzzleEffect(true, m_TurretController);
+	
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -75,7 +80,11 @@ class CharacterCameraADSVehicle extends CharacterCameraADS
 
 		// Only disable if enabled
 		if (m_TurretController && m_TurretController.GetCurrentSightsADS())
+		{
 			m_TurretController.SetCurrentSightsADS(false);
+			
+			SCR_OptimizedMuzzleEffectComponent.OptimizeMuzzleEffect(false, m_TurretController);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -89,52 +98,57 @@ class CharacterCameraADSVehicle extends CharacterCameraADS
 				OnBlendingOut(m_CameraHandler.GetBlendAlpha(m_CameraHandler.GetCurrentCamera()));
 		}
 
-		TurretComponent turret = m_TurretController.GetTurretComponent();
-		vector aimingTranslationWeaponLS = turret.GetRawAimingTranslation();
-
-		// Disable recoil camera translation of turret mounted weapons
-		aimingTranslationWeaponLS -= turret.GetCurrentRecoilTranslation();
-
-		// Sight camera slot
-		BaseSightsComponent sights = turret.GetSights();
-		PointInfo cameraSlot;
-		if (sights)
-			cameraSlot = sights.GetPositionPointInfo();
-
-		// Legacy camera slot of TurretComponent
-		if (!cameraSlot)
-			cameraSlot = turret.GetCameraAttachmentSlot();
-
-		if (cameraSlot != m_CameraSlot)
-			m_CameraSlot = cameraSlot;
-
-		//! sights transformation and FOV get
-		if (cameraSlot)
+		BaseSightsComponent sights;
+		
+		if (m_TurretController)
 		{
-			vector sightLSMat[4];
-			m_TurretController.GetCurrentSightsCameraLocalTransform(sightLSMat, pOutResult.m_fFOV);
-			sightLSMat[3] = sightLSMat[3] - aimingTranslationWeaponLS;
-
-			vector cameraSlotMat[4];
-			cameraSlot.GetModelTransform(cameraSlotMat);
-
-			pOutResult.m_CameraTM[3]            = (sightLSMat[3] - cameraSlotMat[3]).InvMultiply3(cameraSlotMat);
-			pOutResult.m_pWSAttachmentReference = cameraSlot;
-		}
-		else
-		{
-			//Add translation
-			vector sightWSMat[4];
-			m_TurretController.GetCurrentSightsCameraTransform(sightWSMat, pOutResult.m_fFOV);
-			sightWSMat[3] = sightWSMat[3] - aimingTranslationWeaponLS.Multiply3(sightWSMat);
-
-			// character matrix
-			vector charMat[4];
-			m_OwnerCharacter.GetTransform(charMat);
-			Math3D.MatrixInvMultiply4(charMat, sightWSMat, pOutResult.m_CameraTM);
-
-			pOutResult.m_pOwner                 = m_OwnerCharacter;
-			pOutResult.m_pWSAttachmentReference = null;
+			TurretComponent turret = m_TurretController.GetTurretComponent();
+			vector aimingTranslationWeaponLS = turret.GetRawAimingTranslation();
+	
+			// Disable recoil camera translation of turret mounted weapons
+			aimingTranslationWeaponLS -= turret.GetCurrentRecoilTranslation();
+	
+			// Sight camera slot
+			sights = turret.GetSights();
+			PointInfo cameraSlot;
+			if (sights)
+				cameraSlot = sights.GetPositionPointInfo();
+	
+			// Legacy camera slot of TurretComponent
+			if (!cameraSlot)
+				cameraSlot = turret.GetCameraAttachmentSlot();
+	
+			if (cameraSlot != m_CameraSlot)
+				m_CameraSlot = cameraSlot;
+	
+			//! sights transformation and FOV get
+			if (cameraSlot)
+			{
+				vector sightLSMat[4];
+				m_TurretController.GetCurrentSightsCameraLocalTransform(sightLSMat, pOutResult.m_fFOV);
+				sightLSMat[3] = sightLSMat[3] - aimingTranslationWeaponLS;
+	
+				vector cameraSlotMat[4];
+				cameraSlot.GetModelTransform(cameraSlotMat);
+	
+				pOutResult.m_CameraTM[3]            = (sightLSMat[3] - cameraSlotMat[3]).InvMultiply3(cameraSlotMat);
+				pOutResult.m_pWSAttachmentReference = cameraSlot;
+			}
+			else
+			{
+				//Add translation
+				vector sightWSMat[4];
+				m_TurretController.GetCurrentSightsCameraTransform(sightWSMat, pOutResult.m_fFOV);
+				sightWSMat[3] = sightWSMat[3] - aimingTranslationWeaponLS.Multiply3(sightWSMat);
+	
+				// character matrix
+				vector charMat[4];
+				m_OwnerCharacter.GetTransform(charMat);
+				Math3D.MatrixInvMultiply4(charMat, sightWSMat, pOutResult.m_CameraTM);
+	
+				pOutResult.m_pWSAttachmentReference = null;
+				pOutResult.m_pOwner            		= m_OwnerCharacter; //! m_pOwner is only set if there is no WSAttachment which might cause issues in the future
+			}
 		}
 
 		pOutResult.m_iDirectBone         = -1;

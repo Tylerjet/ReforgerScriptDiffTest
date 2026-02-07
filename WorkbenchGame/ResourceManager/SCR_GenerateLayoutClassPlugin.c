@@ -1,79 +1,57 @@
 #ifdef WORKBENCH
 //! This plugin generates a scripted class with variables for widgets and code to find widgets by their name.
 //! It also generates code to find all widget components.
-[WorkbenchPluginAttribute(name: "Generate Class from Layout", wbModules: { "ResourceManager" }, awesomeFontCode: 0xF0DB)]
+[WorkbenchPluginAttribute(name: PLUGIN_NAME, wbModules: { "ResourceManager" }, awesomeFontCode: 0xF0DB)]
 class SCR_GenerateLayoutClassPlugin : WorkbenchPlugin
 {
-	protected string m_sScriptClassName;	// name of generated script class
-	protected string m_sFileOutName;		// file name
-	protected string m_sDestinationPath;	// full path with file name
-
-	protected bool m_bInitSuccess;
-	protected BaseContainer m_RootExportRule;	// base container of root export rule component
-
-	protected static const string PLUGIN_VERSION = "0.5.0"; // version, it will be printed in the generated file too
-
-	//------------------------------------------------------------------------------------------------
-	[ButtonAttribute("Generate", true)]
-	protected bool ButtonOK()
-	{
-		if (!m_bInitSuccess)
-			return false;
-
-		BaseContainer widgetSource = Workbench.GetModule(ResourceManager).GetContainer();
-
-		Generate(widgetSource, m_sScriptClassName, m_sFileOutName);
-		return true;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	[ButtonAttribute("Cancel")]
-	protected bool ButtonCancel()
-	{
-		return false;
-	}
+	protected static const string PLUGIN_VERSION = "0.5.1"; // plugin version, printed in the generated file
+	protected static const string PLUGIN_NAME = "Generate Class from Layout";
+	protected static const string DIALOG_CAPTION = PLUGIN_NAME + " [v" + PLUGIN_VERSION + "]";
+	protected static const string INTRO_TEXT = "This plugin autogenerates widget-binding scripts for .layout files.\n\n";
 
 	//------------------------------------------------------------------------------------------------
 	override void Run()
 	{
-		const string dlgName = "Generate Class from Layout";
-		const string introText = "This plugin autogenerates widget-binding scripts for .layout files.\n\n";
-		m_bInitSuccess = false;
 		_print("Run()");
 
 		BaseContainer widgetSource = Workbench.GetModule(ResourceManager).GetContainer();
 		if (!widgetSource) // bail if we are not in layout editor
 		{
-			Workbench.ScriptDialog(dlgName, introText + "You need to open a .layout file first!", this);
+			Workbench.Dialog(DIALOG_CAPTION, INTRO_TEXT + "You need to open a .layout file first!");
 			return;
 		}
 
-		m_RootExportRule = SCR_WidgetExportRuleRoot.FindInWidgetSource(widgetSource);
-		if (!m_RootExportRule) // bail if SCR_WidgetExportRuleRoot was not found
+		BaseContainer exportRule = SCR_WidgetExportRuleRoot.FindInWidgetSource(widgetSource);
+		if (!exportRule) // bail if SCR_WidgetExportRuleRoot was not found
 		{
-			Workbench.ScriptDialog(dlgName, introText + "You need to attach a SCR_WidgetExportRuleRoot component to root widget of your layout!", this);
+			Workbench.Dialog(DIALOG_CAPTION, INTRO_TEXT + "You need to attach a SCR_WidgetExportRuleRoot component to root widget of your layout!");
 			return;
 		}
 
 		string layoutPath = widgetSource.GetName();
-		m_sScriptClassName = GenerateScriptClassName(layoutPath);
-		m_sFileOutName = m_sScriptClassName + ".c";
-		m_sDestinationPath = ResolveDestinationPath(m_sFileOutName);
-		string dialogText = introText +
-			"By default the generator exports widgets and their components\nif widget name starts with 'm_'.\n\n" +
-			"Attach SCR_WidgetExportRule component to a widget to alter its export rules\n\n" +
+		string scriptClassName = GenerateScriptClassName(layoutPath, exportRule);
+		string destinationPath = ResolveDestinationPath(scriptClassName + ".c");
+		string dialogText = INTRO_TEXT +
+			"The generator only exports widgets and their components if the widget name starts with 'm_'.\n" +
+			"Attach SCR_WidgetExportRule component to a widget to alter its export rules.\n\n" +
 			"- - - - - - - - - - - - - - - - - - - - \n\n" +
-			string.Format("Generated script class name:\n%1\n\n", m_sScriptClassName) +
-			string.Format("Destination file path:\n%1\n\n", m_sDestinationPath) +
-			"WARNING: The destination file will be overridden if it already exists!\n\n";
+			string.Format("Generated script class name:\n%1\n\n", scriptClassName) +
+			string.Format("Destination file path:\n%1\n\n", destinationPath) +
+			string.Format("WARNING: The destination file will be overwritten if it already exists! (file exists: %1)", FileIO.FileExists(destinationPath).ToString());
 
-		m_bInitSuccess = true;
-		Workbench.ScriptDialog(dlgName, dialogText, this);
+		if (!Workbench.ScriptDialog(DIALOG_CAPTION, dialogText, this))
+			return;
+
+		Generate(widgetSource, exportRule, scriptClassName, destinationPath);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Generates the class name for the generated class
-	protected void Generate(BaseContainer widgetSource, string scriptClassName, string fileOutName)
+	//! \param[in] widgetSource
+	//! \param[in] exportRule
+	//! \param[in] scriptClassName
+	//! \param[in] destinationPath
+	protected void Generate(notnull BaseContainer widgetSource, notnull BaseContainer exportRule, string scriptClassName, string destinationPath)
 	{
 		// build array of all elements we are going to generate code for
 		array<BaseContainer> widgets = {};
@@ -91,7 +69,7 @@ class SCR_GenerateLayoutClassPlugin : WorkbenchPlugin
 
 		// generate the code
 		_print("Iterating widgets...");
-		bool generateFullWidgetPath = SCR_WidgetExportRuleRoot.GetGenerateFullWidgetPath(m_RootExportRule);
+		bool generateFullWidgetPath = SCR_WidgetExportRuleRoot.GetGenerateFullWidgetPath(exportRule);
 		array<BaseContainer> pathToThisWidget;
 		array<BaseContainer> components;
 		foreach (int widgetId, BaseContainer thisWidget : widgets)
@@ -168,13 +146,13 @@ class SCR_GenerateLayoutClassPlugin : WorkbenchPlugin
 
 		// generate whole code
 		string gc =
-			string.Format("// Autogenerated by the Generate Class from Layout plugin v%1\n", PLUGIN_VERSION) +
-			string.Format("// Layout file: %1\n", layoutPath) +
+			string.Format("/" + "/ Autogenerated by the Generate Class from Layout plugin v%1\n", PLUGIN_VERSION) +
+			string.Format("/" + "/ Layout file: %1\n", layoutPath) +
 			string.Format("class %1\n{\n", scriptClassName) + // class declaration and opening
 			string.Format("\tprotected static const ResourceName LAYOUT = \"%1\";\n\n", widgetSource.GetResourceName()) + // constant with layout path
 			variablesDeclaration + "\n" +			// class variablesBinding
 			"\t//------------------------------------------------------------------------------------------------\n" +
-			"\tbool Init(Widget root)\n\t{\n" +		// variable binding
+			"\tbool Init(notnull Widget root)\n\t{\n" +		// variable binding
 			variablesBinding + "\n" +
 			"\t\treturn true;\n\t}\n\n" +
 			"\t//------------------------------------------------------------------------------------------------\n" +
@@ -182,7 +160,7 @@ class SCR_GenerateLayoutClassPlugin : WorkbenchPlugin
 			"}\n";									// close class
 
 		// save everything to file
-		string fileOutPath = m_sDestinationPath;
+		string fileOutPath = destinationPath;
 
 		_print(string.Format("Exporting to file: %1", fileOutPath));
 		FileHandle fileHandle = FileIO.OpenFile(fileOutPath, FileMode.WRITE);
@@ -205,7 +183,7 @@ class SCR_GenerateLayoutClassPlugin : WorkbenchPlugin
 
 	//------------------------------------------------------------------------------------------------
 	//! Checks if conditions for widget export are satisfied
-	protected bool IsWidgetExportRequired(BaseContainer ws, notnull array<BaseContainer> path)
+	protected bool IsWidgetExportRequired(notnull BaseContainer ws, notnull array<BaseContainer> path)
 	{
 		// check if any widgets in the path explicitly disables export
 		// ignore the last widget (this widget), even if its child widgets are not exported,
@@ -298,7 +276,7 @@ class SCR_GenerateLayoutClassPlugin : WorkbenchPlugin
 
 	//------------------------------------------------------------------------------------------------
 	//! \return the script classname based on prefix, path file and suffix (see SCR_WidgetExportRuleRoot.GetClassPrefixAndSuffix)
-	protected string GenerateScriptClassName(string path)
+	protected string GenerateScriptClassName(string path, notnull BaseContainer exportRule)
 	{
 		int slashId = path.LastIndexOf("/");
 		int dotId = path.LastIndexOf(".");
@@ -306,7 +284,7 @@ class SCR_GenerateLayoutClassPlugin : WorkbenchPlugin
 		string fileNameNoPathNoExt = path.Substring(slashId + 1, cutSize);
 
 		string prefix, suffix;
-		SCR_WidgetExportRuleRoot.GetClassPrefixAndSuffix(m_RootExportRule, prefix, suffix);
+		SCR_WidgetExportRuleRoot.GetClassPrefixAndSuffix(exportRule, prefix, suffix);
 
 		return string.Format("%1%2%3", prefix, fileNameNoPathNoExt, suffix);
 	}
@@ -358,6 +336,7 @@ class SCR_GenerateLayoutClassPlugin : WorkbenchPlugin
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] ws
 	//! \return widget's Name property, or empty string in case of no Name property
 	protected static string GetWidgetName(BaseContainer ws)
 	{
@@ -398,7 +377,21 @@ class SCR_GenerateLayoutClassPlugin : WorkbenchPlugin
 	//! Prefixes Print() calls with "[SCR_GenerateLayoutClassPlugin] "
 	protected static void _print(string str, LogLevel logLevel = LogLevel.NORMAL)
 	{
-		Print(string.Format("[GenerateLayoutClassPlugin] %1", str), logLevel);
+		PrintFormat("[GenerateLayoutClassPlugin] %1", str, level: logLevel);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[ButtonAttribute("Generate", true)]
+	protected bool ButtonOK()
+	{
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[ButtonAttribute("Cancel")]
+	protected bool ButtonCancel()
+	{
+		return false;
 	}
 }
 #endif // WORKBENCH

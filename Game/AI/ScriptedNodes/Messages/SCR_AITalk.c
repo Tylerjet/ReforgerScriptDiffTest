@@ -176,7 +176,7 @@ class SCR_AITalk: AITaskScripted
 	}
 	
 	//----------------------------------------------------------------------
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
     {
         return true;
     }
@@ -195,7 +195,7 @@ class SCR_AITalk: AITaskScripted
 	
 	
 	//----------------------------------------------------------------------
-	override protected bool CanReturnRunning()
+	static override protected bool CanReturnRunning()
 	{
 		return true;
 	}

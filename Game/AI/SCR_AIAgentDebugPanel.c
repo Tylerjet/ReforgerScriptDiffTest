@@ -45,6 +45,7 @@ class SCR_AIAgentDebugPanel : Managed
 		SCR_AIBaseUtilityComponent utilityComp;
 		SCR_AIUtilityComponent unitUtilityComp;
 		SCR_AICombatComponent combatComp;
+		SCR_AISettingsBaseComponent settingsComp;
 		
 		if (!m_Agent && !m_Group && !m_Entity)
 		{
@@ -65,6 +66,7 @@ class SCR_AIAgentDebugPanel : Managed
 				utilityComp = SCR_AIBaseUtilityComponent.Cast(m_Agent.FindComponent(SCR_AIBaseUtilityComponent));
 				groupUtilityComp = SCR_AIGroupUtilityComponent.Cast(utilityComp);
 				unitUtilityComp = SCR_AIUtilityComponent.Cast(utilityComp);
+				settingsComp = SCR_AISettingsBaseComponent.Cast(m_Agent.FindComponent(SCR_AISettingsBaseComponent));
 			}
 				
 			
@@ -94,12 +96,8 @@ class SCR_AIAgentDebugPanel : Managed
 			
 			if (combatComp)
 			{
-				EAICombatType combatType = combatComp.GetCombatType();
 				BaseTarget currentEnemy = combatComp.GetCurrentTarget();
-				EAICombatActions allowedActions = combatComp.GetAllowedActions();
-				DbgUI.Text(string.Format("Combat Type: %1", typename.EnumToString(EAICombatType, combatType)));
 				DbgUI.Text(string.Format("Enemy: %1", currentEnemy.ToString()));
-				DbgUI.Text(string.Format("Allowed actions: %1", EnumFlagsToString(EAICombatActions, allowedActions)));
 			}
 			
 			if (mailboxComp)
@@ -163,6 +161,11 @@ class SCR_AIAgentDebugPanel : Managed
 			{
 				DbgUI.Text(groupUtilityComp.m_FireteamMgr.DiagGetFireteamsData());
 				
+				DbgUI.Text(string.Format("Combat Mode External: %1",
+					typename.EnumToString(EAIGroupCombatMode, groupUtilityComp.GetCombatModeExternal())));
+				
+				DbgUI.Text(string.Format("Combat Mode Actual: %1",
+					typename.EnumToString(EAIGroupCombatMode, groupUtilityComp.GetCombatModeActual())));
 				
 				// Show group usable vehicles
 				bool showUsableVehicles;
@@ -220,6 +223,15 @@ class SCR_AIAgentDebugPanel : Managed
 				{
 					utilityComp.DiagSetBreakpoint();
 				}
+			}
+			
+			// Show settings
+			if (settingsComp)
+			{
+				bool showSettings;
+				DbgUI.Check("Show Settings", showSettings);
+				if (showSettings)
+					ShowSettingsComponent(settingsComp);
 			}
 			
 			// Show perceivable component
@@ -468,9 +480,51 @@ class SCR_AIAgentDebugPanel : Managed
 		DbgUI.Text("Recognition Factors:");
 		DbgUI.Text(string.Format("  Visual:   %1", p.GetVisualRecognitionFactor()));
 		DbgUI.Text(string.Format("    Illumination: %1", p.GetIlluminationFactor()));
-		DbgUI.Text(string.Format("  Sound pwr: %1 dB", 10*Math.Log10(p.GetSoundPower()/1e-12)));
+		
+		float soundPower = p.GetSoundPower();
+		string soundPowerStr;
+		if (soundPower == 0)
+			soundPowerStr = "- Inf";
+		else
+			soundPowerStr = string.Format("%1", 10*Math.Log10(soundPower/1e-12));
+		DbgUI.Text(string.Format("  Sound pwr: %1 dB", soundPowerStr));
+		
 		DbgUI.Text(string.Format("Est. visual size: %1", p.GetEstimatedVisualSize()));
 		DbgUI.Text(string.Format("Ambient LV: %1", p.GetAmbientLV()));
+		
+		FactionAffiliationComponent factionComp = p.GetFactionAffiliationComponent();
+		if (factionComp)
+		{
+			DbgUI.Text(string.Format("Faction: %1, Override: %2, Final: %3",
+				GetFactionKey(factionComp.GetAffiliatedFaction()),
+				GetFactionKey(p.GetPerceivedFactionOverride()),
+				GetFactionKey(p.GetPerceivedFaction())));
+		}
+		
+		FactionManager fm = GetGame().GetFactionManager();
+		if (fm)
+		{
+			DbgUI.Text("SetPerceivedFactionOverride: ");
+			DbgUI.SameLine();
+			
+			if (DbgUI.Button("Reset"))
+				p.SetPerceivedFactionOverride(null);
+			DbgUI.SameLine();
+			
+			DbgUI.SameLine();
+			int factionCount = fm.GetFactionsCount();
+			for (int i = 0; i < factionCount; i++)
+			{
+				Faction f = fm.GetFactionByIndex(i);
+				if (DbgUI.Button(f.GetFactionKey()))
+				{
+					p.SetPerceivedFactionOverride(f);
+				}
+				if (i != factionCount-1)
+					DbgUI.SameLine();
+			}
+			
+		}
 	}
 	
 	void ShowCombatMoveState(SCR_AICombatMoveState s)
@@ -521,6 +575,31 @@ class SCR_AIAgentDebugPanel : Managed
 		}
 	}
 	
+	void ShowSettingsComponent(SCR_AISettingsBaseComponent settingsBaseComp)
+	{
+		array<SCR_AISettingBase> settings = {};
+		
+		// Show own settings
+		settingsBaseComp.GetAllSettings(settings);
+		DbgUI.Text(string.Format("Settings: %1", settings.Count()));
+		ShowSettings(settings);
+	}
+	
+	protected void ShowSettings(notnull array<SCR_AISettingBase> settings)
+	{
+		foreach (int i, SCR_AISettingBase s : settings)
+		{
+			string strSettingText = string.Format("%1 %2, Orig: %3, Prio: %4, %5",
+				i,
+				s,
+				typename.EnumToString(SCR_EAISettingOrigin, s.GetOrigin()),
+				s.GetPriority(),
+				s.GetDebugText());
+			
+			DbgUI.Text(strSettingText);
+		}
+	}
+	
 	//! Returns agent name based on faction and callsign
 	string GetAgentDebugName()
 	{
@@ -544,7 +623,7 @@ class SCR_AIAgentDebugPanel : Managed
 			
 			if (factionComp)
 			{
-				string faction = factionComp.GetAffiliatedFaction().GetFactionKey();
+				string faction = GetFactionKey(factionComp.GetAffiliatedFaction());
 				str = str + string.Format("[%1] ", faction);
 			}
 			
@@ -601,5 +680,13 @@ class SCR_AIAgentDebugPanel : Managed
 			prefabName = prefabData.GetPrefabName();
 		
 		return string.Format("%1 %2", sBase, prefabName);
+	}
+	
+	static string GetFactionKey(Faction f)
+	{
+		if (!f)
+			return "null";
+		
+		return f.GetFactionKey();
 	}
 };

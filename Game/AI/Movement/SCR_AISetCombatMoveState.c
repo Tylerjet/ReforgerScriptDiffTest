@@ -89,7 +89,7 @@ class SCR_AISetCombatMoveState : AITaskScripted
 	
 	
 	//--------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 	
 	override string GetNodeMiddleText()
 	{

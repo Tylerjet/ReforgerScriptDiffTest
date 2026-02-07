@@ -27,7 +27,7 @@ class SCR_DedicatedServerPlugin : WorldEditorPlugin
 	[Attribute("30", desc: "Maximum FPS on the server. When 0, no limit will be set.", category: "Server")]
 	protected int m_iMaxFPS;
 
-	[Attribute(LogLevel.NORMAL.ToString(), desc: "Set the highest shown log level.\nAll others below in the list will be included as well\n(e.g., VERBOSE also enables DEBUG, NORMAL, WARNING, etc, but not SPAM).", uiwidget: UIWidgets.ComboBox, category: "Server", enums: ParamEnumArray.FromEnum(LogLevel))]
+	[Attribute(LogLevel.NORMAL.ToString(), desc: "Set the highest shown log level.\nAll others below in the list will be included as well\n(e.g., VERBOSE also enables DEBUG, NORMAL, WARNING, etc, but not SPAM).", uiwidget: UIWidgets.ComboBox, category: "Server", enumType: LogLevel)]
 	protected int m_iLogLevel;
 
 	[Attribute(desc: "Additional command line params.", category: "Server")]
@@ -263,7 +263,7 @@ class DedicatedServerPluginCLI_Server : DedicatedServerPluginCLI
 	[Attribute(desc: "World which the server will start.\nWhen empty, currently opened world will be used.", uiwidget: UIWidgets.ResourceNamePicker, params: "ent")]
 	protected ResourceName m_World;
 
-	[Attribute(desc: "Mission configuration, can enable settings like metabolism / vehicles, set loading screen image, etc.", uiwidget: UIWidgets.ResourceNamePicker, params: "conf class=ServerConfig")]
+	[Attribute(desc: "Mission configuration, can enable settings like metabolism / vehicles, set loading screen image, etc.", uiwidget: UIWidgets.ResourceNamePicker, params: "conf class=SCR_MissionHeader")]
 	protected ResourceName m_MissionHeader;
 
 	[Attribute(desc: "Optional password for logging-in as administrator (in game, type '#login <password>' in chat)")]

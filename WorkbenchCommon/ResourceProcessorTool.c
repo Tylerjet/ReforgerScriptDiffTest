@@ -184,7 +184,7 @@ class ResourceProcessorPlugin: WorkbenchPlugin
 						}
 						else
 						{
-							ReportIssue(resource, "Property set on PC, but not set on plarform: " + platformPrefixes[iPlatform] + "." + varName);
+							ReportIssue(resource, "Property set on PC, but not set on platform: " + platformPrefixes[iPlatform] + "." + varName);
 						}
 						bRes = false;
 					}					
@@ -535,7 +535,7 @@ class ResourceProcessorPlugin: WorkbenchPlugin
 				case "XBOX_ONE":
 					ancestor = "{73FE8562A95EBA36}configs/ResourceTypes/XBOX_ONE/ParticleEffect.conf";
 					break;
-				case "XBOX_ONE":
+				case "XBOX_SERIES":
 					ancestor = "{DC1673718B31CF7E}configs/ResourceTypes/XBOX_SERIES/ParticleEffect.conf";
 					break;
 				case "PS4":

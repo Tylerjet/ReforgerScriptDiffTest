@@ -52,9 +52,10 @@ class SCR_Tutorial_SquadLeadership_ORDER_MOVE_2 : SCR_BaseTutorialStage
 		if (!crossroad)
 			return;
 		
-		if (vector.Distance(crossroad.GetOrigin(), wp.GetOrigin()) > 25)
+		if ((vector.Distance(crossroad.GetOrigin(), wp.GetOrigin()) > 25) || (wp.Type() != SCR_AIWaypoint))
 		{
 			ShowHint(1);
+			m_Group.GetSlave().RemoveWaypoint(wp);
 			SCR_EntityHelper.DeleteEntityAndChildren(wp);
 			return;
 		}

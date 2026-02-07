@@ -72,7 +72,7 @@ class SCR_HitZone : HitZone
 		if (damageContext.damageValue == 0)
 			return 0;
 
-		if (damageContext.damageType == EDamageType.TRUE)
+		if (damageContext.damageType == EDamageType.TRUE || damageContext.damageType == EDamageType.PROCESSED_FRAGMENTATION)
 			return damageContext.damageValue;
 
 		//apply base multiplier
@@ -80,10 +80,6 @@ class SCR_HitZone : HitZone
 
 		//apply damage multiplier for this specific damage type
 		effectiveDamage *= GetDamageMultiplier(damageContext.damageType);
-
-		//apply fire damage multiplier
-		if (damageContext.damageType == EDamageType.FIRE)
-			effectiveDamage *= m_fFireMultiplier;
 
 		//DOT doesn't get affected by damage reduction/thresholds, and neither does healing.
 		if (isDOT || effectiveDamage < 0)

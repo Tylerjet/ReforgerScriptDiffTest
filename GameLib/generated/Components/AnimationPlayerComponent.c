@@ -23,6 +23,8 @@ class AnimationPlayerComponent: GenericComponent
 	proto external bool IsPlaying();
 	//! Prepare this component for playing, provide an animation, start time, playing speed and loop flag.
 	proto external bool Prepare(ResourceName animation, float startTime, float speed, bool loop);
+	//! Set custom bind pose from mesh object identified by rNameMeshObj.
+	proto external bool SetCustomBindPose(ResourceName meshObj);
 	proto external IEntity GetOwner();
 	//! Get current animation
 	proto external ResourceName GetAnimation();

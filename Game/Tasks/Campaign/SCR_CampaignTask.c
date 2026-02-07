@@ -143,6 +143,11 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 	//------------------------------------------------------------------------------------------------
 	override void Finish(bool showMsg = true)
 	{
+		SCR_MilitaryBaseSystem system = SCR_MilitaryBaseSystem.GetInstance();
+		
+		if (system)
+			system.GetOnBaseFactionChanged().Remove(OnTargetBaseCaptured);
+
 		showMsg = SCR_FactionManager.SGetLocalPlayerFaction() == m_TargetFaction;
 		super.Finish(showMsg);
 		

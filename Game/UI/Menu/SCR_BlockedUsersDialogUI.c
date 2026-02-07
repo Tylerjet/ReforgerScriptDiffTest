@@ -24,6 +24,7 @@ class SCR_BlockedUsersDialogUI : SCR_ConfigurableDialogUi
 	ref map<Widget, BlockListItem> m_mUserList = new map<Widget, BlockListItem>();
 	protected ref array<Widget> m_aUserList = {};
 	
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen(SCR_ConfigurableDialogUiPreset preset)
 	{
@@ -32,7 +33,7 @@ class SCR_BlockedUsersDialogUI : SCR_ConfigurableDialogUi
 		m_wUserListWidget = m_wRoot.FindAnyWidget(ENTRY_SCROLL_LIST);
 		if (!m_wUserListWidget)
 			return;
-
+		
 		ListBlockedUsers();
 		
 		m_UnblockButton = FindButton(UNLOCK_BUTTON);
@@ -46,9 +47,30 @@ class SCR_BlockedUsersDialogUI : SCR_ConfigurableDialogUi
 		m_GamecardButton = FindButton(VIEW_GAMECARD_BUTTON);
 		if (m_GamecardButton)
 			m_GamecardButton.SetVisible(false);
-			
+		
+		GetGame().OnInputDeviceUserChangedInvoker().Insert(OnInputTypeChanged);
+		
 	}
 		
+	//----------------------------------------------------------------------------------------------
+	void OnInputTypeChanged(EInputDeviceType old, EInputDeviceType newDevice)
+	{
+		switch(newDevice){
+			case EInputDeviceType.GAMEPAD:
+				SCR_BlockedUsersDialogEntryUIComponent.Cast(m_wCurrentSelectedEntry.FindHandler(SCR_BlockedUsersDialogEntryUIComponent)).SetButtonsVisibility(false);
+				break;
+			
+			case EInputDeviceType.MOUSE:
+				SCR_BlockedUsersDialogEntryUIComponent.Cast(m_wCurrentSelectedEntry.FindHandler(SCR_BlockedUsersDialogEntryUIComponent)).SetButtonsVisibility(true);
+				break;
+			
+			case EInputDeviceType.KEYBOARD:
+				SCR_BlockedUsersDialogEntryUIComponent.Cast(m_wCurrentSelectedEntry.FindHandler(SCR_BlockedUsersDialogEntryUIComponent)).SetButtonsVisibility(false);
+				break;
+		}
+		
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	void ListBlockedUsers()
 	{
@@ -90,13 +112,18 @@ class SCR_BlockedUsersDialogUI : SCR_ConfigurableDialogUi
 			
 			entryComp.SetPlatfrom(item.GetPlatform());
 			entryComp.SetPlayerName(item.GetName());
+			entryComp.GetProfileButton().m_OnClicked.Insert(OnViewGamecard);
+			entryComp.GetUnblockButton().m_OnClicked.Insert(OnUserUnblock);
 
 			// Save the widget & player ID
 			m_mUserList.Insert(entry, item);
 			
 			button = SCR_ModularButtonComponent.FindComponent(entry);
-			if (button)
-				button.m_OnFocus.Insert(OnEntryFocused);				
+			if (button){
+				button.m_OnFocus.Insert(OnEntryFocused);
+				button.m_OnFocusLost.Insert(OnEntryFocusLost);
+			}
+			
 		}
 	}
 		
@@ -111,6 +138,27 @@ class SCR_BlockedUsersDialogUI : SCR_ConfigurableDialogUi
 		SCR_BlockedUsersDialogEntryUIComponent comp = SCR_BlockedUsersDialogEntryUIComponent.Cast(m_wCurrentSelectedEntry.FindHandler(SCR_BlockedUsersDialogEntryUIComponent));
 		if (!comp)
 			return;
+		
+		if(GetGame().GetInputManager().GetLastUsedInputDevice() != EInputDeviceType.GAMEPAD){
+			comp.SetButtonsVisibility(true);
+		}else{
+			comp.SetButtonsVisibility(false);
+		}
+		
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnEntryFocusLost(SCR_ModularButtonComponent modularButton)
+	{
+		m_wCurrentSelectedEntry = modularButton.GetRootWidget();
+		if(!m_wCurrentSelectedEntry)
+			return;
+		
+		SCR_BlockedUsersDialogEntryUIComponent comp = SCR_BlockedUsersDialogEntryUIComponent.Cast(m_wCurrentSelectedEntry.FindHandler(SCR_BlockedUsersDialogEntryUIComponent));
+		if (!comp)
+			return;
+		
+		comp.SetButtonsVisibility(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -133,9 +181,11 @@ class SCR_BlockedUsersDialogUI : SCR_ConfigurableDialogUi
 		// TODO:@brucknerjul Add functionality to view PSN profile when Button is clicked. API needed.		
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnMenuClose()
 	{
 		SCR_WidgetHelper.RemoveAllChildren(m_wUserListWidget);
+		GetGame().OnInputDeviceUserChangedInvoker().Remove(OnInputTypeChanged);
 	}
 }
 

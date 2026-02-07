@@ -87,6 +87,14 @@ class SCR_ChatMessageLineComponent : ScriptedWidgetComponent
 
 		string finalMessage = msg.m_sMessage;
 
+		if(!senderNameText.IsEmpty())
+		{
+			m_Widgets.m_wMessageText.SetFlags(WidgetFlags.NO_LOCALIZATION);
+		}
+		else
+		{
+			m_Widgets.m_wMessageText.ClearFlags(WidgetFlags.NO_LOCALIZATION);
+		}
 		
 		m_Widgets.m_wMessageText.SetColor(textColor);		
 		m_Widgets.m_wMessageText.SetText(senderNameText + finalMessage);	

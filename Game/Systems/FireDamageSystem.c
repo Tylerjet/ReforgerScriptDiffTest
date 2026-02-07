@@ -1,5 +1,12 @@
 class FireDamageSystem : GameSystem
 {
+	override static void InitInfo(WorldSystemInfo outInfo)
+	{
+		outInfo
+			.SetAbstract(false)
+			.AddPoint(ESystemPoint.FixedFrame);
+	}
+
 	protected ref array<SCR_DamageManagerComponent> m_aDamageManagers = {};
 
 	//------------------------------------------------------------------------------------------------

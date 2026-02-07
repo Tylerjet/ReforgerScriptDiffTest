@@ -6,6 +6,7 @@ class SCR_Tutorial_Obstacle_TIMEClass: SCR_BaseTutorialStageClass
 //------------------------------------------------------------------------------------------------
 class SCR_Tutorial_Obstacle_TIME : SCR_BaseTutorialStage
 {
+	vector m_vInstructorPos;
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
 	{
@@ -81,11 +82,18 @@ class SCR_Tutorial_Obstacle_TIME : SCR_BaseTutorialStage
 			PlayNarrativeCharacterStage("OBSTACLECOURSE_Instructor", 16);	// Average
 		else
 			PlayNarrativeCharacterStage("OBSTACLECOURSE_Instructor", 18);	// Bad
+		
+		IEntity ent = GetGame().GetWorld().FindEntityByName("SpawnPos_OBSTACLECOURSE_Instructor");
+		if (ent)
+			m_vInstructorPos = ent.GetOrigin();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override bool GetIsFinished()
 	{
+		if (vector.Distance(m_vInstructorPos, m_Player.GetOrigin()) > 40)
+			return true;
+		
 		return m_sLastFinishedEvent == "SOUND_TUTORIAL_EVE_END_COURSE_INSTRUCTOR_A_02" || GetDuration() > 25000;
 	}
 };

@@ -1,7 +1,7 @@
 //! @ingroup Editor_UI Editor_UI_Components
 
 //! Content Browser Card
-class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
+class SCR_AssetCardFrontUIComponent : SCR_ScriptedWidgetComponent
 {
 	//ToDo: Replace many of these values with automated solutions
     [Attribute()]
@@ -37,8 +37,20 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 	[Attribute("ImageOverlay")]
 	protected string m_sImageOverlayName;
 	
+	[Attribute("AssetCardBackground")]
+	protected string m_sImageHoverName;
+	
+	[Attribute("Image")]
+	protected string m_sImageName;
+	
+	[Attribute("FullBackground")]
+	protected string m_sImageBackgroundName;
+	
 	[Attribute("")]
 	protected string m_sAreaName;
+	
+	[Attribute()]
+	protected bool m_bEnableHover;
 	
 	[Attribute()]
 	protected ref array<string> m_aFactionColorNames;
@@ -59,6 +71,7 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 	string m_sAssetCardNameFrameWidget;
 	
 	protected ref ImageWidget m_EntityImageWidget;
+	protected ref ImageWidget m_wHoverImageWidget;
 	
 	protected Widget m_BudgetCostLayout;
 	protected Widget m_ExceedBudgetLayout;
@@ -67,7 +80,7 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 	//Widgets
 	private Widget m_wWidget;
 	private Widget m_wAssetCardName //~ saved for hotfix below (todo ewe)
-	//protected Widget m_Background;
+	protected ImageWidget m_wBackground;
 	
 	//Grid
 	protected int m_iPrefabIndex;
@@ -140,7 +153,7 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 		m_iPrefabIndex = prefabID;
 		
 		TextWidget entityNameWidget = TextWidget.Cast(m_wWidget.FindAnyWidget(m_sEntityNameWidgetName));
-		//m_Background = m_wWidget.FindAnyWidget(m_sBackgroundsName);
+		m_wBackground = ImageWidget.Cast(m_wWidget.FindAnyWidget(m_sImageBackgroundName));
 		
 		if (info)
 		{
@@ -151,21 +164,33 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 			SCR_EditableEntityUIInfo infoCard = SCR_EditableEntityUIInfo.Cast(info);
 			if (infoCard)
 			{
-				//--- Set faction color (all widgets marked by 'Inherit Color' will use it as well)
+				SCR_EditableEntityUIInfoColored colorOverwriteInfo = SCR_EditableEntityUIInfoColored.Cast(infoCard);
 				Faction faction = infoCard.GetFaction();
-				if (faction)
+				
+				if (!colorOverwriteInfo)
 				{
-					Widget factionColor;
-					foreach (string factionColorName: m_aFactionColorNames)
+					//--- Set faction color (all widgets marked by 'Inherit Color' will use it as well)
+					if (faction)
 					{
-						if (infoCard.IsFullBackgroundAssetCard() && factionColorName == "ColorOverlay")
-							continue;
-						
-						factionColor = m_wWidget.FindAnyWidget(factionColorName);
-						if (factionColor)
-							factionColor.SetColor(Color.FromInt(faction.GetFactionColor().PackToInt()));
+						Widget factionColor;
+						foreach (string factionColorName: m_aFactionColorNames)
+						{
+							if (infoCard.IsFullBackgroundAssetCard() && factionColorName == "ColorOverlay")
+								continue;
+							
+							factionColor = m_wWidget.FindAnyWidget(factionColorName);
+							if (factionColor)
+								factionColor.SetColor(Color.FromInt(faction.GetFactionColor().PackToInt()));
+						}
 					}
 				}
+				else 
+				{
+					Widget colorOverlay = m_wWidget.FindAnyWidget("ColorOverlay");
+					if (colorOverlay)
+						colorOverlay.SetColor(colorOverwriteInfo.GetOverwriteColor());
+				}
+				
 				
 				//--- Set icon
 				Widget iconSlotWidget = m_wWidget.FindAnyWidget(m_sIconSlotWidgetName);
@@ -199,6 +224,7 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 				{
 					int textureIndex = m_iPrefabIndex % m_ImageOverlayTextures.Count();
 					imageOverlayWidget.LoadImageTexture(0, m_ImageOverlayTextures[textureIndex]);
+					m_EntityImageWidget = imageOverlayWidget;
 				}
 				
 				m_ExceedBudgetLayout = m_wWidget.FindAnyWidget(m_sExceedBudgetLayoutName);
@@ -393,16 +419,114 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 	SCR_UIInfo GetInfo()
 	{
 		return m_Info;
-	} 
+	}
 	
-//	//------------------------------------------------------------------------------------------------
-//	//! Set faction color of specific widgets
-//	//! \param[in] newColor
-//	void SetColor(Color newColor)
-//	{
-//		if (m_Background)
-//			m_Background.SetColor(newColor);
-//	}
+	//------------------------------------------------------------------------------------------------
+	//! Set Background Image
+	//! \param[in] imageName
+	void SetBackgroundImage(ResourceName imageName)
+	{		
+		if (m_wBackground)
+		{
+			if (imageName.IsEmpty())
+			{
+				m_wBackground.SetVisible(false);
+			}
+			else
+			{
+				m_wBackground.LoadImageTexture(0, imageName);
+				m_wBackground.SetVisible(true);
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set Image
+	//! \param[in] imageName
+	void SetHoverImage(ResourceName imageName)
+	{		
+		if (m_wHoverImageWidget)
+		{
+			if (imageName.IsEmpty())
+			{
+				m_wHoverImageWidget.SetVisible(false);
+			}
+			else
+			{
+				m_wHoverImageWidget.LoadImageTexture(0, imageName);
+				m_wHoverImageWidget.SetVisible(true);
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set Image
+	//! \param[in] imageName
+	void SetImage(ResourceName imageName)
+	{		
+		if (m_EntityImageWidget)
+		{
+			if (imageName.IsEmpty())
+			{
+				m_EntityImageWidget.SetVisible(false);
+			}
+			else
+			{
+				m_EntityImageWidget.LoadImageTexture(0, imageName);
+				m_EntityImageWidget.SetVisible(true);
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set Image
+	//! \param[in] imageName
+	void SetText(string newText)
+	{
+		TextWidget entityNameWidget = TextWidget.Cast(m_wWidget.FindAnyWidget(m_sEntityNameWidgetName));
+		if (entityNameWidget)
+		{
+			if (newText.IsEmpty())
+			{
+				entityNameWidget.SetVisible(false);
+			}
+			else
+			{
+				entityNameWidget.SetVisible(true);
+				entityNameWidget.SetText(newText);
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set faction color of specific widgets
+	//! \param[in] newColor
+	protected void SetHover(bool state)
+	{
+		if (!m_bEnableHover)
+			return;
+		
+		if (m_wHoverImageWidget)
+			AnimateWidget.Opacity(m_wHoverImageWidget, !state, UIConstants.FADE_RATE_DEFAULT);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set faction color of specific widgets
+	//! \param[in] newColor
+	protected void SetBackgroundColor(Color newColor, float transition =  UIConstants.FADE_RATE_FAST)
+	{
+		if (m_wBackground)
+			AnimateWidget.Color(m_wBackground, newColor, transition);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set faction color of specific widgets
+	//! \param[in] newColor
+	protected void SetImageColor(Color newColor, float transition =  UIConstants.FADE_RATE_FAST)
+	{
+		if (m_EntityImageWidget)
+			AnimateWidget.Color(m_EntityImageWidget, newColor, transition);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Get Button Widget
@@ -441,6 +565,9 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	override bool OnFocus(Widget w, int x, int y)
 	{
+		//SetImageColor(UIColors.CONTRAST_CLICKED);
+		SetHover(true);
+		
 		if (m_wWidget)
 			m_OnFocus.Invoke(m_wWidget, m_iPrefabIndex, true);
 
@@ -450,6 +577,9 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	override bool OnFocusLost(Widget w, int x, int y)
 	{
+		//SetImageColor(Color.White);
+		SetHover(false);
+		
 		if (m_wWidget)
 			m_OnFocus.Invoke(m_wWidget, m_iPrefabIndex, false);
 
@@ -475,6 +605,18 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 	override void HandlerAttached(Widget w)
     {
 		m_wWidget = w;
+		
+		if (!m_EntityImageWidget)
+			m_EntityImageWidget = ImageWidget.Cast(m_wWidget.FindAnyWidget(m_sImageName));
+		
+		if (!m_wHoverImageWidget)
+			m_wHoverImageWidget = ImageWidget.Cast(m_wWidget.FindAnyWidget(m_sImageHoverName));
+		
+		if (!m_wBackground)
+			m_wBackground = ImageWidget.Cast(m_wWidget.FindAnyWidget(m_sImageBackgroundName));
+		
+		if (m_bEnableHover)
+			SetHover(false);
 	}
 	
 	override void HandlerDeattached(Widget w)

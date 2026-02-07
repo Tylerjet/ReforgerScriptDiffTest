@@ -345,7 +345,7 @@ class SCR_NarrativeComponent : ScriptComponent
 			foreach (EntitySlotInfo slotInfo : npcSlotInfos)
 			{
 				if (slotInfo.GetAttachedEntity())
-					slotInfo.DetachEntity(true);
+					slotInfo.DetachEntity(false);
 			}
 		}
 

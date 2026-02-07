@@ -40,10 +40,10 @@ class SCR_CheckboxEditorAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 	
 	protected void OnChangeCheckbox(SCR_SelectionWidgetComponent selectionBox, bool value)
 	{
-		OnChange(selectionBox.GetRootWidget(), value, 0, false);
+		OnChangeInternal(selectionBox.GetRootWidget(), value, 0, false);
 	}
 	
-	override bool OnChange(Widget w, int x, int y, bool finished)
+	override bool OnChangeInternal(Widget w, int x, int y, bool finished)
 	{	
 		if (!m_SelectionBoxComponent) 
 			return false;
@@ -57,7 +57,7 @@ class SCR_CheckboxEditorAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 			return false;
 		
 		var.SetBool(x);
-		super.OnChange(w, x, y, finished);
+		super.OnChangeInternal(w, x, y, finished);
 		return false;
 	}	
 	

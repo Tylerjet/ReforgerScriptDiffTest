@@ -654,7 +654,7 @@ class SCR_ScenarioFrameworkConversionPlugin_Phase1 : WorkbenchPlugin
 				SCR_ScenarioFrameworkWaypointWait),
 		};
 
-		SCR_ArrayHelperT<SCR_ScenarioFrameworkConversionPlugin_Rune>.CopyReferencesFromTo(runes, CONVERSION_TABLE);
+		SCR_ArrayHelperRefT<SCR_ScenarioFrameworkConversionPlugin_Rune>.CopyReferencesFromTo(runes, CONVERSION_TABLE);
 	}
 }
 

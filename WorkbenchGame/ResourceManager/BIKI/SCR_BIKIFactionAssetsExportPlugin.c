@@ -6,7 +6,7 @@ class SCR_BIKIFactionAssetsExportPlugin : SCR_BIKIExportBasePlugin
 	[Attribute(params: "conf class=SCR_Faction")]
 	protected ref array<ResourceName> m_aFactionConfigs;
 
-	[Attribute(uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EEntityCatalogType))]
+	[Attribute(uiwidget: UIWidgets.ComboBox, enumType: EEntityCatalogType)]
 	protected ref array<EEntityCatalogType> m_aCatalogTypes;
 
 	//------------------------------------------------------------------------------------------------
@@ -16,28 +16,38 @@ class SCR_BIKIFactionAssetsExportPlugin : SCR_BIKIExportBasePlugin
 			return;
 
 		if (!m_aFactionConfigs || m_aFactionConfigs.IsEmpty())
-			m_aFactionConfigs = { "{5EB46557DF2AA24F}Configs/Factions/US.conf", "{09727032415AC39B}Configs/Factions/USSR.conf", "{8053DB656DD18B14}Configs/Factions/FIA.conf" };
+			m_aFactionConfigs = { "{5EB46557DF2AA24F}Configs/Factions/US.conf", "{09727032415AC39B}Configs/Factions/USSR.conf", "{8053DB656DD18B14}Configs/Factions/FIA.conf", "{3FA20B01D950D31F}Configs/Factions/CIV.conf" };
 
 		if (!m_aCatalogTypes || m_aCatalogTypes.IsEmpty())
 			m_aCatalogTypes = { EEntityCatalogType.CHARACTER, EEntityCatalogType.GROUP, EEntityCatalogType.VEHICLE, EEntityCatalogType.WEAPONS_TRIPOD };
 
 		string result;
-		foreach (ResourceName factionConfig : m_aFactionConfigs)
+		SCR_Faction faction;
+		foreach (int i, ResourceName factionConfig : m_aFactionConfigs)
 		{
-			SCR_Faction faction = SCR_Faction.Cast(SCR_BaseContainerTools.CreateInstanceFromPrefab(factionConfig));
+			faction = SCR_Faction.Cast(SCR_BaseContainerTools.CreateInstanceFromPrefab(factionConfig));
+			if (!faction)
+			{
+				Print("Cannot load " + factionConfig, LogLevel.WARNING);
+				continue;
+			}
 
-			result += GetFactionString(faction, m_aCatalogTypes);
+			string factionString = GetFactionString(faction, m_aCatalogTypes);
+			if (i > 0 && factionString && factionString.StartsWith("== "))
+				result += "\n\n" + factionString;
+			else
+				result += factionString;
 		}
 
 		result.TrimInPlace();
 
-		result += "\n\n{{GameCategory|armaR|Content}}";
+		result += "\n\n\nExported with {{Link|enfusion:/" + "/ResourceManager/~ArmaReforger:scripts/WorkbenchGame/ResourceManager/BIKI/SCR_BIKIFactionAssetsExportPlugin.c}}\n\n\n{{GameCategory|armaR|Content}}";
 
 		ShowResult(result);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected string GetFactionString(notnull SCR_Faction faction, array<EEntityCatalogType> catalogTypes)
+	protected string GetFactionString(notnull SCR_Faction faction, notnull array<EEntityCatalogType> catalogTypes)
 	{
 		SCR_BIKIStringBuilder stringBuilder = new SCR_BIKIStringBuilder();
 
@@ -45,18 +55,39 @@ class SCR_BIKIFactionAssetsExportPlugin : SCR_BIKIExportBasePlugin
 
 		array<SCR_EntityCatalogEntry> entityList = {};
 		array<string> pieces = {};
+		SCR_EntityCatalog catalog;
+		SCR_EntityCatalogMultiList catalogMultiList;
 		foreach (EEntityCatalogType catalogType : catalogTypes)
 		{
-			SCR_EntityCatalog catalog = SCR_Faction_BIKI.GetEntityCatalog(faction, catalogType);
+			catalog = SCR_Faction_BIKI.GetEntityCatalog(faction, catalogType);
 			if (!catalog)
 				continue;
+
+			catalog.GetEntityList(entityList);
+			catalogMultiList = SCR_EntityCatalogMultiList.Cast(catalog);
+			if (catalogMultiList)
+			{
+				array<SCR_EntityCatalogMultiListEntry> multiLists = {};
+				catalogMultiList.GetMultiList(multiLists);
+				foreach (SCR_EntityCatalogMultiListEntry subCatalog : multiLists)
+				{
+					foreach (SCR_EntityCatalogEntry entry : subCatalog.m_aEntities)
+					{
+						entityList.Insert(entry);
+					}
+				}
+			}
+
+			if (entityList.IsEmpty())
+			{
+				PrintFormat("%1 Faction: catalog %2 is empty, skipping", faction.GetFactionKey(), typename.EnumToString(EEntityCatalogType, catalogType), level: LogLevel.NORMAL);
+				continue;
+			}
 
 			stringBuilder.AddTitle(3, SCR_StringHelper.FormatSnakeCaseToUserFriendly(typename.EnumToString(EEntityCatalogType, catalogType)));
 			stringBuilder.BeginTable("min-width: 60em");
 			stringBuilder.AddTableHeader("Name", "min-width: 50%");
 			stringBuilder.AddTableHeader("Prefab");
-
-			catalog.GetEntityList(entityList);
 
 			foreach (SCR_EntityCatalogEntry entry : entityList)
 			{

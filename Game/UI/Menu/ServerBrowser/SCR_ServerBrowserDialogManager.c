@@ -340,7 +340,7 @@ class SCR_ServerBrowserDialogManager
 		if (navButton)
 			navButton.SetEnabled(true);
 	}
-
+	
 	//! DECOUPLED DIALOGS
 	//------------------------------------------------------------------------------------------------
 	MultiplayerDialogUI CreateManualJoinDialog()
@@ -358,7 +358,8 @@ class SCR_ServerBrowserDialogManager
 	{
 		SCR_ServerDetailsDialog dialog = SCR_ServerDetailsDialog.CreateServerDetailsDialog(room, items, "SERVER_DETAILS", CONFIG_DIALOGS, onFavoritesResponse);
 		m_CurrentDialog = dialog;
-
+		m_CurrentDialog.m_OnCancel.Insert(OnDialogCancel);
+		
 		return dialog;
 	}
 
@@ -407,6 +408,17 @@ class SCR_ServerBrowserDialogManager
 		SCR_ServerFullDialog dialog = SCR_ServerFullDialog.Cast(m_CurrentDialog);
 		if (dialog)
 			dialog.UpdateInfo();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void CreateBlockedPlayersWarningDialog(array<BlockedRoomPlayer> blockedPlayers)
+	{
+		SCR_BlockedPlayerPresentDialog dialog = new SCR_BlockedPlayerPresentDialog(blockedPlayers);
+		
+		m_CurrentDialog = dialog;
+		
+		m_CurrentDialog.m_OnCancel.Insert(OnDialogCancel);
+		m_CurrentDialog.m_OnConfirm.Insert(OnDialogConfirm);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -460,12 +472,6 @@ class SCR_ServerBrowserDialogManager
 	}
 	
 	// Helpers
-	//------------------------------------------------------------------------------------------------
-	Room GetJoinRoom()
-	{
-		return m_JoinRoom;
-	}
-
 	//------------------------------------------------------------------------------------------------
 	EJoinDialogState GetDisplayState()
 	{

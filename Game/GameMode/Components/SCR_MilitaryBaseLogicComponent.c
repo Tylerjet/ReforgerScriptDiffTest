@@ -67,6 +67,9 @@ class SCR_MilitaryBaseLogicComponent : ScriptComponent
 
 		factionControl.SetAffiliatedFaction(faction);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnCapturingFactionChanged(FactionKey faction);
 
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)

@@ -12,7 +12,7 @@ class SCR_AIFollowEntityPath : SCR_AIActionTask
 	bool setupResult;
 	AIBaseMovementComponent m_pMyMovementComponent;
 	
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
     {
         return true;
     }

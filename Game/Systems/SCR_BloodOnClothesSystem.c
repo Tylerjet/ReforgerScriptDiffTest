@@ -4,10 +4,20 @@ System to update the bleeding mask on clothing items covering bleeding hitZones
 
 class SCR_BloodOnClothesSystem : GameSystem
 {
+	override static void InitInfo(WorldSystemInfo outInfo)
+	{
+		outInfo
+			.SetAbstract(false)
+			.AddPoint(ESystemPoint.Frame);
+	}
+
 	protected ref array<SCR_BleedingDamageEffect> m_aEffects = {};
 	
 	protected float m_fUpdateClothesTimer;
-	protected const float UPDATE_CLOTHES_DELAY = 0.2;
+	protected const float UPDATE_CLOTHES_DELAY = 0.5;
+		
+	SCR_CharacterDamageManagerComponent m_CharacterDamageManager;
+	SCR_CharacterHitZone m_HitZone;
 
 	//------------------------------------------------------------------------------------------------
 	protected override void OnInit()
@@ -22,10 +32,7 @@ class SCR_BloodOnClothesSystem : GameSystem
 		m_fUpdateClothesTimer += GetWorld().GetTimeSlice();
 		if (m_fUpdateClothesTimer < UPDATE_CLOTHES_DELAY)
 			return;
-			
-		SCR_CharacterDamageManagerComponent charDamageMan;
-		SCR_CharacterHitZone hitZone;
-
+		
 		foreach (SCR_BleedingDamageEffect effect : m_aEffects)
 		{
 			if (!effect)
@@ -34,10 +41,10 @@ class SCR_BloodOnClothesSystem : GameSystem
 				continue;
 			}
 			
-			hitZone = SCR_CharacterHitZone.Cast(effect.GetAffectedHitZone());
-			charDamageMan = SCR_CharacterDamageManagerComponent.Cast(hitZone.GetHitZoneContainer());
-			if (charDamageMan)
-				charDamageMan.AddBloodToClothes(hitZone, effect.GetDPS() * m_fUpdateClothesTimer);
+			m_HitZone = SCR_CharacterHitZone.Cast(effect.GetAffectedHitZone());
+			m_CharacterDamageManager = SCR_CharacterDamageManagerComponent.Cast(m_HitZone.GetHitZoneContainer());
+			if (m_CharacterDamageManager)
+				m_CharacterDamageManager.AddBloodToClothes(m_HitZone, effect.GetDPS() * m_fUpdateClothesTimer);
 		}
 		
 		if (nullValuePresent)

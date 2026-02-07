@@ -193,7 +193,7 @@ class SCR_RandomPositionalInsects : SCR_AmbientInsectsEffect
 		string soundName = insectDef.m_sSoundName;
 		ResourceName prefabName = insectDef.m_sPrefabName;
 
-		ParticleEffectEntitySpawnParams spawnParams();
+		ParticleEffectEntitySpawnParams spawnParams = new ParticleEffectEntitySpawnParams();
 		spawnParams.Transform[3] = vPos;
 
 		SCR_InsectParticle particle = new SCR_InsectParticle();

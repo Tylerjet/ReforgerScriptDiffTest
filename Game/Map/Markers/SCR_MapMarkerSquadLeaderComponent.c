@@ -132,7 +132,7 @@ class SCR_MapMarkerSquadLeaderComponent : SCR_MapMarkerDynamicWComponent
 				{
 					Widget entry = m_aGroupMemberEntries[0];
 					TextWidget txtW = TextWidget.Cast(entry.FindWidget(m_sLineTextWidgetName));
-					txtW.SetText(pManager.GetPlayerName(id));
+					txtW.SetText(SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(id));
 					entry.SetVisible(true);
 					
 					ImageWidget platformImage= ImageWidget.Cast(entry.FindAnyWidget(m_sPlatformIconWidgetName));
@@ -161,7 +161,7 @@ class SCR_MapMarkerSquadLeaderComponent : SCR_MapMarkerDynamicWComponent
 				if (i < playerCount)
 				{
 					TextWidget txtW = TextWidget.Cast(entry.FindWidget(m_sLineTextWidgetName));
-					txtW.SetText(pManager.GetPlayerName(membersCopy[i-1]));
+					txtW.SetText(SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(membersCopy[i-1]));
 					entry.SetVisible(true);
 					
 					ImageWidget platformImage= ImageWidget.Cast(entry.FindAnyWidget(m_sPlatformIconWidgetName));

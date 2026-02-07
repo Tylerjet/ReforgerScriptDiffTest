@@ -113,9 +113,17 @@ class SCR_ImpactEffectComponent : ScriptComponent
 			{				
 				impactSoundType = SCR_EImpactSoundType.SMALL_OBJECT;
 															
-				float otherMass = GetAproximatedMass(other);									
-				float velocityAfterImpact = m_fMass * velocity / (m_fMass + otherMass);					
-				dV = velocity - velocityAfterImpact;						
+				float otherMass = GetAproximatedMass(other);
+				float finalMass = m_fMass + otherMass;
+				if (finalMass != 0.0)
+				{								
+					float velocityAfterImpact = m_fMass * velocity / finalMass;
+					dV = velocity - velocityAfterImpact;						
+				}
+				else
+				{
+					dV = velocity;
+				}
 			}
 		}
 		
@@ -194,7 +202,11 @@ class SCR_ImpactEffectComponent : ScriptComponent
 		int magnitude = GetEffectMagnitude();		
 		if (magnitude <= -1)
 		{
-			int responseIndex = other.GetPhysics().GetResponseIndex();
+			Physics physics = GetOwner().GetPhysics();
+			if (physics == null)
+				return;
+
+			int responseIndex = physics.GetResponseIndex();
 		
 			// Exclude collisions with physics objects with tiny response index e.g. bushes, fences etc.
 			if (responseIndex == SCR_EPhysicsResponseIndex.TINY_DESTRUCTIBLE || responseIndex == SCR_EPhysicsResponseIndex.SMALL_DESTRUCTIBLE)
@@ -321,9 +333,13 @@ class SCR_ImpactEffectComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	protected float GetAproximatedMass(IEntity entity)
 	{
-		int responseIndex = entity.GetPhysics().GetResponseIndex();
+		Physics physics = GetOwner().GetPhysics();
+		if (physics == null)
+			return 0;
+		
+		int responseIndex = physics.GetResponseIndex();
 				
-		if (responseIndex < SCR_EPhysicsResponseIndex.TINY_DESTRUCTIBLE)
+		if (responseIndex < SCR_EPhysicsResponseIndex.TINY_DESTRUCTIBLE || responseIndex >= SCR_EPhysicsResponseIndex.NO_COLLISION)
 			return 1700;
 		
 		return m_aAproximatedMasses[responseIndex - SCR_EPhysicsResponseIndex.TINY_DESTRUCTIBLE];				

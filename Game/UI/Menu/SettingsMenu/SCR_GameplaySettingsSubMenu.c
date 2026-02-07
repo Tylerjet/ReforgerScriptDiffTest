@@ -40,6 +40,7 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("InputDeviceUserSettings", "MouseInvert", "MouseY"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("InputDeviceUserSettings", "GamepadInvert", "GamepadY"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bStickyADS", "StickyADS"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bPlatformIconNametag" , "ShowPlatformIcon" ));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bStickyGadgets", "StickyGadgets"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bShowRadioProtocolText", "RadioProtocolSubtitles"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bMouseControlAircraft", "MouseControlAircraft"));
@@ -67,15 +68,17 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_ControllerSettings", "m_fGyroSensitivity", "GyroSensitivity"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_ControllerSettings", "m_fGyroVerticalHorizontalRatio", "GyroVerticalHorizontalRatio"));
 
-		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_ControllerSettings", "m_fGyroDirectionYaw", "GyroDirectionYaw"));
-		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_ControllerSettings", "m_fGyroDirectionPitch", "GyroDirectionPitch"));
-		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_ControllerSettings", "m_fGyroDirectionRoll", "GyroDirectionRoll"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_ControllerSettings", "m_eGyroDirectionYaw", "GyroDirectionYaw"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_ControllerSettings", "m_eGyroDirectionPitch", "GyroDirectionPitch"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_ControllerSettings", "m_eGyroDirectionRoll", "GyroDirectionRoll"));
 
-		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("InputDeviceUserSettings", "GyroAccelerationSensitivity", "GyroAcceleration"));
-		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("InputDeviceUserSettings", "GyroAccelerationSpeedMin", "GyroAccelerationSpeedMin"));
-		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("InputDeviceUserSettings", "GyroAccelerationSpeedMax", "GyroAccelerationSpeedMax"));
-		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("InputDeviceUserSettings", "GyroPrecisionSpeed", "GyroPrecisionSpeed"));
-		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("InputDeviceUserSettings", "GyroSmoothingSpeed", "GyroSmoothingSpeed"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("InputDeviceUserSettings", "GyroAimingSpace", "GyroAimingSpace", "GyroSettings"));
+
+		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("InputDeviceUserSettings", "GyroAccelerationSensitivity", "GyroAcceleration", "GyroSettings"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("InputDeviceUserSettings", "GyroAccelerationSpeedMin", "GyroAccelerationSpeedMin", "GyroSettings"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("InputDeviceUserSettings", "GyroAccelerationSpeedMax", "GyroAccelerationSpeedMax", "GyroSettings"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("InputDeviceUserSettings", "GyroPrecisionSpeed", "GyroPrecisionSpeed", "GyroSettings"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("InputDeviceUserSettings", "GyroSmoothingSpeed", "GyroSmoothingSpeed", "GyroSettings"));
 
 		LoadSettings();
 		
@@ -97,6 +100,8 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 			HideMenuItem("MouseControlAircraft");
 			HideMenuItem("FOVInputCurveMouse");
 		}
+		
+		HideMenuItem("ShowPlatformIcon");
 #endif
 
 		// Hide gyro settings outside platforms that support them
@@ -112,10 +117,11 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 			HideMenuItem("GyroSensitivity");
 			HideMenuItem("FOVInputCurveGyro");
 			HideMenuItem("GyroVerticalHorizontalRatio");
-
 			HideMenuItem("GyroDirectionYaw");
 			HideMenuItem("GyroDirectionPitch");
 			HideMenuItem("GyroDirectionRoll");
+
+			HideMenuItem("GyroAimingSpace");
 
 			HideMenuItem("GyroAcceleration");
 			HideMenuItem("GyroAccelerationSpeedMin");
@@ -192,7 +198,7 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 	{
 		BindSettingChange("1PP");
 		BindSettingChange("3PP");
-		BindSettingChange("VehicleFOVPP");
+		BindSettingChange("VehicleFOV");
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -206,12 +212,9 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void BindControllerSettings()
 	{
-		BindSettingChange("GyroSensitivityYaw");
-		BindSettingChange("GyroSensitivityPitch");
-		BindSettingChange("GyroSensitivityRoll");
-		BindSettingChange("GyroInvertYaw");
-		BindSettingChange("GyroInvertPitch");
-		BindSettingChange("GyroInvertRoll");
+		BindSettingChange("GyroSensitivity");
+		BindSettingChange("FOVInputCurveGyro");
+		BindSettingChange("GyroVerticalHorizontalRatio");
 	}
 
 	//------------------------------------------------------------------------------------------------

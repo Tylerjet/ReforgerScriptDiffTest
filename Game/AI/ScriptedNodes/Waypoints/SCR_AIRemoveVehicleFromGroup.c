@@ -10,15 +10,19 @@ class SCR_AIRemoveVehicleFromGroup : AITaskScripted
 	{
 		SCR_AIGroup group = SCR_AIGroup.Cast(owner);
 		if (!group)
-		{
-			return NodeError(this,owner, "Node must be run on SCR_AIGroup agent!");			
-		}
+			return NodeError(this,owner, "Node must be run on SCR_AIGroup agent!");
+		
+		SCR_AIGroupVehicleManager vehicleMgr = group.GetGroupUtilityComponent().m_VehicleMgr;
 		
 		IEntity agentEntity, vehicleEntity;
 		
 		if (GetVariableIn(PORT_VEHICLE, vehicleEntity))
 		{
-			group.RemoveUsableVehicle(vehicleEntity);
+			SCR_AIVehicleUsageComponent vehicleUsageComp = SCR_AIVehicleUsageComponent.FindOnNearestParent(vehicleEntity, vehicleEntity);
+			if (!vehicleUsageComp)
+				return ENodeResult.FAIL;
+			
+			vehicleMgr.RemoveVehicle(vehicleUsageComp);
 			return ENodeResult.SUCCESS;
 		};
 		
@@ -26,14 +30,12 @@ class SCR_AIRemoveVehicleFromGroup : AITaskScripted
 		{
 			return ENodeResult.FAIL;
 		};
+				
+		array<ref SCR_AIGroupVehicle> groupVehicles = {};
+		vehicleMgr.GetAllVehicles(groupVehicles);
 		
-		array<IEntity> groupVehicles = {};
-		group.GetUsableVehicles(groupVehicles);
-		
-		foreach (IEntity vehicle : groupVehicles)
-		{
-			group.RemoveUsableVehicle(vehicle);
-		}
+		foreach (ref SCR_AIGroupVehicle vehicle : groupVehicles)
+			vehicleMgr.RemoveVehicle(vehicle.GetVehicleUsageComponent());
 		
 		return ENodeResult.SUCCESS;		
 	}
@@ -48,13 +50,13 @@ class SCR_AIRemoveVehicleFromGroup : AITaskScripted
     }
 	
 	//------------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Removes vehicle from the list of usable vehicles of the group. Provide either a vehicle entity or removes all vehicles used by any group member";
 	}		

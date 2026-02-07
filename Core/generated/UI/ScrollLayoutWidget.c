@@ -24,7 +24,7 @@ sealed class ScrollLayoutWidget: UIWidget
 	For ScrollLayoutWidget scrolling in only one direction the slider position in the other direction can be safely set to 0.
 	E.g., for vertical scroll layout, set y to desired scroll amount and x to anything, for example 0.
 	*/
-	proto external void SetSliderPos(float x, float y, bool noEvent = false);
+	proto external void SetSliderPos(float x, float y);
 	/*!
 	Return slider position in screen space pixels. For more info see GetSliderPos
 	*/
@@ -32,7 +32,7 @@ sealed class ScrollLayoutWidget: UIWidget
 	/*!
 	Set slider position in screen space pixels. For more info see SetSliderPos
 	*/
-	proto external void SetSliderPosPixels(float x, float y, bool noEvent = false);
+	proto external void SetSliderPosPixels(float x, float y);
 }
 
 /*!

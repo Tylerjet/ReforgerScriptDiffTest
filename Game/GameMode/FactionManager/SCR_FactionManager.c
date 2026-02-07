@@ -508,69 +508,109 @@ class SCR_FactionManager : FactionManager
 	//======================================== FACTION RELATIONS ========================================\\	
 
 	//------------------------------------------------------------------------------------------------
-	//! Set given factions friendly towards eachother (Server Only)
+	//! Set given factions friendly towards eachother (Replicated if called by server)
 	//! It is possible to set the same faction friendly towards itself to prevent faction infighting
 	//! \param[in] factionA faction to set friendly to factionB
 	//! \param[in] factionB faction to set friendly to factionA
 	//! \param[in] playerChanged id of player who changed it to show notification. Leave -1 to not show notification
-	void SetFactionsFriendly(notnull SCR_Faction factionA, notnull SCR_Faction factionB, int playerChanged = -1)
-	{
+	//! \param[in] updateAIs If true it will update all AI in the world. This is rather expensive so call RequestUpdateAllTargetsFactions() separately to update all AI if setting multiple factions friendly (or hostile)
+	void SetFactionsFriendly(notnull SCR_Faction factionA, notnull SCR_Faction factionB, int playerChanged = -1, bool updateAIs = true)
+	{		
 		//~ Already friendly
 		if (factionA.DoCheckIfFactionFriendly(factionB))
 			return;
+		
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		bool isServer = (gameMode && gameMode.IsMaster()) || (!gameMode && Replication.IsServer());
 		
 		//~ Only call once if setting self as friendly
 		if (factionA == factionB)
 		{
 			factionA.SetFactionFriendly(factionA);
 			
-			if (playerChanged > 0)
+			if (playerChanged > 0 && isServer)
 				SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_FACTION_SET_FRIENDLY_TO_SELF, playerChanged, GetFactionIndex(factionA));
+		}
+		else 
+		{
+			factionA.SetFactionFriendly(factionB);
+			factionB.SetFactionFriendly(factionA);
 			
-			RequestUpdateAllTargetsFactions();
-			return;
+			if (playerChanged > 0 && isServer)
+				SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_FACTION_SET_FRIENDLY_TO, playerChanged, GetFactionIndex(factionA), GetFactionIndex(factionB));
 		}
 		
-		factionA.SetFactionFriendly(factionB);
-		factionB.SetFactionFriendly(factionA);
-		
-		RequestUpdateAllTargetsFactions();
-		
-		if (playerChanged > 0)
-			SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_FACTION_SET_FRIENDLY_TO, playerChanged, GetFactionIndex(factionA), GetFactionIndex(factionB));
+		//~ Replicate the setting of friendly Factions
+		if (isServer)
+		{
+			//~ Update AIs
+			if (updateAIs)
+				RequestUpdateAllTargetsFactions();
+			
+			SCR_DelegateFactionManagerComponent delegateFactionManager = SCR_DelegateFactionManagerComponent.GetInstance();
+			if (!delegateFactionManager)
+				return;
+			
+			SCR_EditableFactionComponent factionDelegate = delegateFactionManager.GetFactionDelegate(factionA);
+			if (!factionDelegate)
+				return;
+			
+			//~ Replicate set friendly
+			factionDelegate.SetFactionFriendly_S(GetFactionIndex(factionB));
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Set given factions hostile towards eachother (Server Only)
+	//! Set given factions hostile towards eachother (Replicated if called by server)
 	//! It is possible to set the same faction hostile towards itself to allow faction infighting
 	//! \param[in] factionA faction to set hostile to factionB
 	//! \param[in] factionB faction to set hostile to factionA
 	//! \param[in] playerChanged id of player who changed it to show notification. Leave -1 to not show notification
-	void SetFactionsHostile(notnull SCR_Faction factionA, notnull SCR_Faction factionB, int playerChanged = -1)
+	//! \param[in] updateAIs If true it will update all AI in the world. This is rather expensive so call RequestUpdateAllTargetsFactions() separately to update all AI if setting multiple factions hostile (or friendly)
+	void SetFactionsHostile(notnull SCR_Faction factionA, notnull SCR_Faction factionB, int playerChanged = -1, bool updateAIs = true)
 	{
 		//~ Already Hostile
 		if (!factionA.DoCheckIfFactionFriendly(factionB))
 			return;
+		
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		bool isServer = (gameMode && gameMode.IsMaster()) || (!gameMode && Replication.IsServer());
 		
 		//~ Only call once if setting self as hostile
 		if (factionA == factionB)
 		{
 			factionA.SetFactionHostile(factionA);
 			
-			if (playerChanged > 0)
+			if (playerChanged > 0 && isServer)
 				SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_FACTION_SET_HOSTILE_TO_SELF, playerChanged, GetFactionIndex(factionA));
+		}
+		else 
+		{
+			factionA.SetFactionHostile(factionB);
+			factionB.SetFactionHostile(factionA);
 			
-			RequestUpdateAllTargetsFactions();
-			return;
+			if (playerChanged > 0 && isServer)
+				SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_FACTION_SET_HOSTILE_TO, playerChanged, GetFactionIndex(factionA), GetFactionIndex(factionB));
 		}
 		
-		factionA.SetFactionHostile(factionB);
-		factionB.SetFactionHostile(factionA);
-		
-		RequestUpdateAllTargetsFactions();
-		
-		if (playerChanged > 0)
-			SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_FACTION_SET_HOSTILE_TO, playerChanged, GetFactionIndex(factionA), GetFactionIndex(factionB));
+		//~ Replicate the setting of hostile Factions
+		if (isServer)
+		{
+			//~ Update AIs
+			if (updateAIs)
+				RequestUpdateAllTargetsFactions();
+			
+			SCR_DelegateFactionManagerComponent delegateFactionManager = SCR_DelegateFactionManagerComponent.GetInstance();
+			if (!delegateFactionManager)
+				return;
+			
+			SCR_EditableFactionComponent factionDelegate = delegateFactionManager.GetFactionDelegate(factionA);
+			if (!factionDelegate)
+				return;
+			
+			//~ Replicate set hostile
+			factionDelegate.SetFactionHostile_S(GetFactionIndex(factionB));
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

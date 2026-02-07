@@ -58,6 +58,11 @@ class BaseWeaponComponent: GameComponent
 	proto external void SetBipod(bool deploy);
 	//! Set deployment gamepad-trigger-effect enable/disable.
 	proto external void SetDeploymentTriggerEffectEnabled(bool val);
+
+	// callbacks
+
+	event void OnWeaponActive();
+	event void OnWeaponInactive();
 }
 
 /*!

@@ -87,7 +87,7 @@ class SCR_RadioCoverageMapDescriptorComponent : SCR_MapDescriptorComponent
 		string radioEncryption = m_Radio.GetEncryptionKey();
 		SCR_ERadioCoverageStatus coverage =  m_Radio.GetCoverageByEncryption(radioEncryption);
 
-		if (radioEncryption != playerFactionEncryption || coverage == SCR_ERadioCoverageStatus.NONE || coverage == SCR_ERadioCoverageStatus.RECEIVE)
+		if (radioEncryption != playerFactionEncryption || coverage == SCR_ERadioCoverageStatus.NONE || coverage == SCR_ERadioCoverageStatus.SEND)
 			return;
 
 		array<SCR_CoverageRadioComponent> radios = {};

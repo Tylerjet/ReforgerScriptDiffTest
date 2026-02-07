@@ -3,6 +3,10 @@
 [BaseContainerProps(configRoot: true)]
 class SCR_MagazineIndicatorConfiguration 
 {
+	// ---- Layout, can be used with the textures below or without, allows for more cutomizable mag indicators
+	[Attribute("{8A98061335A620E1}UI/layouts/HUD/WeaponInfo/SingleMagazineIndicator.layout", UIWidgets.ResourceNamePicker, "Custom Layout for magazine indicator. If null, default will be used.")]
+	ResourceName m_sMagazineLayout;
+	
 	// ---- Imageset with magazine standard textures
 	[Attribute("{CDA6C73DFD789999}UI/Imagesets/WeaponInfo/WeaponInfo.imageset", UIWidgets.ResourceNamePicker, "Imageset with foreground textures", "imageset")]
 	ResourceName m_sImagesetIcons;
@@ -27,5 +31,9 @@ class SCR_MagazineIndicatorConfiguration
 	
 	// ---- Magazine alpha mask image ----
 	[Attribute("magazine-default-alpha", UIWidgets.EditBox, "Magazine progress bar alpha mask")]
-	ResourceName m_sProgressAlphaMask;
+	string m_sProgressAlphaMask;
+	
+	// ---- Empty magazine indicator ----
+	[Attribute("firemode-safety", UIWidgets.EditBox, "Icon to display when magazine is empty (used for rocket pods)")]
+	string m_sEmptyMagazine;
 };

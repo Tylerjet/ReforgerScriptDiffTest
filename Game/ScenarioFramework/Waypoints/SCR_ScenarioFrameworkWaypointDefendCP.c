@@ -2,7 +2,7 @@
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkWaypointDefendCP : SCR_ScenarioFrameworkWaypointTimedDefend
 {
-	[Attribute(defvalue: "100", desc: "Radius in m")]
+	[Attribute(defvalue: "100", uiwidget: UIWidgets.Slider, desc: "Radius in m")]
 	float m_fCompletionRadius;
 
 	[Attribute(defvalue: "{2A81753527971941}Prefabs/AI/Waypoints/AIWaypoint_Defend_CP.et", desc: "In Default, it will use specific prefab for each class, but here you can change it if you know what you are doing")]

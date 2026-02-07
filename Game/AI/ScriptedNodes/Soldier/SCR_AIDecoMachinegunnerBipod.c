@@ -32,5 +32,5 @@ class SCR_AIDecoMachinegunnerBipod : DecoratorScripted
 		return distance > m_fDistanceThreshold && targetVisible;
 	}
 	
-	override string GetOnHoverDescription() { return "Tests conditions specific for machinegunner bopod deployment behavior. This node is not intended for generic usage."; }
+	static override string GetOnHoverDescription() { return "Tests conditions specific for machinegunner bopod deployment behavior. This node is not intended for generic usage."; }
 }

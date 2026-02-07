@@ -101,7 +101,7 @@ class SCR_CameraParticleEditor
 	{
 		if (m_Effect.IsEmpty()) return;
 		
-		ParticleEffectEntitySpawnParams spawnParams();
+		ParticleEffectEntitySpawnParams spawnParams = new ParticleEffectEntitySpawnParams();
 		spawnParams.Parent = target;
 		m_Emitter = ParticleEffectEntity.SpawnParticleEffect(m_Effect, spawnParams);
 	}

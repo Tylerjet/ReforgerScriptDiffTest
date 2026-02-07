@@ -10,7 +10,7 @@ class SCR_AISemaphoreIn: AITaskScripted
 	protected int m_maxAllowedHolders;
 	
 	// Make scripted node visible or hidden in nodes palette
-    override bool VisibleInPalette()
+    static override bool VisibleInPalette()
     {
         return true;
     }

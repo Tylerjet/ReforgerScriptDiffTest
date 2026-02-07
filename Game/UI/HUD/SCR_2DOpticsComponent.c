@@ -437,10 +437,10 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		if (m_bWasEntityHidden)
 		{
 			IEntity owner = GetOwner();
-			if (owner)
+			if (owner && !owner.IsDeleted())
 				owner.SetFlags(EntityFlags.VISIBLE, false);
 
-			if (m_ParentCharacter)
+			if (m_ParentCharacter && !m_ParentCharacter.IsDeleted())
 				m_ParentCharacter.SetFlags(EntityFlags.VISIBLE, false);
 
 			m_bWasEntityHidden = false;

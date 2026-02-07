@@ -14,6 +14,7 @@ class SCR_AIThrowGrenadeToBehavior : SCR_AIBehaviorBase
 #endif
 	private static vector CHARACTER_HEIGHT_OFFSET = {0, 1.6, 0};
 	
+	//---------------------------------------------------------------------------------------------------------------------------------
 	void SCR_AIThrowGrenadeToBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector position, EWeaponType weaponType, float delay, float priority = PRIORITY_BEHAVIOR_THROW_GRENADE, float priorityLevel = PRIORITY_LEVEL_NORMAL)
 	{
 		m_vTargetPosition.Init(this, position);
@@ -35,6 +36,12 @@ class SCR_AIThrowGrenadeToBehavior : SCR_AIBehaviorBase
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_GRENADE_POSITIONS))
 			DrawPositionDebug(false);		
 #endif
+	}
+	
+	//---------------------------------------------------------------------------------------------------------------------------------
+	override int GetCause()
+	{
+		return SCR_EAIBehaviorCause.COMBAT;
 	}
 		
 	//------------------------------------------------------------------------------------------------------------------------------------

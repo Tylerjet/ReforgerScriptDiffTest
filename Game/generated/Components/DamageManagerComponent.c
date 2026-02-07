@@ -67,6 +67,12 @@ class DamageManagerComponent: HitZoneContainerComponent
 
 	// callbacks
 
+	/*! Called when fall related damage is relevant */
+	event protected void OnHandleFallDamage(EFallDamageType fallDamageType, vector velocityVector);
+	//! Called when SetHealth() is used on default hitzone
+	event protected void OnHealthSet();
+	//! Called when SetMaxHealth() is used on default hitzone
+	event protected void OnMaxHealthChanged();
 	/*!
 	Called whenever an instigator is going to be set.
 	\param currentInstigator: This damage manager's last instigator
@@ -95,11 +101,6 @@ class DamageManagerComponent: HitZoneContainerComponent
 	\param owner Entity this component is attached to.
 	*/
 	event protected void OnPostInit(IEntity owner);
-	/*!
-	Called during EOnInit.
-	\param owner Entity this component is attached to.
-	*/
-	event protected void OnInit(IEntity owner);
 	event protected void OnDelete(IEntity owner);
 	/*!
 	Called during EOnFrame.

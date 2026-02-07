@@ -84,7 +84,7 @@ class SCR_AICheckEntityStance : AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() {return true;}
+	static override bool VisibleInPalette() {return true;}
 	
 	//------------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsOut = {
@@ -105,12 +105,12 @@ class SCR_AICheckEntityStance : AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override string GetOnHoverDescription()
+	static override string GetOnHoverDescription()
 	{
 		return "SCR_AICheckEntityStance: checks current entity stance. Returns running if stance doesn't change or leading entity is far away.";
 	}
 	
-	override bool CanReturnRunning()
+	static override bool CanReturnRunning()
 	{
 		return true;
 	}

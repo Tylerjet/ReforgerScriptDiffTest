@@ -206,7 +206,7 @@ class SCR_DebriefingScreenSummaryContent : SCR_WelcomeScreenBaseContent
 		
 		RichTextWidget subtitleText = RichTextWidget.Cast(m_wSummaryWidget.FindAnyWidget("SubtitleText"));
 		if (subtitleText)
-			subtitleText.SetTextFormat(subtitle, characterRank, string.Format("<color rgba=%1>%2</color>", UIColors.FormatColor(UIColors.CONTRAST_COLOR), GetGame().GetPlayerManager().GetPlayerName(GetGame().GetPlayerController().GetPlayerId())));
+			subtitleText.SetTextFormat(subtitle, characterRank, string.Format("<color rgba=%1>%2</color>", UIColors.FormatColor(UIColors.CONTRAST_COLOR), SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(GetGame().GetPlayerController().GetPlayerId())));
 
 		RichTextWidget descriptionText = RichTextWidget.Cast(m_wSummaryWidget.FindAnyWidget("DescriptionText"));
 		if (!descriptionText)

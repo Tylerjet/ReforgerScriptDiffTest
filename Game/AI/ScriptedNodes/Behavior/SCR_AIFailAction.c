@@ -1,6 +1,8 @@
 class SCR_AIFailAction : SCR_AIActionTask
 {
-
+	[Attribute(typename.EnumToString(EAIActionFailReason, EAIActionFailReason.UNKNOWN), UIWidgets.ComboBox, desc: "Fail reason which will be set by SetFailReason()", enums: ParamEnumArray.FromEnum(EAIActionFailReason))]
+	protected EAIActionFailReason m_eFailReason;
+	
 	//------------------------------------------------------------------------------------------------
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{
@@ -9,20 +11,21 @@ class SCR_AIFailAction : SCR_AIActionTask
 		if (!action)
 			return ENodeResult.FAIL;
 		
+		action.SetFailReason(m_eFailReason);
 		action.Fail();
-		return ENodeResult.SUCCESS;		
+		return ENodeResult.SUCCESS;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}	
 
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
-		return "Completes action specified in input or current action";
+		return "Fails action specified in input or current action";
 	}		
 
 };

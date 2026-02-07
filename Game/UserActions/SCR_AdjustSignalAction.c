@@ -1,7 +1,7 @@
 class SCR_AdjustSignalAction : ScriptedSignalUserAction
 {
 	//! Adjustment step of normalized value
-	[Attribute(defvalue: "0.1", desc: "Adjustment step [-1 to 1]", params: "-1 1 0.1")]
+	[Attribute(defvalue: "0.1", desc: "Adjustment step")]
 	protected float m_fAdjustmentStep;
 
 	//! Flag for enabling adjustment with scroll wheel
@@ -73,7 +73,7 @@ class SCR_AdjustSignalAction : ScriptedSignalUserAction
 		if (GetActionDuration() != 0)
 			m_fAdjustmentStep /= Math.AbsFloat(GetActionDuration());
 
-		m_fTargetValue = Math.Clamp(GetCurrentValue(), GetMinimumValue(), GetMaximumValue());
+		m_fTargetValue = Math.Clamp(SCR_GetCurrentValue(), SCR_GetMinimumValue(), SCR_GetMaximumValue());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -81,10 +81,10 @@ class SCR_AdjustSignalAction : ScriptedSignalUserAction
 	{
 		if (!m_bLoopAction && !m_bManualAdjustment)
 		{
-			if (m_fAdjustmentStep > 0 && GetCurrentValue() >= GetMaximumValue())
+			if (m_fAdjustmentStep > 0 && SCR_GetCurrentValue() >= SCR_GetMaximumValue())
 				return false;
 
-			if (m_fAdjustmentStep < 0 && GetCurrentValue() <= GetMinimumValue())
+			if (m_fAdjustmentStep < 0 && SCR_GetCurrentValue() <= SCR_GetMinimumValue())
 				return false;
 		}
 		
@@ -132,7 +132,7 @@ class SCR_AdjustSignalAction : ScriptedSignalUserAction
 
 	//------------------------------------------------------------------------------------------------
 	//! Temporary fix for an issue of SetSendActionDataFlag not working properly from PerformAction
-	void ToggleActionBypass()
+	protected void ToggleActionBypass()
 	{
 		HandleAction(1);
 	}
@@ -155,8 +155,8 @@ class SCR_AdjustSignalAction : ScriptedSignalUserAction
 		if (!m_bIsAdjustedByPlayer)
 			return;
 
-		if (m_fTargetValue < GetMinimumValue() || m_fTargetValue > GetMaximumValue())
-			m_fTargetValue = Math.Clamp(GetCurrentValue(), GetMinimumValue(), GetMaximumValue());
+		if (m_fTargetValue < SCR_GetMinimumValue() || m_fTargetValue > SCR_GetMaximumValue())
+			m_fTargetValue = Math.Clamp(SCR_GetCurrentValue(), SCR_GetMinimumValue(), SCR_GetMaximumValue());
 
 		if (!GetActionDuration())
 			ToggleActionBypass();
@@ -196,7 +196,7 @@ class SCR_AdjustSignalAction : ScriptedSignalUserAction
 	//------------------------------------------------------------------------------------------------
 	//! Increment target value
 	//! \param[in] value multiplayer which will be applied to the step value
-	void HandleAction(float value)
+	protected void HandleAction(float value)
 	{
 		if (value == 0)
 			return;
@@ -209,42 +209,63 @@ class SCR_AdjustSignalAction : ScriptedSignalUserAction
 		m_fTargetValue += value;
 		if (m_bLoopAction)
 		{
-			if (value > 0 && float.AlmostEqual(GetCurrentValue(), GetMaximumValue()))
-				m_fTargetValue = GetMinimumValue();
-			else if (value < 0 && float.AlmostEqual(GetCurrentValue(), GetMinimumValue()))
-				m_fTargetValue = GetMaximumValue();
+			if (value > 0 && float.AlmostEqual(SCR_GetCurrentValue(), SCR_GetMaximumValue()))
+				m_fTargetValue = SCR_GetMinimumValue();
+			else if (value < 0 && float.AlmostEqual(SCR_GetCurrentValue(), SCR_GetMinimumValue()))
+				m_fTargetValue = SCR_GetMaximumValue();
 		}
 
-		if (float.AlmostEqual(m_fTargetValue, GetCurrentValue(), Math.AbsFloat(m_fAdjustmentStep)))
-			return;
-
 		// Round to adjustment step
-		m_fTargetValue = Math.Floor(m_fTargetValue / m_fAdjustmentStep) * m_fAdjustmentStep;
+		m_fTargetValue = Math.Round(m_fTargetValue / m_fAdjustmentStep) * m_fAdjustmentStep;
 
 		// Limit to min/max value
-		m_fTargetValue = Math.Clamp(m_fTargetValue, GetMinimumValue(), GetMaximumValue());
+		m_fTargetValue = Math.Clamp(m_fTargetValue, SCR_GetMinimumValue(), SCR_GetMaximumValue());
 
-		if (!float.AlmostEqual(m_fTargetValue, GetCurrentValue()))
+		if (!float.AlmostEqual(m_fTargetValue, SCR_GetCurrentValue()))
 			SetSendActionDataFlag();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Decrement target value
 	//! \param[in] value multiplayer which will be applied to the step value
-	void HandleActionDecrease(float value)
+	protected void HandleActionDecrease(float value)
 	{
 		HandleAction(-value);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Scripted version of the GetCurrentValue that can be overriden for custom handling
+	protected float SCR_GetCurrentValue()
+	{
+		return GetCurrentValue();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Scripted version of the GetMinimumValue that can be overriden for custom handling
+	protected float SCR_GetMinimumValue()
+	{
+		return GetMinimumValue();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Scripted version of the GetMaximumValue that can be overriden for custom handling
+	protected float SCR_GetMaximumValue()
+	{
+		return GetMaximumValue();
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Plays movement and stop movement sound events
-	void PlayMovementAndStopSound(float lerp)
+	protected void PlayMovementAndStopSound(float lerp)
 	{
 		if (!m_SoundComponent)
 			return;
 
 		if (m_fLerpLast == lerp)
 			return;
+		
+		vector contextTransform[4];
+		GetActiveContext().GetTransformationModel(contextTransform);
 
 		if (float.AlmostEqual(lerp, 1))
 		{
@@ -252,7 +273,7 @@ class SCR_AdjustSignalAction : ScriptedSignalUserAction
 			{
 				m_SoundComponent.Terminate(m_MovementAudioHandle);
 				if (m_sMovementStopSoundEvent != string.Empty)
-					m_SoundComponent.SoundEvent(m_sMovementStopSoundEvent);
+					m_SoundComponent.SoundEventOffset(m_sMovementStopSoundEvent, contextTransform[3])
 			}
 		}
 		else if (float.AlmostEqual(lerp, 0))
@@ -261,13 +282,13 @@ class SCR_AdjustSignalAction : ScriptedSignalUserAction
 			{
 				m_SoundComponent.Terminate(m_MovementAudioHandle);
 				if (m_sMovementStopSoundEvent != string.Empty)
-					m_SoundComponent.SoundEvent(m_sMovementStopSoundEvent);
+					m_SoundComponent.SoundEventOffset(m_sMovementSoundEvent, contextTransform[3])
 			}
 		}
 		else
 		{
-			if (m_SoundComponent.IsFinishedPlaying(m_MovementAudioHandle) && m_sMovementStopSoundEvent != string.Empty)
-				m_MovementAudioHandle = m_SoundComponent.SoundEvent(m_sMovementSoundEvent);
+			if (m_SoundComponent.IsFinishedPlaying(m_MovementAudioHandle) && m_sMovementSoundEvent != string.Empty)
+				m_SoundComponent.SoundEventOffset(m_sMovementSoundEvent, contextTransform[3])
 		}
 
 		m_fLerpLast = lerp;
@@ -294,7 +315,7 @@ class SCR_AdjustSignalAction : ScriptedSignalUserAction
 	{
 		writer.WriteFloat(m_fTargetValue);
 		SetSignalValue(m_fTargetValue);
-		PlayMovementAndStopSound(Math.InverseLerp(GetMinimumValue(), GetMaximumValue(), m_fTargetValue));
+		PlayMovementAndStopSound(Math.InverseLerp(SCR_GetMinimumValue(), SCR_GetMaximumValue(), m_fTargetValue));
 
 		return true;
 	}
@@ -310,7 +331,7 @@ class SCR_AdjustSignalAction : ScriptedSignalUserAction
 
 		reader.ReadFloat(m_fTargetValue);
 		SetSignalValue(m_fTargetValue);
-		PlayMovementAndStopSound(Math.InverseLerp(GetMinimumValue(), GetMaximumValue(), m_fTargetValue));
+		PlayMovementAndStopSound(Math.InverseLerp(SCR_GetMinimumValue(), SCR_GetMaximumValue(), m_fTargetValue));
 
 		return true;
 	}
@@ -318,8 +339,8 @@ class SCR_AdjustSignalAction : ScriptedSignalUserAction
 	//------------------------------------------------------------------------------------------------
 	override float GetActionProgressScript(float fProgress, float timeSlice)
 	{
-		if (IsManuallyAdjusted() && GetMaximumValue() - GetMinimumValue() != 0)
-			return (m_fTargetValue - GetMinimumValue()) / (GetMaximumValue() - GetMinimumValue());
+		if (IsManuallyAdjusted() && SCR_GetMaximumValue() - SCR_GetMinimumValue() != 0)
+			return (m_fTargetValue - SCR_GetMinimumValue()) / (SCR_GetMaximumValue() - SCR_GetMinimumValue());
 		
 		return fProgress + timeSlice;
 	}

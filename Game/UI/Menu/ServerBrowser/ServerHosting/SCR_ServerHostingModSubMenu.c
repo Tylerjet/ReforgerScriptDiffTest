@@ -494,12 +494,12 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		m_wDisableScroll.GetSliderPos(x, y);
 		
 		if (y > 1)
-			m_wDisableScroll.SetSliderPos(0, 1, true);
+			m_wDisableScroll.SetSliderPos(0, 1);
 		
 		m_wEnableScroll.GetSliderPos(x, y);
 		
 		if (y > 1)
-			m_wEnableScroll.SetSliderPos(0, 1, true);
+			m_wEnableScroll.SetSliderPos(0, 1);
 		
 		// Reset the focus effects if is to stay focused in the same line
 		if (m_FocusedLine && !indexToFocus)

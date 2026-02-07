@@ -48,7 +48,7 @@ class SCR_EditableEntityMaintenancePlugin : WorkbenchPlugin
 			resource = Resource.Load(prefab);
 			if (!resource.IsValid())
 			{
-				Print("Cannot load " + prefab + " | " + FilePath.StripPath(__FILE__) + ":" + __LINE__, LogLevel.WARNING);
+				PrintFormat("Cannot load %1 | %2:%3", prefab + FilePath.StripPath(__FILE__), __LINE__, level: LogLevel.WARNING);
 				return;
 			}
 

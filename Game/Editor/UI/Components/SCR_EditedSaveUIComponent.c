@@ -63,6 +63,20 @@ class SCR_EditedSaveUIComponent : SCR_ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	override bool OnFocus(Widget w, int x, int y)
+	{
+		SCR_ListEntryHelper.UpdateMouseButtonColor(m_UploadButton, !m_bCanUpload, true);
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool OnFocusLost(Widget w, int x, int y)
+	{
+		SCR_ListEntryHelper.UpdateMouseButtonColor(m_UploadButton, !m_bCanUpload, m_UploadButton.GetFocused());
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void OnTooltipShow(SCR_ScriptedWidgetTooltip tooltip)
 	{
 		WorldSaveItem saveItem;

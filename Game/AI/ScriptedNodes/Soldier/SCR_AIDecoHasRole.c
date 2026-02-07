@@ -15,13 +15,13 @@ class SCR_AIDecoHasRole : DecoratorScripted
 	}	
 	
 	//-------------------------------------------------------------------	
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}
 	
 	//-------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Decorator that tests if character has requested role";
 	}	

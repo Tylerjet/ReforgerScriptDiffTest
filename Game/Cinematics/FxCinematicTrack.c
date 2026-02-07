@@ -6,7 +6,6 @@ class FxCinematicTrack : CinematicTrackBase
 	
 	private ParticleEffectEntity m_ParticleEntity;
 	private World globalWorld;
-	private Particles particles;
 	
 	[CinematicEventAttribute()]
 	void Play()
@@ -24,6 +23,7 @@ class FxCinematicTrack : CinematicTrackBase
 		if (globalWorld)
 			m_ParticleEntity = ParticleEffectEntity.Cast(globalWorld.FindEntityByName(GetTrackName()));
 		
+		Particles particles;
 		
 		if(m_ParticleEntity)
 			particles = m_ParticleEntity.GetParticles();

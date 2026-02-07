@@ -141,14 +141,17 @@ class SCR_GenericPreviewEntity: SCR_BasePreviewEntity
 		TNodeId pivotIndex = entity.GetPivot();
 		if (pivotIndex == -1)
 			return string.Empty;
-		
-		array<string> boneNames = {};
+				
 		Animation anim = parent.GetAnimation();
-		anim.GetBoneNames(boneNames);
-		for (int i = 0, count = boneNames.Count(); i < count; i++)
+		if (anim)
 		{
-			if (anim.GetBoneIndex(boneNames[i]) == pivotIndex)
-				return boneNames[i];
+			array<string> boneNames = {};
+			anim.GetBoneNames(boneNames);
+			for (int i = 0, count = boneNames.Count(); i < count; i++)
+			{
+				if (anim.GetBoneIndex(boneNames[i]) == pivotIndex)
+					return boneNames[i];
+			}
 		}
 		return string.Empty;
 	}

@@ -1,6 +1,14 @@
 //------------------------------------------------------------------------------------------------
 class SCR_MapMarkerManagerSystem : GameSystem
 {
+	override static void InitInfo(WorldSystemInfo outInfo)
+	{
+		outInfo
+			.SetAbstract(false)
+			.SetLocation(ESystemLocation.Client)
+			.AddPoint(ESystemPoint.PostFrame);
+	}
+
 	protected ref array<SCR_MapMarkerManagerComponent> m_Components = {};
 	
 	//------------------------------------------------------------------------------------------------

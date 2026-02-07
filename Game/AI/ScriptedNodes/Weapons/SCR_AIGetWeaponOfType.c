@@ -37,7 +37,7 @@ class SCR_AIGetWeaponOfType : AITaskScripted
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}

@@ -84,7 +84,7 @@ class SCR_AIFindTagetToLookAt: AITaskScripted
         return s_aVarsOut;
     }
 	
-		override bool VisibleInPalette()
+		static override bool VisibleInPalette()
     {
         return true;
     }

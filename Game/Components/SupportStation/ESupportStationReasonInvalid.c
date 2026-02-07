@@ -11,6 +11,7 @@ enum ESupportStationReasonInvalid
 	INVALID_FACTION = 300,			//!< Support stations has invalid faction for user.
 	
 	NO_SUPPLIES = 400,				//!< There are support stations in the area but they don't have supplies
+	NO_SUPPLY_STORAGE_SPACE = 410,	//!< Cannot execute support station as the supplies it gains have no storage space
 	
 	NO_FUEL_TO_GIVE = 500,			//!< There are support stations in range for refueling but non have fuel to give
 	FUEL_CANISTER_EMPTY,			//!< The player is holder a fuel canister but the canister is empty
@@ -30,6 +31,7 @@ enum ESupportStationReasonInvalid
 	RESUPPLY_NO_VALID_WEAPON,		//!< Cannot Resupply as player is not holding any valid weapons
 	
 	IS_MOVING = 800,				//!< If not static and moving
+	RANK_TOO_LOW = 850, 			//!< If player ranks are enabled and player has too low of a rank
 	
 	IN_USE = 9999,					// !< The User action is being used by another player already
 }

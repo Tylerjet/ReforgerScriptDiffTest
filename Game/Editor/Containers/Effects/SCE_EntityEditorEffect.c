@@ -6,8 +6,10 @@ Spawned entity effect.
 */
 class SCR_EntityEditorEffect: SCR_BaseEditorEffect
 {
+	//---- REFACTOR NOTE START: Should be protected ----
 	[Attribute(params: "et", uiwidget: UIWidgets.ResourcePickerThumbnail, desc: "Spawned entity")]
 	private ResourceName m_Prefab;
+	//---- REFACTOR NOTE END ----
 	
 	[Attribute(desc: "Spawn the entity only when no entities are passed to the event.")]
 	protected bool m_bNoEntities;
@@ -17,6 +19,7 @@ class SCR_EntityEditorEffect: SCR_BaseEditorEffect
 	
 	protected IEntity m_Entity;
 	
+	//---- REFACTOR NOTE START: Not up to date with internal scripting style ----
 	/*!
 	Get entity created by the effect
 	\return Entity
@@ -64,4 +67,5 @@ class SCR_EntityEditorEffect: SCR_BaseEditorEffect
 		m_Entity = GetGame().SpawnEntityPrefab(resource, GetGame().GetWorld(), spawnParams);
 		return true;
 	}
+	//---- REFACTOR NOTE END ----
 };

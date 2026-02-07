@@ -10,7 +10,6 @@ class SCR_InteractableBoxComponent : ScriptComponent
 	private IEntity m_Owner = null;
 	private IEntity m_User = null;
 	private ParticleEffectEntity m_Fire = null;
-	private Physics m_Physics = null;
 	private float m_Lifetime = 10.0; // object can burn for 15 seconds before dying
 	private bool m_bIsDead = false;
 	
@@ -36,7 +35,7 @@ class SCR_InteractableBoxComponent : ScriptComponent
 		{
 			if (!m_Fire)
 			{
-				ParticleEffectEntitySpawnParams spawnParams();
+				ParticleEffectEntitySpawnParams spawnParams = new ParticleEffectEntitySpawnParams();
 				spawnParams.Parent = m_Owner;
 				spawnParams.Transform[3] = offset;
 				m_Fire = ParticleEffectEntity.SpawnParticleEffect(particle, spawnParams);
@@ -174,7 +173,8 @@ class SCR_InteractableBoxComponent : ScriptComponent
 	{
 		if (m_User && m_Owner && m_bIsDragging)
 		{
-			if (!m_Physics)
+			Physics physics = m_Owner.GetPhysics();
+			if (!physics)
 			{
 				m_bIsDragging = false;
 				m_User = null;
@@ -196,7 +196,7 @@ class SCR_InteractableBoxComponent : ScriptComponent
 			
 			float upMag = userMat[3][1] - selfOrigin[1];
 			dir += Vector(0, upMag, 0);
-			m_Physics.ApplyImpulse(dir * m_Physics.GetMass());
+			physics.ApplyImpulse(dir * physics.GetMass());
 		}
 	}
 	
@@ -237,12 +237,6 @@ class SCR_InteractableBoxComponent : ScriptComponent
 	{
 		super.OnPostInit(owner);
 		SetEventMask(owner, EntityEvent.INIT | EntityEvent.FRAME | EntityEvent.SIMULATE);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void EOnInit(IEntity owner)
-	{
-		m_Physics = owner.GetPhysics();
 	}
 
 	//------------------------------------------------------------------------------------------------

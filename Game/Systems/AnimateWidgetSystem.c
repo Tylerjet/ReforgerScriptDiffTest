@@ -4,6 +4,14 @@ Helper system to call widget animations updates
 
 class AnimateWidgetSystem : GameSystem
 {
+	override static void InitInfo(WorldSystemInfo outInfo)
+	{
+		outInfo
+			.SetAbstract(false)
+			.SetLocation(ESystemLocation.Client)
+			.AddPoint(ESystemPoint.Frame);
+	}
+
 	protected ref AnimateWidget m_Animator;
 
 	//------------------------------------------------------------------------------------------------

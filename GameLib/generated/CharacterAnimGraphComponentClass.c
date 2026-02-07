@@ -4,6 +4,6 @@ Do not modify, this script is generated
 ===========================================
 */
 
-class CharacterAnimGraphComponentClass: GenericComponentClass
+sealed class CharacterAnimGraphComponentClass: GenericComponentClass
 {
 }

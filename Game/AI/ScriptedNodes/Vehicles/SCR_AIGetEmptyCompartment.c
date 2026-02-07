@@ -1,6 +1,7 @@
 class SCR_AIGetEmptyCompartment : AITaskScripted
 {
 	static const string PORT_POSITION 			=	"Position";
+	static const string PORT_COMPARTMENT		=	"CompartmentSlot";
 	static const string PORT_AGENT 				=	"Agent";
 	static const string PORT_VEHICLE 			=	"Vehicle";
 	static const string PORT_BOARDING_PARAMS 	=	"BoardingParams";
@@ -96,13 +97,14 @@ class SCR_AIGetEmptyCompartment : AITaskScripted
 			else if (!turretComp.IsEmpty())
 				compartmentToAlocate = turretComp[0];
 			else if (!cargoComp.IsEmpty())
-				compartmentToAlocate = cargoComp[0];			
+				compartmentToAlocate = cargoComp[0];
 		}
 		
 		if (compartmentToAlocate)
 		{
 			group.AllocateCompartment(compartmentToAlocate);
 			SetVariableOut(PORT_POSITION, SCR_AICompartmentHandling.CompartmentClassToType(compartmentToAlocate.Type()));					
+			SetVariableOut(PORT_COMPARTMENT, compartmentToAlocate);
 			return ENodeResult.SUCCESS;
 		}
 		
@@ -123,7 +125,8 @@ class SCR_AIGetEmptyCompartment : AITaskScripted
 	
 	//------------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsOut = {
-		PORT_POSITION
+		PORT_POSITION,
+		PORT_COMPARTMENT
 	};
 	override TStringArray GetVariablesOut()
     {
@@ -131,13 +134,13 @@ class SCR_AIGetEmptyCompartment : AITaskScripted
     }
 	
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
     {
         return true;
     }
 	
 	//------------------------------------------------------------------------------------------------
-	override string GetOnHoverDescription()
+	static override string GetOnHoverDescription()
 	{
 		return "Returns type of next usable compartment. Compartments are allocated in GetIn activity. The compartments are selected with priority pilot>turret>cargo unless AIAgent is leader";
 	}

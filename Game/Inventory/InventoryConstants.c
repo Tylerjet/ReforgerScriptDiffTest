@@ -36,6 +36,7 @@ enum ECommonItemType
 	TOURNIQUET = 4,
    	AMMO = 10,
 	MG_AMMO = 11,
+	AMMO_MORTAR = 12,
 	FOOD = 20,
 	BINOCULARS = 50,
 	COMPASS = 51,
@@ -48,6 +49,8 @@ enum ECommonItemType
 	DETONATOR = 58,
 	NIGHT_VISION = 59,
 	GPS = 60,
+	HAND_SLOT_ITEM = 61,
+	IDENTITY_ITEM = 70,
 };
 
 //TODO: move this to the UI constants (if exists)

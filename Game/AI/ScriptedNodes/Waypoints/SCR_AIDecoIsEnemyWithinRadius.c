@@ -70,12 +70,12 @@ class SCR_AIDecoIsEnemyWithinRadius : DecoratorScripted
 	}	
 	
 	//---------------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}
 	
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Decorator that test that at least one detected enemy is within completion radius of waypoint, current waypoint is used if none is provided";
 	}

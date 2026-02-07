@@ -68,12 +68,12 @@ class SCR_AIGetSplinePoint: AITaskScripted
 		return ENodeResult.SUCCESS;	
 	}
 	
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}	
 	
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "BT node for returning position on spline that is hierarchical child of provided entity. Each tick next point on spline is taken.";
 	}	

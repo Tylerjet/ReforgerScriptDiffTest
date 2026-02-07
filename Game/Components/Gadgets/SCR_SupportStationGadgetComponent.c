@@ -91,7 +91,7 @@ class SCR_SupportStationGadgetComponent : SCR_GadgetComponent
 		
 		CharacterCommandHandlerComponent commandHandlerComponent = CharacterCommandHandlerComponent.Cast(animationComponent.FindComponent(CharacterCommandHandlerComponent));
 		if (commandHandlerComponent)
-			commandHandlerComponent.FinishItemUse();
+			commandHandlerComponent.FinishItemUse(true);
 	}
 	
 	//------------------------------------------------------------------------------------------------

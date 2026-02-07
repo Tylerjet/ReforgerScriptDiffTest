@@ -5,6 +5,22 @@ class SCR_ScenarioFrameworkTaskAreaClass: SCR_ScenarioFrameworkTaskClass
 class SCR_ScenarioFrameworkTaskArea : SCR_ScenarioFrameworkTask
 {	
 	protected SCR_BaseTriggerEntity 		m_Trigger;
+	
+	//------------------------------------------------------------------------------------------------
+	//! Sets support entity for task extract.
+	//! \return true if support entity is found, false otherwise.
+	override bool SetSupportEntity()
+	{
+		m_SupportEntity = SCR_ScenarioFrameworkTaskExtractSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_ScenarioFrameworkTaskExtractSupportEntity));
+		
+		if (!m_SupportEntity)
+		{
+			Print("ScenarioFramework: Task Extract support entity not found in the world, task won't be created!", LogLevel.ERROR);
+			return false;
+		}
+
+		return true;
+	}
 		
 	//------------------------------------------------------------------------------------------------
 	//! Initializes Task and registers Trigger
@@ -54,6 +70,6 @@ class SCR_ScenarioFrameworkTaskArea : SCR_ScenarioFrameworkTask
 	void OnTriggerActivated()
 	{
 		m_Trigger.GetOnActivate().Remove(OnTriggerActivated);
-		m_SupportEntity.FinishTask(this);	
+		m_SupportEntity.FinishTask(this);
 	}	
 }

@@ -35,7 +35,12 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	protected SCR_BaseTask m_SelectedTask;
 	protected SCR_BaseTask m_LastSelectedTask;
 	protected bool m_bShowSelectedTaskOnMap;
-
+	
+	protected SCR_PlayerFactionAffiliationComponent m_PlyFactionAffilComp;
+	
+	[Attribute("{10C0A9A305E8B3A4}UI/Imagesets/Tasks/Task_Icons.imageset", category: "Task icon")]
+	protected ResourceName m_sIconImageset;
+	
 	[Attribute("{ACCF501DD69CAF7B}UI/layouts/Tasks/TaskList.layout")]
 	ResourceName m_UIResource;
 
@@ -449,8 +454,8 @@ class SCR_UITaskManagerComponent : ScriptComponent
 
 		SCR_BaseTaskExecutor localTaskExecutor = SCR_BaseTaskExecutor.GetLocalExecutor();
 		SCR_BaseTask assignedTask = localTaskExecutor.GetAssignedTask();
-
-		float speed = 1;
+		
+		const float speed = 1; // TODO: check for good const usage
 		float targetOpacity;
 		if (m_bCurrentTaskVisible)
 		{
@@ -459,23 +464,63 @@ class SCR_UITaskManagerComponent : ScriptComponent
 			if (localTaskExecutor)
 			{
 				TextWidget textWidget = TextWidget.Cast(m_wCurrentTask.FindAnyWidget("TaskTitle"));
-
+				
+				//Main frame of the task
+				FrameWidget m_wTaskIconWidget = FrameWidget.Cast(m_wCurrentTask.FindAnyWidget("CurrentTaskIcon"));
+				if (!m_wTaskIconWidget)
+					return;
+				
+				PlayerController m_playerController = GetGame().GetPlayerController();	
+				if (!m_playerController)
+					return;
+		
+				m_PlyFactionAffilComp = SCR_PlayerFactionAffiliationComponent.Cast(m_playerController.FindComponent(SCR_PlayerFactionAffiliationComponent));
+				if (!m_PlyFactionAffilComp)
+					return;
+				
+				SCR_Faction m_faction = SCR_Faction.Cast(m_PlyFactionAffilComp.GetAffiliatedFaction());
+				if (!m_faction)
+					return;
+				
+				//Setting visibility, color and symbol of task icon
 				if (assignedTask)
+				{
+					ImageWidget m_wTaskIconBackground = ImageWidget.Cast(m_wCurrentTask.FindAnyWidget("TaskIconBackground"));
+					ImageWidget m_wTaskIconOutline = ImageWidget.Cast(m_wCurrentTask.FindAnyWidget("TaskIconOutline"));
+					ImageWidget m_wTaskIconSymbol = ImageWidget.Cast(m_wCurrentTask.FindAnyWidget("TaskIconSymbol"));
+					if (!m_wTaskIconBackground || !m_wTaskIconOutline || !m_wTaskIconSymbol)
+						return;
+					
+					m_wTaskIconWidget.SetVisible(true);
 					assignedTask.SetTitleWidgetText(textWidget, assignedTask.GetTaskListTaskTitle());
+					
+					string IconName = assignedTask.GetIconName();
+					m_wTaskIconSymbol.LoadImageFromSet(0, m_sIconImageset, IconName);	
+					
+					//set color
+					Faction LightFaction = assignedTask.GetTargetFaction();
+					Color lightfactioncolor = LightFaction.GetFactionColor();
+					
+					m_wTaskIconOutline.SetColor(m_faction.GetOutlineFactionColor());
+					m_wTaskIconSymbol.SetColor(m_faction.GetOutlineFactionColor());
+					
+					//priority colors
+					if (assignedTask.IsPriority())
+						m_wTaskIconBackground.SetColor(UIColors.CONTRAST_COLOR);
+					else
+						m_wTaskIconBackground.SetColor(lightfactioncolor);
+				}
 				else
+				{
+					m_wTaskIconWidget.SetVisible(false);
 					textWidget.SetTextFormat(NO_ASSIGNED_TASK);
-
+				}
+			
 				textWidget = TextWidget.Cast(m_wCurrentTask.FindAnyWidget("TaskDescription"));
 				if (assignedTask)
 					assignedTask.SetTitleWidgetText(textWidget, assignedTask.GetTaskListTaskText());
 				else
-					textWidget.SetTextFormat(ASSIGN_TASK_HINT);
-
-				textWidget = TextWidget.Cast(m_wCurrentTask.FindAnyWidget("CurrentObjectiveText"));
-				if (assignedTask)
-					textWidget.SetVisible(true);
-				else
-					textWidget.SetVisible(false);
+					textWidget.SetTextFormat(ASSIGN_TASK_HINT);		
 			}
 		}
 		else
@@ -644,6 +689,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	//!
 	void Action_ShowOnMap()
 	{
+		
 		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
 		if (!mapEntity)
 			return;
@@ -653,6 +699,8 @@ class SCR_UITaskManagerComponent : ScriptComponent
 
 		if (!mapEntity.IsOpen())
 		{
+			Action_TasksClose();
+			
 			IEntity player = SCR_PlayerController.GetLocalControlledEntity();
 			if (!player)
 				return;
@@ -672,8 +720,6 @@ class SCR_UITaskManagerComponent : ScriptComponent
 		{
 			PanMapToTask(task: m_SelectedTask);
 		}
-		
-		Action_TasksClose();
 	}
 
 	//------------------------------------------------------------------------------------------------

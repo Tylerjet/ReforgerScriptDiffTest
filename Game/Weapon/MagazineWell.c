@@ -24,6 +24,14 @@ class MagazineWellM60 : BaseMagazineWell
 {
 };
 
+//M240 - 7.62x51mm
+class MagazineWellM240Class {}
+MagazineWellM240Class MagazineWellM240Source;
+
+class MagazineWellM240 : BaseMagazineWell
+{
+};
+
 //M60D - 7.62x51mm
 class MagazineWellM60DClass {}
 MagazineWellM60DClass MagazineWellM60DSource;
@@ -80,7 +88,21 @@ class MagazineWellUS_UGL : BaseMagazineWell
 {
 };
 
+//M242 25x137mm cannon - HEIT
+class MagazineWell_Cannon_M242_HEIT_Class {}
+MagazineWell_Cannon_M242_HEIT_Class MagazineWell_Cannon_M242_HEIT_Source;
 
+class MagazineWell_Cannon_M242_HEIT : BaseMagazineWell
+{
+};
+
+//M242 25x137mm cannon - APDST
+class MagazineWell_Cannon_M242_APDST_Class {}
+MagazineWell_Cannon_M242_APDST_Class MagazineWell_Cannon_M242_APDST_Source;
+
+class MagazineWell_Cannon_M242_APDST : BaseMagazineWell
+{
+};
 
 
 // Warsaw Pact
@@ -185,5 +207,21 @@ class MagazineWellUK59Class {}
 MagazineWellUK59Class MagazineWellUK59Source;
 
 class MagazineWellUK59 : BaseMagazineWell
+{
+};
+
+//Mortar - 81mm
+class MagazineWellMortar81mmClass {}
+MagazineWellMortar81mmClass MagazineWellMortar81mmSource;
+
+class MagazineWellMortar81mm : MagazineWellMortar
+{
+};
+
+//Mortar - 82mm
+class MagazineWellMortar82mmClass {}
+MagazineWellMortar82mmClass MagazineWellMortar82mmSource;
+
+class MagazineWellMortar82mm : MagazineWellMortar
 {
 };

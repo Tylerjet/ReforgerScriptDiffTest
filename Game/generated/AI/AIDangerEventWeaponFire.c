@@ -15,6 +15,12 @@ class AIDangerEventWeaponFire: AIDangerEvent
 	proto external vector GetDirection();
 	//! Returns true if suppressor was attached
 	proto external bool IsSuppressed();
+	//! Returns instigator entity - the entity which pulled the trigger
+	proto external IEntity GetInstigatorEntity();
+	//! Returns WorldTimestamp when the event was created
+	proto external WorldTimestamp GetTimestamp();
+	//! Returns initial speed of projectile
+	proto external float GetInitialSpeed();
 }
 
 /*!

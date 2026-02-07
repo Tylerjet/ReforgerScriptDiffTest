@@ -30,11 +30,6 @@ class CharacterIdentityComponent: GameComponent
 	*/
 	proto external void SetVisibleAll(bool visible);
 	/*
-	Returns the visibility of all submeshes.
-	\return Returns whether all submesh visibility is enabled or not.
-	*/
-	proto external bool IsVisibleAll();
-	/*
 	Sets wound state for specific bodyPart.
 	\param bodyPart Name of the part to be changed
 	\param wound Whether part should be wounded or not.

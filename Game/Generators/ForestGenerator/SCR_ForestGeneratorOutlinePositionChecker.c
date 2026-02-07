@@ -1,13 +1,13 @@
 class SCR_ForestGeneratorOutlinePositionChecker
 {
 	protected ref array<ref array<vector>> m_aOutlineSegments = {};	//<! points are 2D, format { X, 0, Z }
-	protected ref array<vector> m_aOutlineCentres = {};
-	protected ref array<float> m_aOutlineRadii = {}; // are you radii?
+//	protected ref array<vector> m_aOutlineCentres = {};
+//	protected ref array<float> m_aOutlineRadii = {}; // are you radii?
 	protected float m_fSetDistanceSq;
 
 	//------------------------------------------------------------------------------------------------
-	//! \param pos the position to check
-	//! \param distance the checked distance (should be positive)
+	//! \param[in] pos the position to check
+	//! \param[in] distance the checked distance
 	//! \return true if provided pos is <= distance from diff outline, false otherwise
 	bool IsPosDistanceEqualOrCloserThan(vector pos, float distance)
 	{
@@ -24,8 +24,7 @@ class SCR_ForestGeneratorOutlinePositionChecker
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param pos the position to check
-	//! \param distance the checked distance (should be positive)
+	//! \param[in] pos the position to check
 	//! \return true if provided pos is <= distance from diff outline, false otherwise
 	bool IsPosWithinSetDistance(vector pos)
 	{
@@ -323,6 +322,10 @@ class SCR_ForestGeneratorOutlinePositionChecker
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] oldPoints
+	//! \param[in] newPoints
+	//! \param[in] setDistance
 	void SCR_ForestGeneratorOutlinePositionChecker(notnull array<float> oldPoints, notnull array<float> newPoints, float setDistance)
 	{
 		array<float> allOutlinePoints = GetOutlineDiffLines(oldPoints, newPoints);
@@ -336,8 +339,8 @@ class SCR_ForestGeneratorOutlinePositionChecker
 			};
 
 			m_aOutlineSegments.Insert(segment);
-			m_aOutlineCentres.Insert(vector.Lerp(segment[0], segment[1], 0.5));
-			m_aOutlineRadii.Insert(vector.DistanceXZ(segment[0], segment[1]) * 0.5);
+//			m_aOutlineCentres.Insert(vector.Lerp(segment[0], segment[1], 0.5));
+//			m_aOutlineRadii.Insert(vector.DistanceXZ(segment[0], segment[1]) * 0.5);
 		}
 
 		m_fSetDistanceSq = setDistance * setDistance;

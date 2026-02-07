@@ -81,7 +81,7 @@ class SCR_AIGetPosForwardToTarget: AITaskScripted
 	}
 
 	//------------------------------------------------------------------------------------------------	
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "It will return world position in direction to target away from owner position. Doesn't take navmesh in account. Target can be entity or vector.";
 	}
@@ -100,7 +100,7 @@ class SCR_AIGetPosForwardToTarget: AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
 	{
 		return true;
 	}

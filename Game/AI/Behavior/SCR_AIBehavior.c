@@ -1,3 +1,15 @@
+enum SCR_EAIBehaviorCause
+{
+	SAFE = 10,			// There's nothing better to do and we are safe
+	SELF_AID = 20,		// Minor actions related to caring about ourselves
+	GROUP_GOAL = 30,	// Doing something on behalf of group
+	DANGER_LOW = 40,	// Reacting to dangers of not immediate potential death, like gunshots
+	COMBAT = 50,		// Combat related behaviors
+	DANGER_MEDIUM = 60,	// Avoiding non-immediate certain death (healing injury)
+	DANGER_HIGH = 70,	// Avoiding immediate certain death (car, grenade)
+	ALWAYS = 1000 		// Special value for settings to run in all behaviors
+}
+
 class SCR_AIBehaviorBase : SCR_AIActionBase
 {
 	SCR_AIUtilityComponent m_Utility;
@@ -12,6 +24,8 @@ class SCR_AIBehaviorBase : SCR_AIActionBase
 	{
 		m_Utility = utility;
 		SetRelatedGroupActivity(groupActivity);
+		if (groupActivity)
+			groupActivity.OnChildBehaviorCreated(this);
 	}
 	
 	//---------------------------------------------------------------------------------------------------------------------------------
@@ -32,10 +46,39 @@ class SCR_AIBehaviorBase : SCR_AIActionBase
 	#ifdef AI_DEBUG
     override protected void AddDebugMessage(string str)
 	{
-		SCR_AIInfoBaseComponent infoComp = SCR_AIInfoBaseComponent.Cast(m_Utility.GetOwner().FindComponent(SCR_AIInfoBaseComponent));
+		if (!m_Utility)
+			return;
+		
+		AIAgent ownerAgent = m_Utility.GetOwner();
+		if (!ownerAgent)
+			return;
+		
+		SCR_AIInfoBaseComponent infoComp = SCR_AIInfoBaseComponent.Cast(ownerAgent.FindComponent(SCR_AIInfoBaseComponent));
+		if (!infoComp)
+			return;
+		
 		infoComp.AddDebugMessage(string.Format("%1: %2", this, str), msgType: EAIDebugMsgType.ACTION);
 	}
 	#endif
+	
+	//---------------------------------------------------------------------------------------------------------------------------------
+	override void OnActionFailed()
+	{
+		super.OnActionFailed();
+		SCR_AIActivityBase relatedActivity = SCR_AIActivityBase.Cast(GetRelatedGroupActivity());
+		if (relatedActivity)
+			relatedActivity.OnChildBehaviorFinished(this);
+	}
+	
+	//----------------------------------------------------------------------------------------------------------------------------------
+	override void OnActionCompleted()
+	{
+		super.OnActionCompleted();
+		SCR_AIActivityBase relatedActivity = SCR_AIActivityBase.Cast(GetRelatedGroupActivity());
+		if (relatedActivity)
+			relatedActivity.OnChildBehaviorFinished(this);
+	}
+	
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -46,6 +89,12 @@ class SCR_AIWaitBehavior : SCR_AIBehaviorBase
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/Wait.bt";
 		SetPriority(PRIORITY_BEHAVIOR_WAIT);
 	}
+	
+	//---------------------------------------------------------------------------------------------------------------------------------
+	override int GetCause()
+	{
+		return SCR_EAIBehaviorCause.SAFE;
+	}	
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -66,4 +115,10 @@ class SCR_AIIdleBehavior : SCR_AIBehaviorBase
 		// Temporary solution to make AI select some generic weapon suitable against infantry, like a rifle.
 		m_Utility.m_CombatComponent.SetExpectedEnemyType(EAIUnitType.UnitType_Infantry);
 	}
+	
+	//---------------------------------------------------------------------------------------------------------------------------------
+	override int GetCause()
+	{
+		return SCR_EAIBehaviorCause.SAFE;
+	}	
 };

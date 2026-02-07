@@ -47,7 +47,7 @@ class SCR_AIDangerReaction_DoorMovement : SCR_AIDangerReaction
 		
 		//Turn around if the instigator of door is an enemy,
 		IEntity actionStarter = dangerEvent.GetVictim();
-		if (agent.IsEnemy(actionStarter))
+		if (agent.IsPerceivedEnemy(actionStarter))
 		{
 			utility.AddAction(new SCR_AIMoveIndividuallyBehavior(utility, null, agentPos, SCR_AIActionBase.PRIORITY_BEHAVIOR_MOVE_INDIVIDUALLY, 0, null, AGENT_DEFAULT_RADIUS));
 			utility.m_LookAction.LookAt(actionStarter.GetOrigin(), utility.m_LookAction.PRIO_DANGER_EVENT);

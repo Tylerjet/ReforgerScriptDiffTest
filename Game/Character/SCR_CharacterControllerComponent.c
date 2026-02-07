@@ -57,6 +57,9 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	protected float m_fDrowningTime;
 	protected ref SCR_ScriptedCharacterInputContext m_pScrInputContext;
 
+	//! Contains information about for which shell player saved some information for future use
+	protected ref array<ref SCR_ShellConfig> m_aSavedShellConfigs;
+
 	// Character event invokers
 	ref ScriptInvokerVoid m_OnPlayerDeath = new ScriptInvokerVoid();
 	ref OnPlayerDeathWithParamInvoker m_OnPlayerDeathWithParam = new OnPlayerDeathWithParamInvoker(); // has a getter!
@@ -74,7 +77,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	ref OnItemUseEndedInvoker m_OnItemUseEndedInvoker = new OnItemUseEndedInvoker();
 	// called when all listeners reacted on ItemUseEnded invoker - may delete the item now thus listerners to ItemUseFinished may get first parameter null! 
 	ref OnItemUseFinishedInvoker m_OnItemUseFinishedInvoker = new OnItemUseFinishedInvoker();
-	protected ref ScriptInvoker<AnimationEventID, AnimationEventID, int, float, float> m_OnAnimationEvent;
+	protected ref ScriptInvoker<AnimationEventID, AnimationEventID, int, float, float, SCR_CharacterControllerComponent> m_OnAnimationEvent;
 
 	// Diagnostics, debugging
 	#ifdef ENABLE_DIAG
@@ -154,6 +157,24 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	override bool CanJumpClimb()
+	{
+		SCR_ExtendedDamageManagerComponent damageMan = SCR_ExtendedDamageManagerComponent.Cast(GetCharacter().GetDamageManager());
+		if (!damageMan)
+			return true;
+		
+		array<ref SCR_PersistentDamageEffect> effects = damageMan.GetAllPersistentEffectsOfType(SCR_SpecialCollisionDamageEffect, true);
+		foreach (SCR_PersistentDamageEffect effect : effects)
+		{
+			SCR_SpecialCollisionDamageEffect collisionEffect = SCR_SpecialCollisionDamageEffect.Cast(effect);
+			if (!collisionEffect.GetJumpingAndClimbingAllowed())
+				return false;
+		}
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! \return a script invoker with method signature (AnimationEventID animEventType, AnimationEventID animUserString, int intParam, float timeFromStart, float timeToEnd)
 	ScriptInvoker GetOnAnimationEvent()
 	{
@@ -187,13 +208,23 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		m_OnItemUseEndedInvoker.Invoke(itemUseParams.GetEntity(), successful, itemUseParams);
 		// now all interested in non-null item have listened, we can call Finished to delete the item
 		m_OnItemUseFinishedInvoker.Invoke(itemUseParams.GetEntity(), successful, itemUseParams);
+
+		IEntity gadget = GetItemInHandSlot();
+		if (!gadget)
+			return;
+
+		SCR_CharacterInventoryStorageComponent characterInventory = SCR_CharacterInventoryStorageComponent.Cast(GetOwner().FindComponent(SCR_CharacterInventoryStorageComponent));
+		if (!characterInventory)
+			return;
+
+		characterInventory.UseItem(gadget);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected override void OnAnimationEvent(AnimationEventID animEventType, AnimationEventID animUserString, int intParam, float timeFromStart, float timeToEnd)
 	{
 		if (m_OnAnimationEvent)
-			m_OnAnimationEvent.Invoke(animEventType, animUserString, intParam, timeFromStart, timeToEnd);
+			m_OnAnimationEvent.Invoke(animEventType, animUserString, intParam, timeFromStart, timeToEnd, this);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -264,6 +295,128 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			return;
 		
 		vehicleFactionAff.UpdateOccupantsCount();	
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override bool ShouldGadgetBeDropped(IEntity gadget)
+	{
+		if (!gadget)
+			return false;
+
+		if (GetItemInHandSlot() != gadget)
+			return false;
+
+		SCR_InventoryStorageManagerComponent inventoryManager = SCR_InventoryStorageManagerComponent.Cast(GetOwner().FindComponent(SCR_InventoryStorageManagerComponent));
+		if (!inventoryManager)
+			return true;
+
+		BaseInventoryStorageComponent storage = inventoryManager.FindStorageForItem(gadget, EStoragePurpose.PURPOSE_DEPOSIT);
+		if (storage && inventoryManager.TryMoveItemToStorage(gadget, storage))
+		{
+			if (GetLifeState() != ECharacterLifeState.DEAD && GetOwner() == SCR_PlayerController.GetLocalControlledEntity())
+				SCR_NotificationsComponent.SendLocal(ENotification.PLAYER_HAND_ITEM_PUT_IN_INVENTORY);
+
+			return false;
+		}
+
+		if (GetLifeState() != ECharacterLifeState.DEAD && GetCharacter() == SCR_PlayerController.GetLocalControlledEntity())
+			SCR_NotificationsComponent.SendLocal(ENotification.PLAYER_HAND_ITEM_DROPPED);
+		
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Return item currently stored in the hand slot
+	IEntity GetItemInHandSlot()
+	{
+		SCR_HandSlotStorageComponent handSlot = SCR_HandSlotStorageComponent.Cast(GetOwner().FindComponent(SCR_HandSlotStorageComponent));
+		if (!handSlot)
+			return null;
+
+		InventoryStorageSlot slot = handSlot.GetSlot(0);
+		if (!slot)
+			return null;
+
+		return slot.GetAttachedEntity();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Saves new or updates existing shell config with provided data
+	//! \param[in] config
+	void SetShellConfig(notnull SCR_ShellConfig config)
+	{
+		SCR_ShellConfig oldShellConfig = GetSavedShellConfig(config.GetPrefabData());
+		if (!oldShellConfig)
+		{
+			if (!m_aSavedShellConfigs)
+				m_aSavedShellConfigs = {};
+
+			m_aSavedShellConfigs.Insert(config);
+			return;
+		}
+
+		oldShellConfig.SetSavedTime(config.GetSavedTime());
+		oldShellConfig.SetManualTimeUsage(config.IsUsingManualTime());
+		oldShellConfig.SetChargeRingConfigId(config.GetChargeRingConfigId());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	SCR_ShellConfig GetSavedShellConfig(notnull EntityPrefabData shellPrefab)
+	{
+		if (!m_aSavedShellConfigs)
+			return null;
+
+		foreach (SCR_ShellConfig savedConfig : m_aSavedShellConfigs)
+		{
+			if (!savedConfig)
+				continue;
+
+			if (shellPrefab != savedConfig.GetPrefabData())
+				continue;
+
+			return savedConfig;
+		}
+
+		return null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Method called by the owner of this controller for synchronizing the charge ring config
+	//! \param[in] shellComp component of the shell for which charge ring config should be changed
+	//! \param[in] configId id of the charge ring config that should be used by other clients
+	void SyncShellChargeRingConfig(notnull SCR_MortarShellGadgetComponent shellComp, int configId)
+	{
+		RplComponent rplComp = SCR_EntityHelper.GetEntityRplComponent(shellComp.GetOwner());
+		if (!rplComp)
+			return;
+
+		Rpc(RPC_AskSetShellChargeRing, rplComp.Id(), configId);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void RPC_AskSetShellChargeRing(RplId replicationId, int configId)
+	{
+		if (!replicationId.IsValid())
+			return;
+
+		Rpc(RPC_DoSetShellChargeRing, replicationId, configId);
+		RPC_DoSetShellChargeRing(replicationId, configId);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void RPC_DoSetShellChargeRing(RplId replicationId, int configId)
+	{
+		RplComponent rplComp = RplComponent.Cast(Replication.FindItem(replicationId));
+		if (!rplComp)
+			return;
+
+		SCR_MortarShellGadgetComponent shellComp = SCR_MortarShellGadgetComponent.Cast(rplComp.GetEntity().FindComponent(SCR_MortarShellGadgetComponent));
+		if (!shellComp)
+			return;
+
+		shellComp.SetChargeRingConfig(configId, true, false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -340,10 +493,19 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			}
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool IsUsingBinoculars()
+	{
+		return SCR_BinocularsComponent.IsZoomedView();
+	}
 
 	//------------------------------------------------------------------------------------------------
 	protected override void UpdateDrowning(float timeSlice, vector waterLevel)
 	{
+		if (GetLifeState() == ECharacterLifeState.DEAD)
+			return;
+
 		ChimeraCharacter char = GetCharacter();
 		if (!char)
 			return;
@@ -375,16 +537,24 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		}
 
 		SCR_CharacterDamageManagerComponent damageMan = SCR_CharacterDamageManagerComponent.Cast(char.GetDamageManager());
-		if (!damageMan || !damageMan.GetResilienceHitZone())
+		if (!damageMan)
 			return;
 		
 		if (m_fDrowningTime > m_fDrowningDuration)
 		{
+			HitZone targetHitZone;
+			if (IsUnconscious())
+				targetHitZone = damageMan.GetHeadHitZone();
+			else
+				targetHitZone = damageMan.GetResilienceHitZone();
+			
+			if (!targetHitZone)
+				return;
+			
 			vector hitPosDirNorm[3];
-			SCR_DamageContext context = new SCR_DamageContext(EDamageType.TRUE, 1000, hitPosDirNorm, char, damageMan.GetResilienceHitZone(), null, null, -1, -1);
+			SCR_DamageContext context = new SCR_DamageContext(EDamageType.TRUE, 1000, hitPosDirNorm, char, targetHitZone, null, null, -1, -1);
 			context.damageEffect = new SCR_DrowningDamageEffect();
 			damageMan.HandleDamage(context);
-			damageMan.Kill(Instigator.CreateInstigator(char));
 		}
 	}
 	
@@ -801,6 +971,17 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			else if (rollValue != 0)
 				SetRoll(rollValue);
 		}
+		
+		if (player && GetAnimationComponent().IsWeaponADSTag())
+		{
+			SightsComponent sights = GetWeaponManagerComponent().GetCurrentSights();
+			if (sights)
+			{
+				SCR_SightsZoomFOVInfo fovInfo = SCR_SightsZoomFOVInfo.Cast(sights.GetFOVInfo());
+				if (fovInfo && fovInfo.GetStepsCount() > 1)
+					am.ActivateContext("CharacterWeaponMagnificationContext");
+			}
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1196,6 +1377,12 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	void StartLoitering(int loiteringType, bool holsterWeapon, bool allowRootMotion, bool alignToPosition, vector targetPosition[4] = { "1 0 0", "0 1 0", "0 0 1", "0 0 0" }, bool disableInput = false,
 		SCR_LoiterCustomAnimData customAnimData = SCR_LoiterCustomAnimData.Default)
 	{
+		if (loiteringType == ELoiteringType.NONE)
+		{
+			Print("SCR_CharacterControllerComponent::StartLoitering is called with loiteringType=0.", LogLevel.WARNING);
+			return;
+		}
+
 		if (GetCharacter().GetRplComponent() && !GetCharacter().GetRplComponent().IsOwner())
 			return;
 		

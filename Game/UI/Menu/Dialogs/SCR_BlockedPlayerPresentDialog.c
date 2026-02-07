@@ -1,34 +1,29 @@
 class SCR_BlockedPlayerPresentDialog : SCR_ConfigurableDialogUi
 {
-	protected string m_sPlayerNames;
-	protected string m_sTextID = "#AR-ServerBrowser_JoinBlockedPlayer";
-	
-	protected Room m_RoomToJoin;
-	
-	ref ScriptInvoker m_OnConfirmJoinRoom = new ScriptInvoker();
-	
-	SCR_ConfigurableDialogUi m_Dialog;
+	protected const string TEXT_ID = "#AR-ServerBrowser_JoinBlockedPlayer";
+	protected const string SEPARATOR = ", ";
 	
 	//------------------------------------------------------------------------------------------------
-	void SCR_BlockedPlayerPresentDialog(string playerNamesIGuess, Room roomToJoin)
+	void SCR_BlockedPlayerPresentDialog(array<BlockedRoomPlayer> blockedPlayers)
 	{
-		m_sPlayerNames = playerNamesIGuess;
-		m_RoomToJoin = roomToJoin;
-		m_Dialog = SCR_ConfigurableDialogUi.CreateFromPreset(SCR_CommonDialogs.DIALOGS_CONFIG, "blocked_player_present", this);
+		SCR_BlockedPlayerPresentDialog dialog = SCR_BlockedPlayerPresentDialog.Cast(SCR_ConfigurableDialogUi.CreateFromPreset(SCR_CommonDialogs.DIALOGS_CONFIG, "blocked_player_present", this));
+		dialog.Init(blockedPlayers);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void Init()
+	void Init(array<BlockedRoomPlayer> blockedPlayers)
 	{
-		TextWidget message = m_Dialog.GetMessageWidget();
+		string blockedPlayersNames;
+		foreach (BlockedRoomPlayer player : blockedPlayers)
+		{
+			if (!blockedPlayersNames.IsEmpty())
+				blockedPlayersNames += SEPARATOR;
+			
+			blockedPlayersNames += player.GetName();
+		}
+		
+		TextWidget message = GetMessageWidget();
 		if (message)
-			message.SetTextFormat(m_sTextID, m_sPlayerNames);
+			message.SetTextFormat(TEXT_ID, blockedPlayersNames);
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void OnConfirm()
-	{
-		m_OnConfirmJoinRoom.Invoke(m_RoomToJoin);
-		Close();
-	}
-};
+}

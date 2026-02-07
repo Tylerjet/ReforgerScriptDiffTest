@@ -7,6 +7,7 @@ class SCR_CampaignBuildingBuildUserAction : SCR_ScriptedUserAction
 	// entity who starts performing the action.
 	protected IEntity m_ActiveUser;
 	protected SCR_GadgetManagerComponent m_GadgetManager;
+	protected bool m_bIsShown;
 	
 	//------------------------------------------------------------------------------------------------
 	protected override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
@@ -72,7 +73,7 @@ class SCR_CampaignBuildingBuildUserAction : SCR_ScriptedUserAction
 			int itemActionId = pAnimationComponent.BindCommand("CMD_Item_Action");
 			CharacterCommandHandlerComponent cmdHandler = pAnimationComponent.GetCommandHandler();
 			if (cmdHandler)
-				cmdHandler.FinishItemUse();
+				cmdHandler.FinishItemUse(true);
 		}
 	}
 
@@ -90,7 +91,7 @@ class SCR_CampaignBuildingBuildUserAction : SCR_ScriptedUserAction
 		{
 			CharacterAnimationComponent pAnimationComponent = charController.GetAnimationComponent();
 			CharacterCommandHandlerComponent cmdHandler = pAnimationComponent.GetCommandHandler();
-			cmdHandler.FinishItemUse();
+			cmdHandler.FinishItemUse(true);
 		}
 	}
 
@@ -109,7 +110,14 @@ class SCR_CampaignBuildingBuildUserAction : SCR_ScriptedUserAction
 	override bool CanBeShownScript(IEntity user)
 	{
 		m_User = user;	
-		return m_LayoutComponent && m_LayoutComponent.HasBuildingPreview();
+		m_bIsShown = m_LayoutComponent && m_LayoutComponent.HasBuildingPreview();
+		return m_bIsShown;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsShown()
+	{
+		return m_bIsShown;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -160,7 +168,7 @@ class SCR_CampaignBuildingBuildUserAction : SCR_ScriptedUserAction
 		if (!handlerComponent)
 			return;
 
-		handlerComponent.FinishItemUse();
+		handlerComponent.FinishItemUse(true);
 	}
 
 	//------------------------------------------------------------------------------------------------

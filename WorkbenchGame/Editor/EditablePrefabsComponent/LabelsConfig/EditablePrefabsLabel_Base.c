@@ -1,7 +1,7 @@
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EEditableEntityLabel, "m_Label")]
 class EditablePrefabsLabel_Base
 {
-	[Attribute("0", UIWidgets.ComboBox, "", enums: ParamEnumArray.FromEnum(EEditableEntityLabel))]
+	[Attribute("0", UIWidgets.ComboBox, "", enumType: EEditableEntityLabel)]
 	protected EEditableEntityLabel m_Label;
 
 	//------------------------------------------------------------------------------------------------

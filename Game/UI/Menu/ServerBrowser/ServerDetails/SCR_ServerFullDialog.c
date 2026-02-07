@@ -47,7 +47,7 @@ class SCR_ServerFullDialog : SCR_ConfigurableDialogUi
 	protected SCR_EJoinFailUI m_eMode;
 	
 	protected ref ScriptInvokerRoom m_OnRetryFullServerJoin;
-	protected ref ScriptInvokerRoom m_OnLeaveQueueRequest;
+	protected ref ScriptInvokerVoid m_OnLeaveQueueRequest;
 	protected ref ScriptInvokerVoid m_OnFavorite;
 
 	// --- Override ---
@@ -109,7 +109,7 @@ class SCR_ServerFullDialog : SCR_ConfigurableDialogUi
 		super.OnCancel();
 		
 		if (m_eMode == SCR_EJoinFailUI.ENQUEUED && m_OnLeaveQueueRequest)
-			m_OnLeaveQueueRequest.Invoke(m_Room);
+			m_OnLeaveQueueRequest.Invoke();
 	}
 
 	// --- Protected ---
@@ -123,7 +123,9 @@ class SCR_ServerFullDialog : SCR_ConfigurableDialogUi
 	//------------------------------------------------------------------------------------------------
 	protected void OnFieldManual()
 	{
-		GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.FieldManualDialog);
+		SCR_FieldManualUI fieldmenu = SCR_FieldManualUI.Cast(GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.FieldManualDialog));
+		if (fieldmenu)
+			fieldmenu.ShowQueueMessage();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -457,10 +459,10 @@ class SCR_ServerFullDialog : SCR_ConfigurableDialogUi
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	ScriptInvokerRoom GetOnLeaveQueueRequest()
+	ScriptInvokerVoid GetOnLeaveQueueRequest()
 	{
 		if (!m_OnLeaveQueueRequest)
-			m_OnLeaveQueueRequest = new ScriptInvokerRoom();
+			m_OnLeaveQueueRequest = new ScriptInvokerVoid();
 
 		return m_OnLeaveQueueRequest;
 	}

@@ -22,6 +22,10 @@ class SCR_DestructibleHitzone : SCR_HitZone
 	protected SCR_DamageManagerComponent			m_ParentDamageManager; // Damage manager of the direct parent
 	protected SCR_DamageManagerComponent			m_RootDamageManager;
 	protected SCR_BaseCompartmentManagerComponent	m_CompartmentManager; // The part may have occupants that we want to damage
+	protected ref array<ChimeraCharacter>			m_aEjectedCharacters;
+
+	//! Time after which we will no longer wait for players to leave destroyed vehicle and force start the destruction
+	protected const int FORCED_DESTRUCTION_DELAY = 1000;
 
 #ifdef ENABLE_BASE_DESTRUCTION
 	//------------------------------------------------------------------------------------------------
@@ -99,10 +103,92 @@ class SCR_DestructibleHitzone : SCR_HitZone
 	void StartDestruction(bool immediate = false)
 	{
 		if (m_CompartmentManager && GetHitZoneGroup() == EVehicleHitZoneGroup.HULL)
-			m_CompartmentManager.EjectRandomOccupants(-1, true);
-		
+		{
+			bool allEjectedImmediately;
+			if (m_CompartmentManager.EjectRandomOccupants(1, true, allEjectedImmediately, true) && !allEjectedImmediately)//ejects all occupants of the vehicle
+			{
+				array<BaseCompartmentSlot> compartments = {};
+				m_CompartmentManager.GetCompartments(compartments);
+				ChimeraCharacter character;
+				SCR_CompartmentAccessComponent access;
+				PlayerManager playerMGR = GetGame().GetPlayerManager();
+				foreach (BaseCompartmentSlot compartment : compartments)
+				{
+					if (!compartment)
+						continue;
+
+					character = ChimeraCharacter.Cast(compartment.GetOccupant());
+					if (!character)
+						continue;
+
+					access = SCR_CompartmentAccessComponent.Cast(character.GetCompartmentAccessComponent());
+					if (!access)
+						continue;
+
+					if (playerMGR && playerMGR.GetPlayerIdFromControlledEntity(character) == 0)
+						continue;//we dont wait for AI as they are ejected immediately
+
+					if (!m_aEjectedCharacters)
+						m_aEjectedCharacters = {};
+
+					m_aEjectedCharacters.Insert(character);
+					access.GetOnPlayerCompartmentExit().Insert(OnCharacterEjectedFromDestroyedCompartment);
+				}
+
+				if (m_aEjectedCharacters && !m_aEjectedCharacters.IsEmpty())
+				{
+					//since its possible that client may fail the excecution of the getting out process (freeze/CTD/timeout/etc) then we have to have a backup plan
+					GetGame().GetCallqueue().CallLater(ForceStartDestruction, FORCED_DESTRUCTION_DELAY);
+
+					return;//now we wait for all characters to be ejected from the vehicle before we delete it
+				}
+			}
+		}
+
 		if (m_pDestructionHandler)
 			m_pDestructionHandler.StartDestruction(immediate);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Callback that will be triggered when character will be removed from the destroyed vehicle
+	//! \param[in] playerCharacter character that left the compartment
+	//! \param[in] compartmentEntity
+	protected void OnCharacterEjectedFromDestroyedCompartment(ChimeraCharacter playerCharacter, IEntity compartmentEntity)
+	{
+		if (GetOwner() && GetOwner().GetRootParent() != compartmentEntity.GetRootParent())
+			return;
+
+		SCR_CompartmentAccessComponent access = SCR_CompartmentAccessComponent.Cast(playerCharacter.GetCompartmentAccessComponent());
+		if (!access)
+			return;
+
+		access.GetOnPlayerCompartmentExit().Remove(OnCharacterEjectedFromDestroyedCompartment);
+
+		//since CompartmentAccessComponent and BaseCompartmentSlot will indicate that the character is still present when OnPlayerCompartmentExit is invoked, we need to manually keep track of whom we are waiting for
+		m_aEjectedCharacters.RemoveItem(playerCharacter);
+
+		foreach (ChimeraCharacter character : m_aEjectedCharacters)
+		{//if for some reason some character was deleted before it left then we need to remove such entry
+			if (!character)
+			{
+				m_aEjectedCharacters.RemoveItem(null);
+				break;
+			}
+		}
+
+		if (m_pDestructionHandler && (!m_aEjectedCharacters || m_aEjectedCharacters.IsEmpty()))
+		{
+			GetGame().GetCallqueue().Remove(ForceStartDestruction);
+			m_pDestructionHandler.StartDestruction(false);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Force begining of the destruction process
+	protected void ForceStartDestruction()
+	{
+		if (m_pDestructionHandler)
+			m_pDestructionHandler.StartDestruction(true);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -210,7 +296,7 @@ class SCR_DestructibleHitzone : SCR_HitZone
 
 		if (state == EDamageState.DESTROYED && !m_DstParticle && !m_sDestructionParticle.IsEmpty())
 		{
-			ParticleEffectEntitySpawnParams spawnParams();
+			ParticleEffectEntitySpawnParams spawnParams = new ParticleEffectEntitySpawnParams();
 			spawnParams.Transform[3] = m_vParticleOffset;
 			spawnParams.Parent = GetOwner();
 			spawnParams.UseFrameEvent = true;

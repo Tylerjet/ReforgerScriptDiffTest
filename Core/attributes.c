@@ -277,8 +277,9 @@ class Attribute
 	\endcode
 	*/
 	ref ParamEnumArray m_Enums;
+	typename m_EnumType;
 
-	void Attribute(string defvalue = "", string uiwidget = "auto"/*use UIWidgets*/, string desc = "", string params = "", ParamEnumArray enums = NULL, string category = "", int precision = 3)
+	void Attribute(string defvalue = "", string uiwidget = "auto"/*use UIWidgets*/, string desc = "", string params = "", ParamEnumArray enums = NULL, string category = "", int precision = 3, typename enumType = void)
 	{
 		m_DefValue = defvalue;
 		m_UiWidget = uiwidget;
@@ -287,6 +288,7 @@ class Attribute
 		m_Category = category;
 		m_Enums = enums;
 		m_Precision = precision;
+		m_EnumType = enumType;
 	}
 }
 
@@ -518,6 +520,43 @@ void Test()
 class SortAttribute 
 {
 }
+
+/*!
+Attribute for enums forcing enum values sequence to be linear and indexed from 0. 
+User defined values or changing sequence type in inherited/modded enums are not allowed.
+
+\code
+[EnumLinear()]
+enum EEnumLinear
+{
+	Item1,	// value is 0
+	Item2,	// value is 1
+	Item3	// value is 2
+}
+\endcode
+*/
+class EnumLinear
+{
+}
+
+/*!
+Attribute for enums forcing enum values sequence to be bit flags starting with 1. 
+User defined values or changing sequence type in inherited/modded enums are not allowed.
+
+\code
+[EnumBitFlag()]
+enum EEnumBitFlag
+{
+	Item1,	// value is 1
+	Item2,	// value is 2
+	Item3	// value is 4
+}
+\endcode
+*/
+class EnumBitFlag
+{
+}
+
 /*!
 \}
 */

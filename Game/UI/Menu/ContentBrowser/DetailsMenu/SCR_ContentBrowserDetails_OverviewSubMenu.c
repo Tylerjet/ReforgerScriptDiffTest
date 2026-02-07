@@ -122,6 +122,9 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 	{
 		super.OnTabShow();
 
+		if (m_LicenseAndContributors)
+			m_LicenseAndContributors.SetVisible(true, false);
+		
 		UpdateAllWidgets();
 
 		// Set the default focused widget to one we're sure is always present
@@ -703,9 +706,6 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 		
 		m_Widgets.m_wDescriptionText.SetText(m_Item.GetDescription());
 		m_Widgets.m_wSummaryText.SetText(m_Item.GetSummary());
-		
-		if (m_LicenseAndContributors)
-			m_LicenseAndContributors.SetVisible(HasLicenseOrContributors(), false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -750,14 +750,6 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 		m_Widgets.m_FavoriteButtonComponent0.SetToggled(m_Item.GetFavourite(), false);
 		UpdateFavoriteButtonTooltip();
 		
-		// --- Licenses ---
-		string license;
-		WorkshopItem item = m_Item.GetWorkshopItem();
-		if (item)
-			license = item.License();
-
-		m_Widgets.m_LicensesComponent0.SetVisible(HasLicenseOrContributors());
-
 		// --- Dependencies ---
 		UpdateDependencyCountButtons();
 				
@@ -1072,19 +1064,6 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 		GetGame().GetWorkspace().SetFocusedWidget(target);
 	}
 	
-	//------------------------------------------------------------------------------------------------
-	protected bool HasLicenseOrContributors()
-	{
-		if (!m_Item || !m_bShown)
-			return false;
-		
-		WorkshopItem item = m_Item.GetWorkshopItem();
-		if (!item)
-			return false;
-		
-		array<WorkshopAuthor> contributors = {};
-		return item.Contributors(contributors) > 0 || !item.License().IsEmpty();
-	}
 	
 	// ---- Tooltips ----
 	//------------------------------------------------------------------------------------------------

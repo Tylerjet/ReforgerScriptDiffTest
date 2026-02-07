@@ -11,9 +11,9 @@ class SCR_AIGetSuppressionVolumeCenterPosition : AITaskScripted
 	override TStringArray GetVariablesIn() { return s_aVarsIn; }
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 			
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 	
-	override string GetOnHoverDescription() { return "Returns center position of given suppression volume"; };
+	static override string GetOnHoverDescription() { return "Returns center position of given suppression volume"; };
 	
 	//---------------------------------------------------------------------------------------
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
@@ -55,9 +55,9 @@ class SCR_AIGetSuppressionVolumeLine : AITaskScripted
 	override TStringArray GetVariablesIn() { return s_aVarsIn; }
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 			
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 	
-	override string GetOnHoverDescription() { return "Returns start and end positions of suppression line based on given volume. If previous line is provided, new line will try to start where previous line ended"; };
+	static override string GetOnHoverDescription() { return "Returns start and end positions of suppression line based on given volume. If previous line is provided, new line will try to start where previous line ended"; };
 	
 #ifdef WORKBENCH
 	//Diagnostic visualization

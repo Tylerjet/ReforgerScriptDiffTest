@@ -57,6 +57,11 @@ class SCR_ScenarioFrameworkActionShowPopupNotification : SCR_ScenarioFrameworkAc
 			}
 		}
 
+		// Resolve Alias
+		SCR_FactionAliasComponent factionAliasComponent = SCR_FactionAliasComponent.Cast(GetGame().GetFactionManager().FindComponent(SCR_FactionAliasComponent));
+		if (factionAliasComponent) 
+			m_sFactionKey = factionAliasComponent.ResolveFactionAlias(m_sFactionKey);
+
 		if (!aEntities)
 		{
 			scenarioFrameworkSystem.PopUpMessage(m_sTitle, m_sText, m_sFactionKey, playerID);

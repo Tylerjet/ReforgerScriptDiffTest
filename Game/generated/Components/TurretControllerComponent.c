@@ -24,6 +24,9 @@ class TurretControllerComponent: CompartmentControllerComponent
 	proto external bool GetWeaponADSInput();
 	//! Request weapon ADS input state
 	proto external void SetWeaponADSInput(bool val);
+	//! Enable or disable weapon ADS
+	proto external void SetWeaponADSEnabled(bool val);
+	proto external bool GetWeaponADSEnabled();
 	proto external ETurretReloadState GetReloadingState();
 	//! Returns the time to ADS in seconds.
 	proto external float GetADSTime();
@@ -40,6 +43,10 @@ class TurretControllerComponent: CompartmentControllerComponent
 	proto bool GetCurrentSightsCameraLocalTransform(out vector outLocalMatrix[4], out float fov);
 	proto external bool AssembleTurret();
 	proto external bool DisassembleTurret();
+	//! Remove the given weapon index, and put it into pReceiver's inventory. If pReceiver is null, drop it to the ground. pUser can be nullptr if called from server
+	proto external bool RemoveWeapon(IEntity user, int index, IEntity receiver);
+	//! Add the weapon to the turret on the given slot index. pUser can be nullptr if called from server
+	proto external bool AddWeapon(IEntity user, int index, IEntity weapon);
 	proto external TurretComponent GetTurretComponent();
 	proto external BaseWeaponManagerComponent GetWeaponManager();
 	proto external InventoryStorageManagerComponent GetInventoryManager();
@@ -50,6 +57,15 @@ class TurretControllerComponent: CompartmentControllerComponent
 	\return Returns true if the selection has happened.
 	*/
 	proto external bool SelectWeapon(IEntity user, BaseWeaponComponent newWeapon);
+	/*!
+	Select a group of weapons for firing
+	\param weapons An array of weapon slots to use (corresponding to the indices defined in WeaponSlotComponents)
+	\param mode One of EWeaponGroupFireMode, WGFM_SALVO, WGFM_RIPPLE or WGFM_SEQUENTIAL
+	\param rippleQuantity (optional) How many weapons to fire in ripple mode (default 1)
+	\param timeBtween (optional) time between ripples (in ms, default 100) or sequential firing (if WGFM_SEQUENTIAL)
+	Note that calling SelectWeapon or passing in an empty array will return to normal firing of single weapons
+	*/
+	proto external bool SetWeaponGroup(array<int> weapons, EWeaponGroupFireMode mode, int rippleQuantity = 1, float timeBetween = 100.0);
 	// Returns the reload duration in seconds.
 	proto external float GetReloadDuration();
 	// Returns the current reloading time, it goes from reload duration to 0.
@@ -64,13 +80,16 @@ class TurretControllerComponent: CompartmentControllerComponent
 	*/
 	proto external void SetAimingAngles(float yaw, float pitch);
 	proto external bool GetIsOverridden();
-	proto external void SetOverride(IEntity pUser, bool bOverride);
 	proto external string GetUniqueName();
 	/*!
 	Used to remotely trigger weapon actions on the turret. Note that the
 	turret must be overridden for this to have any effect
 	*/
 	proto external void SetWeaponInputState(ETurretWeaponInputState state);
+
+	// callbacks
+
+	event protected void OnPrepareControls(IEntity owner, ActionManager am, float dt, bool player);
 }
 
 /*!

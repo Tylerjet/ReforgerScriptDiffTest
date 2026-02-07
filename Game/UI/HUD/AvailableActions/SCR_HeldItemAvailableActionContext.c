@@ -14,7 +14,7 @@ class SCR_HeldItemAvailableActionContext : SCR_AvailableActionContext
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(SCR_AvailableActionsConditionData data, float timeSlice)
 	{
 		IEntity heldItem = data.GetCurrentItemEntity();
 		if (!heldItem)
@@ -24,9 +24,15 @@ class SCR_HeldItemAvailableActionContext : SCR_AvailableActionContext
 			return false;
 
 		if (m_LastEntity != heldItem)
-			m_bActivated = false;
+		{
+			if (m_fShowCountdown <= 0)
+				m_fShowCountdown = m_iTimeToShow;
 
-		if (!super.IsAvailable(data))
+			if (m_fHideCountdown <= 0)
+				m_fHideCountdown = m_iTimeForHide;
+		}
+
+		if (!super.IsAvailable(data, timeSlice))
 			return false;
 
 		if (m_LastEntity == heldItem)

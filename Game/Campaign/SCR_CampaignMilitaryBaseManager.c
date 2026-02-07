@@ -243,7 +243,6 @@ class SCR_CampaignMilitaryBaseManager
 			eligibleForHQ = {};
 
 			// Pick one of the HQs at random
-			Math.Randomize(-1);
 			bluforHQ = candidates.GetRandomElement();
 			bluforHQPos = bluforHQ.GetOwner().GetOrigin();
 
@@ -280,7 +279,6 @@ class SCR_CampaignMilitaryBaseManager
 			if (eligibleForHQ.Count() == 0)
 				continue;
 
-			Math.Randomize(-1);
 			opforHQ = eligibleForHQ.GetRandomElement();
 		}
 
@@ -322,7 +320,6 @@ class SCR_CampaignMilitaryBaseManager
 			return;
 		}
 
-		Math.Randomize(-1);
 		SCR_CampaignMilitaryBaseComponent bluforHQ = candidates.GetRandomElement();
 		candidates.RemoveItem(bluforHQ);
 		SCR_CampaignMilitaryBaseComponent opforHQ = candidates.GetRandomElement();
@@ -445,7 +442,6 @@ class SCR_CampaignMilitaryBaseManager
 		}
 
 		int callsignsCount = allCallsignIndexes.Count();
-		Math.Randomize(-1);
 		Faction defaultFaction;
 		BaseRadioComponent radio;
 		BaseTransceiver tsv;
@@ -478,7 +474,7 @@ class SCR_CampaignMilitaryBaseManager
 				// Relays use a dummy callsign just so search by callsign is still possible
 				campaignBase.SetCallsignIndex(callsignsCount + iBase);
 			}
-			
+
 			campaignBase.RefreshTasks();
 
 			// Sort bases by distance to a HQ so randomized supplies can be applied fairly (if enabled)
@@ -770,7 +766,7 @@ class SCR_CampaignMilitaryBaseManager
 				basesInRange.Insert(base);
 			}
 
-			bool targetCoversControlPoint;
+			const bool targetCoversControlPoint; // TODO: check for good const usage
 
 			foreach (SCR_CampaignMilitaryBaseComponent controlPoint : m_aControlPoints)
 			{
@@ -1129,7 +1125,7 @@ class SCR_CampaignMilitaryBaseManager
 	//------------------------------------------------------------------------------------------------
 	void OnServiceBuilt(SCR_EServicePointStatus state, notnull SCR_ServicePointComponent serviceComponent)
 	{
-		
+
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -19,13 +19,19 @@ class SCR_ClassRenamingPlugin : WorkbenchPlugin
 	[Attribute(defvalue: "1", desc: "Process .c files in the provided directories", category: "Renaming")]
 	protected bool m_bProcessScriptFiles;
 
+	[Attribute(defvalue: "1", desc: "Process .conf files in the provided directories", category: "Renaming")]
+	protected bool m_bProcessConfigFiles;
+
 	[Attribute(defvalue: "1", desc: "Process .et files in the provided directories", category: "Renaming")]
 	protected bool m_bProcessPrefabFiles;
 
-	[Attribute(defvalue: "1", desc: "Demo mode - does not replace anything but does all the file reading and other operations", category: "Renaming")]
+	[Attribute(defvalue: "1", desc: "Process .layer files in the provided directories", category: "Renaming")]
+	protected bool m_bProcessLayerFiles;
+
+	[Attribute(defvalue: "1", desc: "Go through all the steps without overwriting files", category: "Renaming")]
 	protected bool m_bDemoMode;
 
-	[Attribute(desc: "Replacement parameters - only the first matching rule applies", category: "Renaming")]
+	[Attribute(desc: "Replacement parameters - the first matching rule applies", category: "Renaming")]
 	protected ref array<ref SCR_ClassRenamingParam> m_aParameters;
 
 	/*
@@ -35,14 +41,20 @@ class SCR_ClassRenamingPlugin : WorkbenchPlugin
 	[Attribute(defvalue: "scripts/", category: "Directories")]
 	protected ref array<string> m_aScriptDirectories;
 
+	[Attribute(defvalue: "Configs/", category: "Directories")]
+	protected ref array<string> m_aConfigDirectories;
+
 	[Attribute(defvalue: "Prefabs/", category: "Directories")]
 	protected ref array<string> m_aPrefabDirectories;
+
+	[Attribute(defvalue: "worlds/", category: "Directories")]
+	protected ref array<string> m_aLayerDirectories;
 
 	protected int m_iMode = -1;
 	protected ref map<string, string> m_mClassesLocation;
 
 	// modes
-	protected static const int THIS_FILE = 0; // obsolete since WorldEditor
+	protected static const int THIS_FILE = 0;
 	protected static const int ALL_FILES = 1;
 
 	// replacement modes
@@ -72,9 +84,9 @@ class SCR_ClassRenamingPlugin : WorkbenchPlugin
 		if (Workbench.ScriptDialog(
 			"Class Renaming Plugin",
 			"[ PLEASE READ CAREFULLY ]\n\n" +
-			"This plugin renames classes in ALL LOADED ADDONS's scripts and Prefabs.\n\n" +
+			"This plugin renames classes in ALL LOADED ADDONS' scripts, config, Prefabs and terrain layers.\n\n" +
 			"It will also rename Prefab/Component properties that match criteria,\n" +
-			"so beware of same-name properties (e.g Damage could be both a class and a property).", this) != 1)
+			"so beware of same-name properties (e.g \"Damage\" could be both a class and a property).", this) != 1)
 			return;
 
 		if (!CheckAndSetParameters())
@@ -83,7 +95,7 @@ class SCR_ClassRenamingPlugin : WorkbenchPlugin
 			return;
 		}
 
-		if (!m_bProcessScriptFiles && !m_bProcessPrefabFiles)
+		if (!m_bProcessScriptFiles && !m_bProcessConfigFiles && !m_bProcessPrefabFiles && !m_bProcessLayerFiles)
 		{
 			Print("Not running - please select at least one type of files to process", LogLevel.NORMAL);
 			return;
@@ -98,13 +110,23 @@ class SCR_ClassRenamingPlugin : WorkbenchPlugin
 
 		array<string> addonFileSystems = SCR_AddonTool.GetAllAddonFileSystems();
 		array<string> scriptDirectories = {};
+		array<string> configDirectories = {};
 		array<string> prefabDirectories = {};
+		array<string> layerDirectories = {};
 		foreach (string addonFileSystem : addonFileSystems)
 		{
 			// always grab script files
 			foreach (string path : m_aScriptDirectories)
 			{
 				scriptDirectories.Insert(addonFileSystem + path);
+			}
+
+			if (m_bProcessConfigFiles)
+			{
+				foreach (string path : m_aConfigDirectories)
+				{
+					configDirectories.Insert(addonFileSystem + path);
+				}
 			}
 
 			if (m_bProcessPrefabFiles)
@@ -114,11 +136,19 @@ class SCR_ClassRenamingPlugin : WorkbenchPlugin
 					prefabDirectories.Insert(addonFileSystem + path);
 				}
 			}
+
+			if (m_bProcessLayerFiles)
+			{
+				foreach (string path : m_aLayerDirectories)
+				{
+					layerDirectories.Insert(addonFileSystem + path);
+				}
+			}
 		}
 
 		array<string> allScriptFilesAbsolutePaths;
 		map<string, string> classNames;
-		if (m_iMode == THIS_FILE) // obsolete if using WorldEditor for Prefabs
+		if (m_iMode == THIS_FILE)
 		{
 			string filePath;
 			if (!scriptEditor.GetCurrentFile(filePath))
@@ -172,7 +202,9 @@ class SCR_ClassRenamingPlugin : WorkbenchPlugin
 		}
 
 		int scriptFilesEdited;
+		int configFilesEdited;
 		int prefabFilesEdited;
+		int layerFilesEdited;
 		if (m_bOnlyRenameExistingEditableClasses)
 		{
 			map<string, string> fromToMap = GetFromToMap(classNames);
@@ -204,8 +236,14 @@ class SCR_ClassRenamingPlugin : WorkbenchPlugin
 				scriptFilesEdited = RenameInFiles(allScriptFilesAbsolutePaths, null, fromToMap, "Processing %1 Script Files");
 			}
 
+			if (m_bProcessConfigFiles)
+				configFilesEdited = RenameInFiles(GetAllEditableFilesAbsolutePaths(configDirectories, "conf"), null, fromToMap, "Processing %1 Config Files");
+
 			if (m_bProcessPrefabFiles)
-				prefabFilesEdited = RenameInFiles(GetAllEditablePrefabFilesAbsolutePaths(prefabDirectories), null, fromToMap, "Processing %1 Prefab Files");
+				prefabFilesEdited = RenameInFiles(GetAllEditableFilesAbsolutePaths(prefabDirectories, "et"), null, fromToMap, "Processing %1 Prefab Files");
+
+			if (m_bProcessLayerFiles)
+				layerFilesEdited = RenameInFiles(GetAllEditableFilesAbsolutePaths(layerDirectories, "layer"), null, fromToMap, "Processing %1 Layer Files");
 		}
 		else // rename every word that matches criteria
 		{
@@ -223,9 +261,14 @@ class SCR_ClassRenamingPlugin : WorkbenchPlugin
 				scriptFilesEdited = RenameInFiles(allScriptFilesAbsolutePaths, fromToParams, null, "Processing %1 Script Files");
 			}
 
+			if (m_bProcessConfigFiles)
+				configFilesEdited = RenameInFiles(GetAllEditableFilesAbsolutePaths(configDirectories, "conf"), fromToParams, null, "Processing %1 Config Files");
+
 			if (m_bProcessPrefabFiles)
-				prefabFilesEdited = RenameInFiles(GetAllEditablePrefabFilesAbsolutePaths(prefabDirectories), fromToParams, null, "Processing %1 Prefab Files");
-			// int prefabFilesEdited = RenameInPrefabsByWorldEditorAPI(fromToMap, GetAllEditablePrefabFilesResourceNames(prefabDirectories));
+				prefabFilesEdited = RenameInFiles(GetAllEditableFilesAbsolutePaths(prefabDirectories, "et"), fromToParams, null, "Processing %1 Prefab Files");
+
+			if (m_bProcessLayerFiles)
+				layerFilesEdited = RenameInFiles(GetAllEditableFilesAbsolutePaths(layerDirectories, "layer"), fromToParams, null, "Processing %1 Layer Files");
 		}
 
 		string demoPrefix;
@@ -235,21 +278,26 @@ class SCR_ClassRenamingPlugin : WorkbenchPlugin
 			demoPrefix = "[DEMO] ";
 		}
 		else
-		if (scriptFilesEdited + prefabFilesEdited < 1)
+		if (scriptFilesEdited + configFilesEdited + prefabFilesEdited + layerFilesEdited < 1)
 		{
 			Print("No changes were done", LogLevel.NORMAL);
 			return;
 		}
 
 		Print(scriptFilesEdited.ToString() + " script files edited", LogLevel.NORMAL);
+		Print(configFilesEdited.ToString() + " config files edited", LogLevel.NORMAL);
 		Print(prefabFilesEdited.ToString() + " Prefab files edited", LogLevel.NORMAL);
+		Print(layerFilesEdited.ToString() + " layer files edited", LogLevel.NORMAL);
 
-		Workbench.ScriptDialog(
-			demoPrefix + "Renaming completed", demoPrefix + "Renamed all classes:\n" +
-			scriptFilesEdited + " in script files\n" +
-			prefabFilesEdited + " in Prefab files.\n\n" +
-			"You may have to reopen Workbench to see the changes or to process another Prefab class rename.",
-			new SCR_OKWorkbenchDialog());
+		Workbench.Dialog(
+			demoPrefix + "Renaming completed",
+			string.Format(
+				"%1Renamed all classes:\n%2 in script files.\n%3 in config files.\n%4 in Prefab files.\n%5 in layer files.\n\nYou may have to reopen Workbench to see the changes or to process another Prefab class rename.",
+				demoPrefix,
+				scriptFilesEdited,
+				configFilesEdited,
+				prefabFilesEdited,
+				layerFilesEdited));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -311,7 +359,7 @@ class SCR_ClassRenamingPlugin : WorkbenchPlugin
 
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] scriptDirectories
-	//! \return all EDITABLE script files's absolute paths
+	//! \return all EDITABLE script files' absolute paths
 	array<string> GetAllEditableScriptFilesAbsolutePaths(notnull array<string> scriptDirectories)
 	{
 		array<string> result = {};
@@ -330,38 +378,22 @@ class SCR_ClassRenamingPlugin : WorkbenchPlugin
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] prefabDirectories
-	//! \return all EDITABLE Prefab files's absolute paths
-	protected array<string> GetAllEditablePrefabFilesAbsolutePaths(notnull array<string> prefabDirectories)
+	//! \param[in] directories
+	//! \param[in] extension without dot, e.g 'conf'
+	//! \return all EDITABLE config files' absolute paths
+	protected array<string> GetAllEditableFilesAbsolutePaths(notnull array<string> directories, string extension)
 	{
 		array<string> result = {};
 		string absolutePath;
-		foreach (string prefabDir : prefabDirectories)
+		foreach (string directory : directories)
 		{
-			foreach (ResourceName resourceName : SCR_WorldEditorToolHelper.SearchWorkbenchResources({ "et" }, null, prefabDir, true))
+			foreach (ResourceName resourceName : SCR_WorldEditorToolHelper.SearchWorkbenchResources({ extension }, null, directory, true))
 			{
 				if (Workbench.GetAbsolutePath(resourceName.GetPath(), absolutePath, true))
 					result.Insert(absolutePath);
 			}
 		}
-		return result;
-	}
 
-	//------------------------------------------------------------------------------------------------
-	//! \param[in] prefabDirectories
-	//! \return all EDITABLE Prefab files's absolute paths
-	protected array<ResourceName> GetAllEditablePrefabFilesResourceNames(notnull array<string> prefabDirectories)
-	{
-		array<ResourceName> result = {};
-		string absolutePath;
-		foreach (string prefabDir : prefabDirectories)
-		{
-			foreach (ResourceName resourceName : SCR_WorldEditorToolHelper.SearchWorkbenchResources({ "et" }, null, prefabDir, true))
-			{
-				if (Workbench.GetAbsolutePath(resourceName.GetPath(), absolutePath, true))
-					result.Insert(resourceName);
-			}
-		}
 		return result;
 	}
 
@@ -430,16 +462,17 @@ class SCR_ClassRenamingPlugin : WorkbenchPlugin
 	{
 		array<ref SCR_ClassRenamingParam> result = {};
 
+		SCR_ClassRenamingParam newParam;
 		foreach (SCR_ClassRenamingParam param : m_aParameters)
 		{
 			if (!param.m_bEnabled)
 				continue;
 
-			SCR_ClassRenamingParam newParam = new SCR_ClassRenamingParam();
+			newParam = new SCR_ClassRenamingParam();
 			// newParam.m_bEnabled = true; // not needed
 
-			bool startsWithStar = param.m_sFrom.StartsWith("*");
-			bool endsWithStar = param.m_sFrom.EndsWith("*");
+			bool startsWithStar = param.m_sFrom.StartsWith(SCR_StringHelper.STAR);
+			bool endsWithStar = param.m_sFrom.EndsWith(SCR_StringHelper.STAR);
 
 			if (startsWithStar && endsWithStar)
 				newParam.m_iMode = MODE_MIDDLE;
@@ -451,9 +484,9 @@ class SCR_ClassRenamingPlugin : WorkbenchPlugin
 				newParam.m_iMode = MODE_PMATCH;
 
 			newParam.m_sFrom = param.m_sFrom;
-			//newParam.m_sFrom.Replace("*", string.Empty); // bug for object properties, using temp var to circumvent it
+			//newParam.m_sFrom.Replace(SCR_StringHelper.STAR, string.Empty); // bug for object properties, using temp var to circumvent it
 			string tmp = param.m_sFrom;
-			tmp.Replace("*", string.Empty);
+			tmp.Replace(SCR_StringHelper.STAR, string.Empty);
 			newParam.m_sFrom = tmp;
 			newParam.m_sFrom.TrimInPlace();
 
@@ -598,146 +631,6 @@ class SCR_ClassRenamingPlugin : WorkbenchPlugin
 
 		return result;
 	}
-
-//	//------------------------------------------------------------------------------------------------
-//	//!
-//	//! \param[in] fromToMap
-//	//! \param[in] allEditablePrefabs
-//	//! \return number of replacements
-//	int RenameInPrefabsByWorldEditorAPI(notnull map<string, string> fromToMap, notnull array<ResourceName> allEditablePrefabs)
-//	{
-//		float countF = allEditablePrefabs.Count();
-//		if (countF < 1)
-//			return 0;
-//
-//		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
-//		if (!worldEditorAPI)
-//		{
-//			Print("World Editor API is not available", LogLevel.ERROR);
-//			return 0;
-//		}
-//
-//		int result;
-//		Resource resource;
-//		BaseContainer prefab;
-//		array<string> lines = {};
-//		WBModuleDef workbenchModule = Workbench.GetModule(WorldEditor);
-//		Print("Processing " + countF + " Prefab Files...", LogLevel.NORMAL);
-//		WBProgressDialog progressDialog = new WBProgressDialog("Processing " + countF + " Prefab Files...", workbenchModule);
-//		progressDialog.SetProgress(0);
-//		progressDialog = null;
-//		float currProgress, prevProgress;
-//		foreach (int i, ResourceName resourceName : allEditablePrefabs)
-//		{
-//			if (progressDialog)
-//			{
-//				currProgress = i / countF;
-//				if (currProgress - prevProgress >= 0.01)		// min 1%
-//				{
-//					progressDialog.SetProgress(currProgress);	// expensive
-//					Sleep(1);
-//					prevProgress = currProgress;
-//				}
-//			}
-//
-//			resource = Resource.Load(resourceName);
-//			if (!resource.IsValid())
-//			{
-//				Print("Cannot load " + resourceName, LogLevel.WARNING);
-//				continue;
-//			}
-//
-//			string absoluteFilePath;
-//			if (!Workbench.GetAbsolutePath(resourceName.GetPath(), absoluteFilePath, true))
-//			{
-//				Print("Prefab file cannot be edited - skipping " + resourceName.GetPath(), LogLevel.WARNING);
-//				continue;
-//			}
-//
-//			int fileResult;
-//			prefab = resource.GetResource().ToEntitySource();
-//
-//			// TODO components & sub-objects classname change
-//
-//			// components
-//			BaseContainerList components = prefab.GetObjectArray("components");
-//			BaseContainer oldComponent;
-//			BaseContainer newComponent;
-//			for (int j = components.Count() - 1; j >= 0; --j)
-//			{
-//				oldComponent = components.Get(j);
-//				if (oldComponent)
-//				{
-//					string className = oldComponent.GetClassName();
-//					string newClassName = fromToMap.Get(className);
-//					if (!newClassName) // .IsEmpty()
-//						continue;
-//
-//					newComponent = worldEditorAPI.CreateComponent(prefab, newClassName);
-//					if (!newComponent)
-//						continue;
-//
-//					if (!SCR_EntitySourceHelper.CopyDataFromOldToNewComponent(prefab, oldComponent, prefab, newComponent))
-//						continue;
-//				}
-//
-//				if (!components.Remove(oldComponent))
-//				{
-//					Print("Cannot remove old component in " + resourceName, LogLevel.WARNING);
-//					continue;
-//				}
-//
-//				fileResult++;
-//			}
-//
-//			if (!m_bDemoMode && fileResult > 0)
-//				worldEditorAPI.SaveEntityTemplate(prefab);
-//
-//			for (int j = prefab.GetNumChildren() - 1; j >= 0; --j)
-//			{
-//				DataVarType varType = prefab.GetDataVarType(i);
-//				string varName = prefab.GetVarName(i);
-//				if (varType == DataVarType.OBJECT)
-//				{
-//					BaseContainer subObject = prefab.GetObject(varName);
-//					if (!subObject)
-//						continue;
-//
-//					string subClassName = subObject.GetClassName();
-//					string newClassName = fromToMap.Get(subClassName);
-//					if (subClassName)
-//						Print(subClassName + " at #" + j);
-//				}
-//				else if (varType == DataVarType.OBJECT_ARRAY)
-//				{
-//Print("object array at #" + j);
-//				}
-//			}
-//
-//			string className = prefab.GetClassName();
-//			string newClassName = fromToMap.Get(className);
-//			if (newClassName)
-//			{
-//				lines = SCR_FileIOHelper.ReadFileContent(absoluteFilePath, true);
-//				if (!lines || lines.IsEmpty())
-//					continue;
-//
-//				if (lines[0].StartsWith(className + " "))
-//				{
-//					lines[0] = newClassName + lines[0].Substring(className.Length(), lines[0].Length() - className.Length());
-//
-//					if (m_bDemoMode || SCR_FileIOHelper.WriteFileContent(absoluteFilePath, lines))
-//						fileResult++;
-//					else
-//						Print("Cannot write " + absoluteFilePath, LogLevel.WARNING);
-//				}
-//			}
-//
-//			result += fileResult;
-//		}
-//
-//		return result;
-//	}
 
 	//------------------------------------------------------------------------------------------------
 	//!
@@ -908,7 +801,7 @@ class SCR_ClassRenamingPlugin : WorkbenchPlugin
 	}
 }
 
-[BaseContainerProps()]
+[BaseContainerProps(), SCR_BaseContainerCustomTitleFields({ "m_sFrom", "m_sTo" }, "%1 to %2")]
 class SCR_ClassRenamingParam
 {
 	[Attribute(defvalue: "1", desc: "Allow this replacement to happen")]

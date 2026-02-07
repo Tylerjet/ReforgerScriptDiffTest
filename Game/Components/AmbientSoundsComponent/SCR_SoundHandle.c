@@ -60,11 +60,11 @@ class SCR_SoundHandle
 		if (random == 0)
 			return value;
 		
-		int min = value - random;
-		if (min < 1)
-			min = 1;
-			
-		return Math.RandomIntInclusive(min, value + random);
+		int randomValue = value + Math.RandomFloat(-random, random);
+		if (randomValue < 1)
+			randomValue = 1;
+					
+		return randomValue;
 	}
 	
 	//------------------------------------------------------------------------------------------------	

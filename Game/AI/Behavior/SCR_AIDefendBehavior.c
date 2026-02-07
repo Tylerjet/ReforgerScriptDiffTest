@@ -4,6 +4,12 @@ class SCR_AIDefendBehavior : SCR_AIBehaviorBase
 	ref SCR_BTParam<vector> m_fDefendLocation = new SCR_BTParam<vector>(SCR_AIActionTask.DEFEND_LOCATION_PORT);
 	ref SCR_BTParam<float> m_fDefendAngularRange = new SCR_BTParam<float>(SCR_AIActionTask.ANGULAR_RANGE_PORT);
 	
+	//---------------------------------------------------------------------------------------------------------------------------------
+	override int GetCause()
+	{
+		return SCR_EAIBehaviorCause.COMBAT;
+	}
+	
 	//------------------------------------------------------------------------------------------------------------------------------------------
 	void InitParameters(AIWaypoint relatedWaypoint, vector defendLocation, float defendAngularRange)
 	{

@@ -18,10 +18,10 @@ class SCR_AISetPosition : AITaskScripted
 	override TStringArray GetVariablesIn() { return s_aVarsIn; }
 	
 	//------------------------------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 	
 	//------------------------------------------------------------------------------------------------------------------------
-	override string GetOnHoverDescription() { return "Sets (teleports) entity to target, that can be vector, smartAction or vehicle compartment"; };
+	static override string GetOnHoverDescription() { return "Sets (teleports) entity to target, that can be vector, smartAction or vehicle compartment"; };
 	
 	//------------------------------------------------------------------------------------------------------------------------
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
@@ -96,7 +96,7 @@ class SCR_AISetPosition : AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------------------------------
-	override bool CanReturnRunning()
+	static override bool CanReturnRunning()
 	{
 		return true;
 	}

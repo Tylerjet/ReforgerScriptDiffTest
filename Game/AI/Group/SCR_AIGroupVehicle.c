@@ -84,6 +84,14 @@ class SCR_AIGroupVehicle : Managed
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	IEntity GetDriver()
+	{
+		if (!m_DriverSlot)
+			return null;
+		return m_DriverSlot.GetOccupant();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void SetSubgroupHandleId(int handleId = -1)
 	{
 		m_iSubgroupHandleId = handleId

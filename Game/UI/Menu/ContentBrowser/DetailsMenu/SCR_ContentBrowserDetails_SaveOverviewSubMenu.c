@@ -96,26 +96,14 @@ class SCR_ContentBrowserDetails_SaveOverviewSubMenu : SCR_ContentBrowserDetails_
 		return true;
 	}
 	
-	/*
 	//------------------------------------------------------------------------------------------------
-	override protected bool SetupLine(Widget w, BaseWorkshopItem item)
+	override void UpdateSidePanel()
 	{
-		SCR_ContentBrowser_GMSaveLineComponent comp = SCR_ContentBrowser_GMSaveLineComponent.FindComponent(w);
-		if (!comp)
-			return false;
-
-		comp.SetSaveItem(m_SaveItem);
-		//m_aScenarioLines.Insert(comp);
-
-		comp.GetOnFavorite().Insert(OnLineFavorite);
-		comp.GetOnMouseInteractionButtonClicked().Insert(OnInteractionButtonPressed);
-		comp.GetOnFocus().Insert(OnLineFocus);
-		comp.GetOnFocusLost().Insert(OnLineFocusLost);
-		comp.GetOnMouseEnter().Insert(OnLineMouseEnter);
+		super.UpdateSidePanel();
 		
-		return true;
+		m_Widgets.m_wAddonDetailsPanel.SetVisible(true);
+		m_Widgets.m_wScenarioDetailsPanel.SetVisible(false);
 	}
-	*/
 	
 	//------------------------------------------------------------------------------------------------
 	// Custom

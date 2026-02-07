@@ -100,7 +100,7 @@ class SCR_DynamicIconComponent : SCR_ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetVisibile(bool visible)
+	void SetVisible(bool visible)
 	{
 		if (m_wIcon)
 			m_wIcon.SetVisible(visible);

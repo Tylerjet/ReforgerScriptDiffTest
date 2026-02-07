@@ -213,6 +213,19 @@ class SCR_RotorDamageManagerComponent : SCR_DamageManagerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	protected override bool ShouldOverrideInstigator(notnull Instigator currentInstigator, notnull Instigator newInstigator)
+	{
+		if (!super.ShouldOverrideInstigator(currentInstigator, newInstigator))
+			return false;
+
+		DamageManagerComponent parentDamageManager = DamageManagerComponent.Cast(GetParentHitZoneContainer());
+		if (parentDamageManager && newInstigator.GetInstigatorType() != InstigatorType.INSTIGATOR_NONE)
+			parentDamageManager.SetInstigator(newInstigator);
+
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnDamageStateChanged(EDamageState state)
 	{
 		super.OnDamageStateChanged(state);
@@ -316,9 +329,9 @@ class SCR_RotorDamageManagerComponent : SCR_DamageManagerComponent
 	//---- REFACTOR NOTE END ----
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnInit(IEntity owner)
+	override void OnPostInit(IEntity owner)
 	{
-		super.OnInit(owner);
+		super.OnPostInit(owner);
 		
 		// Do not do anything if the default hitzone is not rotor hitzone
 		m_RotorHitZone = SCR_RotorHitZone.Cast(GetDefaultHitZone());

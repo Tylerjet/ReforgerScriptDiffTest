@@ -35,13 +35,13 @@ class SCR_AIGetVehicleWaypointParameters : SCR_AIGetWaypointParameters
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Returns vehicle and boarding parameters for GetIn and GetOut waypoints";
 	}		

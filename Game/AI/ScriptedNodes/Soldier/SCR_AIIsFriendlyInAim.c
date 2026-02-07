@@ -33,7 +33,7 @@ class SCR_AIIsFriendlyInAim : DecoratorScripted
 			NodeError(this, owner, "Didn't find PerceptionComponent");
 	}
 	
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "SCR_AIIsFriendlyInAim: Returns true when we have a friendly unit in aim. Used for checking against friendly fire.";
 	}

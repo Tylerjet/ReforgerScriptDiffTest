@@ -56,18 +56,21 @@ class SCR_ServicesStatusHelper
 	protected static ref ScriptInvokerVoid s_OnCommStatusCheckStart;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	static bool IsBackendEnabled()
 	{
 		return GetGame().GetBackendApi() && GetGame().GetBackendApi().IsRunning();
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	static bool IsBackendReady()
 	{
 		return GetGame().GetBackendApi() && GetGame().GetBackendApi().IsActive();
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	static bool IsAuthenticated()
 	{
 		return IsBackendReady() && GetGame().GetBackendApi().IsAuthenticated();
@@ -76,7 +79,9 @@ class SCR_ServicesStatusHelper
 	//------------------------------------------------------------------------------------------------
 	// PING
 	//------------------------------------------------------------------------------------------------
+
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	protected static bool IsPinging()
 	{
 		return GetGame().GetBackendApi() && GetGame().GetBackendApi().GetCommTestStatus() == 1;
@@ -207,12 +212,14 @@ class SCR_ServicesStatusHelper
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	static void ClearRefreshQueue()
 	{
 		GetGame().GetCallqueue().Remove(RefreshPing);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	static SCR_ECommStatus GetLastReceivedCommStatus()
 	{
 		return s_eLastReceivedCommStatus;
@@ -237,6 +244,8 @@ class SCR_ServicesStatusHelper
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	// We want to still allow attempting a refresh if backend is not initialized
 	static bool CanRefresh()
 	{
@@ -244,12 +253,14 @@ class SCR_ServicesStatusHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	static bool IsInRefreshCooldown()
 	{
 		return GetPingAge() < REFRESH_COOLDOWN;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	static bool IsPingingStuck()
 	{
 		return System.GetTickCount() - s_fPingStartTime >= CONNECTION_CHECK_EXPIRE_TIME;
@@ -259,6 +270,7 @@ class SCR_ServicesStatusHelper
 	// STATUSES
 	//------------------------------------------------------------------------------------------------
 	//------------------------------------------------------------------------------------------------
+	//!
 	static void RefreshStatuses()
 	{
 		if (!IsBackendReady())
@@ -283,6 +295,7 @@ class SCR_ServicesStatusHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	static ServiceStatusItem GetMainStatus()
 	{
 		return s_MainStatus;
@@ -311,12 +324,15 @@ class SCR_ServicesStatusHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] statuses
 	static void GetStatuses(notnull array<ServiceStatusItem> statuses)
 	{
 		statuses.Copy(SERVICE_STATUSES);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	static bool AreServicesReady()
 	{
 		return s_MainStatus && !SERVICE_STATUSES.IsEmpty();
@@ -333,6 +349,9 @@ class SCR_ServicesStatusHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] service
+	//! \return
 	static bool DisplayServiceOnCurrentPlatform(SCR_BackendServiceDisplay service)
 	{
 		switch (System.GetPlatform())
@@ -366,6 +385,8 @@ class SCR_ServicesStatusHelper
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] serviceName
+	//! \return
 	static bool IsServiceActive(string serviceName)
 	{
 		if (s_eLastReceivedCommStatus != SCR_ECommStatus.FINISHED)
@@ -379,6 +400,8 @@ class SCR_ServicesStatusHelper
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	// Check if all conditions for multiplayer are fine in here
 	static bool AreMultiplayerServicesAvailable()
 	{
@@ -386,6 +409,7 @@ class SCR_ServicesStatusHelper
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	static bool IsBackendConnectionAvailable()
 	{
 		return s_eLastReceivedCommStatus != SCR_ECommStatus.NOT_EXECUTED && s_eLastReceivedCommStatus != SCR_ECommStatus.RUNNING && IsBackendReady();
@@ -394,6 +418,7 @@ class SCR_ServicesStatusHelper
 	//------------------------------------------------------------------------------------------------
 	// INVOKERS
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	static ScriptInvokerCommStatus GetOnCommStatusCheckFinished()
 	{
 		if (!s_OnCommStatusCheckFinished)
@@ -403,6 +428,7 @@ class SCR_ServicesStatusHelper
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	static ScriptInvokerVoid GetOnCommStatusCheckStart()
 	{
 		if (!s_OnCommStatusCheckStart)
@@ -412,6 +438,7 @@ class SCR_ServicesStatusHelper
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	static void DEBUG()
 	{
 		Print("--------------------------------------------------");
@@ -450,6 +477,7 @@ class SCR_BackendServiceDisplayPresets
 	protected ref array<ref SCR_BackendServiceDisplay> m_aServices;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	array<ref SCR_BackendServiceDisplay> GetServices()
 	{
 		array<ref SCR_BackendServiceDisplay> services = {}; 

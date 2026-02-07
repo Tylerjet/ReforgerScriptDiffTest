@@ -25,6 +25,9 @@ class SCR_ScenarioFrameworkPluginSpawnPoint : SCR_ScenarioFrameworkPlugin
 	[Attribute("0", desc: "Additional respawn time (in seconds) when spawning on this spawn point"), RplProp()]
 	float m_fRespawnTime;
 	
+	[Attribute(defvalue: "1", desc: "Pass Spawned Entity for Actions On Spawn Point Used. Otherwise it will pass the slot (layer) this plugin is attached to.")]
+	bool m_bPassSpawnedEntity;
+	
 	[Attribute(UIWidgets.Auto, desc: "What to do once Spawn Point is used",)]
 	ref array<ref SCR_ScenarioFrameworkActionBase> m_aActionsOnSpawnPointUsed;
 
@@ -46,6 +49,11 @@ class SCR_ScenarioFrameworkPluginSpawnPoint : SCR_ScenarioFrameworkPlugin
 		SCR_SpawnPoint spawnPoint = SCR_SpawnPoint.Cast(m_Asset);
 		if (!spawnPoint)
 			return;
+		
+		// Resolve Alias
+		SCR_FactionAliasComponent factionAliasComponent = SCR_FactionAliasComponent.Cast(GetGame().GetFactionManager().FindComponent(SCR_FactionAliasComponent));
+		if (factionAliasComponent) 
+			m_sFaction = factionAliasComponent.ResolveFactionAlias(m_sFaction);
 		
 		spawnPoint.SetSpawnRadius(m_fSpawnRadius);
 		spawnPoint.SetFactionKey(m_sFaction);
@@ -93,7 +101,16 @@ class SCR_ScenarioFrameworkPluginSpawnPoint : SCR_ScenarioFrameworkPlugin
 		
 		foreach (SCR_ScenarioFrameworkActionBase action : m_aActionsOnSpawnPointUsed)
 		{
-			action.OnActivate(entity);
+			if (m_bPassSpawnedEntity)
+				action.OnActivate(entity);
+			else
+				action.OnActivate(m_Object.GetOwner());
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override array<ref SCR_ScenarioFrameworkActionBase> GetActions()
+	{
+		return m_aActionsOnSpawnPointUsed;
 	}
 }

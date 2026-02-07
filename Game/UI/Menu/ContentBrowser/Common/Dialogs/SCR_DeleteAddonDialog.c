@@ -29,6 +29,8 @@ class SCR_DeleteAddonDialog : SCR_ConfigurableDialogUi
 		// Clear preset name
 		if (m_Item.GetEnabled())
 			SCR_AddonManager.GetInstance().GetPresetStorage().ClearUsedPreset();
+		else
+			m_Item.SetEnabled(false);
 
 		if (m_Item.GetSubscribed())
 			m_Item.SetSubscribed(false);

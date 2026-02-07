@@ -167,16 +167,8 @@ class SCR_NotificationDisplayData
 		if (!playerManager)
 			return false;
 		
-		playerName = playerManager.GetPlayerName(playerID);
-		
-		//Player name not found
-		if (playerName.IsEmpty())
-		{
-			SCR_NotificationsComponent notificationsManager = SCR_NotificationsComponent.GetInstance();
-			if (notificationsManager)
-				playerName = notificationsManager.GetPlayerNameFromHistory(playerID);
-		}
-			
+		playerName = SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(playerID);
+				
 		if (playerName.Length() > MAX_USERNAME_CHARACTERS)
 		{
 			string trimedName = playerName.Substring(0, MAX_USERNAME_CHARACTERS);
@@ -470,7 +462,7 @@ class SCR_NotificationDisplayData
 			return false;
 		
 		ItemAttributeCollection attributeCollection = item.GetAttributes();
-		if (!ItemAttributeCollection)
+		if (!attributeCollection)
 			return false;
 		
 		UIInfo uiInfo = attributeCollection.GetUIInfo();

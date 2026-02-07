@@ -4,6 +4,8 @@ class SCR_ContentBrowserActiveFilterEditorUIComponent : ScriptedWidgetComponent
 	protected Widget m_wBorder;
 	protected EEditableEntityLabel m_iLabelReference;
 	
+	//---- REFACTOR NOTE START: Multiple hardcoded values
+	
 	//------------------------------------------------------------------------------------------------
 	//! Init button when to set icon and data when it is pressed
 	//! \param[in] label EEditableEntityLabel filter for when it is pressed
@@ -22,6 +24,8 @@ class SCR_ContentBrowserActiveFilterEditorUIComponent : ScriptedWidgetComponent
 		if (tooltip)
 			tooltip.SetInfo(uiInfo);
 	}
+	
+	//---- REFACTOR NOTE END ----
 	
 	//------------------------------------------------------------------------------------------------
 	//! Get EEditableEntityLabel reference
@@ -51,4 +55,6 @@ class SCR_ContentBrowserActiveFilterEditorUIComponent : ScriptedWidgetComponent
 		m_wRoot = w;
 		m_wBorder = w.FindAnyWidget("Border");
 	}
+	
+	//---- REFACTOR NOTE END ----
 }

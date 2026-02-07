@@ -71,8 +71,6 @@ class ArmaReforgerScripted : ChimeraGame
 	protected ref ScriptInvoker<int, int, bool> m_OnWindowResizeInvoker = new ScriptInvoker();
 	protected ref ScriptCallQueue m_Callqueue = new ScriptCallQueue();
 
-	//ref SCR_RCONCommander m_dsCommander;
-	
 	protected ref SCR_ResourceGrid m_ResourceGrid;
 	protected ref SCR_ResourceSystemSubscriptionManager m_ResourceSystemSubscriptionManager;
 	
@@ -612,17 +610,6 @@ class ArmaReforgerScripted : ChimeraGame
 	//! \param[in] world
 	override void OnAfterInit(BaseWorld world)
 	{
-		//required for DS registration with -dserver param
-		if (System.IsConsoleApp())
-		{
-			DSSession session = GetGame().GetBackendApi().GetDSSession();
-			if (session)
-			{
-				/*m_dsCommander = new SCR_RCONCommander();
-				session.SetRCONCommander(m_dsCommander);*/
-			}
-		}
-
 		if (GetGame().InPlayMode())
 		{
 			m_CoresManager = SCR_GameCoresManager.CreateCoresManager();
@@ -655,6 +642,10 @@ class ArmaReforgerScripted : ChimeraGame
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_UI_CLOSE_ALL_MENUS, "", "Close All Menus", "UI");
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_UI_OPEN_MAIN_MENU, "", "Open Main Menu", "UI");
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_UI_LOG_UNDER_CURSOR, "", "Log widgets under cursor", "UI");
+		
+		//Scripted systems
+		DiagMenu.RegisterMenu(SCR_DebugMenuID.DEBUGUI_SCRIPTS_MENU, "Scripts", "Physics");
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SHOW_INTERIOR_BOUNDING_BOX, "", "Show interior bounding box", "Scripts");
 		#endif
 
 		if (!GetWorldEntity() || RplSession.Mode() != RplMode.Client)

@@ -7,6 +7,9 @@ class SCR_KickPlayerContextAction: SCR_SelectedEntitiesContextAction
 	[Attribute(uiwidget: UIWidgets.SearchComboBox, desc: "Reason for kicking shown to kicked-out player.", enums: ParamEnumArray.FromEnum(SCR_PlayerManagerKickReason))]
 	protected SCR_PlayerManagerKickReason m_KickReason;
 	
+	[Attribute(ETimeFormatParam.SECONDS.ToString(), desc: "How will the kick time out be converted and displayed within the UIInfo. EG: As Seconds, Minutes, Hours or Days.\n\nNot applicable if time is 0 or less", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(ETimeFormatParam))]
+	protected ETimeFormatParam m_eKickDurationConverter;
+	
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShown(SCR_EditableEntityComponent selectedEntity, vector cursorWorldPosition, int flags)
 	{
@@ -31,6 +34,54 @@ class SCR_KickPlayerContextAction: SCR_SelectedEntitiesContextAction
 			{
 				GetGame().GetPlayerManager().KickPlayer(playerDelegate.GetPlayerID(), m_KickReason, m_iKickTimeout);
 			}			
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override SCR_UIInfo GetInfo()
+	{
+		SetKickDurationInUIInfo();
+		return super.GetInfo();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void SetKickDurationInUIInfo()
+	{
+		//~ To time set or perma ban
+		if (m_iKickTimeout <= 0)
+			return;
+		
+		SCR_FormatedUIInfo formattedUIInfo = SCR_FormatedUIInfo.Cast(m_Info);
+		if (!formattedUIInfo)
+			return;
+		
+		string param1;
+		formattedUIInfo.GetParams(param1);
+		if (!param1.IsEmpty())
+			return;
+		
+		switch (m_eKickDurationConverter)
+		{
+			case ETimeFormatParam.SECONDS:
+			{
+				formattedUIInfo.SetParams(m_iKickTimeout.ToString());
+				break;
+			}
+			case ETimeFormatParam.MINUTES:
+			{
+				formattedUIInfo.SetParams((m_iKickTimeout / 60).ToString());
+				break;
+			}
+			case ETimeFormatParam.HOURS:
+			{
+				formattedUIInfo.SetParams((m_iKickTimeout / 3600).ToString());
+				break;
+			}
+			case ETimeFormatParam.DAYS:
+			{
+				formattedUIInfo.SetParams((m_iKickTimeout / 86400).ToString());
+				break;
+			}
 		}
 	}
 };

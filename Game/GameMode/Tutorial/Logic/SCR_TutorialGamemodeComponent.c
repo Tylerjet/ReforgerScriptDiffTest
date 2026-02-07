@@ -1078,7 +1078,7 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void RemovePlayerMapMarkers()
+	void RemovePlayerMapMarkers()
 	{
 		SCR_MapMarkerManagerComponent mapMarkerManager = SCR_MapMarkerManagerComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_MapMarkerManagerComponent));
 		if (!mapMarkerManager)
@@ -1271,7 +1271,9 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 		{
 			SCR_HUDManagerComponent hudManager = GetGame().GetHUDManager();
 			if (!hudManager)
-				m_wFadeOut = ImageWidget.Cast(hudManager.CreateLayout(FADEOUTLAYOUT, EHudLayers.OVERLAY));
+				return null;
+			
+			m_wFadeOut = ImageWidget.Cast(hudManager.CreateLayout(FADEOUTLAYOUT, EHudLayers.OVERLAY));
 			
 			if (!m_wFadeOut)
 				return null;
@@ -1871,11 +1873,6 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 			editorManager.AutoInit();
 		}		
 		
-		if (SCR_Enum.HasFlag(m_eFinishedCourses, SCR_ETutorialCourses.INTRO))
-			SpawnPlayer("Respawn_Start_Load");
-		else
-			SpawnPlayer("Respawn_Start");
-		
 		AudioSystem.SetMasterVolume(AudioSystem.SFX, 0);
 	}
 	
@@ -1885,14 +1882,18 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 		m_Player = ChimeraCharacter.Cast(entity);
 		HandlePlayerGroup();
 		
-		IEntity respawnPos = GetGame().GetWorld().FindEntityByName("Respawn_Start");
+		ChimeraWorld world = GetGame().GetWorld();
+		if (!world)
+			return;
+		
+		GarbageSystem garbageSys = GarbageSystem.Cast(world.FindSystem(GarbageSystem));
+		if (garbageSys)
+			garbageSys.Flush(0);
 		
 		if (m_ActiveConfig && m_ActiveConfig.GetCourseType() != SCR_ETutorialCourses.INTRO)
 			Fadeout(false);
 		
 		m_OnPlayerSpawned.Invoke();
-		
-		ChimeraWorld world = GetGame().GetWorld();
 		
 		if (world)
 			world.GetMusicManager().Play("SOUND_ONSPAWN");
@@ -1980,6 +1981,11 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 		SCR_EntityHelper.DeleteEntityAndChildren(GetGame().GetWorld().FindEntityByName("TUT_BAR_DOOR_01"));
 		SCR_EntityHelper.DeleteEntityAndChildren(GetGame().GetWorld().FindEntityByName("TUT_BAR_DOOR_02"));
 		SCR_EntityHelper.DeleteEntityAndChildren(GetGame().GetWorld().FindEntityByName("TUT_OFFICE_CHAIR_01"));
+		
+		if (SCR_Enum.HasFlag(m_eFinishedCourses, SCR_ETutorialCourses.INTRO))
+			SpawnPlayer("Respawn_Start_Load");
+		else
+			SpawnPlayer("Respawn_Start");
 		
 		#ifdef ENABLE_DIAG
 			if (!SCR_Enum.HasFlag(m_eFinishedCourses, SCR_ETutorialCourses.OUTRO) && IsCourseAvailable(SCR_ETutorialCourses.OUTRO))

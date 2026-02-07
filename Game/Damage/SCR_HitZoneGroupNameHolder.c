@@ -24,7 +24,7 @@ class SCR_HitZoneGroupNameHolder
 }
 
 //------------------------------------------------------------------------------------------------
-[BaseContainerProps(), BaseContainerCustomStringTitleField("USE INHERENT VERSION ONLY!")]
+[BaseContainerProps(), BaseContainerCustomStringTitleField("USE INHERITED VERSION ONLY!")]
 class SCR_HitZoneGroupName
 {
 	[Attribute(desc: "Text shown in notification if the provided hitzone group is send", uiwidget: UIWidgets.LocaleEditBox)]

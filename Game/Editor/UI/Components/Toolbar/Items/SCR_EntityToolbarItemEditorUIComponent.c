@@ -60,7 +60,7 @@ class SCR_EntityToolbarItemEditorUIComponent : SCR_BaseToolbarItemEditorUICompon
 		int playerID = entity.GetPlayerID();
 		if (playerID > 0)
 		{
-			m_NameWidget.SetText(GetGame().GetPlayerManager().GetPlayerName(playerID));
+			m_NameWidget.SetText(SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(playerID));
 		}
 		else
 		{

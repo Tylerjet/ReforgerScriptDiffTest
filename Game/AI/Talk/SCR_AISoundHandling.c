@@ -87,7 +87,8 @@ class SCR_AISoundHandling
 					ErrorMissingEntityOrPosition(commType);
 					return false;
 				}
-				SetSignal_TargetFactionValues(request.m_Entity, signalsMgr, signals);			
+				SetSignal_ObjectType(request.m_Entity, signalsMgr, signals);
+				SetSignal_TargetFactionValues(request.m_Entity, signalsMgr, signals);
 				float distanceType = SetSignal_PositionValues(request.m_Entity, signalsMgr, request.m_vPosition, speakerEntity.GetOrigin(), signals);
 				SetSignal_FactionValues(signalsMgr, 1, signals);
 				if (distanceType < DISTANCE_TYPE_MID) 														
@@ -355,6 +356,20 @@ class SCR_AISoundHandling
 			}
 		}
 		return role;
+	}
+	
+	//--------------------------------------------------------------------------------------------	
+	static void SetSignal_ObjectType(IEntity target, SignalsManagerComponent signalsManagerComponent, array<float> signals)
+	{
+		int SN_ObjectType = signalsManagerComponent.FindSignal("ObjectType");
+		float value;
+		if (target.IsInherited(ChimeraCharacter))
+			value = 0.0;
+		else if (target.IsInherited(Vehicle))
+			value = 1.0;
+		else
+			value = 2.0; // Misc
+		SetSignal(SN_ObjectType, value, signals);
 	}
 	
 	//--------------------------------------------------------------------------------------------	

@@ -37,6 +37,8 @@ class BaseWeaponManagerComponent: GameComponent
 	proto external bool SelectWeapon(BaseWeaponComponent weapon);
 	//! Returns the old weapon entity of the specified weapon slot
 	proto external IEntity SetSlotWeapon(WeaponSlotComponent pSlot, IEntity pWeaponEntity);
+	//! Returns false if there's no weapon that this manager can select other than the one that's already selected.
+	proto external bool HasAnotherSelectableWeapon();
 	//! weapons visibility
 	proto external void SetVisibleAllWeapons(bool state);
 	proto external void SetVisibleCurrentWeapon(bool state);
@@ -46,6 +48,12 @@ class BaseWeaponManagerComponent: GameComponent
 	\return The number of slots in the list
 	*/
 	proto external int GetWeaponsSlots(out notnull array<WeaponSlotComponent> outSlots);
+	/*!
+	Returns the list of weapons. These can be either slots or weapons.
+	\param outWeapons The array with all weapons managed by this manager.
+	\return The number of weapons in the list
+	*/
+	proto external int GetWeapons(out notnull array<BaseWeaponComponent> outWeapons);
 	/*!
 	Returns the list of weapons.
 	\param outWeapons The array where all weapons will be inserted.

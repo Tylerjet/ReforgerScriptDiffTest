@@ -62,13 +62,13 @@ class SCR_AIToggleMaxLOD : AITaskScripted
 	};
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------------
-	override bool CanReturnRunning()
+	static override bool CanReturnRunning()
 	{
 		return true;
 	};
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
 	{
 		return true;
 	};
@@ -85,7 +85,7 @@ class SCR_AIToggleMaxLOD : AITaskScripted
 	}
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------------
-	override string GetOnHoverDescription()
+	static override string GetOnHoverDescription()
 	{
 		return "PreventMaxLOD: prevents AIAgent to change to MAX lod - that disactivates AI. Use attribute to enable/disable the prevention.";
 	};

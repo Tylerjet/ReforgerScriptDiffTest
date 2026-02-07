@@ -24,10 +24,10 @@ class SCR_AISetGroupControlMode: AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-    override bool VisibleInPalette() {return true;}
+    static override bool VisibleInPalette() {return true;}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription() {return "Node sets control mode manually. Should be used only when Waypoint cannot do it by SendGoalMessage!";}
+	protected static override string GetOnHoverDescription() {return "Node sets control mode manually. Should be used only when Waypoint cannot do it by SendGoalMessage!";}
 	
 	//------------------------------------------------------------------------------------------------
 	protected override string GetNodeMiddleText() 

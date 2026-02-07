@@ -14,11 +14,11 @@ sealed class Widget: Managed
 	private void Widget();
 
 	proto external void Update();
-	//!Returns parent in hierarchy, or NULL
+	//!Returns parent in hierarchy, or nullptr
 	proto external Widget GetParent();
-	//!Returns children in hierarchy, or NULL
+	//!Returns children in hierarchy, or nullptr
 	proto external Widget GetChildren();
-	//!Returns next sibling in hierarchy, or NULL
+	//!Returns next sibling in hierarchy, or nullptr
 	proto external Widget GetSibling();
 	proto external void RemoveChild(notnull Widget child);
 	proto external void SetName(string name);
@@ -104,11 +104,8 @@ sealed class Widget: Managed
 	//! Find Widget by userID
 	proto external Widget FindAnyWidgetById(int user_id);
 	proto external string GetStyleName();
-	proto external bool RemoveCallback(int eventId, int callbackId);
-	proto external bool RemoveCallbackByOwner(int eventId, Class owner);
-	proto external bool EmitCallback(int eventId);
 	/*!
-	\return Workspace which this widget belongs to. Null if there is no workspace in ancestors
+	\return Workspace which this widget belongs to. nullptr if there is no workspace in ancestors
 	*/
 	proto external WorkspaceWidget GetWorkspace();
 	//! Returns color of this widget
@@ -144,6 +141,12 @@ sealed class Widget: Managed
 	proto void GetScreenPos(out float x, out float y);
 	//! Returns size of this widget in DPI scaled resolution
 	proto void GetScreenSize(out float width, out float height);
+	//! Remove callback with given callbackId (callback ID is returned from AddCallback method)
+	proto external bool RemoveCallback(int eventId, int callbackId);
+	//! Remove callback with given caller object (in case the callback method is on object instance)
+	proto external bool RemoveCallbackByOwner(int eventId, Class owner);
+	//! Trigger callbacks attached to eventID on the widget (not called over hierarchy)
+	proto external bool EmitCallback(int eventId);
 	//! Add callback for given event id and returns callback id
 	proto int AddCallback(int eventId, WidgetEventCallback fn);
 }

@@ -298,16 +298,23 @@ class SCR_CaptureArea : ScriptedGameTriggerEntity
 
 			// For the authority, this is fired straight away above,
 			// so we only send the change to all clients as broadcast
-			FactionManager factionManager = GetGame().GetFactionManager();
-			int previousIndex = factionManager.GetFactionIndex(previousOwner);
-			int newIndex = factionManager.GetFactionIndex(newOwner);
-			Rpc(Rpc_SetOwningFaction_BC, previousIndex, newIndex);
+			SetOwningFactionInternalAuthority(previousOwner, newOwner);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Sets internal owner faction and raises corresponding callback for clients.
+	void SetOwningFactionInternalAuthority(Faction previousOwner, Faction newOwner)
+	{
+		FactionManager factionManager = GetGame().GetFactionManager();
+		int previousIndex = factionManager.GetFactionIndex(previousOwner);
+		int newIndex = factionManager.GetFactionIndex(newOwner);
+		Rpc(Rpc_SetOwningFaction_BC, previousIndex, newIndex);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Sets internal owner faction and raises corresponding callback.
-	protected void SetOwningFactionInternal(Faction previousFaction, Faction newFaction)
+	void SetOwningFactionInternal(Faction previousFaction, Faction newFaction)
 	{
 		m_pOwnerFaction = newFaction;
 		OnOwningFactionChanged(previousFaction, newFaction);

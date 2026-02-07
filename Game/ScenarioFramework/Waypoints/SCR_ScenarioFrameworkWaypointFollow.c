@@ -2,7 +2,7 @@
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkWaypointFollow : SCR_ScenarioFrameworkWaypointEntity
 {
-	[Attribute(defvalue: "6", desc: "Radius in m")]
+	[Attribute(defvalue: "6", uiwidget: UIWidgets.Slider, desc: "Radius in m")]
 	float m_fCompletionRadius;
 
 	[Attribute(defvalue: "{A0509D3C4DD4475E}Prefabs/AI/Waypoints/AIWaypoint_Follow.et", desc: "In Default, it will use specific prefab for each class, but here you can change it if you know what you are doing")]

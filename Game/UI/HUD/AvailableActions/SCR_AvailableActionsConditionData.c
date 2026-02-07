@@ -118,6 +118,7 @@ class SCR_AvailableActionsConditionData
 	bool m_bCanRotateMapElement;
 	bool m_bCanActivateMapElement;
 	bool m_bCanDragMapElement;
+	bool m_bCanResetElementRotation;
 
 	//------------------------------------------------------------------------------------------------
 	private void OnItemAddedListener(IEntity item, BaseInventoryStorageComponent storage)
@@ -878,9 +879,10 @@ class SCR_AvailableActionsConditionData
 		m_bCanRotateMapElement = false;
 		m_bCanDragMapElement = false;
 		m_bCanActivateMapElement = false;
-		
+		m_bCanResetElementRotation = false;
+
 		array<Widget> mapWidgetsUnderCursor = SCR_MapCursorModule.GetMapWidgetsUnderCursor();
-		
+
 		SCR_MapElementMoveComponent moveComp;
 		foreach (Widget widget : mapWidgetsUnderCursor)
 		{
@@ -890,15 +892,11 @@ class SCR_AvailableActionsConditionData
 			moveComp = SCR_MapElementMoveComponent.Cast(widget.FindHandler(SCR_MapElementMoveComponent));	
 			if (!moveComp)
 				continue;
-			
-			if (moveComp.m_bCanRotate)
-				m_bCanRotateMapElement = true;
-			
-			if (moveComp.m_bCanDrag)
-				m_bCanDragMapElement = true;
-			
-			if (moveComp.m_bCanActivate)
-				m_bCanActivateMapElement = true;
+
+			m_bCanRotateMapElement = moveComp.m_bCanRotate;
+			m_bCanDragMapElement = moveComp.m_bCanDrag;
+			m_bCanActivateMapElement = moveComp.m_bCanActivate;
+			m_bCanResetElementRotation = moveComp.m_bCanResetRotation;
 		}
 	}
 	

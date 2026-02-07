@@ -1,5 +1,11 @@
 class SCR_CommandActionsEditorUIComponent : SCR_BaseContextMenuEditorUIComponent
 {
+	[Attribute("EditorSetCommand")]
+	protected string m_sSetCommandAction;
+	
+	[Attribute("EditorAddCommand")]
+	protected string m_sAddCommandAction;
+	
 	protected SCR_CommandActionsEditorComponent m_CommandActionsComponent;
 	protected SCR_BaseEditableEntityFilter m_Filter;
 	protected EEditorCommandActionFlags m_State;
@@ -97,8 +103,8 @@ class SCR_CommandActionsEditorUIComponent : SCR_BaseContextMenuEditorUIComponent
 		
 		if (m_InputManager)
 		{
-			m_InputManager.AddActionListener("EditorSetCommand", EActionTrigger.DOWN, OnEditorSetCommand);
-			m_InputManager.AddActionListener("EditorAddCommand", EActionTrigger.DOWN, OnEditorAddCommand);
+			m_InputManager.AddActionListener(m_sSetCommandAction, EActionTrigger.DOWN, OnEditorSetCommand);
+			m_InputManager.AddActionListener(m_sAddCommandAction, EActionTrigger.DOWN, OnEditorAddCommand);
 			
 			m_InputManager.AddActionListener("EditorCommandModifier", EActionTrigger.DOWN, OnEditorCommandModifier);
 			m_InputManager.AddActionListener("EditorCommandModifier", EActionTrigger.UP, OnEditorCommandModifier);
@@ -120,8 +126,8 @@ class SCR_CommandActionsEditorUIComponent : SCR_BaseContextMenuEditorUIComponent
 		
 		if (m_InputManager)
 		{			
-			m_InputManager.RemoveActionListener("EditorSetCommand", EActionTrigger.DOWN, OnEditorSetCommand);
-			m_InputManager.RemoveActionListener("EditorAddCommand", EActionTrigger.DOWN, OnEditorAddCommand);
+			m_InputManager.RemoveActionListener(m_sSetCommandAction, EActionTrigger.DOWN, OnEditorSetCommand);
+			m_InputManager.RemoveActionListener(m_sAddCommandAction, EActionTrigger.DOWN, OnEditorAddCommand);
 			
 			m_InputManager.RemoveActionListener("EditorCommandModifier", EActionTrigger.DOWN, OnEditorCommandModifier);
 			m_InputManager.RemoveActionListener("EditorCommandModifier", EActionTrigger.UP, OnEditorCommandModifier);

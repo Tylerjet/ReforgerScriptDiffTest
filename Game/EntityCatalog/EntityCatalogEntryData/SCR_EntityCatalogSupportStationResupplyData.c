@@ -19,4 +19,5 @@ enum SCR_ESupportStationResupplyType
 	SMOKE,
 	BANDAGE,
 	MORPHINE,
+	MORTAR_SHELL,
 }

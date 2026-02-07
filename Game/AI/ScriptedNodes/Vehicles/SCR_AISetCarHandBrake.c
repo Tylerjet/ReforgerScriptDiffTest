@@ -35,13 +35,13 @@ class SCR_AISetCarHandBrake : AITaskScripted
     }
 	
 	//--------------------------------------------------------------------------------
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
     {
         return true;
     }
 	
 	//--------------------------------------------------------------------------------
-	override string GetOnHoverDescription()
+	static override string GetOnHoverDescription()
 	{
 		return "Sets handbrake value of a car.";
 	}	

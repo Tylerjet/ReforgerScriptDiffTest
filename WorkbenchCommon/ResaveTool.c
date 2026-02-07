@@ -52,11 +52,29 @@ class ResavePlugin: WorkbenchPlugin
 		}
 	}
 	
-	override void RunCommandline() 
+	override void RunCommandline()
 	{
 		ResourceManager module = Workbench.GetModule(ResourceManager);
-		module = Workbench.GetModule(ResourceManager);
-		
+		SearchResourcesFilter filter = new SearchResourcesFilter();
+
+		string addonPathCli;
+		if (module.GetCmdLine("-addonPath", addonPathCli))
+		{
+			if (!FilePath.IsAbsolutePath(addonPathCli))
+			{
+				PrintFormat("Argument 'addonPath' must be an absolute path, but its value is '%1'", addonPathCli, level: LogLevel.ERROR);
+				Workbench.Exit(1);
+				return;
+			}
+
+			string addonGuid, addonId, addonExactRoot;
+			bool found = AddonBuildInfoTool.FindAddonByAbsolutePath(
+				addonPathCli, addonGuid, addonId, addonExactRoot
+			);
+			if (found)
+				filter.rootPath = addonExactRoot;
+		}
+
 		string ext;
 		if (module.GetCmdLine("-extension", ext))
 		{
@@ -64,11 +82,10 @@ class ResavePlugin: WorkbenchPlugin
 			ext.Replace(".", "");
 			Extensions = {ext};
 		}
-		
-		SearchResourcesFilter filter = new SearchResourcesFilter();
+
 		filter.fileExtensions = Extensions;
 		ResourceDatabase.SearchResources(filter, Find);
-		
+
 		Resave();
 		Workbench.Exit(0);
 	}

@@ -45,20 +45,26 @@ class SCR_VehicleDamageManagerComponentClass : SCR_DamageManagerComponentClass
 	[Attribute("2", desc: "Damage multiplier for collisions from this side", params: "0.01 1000 0.01", category: "Collision Damage")]
 	float m_fTopMultiplier;
 
-	[Attribute("30", "Speed in km/h over which will occupants be dealt damage in collision", category: "Collision Damage")]
+	[Attribute("30", desc: "Speed in km/h over which will occupants be dealt damage in collision", category: "Collision Damage")]
 	protected float m_fOccupantsDamageSpeedThreshold;
 
-	[Attribute("100", "Speed in km/h over which will occupants die in collision", category: "Collision Damage")]
+	[Attribute("100", desc: "Speed in km/h over which will occupants die in collision", category: "Collision Damage")]
 	protected float m_fOccupantsSpeedDeath;	
 
-	[Attribute("0 0 0", "Position for frontal impact calculation", category: "Collision Damage", params: "inf inf 0 purpose=coords space=entity coordsVar=m_vFrontalImpact")]
+	[Attribute("0 0 0", desc: "Position for frontal impact calculation", category: "Collision Damage", params: "inf inf 0 purpose=coords space=entity coordsVar=m_vFrontalImpact")]
 	protected vector m_vFrontalImpact;
 	
-	[Attribute("1000", "Explosion damage value which, if exceeded, may cause passengers to be ejected from the vehicle", category: "Passenger Ejection")]
+	[Attribute("200", desc: "Explosion damage value which, if exceeded, may cause passengers to be ejected from the vehicle", category: "Passenger Ejection")]
 	protected int m_iMinExplosionEjectionDamageThreshold;
 	
-	[Attribute("50", "Collision damage value which, if exceeded, may cause passengers to be ejected from the vehicle", category: "Passenger Ejection")]
+	[Attribute("0.5", desc: "Chance victim is ejected when explosion damage is sufficient to pass the m_iMinExplosionEjectionDamageThreshold \nLess than 0 = fully random \n1 = always", params: "-1 1 0.01", category: "Passenger Ejection")]
+	protected float m_iExplosionDamageEjectionChance;
+	
+	[Attribute("70", desc: "Collision damage value which, if exceeded, may cause passengers to be ejected from the vehicle", category: "Passenger Ejection")]
 	protected int m_iMinCollisionEjectionDamageThreshold;
+	
+	[Attribute("0.5", desc: "Chance victim is ejected when collisiondamage is sufficient to pass the m_iMinCollisionEjectionDamageThreshold \nLess than 0 = fully random \n1 = always", params: "-1 1 0.01", category: "Passenger Ejection")]
+	protected float m_iCollisionDamageEjectionChance;
 
 	//------------------------------------------------------------------------------------------------
 	//! \return
@@ -132,16 +138,30 @@ class SCR_VehicleDamageManagerComponentClass : SCR_DamageManagerComponentClass
 	
 	//------------------------------------------------------------------------------------------------
 	//! \return
-	float GetMinExplosionEjectionDamageThreshold()
+	int GetMinExplosionEjectionDamageThreshold()
 	{
 		return m_iMinExplosionEjectionDamageThreshold;
 	}	
 	
 	//------------------------------------------------------------------------------------------------
 	//! \return
-	float GetMinCollisionEjectionDamageThreshold()
+	int GetMinCollisionEjectionDamageThreshold()
 	{
 		return m_iMinCollisionEjectionDamageThreshold;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	float GetCollisionDamageEjectionChance()
+	{
+		return m_iCollisionDamageEjectionChance;
+	}	
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	float GetExplosionDamageEjectionChance()
+	{
+		return m_iCollisionDamageEjectionChance;
 	}
 }
 
@@ -157,7 +177,8 @@ enum SCR_EPhysicsResponseIndex
 	SMALL_DESTRUCTIBLE = 7,
 	MEDIUM_DESTRUCTIBLE = 8,
 	LARGE_DESTRUCTIBLE = 9,
-	HUGE_DESTRUCTIBLE = 10
+	HUGE_DESTRUCTIBLE = 10,
+	NO_COLLISION = 11
 }
 
 class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
@@ -183,7 +204,7 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 	[Attribute("120", "Speed of collision that destroys the vehicle\n[km/h]", category: "Collision Damage")]
 	protected float m_fVehicleSpeedDestroy;
 
-	[Attribute("0.7", "Engine efficiency at which it is considered to be malfunctioning\n[x * 100%]", category: "Vehicle Damage")]
+	[Attribute(defvalue: "0.7", desc: "Engine efficiency at which it is considered to be malfunctioning\n[x * 100%]", category: "Vehicle Damage")]
 	protected float m_fEngineMalfunctioningThreshold;
 
 	[Attribute(defvalue: "VehicleFireState", desc: "Vehicle parts fire state signal name", category: "Secondary damage")]
@@ -387,7 +408,7 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 	{
 		SCR_VehicleDamageManagerComponentClass prefabData = GetPrefabData();
 		if (!prefabData)
-			return 50;
+			return 70;
 
 		return prefabData.GetMinCollisionEjectionDamageThreshold();
 	}	
@@ -398,9 +419,31 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 	{
 		SCR_VehicleDamageManagerComponentClass prefabData = GetPrefabData();
 		if (!prefabData)
-			return 1000;
+			return 200;
 
 		return prefabData.GetMinExplosionEjectionDamageThreshold();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	float GetCollisionDamageEjectionChance()
+	{
+		SCR_VehicleDamageManagerComponentClass prefabData = GetPrefabData();
+		if (!prefabData)
+			return 0.5;
+
+		return prefabData.GetCollisionDamageEjectionChance();
+	}	
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	float GetExplosionDamageEjectionChance()
+	{
+		SCR_VehicleDamageManagerComponentClass prefabData = GetPrefabData();
+		if (!prefabData)
+			return 0.5;
+
+		return prefabData.GetExplosionDamageEjectionChance();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -461,6 +504,13 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		m_FuelManager = FuelManagerComponent.Cast(owner.FindComponent(FuelManagerComponent));
 		m_SignalsManager = SignalsManagerComponent.Cast(owner.FindComponent(SignalsManagerComponent));
 		m_ImpactEffectComponent = SCR_ImpactEffectComponent.Cast(owner.FindComponent(SCR_ImpactEffectComponent));
+
+		// can happen when any physics or simulation property is invalid
+		if (!m_Simulation)
+		{
+			m_fMinImpulse = 0;
+			return;
+		}
 
 		if (m_SignalsManager)
 		{
@@ -1246,10 +1296,27 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 				if (!instigatorEntity)
 				{
 					instigatorEntity = GetInstigator().GetInstigatorEntity();
-					if (!instigatorEntity && Vehicle.Cast(GetOwner()))
-						instigatorEntity = Vehicle.Cast(GetOwner()).GetPilot();
+					Vehicle thisVehicle = Vehicle.Cast(GetOwner());
+					if (!instigatorEntity && thisVehicle)
+					{
+						ChimeraCharacter pilot = ChimeraCharacter.Cast(thisVehicle.GetPilot());
+						CharacterControllerComponent pilotCharacterControler;
+						if (pilot)
+							pilotCharacterControler = pilot.GetCharacterController();
+
+						if (pilotCharacterControler && pilotCharacterControler.GetLifeState() != ECharacterLifeState.ALIVE)
+						{
+							SCR_DamageManagerComponent pilotDamageManager = pilot.GetDamageManager();
+							if (pilotDamageManager)
+								instigatorEntity = pilotDamageManager.GetInstigator().GetInstigatorEntity();
+						}
+						else
+						{
+							instigatorEntity = pilot;
+						}
+					}
 				}
-				
+
 				// Apply damage to passengers in vehicle
 				HandlePassengerDamage(EDamageType.COLLISION, momentumOverOccupantsThreshold * damageScaleToCharacter, Instigator.CreateInstigator(instigatorEntity));
 			}
@@ -1321,14 +1388,30 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		}
 		
 		if (s_OnVehicleDestroyed && state == EDamageState.DESTROYED)
+		{
 			s_OnVehicleDestroyed.Invoke(GetInstigator().GetInstigatorPlayerID());
+
+			float fireRate;
+			GetSecondaryExplosionPosition(SCR_FuelHitZone, fireRate);
+			UpdateVehicleFireState(fireRate, 0);
+
+			if (fireRate > 0)
+			{
+				World world = GetOwner().GetWorld();
+				FireDamageSystem system = FireDamageSystem.Cast(world.FindSystem(FireDamageSystem));
+				if (system)
+					system.Register(this);
+			}
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! On Vehicle being blown up, there is a chance the passengers are ejected
 	override protected void OnDamage(notnull BaseDamageContext damageContext)
 	{
-		if (damageContext.damageType == EDamageType.EXPLOSIVE)
+		super.OnDamage(damageContext);
+		
+		if (damageContext.damageType == EDamageType.EXPLOSIVE && damageContext.struckHitZone == GetDefaultHitZone())
 			HandlePassengerDamage(EDamageType.EXPLOSIVE, damageContext.damageValue, damageContext.instigator);
 	}
 
@@ -1375,8 +1458,9 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 			// Damage occupants of the car that experienced a collision
 			m_CompartmentManager.DamageOccupants(damage, EDamageType.COLLISION, instigator);
 			// if a collision was capable of causing more than minCollisionEjectionDamageThreshold damage, try to eject passengers
-			if (damage > GetMinCollisionDamageEjectionThreshold())
-				m_CompartmentManager.EjectRandomOccupants(-1, true);
+
+ 			if (damage > GetMinCollisionDamageEjectionThreshold())
+				m_CompartmentManager.EjectRandomOccupants(GetCollisionDamageEjectionChance(), true, ejectOnTheSpot: true);
 			
 			return;
 		}
@@ -1384,8 +1468,8 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		if (damageType == EDamageType.EXPLOSIVE)
 		{
 			// An explosion of minExplosionEjectionDamageThreshold or larger is capable of ejecting occupants.
-			if (damage < GetMinExplosionDamageEjectionThreshold())
-				m_CompartmentManager.EjectRandomOccupants(-1, true);
+			if (damage > GetMinExplosionDamageEjectionThreshold())
+				m_CompartmentManager.EjectRandomOccupants(GetExplosionDamageEjectionChance(), true, ejectOnTheSpot: true);
 			
 			return;
 		}
@@ -1586,7 +1670,7 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		m_fVehicleFireDamageTimeout -= timeSlice;
 		if (m_fVehicleFireDamageTimeout < 0)
 		{
-			EntitySpawnParams spawnParams();
+			EntitySpawnParams spawnParams = new EntitySpawnParams();
 			spawnParams.Transform[3] = averagePosition;
 			ResourceName fireDamage = GetSecondaryExplosion(fireRate, SCR_ESecondaryExplosionType.FUEL, fire: true);
 			SecondaryExplosion(fireDamage, GetInstigator(), spawnParams);
@@ -1633,7 +1717,7 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		m_fFuelTankFireDamageTimeout -= timeSlice;
 		if (m_fFuelTankFireDamageTimeout < 0)
 		{
-			EntitySpawnParams spawnParams();
+			EntitySpawnParams spawnParams = new EntitySpawnParams();
 			spawnParams.Transform[3] = averagePosition;
 			ResourceName fireDamage = GetSecondaryExplosion(burningFuel / fireRate, SCR_ESecondaryExplosionType.FUEL, fire: true);
 			SecondaryExplosion(fireDamage, GetInstigator(), spawnParams);
@@ -1730,7 +1814,7 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		if (m_fSuppliesFireDamageTimeout < 0)
 		{
 
-			EntitySpawnParams spawnParams();
+			EntitySpawnParams spawnParams = EntitySpawnParams();
 			spawnParams.Transform[3] = averagePosition;
 			ResourceName fireDamage = GetSecondaryExplosion(fireRate, SCR_ESecondaryExplosionType.RESOURCE, fire: true);
 			SecondaryExplosion(fireDamage, GetInstigator(), spawnParams);

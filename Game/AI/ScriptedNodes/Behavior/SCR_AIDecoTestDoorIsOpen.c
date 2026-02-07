@@ -17,10 +17,14 @@
 	}
 };
 
-class SCR_AIDecoTestDoorIsOpenWithSiblings : DecoratorTestScripted
+class SCR_AIDecoTestDoorIsConditionWithSiblings : DecoratorTestScripted
 {
 	private ref array<DoorComponent> m_aDoorComponents;
-	
+	//------------------------------------------------------------------------------------------------
+	protected bool Predicate(DoorComponent dc, AIAgent agent, IEntity controlled)
+	{
+		return true;
+	}
 	//------------------------------------------------------------------------------------------------
 	protected override bool TestFunction(AIAgent agent, IEntity controlled)
 	{	
@@ -40,17 +44,17 @@ class SCR_AIDecoTestDoorIsOpenWithSiblings : DecoratorTestScripted
 				if (!dc)
 					return false;
 				
-				bool isOpen = dc.IsOpen() && !dc.IsOpening();
-				
+				bool isTotallyOpen = Math.AbsFloat(dc.GetAngleRange() - dc.GetDoorState()) < SCR_AIOpenDoor.ANGLE_EPSILON;
+				bool isOpen = isTotallyOpen || dc.IsOpening();
+
 				if (!isOpen)
 					return false;
 			}
-			
 			return true;
 		}
 		return false;
 	}
-	
+	//------------------------------------------------------------------------------------------------
 	static void FindDoorComponents(notnull IEntity doorEntity, notnull array<DoorComponent> outDoorComponents)
 	{
 		outDoorComponents.Clear();
@@ -76,5 +80,22 @@ class SCR_AIDecoTestDoorIsOpenWithSiblings : DecoratorTestScripted
 			
 			doorSibling = doorSibling.GetSibling();
 		}
+	}
+}
+//------------------------------------------------------------------------------------------------
+class SCR_AIDecoTestDoorIsOpeningWithSiblings : SCR_AIDecoTestDoorIsConditionWithSiblings
+{
+	protected override bool Predicate(DoorComponent dc, AIAgent agent, IEntity controlled)
+	{
+		bool isTotallyOpen = Math.AbsFloat(dc.GetAngleRange() - dc.GetDoorState()) < SCR_AIOpenDoor.ANGLE_EPSILON;		
+		return isTotallyOpen || dc.IsOpening();	
+	}
+}
+//------------------------------------------------------------------------------------------------
+class SCR_AIDecoTestDoorIsOpenWithSiblings : SCR_AIDecoTestDoorIsConditionWithSiblings
+{
+	protected override bool Predicate(DoorComponent dc, AIAgent agent, IEntity controlled)
+	{
+		return !dc.IsOpening() && dc.IsOpen();
 	}
 };

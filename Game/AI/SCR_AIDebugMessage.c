@@ -11,7 +11,8 @@ enum EAIDebugMsgType
 	LOOK	= 8,
 	CLUSTER	= 9,
 	REACTION = 10,
-	COMMS	= 11
+	COMMS	= 11,
+	SETTINGS = 12
 };
 
 class SCR_AIDebugMessage
@@ -29,7 +30,8 @@ class SCR_AIDebugMessage
 		"LOOK  ",
 		"CLUSTR",
 		"REACT ",
-		"COMMS "
+		"COMMS ",
+		"SETTIN"
 	};
 	
 	int m_Hours;

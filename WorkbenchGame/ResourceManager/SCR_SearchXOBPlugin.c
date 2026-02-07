@@ -33,7 +33,7 @@ class SCR_SearchXOBFunctor
 
 		PrintHeader();
 
-		string addon = SCR_AddonTool.ToFileSystem(SCR_AddonTool.GetAddonIndex(m_iAddon));
+		string addon = SCR_AddonTool.ToFileSystem(SCR_AddonTool.GetAddonID(m_iAddon));
 
 		m_aFiles = SCR_WorldEditorToolHelper.SearchWorkbenchResources({ "xob" }, null, addon + m_sSearchedDirectory.GetPath());
 		int count = m_aFiles.Count();
@@ -197,7 +197,7 @@ class SCR_SearchXOBLayerMaskFunctor : SCR_SearchXOBFunctor
 [WorkbenchPluginAttribute(name: "Search Tool (XOBs)", description: "Searches XOB files", wbModules: { "ResourceManager" }, awesomeFontCode: 0xF002)]
 class SearchXOBPlugin : WorkbenchPlugin // TODO: SCR_
 {
-	[Attribute("0", UIWidgets.ComboBox, "Type of search", "", ParamEnumArray.FromEnum(SCR_ESearchXOBPluginSearchType))]
+	[Attribute("0", UIWidgets.ComboBox, "Type of search", "", enumType: SCR_ESearchXOBPluginSearchType)]
 	protected SCR_ESearchXOBPluginSearchType m_eSearchType;
 
 	[Attribute("1", UIWidgets.ComboBox, "In which addon should be search performed", "", ParamEnumAddons.FromEnum())]
@@ -206,13 +206,13 @@ class SearchXOBPlugin : WorkbenchPlugin // TODO: SCR_
 	[Attribute(defvalue: "", desc: "Folder where to perform search. If empty, search is performed everywhere", params: "unregFolders")]
 	protected ResourceName m_sSearchedDirectory;
 
-	[Attribute("0", UIWidgets.ComboBox, "LayerPreset search parameter", "", ParamEnumArray.FromEnum(EPhysicsLayerPresets))]
+	[Attribute("0", UIWidgets.ComboBox, "LayerPreset search parameter", "", enumType: EPhysicsLayerPresets)]
 	protected EPhysicsLayerPresets m_eLayerPreset;
 
-	[Attribute("0", UIWidgets.ComboBox, "LayerMask search parameter", "", ParamEnumArray.FromEnum(EPhysicsLayerDefs))]
+	[Attribute("0", UIWidgets.ComboBox, "LayerMask search parameter", "", enumType: EPhysicsLayerDefs)]
 	protected ref array<EPhysicsLayerDefs> m_aLayerDefinitions;
 
-	[Attribute("0", UIWidgets.ComboBox, "Filter applied to layer mask", "", ParamEnumArray.FromEnum(SCR_ESearchXOBPluginLayerFilter))]
+	[Attribute("0", UIWidgets.ComboBox, "Filter applied to layer mask", "", enumType: SCR_ESearchXOBPluginLayerFilter)]
 	protected SCR_ESearchXOBPluginLayerFilter m_eLayerFilter;
 
 	[Attribute(defvalue: "0", desc: "Print all found files")]

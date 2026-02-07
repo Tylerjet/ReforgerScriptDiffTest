@@ -15,6 +15,9 @@ void ScriptInvoker_EntityBudgetMaxReached(EEditableEntityBudget budgetType, bool
 typedef func ScriptInvoker_EntityBudgetMaxReached;
 typedef ScriptInvokerBase<ScriptInvoker_EntityBudgetMaxReached> ScriptInvoker_EntityBudgetMaxReachedEvent;
 
+// if enabled we will perform double checks to make sure nothing broke
+#define BUDGET_OPTIMIZATION_CHECKS
+
 class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 {
 	const int DEFAULT_MAX_BUDGET = 100;
@@ -22,6 +25,9 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 	
 	[Attribute(desc: "Define maximum budget values for player")]
 	protected ref array<ref SCR_EntityBudgetValue> m_MaxBudgets;
+	
+	//contains all the budgets, even those not defined as an attribute
+	protected ref map<EEditableEntityBudget, ref SCR_EntityBudgetValue> m_maxBudgetsInternal = new map<EEditableEntityBudget, ref SCR_EntityBudgetValue>;
 	
 	protected SCR_EditableEntityCore m_EntityCore;
 	protected SCR_BaseEditableEntityFilter m_DestroyedEntityFilter;
@@ -37,7 +43,7 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 	//Delayed set max values
 	protected ref map<EEditableEntityBudget, int> m_DelayedSetMaxBudgetsMap = new map<EEditableEntityBudget, int>();
 	protected bool m_bListenToMaxBudgetDelay = false;
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Checks if budget is sufficient to place passed entity
 	//! \param[in] info
@@ -102,6 +108,23 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 			canPlace = canPlace && CanPlace(budgetCosts, blockingBudget);
 		}
 		return CanPlaceResult(canPlace, showNotification);
+	}
+	
+	void GetBudgetCosts(IEntityComponentSource editableEntitySource, out notnull array<ref SCR_EntityBudgetValue> budgetCosts)
+	{		
+		GetEntitySourcePreviewBudgetCosts(editableEntitySource, budgetCosts);
+	}
+	
+	void GetBudgetCostsDontDiscardCampaignBudget(IEntityComponentSource editableEntitySource, out notnull array<ref SCR_EntityBudgetValue> budgetCosts)
+	{		
+		if (!editableEntitySource)
+			return;
+		
+ 		SCR_EditableEntityUIInfo editableUIInfo = SCR_EditableEntityComponentClass.GetInfo(editableEntitySource);
+		if (editableUIInfo)
+			GetEntityPreviewBudgetCostsDontDiscardCampaignBudget(editableUIInfo, budgetCosts);
+
+		return;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -182,7 +205,29 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		SCR_EntityBudgetValue.MergeBudgetCosts(budgetCosts, entityChildrenBudgetCosts);
 		
 		FilterAvailableBudgets(budgetCosts);
+
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] entityUIInfo
+	//! \param[out] budgetCosts
+	//! \return
+	bool GetEntityPreviewBudgetCostsDontDiscardCampaignBudget(SCR_EditableEntityUIInfo entityUIInfo, out notnull array<ref SCR_EntityBudgetValue> budgetCosts)
+	{
+		if (!entityUIInfo)
+			return false;
 		
+		if (!entityUIInfo.GetEntityBudgetCost(budgetCosts))
+			GetEntityTypeBudgetCost(entityUIInfo.GetEntityType(), budgetCosts);
+		
+		array<ref SCR_EntityBudgetValue> entityChildrenBudgetCosts = {};
+		entityUIInfo.GetEntityChildrenBudgetCost(entityChildrenBudgetCosts);
+		
+		SCR_EntityBudgetValue.MergeBudgetCosts(budgetCosts, entityChildrenBudgetCosts);
+		
+		FilterAvailableBudgetsDontDiscardCampaignBudget(budgetCosts);
+
 		return true;
 	}
 	
@@ -301,8 +346,30 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 	//------------------------------------------------------------------------------------------------
 	protected bool GetMaxBudget(EEditableEntityBudget type, out SCR_EntityBudgetValue budget)
 	{
+		#ifdef BUDGET_OPTIMIZATION_CHECKS
+		const bool result = m_maxBudgetsInternal.Find(type, budget);
+	
+		if(result && !budget)
+		{
+			Print("GetMaxBudget: Budget type wasn't defined!", LogLevel.ERROR);
+			return GetMaxBudget_Old(type, budget);
+		}
+		#endif
+		
+		return m_maxBudgetsInternal.Find(type, budget);
+	}
+	
+	
+	//old version of GetMaxBudget
+	//------------------------------------------------------------------------------------------------
+	protected bool GetMaxBudget_Old(EEditableEntityBudget type, out SCR_EntityBudgetValue budget)
+	{	
+		//iterate like we used to do
 		foreach	(SCR_EntityBudgetValue maxBudget : m_MaxBudgets)
 		{
+			if(!maxBudget)
+				continue;
+			
 			if (maxBudget.GetBudgetType() == type)
 			{
 				budget = maxBudget;
@@ -365,7 +432,7 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 	{
 		m_bListenToMaxBudgetDelay = false;
 		SetMultiMaxBudgetValues(m_DelayedSetMaxBudgetsMap, playerChangingBudget);
-		m_DelayedSetMaxBudgetsMap.Clear();
+		m_DelayedSetMaxBudgetsMap = new map<EEditableEntityBudget, int>();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -473,11 +540,11 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 	//! Get default budget definitions from core, budget values not synced on client, use GetCurrentBudget for updated budget
 	protected void RefreshBudgetSettings()
 	{
-		m_BudgetSettingsMap.Clear();
+		m_BudgetSettingsMap = new map<EEditableEntityBudget, SCR_EditableEntityCoreBudgetSetting>;
 		
 		if (!m_EntityCore)
 			return;
-		
+
 		array<ref SCR_EditableEntityCoreBudgetSetting> outBudgets = {};
 		m_EntityCore.GetBudgets(outBudgets);
 		
@@ -543,12 +610,11 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnEntityCoreBudgetUpdated(EEditableEntityBudget entityBudget, int originalBudgetValue, int budgetChange, int updatedBudgetValue, SCR_EditableEntityComponent entity)
+	protected void OnEntityCoreBudgetUpdated(EEditableEntityBudget entityBudget, int originalBudgetValue, int budgetChange, int updatedBudgetValue)
 	{
 		int maxBudgetValue;
 		if (!GetMaxBudgetValue(entityBudget, maxBudgetValue))
 			return;	
-		
 		bool budgetMaxReached;
 		bool sendBudgetMaxEvent = CheckMaxBudgetReached(entityBudget, budgetChange, originalBudgetValue, updatedBudgetValue, maxBudgetValue, budgetMaxReached);
 		/*if (!IsOwner())*/
@@ -605,6 +671,22 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		for (int i = budgetCosts.Count() - 1; i >= 0; i--)
 		{
 			budget = budgetCosts[i];
+			if (!IsBudgetAvailable(budget.GetBudgetType()))
+				budgetCosts.Remove(i);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void FilterAvailableBudgetsDontDiscardCampaignBudget(inout notnull array<ref SCR_EntityBudgetValue> budgetCosts)
+	{
+		SCR_EntityBudgetValue budget;
+		for (int i = budgetCosts.Count() - 1; i >= 0; i--)
+		{
+			budget = budgetCosts[i];
+			
+			if(budget.GetBudgetType() == EEditableEntityBudget.CAMPAIGN)
+				continue;
+			
 			if (!IsBudgetAvailable(budget.GetBudgetType()))
 				budgetCosts.Remove(i);
 		}
@@ -703,6 +785,17 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 	{
 		m_EntityCore = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
 		m_EntityCore.Event_OnEntityBudgetUpdated.Insert(OnEntityCoreBudgetUpdated);
+		
+		//overwrite the nulls with the actual values where valid
+		foreach	(SCR_EntityBudgetValue maxBudget : m_MaxBudgets)
+		{
+			m_maxBudgetsInternal.Insert(maxBudget.GetBudgetType(), maxBudget);			
+		}
+		
+		foreach (SCR_EditableEntityCoreBudgetSetting budgetSetting : m_BudgetSettingsMap)
+		{
+			budgetSetting.SetBudgetComponent(this);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -741,7 +834,14 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_BUDGET_CAP, "", "Enable Budget Cap", "Editable Entities");
 		DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_BUDGET_CAP, 1);
 	#endif
-
+		
+		
+		//overwrite the nulls with the actual values where valid
+		foreach	(SCR_EntityBudgetValue maxBudget : m_MaxBudgets)
+		{
+			m_maxBudgetsInternal.Insert(maxBudget.GetBudgetType(), maxBudget);			
+		}
+		
 		foreach (SCR_EditableEntityCoreBudgetSetting budgetSetting : m_BudgetSettingsMap)
 		{
 			budgetSetting.SetBudgetComponent(this);

@@ -1,7 +1,7 @@
 class SCR_InspectCasualtyWidget : SCR_InfoDisplayExtended
 {
 	const ResourceName INSPECT_CASUALTY_LAYOUT = "{11AC7D61FD4CF3F6}UI/layouts/Damage/InspectCasualtyMenu.layout";
-	
+
 	protected SCR_CharacterDamageManagerComponent m_CharDamageManager;
 	protected Widget m_wCasualtyInspectWidget;
 
@@ -14,13 +14,13 @@ class SCR_InspectCasualtyWidget : SCR_InfoDisplayExtended
 	protected float m_fTimeTillClose;
 	protected bool m_bShouldBeVisible;
 
-	//------------------------------------------------------------------------------------------------	
+	//------------------------------------------------------------------------------------------------
 	override void DisplayStartDraw(IEntity owner)
 	{
 		m_wCasualtyInspectWidget = GetRootWidget();
 		DisableWidget();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override event void DisplayUpdate(IEntity owner, float timeSlice)
 	{
@@ -28,7 +28,7 @@ class SCR_InspectCasualtyWidget : SCR_InfoDisplayExtended
 			DisableWidget();
 		else
 			m_fTimeTillClose -= timeSlice;
-		
+
 		if (m_fTimeTillUpdate > 0)
 		{
 			m_fTimeTillUpdate -= timeSlice;
@@ -38,34 +38,34 @@ class SCR_InspectCasualtyWidget : SCR_InfoDisplayExtended
 			m_fTimeTillUpdate = UPDATE_FREQ;
 			UpdateTarget();
 		}
-		
+
 		UpdateWidget();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Start showing the widget
 	bool ShowInspectCasualtyWidget(IEntity targetCharacter)
 	{
 		if (!m_wCasualtyInspectWidget)
 			return false;
-		
+
 		ChimeraCharacter char = ChimeraCharacter.Cast(targetCharacter);
 		if (!char)
 			return false;
-		
+
 		CharacterControllerComponent targetController = char.GetCharacterController();
 		if (!targetController)
 			return false;
 
 		UpdateTarget();
 		EnableWidget();
-	
+
 		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Check if target is still alive and update widget if so
-	void UpdateTarget()
+	protected void UpdateTarget()
 	{
 		if (!m_Target)
 		{
@@ -76,7 +76,7 @@ class SCR_InspectCasualtyWidget : SCR_InfoDisplayExtended
 		ChimeraCharacter char = ChimeraCharacter.Cast(m_Target);
 		if (!char)
 			return;
-		
+
 		CharacterControllerComponent controller = char.GetCharacterController();
 		if (controller.GetLifeState() == ECharacterLifeState.DEAD)
 		{
@@ -86,21 +86,21 @@ class SCR_InspectCasualtyWidget : SCR_InfoDisplayExtended
 
 		UpdateWidgetData();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Gather and update data of target character into widget
-	void UpdateWidgetData()
+	protected void UpdateWidgetData()
 	{
 		if (!m_Target || !m_wCasualtyInspectWidget)
 			return;
-		
+
 		string sName;
 		GetCasualtyName(sName, m_Target);
-	
+
 		if (GetGame().GetPlatformService().GetLocalPlatformKind() == PlatformKind.PSN)
 		{
 			PlayerManager playerMgr = GetGame().GetPlayerManager();
-			
+
 			if (playerMgr && playerMgr.GetPlatformKind(playerMgr.GetPlayerIdFromControlledEntity(m_Target)) == PlatformKind.PSN)
 				sName = string.Format("<color rgba=%1><image set='%2' name='%3' scale='%4'/></color>", UIColors.FormatColor(GUIColors.ENABLED), UIConstants.ICONS_IMAGE_SET, UIConstants.PLATFROM_PLAYSTATION_ICON_NAME, 2) + sName;
 			else
@@ -111,12 +111,12 @@ class SCR_InspectCasualtyWidget : SCR_InfoDisplayExtended
 		int groupDamageIntensity;
 		bool regenerating, isTourniquetted, isSalineBagged, isMorphined;
 		string damageIntensity, damageIntensityText, bleedingIntensityText;
-		array <bool> hZGroupsBleeding = {};
-		
+		array<bool> hZGroupsBleeding = {};
+
 		SCR_InventoryHitZonePointUI hitZonePointUI = new SCR_InventoryHitZonePointUI();
 		GetDamageInfo(hitZonePointUI, m_Target, bleedingRate, hZGroupsBleeding, groupDamageIntensity, regenerating, isTourniquetted, isSalineBagged, isMorphined);
 		hitZonePointUI.GetDamageInfoTexts(EHitZoneGroup.VIRTUAL, groupDamageIntensity, bleedingRate, damageIntensity, damageIntensityText, bleedingIntensityText);
-		
+
 		SCR_InventoryDamageInfoUI damageInfoUI = SCR_InventoryDamageInfoUI.Cast(m_wCasualtyInspectWidget.FindHandler(SCR_InventoryDamageInfoUI));
 		if (damageInfoUI)
 		{
@@ -132,17 +132,17 @@ class SCR_InspectCasualtyWidget : SCR_InfoDisplayExtended
 
 	//------------------------------------------------------------------------------------------------
 	//! Update widget position and opacity
-	void UpdateWidget()
+	protected void UpdateWidget()
 	{
 		if (!m_Target || !m_wCasualtyInspectWidget || !m_bIsEnabled)
 			return;
 
 		vector boneVector[4];
 		m_Target.GetAnimation().GetBoneMatrix(m_Target.GetAnimation().GetBoneIndex(TARGET_BONE), boneVector);
-		
+
 		vector WPPos = boneVector[3] + m_Target.GetOrigin();
 		vector pos = GetGame().GetWorkspace().ProjWorldToScreen(WPPos, GetGame().GetWorld());
-		
+
 		// Handle off-screen coords
 		WorkspaceWidget workspace = GetGame().GetWorkspace();
 		int winX = workspace.GetWidth();
@@ -156,37 +156,37 @@ class SCR_InspectCasualtyWidget : SCR_InfoDisplayExtended
 			DisableWidget();
 			return;
 		}
-		
+
 		FrameSlot.SetPos(m_wCasualtyInspectWidget.GetChildren(), pos[0], pos[1]);
-				
+
 		float dist = vector.Distance(GetGame().GetPlayerController().GetControlledEntity().GetOrigin(), WPPos);
 		if (dist >= 4)
 		{
 			DisableWidget();
 			return;
 		}
-		
+
 		float distanceOpacityReduction = 1;
-		
+
 		if (dist <= 3)
 			distanceOpacityReduction = 0;
 		else
 			distanceOpacityReduction = Math.InverseLerp(3, 4, dist);
-				
+
 		m_wCasualtyInspectWidget.SetOpacity(1 - distanceOpacityReduction);
 	}
-		
+
 	//------------------------------------------------------------------------------------------------
-	void GetDamageInfo(SCR_InventoryHitZonePointUI hitZonePointUI, IEntity targetEntity, inout float bleedingRate, inout array <bool> hZGroupsBleeding, inout int damageIntensity, inout bool regenerating, inout bool isTourniquetted, inout bool isSalineBagged, inout bool isMorphined)
+	protected void GetDamageInfo(SCR_InventoryHitZonePointUI hitZonePointUI, IEntity targetEntity, inout float bleedingRate, inout array<bool> hZGroupsBleeding, inout int damageIntensity, inout bool regenerating, inout bool isTourniquetted, inout bool isSalineBagged, inout bool isMorphined)
 	{
 		ChimeraCharacter character = ChimeraCharacter.Cast(targetEntity);
 		if (!character)
 			return;
-		
-		SCR_CharacterDamageManagerComponent damageMan = SCR_CharacterDamageManagerComponent.Cast( character.GetDamageManager() );
+
+		SCR_CharacterDamageManagerComponent damageMan = SCR_CharacterDamageManagerComponent.Cast(character.GetDamageManager());
 		if (!damageMan)
-			return;		
-		
+			return;
+
 		float defaultHZHealth = damageMan.GetHealthScaled();
 		bleedingRate = damageMan.GetBloodHitZone().GetTotalBleedingAmount();
 		if (bleedingRate)
@@ -199,23 +199,23 @@ class SCR_InspectCasualtyWidget : SCR_InfoDisplayExtended
 				hZGroupsBleeding[damageMan.LIMB_GROUPS.Find(group)] = damageMan.GetGroupDamageOverTime(group, EDamageType.BLEEDING) != 0;
 			}
 		}
-		
-		array <EHitZoneGroup> limbGroups = {};
+
+		array<EHitZoneGroup> limbGroups = {};
 		damageMan.GetAllLimbs(limbGroups);
-		foreach(EHitZoneGroup group : limbGroups)
+		foreach (EHitZoneGroup group : limbGroups)
 		{
 			if (!isTourniquetted)
 				isTourniquetted = damageMan.GetGroupTourniquetted(group);
 
 			if (!isSalineBagged)
 				isSalineBagged = damageMan.GetGroupSalineBagged(group);
-			
+
 			if (!isMorphined)
 			{
-				array<ref PersistentDamageEffect> effects = damageMan.GetAllPersistentEffectsOfType(SCR_MorphineDamageEffect);
+				array<ref SCR_PersistentDamageEffect> effects = damageMan.GetAllPersistentEffectsOfType(SCR_MorphineDamageEffect);
 				isMorphined = !effects.IsEmpty();
 			}
-			
+
 			if (!regenerating)
 				regenerating = damageMan.GetGroupDamageOverTime(group, EDamageType.HEALING) != 0 || damageMan.GetGroupDamageOverTime(group, EDamageType.REGENERATION) != 0;
 		}
@@ -233,7 +233,7 @@ class SCR_InspectCasualtyWidget : SCR_InfoDisplayExtended
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void GetCasualtyName(inout string sName, IEntity targetCharacter)
+	protected void GetCasualtyName(inout string sName, IEntity targetCharacter)
 	{
 		string sFormat, sAlias, sSurname;
 		int playerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(targetCharacter);
@@ -241,7 +241,7 @@ class SCR_InspectCasualtyWidget : SCR_InfoDisplayExtended
 		{
 			PlayerManager playerMgr = GetGame().GetPlayerManager();
 			if (playerMgr)
-				sName = playerMgr.GetPlayerName(playerID);
+				sName = SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(playerID);
 		}
 		else
 		{
@@ -271,39 +271,39 @@ class SCR_InspectCasualtyWidget : SCR_InfoDisplayExtended
 	{
 		m_Target = target;
 	}
-	
-	//------------------------------------------------------------------------------------------------			
+
+	//------------------------------------------------------------------------------------------------
 	bool IsActive()
 	{
 		return m_Target && m_wCasualtyInspectWidget && m_wCasualtyInspectWidget.GetOpacity() != 0;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	void DisableWidget()
+	protected void DisableWidget()
 	{
 		if (m_wCasualtyInspectWidget)
 			m_wCasualtyInspectWidget.SetVisible(false);
-		
+
 		m_Target = null;
-		SetEnabled(false);		
+		SetEnabled(false);
 		m_bShouldBeVisible = false;
 		m_fTimeTillClose = MAX_SHOW_DURATION;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	void EnableWidget()
+	protected void EnableWidget()
 	{
 		if (m_wCasualtyInspectWidget)
 			m_wCasualtyInspectWidget.SetVisible(true);
-		
-		SetEnabled(true);		
-		m_bShouldBeVisible = true;			
+
+		SetEnabled(true);
+		m_bShouldBeVisible = true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void DisplayOnResumed()
 	{
 		if (!m_bShouldBeVisible && m_wCasualtyInspectWidget)
-			m_wCasualtyInspectWidget.SetVisible(false);			
+			m_wCasualtyInspectWidget.SetVisible(false);
 	}
-};
+}

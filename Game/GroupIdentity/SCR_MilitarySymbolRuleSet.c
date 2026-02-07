@@ -192,8 +192,10 @@ class SCR_GroupIdentityRuleData
 		
 		//--- Vehicle types
 		array<IEntity> vehicles = {};
+		group.GetGroupUtilityComponent().m_VehicleMgr.GetAllVehicleEntities(vehicles);
+		
 		Vehicle vehicle;
-		for (int i, count = group.GetUsableVehicles(vehicles); i < count; i++)
+		for (int i, count = vehicles.Count(); i < count; i++)
 		{
 			vehicle = Vehicle.Cast(vehicles[i]);
 			if (vehicle)

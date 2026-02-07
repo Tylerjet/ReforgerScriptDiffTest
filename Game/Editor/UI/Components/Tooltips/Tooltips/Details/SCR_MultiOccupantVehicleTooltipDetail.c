@@ -53,7 +53,7 @@ class SCR_MultiOccupantVehcileTooltipDetail: SCR_EntityTooltipDetail
 				if (playerID <= 0 || !m_PlayerManager)
 					m_MultiLineTextWidget.AddText(editableGunner.GetDisplayName());
 				else
-					m_MultiLineTextWidget.AddText(m_sPlayerText, m_PlayerManager.GetPlayerName(playerID));
+					m_MultiLineTextWidget.AddText(m_sPlayerText, SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(playerID));
 			}
 		}	
 	}

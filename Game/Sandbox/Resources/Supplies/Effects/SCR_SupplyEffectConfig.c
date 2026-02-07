@@ -17,5 +17,5 @@ class SCR_SupplyEffectsConfig
 [BaseContainerProps()]
 class SCR_SupplyEffectBase
 {
-	void ActivateEffect(EResourcePlayerInteractionType interactionType, SCR_ResourceComponent resourceComponentFrom, SCR_ResourceComponent resourceComponentTo, EResourceType resourceType, float resourceValue)
+	void ActivateEffect(EResourcePlayerInteractionType interactionType, SCR_ResourceComponent resourceComponentFrom, SCR_ResourceComponent resourceComponentTo, EResourceType resourceType, float resourceValue);
 }

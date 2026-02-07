@@ -171,9 +171,9 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 		m_CommonWidgets.m_wNameText.SetText(title);
 		if (!content.m_sTitleImageName.IsEmpty())
 		{
-			m_CommonWidgets.m_wNameImg.SetVisible(true);
 			m_CommonWidgets.m_wNameImg.LoadImageFromSet(0, UIConstants.ICONS_IMAGE_SET, content.m_sTitleImageName);
 			m_CommonWidgets.m_wNameImg.SetColor(content.m_sTitleImageColor);
+			m_CommonWidgets.m_wNameImg.SetVisible(true);
 		}
 		
 		// Description 
@@ -235,9 +235,6 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 		// Check room 
 		if (!m_Room)
 			return;
-		
-		m_CommonWidgets.m_wNameText.SetVisible(true);
-		m_CommonWidgets.m_wAuthorNameText.SetVisible(true);
 
 		// Set room version
 		string strVersion = UIConstants.FormatVersion(STR_DEFAULT_VERSION);
@@ -272,6 +269,8 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 			m_CommonWidgets.m_wAuthorNameText.SetText(text);
 		}
 		
+		m_CommonWidgets.m_wNameText.SetVisible(true);
+		m_CommonWidgets.m_wAuthorNameText.SetVisible(true);		
 		m_CommonWidgets.m_wLoadingOverlay.SetVisible(true);
 		
 		if (m_wImageCrossplay)
@@ -318,9 +317,9 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 		// Show UGC restricted message
 		if (count > 0 && !SCR_AddonManager.GetInstance().GetUgcPrivilege())
 		{
-			m_wModsSizeText.SetVisible(true);
 			m_wModsSizeText.SetText("#AR-ServerBrowser_ContentNotAllowed");
 			m_wModsSizeText.SetColor(Color.FromInt(UIColors.WARNING.PackToInt())); 
+			m_wModsSizeText.SetVisible(true);
 			return;
 		}
 		
@@ -340,6 +339,7 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 		// Set Text 
 		m_wTxtModsCount.SetText(count.ToString());
 		m_wModsSizeText.SetText(totalSize);
+		m_wModsSizeText.Update();
 		
 		// Check mods to update size 
 		array<ref SCR_WorkshopItem> toUpdateMods = m_ModsManager.GetRoomItemsToUpdate();
@@ -353,15 +353,16 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 	//! Quick display mods count
 	void DisplayModsCount(int count)
 	{
-		// Show if modded 
-		bool show = (count != 0);
+		// Show if modded
+		if (count != 0)
+		{
+			m_wTxtModsCount.SetText(count.ToString());
 		
-		// Set widgets 
-		m_wTxtModsCount.SetVisible(true);
-		m_wImgModsIcon.SetVisible(true);
-		m_wModsSizeText.SetVisible(false);
-		
-		m_wTxtModsCount.SetText(count.ToString());
+			// Set widgets 
+			m_wTxtModsCount.SetVisible(true);
+			m_wImgModsIcon.SetVisible(true);
+			m_wModsSizeText.SetVisible(false);
+		}
 	}
 	
 	//-----------------------------------------------------------------------------------

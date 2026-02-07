@@ -357,7 +357,7 @@ class SCR_AddonLineBaseComponent : SCR_ListMenuEntryComponent
 
 	// --- Callbacks ---
 	//------------------------------------------------------------------------------------------------
-	protected void OnWorkshopItemChange(SCR_WorkshopItem item)
+	protected void OnWorkshopItemChange()
 	{
 		UpdateAllWidgets();
 	}

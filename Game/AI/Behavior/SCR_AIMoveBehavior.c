@@ -9,55 +9,41 @@ class SCR_AIMoveBehaviorBase : SCR_AIBehaviorBase
 		SetPriority(priority);
 		m_fPriorityLevel.m_Value = priorityLevel;
 	}
+	
+	//---------------------------------------------------------------------------------------------------------------------------------
+	override int GetCause()
+	{
+		return SCR_EAIBehaviorCause.SAFE;
+	}
 };
 
 //-----------------------------------------------------------------------------------------------------
-class SCR_AIMoveInFormationBehavior : SCR_AIMoveBehaviorBase
+class SCR_AIMoveInFormationBehavior : SCR_AIBehaviorBase
 {
 	//-----------------------------------------------------------------------------------------------------
-	void SCR_AIMoveInFormationBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector pos, float priority = PRIORITY_BEHAVIOR_MOVE_IN_FORMATION, float priorityLevel = PRIORITY_LEVEL_NORMAL)
+	void SCR_AIMoveInFormationBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, float priorityLevel = PRIORITY_LEVEL_NORMAL)
 	{
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/KeepInFormation.bt";
-		if (priorityLevel > 0)
-		{
-			m_bAllowLook = false;
-			m_bResetLook = true;
-		}
 		
-		// if priority comes from commmanding, lower it
-		if (priorityLevel == PRIORITY_LEVEL_PLAYER)
-			m_fPriorityLevel.m_Value = PRIORITY_LEVEL_NORMAL;
-	}
-};
-// Formation behavior under Follow command (high priority)
-//-----------------------------------------------------------------------------------------------------
-class SCR_AIFollowInFormationBehavior : SCR_AIMoveBehaviorBase
-{						
-	protected float m_fTimestampEnd;			// timestamp when the priority expires
-	const static float DURATION_MS = 15000;		// duration of high priority follow command (ms)
-
-	//-----------------------------------------------------------------------------------------------------
-	void SCR_AIFollowInFormationBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector pos, float priority = PRIORITY_ACTIVITY_FOLLOW, float priorityLevel = PRIORITY_LEVEL_PLAYER)
-	{
-		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/KeepInFormation.bt";
-		if (priorityLevel > 0)
-		{
-			m_bAllowLook = false;
-			m_bResetLook = true;
-		}
-
-		float m_fTimestamp = GetGame().GetWorld().GetWorldTime(); // world time when constructor of behavior is called
-		m_fTimestampEnd = m_fTimestamp + DURATION_MS;
+		m_bAllowLook = priorityLevel == 0;
+		m_bResetLook = true;
+		
+		m_fPriorityLevel.m_Value = priorityLevel;
 	}
 	
-	//-----------------------------------------------------------------------------------------------------	
+	//-----------------------------------------------------------------------------------------------------
 	override float CustomEvaluate()
 	{
-		// decrease follow priority over time
-		if(GetGame().GetWorld().GetWorldTime() >= m_fTimestampEnd)
-			m_fPriorityLevel.m_Value = PRIORITY_LEVEL_NORMAL;
-			
-		return GetPriority();
+		if (!m_Utility.IsSubformationLeader() && m_Utility.GetNearSubformationLeader() && !m_Utility.GetSubformationLeaderMoving())
+		{
+			// Leader is not moving, and we are close -> lower the priority, we can do something else if it bothers us
+			return PRIORITY_BEHAVIOR_MOVE_IN_FORMATION_LOW_PRIORITY;
+		}
+		else
+		{
+			// We are either far or leader is moving, or we are subformation leader, we should keep moving
+			return PRIORITY_BEHAVIOR_MOVE_IN_FORMATION;
+		}
 	}
 };
 
@@ -143,5 +129,5 @@ class SCR_AISetInvestigateBehaviorParameters : SCR_AISetActionParameters
 {
 	protected static ref TStringArray s_aVarsIn = (new SCR_AIMoveAndInvestigateBehavior(null, null, vector.Zero)).GetPortNames();
 	override TStringArray GetVariablesIn() { return s_aVarsIn; }
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 };

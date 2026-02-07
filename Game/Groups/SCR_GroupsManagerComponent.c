@@ -401,7 +401,7 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 				if (!playerNameWidget)
 					continue;
 				
-				playerNameWidget.SetText(GetGame().GetPlayerManager().GetPlayerName(playerIDs[j]));
+				playerNameWidget.SetText(SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(playerIDs[j]));
 			}
 		}
 	}

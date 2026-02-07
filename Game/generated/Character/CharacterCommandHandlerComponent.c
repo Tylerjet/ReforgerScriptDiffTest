@@ -23,6 +23,7 @@ class CharacterCommandHandlerComponent: BaseCommandHandlerComponent
 	proto external void GetMovementState(out notnull CharacterMovementState pMovementState);
 	proto external void AlignNewTurns();
 	proto external bool IsVehicleSwitchingSeats();
+	proto external bool IsTurnedOut();
 	proto external bool IsWeaponADSAllowed(bool allowSprint);
 	proto external bool IsSprintingAllowed();
 	proto external bool IsItemInspectionAllowed();
@@ -35,7 +36,7 @@ class CharacterCommandHandlerComponent: BaseCommandHandlerComponent
 	// Cancel use immediately (no out animation), hide gadget.
 	proto external void CancelItemUse();
 	// Finish use (play out animation), keep gadget if possible.
-	proto external void FinishItemUse();
+	proto external void FinishItemUse(bool finishAnimations);
 	proto external bool WasMovement();
 	proto external bool WasRotation();
 	proto external CharacterCommandFall		StartCommand_Fall(float pYVelocity);

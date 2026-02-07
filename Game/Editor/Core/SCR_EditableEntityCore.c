@@ -1,6 +1,10 @@
-void ScriptInvoker_EntityCoreBudgetUpdated(EEditableEntityBudget type, int originalBudgetValue, int budgetChange, int updatedBudgetValue, SCR_EditableEntityComponent entity);
+void ScriptInvoker_EntityCoreBudgetUpdated(EEditableEntityBudget type, int originalBudgetValue, int budgetChange, int updatedBudgetValue);
 typedef func ScriptInvoker_EntityCoreBudgetUpdated;
 typedef ScriptInvokerBase<ScriptInvoker_EntityCoreBudgetUpdated> ScriptInvoker_EntityCoreBudgetUpdatedEvent;
+
+void ScriptInvoker_EntityCoreBudgetUpdatedPerEntity(EEditableEntityBudget type, int originalBudgetValue, int budgetChange, int updatedBudgetValue, SCR_EditableEntityComponent entity);
+typedef func ScriptInvoker_EntityCoreBudgetUpdatedPerEntity;
+typedef ScriptInvokerBase<ScriptInvoker_EntityCoreBudgetUpdatedPerEntity> ScriptInvoker_EntityCoreBudgetUpdatedPerEntityEvent;
 
 void ScriptInvoker_AuthorRequestedFinished(set<SCR_EditableEntityAuthor> authors);
 typedef func ScriptInvoker_AuthorRequestedFinished;
@@ -25,6 +29,8 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 
 	[Attribute(desc: "Budget settings for every entity type.")]
 	private ref array<ref SCR_EditableEntityCoreBudgetSetting> m_BudgetSettings;
+
+	private ref map<EEditableEntityBudget, ref SCR_EditableEntityCoreBudgetSetting> m_BudgetSettingsInternal = new map<EEditableEntityBudget, ref SCR_EditableEntityCoreBudgetSetting>;
 
 	[Attribute(desc: "Label Groups which will have labels displayed in content browser. Groups are needed for certain functionality. If GROUPLESS group exist then all labels not defined in the EditableEntityCore config will be automatically added to the the groupless list but never displayed as a filter")]
 	private ref array<ref SCR_EditableEntityCoreLabelGroupSetting> m_LabelGroupSettings;
@@ -69,10 +75,21 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 
 	//! Called when entity budget is updated
 	ref ScriptInvoker_EntityCoreBudgetUpdatedEvent Event_OnEntityBudgetUpdated = new ScriptInvoker_EntityCoreBudgetUpdatedEvent();
+	
+	//! Called when the whole budget is updated
+	ref ScriptInvoker_EntityCoreBudgetUpdatedPerEntityEvent Event_OnEntityBudgetUpdatedPerEntity = new ScriptInvoker_EntityCoreBudgetUpdatedPerEntityEvent();
 
 	//! Called when entity is extended or cease to be extended
 	ref ScriptInvoker Event_OnEntityExtendedChange = new ScriptInvoker;
 
+	private ref map<EEditableEntityBudget, int> m_accumulatedBudgetChanges = new map<EEditableEntityBudget, int>;
+	bool budgetChangesAccumulated = false;
+	
+	//Basically conflict uses entity budgets for game logic. However they hacked their system into GM budgets.
+	//This means that when a server gets restarted we have to update our budgets WITHOUT sending conflicts any callbacks
+	//Otherwise they will be changing entity hierarchies (for some reason) and kicking clients during JIP.
+	bool conflictCompositionHackOnServerRestartCheck = false;
+	
 	// UGC Authors
 	// Authors = people who currently own entity in a world
 	private ref map<string, ref SCR_EditableEntityAuthor> m_mAuthors = new map<string, ref SCR_EditableEntityAuthor>; // Held by server, needs to be requested by client.
@@ -439,6 +456,27 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 	//! \param[out] SCR_EditableEntityCoreBudgetSetting
 	bool GetBudget(EEditableEntityBudget budgetType, out SCR_EditableEntityCoreBudgetSetting budgetSettings)
 	{
+		budgetSettings = m_BudgetSettingsInternal.Get(budgetType);
+		
+		bool result = budgetSettings;
+		
+		#ifdef BUDGET_OPTIMIZATION_CHECKS
+		if(result && !budgetSettings)
+		{
+			Print("GetBudget: Budget type wasn't defined!", LogLevel.ERROR);
+			return GetBudget_Old(budgetType, budgetSettings);
+		}
+		#endif
+
+		return result;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Pre-optimization version of GetBudget
+	//! \param[out] SCR_EditableEntityCoreBudgetSetting
+	private bool GetBudget_Old(EEditableEntityBudget budgetType, out SCR_EditableEntityCoreBudgetSetting budgetSettings)
+	{
+		//there was a problem, do previous logic
 		foreach (SCR_EditableEntityCoreBudgetSetting budget : m_BudgetSettings)
 		{
 			if (budget.GetBudgetType() == budgetType)
@@ -856,7 +894,7 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 	//! \param added
 	//! \param owner
 	protected void UpdateBudgetForEntity(SCR_EditableEntityComponent entity, bool added, IEntity owner)
-	{
+	{	
 		// Entity was deleted before delayed update could run, ignore entity.
 		// Will be ignored for both delayed Register and Unregister so shouldn't affect total budget
 		if (!entity)
@@ -874,15 +912,103 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 			
 			foreach	(SCR_EntityBudgetValue budgetCost : entityBudgetCosts)
 			{
-				UpdateBudget(budgetCost.GetBudgetType(), added, entity, budgetCost);
+				QueueBudgetChange(budgetCost.GetBudgetType(), added, entity, budgetCost);
 			}
 		}
 		else
 		{
-			UpdateBudget(GetBudgetForEntityType(entity.GetEntityType(owner)), added, entity);
+			QueueBudgetChange(GetBudgetForEntityType(entity.GetEntityType(owner)), added, entity);
 		}
 	}
 
+	void QueueBudgetChange(EEditableEntityBudget budgetType, bool added, SCR_EditableEntityComponent entity, SCR_EntityBudgetValue budgetCost = null)
+	{
+		SCR_EditableEntityCoreBudgetSetting budgetSettings;
+		if (!GetBudget(budgetType, budgetSettings))
+			return;
+		
+		const int originalBudgetValue = budgetSettings.GetCurrentBudget();	
+		int budgetChange = budgetSettings.GetMinBudgetCost();
+		
+		//budget change cant be less than minimum budget cost
+		if(budgetCost)
+			budgetChange = Math.Max(budgetChange, budgetCost.GetBudgetValue());
+		
+		//if we are deleting the entity we reduce the budget
+		if(!added)
+			budgetChange *= -1;
+
+		//budget we should have if we had been applying all budget changes at the same time
+		const int adjustedCurrentBudget = budgetSettings.GetCurrentBudget() + m_accumulatedBudgetChanges[budgetType];
+		const int updatedBudgetValue = adjustedCurrentBudget + budgetChange;
+		
+		//update current budget changes	
+		m_accumulatedBudgetChanges[budgetType] = m_accumulatedBudgetChanges[budgetType] + budgetChange;
+
+		//read variable description.
+		if(!conflictCompositionHackOnServerRestartCheck)
+		{
+			Event_OnEntityBudgetUpdatedPerEntity.Invoke(budgetType, adjustedCurrentBudget, budgetChange, updatedBudgetValue, entity);
+		}
+		
+		if(!budgetChangesAccumulated)
+		{
+			GetGame().GetCallqueue().CallLater(ApplyQueuedBudgetChanges);
+			budgetChangesAccumulated = true;
+		}
+	}
+	
+	protected void ApplyQueuedBudgetChanges()
+	{
+		SCR_EditableEntityCoreBudgetSetting budgetSettings = null;
+		int budgetChange = 0;
+		int originalBudgetValue = 0;
+
+		EEditableEntityBudget budgetType = 0;
+		
+		MapIterator it = m_accumulatedBudgetChanges.Begin();
+		const MapIterator end = m_accumulatedBudgetChanges.End();
+		
+		while(it != end)
+		{
+			//Print("Budget: " + m_accumulatedBudgetChanges.GetIteratorKey(it));
+			//Print("Value: " + m_accumulatedBudgetChanges.GetIteratorElement(it));
+
+			budgetChange = m_accumulatedBudgetChanges.GetIteratorElement(it);
+			if(budgetChange == 0)
+			{
+				//advance to next budget
+				it = m_accumulatedBudgetChanges.Next(it);
+				continue;
+			}
+			
+			budgetType = m_accumulatedBudgetChanges.GetIteratorKey(it);
+			budgetSettings = m_BudgetSettingsInternal[budgetType];
+			
+			originalBudgetValue = budgetSettings.GetCurrentBudget();
+			
+			//substraced budget change has to be a positive number
+			if(budgetChange > 0)
+				budgetChange = budgetSettings.AddToBudget(budgetChange);
+			else
+				budgetChange = budgetSettings.SubtractFromBudget(-budgetChange);
+			
+			const int updatedBudgetValue = budgetSettings.GetCurrentBudget();
+			
+			if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_LOG_BUDGET_CHANGES))
+				Print(string.Format("New budget for type %1: %2", budgetType, updatedBudgetValue), LogLevel.NORMAL);
+			
+			Event_OnEntityBudgetUpdated.Invoke(budgetType, originalBudgetValue, budgetChange, updatedBudgetValue);
+			
+			//reset it for next budget update
+			m_accumulatedBudgetChanges[budgetType] = 0;
+			
+			//advance to next budget
+			it = m_accumulatedBudgetChanges.Next(it);
+		}
+		
+		budgetChangesAccumulated = false;
+	}
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param budgetType
@@ -1047,13 +1173,29 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 	//------------------------------------------------------------------------------------------------
 	override void OnGameStart()
 	{
-		typename state = EEditableEntityState;
+		//Read variable documentaion
+		conflictCompositionHackOnServerRestartCheck = false;
+		
+		const typename state = EEditableEntityState;
 		DiagMenu.RegisterMenu(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES, "Editable Entities", "Editor");
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_LOG_ALL, "", "Log All", "Editable Entities");
 		DiagMenu.RegisterRange(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_LOG_TYPE, "", "Log Type", "Editable Entities", string.Format("-1 %1 -1 1", state.GetVariableCount() - 1));
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_DISABLE, "", "Disable entities", "Editable Entities");
-	}
+	
+		m_BudgetSettingsInternal = new map<EEditableEntityBudget, ref SCR_EditableEntityCoreBudgetSetting>;
+		
+		//overwrite the nulls with the actual values where valid
+		foreach(SCR_EditableEntityCoreBudgetSetting budgetSetting : m_BudgetSettings)
+		{
+			m_BudgetSettingsInternal.Insert(budgetSetting.GetBudgetType(), budgetSetting);
+		}	
 
+		//on server restarts, budget cleanups happen between OnGameEnd and OnGameStart, so we update our current budgets here.
+		ApplyQueuedBudgetChanges();
+		
+		m_accumulatedBudgetChanges = new map<EEditableEntityBudget, int>;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnGameEnd()
 	{
@@ -1067,9 +1209,15 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 		Event_OnEntityVisibilityChanged = new ScriptInvoker;
 		Event_OnEntityExtendedChange = new ScriptInvoker;
 		Event_OnEntityBudgetUpdated = new ScriptInvoker_EntityCoreBudgetUpdatedEvent();
-		
+
 		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES);
 		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_LOG_ALL);
+		
+		//read variable comment
+		conflictCompositionHackOnServerRestartCheck = true;
+		
+		m_accumulatedBudgetChanges = new map<EEditableEntityBudget, int>;
+
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1138,6 +1286,6 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 		}
 
 		//--- Square the value
-		m_fPlayerDrawDistance = m_fPlayerDrawDistance * m_fPlayerDrawDistance;
+		m_fPlayerDrawDistance = m_fPlayerDrawDistance * m_fPlayerDrawDistance;		
 	}
 }

@@ -12,8 +12,6 @@ Do not modify, this script is generated
 enum ECurveType
 {
 	CatmullRom,
-	NaturalCubic,
-	UniformCubic,
 	CurveProperty2D,
 }
 

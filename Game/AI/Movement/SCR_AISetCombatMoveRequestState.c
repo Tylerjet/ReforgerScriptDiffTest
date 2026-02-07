@@ -20,7 +20,7 @@ class SCR_AISetCombatMoveRequestState : AITaskScripted
 	}
 	
 	//--------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 	
 	override string GetNodeMiddleText()
 	{
@@ -55,7 +55,7 @@ class SCR_AISetCombatMoveRequestFailReason : AITaskScripted
 	}
 	
 	//--------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 	
 	override string GetNodeMiddleText()
 	{

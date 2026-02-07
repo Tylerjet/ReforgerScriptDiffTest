@@ -38,12 +38,12 @@ class SCR_AISetVehicleLights : AITaskScripted
         return s_aVarsIn;
     }
 	
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
     {
         return true;
     }
 	
-	override string GetOnHoverDescription()
+	static override string GetOnHoverDescription()
 	{
 		return "Toggles the state of lights in a vehicle";
 	}	

@@ -56,7 +56,7 @@ class SCR_DestructionCommon
 		vector up = fw * rt;
 		up.Normalize();
 		
-		ParticleEffectEntitySpawnParams spawnParams();
+		ParticleEffectEntitySpawnParams spawnParams = new ParticleEffectEntitySpawnParams();
 		spawnParams.Transform[0] = rt;
 		spawnParams.Transform[1] = up;
 		spawnParams.Transform[2] = fw;
@@ -85,7 +85,7 @@ class SCR_DestructionCommon
 		if (particlePath == ResourceName.Empty)
 			return null;
 		
-		ParticleEffectEntitySpawnParams spawnParams();
+		ParticleEffectEntitySpawnParams spawnParams = new ParticleEffectEntitySpawnParams();
 		spawnParams.TransformMode = ETransformMode.WORLD;
 		entity.GetWorldTransform(spawnParams.Transform);
 		spawnParams.UseFrameEvent = true;
@@ -120,7 +120,7 @@ class SCR_DestructionCommon
 		vector parentTransform[4];
 		parent.GetWorldTransform(parentTransform);
 		
-		ParticleEffectEntitySpawnParams spawnParams();
+		ParticleEffectEntitySpawnParams spawnParams = new ParticleEffectEntitySpawnParams();
 		Math3D.MatrixInvMultiply4(parentTransform, mat, spawnParams.Transform);
 		spawnParams.Parent = parent;
 		spawnParams.UseFrameEvent = true;
@@ -144,7 +144,7 @@ class SCR_DestructionCommon
 		if (particlePath == ResourceName.Empty)
 			return null;
 		
-		ParticleEffectEntitySpawnParams spawnParams();
+		ParticleEffectEntitySpawnParams spawnParams = new ParticleEffectEntitySpawnParams();
 		spawnParams.Transform = mat;
 		spawnParams.UseFrameEvent = true;
 		

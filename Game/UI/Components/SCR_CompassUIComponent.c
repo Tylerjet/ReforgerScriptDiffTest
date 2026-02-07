@@ -51,13 +51,16 @@ class SCR_CompassUIComponent: MenuRootSubComponent
 	override void HandlerAttachedScripted(Widget w)
 	{
 		MenuRootBase menu = GetMenu();
-		if (!menu) return;
+		if (!menu)
+			return;
 		
 		m_World = GetGame().GetWorld();
-		if (!m_World) return;
+		if (!m_World)
+			return;
 		
 		m_TextureWidget = ImageWidget.Cast(w.FindAnyWidget(m_sTextureWidgetName));
-		if (!m_TextureWidget) return;
+		if (!m_TextureWidget)
+			return;
 		
 		m_Labels.Insert(w.FindAnyWidget(m_sEastWidgetName), 0);
 		m_Labels.Insert(w.FindAnyWidget(m_sSouthWidgetName), Math.PI * 0.5);

@@ -9,7 +9,7 @@ enum ValidationType
 class ValidateMaterialPlugin: WorkbenchPlugin
 {	
 	
-	[Attribute("0", UIWidgets.ComboBox, "All - All selected Emats and Edds \nEdds - Only selected edds files \nEmats - Only selected emats and textures assigned to them",category: "General", enums: ParamEnumArray.FromEnum(ValidationType))]
+	[Attribute("0", UIWidgets.ComboBox, "All - All selected Emats and Edds \nEdds - Only selected edds files \nEmats - Only selected emats and textures assigned to them",category: "General", enumType: ValidationType)]
 	ValidationType m_ePerformChecksOn;
 	
 	[Attribute("true", UIWidgets.CheckBox, "Use UV Tiling limits that can be set below",category: "Material")]
@@ -53,7 +53,7 @@ class ValidateMaterialPlugin: WorkbenchPlugin
 		string rootPath;
 		Workbench.GetCwd(rootPath);
 		toolPath = rootPath + TOOL_NAME; 
-		string command = toolPath;
+		string command =  "\"" + toolPath + "\"";
 		
 		command += " --matCount " + matCount.ToString();
 		
@@ -89,6 +89,7 @@ class ValidateMaterialPlugin: WorkbenchPlugin
 
 			}
 		}
+		
 		command += " -pl Material";
 		return command;
 	}
@@ -154,7 +155,6 @@ class ValidateMaterialPlugin: WorkbenchPlugin
 			array<ResourceName> selection = {};
 			resourceManager.GetResourceBrowserSelection(selection.Insert, true);
 			int matCount = FillResourceArrays(selection);
-			
 			if(materials.Count() + textures.Count() == 0)
 			{
 				Print("No Emat or Edds file selected. Please select at least one emat or edds file in the Resource Browser and make sure you have \"Perform Checks On\" set to right value",LogLevel.WARNING);
@@ -508,92 +508,31 @@ class TextureValidatorUtils
 	// Texture should have the same import settings per texture type
 	void TextureImportSettings(ResourceName path, out bool issue)
 	{
-		MaterialValidatorUtils matValid = new MaterialValidatorUtils();
+		// Get config (From metafile) and check if something is set directly
+		// If that won't work check if something is different from parent conf.
 		
-		array<ResourceName> configs = new array<ResourceName>;
-		// get all types of textures
-		array<ref TextureType> types = new array<ref TextureType>;
-		TextureType.RegisterTypes(types);
-		
-		// testing suffix of textures with all types
-		foreach(TextureType type: types)
-		{
-			type.m_PostFix += "edds";
-			if(type.TestPostFix(path))
-			{
-				// there are always atleast 2 configs, Default and the one for the type
-				configs.Insert(type.GetBaseConfig("PC"))
-			}
-		}
-		
-		// check guid
 		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
-		string guid = path.Substring(0,18);
-		string guidtest = Workbench.GetResourceName(guid);
-		if(guid == guidtest)
-		{
-			issue = true;
-			Print("	- " + path + " has a wrong guid!",LogLevel.ERROR);
-			return;
-		}
-		
-		// get the Import settings of the selected texture
 		MetaFile meta = resourceManager.GetMetaFile(path.GetPath());
+		
 		BaseContainerList configurations = meta.GetObjectArray("Configurations");
 		BaseContainer cfg = configurations.Get(0);
 		
-		map<string,string> textureMeta = new map<string,string>;
 		for(int i = 0; i < cfg.GetNumVars(); i++)
 		{
-			string value, var;
-			var = cfg.GetVarName(i);
-			matValid.GetValue(cfg, var, value);
-			textureMeta[var] = value;
-		}
-		
-		
-		// get Import settings from configs
-		Resource conf;
-		map<string,string> settings = new map<string,string>;
-		// starting with the last one which is the Default config for all textures
-		for(int i = configs.Count() - 1; i >= 0; i--)
-		{
-			string value, var;
-			conf = Resource.Load(configs[i]);
-			BaseContainer confcont = conf.GetResource().ToBaseContainer();
-			for(int j = 0; j < confcont.GetNumVars(); j++)
-			{
-				// default config needs to use GetValue, because it will get all values
-				var = confcont.GetVarName(j);
-				if(confcont.GetResourceName().Contains("TextureUnspecified"))
-				{
-					// adding all values
-					matValid.GetValue(confcont, var, value);
-					settings[var] = value;
-				}
-				// other configs can use simple Get, because what is not set is the same as in default which is already in the settings
-				else
-				{
-					confcont.Get(var, value);
-					// adding only values that are set(rewritten)
-					if(value != string.Empty)
-					{
-						settings[var] = value;
-					}
-				}
-			}
-		}
-		for(int i = 0; i < settings.Count(); i++)
-		{
-			if(textureMeta.Get(textureMeta.GetKey(i)) != settings.Get(settings.GetKey(i)))
+			string var = cfg.GetVarName(i);
+			if(cfg.IsVariableSetDirectly(var))
 			{
 				issue = true;
-				Print("	- " + textureMeta.GetKey(i) + " doesn't match the Import settings config!", LogLevel.WARNING);			
+				Print("	- " + var + " doesn't match the Import settings config!", LogLevel.WARNING);
 			}
 		}
 		
-		// if the only config that was added is Default that means texture doesn't match any other configs, no or bad suffix!
-		if(configs.Count() == 1 && configs[0].Contains("TextureUnspecified"))
+		TextureTypes textureTypes = new TextureTypes();
+		string absPath;
+		Workbench.GetAbsolutePath(path.GetPath(),absPath);
+		TextureType type = textureTypes.FindTextureType(absPath);
+		//Somehow check if texture has valid suffix
+		if(type.m_PostFix == string.Empty)
 		{
 			issue = true;
 			Print("	- doesn't have any valid suffix!", LogLevel.ERROR);
@@ -781,7 +720,7 @@ class MaterialValidator: NetApiHandler
 		}
 		Resource resource = Resource.Load(ValidateMaterialPlugin.materials[req.matIndex]);
 		BaseContainer material = resource.GetResource().ToBaseContainer();
-		Print("Material - " + material.GetResourceName(),LogLevel.DEBUG);
+		PrintFormat("Material - @\"%1\" :",material.GetResourceName(),LogLevel.DEBUG);
 		
 		if(req.uvTiling)
 		{
@@ -928,11 +867,11 @@ class TextureValidator: NetApiHandler
 			TextureCheck texture = new TextureCheck(req.fileType[i], req.resolutions[i*2],req.resolutions[i*2+1],req.relTextures[i], rgb,absRgb, req.slots[i], req.numChannels[i]);
 			if(texture.m_slot != "")
 			{
-				Print("    - " + string.Format(texture.m_path + "(" + texture.m_slot + ")"),LogLevel.DEBUG);
+				PrintFormat("@\"%1\"(\"%2\") :",texture.m_path,texture.m_slot,LogLevel.DEBUG);
 			}
 			else
 			{
-				Print(string.Format(texture.m_path),LogLevel.DEBUG);
+				PrintFormat("@\"%1\" :",texture.m_path,LogLevel.DEBUG);
 			}
 			// Default import settings
 			bool issue = false;

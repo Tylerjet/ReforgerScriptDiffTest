@@ -83,6 +83,9 @@ class SCR_Faction : ScriptedFaction
 	[Attribute()]
 	protected ref array<ref SCR_MilitaryBaseCallsign> m_aBaseCallsigns;
 
+	[Attribute(desc: "A list of places of birth for this faction, used in generating identities for character")]
+	protected ref SCR_FactionHomeTerritoryConfig m_FactionHomeTerritoryConfig;
+	
 	//~ Catalog map for quicker obtaining the catalog using EEntityCatalogType
 	protected ref map<EEntityCatalogType, ref SCR_EntityCatalog> m_mEntityCatalogs = new map<EEntityCatalogType, ref SCR_EntityCatalog>();
 	
@@ -372,30 +375,20 @@ class SCR_Faction : ScriptedFaction
 	}
 	
 	//------------------------------------------------------------------------------------------------	
-	/*!
-	Add given faction as friendly towards this faction (Server Only)
-	Called by SCR_FactionManager please use the SCR_FactionManager.SetFactionsFriendly function instead of this to make sure the setting is mirrored!
-	If you add factionA friendly towards factionB but not the other way around then factionA will not retaliate if shot at by factionB
-	\param faction Faction to set friendly
-	*/
-
-	//------------------------------------------------------------------------------------------------
-	//! \param faction
+	//! Add given faction as friendly towards this faction
+	//! Called by SCR_FactionManager please use the SCR_FactionManager.SetFactionsFriendly function instead of this to make sure the setting is mirrored!
+	//! If you add factionA friendly towards factionB but not the other way around then factionA will not retaliate if shot at by factionB
+	//! \param[in] faction Faction to set friendly
 	void SetFactionFriendly(notnull Faction faction)
 	{
 		m_FriendlyFactions.Insert(faction);	
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Remove given faction as friendly towards this faction (Server Only)
-	Called by SCR_FactionManager please use the SCR_FactionManager.SetFactionsHostile function instead of this to make sure the setting is mirrored!
-	If you add factionB hostile towards factionA but not the other way around then factionA will not retaliate if shot at by factionB
-	\param faction Faction to set hostile
-	*/
-
-	//------------------------------------------------------------------------------------------------
-	//! \param faction
+	//! Remove given faction as friendly towards this faction
+	//! Called by SCR_FactionManager please use the SCR_FactionManager.SetFactionsHostile function instead of this to make sure the setting is mirrored!
+	//! If you add factionB hostile towards factionA but not the other way around then factionA will not retaliate if shot at by factionB
+	//! \param[in] faction Faction to set hostile
 	void SetFactionHostile(notnull Faction faction)
 	{
 		int index = m_FriendlyFactions.Find(faction);
@@ -550,6 +543,13 @@ class SCR_Faction : ScriptedFaction
 			return string.Empty;
 	}
 	
+	//------------------------------------------------------------------------------------------------ 
+	//! \return Get territories config associated with the faction
+	SCR_FactionHomeTerritoryConfig GetFactionHomeTerritoryConfig()
+	{
+		return m_FactionHomeTerritoryConfig;
+	}
+	
 	//======================================== FACTION ENTITY CATALOG ========================================\\
 
 	//------------------------------------------------------------------------------------------------
@@ -644,44 +644,49 @@ class SCR_Faction : ScriptedFaction
 		if (SCR_Global.IsEditMode()) 
 			return;
 		
-		//~ Set faction friendly
-		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
-		if (!factionManager)
+		//~ Server only
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if ((gameMode && gameMode.IsMaster()) || (!gameMode && Replication.IsServer()))
 		{
-			//~ Still make sure faction is friendly towards itself	
-			if (m_bFriendlyToSelf)
-				SetFactionFriendly(this);
-			
-			Print("'SCR_Faction' is trying to set friendly factions but no SCR_FactionManager could be found!", LogLevel.ERROR);
-		}
-		else 
-		{
-			//~ Make sure faction is friendly towards itself
-			if (m_bFriendlyToSelf)
-				factionManager.SetFactionsFriendly(this, this);
-			
-			//~ On init friendly factions assigning
-			if (!m_aFriendlyFactionsIds.IsEmpty())
-			{			
-				SCR_Faction faction;
+			//~ Set faction friendly
+			SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+			if (!factionManager)
+			{
+				//~ Still make sure faction is friendly towards itself	
+				if (m_bFriendlyToSelf)
+					SetFactionFriendly(this);
 				
-				//~ Set each given faction ID as friendly
-				foreach (string factionId : m_aFriendlyFactionsIds)
-				{
-					faction = SCR_Faction.Cast(factionManager.GetFactionByKey(factionId));
+				Print("'SCR_Faction' is trying to set friendly factions but no SCR_FactionManager could be found!", LogLevel.ERROR);
+			}
+			else 
+			{
+				//~ Make sure faction is friendly towards itself
+				if (m_bFriendlyToSelf)
+					factionManager.SetFactionsFriendly(this, this);
+				
+				//~ On init friendly factions assigning
+				if (!m_aFriendlyFactionsIds.IsEmpty())
+				{			
+					SCR_Faction faction;
 					
-					if (!faction)
+					//~ Set each given faction ID as friendly
+					foreach (string factionId : m_aFriendlyFactionsIds)
 					{
-						Print(string.Format("'SCR_Faction' is trying to set friendly factions on init but '%1' is not a valid SCR_Faction!", factionId), LogLevel.ERROR);
-						continue;
+						faction = SCR_Faction.Cast(factionManager.GetFactionByKey(factionId));
+						
+						if (!faction)
+						{
+							Print(string.Format("'SCR_Faction' is trying to set friendly factions on init but '%1' is not a valid SCR_Faction!", factionId), LogLevel.ERROR);
+							continue;
+						}
+						
+						//~ Don't set self as friendly
+						if (faction == this)
+							continue;
+						
+						//~ Assign as friendly
+						factionManager.SetFactionsFriendly(this, faction);
 					}
-					
-					//~ Don't set self as friendly
-					if (faction == this)
-						continue;
-					
-					//~ Assign as friendly
-					factionManager.SetFactionsFriendly(this, faction);
 				}
 			}
 		}

@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------------------------
-[BaseContainerProps()]
+[BaseContainerProps(), SCR_BaseGroupCommandTitleField("m_sCommandName")]
 class SCR_RemoveAIGroupCommand : SCR_BaseGroupCommand
 {
 	//------------------------------------------------------------------------------------------------

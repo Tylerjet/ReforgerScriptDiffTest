@@ -39,6 +39,8 @@ class SCR_AutomatedWeatherEditorAttribute : SCR_BaseEditorAttribute
 		manager.SetAttributeEnabled(SCR_WeatherInstantEditorAttribute, var && !var.GetBool());
 	}
 	
+	//---- REFACTOR NOTE START: Hard coded state duration for ForceWeatherTo() is unclear 
+	
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)
 	{
 		//~ Ignore previews (!item)
@@ -83,6 +85,8 @@ class SCR_AutomatedWeatherEditorAttribute : SCR_BaseEditorAttribute
 			weatherManager.ForceWeatherTo(!setAutomatic, string.Empty, transitionTime / 3600, 0.001, playerID);
 		}
 	}
+	
+	//---- REFACTOR NOTE END ----
 	
 	override void PreviewVariable(bool setPreview, SCR_AttributesManagerEditorComponent manager)
 	{

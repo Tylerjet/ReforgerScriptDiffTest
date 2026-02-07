@@ -59,13 +59,13 @@ class SCR_AIGetPosForward: AITaskScripted
 	}
 
 	//------------------------------------------------------------------------------------------------	
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "It will return world position of forward vector of provided target entity multiplied by distance. If no target specified, owner will be used.";
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
 	{
 		return true;
 	}

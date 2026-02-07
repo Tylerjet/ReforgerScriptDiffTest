@@ -24,7 +24,7 @@ class SCR_AISendInfoMessage_Target : SCR_AISendMessageGenerated
 			return ENodeResult.FAIL;
 	}
 	
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -56,7 +56,7 @@ class SCR_AISendInfoMessage_NoAmmo : SCR_AISendMessageGenerated
 			return ENodeResult.FAIL;
 	}
 	
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -85,7 +85,7 @@ class SCR_AISendInfoMessage_UnderFire : SCR_AISendMessageGenerated
 			return ENodeResult.FAIL;
 	}
 	
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -114,7 +114,7 @@ class SCR_AISendInfoMessage_FoundCorpse : SCR_AISendMessageGenerated
 			return ENodeResult.FAIL;
 	}
 	
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -146,7 +146,7 @@ class SCR_AISendInfoMessage_Wounded : SCR_AISendMessageGenerated
 			return ENodeResult.FAIL;
 	}
 	
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -172,7 +172,7 @@ class SCR_AISendInfoMessage_SitRep : SCR_AISendMessageGenerated
 			return ENodeResult.FAIL;
 	}
 	
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -201,6 +201,6 @@ class SCR_AISendInfoMessage_HealFailed : SCR_AISendMessageGenerated
 			return ENodeResult.FAIL;
 	}
 	
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 

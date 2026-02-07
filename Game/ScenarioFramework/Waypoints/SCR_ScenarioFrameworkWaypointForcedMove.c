@@ -2,7 +2,7 @@
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkWaypointForcedMove : SCR_ScenarioFrameworkWaypointScripted
 {
-	[Attribute(defvalue: "5", desc: "Radius in m")]
+	[Attribute(defvalue: "5", uiwidget: UIWidgets.Slider, desc: "Radius in m")]
 	float m_fCompletionRadius;
 
 	[Attribute(defvalue: "{06E1B6EBD480C6E0}Prefabs/AI/Waypoints/AIWaypoint_ForcedMove.et", desc: "In Default, it will use specific prefab for each class, but here you can change it if you know what you are doing")]

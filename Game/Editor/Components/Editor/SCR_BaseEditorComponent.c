@@ -527,7 +527,7 @@ class SCR_BaseEditorComponent : ScriptComponent
 	//!
 	bool IsRemoved()
 	{
-		return !m_Owner || m_Owner.IsRemoved();
+		return !m_Owner || m_Owner.IsDeleted();
 	}
 
 	//------------------------------------------------------------------------------------------------

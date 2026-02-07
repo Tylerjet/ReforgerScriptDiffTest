@@ -475,7 +475,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		//Save player name so it can be obtained even if the player left
 		PlayerManager playerManager = GetGame().GetPlayerManager();
 		if (playerManager)
-			m_sGroupInviteFromPlayerName = playerManager.GetPlayerName(fromPlayerID);
+			m_sGroupInviteFromPlayerName = SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(fromPlayerID);
 		
 		if (m_OnInviteReceived)
 			m_OnInviteReceived.Invoke(groupID, fromPlayerID);
@@ -494,6 +494,14 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		SCR_PlayerControllerGroupComponent invitedPlayerGroupComponent = SCR_PlayerControllerGroupComponent.Cast(invitedPlayer.FindComponent(SCR_PlayerControllerGroupComponent));
 		if (!invitedPlayerGroupComponent)
 			return;
+		
+		SocialComponent socialComp = SocialComponent.Cast(invitedPlayer.FindComponent(SocialComponent));
+		if (socialComp)
+		{
+			PlayerController inviterComponent = PlayerController.Cast(GetOwner());
+			if (inviterComponent && socialComp.IsBlocked(inviterComponent.GetPlayerId()))
+				return;
+		}
 		
 		invitedPlayerGroupComponent.InviteThisPlayer(m_iGroupID, GetPlayerID());
 	}

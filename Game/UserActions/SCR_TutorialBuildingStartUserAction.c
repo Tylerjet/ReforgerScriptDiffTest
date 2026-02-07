@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------------------------
 class SCR_TutorialBuildingStartUserAction : SCR_CampaignBuildingStartUserAction
 {
-	protected bool m_bCanShow;
+	protected bool m_bCanShow = true;
 	
 	//------------------------------------------------------------------------------------------------
 	void SetCanShow(bool canShow)

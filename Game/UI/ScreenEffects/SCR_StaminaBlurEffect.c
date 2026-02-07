@@ -7,36 +7,36 @@ class SCR_StaminaBlurEffect : SCR_BaseScreenEffect
 	protected const float STAMINAEFFECT_FADEIN_PROGRESSION_DURATION	 	= 1;
 	protected const float STAMINA_CLEAREFFECT_DELAY 					= 2000;
 	protected const float STAMINA_EFFECT_THRESHOLD 						= 0.45;
-	
-	[Attribute( defvalue: "0.1111", uiwidget: UIWidgets.EditBox, desc: "Blur intensity multiplier" )]
+
+	[Attribute(defvalue: "0.1111", uiwidget: UIWidgets.EditBox, desc: "Blur intensity multiplier")]
 	protected float m_fStaminaBlurMultiplier;
 
 	//Blurriness
 	private static float s_fBlurriness;
 	private static bool s_bEnableRadialBlur;
 	protected const string RADIAL_BLUR_EMAT 							= "{B011FE0AD21E2447}UI/Materials/ScreenEffects_BlurPP.emat";
-	
+
 	// Widgets
 	private ImageWidget 												m_wSupression;
-	
+
 	// Variables connected to a material, need to be static
 	static const int RADIAL_BLUR_PRIORITY								= 6;
 
 	// Stamina
 	protected int m_iStaminaSignal 										= -1;
 	protected bool m_bStaminaEffectActive;
-	
+
 	// Owner data
 	protected SignalsManagerComponent m_pSignalsManager;
-	
+
 	//------------------------------------------------------------------------------------------------
-	override void DisplayStartDraw(IEntity owner)
+	protected override void DisplayStartDraw(IEntity owner)
 	{
 		m_wSupression = ImageWidget.Cast(m_wRoot.FindAnyWidget("SuppressionVignette"));
 	}
 
 	//------------------------------------------------------------------------------------------------
- 	override void DisplayControlledEntityChanged(IEntity from, IEntity to)
+	protected override void DisplayControlledEntityChanged(IEntity from, IEntity to)
 	{
 		ChimeraCharacter characterEntity = ChimeraCharacter.Cast(to);
 		if (!characterEntity)
@@ -46,12 +46,12 @@ class SCR_StaminaBlurEffect : SCR_BaseScreenEffect
 		m_pSignalsManager = SignalsManagerComponent.Cast(characterEntity.FindComponent(SignalsManagerComponent));
 		if (m_pSignalsManager)
 			m_iStaminaSignal = m_pSignalsManager.FindSignal("Exhaustion");
-		
-		characterEntity.GetWorld().SetCameraPostProcessEffect(characterEntity.GetWorld().GetCurrentCameraId(), RADIAL_BLUR_PRIORITY,PostProcessEffectType.RadialBlur, RADIAL_BLUR_EMAT);
+
+		characterEntity.GetWorld().SetCameraPostProcessEffect(characterEntity.GetWorld().GetCurrentCameraId(), RADIAL_BLUR_PRIORITY, PostProcessEffectType.RadialBlur, RADIAL_BLUR_EMAT);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void FindStaminaValues()
+	protected void FindStaminaValues()
 	{
 		if (!m_pSignalsManager || m_iStaminaSignal == -1)
 			return;
@@ -73,21 +73,25 @@ class SCR_StaminaBlurEffect : SCR_BaseScreenEffect
 			m_bStaminaEffectActive = false;
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	void StaminaEffects(bool repeat)
+	protected void StaminaEffects(bool repeat)
 	{
 		if (!m_wSupression)
 			return;
 
 		m_bStaminaEffectActive = true;
+
 		m_wSupression.SetOpacity(STAMINAEFFECT_INITIAL_OPACITY_TARGET);
 		AnimateWidget.AlphaMask(m_wSupression, STAMINAEFFECT_FADEIN_PROGRESSION_TARGET, STAMINAEFFECT_FADEIN_PROGRESSION_DURATION);
+
+		UpdateEffectVisibility(m_wSupression);
+
 		GetGame().GetCallqueue().CallLater(ClearStaminaEffect, STAMINA_CLEAREFFECT_DELAY, false, true);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void ClearStaminaEffect(bool repeat)
+	protected void ClearStaminaEffect(bool repeat)
 	{
 		if (!m_wSupression)
 			return;
@@ -96,8 +100,8 @@ class SCR_StaminaBlurEffect : SCR_BaseScreenEffect
 		if (repeat && m_bStaminaEffectActive && m_wSupression && !m_wSupression.GetOpacity() == 0)
 			GetGame().GetCallqueue().CallLater(StaminaEffects, STAMINA_CLEAREFFECT_DELAY, false, repeat);
 	}
-	
-	//------------------------------------------------------------------------------------------------	
+
+	//------------------------------------------------------------------------------------------------
 	protected override void DisplayOnSuspended()
 	{
 		s_bEnableRadialBlur = false;
@@ -108,9 +112,9 @@ class SCR_StaminaBlurEffect : SCR_BaseScreenEffect
 	{
 		s_bEnableRadialBlur = true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	override void UpdateEffect(float timeSlice)
+	protected override void UpdateEffect(float timeSlice)
 	{
 		if (m_pSignalsManager)
 			FindStaminaValues();
@@ -120,10 +124,6 @@ class SCR_StaminaBlurEffect : SCR_BaseScreenEffect
 	protected override void ClearEffects()
 	{
 		if (m_wSupression)
-		{
-			AnimateWidget.StopAllAnimations(m_wSupression);
-			m_wSupression.SetOpacity(0);
-			m_wSupression.SetMaskProgress(0);
-		}
+			HideSingleEffect(m_wSupression);
 	}
-};
+}

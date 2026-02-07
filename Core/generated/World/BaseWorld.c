@@ -9,7 +9,7 @@ Do not modify, this script is generated
 \{
 */
 
-sealed class BaseWorld: pointer
+sealed class BaseWorld: global_pointer
 {
 	proto external float GetSurfaceY(float x, float z);
 	proto external void GetActiveEntities(notnull out array<IEntity> entities);

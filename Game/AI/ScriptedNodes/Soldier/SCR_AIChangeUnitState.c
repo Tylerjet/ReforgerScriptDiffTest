@@ -8,7 +8,7 @@ class SCR_AIChangeUnitState : AITaskScripted
 	[Attribute("1", UIWidgets.CheckBox, "Add true, remove false")]
 	protected bool m_stateAdd;
 	
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}
@@ -53,7 +53,7 @@ class SCR_AIChangeUnitState : AITaskScripted
         return s_aVarsIn;
     }
 	
-	override string GetOnHoverDescription() 
+	static override string GetOnHoverDescription() 
 	{ 
 		return "Changes Unit State either adding flag or removing depending of sign of variable in in-port";
 	};

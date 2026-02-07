@@ -449,14 +449,26 @@ class SCR_CharacterCommandHandlerComponent_Tests : SCR_CharacterCommandHandlerCo
 			ref CharacterCommandClimbResult climbTestResult = new CharacterCommandClimbResult();
 			CharacterCommandClimb.DoClimbTest(m_OwnerEntity, GetCurrentCommandClimbSettings(), climbTestResult);
 
+			vector grabPoint = climbTestResult.m_ClimbGrabPointLS;
+			if ( climbTestResult.m_GrabPointParent )
+			{
+				vector grabParentTM[4]; 
+				climbTestResult.m_GrabPointParent.GetWorldTransform(grabParentTM);
+				grabPoint = grabPoint.Multiply4(grabParentTM);
+			}
+			
+			vector charTM[4];
+			m_OwnerEntity.GetWorldTransform(charTM);			
+			const float climbHeight = grabPoint[1] - charTM[3][1];
+			
 			int climbType = -1;
 			if ( climbTestResult.m_bIsClimb || climbTestResult.m_bIsClimbOver )
 			{
-				if ( climbTestResult.m_fClimbHeight < 1.1 )
+				if ( climbHeight < 1.1 )
 					climbType = 0;
-				else if( climbTestResult.m_fClimbHeight >= 1.1 && climbTestResult.m_fClimbHeight < 1.7 )
+				else if( climbHeight >= 1.1 && climbHeight < 1.7 )
 					climbType = 1;
-				else if( climbTestResult.m_fClimbHeight >= 1.7 && climbTestResult.m_fClimbHeight < 2.5 )
+				else if( climbHeight >= 1.7 && climbHeight < 2.5 )
 					climbType = 2;
 
 				if ( climbType != -1 )
@@ -467,8 +479,6 @@ class SCR_CharacterCommandHandlerComponent_Tests : SCR_CharacterCommandHandlerCo
 
 			if ( climbType == -1 )
 			{
-				vector charTM[4];
-				m_OwnerEntity.GetTransform(charTM);
 				m_fFallYDiff = charTM[3][1];
 				StartCommand_Fall(pInputCtx.GetJump());
 			}

@@ -11,7 +11,7 @@ Do not modify, this script is generated
 \{
 */
 
-sealed class WBModuleDef: pointer
+sealed class WBModuleDef: global_pointer
 {
 	proto external bool SetOpenedResource(string filename);
 	proto external BaseContainer GetContainer(int index = 0);

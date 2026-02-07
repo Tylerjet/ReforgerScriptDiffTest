@@ -83,4 +83,22 @@ class SCR_ScenarioFrameworkPluginOnInventoryChange : SCR_ScenarioFrameworkPlugin
 			action.OnActivate(m_Asset);
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override array<ref SCR_ScenarioFrameworkActionBase> GetActions()
+	{
+		array<ref SCR_ScenarioFrameworkActionBase>	combinedActions = {};
+		
+		foreach (SCR_ScenarioFrameworkActionBase action : m_aActionsOnItemAdded)
+	    {
+	        combinedActions.Insert(action);
+   		}
+		
+		foreach (SCR_ScenarioFrameworkActionBase action : m_aActionsOnItemRemoved)
+	    {
+	        combinedActions.Insert(action);
+   		}
+		
+		return combinedActions;
+	}
 }

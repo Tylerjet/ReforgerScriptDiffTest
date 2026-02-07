@@ -16,6 +16,6 @@ class SCR_AIDecoCombatMove_Moving : DecoratorScripted
 		return m_State.IsMoving();
 	}
 	
-	override string GetOnHoverDescription() { return "Returns IsMoving condition from Combat Move State"; }
-	override bool VisibleInPalette() { return true; }
+	static override string GetOnHoverDescription() { return "Returns IsMoving condition from Combat Move State"; }
+	static override bool VisibleInPalette() { return true; }
 }

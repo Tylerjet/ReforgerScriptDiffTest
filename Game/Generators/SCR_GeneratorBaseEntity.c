@@ -9,17 +9,34 @@ class SCR_GeneratorBaseEntityClass : GeneratorBaseEntityClass
 //! - keep the generator at shape's {0,0,0}, at angles {0,0,0}, at scale 1
 //! - delete all child entities if no parent is set
 //! - set generator's and shape's "Editor Only" flag
+//! - provide methods to get offset shapes through SCR_ParallelShapeHelper usage (for parallel lines or smaller/bigger areas)
+//! - manage the m_Source variable
+//! - manage the m_ParentShapeSource variable
+//! - manage the m_iSourceLayerID variable
+//! - carry a debug shape manager reference
 class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 {
+	/*
+		Generation
+	*/
+
+	[Attribute(defvalue: "1", category: "Generation", desc: "Allow entities generation by this generator - useful in order to adjust shape and settings without generating unwanted entities\nKeep it ticked before saving!\nNote: does not prevent terrain shaping and other generator features")]
+	protected bool m_bEnableGeneration;
+
+	[Attribute(defvalue: "42", category: "Generation", desc: "Randomisation Seed used by this generator")]
+	protected int m_iSeed;
 
 #ifdef WORKBENCH
 
 	protected IEntitySource m_Source;				//!< the generator's entity source
-	protected IEntitySource m_ParentShapeSource;	//!< the parent shape's entity source, if any
+	protected IEntitySource m_ParentShapeSource;	//!< the parent shape's entity source, if any - must be managed ONLY by SCR_GeneratorBaseEntity
+	protected int m_iSourceLayerID;
+	
+	protected ref RandomGenerator m_RandomGenerator;
 
 	protected bool m_bIsChangingWorkbenchKey;
 
-	protected static const ref Color BASE_GENERATOR_COLOR = Color.White;
+	protected static const int BASE_GENERATOR_COLOUR = Color.WHITE;
 
 	//------------------------------------------------------------------------------------------------
 	override void _WB_OnParentChange(IEntitySource src, IEntitySource prevParentSrc)
@@ -49,16 +66,28 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 		if (!worldEditorAPI || worldEditorAPI.UndoOrRedoIsRestoring())
 			return true;
 
+		m_ParentShapeSource = GetShapeSource();
 		bool sameParentChange = parent && worldEditorAPI.EntityToSource(parent) == m_ParentShapeSource;
 
 		// keep the scale at 1
 		if (key == "scale")
 		{
+			bool isSetDirectly = src.IsVariableSetDirectly("scale");
+
 			if (sameParentChange)
 				Print("Do not modify a generator entity itself! Change its parent shape instead", LogLevel.WARNING);
 
 			m_bIsChangingWorkbenchKey = true;
-			worldEditorAPI.SetVariableValue(src, null, "scale", "1");
+			if (isSetDirectly)
+			{
+				worldEditorAPI.ClearVariableValue(src, null, "scale");
+			}
+			else
+			{
+				worldEditorAPI.SetVariableValue(src, null, "scale", "1");
+				Print("Generator has scale set in Prefab! " + src.GetResourceName(), LogLevel.WARNING);
+			}
+
 			m_bIsChangingWorkbenchKey = false;
 		}
 
@@ -68,30 +97,50 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 		{
 			if (key == angle)
 			{
+				bool isSetDirectly = src.IsVariableSetDirectly(angle);
+
 				if (sameParentChange)
 					Print("Do not modify a generator entity itself! Change its parent shape instead", LogLevel.WARNING);
 
 				m_bIsChangingWorkbenchKey = true;
-				worldEditorAPI.SetVariableValue(src, null, angle, "0");
+				if (isSetDirectly)
+				{
+					worldEditorAPI.ClearVariableValue(src, null, angle);
+				}
+				else // angleValue != 0
+				{
+					worldEditorAPI.SetVariableValue(src, null, angle, "0");
+					Print("Generator has angle " + angle + " set in Prefab! " + src.GetResourceName(), LogLevel.WARNING);
+				}
+
 				m_bIsChangingWorkbenchKey = false;
 			}
 		}
 
-		if (!parent)		// if no parent, do not set to 0 0 0
-			return true;	// do not warn about no parent here as the constructor does it
-
 		// keep the generator at (relative) 0 0 0 as long as it has a parent
-		if (key == "coords")
+		// if no parent, do not set to 0 0 0
+		// do not warn about no parent here as the constructor does it
+		if (parent && key == "coords")
 		{
 			vector coords;
 			src.Get("coords", coords);
-			if (coords != vector.Zero)	// because this can trigger when changing parent shape's points
+			bool isSetDirectly = src.IsVariableSetDirectly("coords");
+			if (isSetDirectly || coords != vector.Zero) // because this can trigger when changing parent shape's points
 			{
 				if (sameParentChange)
 					Print("Do not modify a generator entity itself! Change its parent shape instead", LogLevel.WARNING);
 
 				m_bIsChangingWorkbenchKey = true;
-				worldEditorAPI.SetVariableValue(src, null, "coords", "0 0 0");
+				if (isSetDirectly)
+				{
+					worldEditorAPI.ClearVariableValue(src, null, "coords");
+				}
+				else
+				{
+					worldEditorAPI.SetVariableValue(src, null, "coords", "0 0 0");
+					Print("Generator has coords set in Prefab! " + src.GetResourceName(), LogLevel.WARNING);
+				}
+
 				m_bIsChangingWorkbenchKey = false;
 			}
 		}
@@ -102,7 +151,7 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 		else
 			m_ParentShapeSource = null;
 
-		// let's not save here for the moment
+		// let's not save here for now
 		// BaseContainerTools.WriteToInstance(this, worldEditorAPI.EntityToSource(this));
 
 		return true;
@@ -112,6 +161,13 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 	override bool _WB_CanSelect(IEntitySource src)
 	{
 		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected override void OnIntersectingShapeChangedXZInternal(IEntitySource shapeEntitySrc, IEntitySource other, array<vector> mins, array<vector> maxes)
+	{
+		super.OnIntersectingShapeChangedXZInternal(shapeEntitySrc, other, mins, maxes);
+		m_ParentShapeSource = shapeEntitySrc;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -141,7 +197,12 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 		if (manageEditAction)
 			worldEditorAPI.BeginEntityAction();
 
-		worldEditorAPI.SetVariableValue(m_Source, null, "coords", "0 0 0");
+		vector coords;
+		if (m_Source.IsVariableSetDirectly("coords"))
+			worldEditorAPI.ClearVariableValue(m_Source, null, "coords");
+
+		if (m_Source.Get("coords", coords) && coords != vector.Zero)
+			Print("Generator has coords set in Prefab! " + m_Source.GetResourceName(), LogLevel.WARNING);
 
 		if (manageEditAction)
 			worldEditorAPI.EndEntityAction();
@@ -168,8 +229,18 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \return 3D anchor points relative to the provided shape source; or empty array if not a shape (never null)
+	[Obsolete("Use GetAnchorPoints instead")]
 	protected static array<vector> GetPoints(notnull IEntitySource shapeEntitySrc)
+	{
+		return GetAnchorPoints(shapeEntitySrc);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] shapeEntitySrc
+	//! \param[in] offset offset from the current shape; negative = to the left, positive = to the right
+	//! \param[in] isShapeClosed
+	//! \return 3D anchor points relative to the provided shape source; or empty array if not a shape (never null)
+	protected static array<vector> GetAnchorPoints(notnull IEntitySource shapeEntitySrc, float offset = 0, bool isShapeClosed = false)
 	{
 		BaseContainerList points = shapeEntitySrc.GetObjectArray("Points");
 		if (!points)
@@ -183,10 +254,14 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 			result.Insert(pos);
 		}
 
-		return result;
+		if (offset == 0)
+			return result;
+		else
+			return SCR_ParallelShapeHelper.GetOffsetPointsFromPoints(result, offset, isShapeClosed);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] shapeEntitySrc
 	//! \return 3D anchor points in absolute (world) coordinates or null if WorldEditorAPI is not available / source is not a shape
 	protected array<vector> GetWorldAnchorPoints(notnull IEntitySource shapeEntitySrc)
 	{
@@ -201,22 +276,22 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 		array<vector> result = {};
 		shapeEntity.GetPointsPositions(result);
 
-		vector matrix[4];
-		shapeEntity.GetTransform(matrix);
-
-		for (int i, count = result.Count(); i < count; ++i)
+		foreach (int i, vector point : result)
 		{
-			result[i] = result[i].Multiply4(matrix);
+			result[i] = shapeEntity.CoordToParent(point);
 		}
 
 		return result;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] shapeEntitySrc
+	//! \param[in] offset
+	//! \param[in] isShapeClosed
 	//! \return 3D points relative to the provided shape source or null if WorldEditorAPI is not available / source is not a shape
-	protected array<vector> GetTesselatedShapePoints(notnull IEntitySource shapeEntitySrc)
+	protected static array<vector> GetTesselatedShapePoints(notnull IEntitySource shapeEntitySrc, float offset = 0, bool isShapeClosed = false)
 	{
-		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
+		WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
 		if (!worldEditorAPI)
 			return null;
 
@@ -226,11 +301,14 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 
 		array<vector> result = {};
 		shapeEntity.GenerateTesselatedShape(result);
-
-		return result;
+		if (offset == 0)
+			return result;
+		else
+			return SCR_ParallelShapeHelper.GetOffsetPointsFromPoints(result, offset, isShapeClosed);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] shapeEntitySrc
 	//! \return 3D points in absolute (world) coordinates or null if WorldEditorAPI is not available / source is not a shape
 	protected array<vector> GetWorldTesselatedShapePoints(notnull IEntitySource shapeEntitySrc)
 	{
@@ -245,12 +323,85 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 		array<vector> result = {};
 		shapeEntity.GenerateTesselatedShape(result);
 
-		vector matrix[4];
-		shapeEntity.GetTransform(matrix);
-
-		for (int i, count = result.Count(); i < count; ++i)
+		foreach (int i, vector point : result)
 		{
-			result[i] = result[i].Multiply4(matrix);
+			result[i] = shapeEntity.CoordToParent(point);
+		}
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] wantedType wanted data type - if all of them are wanted, use "ShapePointDataScriptBase"
+	//! \return a map of <anchorIndex, dataPoint> - if there is no filtered data on one point, the index is not present in the map
+	map<int, ref ShapePointDataScriptBase> GetFirstPointDataMap(typename wantedType = ShapePointDataScriptBase)
+	{
+		if (!m_ParentShapeSource)
+			return null;
+
+		BaseContainerList points = m_ParentShapeSource.GetObjectArray("Points");
+		if (!points)
+			return null;
+
+		map<int, ref ShapePointDataScriptBase> result = new map<int, ref ShapePointDataScriptBase>();
+
+		array<ref ShapePointDataScriptBase> pointDataArray;
+		ShapePointDataScriptBase pointData;
+		for (int i, pointsCount = points.Count(); i < pointsCount; ++i)
+		{
+			if (!points.Get(i).Get("Data", pointDataArray))
+				continue;
+
+			if (wantedType && wantedType != ShapePointDataScriptBase)
+			{
+				for (int j = 0, countJ = pointDataArray.Count(); j < countJ; ++j)
+				{
+					pointData = pointDataArray[j];
+					if (pointData.IsInherited(wantedType))
+					{
+						result.Insert(i, pointData);
+						break;
+					}
+				}
+			}
+		}
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] wantedType wanted data type - if all of them are wanted, use "ShapePointDataScriptBase"
+	//! \return a map of <anchorIndex, dataPoint> - if there is no filtered data on one point, the index is not present in the map
+	map<int, ref array<ref ShapePointDataScriptBase>> GetPointDataMap(typename wantedType = ShapePointDataScriptBase)
+	{
+		if (!m_ParentShapeSource)
+			return null;
+
+		BaseContainerList points = m_ParentShapeSource.GetObjectArray("Points");
+		if (!points)
+			return null;
+
+		map<int, ref array<ref ShapePointDataScriptBase>> result = new map<int, ref array<ref ShapePointDataScriptBase>>();
+
+		array<ref ShapePointDataScriptBase> pointDataArray;
+		for (int i, pointsCount = points.Count(); i < pointsCount; ++i)
+		{
+			if (!points.Get(i).Get("Data", pointDataArray))
+				continue;
+
+			if (wantedType && wantedType != ShapePointDataScriptBase)
+			{
+				for (int j = pointDataArray.Count() - 1; j >= 0; --j)
+				{
+					if (!pointDataArray[j].IsInherited(wantedType))
+						pointDataArray.RemoveOrdered(j);
+				}
+			}
+
+			if (!pointDataArray.IsEmpty())
+				result.Insert(i, pointDataArray);
+
+			pointDataArray = null; // required to generate a new array every Get("Data")
 		}
 
 		return result;
@@ -261,13 +412,13 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 	{
 		SCR_GeneratorBaseEntityClass prefabData = SCR_GeneratorBaseEntityClass.Cast(GetPrefabData());
 		if (!prefabData)
-			return Color.FromInt(BASE_GENERATOR_COLOR.PackToInt());
+			return Color.FromInt(BASE_GENERATOR_COLOUR);
 
 		return Color.FromInt(prefabData.m_Color.PackToInt());
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void _WB_OnCreate(IEntitySource src)
+	override void _WB_OnCreate(IEntitySource src) // TODO: change event (_WB_OnInit?) beware of stack overflow by action edit
 	{
 		super._WB_OnCreate(src);
 
@@ -329,11 +480,41 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 			worldEditorAPI.EndEntityAction();
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! Get the parent shape above this generator (has to be the direct parent)
+	protected IEntitySource GetShapeSource()
+	{
+		if (!m_Source)
+		{
+			Print("[SCR_GeneratorBaseEntity.GetShapeSource] no generator source available (" + __FILE__ + " L" + __LINE__ + ")", LogLevel.ERROR);
+			return null;
+		}
+
+		IEntitySource parentSource = m_Source.GetParent();
+		if (!parentSource)
+			return null;
+
+		if (!parentSource.GetClassName().ToType() || !parentSource.GetClassName().ToType().IsInherited(ShapeEntity))
+			return null;
+
+		return parentSource;
+
+//		while (parentSource)
+//		{
+//			if (parentSource.GetClassName().ToType() && parentSource.GetClassName().ToType().IsInherited(ShapeEntity))
+//				return parentSource;
+//
+//			parentSource = parentSource.GetParent();
+//		}
+//
+//		return null;
+	}
+
 #endif // WORKBENCH
 
 	//------------------------------------------------------------------------------------------------
 	// constructor
-	void SCR_GeneratorBaseEntity(IEntitySource src, IEntity parent)
+	protected void SCR_GeneratorBaseEntity(IEntitySource src, IEntity parent)
 	{
 
 #ifdef WORKBENCH
@@ -342,9 +523,12 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 			return;
 
 		m_Source = src;
+		m_iSourceLayerID = m_Source.GetLayerID();
+
+		m_RandomGenerator = new RandomGenerator();
 
 		WorldEditor worldEditor = Workbench.GetModule(WorldEditor);
-		if (worldEditor && !worldEditor.IsPrefabEditMode() && !ShapeEntity.Cast(parent))
+		if (worldEditor && !ShapeEntity.Cast(parent) && !worldEditor.IsPrefabEditMode())
 		{
 			Print("A Generator is not a direct child of a shape at " + GetOrigin(), LogLevel.WARNING);
 			return;

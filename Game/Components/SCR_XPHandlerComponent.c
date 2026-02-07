@@ -12,6 +12,8 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 
 	[Attribute("1800", UIWidgets.EditBox, "If suicide is committed more than once in this time (seconds), a penalty is issued.", params: "0 inf 1")]
 	protected int m_iSuicidePenaltyCooldown;
+
+	static protected bool s_bXpSystemEnabled;
 	
 	//static const int SKILL_LEVEL_MAX = 10;
 	//static const int SKILL_LEVEL_XP_COST = 1000;				// how much XP is needed for new level
@@ -27,6 +29,13 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 	protected ref map<int, float> m_mPlayerTransportPoints = new map<int, float>();
 
 	protected float m_fXpMultiplier = 1;
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns true when Xp handling system is operational
+	static bool IsXpSystemEnabled()
+	{
+		return s_bXpSystemEnabled;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	override void OnPlayerSpawnFinalize_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, SCR_SpawnData data, IEntity entity)
@@ -111,12 +120,7 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 		//~ Punish for teamkilling if teamkill punishment is enabled. GM and Admin are never punished
 		if (instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_FRIENDLY_PLAYER))
 		{
-			//~ GM and Admin are never punished XPwise for team killing even if they possess an AI
-			if (killerControlType == SCR_ECharacterControlType.UNLIMITED_EDITOR || killerControlType ==  SCR_ECharacterControlType.POSSESSED_AI)
-				return;
-			
-			SCR_AdditionalGameModeSettingsComponent additionalGameModeSettings = SCR_AdditionalGameModeSettingsComponent.GetInstance();
-			if (!additionalGameModeSettings || additionalGameModeSettings.IsTeamKillingPunished())
+			if (instigatorContextData.DoesPlayerKillCountAsTeamKill())
 				AwardXP(killerId, SCR_EXPRewards.FRIENDLY_KILL);
 			
 			return;
@@ -127,6 +131,18 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 			//~ Possessed AI will not get any XP to hide that the GM is possessing
 			if (killerControlType == SCR_ECharacterControlType.POSSESSED_AI)
 				return;
+			
+			//~ The kill was illegal so punish the player instead
+			if (instigatorContextData.IsEnemyKillPunished(SCR_EDisguisedKillingPunishment.WARCRIME | SCR_EDisguisedKillingPunishment.XP_LOSS, true, true))
+			{
+				AwardXP(killerId, SCR_EXPRewards.WARCRIME);
+				return;
+			}
+			else if (instigatorContextData.IsEnemyKillPunished(SCR_EDisguisedKillingPunishment.XP_LOSS, true))
+			{
+				AwardXP(killerId, SCR_EXPRewards.KILLING_WHILE_DISGUISED);
+				return;
+			}
 			
 			//~ Check if player is in vehicle
 			//~ TODO: This logic is incomplete. If the player places a mine then gets into a vehicle and kills a enemy with the mine they will get the vehicle XP
@@ -408,6 +424,14 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 			m_fXpMultiplier = header.m_fXpMultiplier;
 
 		SCR_PlayerData.s_OnStatAdded.Insert(OnStatPointsAdded);
+
+		s_bXpSystemEnabled = true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void ~SCR_XPHandlerComponent()
+	{
+		s_bXpSystemEnabled = false;
 	}
 }
 
@@ -451,5 +475,11 @@ enum SCR_EXPRewards
 	CUSTOM_17,
 	CUSTOM_18,
 	CUSTOM_19,
-	CUSTOM_20
+	CUSTOM_20,
+	
+	VALUABLE_INTEL_HANDIN_SMALL,
+	VALUABLE_INTEL_HANDIN_MEDIUM,
+	VALUABLE_INTEL_HANDIN_LARGE,
+	KILLING_WHILE_DISGUISED,
+	WARCRIME,
 }

@@ -1,12 +1,12 @@
-//------------------------------------------------------------------------------------------------
 //! SCR_Math2D Class
 //!
 //! Contains various scripted 2D math functions
-//------------------------------------------------------------------------------------------------
 class SCR_Math2D
 {
 	//------------------------------------------------------------------------------------------------
 	//! Get 2D points array from vector array, format { x1,y1, x2,y2, x3,y3 }
+	//! \param[in] points3D
+	//! \param[out] points2D
 	static void Get2DPolygon(notnull array<vector> points3D, out notnull array<float> points2D)
 	{
 		points2D.Clear();
@@ -22,7 +22,7 @@ class SCR_Math2D
 
 	//------------------------------------------------------------------------------------------------
 	//! Get an array of vectors from 2D array with 0 for Y value
-	//! \param points2D
+	//! \param[in] points2D
 	//! \param[out] points3D
 	//! \return array of vector where Y is set to zero, e.g { x0, y0, x1, y1 } = { { x0, 0, y0 }, { x1, 0, y1 } }
 	// unused
@@ -41,7 +41,11 @@ class SCR_Math2D
 	}
 
 	//------------------------------------------------------------------------------------------------
-	
+	//! \param[in] polygon
+	//! \param[out] minX
+	//! \param[out] maxX
+	//! \param[out] minY
+	//! \param[out] maxY
 	//! \return true on success, otherwise false (e.g invalid polygon)
 	static bool GetMinMaxPolygon(notnull array<float> polygon, out float minX, out float maxX, out float minY, out float maxY)
 	{
@@ -75,6 +79,7 @@ class SCR_Math2D
 
 	//------------------------------------------------------------------------------------------------
 	//! Get provided polygon's area
+	//! \param[in] polygon
 	//! \return -1 on invalid polygon, otherwise the polygon's surface
 	static float GetPolygonArea(notnull array<float> polygon)
 	{
@@ -100,7 +105,7 @@ class SCR_Math2D
 	// TODO: better
 	// use SCR_Math.GetMathRandomGenerator().GenerateRandomPoint()?
 	//! Get a random point within the provided 2D polygon
-	//! \param polygon
+	//! \param[in] polygon
 	//! \param[out] x found point's x coordinates
 	//! \param[out] y found point's x coordinates
 	//! \return true on success, false otherwise
@@ -122,6 +127,13 @@ class SCR_Math2D
 
 	//------------------------------------------------------------------------------------------------
 	//! Get a random point in the provided rectangle
+	//! \param[in] minX
+	//! \param[in] maxX
+	//! \param[in] minY
+	//! \param[in] maxY
+	//! \param[out] x
+	//! \param[out] y
+	//! \return
 	// only used by GetRandomPointInPolygon
 	static bool GetRandomPointInRectangle(float minX, float maxX, float minY, float maxY, out float x, out float y)
 	{
@@ -132,12 +144,18 @@ class SCR_Math2D
 
 	//------------------------------------------------------------------------------------------------
 	//! Get a random point in the provided circular sector - uniform distribution
-	//! \param angleFrom angle in radians from which we calculate random angle
-	//! \param angleTo angle in radians to which we calculate random angle
+	//! \param[in] originX
+	//! \param[in] originY
+	//! \param[in] angleFrom angle in radians from which we calculate random angle
+	//! \param[in] angleTo angle in radians to which we calculate random angle
+	//! \param[in] radius
+	//! \param[out] x
+	//! \param[out] y
+	//! \return
 	static bool GetRandomPointInSector(float originX, float originY, float angleFrom, float angleTo, float radius, out float x, out float y)
 	{
 		float distance = radius * Math.Sqrt(Math.RandomFloat01()); // to have it uniformly distributed
-		float angle = Math.RandomFloat(angleFrom,angleTo);
+		float angle = Math.RandomFloat(angleFrom, angleTo);
 		x = originX + distance * Math.Cos(angle);
 		y = originY + distance * Math.Sin(angle);
 		return true;
@@ -145,6 +163,8 @@ class SCR_Math2D
 
 	//------------------------------------------------------------------------------------------------
 	//! Checks the amount of points for a 2D polygon (needs 3 points to make a polygon and an even amount of values to have valid points)
+	//! \param[in] polygon format x0, y0, x1, y1 etc
+	//! \return true if the polygon has at least three valid points, false otherwise (two points only, or odd number of values)
 	static bool IsPolygonValid(notnull array<float> polygon)
 	{
 		int count = polygon.Count();
@@ -157,74 +177,76 @@ class SCR_Math2D
 
 		return true;
 	}
-/*
-	//------------------------------------------------------------------------------------------------
-	//! Calculates squared distance of `point` to a line segment given by points `v0` and `v1`.
-	// unused
-	static float GetPointLineSegmentDistanceSqr(float pX, float pY, float x0, float y0, float x1, float y1)
-	{
-		return Math3D.PointLineSegmentDistanceSqr({ pX, 0, pY }, { x0, 0, y0 }, {x1, 0, y1 });
-	}
 
-	//------------------------------------------------------------------------------------------------
-	//! Calculates distance of `point` to a line segment given by points `v0` and `v1`.
-	static float GetPointLineSegmentDistance(float pX, float pY, float x0, float y0, float x1, float y1)
-	{
-		return Math3D.PointLineSegmentDistance({ pX, 0, pY }, { x0, 0, y0 }, { x1, 0, y1 });
-		// return Math.Sqrt(PointLineSegmentDistance(pX, pY, x0, y0, x1, y1));
-	}
+//	//------------------------------------------------------------------------------------------------
+//	//! Calculates squared distance of `point` to a line segment given by points `v0` and `v1`.
+//	// unused
+//	static float GetPointLineSegmentDistanceSqr(float pX, float pY, float x0, float y0, float x1, float y1)
+//	{
+//		return Math3D.PointLineSegmentDistanceSqr({ pX, 0, pY }, { x0, 0, y0 }, {x1, 0, y1 });
+//	}
+
+//	//------------------------------------------------------------------------------------------------
+//	//! Calculates distance of `point` to a line segment given by points `v0` and `v1`.
+//	static float GetPointLineSegmentDistance(float pX, float pY, float x0, float y0, float x1, float y1)
+//	{
+//		return Math3D.PointLineSegmentDistance({ pX, 0, pY }, { x0, 0, y0 }, { x1, 0, y1 });
+//		// return Math.Sqrt(PointLineSegmentDistance(pX, pY, x0, y0, x1, y1));
+//	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Translates cartesian coordinates (x,y) into polar (angle and radius)
-	//! \param angle in radians
-	//! \param radius
-	//! \param[out] x
-	//! \param[out] y
+	//! \param[in] x
+	//! \param[in] y
+	//! \param[out] angle in radian
+	//! \param[out] radius
+	//! \return true
 	protected static bool CartesianToPolar(float x, float y, out float angle, out float radius)
 	{
 		angle = Math.Atan2(y, x);
 		radius = Math.Sqrt(x + y);
 		return true;
 	}
-*/
+
 	//------------------------------------------------------------------------------------------------
 	//! Translates polar coordinates (angle and radius) into cartesian (x,y)
-	//! \param angle in radians
-	//! \param radius
+	//! \param[in] angle in radians
+	//! \param[in] radius
 	//! \param[out] x
 	//! \param[out] y
-	static bool PolarToCartesian(float angle, float radius, out float x, out float y) 
+	//! \return true
+	static bool PolarToCartesian(float angle, float radius, out float x, out float y)
 	{
 		x = Math.Cos(angle) * radius;
 		y = Math.Sin(angle) * radius;
 		return true;
 	}
-/*
-	//------------------------------------------------------------------------------------------------
-	//! Get a clockwise degree angle value from counter-clockwise radians
-	//! \param value angle in counter-clockwise radians
-	//! \return [0..360[ clockwise value
-	protected static float TrigoRadianToDegree(float value)
-	{
-		value = 90 - value * Math.RAD2DEG;
 
-		if (value < 0 || value > 360)
-			value = Math.Repeat(value, 360);
-
-		if (value < 0)
-			value += 360;
-
-		if (float.AlmostEqual(value, 360))
-			value = 0;
-
-		return value;
-	}
+//	//------------------------------------------------------------------------------------------------
+//	//! Get a clockwise degree angle value from counter-clockwise radians
+//	//! \param[in] value angle in counter-clockwise radians
+//	//! \return [0..360[ clockwise value
+//	protected static float TrigoRadianToDegree(float value)
+//	{
+//		value = 90 - value * Math.RAD2DEG;
+//
+//		if (value < 0 || value > 360)
+//			value = Math.Repeat(value, 360);
+//
+//		if (value < 0)
+//			value += 360;
+//
+//		if (float.AlmostEqual(value, 360))
+//			value = 0;
+//
+//		return value;
+//	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Get a counter-clockwise radian angle value from clockwise angles
-	//! \param value angle in clockwise degrees
+	//! \param[in] value angle in clockwise degrees
 	//! \return [0..Math.PI2[ counter-clockwise value
-	protected static float DegreeToTrigoRadian(float value)
+	static float DegreeToTrigoRadian(float value)
 	{
 		value = Math.PI_HALF - value * Math.DEG2RAD;
 
@@ -240,69 +262,82 @@ class SCR_Math2D
 		return value;
 	}
 
+//	//------------------------------------------------------------------------------------------------
+//	//! Get the difference between two degree angles
+//	//! \code
+//	//! GetDegreeAngleDifference(0, 45)		// returns 45
+//	//! GetDegreeAngleDifference(0, 315)	// returns -45
+//	//! \code
+//	//! \param[in] angleA
+//	//! \param[in] angleB
+//	//! \return angle difference in range ]-180..+180]
+//	protected static float GetDegreeAngleDifference(float angleA, float angleB)
+//	{
+//		if (angleA <= -180 || angleA > 180)
+//			angleA = Math.Repeat(angleA, 360);
+//
+//		if (angleB <= -180 || angleB > 180)
+//			angleB = Math.Repeat(angleB, 360);
+//
+//		angleA = angleB - angleA; // variable reuse
+//
+//		if (angleA <= -180)
+//			angleA += 360;
+//		else if (angleA > 180)
+//			angleA -= 360;
+//
+//		return angleA;
+//	}
+//
+//	//------------------------------------------------------------------------------------------------
+//	//! Get the difference between two radian angles
+//	//! \code
+//	//! GetRadianAngleDifference(0, Math.PI)		// returns Math.PI
+//	//! GetRadianAngleDifference(0, Math.PI * 1.5)	// returns -Math.PI_HALF
+//	//! \code
+//	//! \param[in] angleA
+//	//! \param[in] angleB
+//	//! \return angle difference in range ]-Math.PI..+Math.PI]
+//	protected static float GetRadianAngleDifference(float angleA, float angleB)
+//	{
+//		if (angleA <= -Math.PI || angleA > Math.PI)
+//			angleA = Math.Repeat(angleA, Math.PI2);
+//
+//		if (angleB <= -Math.PI || angleB > Math.PI)
+//			angleB = Math.Repeat(angleB, Math.PI2);
+//
+//		angleA = angleB - angleA; // variable reuse
+//
+//		if (angleA <= -Math.PI)
+//			angleA += Math.PI2;
+//		else if (angleA > Math.PI)
+//			angleA -= Math.PI2;
+//
+//		return angleA;
+//	}
+//
+//	//------------------------------------------------------------------------------------------------
+//	//! in range [0..Math.PI2[
+//	//! \param[in] from
+//	//! \param[in] to
+//	//! \return radian angle
+//	protected static float GetRadianAngle(vector from, vector to)
+//	{
+//		to = to - from; // variable reuse
+//		return Math.Atan2(to[2], to[0]);
+//	}
+
 	//------------------------------------------------------------------------------------------------
-	//! Get the difference between two degree angles
-	//! \code
-	//! GetDegreeAngleDifference(0, 45)		// returns 45
-	//! GetDegreeAngleDifference(0, 315)	// returns -45
-	//! \code
-	//! \return angle difference in range ]-180..+180]
-	protected static float GetDegreeAngleDifference(float angleA, float angleB)
-	{
-		if (angleA <= -180 || angleA > 180)
-			angleA = Math.Repeat(angleA, 360);
-
-		if (angleB <= -180 || angleB > 180)
-			angleB = Math.Repeat(angleB, 360);
-
-		angleA = angleB - angleA; // variable reuse
-
-		if (angleA <= -180)
-			angleA += 360;
-		else if (angleA > 180)
-			angleA -= 360;
-
-		return angleA;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Get the difference between two radian angles
-	//! \code
-	//! GetRadianAngleDifference(0, Math.PI)		// returns Math.PI
-	//! GetRadianAngleDifference(0, Math.PI * 1.5)	// returns -Math.PI_HALF
-	//! \code
-	//! \return angle difference in range ]-Math.PI..+Math.PI]
-	protected static float GetRadianAngleDifference(float angleA, float angleB)
-	{
-		if (angleA <= -Math.PI || angleA > Math.PI)
-			angleA = Math.Repeat(angleA, Math.PI2);
-
-		if (angleB <= -Math.PI || angleB > Math.PI)
-			angleB = Math.Repeat(angleB, Math.PI2);
-
-		angleA = angleB - angleA; // variable reuse
-
-		if (angleA <= -Math.PI)
-			angleA += Math.PI2;
-		else if (angleA > Math.PI)
-			angleA -= Math.PI2;
-
-		return angleA;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! in range [0..Math.PI2[
-	protected static float GetRadianAngle(vector from, vector to)
-	{
-		to = to - from; // variable reuse
-		return Math.Atan2(to[2], to[0]);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \param angleRad0 counter-clockwise radians, range does not matter (no need for [0..Math.PI2[)
-	//! \param angleRad1 counter-clockwise radians, range does not matter (no need for [0..Math.PI2[)
-	//! \return false if angles are equal, true otherwise
-	static bool GetLinesIntersection(float x0, float y0, float angleRad0, float x1, float y1, float angleRad1, out float x, out float y)
+	//! \param[in] x0
+	//! \param[in] y0
+	//! \param[in] angleRad0 counter-clockwise radians, range does not matter (no need for [0..Math.PI2[)
+	//! \param[in] x1
+	//! \param[in] y1
+	//! \param[in] angleRad1 counter-clockwise radians, range does not matter (no need for [0..Math.PI2[)
+	//! \param[out] x
+	//! \param[out] y
+	//! \return true on intersection, false otherwise
+	static bool GetLinesIntersectionXZ(float x0, float y0, float angleRad0, float x1, float y1, float angleRad1, out float x, out float y)
 	{
 		if (angleRad0 < 0 || angleRad0 > Math.PI2)
 			angleRad0 = Math.Repeat(angleRad0, Math.PI2);
@@ -323,7 +358,7 @@ class SCR_Math2D
 		float determinant = a1 * b2 - a2 * b1;
 
 		// lines are parallel
-		if (determinant == 0)
+		if (float.AlmostEqual(determinant, 0))
 			return false;
 
 		x = (b2 * c1 - b1 * c2) / determinant;
@@ -331,29 +366,27 @@ class SCR_Math2D
 
 		return true;
 	}
-*/
+
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Generates random point in given polygon
-	\param polygon Consecutive floats give polygon in 2D (2 floats = Vector2)
-	\param bbMin Bounding box minimum corner
-	\param bbMax Bounding box maximum corner
-	\return Vector3 point in polygon
-	*/
-	static vector GenerateRandomPoint(array<float> polygon,  vector bbMin, vector bbMax)
+	//! Generates random point in given polygon
+	//! \param[in] polygon Consecutive floats give polygon in 2D (2 floats = Vector2)
+	//! \param[in] bbMin Bounding box minimum corner
+	//! \param[in] bbMax Bounding box maximum corner
+	//! \return Vector3 point in polygon
+	// unused
+	static vector GenerateRandomPoint(array<float> polygon, vector bbMin, vector bbMax)
 	{
 		return SCR_Math.GetMathRandomGenerator().GenerateRandomPoint(polygon, bbMin, bbMax);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Generates a random point around `center` in range min/max radius
-	\param minRadius All generated points will be at least this far from center
-	\param maxRadius All generated points will be at most this far from center
-	\param center Position around which to generate. Vector2 XZ
-	\param uniform If false, has a small bias towards the center which may be desirable in some situations
-	\return Vector2 XZ set, Y = 0
-	*/
+	//! Generates a random point around `center` in range min/max radius
+	//! \param[in] minRadius All generated points will be at least this far from center
+	//! \param[in] maxRadius All generated points will be at most this far from center
+	//! \param[in] center Position around which to generate. Vector2 XZ
+	//! \param[in] uniform If false, has a small bias towards the center which may be desirable in some situations
+	//! \return Vector2 XZ set, Y = 0
+	// unused
 	static vector GenerateRandomPointInRadius(float minRadius, float maxRadius, vector center, bool uniform = true)
 	{
 		return SCR_Math.GetMathRandomGenerator().GenerateRandomPointInRadius(minRadius, maxRadius, center, uniform);

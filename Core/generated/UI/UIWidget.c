@@ -11,6 +11,7 @@ Do not modify, this script is generated
 
 sealed class UIWidget: Widget
 {
+	proto external void SetStyle(string styleName);
 	proto external void SetTextColor(int color);
 	/*!
 	Sets outline style.

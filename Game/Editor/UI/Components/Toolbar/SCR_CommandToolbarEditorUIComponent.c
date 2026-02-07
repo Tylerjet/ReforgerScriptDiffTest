@@ -14,6 +14,7 @@ class SCR_CommandToolbarEditorUIComponent : SCR_BaseToolbarEditorUIComponent
 	protected ref array<ref SCR_BaseEditorAction> m_aShortcuts = {};
 	protected ref map<Widget, SCR_BaseEditorAction> m_Actions = new map<Widget, SCR_BaseEditorAction>();
 	
+	bool m_queuedRefresh = false;
 	//------------------------------------------------------------------------------------------------
 	protected void CreateItem(SCR_EditorActionData actionData, int shortcutIndex)
 	{
@@ -79,6 +80,15 @@ class SCR_CommandToolbarEditorUIComponent : SCR_BaseToolbarEditorUIComponent
 		}
 	}
 
+	//Many actions can request a refresh for the GM toolbar, but we should only refresh it once per frame.
+	protected void QueueRefresh()
+	{
+		if(m_queuedRefresh)
+			return;
+		
+		GetGame().GetCallqueue().CallLater(Refresh);
+		m_queuedRefresh = true;
+	}
 	//------------------------------------------------------------------------------------------------
 	override protected void Refresh()
 	{
@@ -131,6 +141,8 @@ class SCR_CommandToolbarEditorUIComponent : SCR_BaseToolbarEditorUIComponent
 			m_Pagination.SetEntryCount(count);
 		
 		super.Refresh();
+		
+		m_queuedRefresh = false;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -139,7 +151,7 @@ class SCR_CommandToolbarEditorUIComponent : SCR_BaseToolbarEditorUIComponent
 	//! \param[in] entitiesRemove
 	protected void OnFilterChange(EEditableEntityState state, set<SCR_EditableEntityComponent> entitiesInsert, set<SCR_EditableEntityComponent> entitiesRemove)
 	{
-		Refresh();
+		QueueRefresh();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -154,7 +166,7 @@ class SCR_CommandToolbarEditorUIComponent : SCR_BaseToolbarEditorUIComponent
 		if (!isGamepad)
 		{
 			m_Filter.GetOnChanged().Insert(OnFilterChange);
-			Refresh();
+			QueueRefresh();
 		}
 		else
 		{

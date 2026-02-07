@@ -390,6 +390,25 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 							
 							break;
 						}
+						case (componentType.IsInherited(SCR_EffectsModuleAreaMeshComponent)):
+						{						
+							//~ Get Shape
+							componentSource.Get("m_eShape", areaMeshShape);
+							if (areaMeshShape == EAreaMeshShape.ELLIPSE)
+								entryLocal.m_Shape = EPreviewEntityShape.ELLIPSE;
+							else if (areaMeshShape == EAreaMeshShape.RECTANGLE)
+								entryLocal.m_Shape = EPreviewEntityShape.RECTANGLE;
+							else
+								break;
+								
+							float width, lenght, height;
+							componentSource.Get("m_fWidth", width);
+							componentSource.Get("m_fLenght", lenght);
+							componentSource.Get("m_fHeight", height);
+							
+							entryLocal.m_vScale = Vector(width, height, lenght);							
+							break;
+						}
 						
 						break;
 					}

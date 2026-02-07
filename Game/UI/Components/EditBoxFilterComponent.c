@@ -98,7 +98,7 @@ class EditBoxFilterComponent : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool OnChange(Widget w, int x, int y, bool finished)
+	override bool OnChange(Widget w, bool finished)
 	{
 		bool validInput = true;
 		if (!m_wEditBox)

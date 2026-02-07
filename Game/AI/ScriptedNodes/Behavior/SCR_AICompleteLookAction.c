@@ -17,5 +17,5 @@ class SCR_AICompleteLookAction : AITaskScripted
 	}
 
 	//------------------------------------------------------------------------------------------------	
-	protected override bool VisibleInPalette() {return true;}	
+	protected static override bool VisibleInPalette() {return true;}	
 };

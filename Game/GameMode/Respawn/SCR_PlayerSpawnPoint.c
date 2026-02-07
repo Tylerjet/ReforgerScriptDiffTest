@@ -70,7 +70,7 @@ class SCR_PlayerSpawnPoint : SCR_SpawnPoint
 	//------------------------------------------------------------------------------------------------
 	protected override string GetSpawnPointName()
 	{
-		return GetGame().GetPlayerManager().GetPlayerName(m_iPlayerID);
+		return SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(m_iPlayerID);
 	}
 	
 	//------------------------------------------------------------------------------------------------

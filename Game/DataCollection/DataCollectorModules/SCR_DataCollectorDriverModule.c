@@ -205,10 +205,21 @@ TODO: REMOVE THIS, REPLACE WITH SENDING THROUGH RPL THE STATS FROM THE SERVER RE
 		
 		//~ Roadkill enemy
 		if (instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER))
-			killerData.AddStat(SCR_EDataStats.ROADKILLS);
+		{
+			if (!instigatorContextData.IsEnemyKillPunished(SCR_EDisguisedKillingPunishment.WARCRIME))
+				killerData.AddStat(SCR_EDataStats.ROADKILLS);
+			//~ Killing while disguised is a warcrime
+			else 
+				killerData.AddStat(SCR_EDataStats.FRIENDLY_ROADKILLS);
+		}
+			
 		//~ Roadkill friendly
-		else 
-			killerData.AddStat(SCR_EDataStats.FRIENDLY_ROADKILLS);
+		else
+		{
+			if (instigatorContextData.DoesPlayerKillCountAsTeamKill())
+				killerData.AddStat(SCR_EDataStats.FRIENDLY_ROADKILLS);
+		}
+				
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -237,10 +248,22 @@ TODO: REMOVE THIS, REPLACE WITH SENDING THROUGH RPL THE STATS FROM THE SERVER RE
 		SCR_PlayerData killerData = GetGame().GetDataCollector().GetPlayerData(killerId);
 
 		//Add an AI kill. Find if friendly or unfriendly
-		if (instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_FRIENDLY_PLAYER))
-			killerData.AddStat(SCR_EDataStats.FRIENDLY_AI_ROADKILLS);
+		if (instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER))
+		{
+			if (!instigatorContextData.IsEnemyKillPunished(SCR_EDisguisedKillingPunishment.WARCRIME))
+				killerData.AddStat(SCR_EDataStats.AI_ROADKILLS);	
+			//~ Killing while disguised is a warcrime
+			else 
+				killerData.AddStat(SCR_EDataStats.FRIENDLY_AI_ROADKILLS);
+		}
+		//~ friendly
 		else
-			killerData.AddStat(SCR_EDataStats.AI_ROADKILLS);
+		{
+			//~ Counts as teamkill
+			if (instigatorContextData.DoesPlayerKillCountAsTeamKill())
+				killerData.AddStat(SCR_EDataStats.FRIENDLY_AI_ROADKILLS);
+		}
+			
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -2,7 +2,7 @@
 // Generated from class: SCR_AIOrder_Stance
 class SCR_AISendOrder_Stance : SCR_AISendMessageGenerated
 {
-	[Attribute("", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(ECharacterStance))]
+	[Attribute("", UIWidgets.ComboBox, enumType: ECharacterStance)]
 	ECharacterStance m_eStance;
 	
 	protected static ref TStringArray _s_aVarsIn =
@@ -34,7 +34,7 @@ class SCR_AISendOrder_Stance : SCR_AISendMessageGenerated
 		s = s + string.Format("m_eStance: %1\n", typename.EnumToString(ECharacterStance, m_eStance));
 		return s;
 	}
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -73,14 +73,14 @@ class SCR_AISendOrder_WeaponRaised : SCR_AISendMessageGenerated
 		s = s + string.Format("m_bWeaponRaised: %1\n", m_bWeaponRaised);
 		return s;
 	}
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
 // Generated from class: SCR_AIOrder_MovementType
 class SCR_AISendOrder_MovementType : SCR_AISendMessageGenerated
 {
-	[Attribute("", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EMovementType))]
+	[Attribute("", UIWidgets.ComboBox, enumType: EMovementType)]
 	EMovementType m_eMovementType;
 	
 	protected static ref TStringArray _s_aVarsIn =
@@ -112,7 +112,7 @@ class SCR_AISendOrder_MovementType : SCR_AISendMessageGenerated
 		s = s + string.Format("m_eMovementType: %1\n", typename.EnumToString(EMovementType, m_eMovementType));
 		return s;
 	}
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
@@ -138,14 +138,14 @@ class SCR_AISendOrder_ReturnToDefault : SCR_AISendMessageGenerated
 			return ENodeResult.FAIL;
 	}
 	
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
 // Generated from class: SCR_AIOrder_WeaponType
 class SCR_AISendOrder_WeaponType : SCR_AISendMessageGenerated
 {
-	[Attribute("", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EWeaponType))]
+	[Attribute("", UIWidgets.ComboBox, enumType: EWeaponType)]
 	EWeaponType m_eWeaponType;
 	
 	protected static ref TStringArray _s_aVarsIn =
@@ -177,14 +177,14 @@ class SCR_AISendOrder_WeaponType : SCR_AISendMessageGenerated
 		s = s + string.Format("m_eWeaponType: %1\n", typename.EnumToString(EWeaponType, m_eWeaponType));
 		return s;
 	}
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
 // Generated from class: SCR_AIOrder_AIState
 class SCR_AISendOrder_AIState : SCR_AISendMessageGenerated
 {
-	[Attribute("", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EUnitAIState))]
+	[Attribute("", UIWidgets.ComboBox, enumType: EUnitAIState)]
 	EUnitAIState m_eAIState;
 	
 	protected static ref TStringArray _s_aVarsIn =
@@ -216,14 +216,14 @@ class SCR_AISendOrder_AIState : SCR_AISendMessageGenerated
 		s = s + string.Format("m_eAIState: %1\n", typename.EnumToString(EUnitAIState, m_eAIState));
 		return s;
 	}
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 
 //---------------------------------------------------------------------------------------
 // Generated from class: SCR_AIOrder_Unit_State
 class SCR_AISendOrder_UnitState : SCR_AISendMessageGenerated
 {
-	[Attribute("", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EUnitState))]
+	[Attribute("", UIWidgets.ComboBox, enumType: EUnitState)]
 	EUnitState m_eUnitState;
 	
 	protected static ref TStringArray _s_aVarsIn =
@@ -255,45 +255,6 @@ class SCR_AISendOrder_UnitState : SCR_AISendMessageGenerated
 		s = s + string.Format("m_eUnitState: %1\n", typename.EnumToString(EUnitState, m_eUnitState));
 		return s;
 	}
-	override bool VisibleInPalette() { return true; }
-}
-
-//---------------------------------------------------------------------------------------
-// Generated from class: SCR_AIOrder_CombatType
-class SCR_AISendOrder_CombatType : SCR_AISendMessageGenerated
-{
-	[Attribute("", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EAICombatType))]
-	EAICombatType m_eCombatType;
-	
-	protected static ref TStringArray _s_aVarsIn =
-	{
-		SCR_AISendOrderGenerated.PORT_RECEIVER,
-		"CombatType"
-	};
-	override TStringArray GetVariablesIn() { return _s_aVarsIn; }
-	
-	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
-	{
-		AIAgent receiver = GetReceiverAgent(owner);
-		SCR_AIOrder_CombatType msg = new SCR_AIOrder_CombatType();
-		
-		msg.SetText(m_sText);
-		
-		if(!GetVariableIn("CombatType", msg.m_eCombatType))
-			msg.m_eCombatType = m_eCombatType;
-		
-		if (SendMessage(owner, receiver, msg))
-			return ENodeResult.SUCCESS;
-		else
-			return ENodeResult.FAIL;
-	}
-	
-	override string GetNodeMiddleText()
-	{
-		string s;
-		s = s + string.Format("m_eCombatType: %1\n", typename.EnumToString(EAICombatType, m_eCombatType));
-		return s;
-	}
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }
 

@@ -3,7 +3,7 @@ class SCR_AIGetMyGroup: AITaskScripted
 	static const string PORT_GROUP_OUT	= "GroupOut";
 	
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
     {
         return true;
     }

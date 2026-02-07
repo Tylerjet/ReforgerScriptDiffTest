@@ -3,6 +3,8 @@ class SCR_Math3D
 {
 	//------------------------------------------------------------------------------------------------
 	//! Flips X and Y axis of the vector.
+	//! \param[in] toFlip
+	//! \return the resulting vector
 	static vector GetFixedAxisVector(vector toFlip)
 	{
 		return { toFlip[1], toFlip[0], toFlip[2] };
@@ -10,6 +12,10 @@ class SCR_Math3D
 
 	//------------------------------------------------------------------------------------------------
 	//! Rotates the input from rotation to the input to rotation by a maximum of maxDegreesDelta
+	//! \param[out] result
+	//! \param[in] from
+	//! \param[in] to
+	//! \param[in] maxDegreesDelta
 	static void RotateTowards(out float result[4], float from[4], float to[4], float maxDegreesDelta)
 	{
 		float num = Math3D.QuatAngle(from, to);
@@ -25,6 +31,10 @@ class SCR_Math3D
 
 	//------------------------------------------------------------------------------------------------
 	//! Moves a point start in a straight line towards a target point.
+	//! \param[in] start
+	//! \param[in] target
+	//! \param[in] maxDistanceDelta
+	//! \return
 	static vector MoveTowards(vector start, vector target, float maxDistanceDelta)
 	{
 		vector diff = target - start;
@@ -39,11 +49,13 @@ class SCR_Math3D
 	//! Ensures the angles are in range <-units; +units>
 	//! \code
 	//! Print(SCR_Math3D.FixEulerVector({270, 45, 900}, 180)); // {-90, 45, 180}
-	//! \code
+	//! \endcode
+	//! \param[in] angles
+	//! \param[in] units
 	//! \return angles in range <-units; +units>
 	static vector FixEulerVector(vector angles, float units = Math.PI)
 	{
-		for (int i; i < 3; i++)
+		for (int i; i < 3; ++i)
 		{
 			angles[i] = Math.Repeat(units + angles[i], units * 2) - units;
 		}
@@ -55,7 +67,8 @@ class SCR_Math3D
 	//! Ensures the angles are in range <-180; +180>
 	//! \code
 	//! Print(SCR_Math3D.FixEulerVector180({270, 45, 900})); // {-90, 45, 180}
-	//! \code
+	//! \endcode
+	//! \param[in] angles
 	//! \return angles in range <-180; +180>
 	static vector FixEulerVector180(vector angles)
 	{
@@ -71,14 +84,14 @@ class SCR_Math3D
 	//! \param[in] entity is the entity you want to be affected by extrapolation.
 	//! \param[in] physics is the physics that the extrapolation should calculate with.
 	//! \param[in] netPosition is the last received position.
-	//! \param[in] netVelocity is the last received velocity.
+	//! \param[in] netVelocityLinear is the last received velocity.
 	//! \param[in] netTeleportDistance is the max distance between position and netPosition, anything over this causes the entity to teleport.
-	//! \param[in] netRotation[4] is the last received rotation.
+	//! \param[in] netRotation is the last received rotation.
 	//! \param[in] netVelocityAngular is the last received angular velocity.
 	//! \param[in] netTeleportAng is the max angle between current rotation and replicated rotation, anything over this causes the entity to teleport.
 	//! \param[in] timeSinceLastTick is the time since last synchronization of extrapolation relevant data was received, it should already be incremented by timeSlice by you!
 	//! \param[in] timeSlice is the time since last frame / simulation step.
-	//! \param[in] netTickInterval
+	//! \param[in] netTickInterval must NOT be zero
 	static void Extrapolate(IEntity entity, Physics physics, vector netPosition, vector netVelocityLinear, float netTeleportDistance, float netRotation[4], vector netVelocityAngular, float netTeleportAng, float timeSinceLastTick, float timeSlice, float netTickInterval)
 	{
 		float scale = entity.GetScale();
@@ -216,7 +229,7 @@ class SCR_Math3D
 	//! Return the smallest from each vector value
 	//! \code
 	//! Print(SCR_Math3D.Max({ 0, 2, 10 }, { -5, 5, 8 }, LogLevel.NORMAL); // { -5, 2, 8 }
-	//! \code
+	//! \endcode
 	//! \param[in] vector A
 	//! \param[in] vector B
 	//! \return
@@ -233,7 +246,7 @@ class SCR_Math3D
 	//! Return the largest from each vector value
 	//! \code
 	//! Print(SCR_Math3D.Max({ 0, 2, 10 }, { -5, 5, 8 }, LogLevel.NORMAL); // { 0, 5, 10 }
-	//! \code
+	//! \endcode
 	//! \param[in] vector A
 	//! \param[in] vector B
 	//! \return
@@ -358,7 +371,7 @@ class SCR_Math3D
 	{
 		int count = points.Count();
 		if (count < 1)
-			return -1;
+			return false;
 
 		if (count == 1)
 			return vector.DistanceXZ(point, points[0]) <= distance;
@@ -386,19 +399,19 @@ class SCR_Math3D
 
 	//------------------------------------------------------------------------------------------------
 	//! Get a rotation that rotates angle (rad) around the provided axis.
-	//! \param[in] angle Rotation angle in radians
-	//! \param[in] axis The axis around which the rotation turns
-	//! \param[out] q Output quaternion
-	//! @code
+	//! \code
 	//! float quat[4];
 	//! SCR_Math3D.QuatAngleAxis(0.5 * Math.PI_HALF, vector.Up, quat);
 	//! vector angles = Math3D.QuatToAngles( quat );
 	//! Print(angles);
 	//! >> vector angles = <45,0,-0>
-	//! @endcode
+	//! \endcode
+	//! \param[in] angle Rotation angle in radians
+	//! \param[in] axis The axis around which the rotation turns
+	//! \param[out] quat Output quaternion
 	static void QuatAngleAxis(float angle, vector axis, out float quat[4])
 	{
-		angle = angle * 0.5;
+		angle *= 0.5;
 		float sin = Math.Sin(angle);
 
 		axis.Normalize();

@@ -14,11 +14,11 @@ class SCR_RoomPasswordVerification
 
 	protected ref SCR_BackendCallback m_Callback = new SCR_BackendCallback();
 
-	protected ref ScriptInvokerRoom m_OnVerified = new ScriptInvokerRoom();
+	protected ref ScriptInvokerVoid m_OnVerified = new ScriptInvokerVoid();
 	protected ref ScriptInvokerString m_OnFailVerification = new ScriptInvokerString();
 
 	//------------------------------------------------------------------------------------------------
-	ScriptInvokerRoom GetOnVerified()
+	ScriptInvokerVoid GetOnVerified()
 	{
 		return m_OnVerified;
 	}
@@ -112,7 +112,7 @@ class SCR_RoomPasswordVerification
 			case EBackendCallbackResponse.SUCCESS:
 			{
 				// Invoke verification with successful password struct
-				m_OnVerified.Invoke(m_Room);
+				m_OnVerified.Invoke();
 				break;
 			}
 
@@ -139,4 +139,4 @@ class SCR_RoomPasswordVerification
 		if(m_Dialog && m_Dialog.m_OnConfirm)
 			m_Dialog.m_OnConfirm.Remove(OnPasswordConfirm);
 	}
-};
+}

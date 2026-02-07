@@ -45,7 +45,7 @@ class SCR_AIDebugTask : AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
 	{
 		return false;
 	}	

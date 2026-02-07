@@ -1,5 +1,12 @@
 class DeployMenuSystem : GameSystem
 {
+	override static void InitInfo(WorldSystemInfo outInfo)
+	{
+		outInfo
+			.SetAbstract(false)
+			.AddPoint(ESystemPoint.Frame);
+	}
+
 	protected SCR_PlayerDeployMenuHandlerComponent m_LocalMenuHandler;
 	protected bool m_bReady = false;
 

@@ -110,7 +110,8 @@ class SCR_BaseTaskExecutor : GenericEntity
 	//! Returns player name of this task executor
 	string GetPlayerName()
 	{
-		return GetGame().GetPlayerManager().GetPlayerName(GetTaskExecutorID(this));
+		return SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(GetTaskExecutorID(this));
+		
 	}
 	
 	//------------------------------------------------------------------------------------------------

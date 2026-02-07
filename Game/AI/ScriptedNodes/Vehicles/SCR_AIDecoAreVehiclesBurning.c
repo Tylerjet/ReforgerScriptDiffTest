@@ -23,10 +23,16 @@ class SCR_AIDecoAreVehiclesBurning : DecoratorScripted
 		SCR_AIGroup group = SCR_AIGroup.Cast(owner);
 		if (!group)
 			return false;
-		array<IEntity> usableVehicles = {};
-		group.GetUsableVehicles(usableVehicles);
-		foreach (IEntity vehicleEntity: usableVehicles)
+		
+		
+		SCR_AIGroupVehicleManager vehMgr = group.GetGroupUtilityComponent().m_VehicleMgr;
+		
+		array<ref SCR_AIGroupVehicle> usableVehicles = {};
+		vehMgr.GetAllVehicles(usableVehicles);
+		
+		foreach (SCR_AIGroupVehicle groupVehicle: usableVehicles)
 		{
+			IEntity vehicleEntity = groupVehicle.GetEntity();
 			BaseVehicle vehicle = BaseVehicle.Cast(vehicleEntity);
 			if (!vehicle)
 				continue;
@@ -37,6 +43,8 @@ class SCR_AIDecoAreVehiclesBurning : DecoratorScripted
 			if (isOnFire)
 				return ReturnVariables(isOnFire, vehicleEntity);
 		}
+		
+		
 		ClearVariable(BURNING_VEHICLE_PORT);
 		return false;
 	}
@@ -52,7 +60,7 @@ class SCR_AIDecoAreVehiclesBurning : DecoratorScripted
 	}
 	
 	//-----------------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}	
@@ -76,7 +84,7 @@ class SCR_AIDecoAreVehiclesBurning : DecoratorScripted
 	}
 	
 	//-----------------------------------------------------------------------------------------------------
-	override string GetOnHoverDescription()
+	static override string GetOnHoverDescription()
 	{
 		return "DecoAreVehiclesBurning: if provided with vehicle entity, returns if it is burning, otherwise checks all known vehicles of group and returns (first) burning vehicle.";
 	}

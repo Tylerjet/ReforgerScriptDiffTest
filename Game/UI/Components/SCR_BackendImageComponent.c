@@ -32,7 +32,7 @@ class SCR_BackendImageComponent : SCR_ScriptedWidgetComponent
 	protected TextWidget m_wDebugText;
 	
 	// Other
-	protected ref BackendImage m_BackendImage;
+	protected BackendImage m_BackendImage;
 	protected ref SCR_WorkshopItemCallback_DownloadImage m_DownloadImageCallback;
 
 	protected bool m_bIsWaitingForWidgetInit;
@@ -132,16 +132,16 @@ class SCR_BackendImageComponent : SCR_ScriptedWidgetComponent
 		// We must unsubscribe from events of previous callback, because it still might get called when previous image is downloaded
 		if (m_DownloadImageCallback)
 		{
-			m_DownloadImageCallback.m_OnError.Remove(Callback_DownloadImage_OnTimeoutError);
-			m_DownloadImageCallback.m_OnTimeout.Remove(Callback_DownloadImage_OnTimeoutError);
-			m_DownloadImageCallback.m_OnSuccess.Remove(Callback_DownloadImage_OnSuccess);
+			m_DownloadImageCallback.GetEventOnFail().Remove(Callback_DownloadImage_OnTimeoutError);
+			m_DownloadImageCallback.GetEventOnTimeOut().Remove(Callback_DownloadImage_OnTimeoutError);
+			m_DownloadImageCallback.GetEventOnSuccess().Remove(Callback_DownloadImage_OnSuccess);
 		}
 		
 		// Setup callback
 		m_DownloadImageCallback = new SCR_WorkshopItemCallback_DownloadImage();
-		m_DownloadImageCallback.m_OnError.Insert(Callback_DownloadImage_OnTimeoutError);
-		m_DownloadImageCallback.m_OnTimeout.Insert(Callback_DownloadImage_OnTimeoutError);
-		m_DownloadImageCallback.m_OnSuccess.Insert(Callback_DownloadImage_OnSuccess);
+		m_DownloadImageCallback.GetEventOnFail().Insert(Callback_DownloadImage_OnTimeoutError);
+		m_DownloadImageCallback.GetEventOnTimeOut().Insert(Callback_DownloadImage_OnTimeoutError);
+		m_DownloadImageCallback.GetEventOnSuccess().Insert(Callback_DownloadImage_OnSuccess);
 		
 		m_DownloadImageCallback.m_Scale = imageScale;
 

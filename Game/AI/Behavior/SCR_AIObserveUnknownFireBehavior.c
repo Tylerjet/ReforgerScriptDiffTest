@@ -5,6 +5,7 @@ Looking lasts for some time (duration).
 There is also a timeout value, after which the action will fail even if never started.
 */
 
+[Obsolete("This behavior is no longer used and might be deleted in future. It is replaced by SCR_AIObserveThreatSystemBehavior.")]
 class SCR_AIObserveUnknownFireBehavior : SCR_AIBehaviorBase
 {
 	protected const float TIMEOUT_S = 16.0;
@@ -70,6 +71,13 @@ class SCR_AIObserveUnknownFireBehavior : SCR_AIBehaviorBase
 		}
 	}
 	
+	//---------------------------------------------------------------------------------------------------------------------------------
+	override int GetCause()
+	{
+		return SCR_EAIBehaviorCause.COMBAT;
+	}	
+	
+	//---------------------------------------------------------------------------------------------------------------------------------
 	void InitParameters(vector position, bool useMovement)
 	{
 		m_vPosition.Init(this, position);
@@ -81,6 +89,7 @@ class SCR_AIObserveUnknownFireBehavior : SCR_AIBehaviorBase
 		m_bLookedOnce.Init(this, false);
 	}
 	
+	//---------------------------------------------------------------------------------------------------------------------------------
 	void InitTiming(float distance)
 	{
 		float duration_s = Math.Max(DURATION_MIN_S, DURATION_S_PER_METER * distance);	// Linearly increase with distance
@@ -95,18 +104,21 @@ class SCR_AIObserveUnknownFireBehavior : SCR_AIBehaviorBase
 		m_fDelay.m_Value = delay_s;
 	}
 	
+	//---------------------------------------------------------------------------------------------------------------------------------
 	void InitTimeout(float timeout_s)
 	{
 		float currentTime_ms = GetGame().GetWorld().GetWorldTime(); // Milliseconds!
 		m_fDeleteActionTime_ms = currentTime_ms + 1000 * timeout_s;
 	}
 	
+	//---------------------------------------------------------------------------------------------------------------------------------
 	void SetUseMovement(bool value)
 	{
 		m_bUseMovement.m_Value = value;
 		m_bUseCombatMove = value;
 	}
 	
+	//---------------------------------------------------------------------------------------------------------------------------------
 	override void OnActionSelected()
 	{
 		super.OnActionSelected();
@@ -128,6 +140,7 @@ class SCR_AIObserveUnknownFireBehavior : SCR_AIBehaviorBase
 		}
 	}
 	
+	//---------------------------------------------------------------------------------------------------------------------------------
 	override float CustomEvaluate()
 	{
 		// Fail action if timeout has been reached
@@ -145,6 +158,7 @@ class SCR_AIObserveUnknownFireBehavior : SCR_AIBehaviorBase
 		return m_fPriority;
 	}
 	
+	//---------------------------------------------------------------------------------------------------------------------------------
 	static bool IsNewPositionMoreRelevant(vector myWorldPos, vector oldWorldPos, vector newWorldPos)
 	{
 		vector vDirOld = vector.Direction(myWorldPos, oldWorldPos);
@@ -157,16 +171,17 @@ class SCR_AIObserveUnknownFireBehavior : SCR_AIBehaviorBase
 
 class SCR_AIGetObserveUnknownFireBehaviorParameters: SCR_AIGetActionParameters
 {
-	static ref TStringArray s_aVarsOut = (new SCR_AIObserveUnknownFireBehavior(null, null, vector.Zero, false)).GetPortNames();
+	// Copied strings to avoid compilation warning about obsolete class
+	static ref TStringArray s_aVarsOut = {"Position", "Duration", "Radius", "UseBinoculars", "Delay", "UseMovement", "LookedOnce"};
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 };
 
 class SCR_AISetObserveUnknownFireBehaviorParameters : SCR_AISetActionParameters
 {
-	static ref TStringArray s_aVarsIn = (new SCR_AIObserveUnknownFireBehavior(null, null, vector.Zero, false)).GetPortNames();
+	static ref TStringArray s_aVarsIn = {"Position", "Duration", "Radius", "UseBinoculars", "Delay", "UseMovement", "LookedOnce"};
 	override TStringArray GetVariablesIn() { return s_aVarsIn; }
 	
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }

@@ -212,19 +212,19 @@ class SCR_AIGetSmartActionsState : AITaskScripted
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override bool CanReturnRunning()
+	static override bool CanReturnRunning()
 	{
 		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Node that checks if smart actions from given waypoint have been completed depending on settings of the waypoint, returns SUCCESS if they were.";
 	}	

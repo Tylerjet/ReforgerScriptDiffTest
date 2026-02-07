@@ -21,7 +21,7 @@ class SCR_WorldMapExportTool : WorldEditorTool
 	[Attribute(desc: "Folder where the file will be saved", params: "unregFolders", category: "Export File")]
 	protected ResourceName m_sDestinationPath;
 
-	[Attribute("0", UIWidgets.ComboBox, "Export type", enums: ParamEnumArray.FromEnum(SCR_EMapDataExportType), category: "Export File")]
+	[Attribute("0", UIWidgets.ComboBox, "Export type", enumType: SCR_EMapDataExportType, category: "Export File")]
 	protected SCR_EMapDataExportType m_eType;
 
 	/*

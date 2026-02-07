@@ -1,6 +1,13 @@
 //------------------------------------------------------------------------------------------------
 class SCR_VoiceoverSystem : GameSystem
 {
+	override static void InitInfo(WorldSystemInfo outInfo)
+	{
+		outInfo
+			.SetAbstract(false)
+			.AddPoint(ESystemPoint.FixedFrame);
+	}
+
 	protected ResourceName m_sDataResourceName;
 	
 	protected ref ScriptInvokerVoid m_OnFinished;
@@ -533,10 +540,8 @@ class SCR_VoiceoverSystem : GameSystem
 
 		m_PlayingSoundComponent = SCR_CommunicationSoundComponent.Cast(actor.FindComponent(SCR_CommunicationSoundComponent));
 
-		if (!m_PlayingSoundComponent || !m_PlayingSoundComponent.GetOwner())
+		if (!m_PlayingSoundComponent)
 			return;
-		
-		AddActorUnconsciousCheck(m_PlayingSoundComponent.GetOwner());
 
 		SCR_CharacterControllerComponent comp = SCR_CharacterControllerComponent.Cast(actor.FindComponent(SCR_CharacterControllerComponent));
 		
@@ -595,7 +600,7 @@ class SCR_VoiceoverSystem : GameSystem
 			RemoveActorUnconsciousCheck(m_PlayingSoundComponent.GetOwner());
 		
 		// Hide the subtitle after desired delay
-		if (eventName == m_sSubtitleEvent)
+		if (m_SubtitlesDisplay && eventName == m_sSubtitleEvent)
 			GetGame().GetCallqueue().CallLater(m_SubtitlesDisplay.Show, SCR_VoiceoverSubtitles.GetLingerDuration() * 1000, false, false, UIConstants.FADE_RATE_INSTANT, EAnimationCurve.LINEAR);
 
 		OnFinished(eventName, false);

@@ -3,7 +3,7 @@ class SCR_AIUpdateExecutedAction : AITaskScripted
 {
 	private SCR_AIBaseUtilityComponent m_Utility;
 	
-	protected override bool VisibleInPalette() {return true;}
+	protected static override bool VisibleInPalette() {return true;}
 
 	protected override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{
@@ -19,7 +19,7 @@ class SCR_AIUpdateExecutedAction : AITaskScripted
 		m_Utility = SCR_AIBaseUtilityComponent.Cast(owner.FindComponent(SCR_AIBaseUtilityComponent));
 	}
 	
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Update which activity is now being executed, so BT will always receive correct params";
 	}

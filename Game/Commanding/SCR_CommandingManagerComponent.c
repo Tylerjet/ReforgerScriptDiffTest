@@ -415,4 +415,15 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 
 		return agent.GetControlledEntity();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	string GetCommandDisplayTextByName(string commandName)
+	{
+		SCR_BaseRadialCommand command = FindCommand(commandName);
+		if (!command)
+			return string.Empty;
+		
+		return command.GetCommandDisplayName();
+	}
 }

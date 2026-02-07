@@ -25,7 +25,7 @@ class SCR_AIGetStanceFromThreat : AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 	
 	//------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsOut = { STANCE_PORT };

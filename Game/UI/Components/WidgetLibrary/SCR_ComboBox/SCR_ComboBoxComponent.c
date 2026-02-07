@@ -325,7 +325,7 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 		
 		// Set slider position to selected element
 		if (m_wScrollLayout)
-			m_wScrollLayout.SetSliderPos(0, m_iSelectedItem / totalItems, true);
+			m_wScrollLayout.SetSliderPos(0, m_iSelectedItem / totalItems);
 		
 		GetGame().GetCallqueue().Remove(CheckElementsInitialized);
 	}

@@ -91,11 +91,15 @@ class SCR_AIStanceHandling
 		return ECharacterStance.STAND;
 	}
 	
-	// use this to change AI stance info and character
 	//------------------------------------------------------------------------------------------------
+	[Obsolete("Use SetStance without Info Component")]
 	static void SetStance(SCR_AIInfoComponent infoComp, CharacterControllerComponent charContrComp, ECharacterStance stance) 
 	{
-		infoComp.SetStance(stance);		
+		charContrComp.SetStanceChange(ConvertStanceToStanceChange(stance));
+	}
+	
+	static void SetStance(notnull CharacterControllerComponent charContrComp, ECharacterStance stance) 
+	{
 		charContrComp.SetStanceChange(ConvertStanceToStanceChange(stance));
 	}
 	
@@ -546,7 +550,7 @@ class SCR_AIMessageHandling
 		if (relatedActivity)
 			priorityLevel = relatedActivity.EvaluatePriorityLevel();
 		SCR_AIMessage_GetIn msg = SCR_AIMessage_GetIn.Create(vehicleEntity, bParams, roleInVehicle, false, 
-										priorityLevel: priorityLevel, null, relatedActivity: relatedActivity);	
+										priorityLevel: priorityLevel, null, relatedActivity: relatedActivity, compartmentSlot: null);
 		
 		msg.SetReceiver(agent);
 		#ifdef AI_DEBUG
@@ -580,10 +584,10 @@ class SCR_AIMessageHandling
 	}
 	
 	//------------------------------------------------------------------------------------
-	static void SendAnimateMessage(notnull AIAgent agent, notnull IEntity rootEntity, notnull SCR_AIAnimationScript script, SCR_AIActivityBase relatedActivity, 
+	static void SendAnimateMessage(notnull AIAgent agent, notnull IEntity rootEntity, notnull SCR_AIAnimationScript script, SCR_AIActivityBase relatedActivity, ScriptInvokerBase<SCR_AIOnAnimationBehaviorAction> relatedInvoker,
 									notnull AICommunicationComponent myComms, string sendFrom = string.Empty)
 	{
-		SCR_AIMessage_Animate msg = SCR_AIMessage_Animate.Create(rootEntity, script, relatedActivity);
+		SCR_AIMessage_Animate msg = SCR_AIMessage_Animate.Create(rootEntity, script, relatedActivity, relatedInvoker);
 		msg.SetReceiver(agent);
 		#ifdef AI_DEBUG
 		msg.m_sSentFromBt = sendFrom;
@@ -605,5 +609,68 @@ class SCR_AIWorldHandling
 		pm.GetAmbientLV(directLV, ambientLV, totalAmbientLv);
 		
 		return totalAmbientLv < -3.5;
+	}
+}
+
+class SCR_AIFactionHandling
+{
+	//! Returns GetPerceivedFaction from PerceivableComponent - the faction which we should use in all AI scripts.
+	static Faction GetEntityPerceivedFaction(notnull IEntity entity)
+	{
+		// Common case first
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(entity);
+		if (character && character.m_pPerceivableComponent)
+		{
+			return character.m_pPerceivableComponent.GetPerceivedFaction();
+		}
+		
+		Vehicle vehicle = Vehicle.Cast(entity);
+		if (vehicle && vehicle.m_pPerceivableComponent)
+		{
+			return vehicle.m_pPerceivableComponent.GetPerceivedFaction();
+		}
+		
+		// Worst case - some other entity, perform component search
+		PerceivableComponent perceivableComponent = PerceivableComponent.Cast(entity.FindComponent(PerceivableComponent));
+		if (perceivableComponent)
+			return perceivableComponent.GetPerceivedFaction();
+		
+		return null;
+	}
+	
+	//! Returns actual faction from FactionAffiliationComponent.
+	static Faction GetEntityFaction(notnull IEntity entity)
+	{
+		// Common case first
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(entity);
+		if (character && character.m_pFactionComponent)
+		{
+			return character.m_pFactionComponent.GetAffiliatedFaction();
+		}
+		
+		Vehicle vehicle = Vehicle.Cast(entity);
+		if (vehicle && vehicle.m_pFactionComponent)
+		{
+			return vehicle.m_pFactionComponent.GetAffiliatedFaction();
+		}
+		
+		// Worst case - some other entity, perform component search
+		FactionAffiliationComponent factionAffiliation = FactionAffiliationComponent.Cast(entity.FindComponent(FactionAffiliationComponent));
+		if (factionAffiliation)
+			return factionAffiliation.GetAffiliatedFaction();
+		
+		return null;
+	}
+}
+
+class SCR_AIUtils
+{
+	static AIAgent GetAIAgent(notnull IEntity ent)
+	{
+		AIControlComponent controlComp = AIControlComponent.Cast(ent.FindComponent(AIControlComponent));
+		if (!controlComp)
+			return null;
+		
+		return controlComp.GetControlAIAgent();
 	}
 }

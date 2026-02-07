@@ -174,6 +174,10 @@ class SCR_AnalogGaugeNonLinear : SCR_BaseAnalogGauge
 		
 		float fValuePerc = -1;
 		float fSegmentSize = 1 / iSegments;
+
+		// Clamp progress to 100% if out of bounds		
+		if (value > m_aValues[iSegments])
+			return 1;
 		
 		for (int i = 0; i < iSegments; i++)
 		{

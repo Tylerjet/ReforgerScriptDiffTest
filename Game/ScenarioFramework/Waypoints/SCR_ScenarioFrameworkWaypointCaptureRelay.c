@@ -2,7 +2,7 @@
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkWaypointCaptureRelay : SCR_ScenarioFrameworkWaypointSmartAction
 {
-	[Attribute(defvalue: "20", desc: "Radius in m")]
+	[Attribute(defvalue: "20", uiwidget: UIWidgets.Slider, desc: "Radius in m")]
 	float m_fCompletionRadius;
 
 	[Attribute(defvalue: "{EAAE93F98ED5D218}Prefabs/AI/Waypoints/AIWaypoint_CaptureRelay.et", desc: "In Default, it will use specific prefab for each class, but here you can change it if you know what you are doing")]

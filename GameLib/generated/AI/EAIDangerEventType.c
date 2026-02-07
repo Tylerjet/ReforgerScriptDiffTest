@@ -25,6 +25,7 @@ enum EAIDangerEventType
 	Danger_DoorMovement,
 	Danger_VehicleHorn,
 	Danger_Explosion,
+	Danger_PhysicsContact,
 }
 
 /*!

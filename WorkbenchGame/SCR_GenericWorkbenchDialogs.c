@@ -1,4 +1,4 @@
-class SCR_OKWorkbenchDialog
+class SCR_OKWorkbenchDialog // Workbench.Dialog works too, only styling is different
 {
 	[ButtonAttribute("OK", true)]
 	protected int BtnOK()

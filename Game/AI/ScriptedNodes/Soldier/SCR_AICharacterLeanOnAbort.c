@@ -3,13 +3,13 @@ class SCR_AICharacterLeanOnAbort: AITaskScripted
 	protected bool m_bAbortDone;
 	
 	//-----------------------------------------------------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------------------------------------
-	protected override bool CanReturnRunning()
+	protected static override bool CanReturnRunning()
 	{
 		return true;	
 	}

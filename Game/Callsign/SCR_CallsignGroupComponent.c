@@ -25,6 +25,7 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 	protected ref map<int, int> m_mPlayerRoleCallsigns = new map<int, int>();
 	
 	//~ If the group is a slave than all logic will be handled by the master rather than the slave
+	protected bool m_bIsSlave;
 	protected SCR_AIGroup m_MasterGroup;
 	protected SCR_CallsignGroupComponent m_MasterGroupCallsignComponent;
 	
@@ -48,7 +49,10 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 			m_MasterGroup = m_Group.GetMaster();
 			
 			if (m_MasterGroup)
+			{
+				m_bIsSlave = true;
 				m_MasterGroupCallsignComponent = SCR_CallsignGroupComponent.Cast(m_MasterGroup.FindComponent(SCR_CallsignGroupComponent));
+			}
 		}
 		
 		//If leader assigned then init group, else wait until leader is assigned
@@ -525,9 +529,15 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 		
 		//Faction is changed so make current callsign availible again
 		if (isFactionChange)
-		{
+		{				
 			if (!prevFaction || !m_CallsignManager)
 				return;
+			
+			if (m_bIsSlave)
+			{
+				Debug.Error2("SCR_CallsignGroupComponent", "FactionInit when faction changed is called on a slave group. This is not supported as it will assign it's own group callsign seperate from the master group!");
+				return;
+			}
 			
 			if (m_iCompanyCallsign >= 0)
 			{
@@ -568,29 +578,27 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 		}
 		
 		//Assign callsigns for each character in group
-		foreach (AIAgent agent: agents)
+		foreach (AIAgent agent : agents)
 		{
 			characterCallsignComponent = SCR_CallsignCharacterComponent.Cast(agent.GetControlledEntity().FindComponent(SCR_CallsignCharacterComponent));
+			if (!characterCallsignComponent)
+				continue;
+
 			characterCallsignComponent.ClearCallsigns();
-			
-			if (characterCallsignComponent)
-				AssignAICallsign(agent, characterCallsignComponent);
-			
+			AssignAICallsign(agent, characterCallsignComponent);
+
 			//~ Replace line above if you want character callsigns to also be randomized
+//			if (m_CallsignInfo.GetIsAssignedRandomly())
 //			{
-//				if (m_CallsignInfo.GetIsAssignedRandomly())
-//				{
-//					Math.Randomize(-1);
-//					int randomIndex = Math.RandomInt(0, availibleRandomCallsigns.Count());
-//					int randomCharacterCallsign = availibleRandomCallsigns[randomIndex];
-//					availibleRandomCallsigns.Remove(randomIndex);
+//				int randomIndex = availibleRandomCallsigns.GetRandomIndex();
+//				int randomCharacterCallsign = availibleRandomCallsigns[randomIndex];
+//				availibleRandomCallsigns.Remove(randomIndex);
 //
-//					AssignCharacterCallsign(agent, characterCallsignComponent, randomCharacterCallsign);
-//				}
-//				else
-//				{
-//					AssignCharacterCallsign(agent, characterCallsignComponent);
-//				}
+//				AssignCharacterCallsign(agent, characterCallsignComponent, randomCharacterCallsign);
+//			}
+//			else
+//			{
+//				AssignCharacterCallsign(agent, characterCallsignComponent);
 //			}
 		}
 	}
@@ -629,7 +637,7 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 	// destructor
 	void ~SCR_CallsignGroupComponent()
 	{
-		if (!m_bIsServer || m_iCompanyCallsign < 0 || !m_Faction || !m_CallsignManager)
+		if (!m_bIsServer || m_iCompanyCallsign < 0 || !m_Faction || !m_CallsignManager || m_bIsSlave)
 			return;
 		
 		m_CallsignManager.MakeGroupCallsignAvailible(m_Faction, m_iCompanyCallsign, m_iPlatoonCallsign, m_iSquadCallsign);

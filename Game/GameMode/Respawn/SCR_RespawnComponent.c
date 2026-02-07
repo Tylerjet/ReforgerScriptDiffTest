@@ -549,7 +549,8 @@ class SCR_RespawnComponent : RespawnComponent
 		bool loadout = (response & (1 << 2));
 		bool spawn = (response & (1 << 3));
 
-		string msg = "Server request to spawn using diagnostics mode processed (-autodeployFaction/-autodeployLoadout), result:\n\tFaction: %1, Loadout: %2, Spawn: %3";
+		// TODO: check for good const usage
+		const string msg = "Server request to spawn using diagnostics mode processed (-autodeployFaction/-autodeployLoadout), result:\n\tFaction: %1, Loadout: %2, Spawn: %3";
 
 		string fs = "ERR";
 		if (faction)

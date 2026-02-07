@@ -66,7 +66,7 @@ class SCR_BaseLoadingScreenComponent : ScriptedWidgetComponent
 	}	
 
 	//------------------------------------------------------------------------------------------------
-	void OnHide()
+	void OnHideInternal()
 	{
 		SaveLoadingTime(m_fLoadingTime);
 	}

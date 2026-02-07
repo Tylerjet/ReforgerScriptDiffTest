@@ -58,6 +58,31 @@ class SCR_EquipGearCB : SCR_InvCallBack
 	}
 }
 
+class SCR_InvEquipAnyItemCB : SCR_InvCallBack
+{
+	SCR_CharacterInventoryStorageComponent m_CharacterStorage;
+
+	//------------------------------------------------------------------------------------------------
+	protected override void OnComplete()
+	{
+		SCR_CharacterInventoryStorageComponent characterStorage = SCR_CharacterInventoryStorageComponent.Cast(m_pStorageToPickUp);
+		if (!characterStorage || !m_pItem)
+			return;
+
+		characterStorage.UseItem(m_pItem, ESlotFunction.TYPE_GADGET, SCR_EUseContext.FROM_INVENTORY);
+		if (m_iSlotToFocus > -1)
+		{
+			characterStorage.RemoveItemFromQuickSlotAtIndex(m_iSlotToFocus);
+			characterStorage.StoreItemToQuickSlot(m_pItem, m_iSlotToFocus);
+			SCR_WeaponSwitchingBaseUI.HighlightQuickSlot(m_iSlotToFocus);
+		}
+
+		super.OnComplete();
+		m_pItem = null;
+		m_pStorageToPickUp = null;
+	}
+}
+
 class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponent
 {
 	//TODO: define this on loadout level. This is temporary and will be removed!
@@ -107,8 +132,9 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	
 	protected ref array<typename> m_aBlockedSlots = {};
 	protected ref array<BaseInventoryStorageComponent> m_aStoragesInStorageList = {};		//here we remember the opened storages in the Inventory menu ( in the Storages list area )
-	protected SCR_CompartmentAccessComponent m_CompartmentAcessComp;
+	protected SCR_CompartmentAccessComponent m_CompartmentAccessComp;
 	protected BaseInventoryStorageComponent m_WeaponStorage;
+	protected SCR_CharacterFactionAffiliationComponent m_CharacterAffiliationComponent;
 	
 	protected ref SCR_InvEquipCB m_Callback = new SCR_InvEquipCB();
 
@@ -618,6 +644,9 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		UpdateBlockedSlots(item, slotID, true);
 		
 		EditArmoredAttributes(item, slotID);
+		
+		//~ Update perceived faction
+		UpdatePerceivedFaction(true, item);
 
 		#ifdef DEBUG_INVENTORY20
 		// Loadout manager is taking care of this since there are some items that shouldn't be visible when attached to slot, some have different meshes for different states.
@@ -652,6 +681,9 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		UpdateBlockedSlots(item, slotID, false);
 		
 		EditArmoredAttributes(item, slotID, true);
+		
+		//~ Update perceived faction
+		UpdatePerceivedFaction(false, item);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -746,6 +778,9 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		if (charCtrl.GetRightHandItem() == item || charCtrl.GetInputContext().GetLeftHandGadgetEntity() == item)
 			return false;
 
+		if (item.FindComponent(SCR_GadgetComponent))
+			return CanUseItem(item, ESlotFunction.TYPE_GADGET);
+
 		if (item.FindComponent(MagazineComponent))
 			return false;
 
@@ -778,12 +813,12 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		{
 			if (item.FindComponent(BaseLoadoutClothComponent))
 				slotFunction = ESlotFunction.TYPE_CLOTHES;
+			else if (item.FindComponent(SCR_GadgetComponent))
+				slotFunction = ESlotFunction.TYPE_GADGET;
 			else if (item.FindComponent(MagazineComponent))
 				slotFunction = ESlotFunction.TYPE_MAGAZINE;
 			else if (item.FindComponent(BaseWeaponComponent))
 				slotFunction = ESlotFunction.TYPE_WEAPON;
-			else if (item.FindComponent(SCR_GadgetComponent))
-				slotFunction = ESlotFunction.TYPE_GADGET;
 		}
 
 		switch (slotFunction)
@@ -1024,12 +1059,21 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 				{
 					SCR_GadgetComponent gadgetComp = SCR_GadgetComponent.Cast(item.FindComponent(SCR_GadgetComponent));
 					if (gadgetComp.GetMode() == EGadgetMode.IN_HAND && gadgetComp.GetUseMask() != SCR_EUseContext.NONE)
+					{
 						gadgetComp.ToggleActive(!gadgetComp.IsToggledOn(), context);
+					}
 					else
+					{
+						if (gadgetMgr.GetHeldGadget() && gadgetMgr.GetHeldGadget() != item)
+							gadgetMgr.RemoveHeldGadget();
+
 						gadgetMgr.SetGadgetMode(item, EGadgetMode.IN_HAND);
+					}
 				}
 				else
+				{
 					return false;
+				}
 
 				return true;
 			}
@@ -1326,14 +1370,18 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 			if (charController)
 				charController.m_OnItemUseEndedInvoker.Insert(OnItemUsed);
 			
-			m_CompartmentAcessComp = SCR_CompartmentAccessComponent.Cast(character.GetCompartmentAccessComponent());
-			if (!m_CompartmentAcessComp)
+			m_CompartmentAccessComp = SCR_CompartmentAccessComponent.Cast(character.GetCompartmentAccessComponent());
+			if (!m_CompartmentAccessComp)
 				return;
 			
-			if (m_CompartmentAcessComp)
+			m_CompartmentAccessComp.GetOnCompartmentEntered().Insert(OnCompartmentEntered);
+			m_CompartmentAccessComp.GetOnCompartmentLeft().Insert(OnCompartmentLeft);
+			
+			BaseCompartmentSlot compartmentSlot = m_CompartmentAccessComp.GetCompartment();
+			if (compartmentSlot)
 			{
-				m_CompartmentAcessComp.GetOnCompartmentEntered().Insert(OnCompartmentEntered);
-				m_CompartmentAcessComp.GetOnCompartmentLeft().Insert(OnCompartmentLeft);
+				// If the character was already in a compartment slot before the character was initialized as a player, we need to handle it.
+				OnCompartmentSlotEntered(compartmentSlot);
 			}
 		}
 		else
@@ -1341,10 +1389,10 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 			pInventoryManager.m_OnItemAddedInvoker.Remove( HandleOnItemAddedToInventory );
 			pInventoryManager.m_OnItemRemovedInvoker.Remove( HandleOnItemRemovedFromInventory );
 			
-			if (m_CompartmentAcessComp)
+			if (m_CompartmentAccessComp)
 			{
-				m_CompartmentAcessComp.GetOnCompartmentEntered().Remove(OnCompartmentEntered);
-				m_CompartmentAcessComp.GetOnCompartmentLeft().Remove(OnCompartmentLeft);
+				m_CompartmentAccessComp.GetOnCompartmentEntered().Remove(OnCompartmentEntered);
+				m_CompartmentAccessComp.GetOnCompartmentLeft().Remove(OnCompartmentLeft);
 			}
 		}
 	}
@@ -1391,17 +1439,9 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! SCR_CompartmentAccessComponent event
-	//! \param[in] targetEntity
-	//! \param[in] manager
-	//! \param[in] mgrID
-	//! \param[in] slotID
-	//! \param[in] move
-	protected void OnCompartmentEntered(IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move)
+	private void OnCompartmentSlotEntered(BaseCompartmentSlot compartment)
 	{
-		BaseCompartmentSlot compartment = manager.FindCompartment(slotID, mgrID);
-		
-		if (m_CompartmentAcessComp)
+		if (m_CompartmentAccessComp)
 		{
 			m_aWeaponQuickSlotsStorage.Clear();
 			IEntity entity;
@@ -1461,6 +1501,20 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		
 		SCR_WeaponSwitchingBaseUI.RefreshQuickSlots();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! SCR_CompartmentAccessComponent event
+	//! \param[in] targetEntity
+	//! \param[in] manager
+	//! \param[in] mgrID
+	//! \param[in] slotID
+	//! \param[in] move
+	protected void OnCompartmentEntered(IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move)
+	{
+		BaseCompartmentSlot compartment = manager.FindCompartment(slotID, mgrID);
+		
+		OnCompartmentSlotEntered(compartment);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! SCR_CompartmentAccessComponent event
@@ -1491,7 +1545,7 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 			}
 		}
 		
-		if (m_CompartmentAcessComp)
+		if (m_CompartmentAccessComp)
 		{
 			RemoveItemsFromWeaponQuickSlots();
 			
@@ -1569,6 +1623,51 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		
 		return index;
 	}
+	
+	//------------------------------------------------------------------------ PERCEIVED FACTION ----------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//! Called by SCR_CharacterFactionAffiliationComponent on init. Sets the m_CharacterAffiliationComponent as well as making sure that the items are added to the outfit values of the faction affiliation comp
+	//! \param[in] characterAffiliationComponent Character Faction Affiliation component to set as a reference 
+	void InitCharacterPerceivedOutfitData(notnull SCR_CharacterFactionAffiliationComponent characterAffiliationComponent)
+	{
+		m_CharacterAffiliationComponent = characterAffiliationComponent;
+		
+		array<IEntity> allItems = {};
+		GetAll(allItems);
+		
+		SCR_ItemOutfitFactionComponent outfitComponent;
+		
+		//~ Update the perceived faction. Does not replicate as that is called when the init is done by the SCR_CharacterFactionAffiliationComponent
+		foreach (IEntity item : allItems)
+		{
+			//~ Only check items that are in slots
+			if (!FindItemSlot(item))
+				continue;
+			
+			UpdatePerceivedFaction(true, item, false);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//~ Called on init and when an item is added or removed from the character
+	protected void UpdatePerceivedFaction(bool addedToSlot, IEntity item, bool updateFaction = true)
+	{
+		if (!m_CharacterAffiliationComponent || !m_CharacterAffiliationComponent.HasPerceivedFaction())
+			return;
+		
+		//~ Send update to character affiliation comp that a piece of clothing was added/removed even if it has no faction
+		SCR_ItemOutfitFactionComponent outfitComponent = SCR_ItemOutfitFactionComponent.Cast(item.FindComponent(SCR_ItemOutfitFactionComponent));
+		if (!outfitComponent)
+		{
+			m_CharacterAffiliationComponent.OnNoFactionSlottedItemChanged(addedToSlot, item, updateFaction);
+			return;
+		}
+			
+		if (addedToSlot)
+			outfitComponent.OnAddedToSlot(m_CharacterAffiliationComponent, updateFaction);
+		else
+			outfitComponent.OnRemovedFromSlot(m_CharacterAffiliationComponent, updateFaction);
+	}	
 	
 	//------------------------------------------------------------------------ COMMON METHODS ----------------------------------------------------------------------
 	

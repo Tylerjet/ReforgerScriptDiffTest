@@ -55,7 +55,6 @@ class SCR_VehicleDust : ScriptComponent
 	float	m_fDustTopSpeed;
 	VehicleWheeledSimulation 	m_VehicleWheeledSimulation;
 	VehicleBodyEffectBase		m_Effect;
-	Physics 					m_Physics;
 	SignalsManagerComponent 	m_SignalManagerComp;
 	ref map<int, ResourceName> surface_particles = new map<int, ResourceName>();
 	int 						m_iCurrentSurfaceID;
@@ -96,7 +95,6 @@ class SCR_VehicleDust : ScriptComponent
 		if (generic_entity)
 		{
 			m_SignalManagerComp = SignalsManagerComponent.Cast(generic_entity.FindComponent(SignalsManagerComponent));
-			m_Physics = owner.GetPhysics();
 			m_VehicleWheeledSimulation = VehicleWheeledSimulation.Cast(generic_entity.FindComponent(VehicleWheeledSimulation));
 		}
 		
@@ -170,9 +168,11 @@ class SCR_VehicleDust : ScriptComponent
 	// Called when the effects needs to be updated. This happens per frame if the camera is close to it, but much slower if further away fr optimization purposes.
 	void UpdateEffect(IEntity owner)
 	{
-		if (owner  &&  m_Physics  &&  m_SignalManagerComp) // Makre sure that data exists
+		Physics physics = owner.GetPhysics();
+		
+		if (physics  &&  m_SignalManagerComp) // Makre sure that data exists
 		{
-			float speed = m_Physics.GetVelocity().Length();
+			float speed = physics.GetVelocity().Length();
 			
 			// Activate particle effect only within the desired speed
 			if (speed >= m_fDustStartSpeed  &&  m_fDustStartSpeed > 0  &&  m_fDustTopSpeed >= m_fDustStartSpeed)
@@ -209,7 +209,7 @@ class SCR_VehicleDust : ScriptComponent
 					
 					if (surface_type.Length() > 0)
 					{
-						ParticleEffectEntitySpawnParams spawnParams();
+						ParticleEffectEntitySpawnParams spawnParams = new ParticleEffectEntitySpawnParams();
 						spawnParams.Type = VehicleBodyEffectBase;
 						Math3D.AnglesToMatrix(m_vLocalOrientation, spawnParams.Transform);
 						spawnParams.Transform[3] = m_vLocalOffset;

@@ -81,4 +81,31 @@ class SCR_BaseDamageHealSupportStationAction : SCR_BaseUseSupportStationAction
 		
 		return string.Empty;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! return the Health code color for nearby interactions
+	SCR_ENearbyInteractionContextColors GetHealthStatus()
+	{
+		int healthState = m_DamageIntensityHolder.GetValidIntensityType(m_aHitZonesToHeal);
+		
+		if (healthState == SCR_EDamageIntensityType.NO_DAMAGE)
+			return SCR_ENearbyInteractionContextColors.DEFAULT;
+		
+		if (IsInProgress())
+			return SCR_ENearbyInteractionContextColors.HEALING;
+		
+		if (IsStabilizedReason())
+			return SCR_ENearbyInteractionContextColors.STABLE;
+		
+		if (healthState < SCR_EDamageIntensityType.HIGH)
+			return SCR_ENearbyInteractionContextColors.MEDIUM;
+		
+		return SCR_ENearbyInteractionContextColors.SEVERE;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsStabilizedReason()
+	{
+		return m_eCannotPerformReason == ESupportStationReasonInvalid.HEAL_MAX_HEALABLE_HEALTH_REACHED_FIELD;
+	}
 }

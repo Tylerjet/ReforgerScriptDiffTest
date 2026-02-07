@@ -6,9 +6,13 @@ class SCR_CustomTriggerConditionsSpecificPrefabCount : SCR_CustomTriggerConditio
 
 	//------------------------------------------------------------------------------------------------
 	//! Initializes scenario trigger entity with prefab filters based on prefab filter count data.
-	//! \param[in] trigger Trigger entity representing prefab filter conditions for scenario event activation.
-	override void Init(SCR_ScenarioFrameworkTriggerEntity trigger)
+	//! \param[in] entity Trigger representing prefab filter conditions for scenario event activation.
+	override void Prepare(IEntity entity)
 	{
+		SCR_ScenarioFrameworkTriggerEntity trigger = SCR_ScenarioFrameworkTriggerEntity.Cast(entity);
+		if (!trigger)
+			return;
+		
 		Resource resource;
 		BaseContainer baseContainer;
 		PrefabFilter prefabFilter;
@@ -30,8 +34,13 @@ class SCR_CustomTriggerConditionsSpecificPrefabCount : SCR_CustomTriggerConditio
 
 	//------------------------------------------------------------------------------------------------
 	//! Checks how many times the specific prefab (Using the BaseContainer) is present inside the trigger and sets trigger conditions accordingly
-	override void CustomTriggerConditions(SCR_ScenarioFrameworkTriggerEntity trigger)
+	//! \param[in] entity
+	override bool Init(IEntity entity)
 	{
+		SCR_ScenarioFrameworkTriggerEntity trigger = SCR_ScenarioFrameworkTriggerEntity.Cast(entity);
+		if (!trigger)
+			return true;
+		
 		bool triggerStatus;
 		foreach (SCR_ScenarioFrameworkPrefabFilterCount prefabFilter : m_aPrefabFilter)
 		{
@@ -46,6 +55,6 @@ class SCR_CustomTriggerConditionsSpecificPrefabCount : SCR_CustomTriggerConditio
 			}
 		}
 
-		trigger.SetTriggerConditionsStatus(triggerStatus);
+		return triggerStatus;
 	}
 }

@@ -18,7 +18,7 @@ class SCR_BackendCallbackRoomMods : SCR_BackendCallback
 };
 
 //-----------------------------------------------------------------------------------------------
-void ScriptInvoker_RoomModsDependencies(Room room, array<ref SCR_WorkshopItem> dependencies);
+void ScriptInvoker_RoomModsDependencies(array<ref SCR_WorkshopItem> dependencies);
 typedef func ScriptInvoker_RoomModsDependencies;
 
 //------------------------------------------------------------------------------------------------
@@ -43,39 +43,36 @@ class SCR_RoomModsManager
 	
 	// Callbacks 
 	protected ref SCR_BackendCallbackRoomMods m_ModsCallback;
-	protected ref SCR_OnlineServiceBackendCallbacks m_ScenarioCallback = new SCR_OnlineServiceBackendCallbacks();
-	
-	protected ref array<ref SCR_OnlineServiceBackendCallbacks> m_aModsCallbacks = {};
 
 	
 	//------------------------------------------------------------------------------------------------
 	// Invokers
 	//------------------------------------------------------------------------------------------------
 	
-	protected ref ScriptInvoker m_OnGetAllDependencies = new ScriptInvoker();
+	protected ref ScriptInvokerRoom m_OnGetAllDependencies = new ScriptInvokerRoom();
 	
-	protected ref ScriptInvoker m_OnGetScenario = new ScriptInvoker();
+	protected ref ScriptInvokerRoom m_OnGetScenario = new ScriptInvokerRoom();
 	
-	protected ref ScriptInvokerRoom m_OnModsFail;
+	protected ref ScriptInvokerVoid m_OnModsFail;
 	protected ref ScriptInvokerBase<ScriptInvoker_RoomModsDependencies> m_OnDependenciesLoadingPrevented;
 	
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetOnGetAllDependencies()
+	ScriptInvokerRoom GetOnGetAllDependencies()
 	{
 		return m_OnGetAllDependencies;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetOnGetScenario()
+	ScriptInvokerRoom GetOnGetScenario()
 	{
 		return m_OnGetScenario;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	ScriptInvokerRoom GetOnModsFail()
+	ScriptInvokerVoid GetOnModsFail()
 	{
 		if (!m_OnModsFail)
-			m_OnModsFail = new ScriptInvokerRoom();
+			m_OnModsFail = new ScriptInvokerVoid();
 		
 		return m_OnModsFail;
 	}
@@ -105,8 +102,6 @@ class SCR_RoomModsManager
 		m_aItemsUpdated.Clear();
 		m_aItemsToUpdate.Clear();
 		m_ModsCallback = null;
-		m_ScenarioCallback = new SCR_OnlineServiceBackendCallbacks();
-		m_aModsCallbacks.Clear();
 		m_DownloadSequence = null;
 		m_ScenarioDependency = null;
 		m_Room = null;
@@ -154,7 +149,7 @@ class SCR_RoomModsManager
 			return;
 		
 		if (m_OnModsFail)
-			m_OnModsFail.Invoke(m_Room);
+			m_OnModsFail.Invoke();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -185,7 +180,7 @@ class SCR_RoomModsManager
 		// Pass list of updated & outdated mods
 		if (m_OnGetAllDependencies)
 		{
-			m_OnGetAllDependencies.Invoke();
+			m_OnGetAllDependencies.Invoke(m_Room);
 			
 			m_bModsMatching = (m_aItemsToUpdate.IsEmpty());
 		}
@@ -197,8 +192,6 @@ class SCR_RoomModsManager
 	//! Call this when sceario is loaded 
 	protected void LoadScenario()
 	{
-		m_ScenarioCallback.m_OnItem.Clear();
-		
 		if (!m_Room)
 			return;
 					
@@ -247,7 +240,6 @@ class SCR_RoomModsManager
 	protected void OnScenarioModLoaded()
 	{
 		// Remove callback action
-		m_ScenarioCallback.m_OnItem.Remove(OnScenarioModLoaded);		
 		LoadScenario();
 	}
 	
@@ -255,8 +247,7 @@ class SCR_RoomModsManager
 	//! Call this when scenario has got complete info 
 	protected void OnScenarioDetails()
 	{
-		m_ScenarioCallback.m_OnScenarios.Remove(OnScenarioDetails);
-		m_OnGetScenario.Invoke(m_ScenarioDependency);
+		m_OnGetScenario.Invoke(m_Room);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -361,7 +352,7 @@ class SCR_RoomModsManager
 		m_aCollidingDependencies = dependencies;
 		
 		if (m_OnDependenciesLoadingPrevented)
-			m_OnDependenciesLoadingPrevented.Invoke(m_Room, dependencies);
+			m_OnDependenciesLoadingPrevented.Invoke(dependencies);
 		
 		// Cleanup
 		sequence.GetOnDependenciesLoadingPrevented().Remove(OnDependenciesLoadingPrevented);
@@ -404,7 +395,7 @@ class SCR_RoomModsManager
 		sequence.GetOnError().Remove(OnDownloadSequenceError);
 		sequence.GetOnRestrictedDependency().Remove(OnDownloadSequenceRestrictedAddons);
 		if (m_OnModsFail)
-			m_OnModsFail.Invoke(m_Room);
+			m_OnModsFail.Invoke();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -491,12 +482,6 @@ class SCR_RoomModsManager
 		
 		return items; 
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	void SetRoom(Room room) 
-	{ 
-		m_Room = room; 
-	} 
 	
 	//------------------------------------------------------------------------------------------------
 	bool GetModsMatching() 

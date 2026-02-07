@@ -13,7 +13,7 @@ class ScriptCamera: GenericEntity
 	[Attribute("4000", UIWidgets.EditBox, "Far plane clip")]
 	float FarPlane;
 	
-	[Attribute("1", UIWidgets.ComboBox, "Projection type", "", ParamEnumArray.FromEnum(CameraType) )]
+	[Attribute("1", UIWidgets.ComboBox, "Projection type", "", enumType: CameraType )]
 	int Type;
 	[Attribute("5", UIWidgets.Slider, "Camera speed", "0 20 1")]
 	float Speed;

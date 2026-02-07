@@ -137,7 +137,7 @@ class SCR_AISendMessageGeneric: SCR_AISendMessageBase
 		return true;
 	}
 	
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
 	{
 		return false;
 	}

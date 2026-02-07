@@ -8,7 +8,7 @@ class SCR_AIGroupFactionEditorAttribute : SCR_BaseFactionEditableAttribute
 	protected override bool ValidEntity(GenericEntity entity)
 	{
 		SCR_AIGroup aIGroup = SCR_AIGroup.Cast(entity);
-		if (!aIGroup || aIGroup.GetPlayerCount() > 0) 
+		if (!aIGroup || aIGroup.GetPlayerCount() > 0 || aIGroup.IsSlave()) 
 			return false;
 		
 		return true;

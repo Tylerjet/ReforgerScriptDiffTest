@@ -68,9 +68,9 @@ class SCR_SliderBloodAttributeComponent : SCR_SliderEditorAttributeUIComponent
 		UpdateBloodSlider();
 	}
 	
-	override bool OnChange(Widget w, int x, int y, bool finished)
+	override bool OnChangeInternal(Widget w, int x, int y, bool finished)
 	{		
-		super.OnChange(w, x, y, finished);
+		super.OnChangeInternal(w, x, y, finished);
 		UpdateBloodSlider();
 		return false;
 	}

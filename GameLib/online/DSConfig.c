@@ -9,21 +9,21 @@ class DSGameConfig: JsonApiStruct
 	bool visible;
 
 	bool crossPlatform;
-	
+
 	ref DSGameProperties gameProperties;
 	ref array<ref DSMod> mods;
-	
+
 	void DSGameConfig()
 	{
 		RegV("name");
 		RegV("password");
-		RegV("passwordAdmin");	
+		RegV("passwordAdmin");
 		RegV("maxPlayers");
 		RegV("scenarioId");
 		RegV("gameProperties");
 		RegV("mods");
 	}
-	
+
 	override void OnPack()
 	{
 		UnregV("visible");
@@ -32,7 +32,7 @@ class DSGameConfig: JsonApiStruct
 		UnregV("crossPlatform");
 		StoreBoolean("crossPlatform", crossPlatform);
 	}
-	
+
 	override void OnExpand()
 	{
 		RegV("visible");
@@ -43,13 +43,13 @@ class DSGameConfig: JsonApiStruct
 class DSGameProperties: JsonApiStruct
 {
 	bool battlEye;
-		
+
 	override void OnPack()
 	{
 		UnregV("battlEye");
 		StoreBoolean("battlEye", battlEye);
 	}
-	
+
 	override void OnExpand()
 	{
 		RegV("battlEye");
@@ -81,11 +81,11 @@ class DSConfig: JsonApiStruct
 	ref DSGameConfig game;
 
 	void DSConfig()
-	{		
+	{
 		RegV("bindAddress");
 		RegV("bindPort");
 		RegV("publicAddress");
-		RegV("publicPort");		
+		RegV("publicPort");
 		RegV("game");
 	}
 }

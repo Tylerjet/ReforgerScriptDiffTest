@@ -1,6 +1,13 @@
 //! TODO: When systems can be replicated, just move overything from SCR_NotificationsComponent
 class NotificationsSystem: GameSystem
 {
+	override static void InitInfo(WorldSystemInfo outInfo)
+	{
+		outInfo
+			.SetAbstract(false)
+			.AddPoint(ESystemPoint.Frame);
+	}
+
 	protected bool m_bUpdating = false;
 	protected ref array<SCR_NotificationsComponent> m_Components = {};
 	protected ref array<SCR_NotificationsComponent> m_DeletedComponents = {};

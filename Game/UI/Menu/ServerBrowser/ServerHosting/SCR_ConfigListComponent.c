@@ -34,6 +34,15 @@ class SCR_ConfigListComponent : ScriptedWidgetComponent
 	}
 	
 	//-------------------------------------------------------------------------------------------
+	override void HandlerDeattached(Widget w)
+	{
+		foreach (SCR_WidgetListEntry entry : m_aInitialEntryList)
+		{
+			entry.RemoveWidget();
+		}
+	}
+	
+	//-------------------------------------------------------------------------------------------
 	// API
 	//-------------------------------------------------------------------------------------------
 	

@@ -7,6 +7,9 @@ class SCR_BaseToggleToolbarAction : SCR_EditorToolbarAction
 	
 	private ref ScriptInvoker m_OnToggleChanged = new ScriptInvoker();
 	
+	private int currentlyToggled = -1;
+	private bool old_highlight = false;
+	
 	/*!
 	Get ScriptInvoker called when the action is toggled by some external event.
 	*/
@@ -21,6 +24,11 @@ class SCR_BaseToggleToolbarAction : SCR_EditorToolbarAction
 	*/
 	protected void Toggle(int value, bool highlight = false)
 	{
+		if(value == currentlyToggled && highlight == old_highlight)
+			return;
+		
+		currentlyToggled = value;
+		old_highlight = highlight;
 		m_OnToggleChanged.Invoke(value, highlight);
 	}
 	

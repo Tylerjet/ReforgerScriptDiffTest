@@ -72,7 +72,7 @@ class SCR_InventoryButton : BasicButtonComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------	
-	override bool OnChange(Widget w, int x, int y, bool finished)
+	override bool OnChange(Widget w, bool finished)
 	{
 	}
 		

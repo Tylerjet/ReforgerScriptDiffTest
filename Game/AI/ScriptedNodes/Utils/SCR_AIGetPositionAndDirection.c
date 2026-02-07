@@ -1,6 +1,6 @@
 class SCR_AIGetPositionAndRotation: AITaskScripted
 {
-    override bool VisibleInPalette() {return true;}
+    static override bool VisibleInPalette() {return true;}
 	
 	protected static ref TStringArray s_aVarsIn = {
 		"Entity"

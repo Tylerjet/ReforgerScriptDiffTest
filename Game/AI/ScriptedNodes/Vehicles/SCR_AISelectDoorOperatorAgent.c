@@ -105,10 +105,10 @@ class SCR_AISelectDoorOperatorAgent : AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 	
 	//------------------------------------------------------------------------
-	override string GetOnHoverDescription() { return "Selects an absolutely best possible group member to open a gate when driving a vehicle";};
+	static override string GetOnHoverDescription() { return "Selects an absolutely best possible group member to open a gate when driving a vehicle";};
 	
 	//------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsOut = {PORT_DOOR_USER_AGENT, PORT_DOOR_USER_ENTITY, PORT_USE_TELEKINESIS };

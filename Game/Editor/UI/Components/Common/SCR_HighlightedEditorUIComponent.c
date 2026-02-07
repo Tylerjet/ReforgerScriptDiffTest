@@ -89,6 +89,8 @@ class SCR_HighlightedEditorUIComponent : SCR_BaseEditableEntityUIComponent
 	
 	//-------------------------- Init --------------------------\\
 
+	//---- REFACTOR NOTE START: Hardcoded values for size
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(SCR_EditableEntityComponent entity, SCR_UIInfo info, SCR_EditableEntityBaseSlotUIComponent slot)
 	{
@@ -127,6 +129,8 @@ class SCR_HighlightedEditorUIComponent : SCR_BaseEditableEntityUIComponent
 				selectedFilter.GetOnChanged().Insert(OnSelectedChange);
 		}
 	}
+	
+	//---- REFACTOR NOTE END ----
 	
 	//------------------------------------------------------------------------------------------------
 	override bool OnClick(Widget w, int x, int y, int button)

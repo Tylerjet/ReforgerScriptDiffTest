@@ -33,6 +33,13 @@ class SCR_ButtonBoxAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 	protected bool m_bSelectionButtonIsSelected = true;
 	
 	
+	//---- REFACTOR NOTE START: Init is bloated 
+	/*
+	Searching for widgets with names hardcoded in method 
+	Working with various button types (m_ToolboxType) could be simpler
+	Use of DelayedInit() to setup empty buttons  
+	*/
+	
 	override void Init(Widget w, SCR_BaseEditorAttribute attribute)
 	{
 		Widget toolBox = w.FindAnyWidget(m_sUiComponentName);
@@ -230,6 +237,8 @@ class SCR_ButtonBoxAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 		}
 	}
 	
+	//---- REFACTOR NOTE END ----
+	
 	//Sets a default state for the UI and var value if conflicting attribute
 	override void SetVariableToDefaultValue(SCR_BaseEditorAttributeVar var)
 	{		
@@ -345,14 +354,14 @@ class SCR_ButtonBoxAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 		if (!state)
 			return;
 		
-		OnChange(null, index, state, false);
+		OnChangeInternal(null, index, state, false);
 		m_ToolBoxComponent.SetItemSelected(index, false);
 	}
 	
 	protected void OnSelectableButton(SCR_ToolboxComponent toolbox, int index)
 	{	
 		m_bSelectionButtonIsSelected = true;
-		OnChange(null, index, 0, false);
+		OnChangeInternal(null, index, 0, false);
 	}
 
 	protected void OnMultiSelectButton(SCR_ToolboxComponent toolbox, int index, bool state)
@@ -377,8 +386,11 @@ class SCR_ButtonBoxAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
         }
 	}
 	
+	//---- REFACTOR NOTE START: Hardcoded overflow value
+	// Call later for button randomizer
+	
 	//protected ref SCR_BaseEditorAttributeEntryToolbox m_ToolboxData;
-	override bool OnChange(Widget w, int x, int y, bool finished)
+	override bool OnChangeInternal(Widget w, int x, int y, bool finished)
 	{			
 		if (m_bHasRandomizeButton && x == m_ButtonBoxData.GetValueCount())
 		{
@@ -399,13 +411,12 @@ class SCR_ButtonBoxAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 		SCR_BaseEditorAttributeVar var = attribute.GetVariable(true);
 	
 		var.SetInt(x);
-		super.OnChange(w, x, y, finished);
+		super.OnChangeInternal(w, x, y, finished);
 		
 		GetGame().GetCallqueue().CallLater(UpdateButtonBorder, 1, false, x);
 		
 		return false;
 	}
-	
 	
 	protected void DelayedButtonRandomizer(int currentIndex)
 	{
@@ -420,6 +431,8 @@ class SCR_ButtonBoxAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 		m_ToolBoxComponent.SetCurrentItem(index, false, true);
 		UpdateButtonBorder(index);
 	}
+	
+	//---- REFACTOR NOTE END ----
 	
 	/*
 	//Set focus of current selected element

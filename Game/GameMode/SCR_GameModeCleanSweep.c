@@ -1,97 +1,95 @@
-//------------------------------------------------------------------------------------------------
-class SCR_GameModeCleanSweepClass: SCR_BaseGameModeClass
+class SCR_GameModeCleanSweepClass : SCR_BaseGameModeClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_GameModeCleanSweep : SCR_BaseGameMode
 {
-	const int INVALID_AREA_INDEX = -1;
-	const string ENEMY_PRESENCE_ELIMINATED_TEXT = "Enemy presence eliminated!\nNew area is being selected.\nPlease wait.";
-	
 	[Attribute("6")]
-	int m_iMinAiGroups;
-	
-	[Attribute("10")]
-	int m_iMaxAiGroups;
-	
-	[Attribute("1.5")]
-	float m_fAiGroupsPerPlayer;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "What group type should spawn")]
-	ResourceName m_GroupType;
-	
-	[Attribute(defvalue: "{EBD2A7DA0A3C6E17}UI/layouts/Menus/CleanSweep/CleanSweepAreaSelection.layout", desc: "Layout for area selection")]
-	ResourceName m_AreaSelectionLayout;
-	
-	[Attribute("0")]
-	bool m_bSwapSides;
+	protected int m_iMinAiGroups;
 
-	Widget m_wRoot;
-	Widget m_wAreaSelectionWidget;
-	TextWidget m_wText;
-	
-	ref array<IEntity> m_aEnemySoldiers = new array<IEntity>;
-	ref array<SCR_AIGroup> m_aGroups;
-	ref array<SCR_SpawnPoint> m_aEnemySpawnPoints;
-	ref array<SCR_SpawnPoint> m_aPlayerSpawnPoints;
-	AIWaypoint m_AttackWP;
-	
-	int m_iGameMasterID = -1;
-	
+	[Attribute("10")]
+	protected int m_iMaxAiGroups;
+
+	[Attribute("1.5")]
+	protected float m_fAiGroupsPerPlayer;
+
+	[Attribute("", UIWidgets.ResourceNamePicker, "What group type should spawn")]
+	protected ResourceName m_GroupType;
+
+	[Attribute(defvalue: "{EBD2A7DA0A3C6E17}UI/layouts/Menus/CleanSweep/CleanSweepAreaSelection.layout", desc: "Layout for area selection")]
+	protected ResourceName m_AreaSelectionLayout;
+
+	[Attribute("0")]
+	protected bool m_bSwapSides;
+
+	protected Widget m_wRoot;
+	protected Widget m_wAreaSelectionWidget;
+	protected TextWidget m_wText;
+
+	protected ref array<IEntity> m_aEnemySoldiers = {};
+	protected ref array<SCR_AIGroup> m_aGroups;
+	protected ref array<SCR_SpawnPoint> m_aEnemySpawnPoints;
+	protected ref array<SCR_SpawnPoint> m_aPlayerSpawnPoints;
+	protected AIWaypoint m_AttackWP;
+
+	protected int m_iGameMasterID = -1;
+
 	[RplProp(onRplName: "OnAreaChanged")]
-	int areaID = INVALID_AREA_INDEX;
-	
+	protected int m_iAreaID = INVALID_AREA_INDEX;
+
+	protected const int INVALID_AREA_INDEX = -1;
+	protected const string ENEMY_PRESENCE_ELIMINATED_TEXT = "Enemy presence eliminated!\nNew area is being selected.\nPlease wait.";
+
 	//------------------------------------------------------------------------------------------------
-	void OnAreaChanged()
+	protected void OnAreaChanged()
 	{
 		if (m_wAreaSelectionWidget)
 			m_wAreaSelectionWidget.RemoveFromHierarchy();
-		
+
 		if (!m_aEnemySpawnPoints)
-			m_aEnemySpawnPoints = new array<SCR_SpawnPoint>();
+			m_aEnemySpawnPoints = {};
 		else
 			m_aEnemySpawnPoints.Clear();
-		
+
 		if (!m_aPlayerSpawnPoints)
-			m_aPlayerSpawnPoints = new array<SCR_SpawnPoint>();
+			m_aPlayerSpawnPoints = {};
 		else
 			m_aPlayerSpawnPoints.Clear();
-		
+
 		if (m_RplComponent && m_RplComponent.IsProxy())
 			return;
-		
+
 		// Spawn setup:
 		// Select random spawn point
-		
-		ref array<SCR_CleanSweepArea> activeAreas = new array<SCR_CleanSweepArea>();
-		
+
+		array<SCR_CleanSweepArea> activeAreas = {};
 		int activeAreasCount = GetActiveAreas(activeAreas);
-		
 		if (activeAreasCount < 1)
 		{
-			Print("CleanSweeup has not enough active playable areas. GameMode will not function.", LogLevel.ERROR);
+			Print("CleanSweep has not enough active playable areas. GameMode will not function.", LogLevel.ERROR);
 			return;
 		}
-		
-		SCR_CleanSweepArea area = activeAreas[areaID];
+
+		if (!activeAreas.IsIndexValid(m_iAreaID))
+			return;
+
+		SCR_CleanSweepArea area = activeAreas[m_iAreaID];
 		if (!area)
 			return;
-		
+
 		// Move waypoint to the area
 		AIWaypoint wp = AIWaypoint.Cast(GetWorld().FindEntityByName("WP1"));
 		if (wp)
 			wp.SetOrigin(area.GetOrigin());
-		
+
 		vector centerPos = area.GetOrigin();
 		float rangeSq = area.m_Range * area.m_Range;
-		array<IEntity> entities = new array<IEntity>();
+		array<IEntity> entities = {};
 		array<SCR_SpawnPoint> spawnPoints = SCR_SpawnPoint.GetSpawnPoints();
 		GetWorld().GetActiveEntities(entities);
-		
-		for (int i = spawnPoints.Count() - 1; i >= 0; i--)
+
+		foreach (SCR_SpawnPoint spawnPoint : spawnPoints)
 		{
-			SCR_SpawnPoint spawnPoint = spawnPoints[i];
 			if (vector.DistanceSqXZ(centerPos, spawnPoint.GetOrigin()) < rangeSq)
 			{
 				FactionKey faction = spawnPoint.GetFactionKey();
@@ -111,70 +109,75 @@ class SCR_GameModeCleanSweep : SCR_BaseGameMode
 				}
 			}
 		}
-		
-		for (int i = entities.Count() - 1; i >= 0; i--)
+
+		foreach (IEntity entity : entities)
 		{
 			// Vehicle spawn component ??
-			SCR_VehicleSpawner vehicleSpawner = SCR_VehicleSpawner.Cast(entities[i].FindComponent(SCR_VehicleSpawner));
+			SCR_VehicleSpawner vehicleSpawner = SCR_VehicleSpawner.Cast(entity.FindComponent(SCR_VehicleSpawner));
 			if (!vehicleSpawner)
 				continue;
-			
-			if (vector.DistanceSqXZ(centerPos, entities[i].GetOrigin()) < rangeSq)
+
+			if (vector.DistanceSqXZ(centerPos, entity.GetOrigin()) < rangeSq)
 				vehicleSpawner.PerformSpawn();
 		}
-		
+
 		SpawnEnemies();
 		m_bAutoPlayerRespawn = true;
-		
+
 		RespawnPlayers();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	void RespawnPlayers()
+	protected void RespawnPlayers()
 	{
-		array<int> players = new array<int>();
+		array<int> players = {};
 		int count = GetGame().GetPlayerManager().GetPlayers(players);
-		for (int i = count - 1; i >= 0; i--)
+		PlayerController playerController;
+		SCR_CleanSweepNetworkComponent networkComponent;
+		foreach (int player : players)
 		{
-			PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(players[i]);
-			
+			playerController = GetGame().GetPlayerManager().GetPlayerController(player);
 			if (!playerController)
 				continue;
-			
-			SCR_CleanSweepNetworkComponent networkComponent = SCR_CleanSweepNetworkComponent.Cast(playerController.FindComponent(SCR_CleanSweepNetworkComponent));
+
+			networkComponent = SCR_CleanSweepNetworkComponent.Cast(playerController.FindComponent(SCR_CleanSweepNetworkComponent));
 			if (!networkComponent)
 				continue;
-			
+
 			networkComponent.CommitSuicide();
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] swapSides
 	void SetSwapSides(bool swapSides)
 	{
 		m_bSwapSides = swapSides;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	void SetArea(int targetAreaID /*= areaID this is error*/)
+	//! \param[in] targetAreaID
+	void SetArea(int targetAreaID)
 	{
-		areaID = targetAreaID;
+		m_iAreaID = targetAreaID; // check if index is valid?
 		OnAreaChanged();
 		Replication.BumpMe();
-		
+
 		if (m_RplComponent && !m_RplComponent.IsProxy())
 			GetGame().GetCallqueue().CallLater(CheckActiveAreaState, 1, true);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	void CheckActiveAreaState()
+	protected void CheckActiveAreaState()
 	{
 		ChimeraCharacter character;
 		DamageManagerComponent damageManager;
 		for (int i = m_aEnemySoldiers.Count() -1; i >= 0; i--)
 		{
 			if (!m_aEnemySoldiers[i])
+			{
 				m_aEnemySoldiers.Remove(i);
+			}
 			else
 			{
 				character = ChimeraCharacter.Cast(m_aEnemySoldiers[i]);
@@ -183,61 +186,58 @@ class SCR_GameModeCleanSweep : SCR_BaseGameMode
 					m_aEnemySoldiers.Remove(i);
 					continue;
 				}
-				
+
 				damageManager = character.GetDamageManager();
 				if (!damageManager)
 					return;
-				
+
 				if (damageManager.GetState() != EDamageState.DESTROYED)
 					return;
 			}
 		}
-		
+
 		if (m_RplComponent && !m_RplComponent.IsProxy())
 		{
 			ReplicatedShowHint(0, 5);
-			
+
 			if (RplSession.Mode() != RplMode.Dedicated)
 				ShowHint(0, 5);
-			
-			areaID = INVALID_AREA_INDEX;
+
+			m_iAreaID = INVALID_AREA_INDEX;
 			Replication.BumpMe();
 			GetGame().GetCallqueue().Remove(CheckActiveAreaState);
 			ShowAreaSelectionToGameMaster();
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	override void EOnFrame(IEntity owner, float timeSlice)
+	protected override void EOnFrame(IEntity owner, float timeSlice)
 	{
 		super.EOnFrame(owner, timeSlice);
-		
-		if (RplSession.Mode() != RplMode.Dedicated && areaID == INVALID_AREA_INDEX && m_wAreaSelectionWidget)
-		{
-			InputManager inputManager = GetGame().GetInputManager();
-			inputManager.ActivateContext("MenuContext");
-		}
+
+		if (RplSession.Mode() != RplMode.Dedicated && m_iAreaID == INVALID_AREA_INDEX && m_wAreaSelectionWidget)
+			GetGame().GetInputManager().ActivateContext("MenuContext");
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	void ReplicatedShowHint(int hintID, float showTime)
+	protected void ReplicatedShowHint(int hintID, float showTime)
 	{
 		Rpc(RPC_ShowHint, hintID, showTime);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void RPC_ShowHint(int hintID, float time)
 	{
 		ShowHint(hintID, time);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	void ShowHint(int hintID, float showTime)
+	protected void ShowHint(int hintID, float showTime)
 	{
 		if (!m_wText || !m_wRoot)
 			return;
-		
+
 		switch (hintID)
 		{
 			case 0:
@@ -246,275 +246,283 @@ class SCR_GameModeCleanSweep : SCR_BaseGameMode
 				break;
 			}
 		}
-		
+
 		AnimateWidget.Opacity(m_wRoot, 1, 1);
-		
-		ScriptCallQueue queue = GetGame().GetCallqueue(); 
-		queue.CallLater(this.HideHint, showTime * 1000);
+
+		GetGame().GetCallqueue().CallLater(this.HideHint, showTime * 1000);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	void HideHint()
+	protected void HideHint()
 	{
 		if (m_wRoot)
 			AnimateWidget.Opacity(m_wRoot, 0, 1);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	void SpawnEnemies()
+	protected void SpawnEnemies()
 	{
 		if (m_RplComponent && m_RplComponent.IsProxy())
 			return;
-		
-		if (m_aEnemySpawnPoints.Count() == 0)
+
+		if (m_aEnemySpawnPoints.IsEmpty())
 			return;
-		
+
 		// Clean up groups
-		for (int i = m_aGroups.Count() - 1; i >= 0; i--)
+		foreach (SCR_AIGroup group : m_aGroups)
 		{
-			delete m_aGroups[i];
+			delete group;
 		}
+
 		m_aGroups.Clear();
 		m_aEnemySoldiers.Clear();
-		
-		int enemyGroupsCount = Math.ClampInt((Math.Ceil(GetGame().GetPlayerManager().GetPlayerCount() * m_fAiGroupsPerPlayer)), m_iMinAiGroups, m_iMaxAiGroups);
-		for (int i = 0; i < enemyGroupsCount; i++)
-		{
-			RandomGenerator generator = new RandomGenerator;
-			generator.SetSeed(Math.RandomInt(0,100));
 
-			SCR_SpawnPoint spawnPoint = m_aEnemySpawnPoints.GetRandomElement();
+		ArmaReforgerScripted game = GetGame();
+		int enemyGroupsCount = Math.ClampInt(Math.Ceil(game.GetPlayerManager().GetPlayerCount() * m_fAiGroupsPerPlayer), m_iMinAiGroups, m_iMaxAiGroups);
+
+		RandomGenerator generator = new RandomGenerator();
+		SCR_SpawnPoint spawnPoint;
+		EntitySpawnParams params;
+		Resource res;
+		SCR_AIGroup newGrp;
+		array<AIAgent> agents;
+		for (int i; i < enemyGroupsCount; i++)
+		{
+			generator.SetSeed(Math.RandomInt(0, 100));
+
+			spawnPoint = m_aEnemySpawnPoints.GetRandomElement();
 			if (!spawnPoint)
 				return;
-			
+
 			vector position = generator.GenerateRandomPointInRadius(0, 2, spawnPoint.GetOrigin());
 			position[1] = spawnPoint.GetOrigin()[1];
-			EntitySpawnParams params = EntitySpawnParams();
+			params = EntitySpawnParams();
 			params.TransformMode = ETransformMode.WORLD;
 			params.Transform[3] = position;
-			
-			Resource res = Resource.Load(m_GroupType);
-			SCR_AIGroup newGrp = SCR_AIGroup.Cast(GetGame().SpawnEntityPrefab(res, null, params));
+
+			res = Resource.Load(m_GroupType);
+			if (!res.IsValid())
+			{
+				Print("Invalid Prefab " + m_GroupType, LogLevel.WARNING);
+				continue;
+			}
+
+			newGrp = SCR_AIGroup.Cast(game.SpawnEntityPrefab(res, null, params));
 			if (!newGrp)
 				continue;
+
 			m_aGroups.Insert(newGrp);
-			
-			array<AIAgent> agents = new array<AIAgent>;
-			
+
+			agents = {};
 			newGrp.GetAgents(agents);
 			foreach (AIAgent agent : agents)
 			{
 				if (agent)
 					m_aEnemySoldiers.Insert(agent.GetControlledEntity());
 			}
-			
+
 			if (m_AttackWP)
 				newGrp.AddWaypoint(m_AttackWP);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Called after a player gets killed.
-		\param playerId PlayerId of victim player.
-		\param player Entity of victim player if any.
-		\param killerEntity Entity of killer instigator if any.
-		\param killer instigator of the kill
-	*/
+	//! Called after a player gets killed.
+	//! \param[in] playerId PlayerId of victim player
+	//! \param[in] player Entity of victim player if any
+	//! \param[in] killerEntity Entity of killer instigator if any
+	//! \param[in] killer instigator of the kill
 	protected override void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
 		super.OnPlayerKilled(playerId, playerEntity, killerEntity, killer);
 		m_aEnemySoldiers.RemoveItemOrdered(playerEntity);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	vector GetPlayersCenter()
+	protected vector GetPlayersCenter()
 	{
-		array<int> players = new array<int>();
+		array<int> players = {};
 		int count = GetGame().GetPlayerManager().GetPlayers(players);
-		
+		if (count < 1)
+			return vector.Zero;
+
 		vector center = vector.Zero;
-		int countedEntities = 0;
-		
-		for (int i = count - 1; i >= 0; i--)
+		int countedEntities;
+
+		IEntity controlledEntity;
+		foreach (int player : players)
 		{
-			IEntity controlledEntity = SCR_PossessingManagerComponent.GetPlayerMainEntity(players[i]);
+			controlledEntity = SCR_PossessingManagerComponent.GetPlayerMainEntity(player);
 			if (!controlledEntity)
 				continue;
-			
-			vector entityPosition = controlledEntity.GetOrigin();
-			center[0] = center[0] + entityPosition[0];
-			center[1] = center[1] + entityPosition[1];
-			center[2] = center[2] + entityPosition[2];
-			
+
+			center += controlledEntity.GetOrigin();
+
 			countedEntities++;
 		}
-		
+
 		if (countedEntities != 0)
-		{
-			center[0] = center[0] / countedEntities;
-			center[1] = center[1] / countedEntities;
-			center[2] = center[2] / countedEntities;
-		}
-		
+			center /= countedEntities;
+
 		return center;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	int GetActiveAreas(array<SCR_CleanSweepArea> activeAreas)
+	protected int GetActiveAreas(notnull array<SCR_CleanSweepArea> activeAreas)
 	{
-		int count = 0;
-		
-		array<SCR_CleanSweepArea> areas = SCR_CleanSweepArea.s_aInstances;
+		array<SCR_CleanSweepArea> areas = SCR_CleanSweepArea.GetInstances();
 		if (!areas)
-			return count;
-		
-		int areasCount = areas.Count();
-		for (int i = 0; i < areasCount; i++)
+			return 0;
+
+		int areasCount;
+		foreach (SCR_CleanSweepArea area : areas)
 		{
-			SCR_CleanSweepArea area = areas[i];
-			if (!area)
+			++areasCount;
+			if (!area || !area.m_Active)
 				continue;
-			
-			if (!area.m_Active)
-				continue;
-			
+
 			activeAreas.Insert(area);
-			count++;
 		}
-		
-		return count;
+
+		return areasCount;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	void InitializeServer()
+	protected void InitializeServer()
 	{
 		m_AttackWP = AIWaypoint.Cast(GetWorld().FindEntityByName("WP1"));
-		m_aGroups = new array<SCR_AIGroup>;
-		m_aPlayerSpawnPoints = new array<SCR_SpawnPoint>;
-		m_aEnemySpawnPoints = new array<SCR_SpawnPoint>;
+		m_aGroups = {};
+		m_aPlayerSpawnPoints = {};
+		m_aEnemySpawnPoints = {};
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	PlayerController GetGameMaster()
+	protected PlayerController GetGameMaster()
 	{
 		PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(m_iGameMasterID);
 		if (!playerController)
 			return PickNewGameMaster();
-		
+
 		return playerController;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	PlayerController PickNewGameMaster(int exclude = -1)
+	protected PlayerController PickNewGameMaster(int exclude = -1)
 	{
 		PlayerController playerController;
-		
+
 		array<int> players = {};
-		int count = GetGame().GetPlayerManager().GetPlayers(players);
-		for (int i = 0; i < count; i++)
+		PlayerManager playerManager = GetGame().GetPlayerManager();
+		playerManager.GetPlayers(players);
+		foreach (int player : players)
 		{
-			if (players[i] == exclude)
+			if (player == exclude)
 				continue;
-			
-			playerController = GetGame().GetPlayerManager().GetPlayerController(players[i]);
+
+			playerController = playerManager.GetPlayerController(player);
 			if (playerController)
 			{
-				m_iGameMasterID = players[i];
+				m_iGameMasterID = player;
 				break;
 			}
 		}
-		
+
 		return playerController;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	void ShowAreaSelectionToGameMaster()
+	protected void ShowAreaSelectionToGameMaster()
 	{
 		PlayerController playerController = GetGameMaster();
 		if (!playerController)
 				return;
-		
+
 		SCR_CleanSweepNetworkComponent networkComponent = SCR_CleanSweepNetworkComponent.Cast(playerController.FindComponent(SCR_CleanSweepNetworkComponent));
 		if (!networkComponent)
 			return;
-		
+
 		networkComponent.ShowAreaSelectionScreen();
-		return;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
+	//! Used by SCR_CleanSweepNetworkComponent
 	void ShowAreaSelectionUI()
 	{
-		if (areaID != INVALID_AREA_INDEX || m_AreaSelectionLayout.GetPath() == string.Empty)
+		if (m_iAreaID != INVALID_AREA_INDEX || m_AreaSelectionLayout.GetPath() == string.Empty)
 			return;
-		
+
 		if (!m_wAreaSelectionWidget)
 			m_wAreaSelectionWidget = GetGame().GetWorkspace().CreateWidgets(m_AreaSelectionLayout);
-		
+
 		XComboBoxWidget selectionBox = XComboBoxWidget.Cast(m_wAreaSelectionWidget.FindAnyWidget("SelectionBox"));
 		if (!selectionBox)
 			return;
-		
+
 		array<SCR_CleanSweepArea> activeAreas = {};
-		
-		int count = GetActiveAreas(activeAreas);
-		
-		for (int i = 0; i < count; i++)
+		GetActiveAreas(activeAreas);
+
+		foreach (SCR_CleanSweepArea activeArea : activeAreas)
 		{
-			selectionBox.AddItem(activeAreas[i].GetName());
+			selectionBox.AddItem(activeArea.GetName());
 		}
-		
+
 		selectionBox.SetCurrentItem(0);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	override void OnPlayerRegistered(int playerId)
+	protected override void OnPlayerRegistered(int playerId)
 	{
 		super.OnPlayerRegistered(playerId);
 		Replication.BumpMe();
-		if (areaID != INVALID_AREA_INDEX)
+		if (m_iAreaID != INVALID_AREA_INDEX)
 			return;
-		
+
 		ShowAreaSelectionToGameMaster();
 		//GetGame().GetCallqueue().CallLater(ShowAreaSelectionToGameMaster, 10000, false);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	override void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
+	protected override void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
 	{
 		super.OnPlayerDisconnected(playerId, cause, timeout);
-		
+
 		Replication.BumpMe();
-		if (areaID != INVALID_AREA_INDEX || m_iGameMasterID != playerId)
+		if (m_iAreaID != INVALID_AREA_INDEX || m_iGameMasterID != playerId)
 			return;
-		
+
 		PickNewGameMaster(m_iGameMasterID);
 		ShowAreaSelectionToGameMaster();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	override void EOnInit(IEntity owner)
+	protected override void EOnInit(IEntity owner)
 	{
 		super.EOnInit(owner);
 		m_bAutoPlayerRespawn = false;
-		
+
+		ArmaReforgerScripted game = GetGame();
 		if (m_RplComponent && !m_RplComponent.IsProxy())
 		{
-			SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+			SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(game.GetGameMode());
 			if (gameMode)
 				gameMode.GetOnPlayerRegistered().Insert(OnPlayerRegistered);
 		}
-		
-		m_wRoot = GetGame().GetWorkspace().CreateWidgets("{DE9F713BE2C5D190}UI/layouts/HUD/HintFrame.layout");
+
+		if (m_RplComponent && !m_RplComponent.IsProxy())
+			InitializeServer();
+
+		m_wRoot = game.GetWorkspace().CreateWidgets("{DE9F713BE2C5D190}UI/layouts/HUD/HintFrame.layout");
+		if (!m_wRoot)
+		{
+			Print("Cannot create hint layout", LogLevel.ERROR);
+			return;
+		}
+
 		m_wText = TextWidget.Cast(m_wRoot.FindAnyWidget("MessageText"));
 		TextWidget title = TextWidget.Cast(m_wRoot.FindAnyWidget("TitleText"));
 		if (title)
 			title.SetText("CLEAN SWEEP");
-		
+
 		m_wRoot.SetOpacity(0);
-		
-		if (m_RplComponent && !m_RplComponent.IsProxy())
-			InitializeServer();
 	}
-};
+}

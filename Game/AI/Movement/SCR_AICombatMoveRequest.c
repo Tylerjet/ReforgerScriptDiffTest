@@ -14,6 +14,7 @@ enum SCR_EAICombatMoveReason
 	MOVE_FROM_TARGET,		// Moving backwards from target
 	MOVE_FROM_DANGER,		// Danger avoidance
 	SUPPRESSED_IN_COVER,
+	CHARACTER_AVOIDANCE		// Avoiding collision with a friendly character
 }
 
 // For which unit type this move request is meant

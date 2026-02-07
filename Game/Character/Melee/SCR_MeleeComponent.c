@@ -238,8 +238,12 @@ class SCR_MeleeComponent : ScriptComponent
 		if (!soundComp)
 			return;
 		
-		soundComp.SetSignalValueStr("HitZone", signalValue0);
-		soundComp.SetSignalValueStr("Surface", signalValue1);
+		SignalsManagerComponent signalsManagerComponent = SignalsManagerComponent.Cast(weaponEntity.FindComponent(SignalsManagerComponent));
+		if (signalsManagerComponent)
+		{
+			signalsManagerComponent.SetSignalValue(signalsManagerComponent.AddOrFindSignal("HitZone"), signalValue0);
+			signalsManagerComponent.SetSignalValue(signalsManagerComponent.AddOrFindSignal("Surface"), signalValue1);		
+		}
 		
 		vector transform[4];
 		Math3D.MatrixIdentity3(transform);

@@ -16,7 +16,7 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 	private SCR_RespawnComponent m_RespawnComponent;
 	private SCR_PlayerController m_PlayerController;
 	private SCR_PlayerFactionAffiliationComponent m_PlyFactionAffil;
-	private bool m_bReady = false;
+	private bool m_bReady = true;
 	private bool m_bFirstOpen = true;
 	private bool m_bWelcomeOpened;
 	private bool m_bWelcomeClosed;
@@ -60,6 +60,11 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 		m_RespawnComponent.GetOnRespawnReadyInvoker_O().Insert(OnRespawnReady);
 		m_RespawnComponent.GetOnRespawnResponseInvoker_O().Insert(SetNotReady);
 		m_SpawnLogic = SCR_MenuSpawnLogic.Cast(rsc.GetSpawnLogic());
+		if (m_SpawnLogic && m_SpawnLogic.GetWaitForSpawnPoints())
+		{
+			m_bReady = false;
+			SCR_SpawnPoint.Event_SpawnPointAdded.Insert(OnPlayerSpawnPointAdded);
+		}
 
 		SCR_ReconnectSynchronizationComponent reconnectComp = SCR_ReconnectSynchronizationComponent.Cast(owner.FindComponent(SCR_ReconnectSynchronizationComponent));
 		if (reconnectComp)
@@ -79,6 +84,9 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 		if (SCR_RespawnComponent.Diag_IsCLISpawnEnabled())
 			return;
 #endif
+		if (!m_bReady)
+			return;
+
 		if (CanOpenWelcomeScreen())
 		{
 			if (!IsWelcomeScreenOpen())
@@ -236,8 +244,12 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	protected void SetReady()
 	{
+		if (!m_bReady)
+			return;
+		
 		if (m_SpawnLogic)
 			m_SpawnLogic.DestroyLoadingPlaceholder();
+		
 		m_DeployMenuSystem.SetReady(true);
 	}
 	
@@ -252,6 +264,7 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 	{
 		if (m_SpawnLogic)
 			m_SpawnLogic.DestroyLoadingPlaceholder();
+		
 		m_bFirstOpen = false;
 		SetWelcomeClosed();
 	}
@@ -263,8 +276,10 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 		{
 			SCR_DeployMenuMain.CloseDeployMenu();
 			SCR_RoleSelectionMenu.CloseRoleSelectionMenu();
+			
 			CloseWelcomeScreen();
 			SetWelcomeClosed();
+			
 			m_DeployMenuSystem.SetReady(false);
 			m_bFirstOpen = false;
 		}
@@ -298,6 +313,9 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 		
 		if (m_DeployMenuSystem)
 			m_DeployMenuSystem.Unregister(this);
+		
+		if (m_SpawnLogic)
+			m_SpawnLogic.DestroyLoadingPlaceholder();
 
 		super.OnDelete(owner);
 	}
@@ -307,5 +325,18 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 	SCR_PlayerController GetPlayerController()
 	{
 		return m_PlayerController;
+	}
+
+	//------------------------------------------------------------------------------------------------	
+	protected void OnPlayerSpawnPointAdded(SCR_SpawnPoint sp)
+	{
+		if (!m_PlyFactionAffil || !m_PlyFactionAffil.GetAffiliatedFaction())
+			return;
+		if (sp.GetFactionKey() == m_PlyFactionAffil.GetAffiliatedFactionKey())
+		{
+			m_bReady = true;
+			SetReady();
+			SCR_SpawnPoint.Event_SpawnPointAdded.Remove(OnPlayerSpawnPointAdded);
+		}
 	}
 }

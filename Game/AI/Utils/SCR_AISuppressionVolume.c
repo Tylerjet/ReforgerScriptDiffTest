@@ -217,7 +217,12 @@ class SCR_AISuppressionVolumeBase
 				
 		// It's possible minPossibleDist will make us go out of bounds
 		// We ensure minPossibleDist is respected no matter what, so it can be used for movement balancing
-		float endPosDist = Math.RandomFloatInclusive(minPossibleDist, Math.Max(minPossibleDist, Math.Min(maxPossibleDist, maxDist)));
+		float endPosDistRandMax = Math.Max(minPossibleDist, Math.Min(maxPossibleDist, maxDist));
+		float endPosDist;
+		if (minPossibleDist == endPosDistRandMax)
+			endPosDist = minPossibleDist;
+		else
+			endPosDist = Math.RandomFloatInclusive(minPossibleDist, endPosDistRandMax);
 		
 		// Get end pos
 		vector endPos = startPos + (sideDir * endPosDist);
@@ -274,7 +279,8 @@ class SCR_AISuppressionVolumeBase
 		}
 		
 		// Get final end Y range with respect to min and max Y diffs
-		float endYRange = Math.Min(maxYDiff, Math.Min(endPosYRange - minYDiff, maxYDiff - minYDiff));
+		float endYRange = Math.Max(maxYDiff, Math.Min(endPosYRange - minYDiff, maxYDiff - minYDiff));
+		
 		endPos[1] = endPosY + (Math.RandomFloatInclusive(minYDiff, endYRange) * endPosYDir);	
 				
 		return endPos;

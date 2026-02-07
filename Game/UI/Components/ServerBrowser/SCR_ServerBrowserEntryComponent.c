@@ -396,7 +396,7 @@ class SCR_ServerBrowserEntryComponent : SCR_BrowserListMenuEntryComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnServerDetailModsLoaded()
+	protected void OnServerDetailModsLoaded(Room room)
 	{
 		if (!m_ModsManager || !(m_iProperties & SCR_EServerEntryProperty.MODDED))
 			return;

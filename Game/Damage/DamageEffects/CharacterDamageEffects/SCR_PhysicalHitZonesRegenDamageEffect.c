@@ -69,13 +69,13 @@ class SCR_PhysicalHitZonesRegenDamageEffect : SCR_DotDamageEffect
 	{
 		SCR_CharacterDamageManagerComponent characterDmgManager = SCR_CharacterDamageManagerComponent.Cast(dmgManager);
 
-		array<ref PersistentDamageEffect> bleedings = characterDmgManager.GetAllPersistentEffectsOfType(SCR_BleedingDamageEffect);
+		array<ref SCR_PersistentDamageEffect> bleedings = characterDmgManager.GetAllPersistentEffectsOfType(SCR_BleedingDamageEffect);
 		if (!bleedings.IsEmpty())
 			return true;
 		
-		array<ref PersistentDamageEffect> persistentEffects = characterDmgManager.GetAllPersistentEffectsOnHitZone(characterDmgManager.GetDefaultHitZone());
-		persistentEffects = characterDmgManager.FilterEffectsByType(persistentEffects, SCR_PhysicalHitZonesRegenDamageEffect);
-
+		array<ref SCR_PersistentDamageEffect> persistentEffects = {};
+		characterDmgManager.FindAllDamageEffectsOfTypeOnHitZone(SCR_PhysicalHitZonesRegenDamageEffect, characterDmgManager.GetDefaultHitZone(), persistentEffects);
+		
 		//if the effect is already present on the hitzone, we dont add a second one.
 		if (!persistentEffects.IsEmpty())
 		{

@@ -173,6 +173,10 @@ class SCR_CampaignBuildingNetworkComponent : ScriptComponent
 		IEntity composition = GetProviderFormRplId(rplCompositionId);
 		if (!composition)
 			return;
+		
+		SCR_CampaignBuildingCompositionComponent buildingComponent = SCR_CampaignBuildingCompositionComponent.Cast(composition.FindComponent(SCR_CampaignBuildingCompositionComponent));
+		if (buildingComponent)
+			buildingComponent.SetCanPlaySoundOnDeletion(true);
 
 		SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(composition.GetRootParent().FindComponent(SCR_EditableEntityComponent));
 		if (editableEntity)

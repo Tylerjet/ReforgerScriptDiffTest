@@ -53,7 +53,7 @@ class SCR_AreaGeneratorBaseEntity : SCR_GeneratorBaseEntity
 		if (!m_ParentShapeSource)
 			return;
 
-		array<vector> vectorPoints = GetPoints(m_ParentShapeSource);
+		array<vector> vectorPoints = GetAnchorPoints(m_ParentShapeSource);
 		SCR_AABB bbox = new SCR_AABB(vectorPoints);
 		bbox.m_vMin[1] = BBOX_CHECK_HEIGHT * -0.5;
 		bbox.m_vMax[1] = BBOX_CHECK_HEIGHT * 0.5;
@@ -122,8 +122,6 @@ class SCR_AreaGeneratorBaseEntity : SCR_GeneratorBaseEntity
 		if (!worldEditorAPI)
 			return;
 
-		m_ParentShapeSource = shapeEntitySrc;
-
 		IEntitySource childEntitySource;
 		GeneratorBaseEntity generator;
 		for (int i, childrenCount = other.GetNumChildren(); i < childrenCount; i++)
@@ -150,17 +148,15 @@ class SCR_AreaGeneratorBaseEntity : SCR_GeneratorBaseEntity
 	// to be overridden for now
 	protected void OnRegenerate();
 
-#endif // WORKBENCH
-
 	//------------------------------------------------------------------------------------------------
-	void SCR_AreaGeneratorBaseEntity(IEntitySource src, IEntity parent)
+	// constructor
+	protected void SCR_AreaGeneratorBaseEntity(IEntitySource src, IEntity parent)
 	{
-#ifdef WORKBENCH
 		if (!_WB_GetEditorAPI()) // thumbnail generation
 			return;
 
 		if (!s_ObstacleDetector)
 			s_ObstacleDetector = new SCR_ObstacleDetector();
-#endif
 	}
+#endif
 }

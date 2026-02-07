@@ -8,19 +8,27 @@ class SCR_DestructionBaseHandler
 {
 	[Attribute("", UIWidgets.ResourceNamePicker, desc: "Model to swap to on destruction", params: "xob et")]
 	protected ResourceName m_sWreckModel;
+
 	[Attribute("1", UIWidgets.Slider, desc: "Delay for the wreck model switch upon destruction (ms)", params: "1 10000 1")]
 	protected int m_iWreckDelay;
+
 	[Attribute("100", UIWidgets.Slider, desc: "Default mass of the wreck physics, to be set if the part did not have physics before destruction", params: "0 10000 1")]
 	protected float m_fDefaultWreckMass;
 
 	[Attribute("0", UIWidgets.CheckBox, "If true the part will detach from parent after hitzone is destroyed")]
 	protected bool m_bDetachAfterDestroyed;
+
 	[Attribute("1", UIWidgets.CheckBox, "If true the part will be hidden after it is destroyed, unless wreck model is provided")]
 	protected bool m_bAllowHideWreck;
+
 	[Attribute("1", UIWidgets.CheckBox, "If true and not detached the part will be deleted after parent entity is destroyed")]
 	protected bool m_bDeleteAfterParentDestroyed;
+
 	[Attribute("0", UIWidgets.CheckBox, "If true the physics will be disabled after hitzone is destroyed")]
 	protected bool m_bDisablePhysicsAfterDestroyed;
+
+	[Attribute("0", UIWidgets.CheckBox, "If true and this entity doesnt have a parent then it will be permanently deleted")]
+	protected bool m_bDeleteAfterDestroyed;
 #ifdef ENABLE_BASE_DESTRUCTION
 
 	protected IEntity m_pOwner; // TODO: Remove once we can get the owner dynamically
@@ -100,35 +108,38 @@ class SCR_DestructionBaseHandler
 		// Destroy all children slotted entities
 		array<EntitySlotInfo> slotInfos = {};
 		EntitySlotInfo.GetSlotInfos(m_pOwner, slotInfos);
+		IEntity slotEntity;
+		SCR_DamageManagerComponent damageMgr;
+		HitZone hitZone;
 		foreach (EntitySlotInfo slotInfo : slotInfos)
 		{
 			if (!slotInfo)
 				continue;
 
-			IEntity slotEntity = slotInfo.GetAttachedEntity();
+			slotEntity = slotInfo.GetAttachedEntity();
 			if (!slotEntity)
 				continue;
 
 			if (slotEntity.IsDeleted())
 				continue;
 
-			HitZoneContainerComponent hitZoneContainer = HitZoneContainerComponent.Cast(slotEntity.FindComponent(HitZoneContainerComponent));
-			if (!hitZoneContainer)
+			damageMgr = SCR_DamageManagerComponent.GetDamageManager(slotEntity);
+			if (!damageMgr)
 				continue;
 
-			HitZone hitZone = hitZoneContainer.GetDefaultHitZone();
-			if (hitZone)
+			hitZone = damageMgr.GetDefaultHitZone();
+			if (!hitZone)
+				continue;
+
+			if (damageMgr.GetState() == EDamageState.DESTROYED)
 			{
-				if (hitZone.GetDamageState() == EDamageState.DESTROYED)
-				{
-					SCR_DestructibleHitzone destructibleHitZone = SCR_DestructibleHitzone.Cast(hitZone);
-					if (destructibleHitZone)
-						destructibleHitZone.StartDestruction(true);
-				}
-				else
-				{
-					hitZone.SetHealth(0);
-				}
+				SCR_DestructibleHitzone destructibleHitZone = SCR_DestructibleHitzone.Cast(hitZone);
+				if (destructibleHitZone)
+					destructibleHitZone.StartDestruction(true);
+			}
+			else
+			{
+				hitZone.SetHealth(0);
 			}
 		}
 
@@ -141,6 +152,12 @@ class SCR_DestructionBaseHandler
 				DeleteSelf();
 				return;
 			}
+		}
+
+		if (m_bDeleteAfterDestroyed)
+		{
+			DeleteSelf();
+			return;
 		}
 
 		if (m_bAllowHideWreck || !m_sWreckModel.IsEmpty())

@@ -19,7 +19,7 @@ class SCR_AIGetRandomPointInCircularSector: AITaskScripted
 #endif	
 	
 	//-------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() 
+	static override bool VisibleInPalette() 
 	{	
 		return true;
 	}
@@ -134,7 +134,7 @@ class SCR_AIGetRandomPointInCircularSector: AITaskScripted
 	}
 	
 	//-------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Provide either entity or owner entity as origin of the circular sector. Provide another point on the axis of the sector.\nReturns either point inside the sector or on circumference depending on attribute.";
 	}

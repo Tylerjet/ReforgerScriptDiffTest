@@ -2,10 +2,13 @@ class SCR_BleedingScreenEffect : SCR_BaseScreenEffect
 {
 	// Play Animation of CreateEffectOverTime()
 	protected const int BLEEDING_REPEAT_DELAY 						= 2500;
+	
 	protected const float BLEEDINGEFFECT_OPACITY_FADEOUT_1_DURATION 	= 0.2;
 	protected const float BLEEDINGEFFECT_PROGRESSION_FADEOUT_1_DURATION = 0.2;
+	
 	protected const float BLEEDINGEFFECT_OPACITY_FADEOUT_2_DURATION 	= 0.3;
 	protected const float BLEEDINGEFFECT_PROGRESSION_FADEOUT_2_DURATION = 3;
+	
 	protected const float BLEEDINGEFFECT_OPACITY_FADEIN_1_DURATION		= 1;
 	protected const float BLEEDINGEFFECT_PROGRESSION_FADEIN_1_DURATION = 4.5;
 
@@ -19,12 +22,12 @@ class SCR_BleedingScreenEffect : SCR_BaseScreenEffect
 	protected ImageWidget 							m_wBloodEffect1;
 	protected ImageWidget 							m_wBloodEffect2;
 	protected ImageWidget							m_wBlackOut;
-	private int m_iEffectNo 						= 1;
+	private bool m_bEffectState;
 
 	// Character
-	protected SCR_CharacterDamageManagerComponent	m_pDamageManager;
-	protected SCR_CharacterBloodHitZone				m_pBloodHZ;
-	protected ChimeraCharacter						m_pCharacterEntity;
+	protected SCR_CharacterDamageManagerComponent	m_DamageManager;
+	protected SCR_CharacterBloodHitZone				m_BloodHZ;
+	protected ChimeraCharacter						m_CharacterEntity;
 
 	protected bool m_bBleedingEffect;
 	protected bool m_bIsBleeding;
@@ -36,7 +39,7 @@ class SCR_BleedingScreenEffect : SCR_BaseScreenEffect
 	{
 		m_wBloodEffect1 = ImageWidget.Cast(m_wRoot.FindAnyWidget("BloodVignette1"));
 		m_wBloodEffect2 = ImageWidget.Cast(m_wRoot.FindAnyWidget("BloodVignette2"));
-		m_wBlackOut = ImageWidget.Cast(m_wRoot.FindAnyWidget("BlackOut"));
+		m_wBlackOut = ImageWidget.Cast(m_wRoot.FindAnyWidget("BleedingBlackOut"));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -44,23 +47,23 @@ class SCR_BleedingScreenEffect : SCR_BaseScreenEffect
 	{
 		ClearEffects();
 
-		m_pCharacterEntity = ChimeraCharacter.Cast(to);
-		if (!m_pCharacterEntity)
+		m_CharacterEntity = ChimeraCharacter.Cast(to);
+		if (!m_CharacterEntity)
 			return;
 
-		m_pDamageManager = SCR_CharacterDamageManagerComponent.Cast(m_pCharacterEntity.GetDamageManager());
-		if (!m_pDamageManager)
+		m_DamageManager = SCR_CharacterDamageManagerComponent.Cast(m_CharacterEntity.GetDamageManager());
+		if (!m_DamageManager)
 			return;
 
 		// define hitzones for later getting
-		m_pBloodHZ = m_pDamageManager.GetBloodHitZone();
+		m_BloodHZ = m_DamageManager.GetBloodHitZone();
 
 		// Invoker for momentary damage events and DOT damage events
-		m_pDamageManager.GetOnDamageEffectAdded().Insert(OnDamageEffectAdded);
-		m_pDamageManager.GetOnDamageEffectRemoved().Insert(OnDamageEffectRemoved);
+		m_DamageManager.GetOnDamageEffectAdded().Insert(OnDamageEffectAdded);
+		m_DamageManager.GetOnDamageEffectRemoved().Insert(OnDamageEffectRemoved);
 
 		// In case player started bleeding before invokers were established, check if already bleeding
-		array<ref PersistentDamageEffect> effects = m_pDamageManager.GetAllPersistentEffectsOfType(SCR_BleedingDamageEffect);
+		array<ref SCR_PersistentDamageEffect> effects = m_DamageManager.GetAllPersistentEffectsOfType(SCR_BleedingDamageEffect);
 		if (effects.IsEmpty())
 			return;
 
@@ -71,8 +74,8 @@ class SCR_BleedingScreenEffect : SCR_BaseScreenEffect
 	//------------------------------------------------------------------------------------------------
 	protected void OnDamageEffectAdded(notnull SCR_DamageEffect dmgEffect)
 	{
-		m_bIsBleeding = m_pDamageManager.IsBleeding();
-		if (!m_bBleedingEffect && m_bIsBleeding && m_pDamageManager.GetState() != EDamageState.DESTROYED)
+		m_bIsBleeding = m_DamageManager.IsBleeding();
+		if (!m_bBleedingEffect && m_bIsBleeding && m_DamageManager.GetState() != EDamageState.DESTROYED)
 			CreateEffectOverTime(true);
 
 		m_bBleedingEffect = m_bIsBleeding;
@@ -81,7 +84,7 @@ class SCR_BleedingScreenEffect : SCR_BaseScreenEffect
 	//------------------------------------------------------------------------------------------------
 	protected void OnDamageEffectRemoved(notnull SCR_DamageEffect dmgEffect)
 	{
-		m_bIsBleeding = m_pDamageManager.IsBleeding();
+		m_bIsBleeding = m_DamageManager.IsBleeding();
 		if (m_bIsBleeding)
 			return;
 
@@ -105,16 +108,16 @@ class SCR_BleedingScreenEffect : SCR_BaseScreenEffect
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void CreateEffectOverTime(bool repeat)
+	protected void CreateEffectOverTime(bool repeat)
 	{
-		if (!m_wBloodEffect1 || !m_wBloodEffect2 || !m_pBloodHZ)
+		if (!m_wBloodEffect1 || !m_wBloodEffect2 || !m_BloodHZ)
 			return;
 
 		float effectStrength = 1;
 		const float REDUCEDSTRENGTH = 0.7;
 		bool playHeartBeat = m_bPlayHeartBeat;
 
-		if (m_pBloodHZ.GetTotalBleedingAmount() < 5)
+		if (m_BloodHZ.GetTotalBleedingAmount() < 5)
 		{
 			effectStrength *= REDUCEDSTRENGTH;
 			playHeartBeat = false;
@@ -123,45 +126,39 @@ class SCR_BleedingScreenEffect : SCR_BaseScreenEffect
 		m_wBloodEffect1.SetSaturation(1);
 		m_wBloodEffect2.SetSaturation(1);
 
-		if (m_iEffectNo == 1)
+		UpdateEffectVisibility(m_wBloodEffect1);
+		UpdateEffectVisibility(m_wBloodEffect2);
+
+		if (m_bEffectState)
 		{
-			AnimateWidget.Opacity(m_wBloodEffect1, effectStrength, BLEEDINGEFFECT_OPACITY_FADEIN_1_DURATION);
-			AnimateWidget.AlphaMask(m_wBloodEffect1, effectStrength * 0.5, BLEEDINGEFFECT_PROGRESSION_FADEIN_1_DURATION);
-			AnimateWidget.Opacity(m_wBloodEffect2, 0, BLEEDINGEFFECT_OPACITY_FADEOUT_2_DURATION);
-			AnimateWidget.AlphaMask(m_wBloodEffect2, 0, BLEEDINGEFFECT_PROGRESSION_FADEOUT_2_DURATION);
+			AnimateEffectVisibility(m_wBloodEffect1, effectStrength, effectStrength * 0.5, BLEEDINGEFFECT_OPACITY_FADEIN_1_DURATION, BLEEDINGEFFECT_PROGRESSION_FADEIN_1_DURATION);
+			AnimateEffectVisibility(m_wBloodEffect2, 0, 0, BLEEDINGEFFECT_OPACITY_FADEOUT_2_DURATION, BLEEDINGEFFECT_PROGRESSION_FADEOUT_2_DURATION);
 		}
-		else if (m_iEffectNo == 2)
+		else
 		{
-			AnimateWidget.Opacity(m_wBloodEffect1, 0, BLEEDINGEFFECT_OPACITY_FADEOUT_2_DURATION);
-			AnimateWidget.AlphaMask(m_wBloodEffect1, 0, BLEEDINGEFFECT_PROGRESSION_FADEOUT_2_DURATION);
-			AnimateWidget.Opacity(m_wBloodEffect2, effectStrength, BLEEDINGEFFECT_OPACITY_FADEIN_1_DURATION);
-			AnimateWidget.AlphaMask(m_wBloodEffect2, effectStrength * 0.5, BLEEDINGEFFECT_PROGRESSION_FADEIN_1_DURATION);
+			AnimateEffectVisibility(m_wBloodEffect1, 0, 0, BLEEDINGEFFECT_OPACITY_FADEOUT_2_DURATION, BLEEDINGEFFECT_PROGRESSION_FADEOUT_2_DURATION);
+			AnimateEffectVisibility(m_wBloodEffect2, effectStrength, effectStrength * 0.5, BLEEDINGEFFECT_OPACITY_FADEIN_1_DURATION, BLEEDINGEFFECT_PROGRESSION_FADEIN_1_DURATION);
 		}
 
 		BlackoutEffect(effectStrength);
 
 		// Play heartbeat sound
-		if (playHeartBeat && m_pDamageManager.GetDefaultHitZone().GetDamageState() != EDamageState.DESTROYED)
+		if (playHeartBeat && m_DamageManager.GetDefaultHitZone().GetDamageState() != EDamageState.DESTROYED)
 		{
-			SCR_UISoundEntity.SetSignalValueStr("BloodLoss", 1 - m_pBloodHZ.GetHealthScaled());
+			SCR_UISoundEntity.SetSignalValueStr("BloodLoss", 1 - m_BloodHZ.GetHealthScaled());
 			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INJURED_PLAYERCHARACTER);
 		}
 
-		GetGame().GetCallqueue().CallLater(ClearEffectOverTime, 1000, false, repeat, m_iEffectNo);
+		GetGame().GetCallqueue().CallLater(ClearEffectOverTime, 1000, false, repeat, m_bEffectState);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void ClearEffectOverTime(bool repeat)
+	protected void ClearEffectOverTime(bool repeat)
 	{
-		if (m_iEffectNo == 1)
-			m_iEffectNo = 2;
-		else
-			m_iEffectNo = 1;
+		m_bEffectState = !m_bEffectState;
 
-		AnimateWidget.Opacity(m_wBloodEffect1, 0, BLEEDINGEFFECT_PROGRESSION_FADEOUT_1_DURATION);
-		AnimateWidget.AlphaMask(m_wBloodEffect1, 0, BLEEDINGEFFECT_OPACITY_FADEOUT_1_DURATION);
-		AnimateWidget.Opacity(m_wBloodEffect2, 0, BLEEDINGEFFECT_PROGRESSION_FADEOUT_1_DURATION);
-		AnimateWidget.AlphaMask(m_wBloodEffect2, 0, BLEEDINGEFFECT_OPACITY_FADEOUT_1_DURATION);
+		AnimateEffectVisibility(m_wBloodEffect1, 0, 0, BLEEDINGEFFECT_PROGRESSION_FADEOUT_1_DURATION, BLEEDINGEFFECT_OPACITY_FADEOUT_1_DURATION);
+		AnimateEffectVisibility(m_wBloodEffect2, 0, 0, BLEEDINGEFFECT_PROGRESSION_FADEOUT_1_DURATION, BLEEDINGEFFECT_OPACITY_FADEOUT_1_DURATION);
 
 		BlackoutEffect(0);
 
@@ -170,7 +167,7 @@ class SCR_BleedingScreenEffect : SCR_BaseScreenEffect
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void BlackoutEffect(float effectStrength)
+	protected void BlackoutEffect(float effectStrength)
 	{
 		if (!m_wBlackOut)
 			return;
@@ -185,41 +182,31 @@ class SCR_BleedingScreenEffect : SCR_BaseScreenEffect
 		{
 			AnimateWidget.AlphaMask(m_wBlackOut, 0, BLEEDINGEFFECT_OPACITY_FADEOUT_1_DURATION);
 		}
+
+		UpdateEffectVisibility(m_wBlackOut);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected override void ClearEffects()
 	{
-		m_bBleedingEffect = 0;
+		m_bBleedingEffect = false;
 
 		if (m_wBloodEffect1)
-		{
-			AnimateWidget.StopAllAnimations(m_wBloodEffect1);
-			m_wBloodEffect1.SetOpacity(0);
-			m_wBloodEffect1.SetMaskProgress(0);
-		}
+			HideSingleEffect(m_wBloodEffect1);
 
 		if (m_wBloodEffect2)
-		{
-			AnimateWidget.StopAllAnimations(m_wBloodEffect2);
-			m_wBloodEffect2.SetOpacity(0);
-			m_wBloodEffect2.SetMaskProgress(0);
-		}
+			HideSingleEffect(m_wBloodEffect2);
 
 		if (m_wBlackOut)
-		{
-			AnimateWidget.StopAllAnimations(m_wBlackOut);
-			m_wBlackOut.SetOpacity(0);
-			m_wBlackOut.SetMaskProgress(0);
-		}
+			HideSingleEffect(m_wBlackOut);
 
 		GetGame().GetCallqueue().Remove(CreateEffectOverTime);
 		GetGame().GetCallqueue().Remove(ClearEffectOverTime);
 
-		if (!m_pDamageManager)
+		if (!m_DamageManager)
 			return;
 
-		m_pDamageManager.GetOnDamageEffectAdded().Remove(OnDamageEffectAdded);
-		m_pDamageManager.GetOnDamageEffectRemoved().Remove(OnDamageEffectRemoved);
+		m_DamageManager.GetOnDamageEffectAdded().Remove(OnDamageEffectAdded);
+		m_DamageManager.GetOnDamageEffectRemoved().Remove(OnDamageEffectRemoved);
 	}
 }

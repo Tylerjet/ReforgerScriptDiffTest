@@ -8,7 +8,7 @@ class SCR_AIGetSmartActionSentinelParams : AITaskScripted
 	static const string USE_BINOCULARS_PORT			= "UseBinoculars";
 	static const string LEANING_PORT				= "LeaningType";
 		
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}

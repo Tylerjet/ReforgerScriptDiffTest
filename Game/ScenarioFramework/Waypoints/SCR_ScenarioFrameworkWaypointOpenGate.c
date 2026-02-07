@@ -2,7 +2,7 @@
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkWaypointOpenGate : SCR_ScenarioFrameworkWaypointSmartAction
 {
-	[Attribute(defvalue: "10", desc: "Radius in m")]
+	[Attribute(defvalue: "10", uiwidget: UIWidgets.Slider, desc: "Radius in m")]
 	float m_fCompletionRadius;
 
 	[Attribute(defvalue: "{1966BC58CE769D69}Prefabs/AI/Waypoints/AIWaypoint_OpenGate.et", desc: "In Default, it will use specific prefab for each class, but here you can change it if you know what you are doing")]

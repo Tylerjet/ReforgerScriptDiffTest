@@ -39,19 +39,8 @@ class SCR_ScriptedWidgetTooltipContentBase
 	//------------------------------------------------------------------------------------------------
 	void Clear()
 	{
-		if (!m_wContentRoot)
-			return;
-		
-		Widget wrapper = m_wContentRoot.GetParent();
-		array<ref Widget> children = {};
-		
-		if (wrapper)
-			SCR_WidgetHelper.GetAllChildren(wrapper, children);
-		
-		foreach (Widget child : children)
-		{
-			child.RemoveFromHierarchy();
-		}
+		if (m_wContentRoot)
+			m_wContentRoot.RemoveFromHierarchy();
 	}
 	
 	//------------------------------------------------------------------------------------------------

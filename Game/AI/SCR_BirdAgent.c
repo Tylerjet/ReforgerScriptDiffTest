@@ -7,7 +7,11 @@ class SCR_Bird : AIFlock
 	private const string IS_FLYING_SIGNAL_NAME = "IsFlying";
 	private const string SOUND_FLOCK_TAKEOFF_EVENT_NAME = "SOUND_FLOCK_TAKEOFF";
 	private const string SOUND_FLOCK_LAND_EVENT_NAME = "SOUND_FLOCK_LAND";
-			
+	
+	private int 			m_iFlyingSignalId;
+	SignalsManagerComponent m_signalComp;
+	SoundComponent 			m_soundComp;
+	
 	override event protected void EOnInit(IEntity owner)
 	{
 	
@@ -15,7 +19,12 @@ class SCR_Bird : AIFlock
 		//AIControlComponent control = AIControlComponent.Cast(owner.FindComponent(AIControlComponent));
 		//if (control)
 			//control.ActivateAI();
-
+		
+		m_signalComp = SignalsManagerComponent.Cast(FindComponent(SignalsManagerComponent));
+		if (m_signalComp)
+			m_iFlyingSignalId = m_signalComp.AddOrFindSignal(IS_FLYING_SIGNAL_NAME);
+		
+		m_soundComp = SoundComponent.Cast(FindComponent(SoundComponent));
 	}
 	
 	//------------------------------------------------------------------------------------------------	
@@ -47,16 +56,14 @@ class SCR_Bird : AIFlock
 	//------------------------------------------------------------------------------------------------	
 	private void SetIsFlyingSignal(bool isFlying)
 	{
-		SignalsManagerComponent signalsManagerComponent = SignalsManagerComponent.Cast(FindComponent(SignalsManagerComponent));
-		if (signalsManagerComponent)
-			signalsManagerComponent.SetSignalValue(signalsManagerComponent.AddOrFindSignal(IS_FLYING_SIGNAL_NAME), isFlying);
+		if (m_signalComp)
+			m_signalComp.SetSignalValue(m_iFlyingSignalId, isFlying);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	private void SoundEvent(string soundEvent)
-	{
-		SoundComponent soundComponent = SoundComponent.Cast(FindComponent(SoundComponent));
-		if (soundComponent)
-			soundComponent.SoundEvent(soundEvent);	
+	{		
+		if (m_soundComp)
+			m_soundComp.SoundEvent(soundEvent);	
 	}	
 }

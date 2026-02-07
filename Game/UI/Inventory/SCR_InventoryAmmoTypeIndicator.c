@@ -3,6 +3,8 @@ class SCR_InventoryAmmoTypeIndicator : ScriptedWidgetComponent
 	[Attribute("AmmoTypeContainer")]
 	protected string m_sContainer;
 	protected Widget m_wContainer;
+
+	protected static const string WIDGET_NAME_PREFIX = "ammotype-";
 	
 	//------------------------------------------------------------------------------------------------	
 	override void HandlerAttached(Widget w)
@@ -48,26 +50,20 @@ class SCR_InventoryAmmoTypeIndicator : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------	
 	protected void SetAmmoTypeIcon(EAmmoType flags)
 	{
-		// let's just assume all of these exist
-		if (flags & EAmmoType.FMJ)
-			m_wContainer.FindAnyWidget("ammotype-fmj").SetVisible(true);
-		if (flags & EAmmoType.TRACER)
-			m_wContainer.FindAnyWidget("ammotype-tracer").SetVisible(true);
-		if (flags & EAmmoType.AP)
-			m_wContainer.FindAnyWidget("ammotype-AP").SetVisible(true);
-		if (flags & EAmmoType.HE)
-			m_wContainer.FindAnyWidget("ammotype-HE").SetVisible(true);
-		if (flags & EAmmoType.HEAT)
-			m_wContainer.FindAnyWidget("ammotype-HEAT").SetVisible(true);
-		if (flags & EAmmoType.FRAG)
-			m_wContainer.FindAnyWidget("ammotype-frag").SetVisible(true);
-		if (flags & EAmmoType.SMOKE)
-			m_wContainer.FindAnyWidget("ammotype-smoke").SetVisible(true);
-		if (flags & EAmmoType.INCENDIARY)
-			m_wContainer.FindAnyWidget("ammotype-incendiary").SetVisible(true);
-		if (flags & EAmmoType.SNIPER)
-			m_wContainer.FindAnyWidget("ammotype-sniper").SetVisible(true);		
-		if (flags & EAmmoType.ILLUMINATION)
-			m_wContainer.FindAnyWidget("ammotype-illumination").SetVisible(true);
+		if (!m_wContainer)
+			return;
+
+		Widget ammoTypeWidget;
+		array<int> enumValues = {};
+		SCR_Enum.GetEnumValues(EAmmoType, enumValues);
+		foreach (int flag : enumValues)
+		{
+			if (!(flag & flags))
+				continue;
+
+			ammoTypeWidget = m_wContainer.FindAnyWidget(WIDGET_NAME_PREFIX+SCR_Enum.GetEnumName(EAmmoType, flag));
+			if (ammoTypeWidget)
+				ammoTypeWidget.SetVisible(true);
+		}
 	}
-};
+}

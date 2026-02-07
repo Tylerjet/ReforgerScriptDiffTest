@@ -40,30 +40,37 @@ class CharacterCamera1stPerson extends CharacterCameraBase
 		if (m_bCameraTransition)
 		{
 			pOutResult.m_fUseHeading = 0.0;
-			pOutResult.m_iDirectBoneMode = EDirectBoneMode.RelativeTransform;
+			pOutResult.m_iDirectBoneMode = EDirectBoneMode.RelativePosition;
 			
 			// Currently the 1pv camera bone in getin/getout needs to be investigated,
 			// so as a workaround, we use head bone directly with position only
 			if (sm_iHeadBoneIndex != -1)
-			{
 				pOutResult.m_iDirectBone = sm_iHeadBoneIndex;
-				pOutResult.m_fUseHeading = 0.0;
-				pOutResult.m_iDirectBoneMode = EDirectBoneMode.RelativePosition;
-			}
 		}
 		
 		vector additiveRotation = "0 0 0";
 		m_CharacterHeadAimingComponent.GetLookTransformationLS(pOutResult.m_iDirectBone, pOutResult.m_iDirectBoneMode, m_OffsetLS, additiveRotation, pOutResult.m_CameraTM);
+		
+		if (m_CharacterAnimationComponent.PhysicsIsLinked())
+		{
+			pOutResult.m_fUseHeading = 0.0; // Do not use heading after so that we can calculate it ourselves here
+			
+			vector headingMat[3];
+			Math3D.AnglesToMatrix(Vector(m_OwnerCharacter.GetAimRotationModel()[0] * Math.RAD2DEG, 0.0, 0.0), headingMat); // Get head yaw
+			Math3D.MatrixMultiply3(headingMat, pOutResult.m_CameraTM, pOutResult.m_CameraTM); // Add head yaw to camera matrix
+		}
+		else 
+		{
+			vector vYPR = "0 0 0";
+			if (!m_bIgnoreCharacterPitch)
+				vYPR[1] = m_OwnerCharacter.GetLocalYawPitchRoll()[1];
+			vector mat[4];
+			Math3D.AnglesToMatrix(vYPR, mat);
+			Math3D.MatrixMultiply4(mat, pOutResult.m_CameraTM, pOutResult.m_CameraTM);
+		}
 
 		if (m_UseLookPositionOverrideLS)
 			pOutResult.m_CameraTM[3] = m_LookPositionOverrideLS;
-		
-		vector vYPR = "0 0 0";
-		if (!m_bIgnoreCharacterPitch)
-			vYPR[1] = m_OwnerCharacter.GetLocalYawPitchRoll()[1];
-		vector mat[4];
-		Math3D.AnglesToMatrix(vYPR, mat);
-		Math3D.MatrixMultiply4(mat, pOutResult.m_CameraTM, pOutResult.m_CameraTM);
 		
 		if( m_ApplyHeadBob )
 			m_CharacterCameraHandler.AddViewBobToTransform(pOutResult.m_CameraTM, 1, false);

@@ -51,6 +51,8 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 
 	//! List of collected entities from which the available contexts will be taken to dispaly (weapon, vehicle, ...)
 	protected ref array<IEntity> m_aCollectedEntities = {};
+	//! List of collected nearby entities from which the available contexts will be taken to dispaly (weapon, vehicle, ...)
+	protected ref array<IEntity> m_aCollectedNearbyEntities = {};
 
 	protected IEntity m_ControlledEntity;
 
@@ -215,12 +217,13 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 
 				// Get action duration
 				float duration = action.GetActionDuration();
-
+				
 				// Update UI
 				if (display)
 					display.OnActionProgress(user, action, m_fCurrentProgress, Math.AbsFloat(duration));
-
+				
 				// We are finished, dispatch events and reset state
+				// TODO: Why are some actions set with negative duration? Why does using an abs duration check here causes those actions to break? Why Is this not using a proper event system from the actions themselves?!
 				if (m_fCurrentProgress >= duration && duration >= 0)
 				{
 					// Update UI
@@ -370,6 +373,11 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 		return true;
 	}
 
+	protected override event bool IsPerformingAction()
+	{
+		return m_bIsPerforming;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! display mode is set to automatic freelook mode.
 	//! \return true if nearby action contexts should be shown when
@@ -478,7 +486,7 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override array<IEntity> GetManualOverrideList(IEntity owner, out vector referencePoint)
+	void GetOverrideListReferencePoint(IEntity owner, out vector referencePoint)
 	{
 		CameraManager cameraManager = GetGame().GetCameraManager();
 		if (cameraManager)
@@ -512,21 +520,42 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 		{
 			referencePoint = vector.Zero;
 		}
+	}
 
+	//------------------------------------------------------------------------------------------------
+	override array<IEntity> GetManualNearbyOverrideList(IEntity owner, out vector referencePoint)
+	{
+		GetOverrideListReferencePoint(owner, referencePoint);
+		return m_aCollectedNearbyEntities;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override array<IEntity> GetManualOverrideList(IEntity owner, out vector referencePoint)
+	{
+		GetOverrideListReferencePoint(owner, referencePoint);
 		return m_aCollectedEntities;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Check if the player is inside a vehicle or is inspecting something and enable/disable ManualCollectionOverride for the nearby contexts based on it.
+	//! Check if the player is inside a vehicle or is inspecting something and enable/disable ManualNearbyCollectionOverride and ManualCollectionOverride for the nearby contexts based on it.
 	//! \param[in] character controlled by the player
 	protected void HandleOverride(notnull ChimeraCharacter character)
 	{
+		m_aCollectedNearbyEntities.Clear();
 		m_aCollectedEntities.Clear();
 
-		if (HandleInspection(character) || HandleVehicle(character))
-			SetManualCollectionOverride(true);
-		else
-			SetManualCollectionOverride(false);
+		const bool bInspection = HandleInspection(character);
+		const bool bInVehicle = HandleVehicle(character);
+
+		SetManualNearbyCollectionOverride(false);
+		SetManualCollectionOverride(false);
+
+		if (bInspection || bInVehicle)
+		{
+			SetManualNearbyCollectionOverride(true);
+			if (bInspection)
+				SetManualCollectionOverride(true);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -550,7 +579,7 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 		// Get the vehicle the player is in. (Can be the turret of a vehicle, thats why we use GetRootParent().)
 		IEntity vehicle = compartment.GetOwner().GetRootParent();
 
-		m_aCollectedEntities.Insert(vehicle);
+		m_aCollectedNearbyEntities.Insert(vehicle);
 
 		BaseCompartmentManagerComponent compartmentManager = BaseCompartmentManagerComponent.Cast(vehicle.FindComponent(BaseCompartmentManagerComponent));
 		if (!compartmentManager)
@@ -562,12 +591,12 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 		foreach (BaseCompartmentSlot comp : compartments)
 		{
 			if (comp.GetOwner())
-				m_aCollectedEntities.Insert(comp.GetOwner());
-			
+				m_aCollectedNearbyEntities.Insert(comp.GetOwner());
+
 			if (comp.GetOccupant())
-				m_aCollectedEntities.Insert(comp.GetOccupant());
+				m_aCollectedNearbyEntities.Insert(comp.GetOccupant());
 		}
-		
+
 		return true;
 	}
 
@@ -593,6 +622,7 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 			if (!weapon)
 				return false;
 
+			m_aCollectedNearbyEntities.Insert(weapon.GetOwner());
 			m_aCollectedEntities.Insert(weapon.GetOwner());
 
 			array<AttachmentSlotComponent> attachments = {};
@@ -602,12 +632,18 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 			{
 				IEntity attachedEntity = attachment.GetAttachedEntity();
 				if (attachedEntity)
+				{
+					m_aCollectedNearbyEntities.Insert(attachedEntity);
 					m_aCollectedEntities.Insert(attachedEntity);
+				}
 			}
 
 			BaseMagazineComponent magazineComp = weapon.GetCurrentMagazine();
 			if (magazineComp)
+			{
+				m_aCollectedNearbyEntities.Insert(magazineComp.GetOwner());
 				m_aCollectedEntities.Insert(magazineComp.GetOwner());
+			}
 
 			return true;
 		}
@@ -617,6 +653,7 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 			IEntity inspectedItem = ctrlComp.GetInspectEntity();
 			if (inspectedItem)
 			{
+				m_aCollectedNearbyEntities.Insert(inspectedItem);
 				m_aCollectedEntities.Insert(inspectedItem);
 				return true;
 			}
@@ -641,8 +678,11 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 		SetNearbyCollectionEnabled(enableNearbyCollection);
 
 		// Make sure we have a valid character
-		if (!character)
+		if (!character || character.IsInVehicleADS())
+		{
+			m_bPerformAction = false;
 			return;
+		}
 
 		HandleOverride(character);
 
@@ -653,7 +693,7 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 			array<bool> canPerform = {};
 			int count = GetFilteredActions(actions, canPerform);
 			if (count > 0)
-				GetGame().GetInputManager().ActivateContext("ActionMenuContext");
+				GetGame().GetInputManager().ActivateContext("ActionMenuContext", 250);
 
 			foreach (BaseUserAction action : actions)
 			{

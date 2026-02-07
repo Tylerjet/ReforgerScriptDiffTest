@@ -131,12 +131,12 @@ class SCR_AIGetHealActivityParameters : SCR_AIGetActionParameters
 	static ref TStringArray s_aVarsOut = (new SCR_AIHealActivity(null, null, null)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 };
 
 class SCR_AISetHealActivityParameters : SCR_AISetActionParameters
 {
 	protected static ref TStringArray s_aVarsIn = (new SCR_AIHealActivity(null, null, null)).GetPortNames();
 	override TStringArray GetVariablesIn() { return s_aVarsIn; }
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 };

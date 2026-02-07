@@ -28,10 +28,8 @@ class AIWorld: GenericEntity
 	proto external void RequestBroadcastDangerEvent(AIDangerEvent pEvent);
 	// get formation definitions
 	proto external AIFormationDefinition GetFormation(string pName);
-	// get road network
-	proto external RoadNetworkManager GetRoadNetworkManager();
 	proto external NavmeshWorldComponent GetNavmeshWorldComponent(string name);
-	proto external void RequestNavmeshRebuild(vector min, vector max, bool rebuildRoads = true);
+	proto external void RequestNavmeshRebuild(vector min, vector max);
 	proto external void RequestNavmeshLoad(vector pos);
 
 	// callbacks

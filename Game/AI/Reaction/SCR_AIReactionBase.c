@@ -55,3 +55,13 @@ class SCR_AIIdleReaction : SCR_AIReactionBase
 		utility.AddAction(activity);
 	}
 };
+
+[BaseContainerProps()]
+class SCR_AIObserveThreatSystemReaction : SCR_AIReactionBase
+{
+	override void PerformReaction(notnull SCR_AIUtilityComponent utility)
+	{
+		auto behavior = new SCR_AIObserveThreatSystemBehavior(utility, null);
+		utility.AddAction(behavior);
+	}
+}

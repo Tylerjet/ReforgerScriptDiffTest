@@ -18,9 +18,9 @@ class SCR_AICreateTargetInfo : AITaskScripted
 	
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }	
 	
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 	
-	override string GetOnHoverDescription() { return "Create SCR_TargetInfo object from its member variables"; };
+	static override string GetOnHoverDescription() { return "Create SCR_TargetInfo object from its member variables"; };
 	
 	//----------------------------------------------------------------------------------------------------------------
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)

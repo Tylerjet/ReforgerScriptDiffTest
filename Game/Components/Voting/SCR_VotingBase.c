@@ -251,7 +251,7 @@ class SCR_VotingBase
 	string GetValueName(int value)
 	{
 		if (m_bIsValuePlayerID && value > 0)
-			return GetGame().GetPlayerManager().GetPlayerName(value);
+			return SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(value);
 		else
 			return value.ToString();
 	}

@@ -2,7 +2,7 @@
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkWaypointGetInNearest : SCR_ScenarioFrameworkWaypointBoardingTimed
 {
-	[Attribute(defvalue: "20", desc: "Radius in m")]
+	[Attribute(defvalue: "20", uiwidget: UIWidgets.Slider, desc: "Radius in m")]
 	float m_fCompletionRadius;
 
 	[Attribute(defvalue: "{B049D4C74FBC0C4D}Prefabs/AI/Waypoints/AIWaypoint_GetInNearest.et", desc: "In Default, it will use specific prefab for each class, but here you can change it if you know what you are doing")]

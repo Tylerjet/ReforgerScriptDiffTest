@@ -84,7 +84,6 @@ class SCR_AICalculateCoverQueryProps_CombatMove : AITaskScripted
 		query.m_fNmAreaCostScale = SCR_AIFindCover.NAVMESH_AREA_COST_SCALE;
 		query.m_fCoverHeightMin = 0;
 		query.m_fCoverHeightMax = 10.0;
-		query.m_fScoreWeightNavmeshRay = 2.0; // Penalize non directly reachable covers
 		query.m_iMaxCoversToCheck = SCR_AIFindCover.MAX_COVERS_HIGH_PRIORITY;
 		
 		
@@ -107,7 +106,7 @@ class SCR_AICalculateCoverQueryProps_CombatMove : AITaskScripted
 	}
 	
 	//---------------------------------------------------------------
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 	
 	protected static ref TStringArray s_aVarsIn = {
 		PORT_COMBAT_MOVE_REQUEST

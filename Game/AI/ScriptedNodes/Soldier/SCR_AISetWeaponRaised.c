@@ -16,15 +16,14 @@ class SCR_AISetWeaponRaised : SCR_AICharacterStats
 		int raiseWeapon;
 		if(!GetVariableIn(RAISED_PORT,raiseWeapon))
 			raiseWeapon = m_bWeaponRaised;
-			
-		m_AIInfo.SetWeaponRaised(raiseWeapon);
+		
 		m_CharacterController.SetWeaponRaised(raiseWeapon);
 
 		return ENodeResult.SUCCESS;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() {return true;}
+	static override bool VisibleInPalette() {return true;}
 	
 	//------------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsIn = {

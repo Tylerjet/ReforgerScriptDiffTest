@@ -142,6 +142,8 @@ class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 	
 	//======================== PARENT ENTITY CHANGED ========================\\
 
+	//---- REFACTOR NOTE START: Confusing use of hasMoreAfterRootIndicator
+	
 	//------------------------------------------------------------------------------------------------
 	protected void RefreshLayerUI()
 	{
@@ -186,6 +188,8 @@ class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 		//Set UI visible
 		SetVisible(true);
 	}
+	
+	//---- REFACTOR NOTE END ----
 	
 	//======================== CHECK IF CHANGED ========================\\
 
@@ -272,6 +276,8 @@ class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 	//======================== CREATE LAYER ELEMENTS ========================\\
 	//------------------------ Layer Element in ------------------------\\
 
+	//---- REFACTOR NOTE START: Hardcoded search for button widget
+	
 	//------------------------------------------------------------------------------------------------
 	protected void CreateLayerElement(SCR_EditableEntityComponent layerEntity, bool isLast)
 	{	
@@ -324,6 +330,8 @@ class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 			entityItem.SetEntity(layerEntity, elementWidget, m_SlotManager);
 	}
 	
+	//---- REFACTOR NOTE END ----
+	
 	//------------------------ Next Layer Indicator ------------------------\\
 
 	//------------------------------------------------------------------------------------------------
@@ -342,6 +350,8 @@ class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 	
 	//------------------------ Children Indicator ------------------------\\
 
+	//---- REFACTOR NOTE START: Hardcoded search for button widget
+	
 	//------------------------------------------------------------------------------------------------
 	protected void CreateWorldRootLayer()
 	{		
@@ -372,6 +382,8 @@ class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 			buttonComponent.m_OnClicked.Insert(OnLayerButtonPressed);
 		}
 	}
+	
+	//---- REFACTOR NOTE END ----
 	
 	//======================== MENU VISIBILITY ========================\\
 

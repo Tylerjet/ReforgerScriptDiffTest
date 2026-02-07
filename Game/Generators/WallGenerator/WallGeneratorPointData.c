@@ -1,23 +1,23 @@
 class WallGeneratorPointData : ShapePointDataScriptBase
 {
-	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Prefab", "et")]
-	protected ResourceName MeshAtPoint;
+	[Attribute(defvalue: "1", desc: "Generate or not walls after this point, until the next point data")]
+	bool m_bGenerate;
 
-	[Attribute("0", UIWidgets.Slider, params: "-10 10 0.01")]
-	protected float PrePadding;
+	[Attribute(defvalue: "", uiwidget: UIWidgets.ResourcePickerThumbnail, desc: "Prefab", params: "et")]
+	ResourceName MeshAtPoint;
 
-	[Attribute("0", UIWidgets.Slider, params: "-10 10 0.01")]
-	protected float PostPadding;
+	[Attribute(defvalue: "0", uiwidget: UIWidgets.Slider, params: "-10 10 0.01")]
+	float PrePadding;
 
-	[Attribute("0", UIWidgets.Slider, params: "-10 10 0.01")]
-	protected float m_fOffsetUp;
+	[Attribute(defvalue: "0", uiwidget: UIWidgets.Slider, params: "-10 10 0.01")]
+	float PostPadding;
 
-	[Attribute("0", UIWidgets.CheckBox)]
-	protected bool m_bAlignWithNext;
+	[Attribute(defvalue: "0", uiwidget: UIWidgets.Slider, params: "-10 10 0.01")]
+	float m_fOffsetUp;
 
-	[Attribute("0", UIWidgets.CheckBox)]
-	protected bool m_bAllowClipping;
+	[Attribute(defvalue: "0")]
+	bool m_bAlignWithNext;
 
-	[Attribute("1", UIWidgets.CheckBox)]
-	protected bool m_bGenerate;
+	[Attribute(defvalue: "0")]
+	bool m_bAllowClipping;
 }

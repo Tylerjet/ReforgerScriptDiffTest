@@ -1,26 +1,19 @@
-//------------------------------------------------------------------------------------------------
-//! Returns true if character is sprinting.
-//! Set minimum time over zero to track temporary sprinting only.
-//! Set minimum time to zero to track both temporary and persistent sprinting.
-//! Set minimum time below zero to track persistent sprinting only.
 [BaseContainerProps()]
 class SCR_CharacterSprintingCondition : SCR_AvailableActionCondition
 {
-	[Attribute("0", UIWidgets.EditBox, "Minimum temporary sprinting time. Set to below zero to track persistent sprinting only.", "")]
-	protected float m_fMinimumTime;
+	[Attribute("0", UIWidgets.EditBox, "Checks if sprint was toggled rather than checking if the button is being held.")]
+	protected bool m_bCheckPersistentState;
 
 	//------------------------------------------------------------------------------------------------
+	//! Returns true if character is sprinting.
 	override bool IsAvailable(SCR_AvailableActionsConditionData data)
 	{
 		if (!data)
 			return false;
 
 		bool result = data.GetIsCharacterSprinting();
-		if (m_fMinimumTime > 0)
-			result = result && data.GetCharacterSprintingTime() > m_fMinimumTime;
-		else if (m_fMinimumTime < 0)
-			result = result && data.GetCharacterSprintingTime() == 0;
+		result = result && (!m_bCheckPersistentState && data.GetCharacterSprintingTime() != 0 || m_bCheckPersistentState && data.GetCharacterSprintingTime() == 0);
 
 		return GetReturnResult(result);
 	}
-};
+}

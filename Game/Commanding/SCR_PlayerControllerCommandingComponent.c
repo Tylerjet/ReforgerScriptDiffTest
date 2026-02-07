@@ -732,7 +732,7 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 		SCR_BaseRadialCommand command = commandingManager.FindCommand(commandElement.GetCommandName());
 
 		SCR_MapMenuCommandingEntry mapEntry = new SCR_MapMenuCommandingEntry(commandElement.GetCommandName());
-		mapEntry.SetName(commandElement.GetCommandDisplayText());
+		mapEntry.SetName(commandingManager.GetCommandDisplayTextByName(commandElement.GetCommandName()));
 		if (command)
 			mapEntry.SetIcon(command.GetIconImageset(), command.GetIconName());
 
@@ -791,6 +791,10 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 		if (!commandingManager)
 			return null;
 
+		SCR_ChimeraCharacter user = SCR_ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
+		if (!user)
+			return null;
+
 		if (!commandingManager.CanShowCommand(command.GetCommandName()))
 			return null;
 
@@ -800,13 +804,16 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 
 		string displayName = command.GetCommandCustomName();
 		if (displayName.IsEmpty())
-			displayName = command.GetCommandDisplayText();
+			displayName = commandingManager.GetCommandDisplayTextByName(command.GetCommandName());
 
 		//entry.SetName(displayName);
+		bool canPerform = groupCommand.CanBePerformed(user);
 		entry.SetId(command.GetCommandName());
 		entry.SetIcon(groupCommand.GetIconImageset(), groupCommand.GetIconName());
-		entry.Enable(groupCommand.CanBePerformed());
+		entry.Enable(canPerform);
 		entry.SetCommandText(displayName);
+		if (!canPerform)
+			entry.SetDescription(groupCommand.GetCannotPerformReason());
 
 		if (parentCategory)
 			parentCategory.AddEntry(entry);
@@ -884,6 +891,9 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	{
 		SCR_SelectionMenuEntryCommand commandEntry = SCR_SelectionMenuEntryCommand.Cast(m_RadialMenu.GetSelectionEntry());
 		if (!commandEntry)
+			return;
+
+		if (!commandEntry.IsEnabled())
 			return;
 
 		IEntity character = SCR_PlayerController.GetLocalControlledEntity();

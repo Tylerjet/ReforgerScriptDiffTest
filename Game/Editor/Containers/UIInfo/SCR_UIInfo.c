@@ -31,6 +31,26 @@ class SCR_UIInfo : SCR_UIDescription
 			return Icon;
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get Image Set.
+	//! When using it to fill ImageWIdget, use SetIconTo() if possible.
+	//! Especially important since the image can point to image set instead of plain texture!
+	//! \return Image path
+	ResourceName GetImageSetPath()
+	{
+		string ext;
+		FilePath.StripExtension(Icon, ext);
+		if (ext == "imageset")
+		{
+			return Icon;
+		}
+		else
+		{
+			Print(string.Format("Unable to return ImageSet path, it's a Texture '%1'! Use SCR_UIInfo.SetIconTo() instead.", Icon), LogLevel.WARNING);
+			return ResourceName.Empty;
+		}
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns Icon Set name if imageset

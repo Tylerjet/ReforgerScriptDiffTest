@@ -47,6 +47,7 @@ class SCR_WorkshopItem
 	
 	protected ref WorkshopItem m_Item;	// Strong reference!
 	protected ref Dependency m_Dependency;
+	protected ref Revision m_LatestRevision;
 	
 	// Revision to download and measure patch size when item is not dependency
 	protected ref Revision m_ItemTargetRevision;
@@ -65,19 +66,23 @@ class SCR_WorkshopItem
 	
 	// Flags for state of partially loaded data
 	protected bool m_bDetailsLoaded;	// Details are loaded - After LoadDetails
+	protected bool m_bSizeRequesting;	// Patch Size is loaded - After ComputePatchSize
 	
 	// Backend callbacks
 	protected ref SCR_WorkshopItemCallback_AskDetails m_CallbackAskDetails;
-	protected ref SCR_WorkshopCallbackBase m_CallbackLoadGallery;
-	protected ref SCR_WorkshopItemCallback_LoadDependencies m_CallbackLoadDependencies;
-	protected ref SCR_WorkshopItemCallback_LoadScenarios m_CallbackLoadScenarios;
-	protected ref SCR_WorkshopItemCallback_LoadMyReport m_CallbackLoadMyReport;
+	protected ref SCR_BackendCallback m_CallbackLoadGallery;
+	protected ref SCR_BackendCallback m_CallbackLoadDependencies;
+	protected ref SCR_BackendCallback m_CallbackLoadScenarios;
+	protected ref SCR_BackendCallback m_CallbackLoadMyReport;
+	protected ref SCR_BackendCallback m_CallbackRequestFavourite;
 	protected ref SCR_BackendCallback m_CancelDownloadCallback = new SCR_BackendCallback();
+	protected ref SCR_BackendCallback m_ComputeCallback;
 	
 	// Various state flags
 	protected bool m_bMyRating;
 	protected bool m_bMyRatingSet;
 	protected bool m_bFavourite;
+	protected bool m_bFavouriteRequesting;
 	protected bool m_bSubscribed;
 	protected bool m_bChanged;		// Checked every frame, if something changes then this flag can be set to OnChanged script invoker is called during update.
 	protected bool m_bRequestFailed;	// Set to true on HTTP request failures
@@ -210,7 +215,7 @@ class SCR_WorkshopItem
 		_print("LoadDetails");
 		#endif
 		
-		if (m_Item || m_Dependency)
+		if (m_Item || m_Dependency || !m_bDetailsLoaded)
 		{
 			Internal_LoadDetails();
 		}
@@ -375,20 +380,28 @@ class SCR_WorkshopItem
 	void SetFavourite(bool favourite)
 	{
 		if (!m_Item)
+		{
+			Debug.Error("SCR_WorkshopItem: Missing item to change favorite state!");
+			return;
+		}
+		
+		if (m_bFavouriteRequesting)
 			return;
 		
-		m_bFavourite = true;
+		m_CallbackRequestFavourite = new SCR_BackendCallback();
+		m_CallbackRequestFavourite.GetEventOnSuccess().Insert(OnFavouriteSuccess);
+		m_CallbackRequestFavourite.GetEventOnFail().Insert(OnFavouriteFail);
+		m_CallbackRequestFavourite.GetEventOnTimeOut().Insert(OnFavouriteFail);
 		
-		m_Item.SetFavorite(NULL,favourite);
+		m_Item.SetFavorite(m_CallbackRequestFavourite, favourite);
+		
 		m_bFavourite = favourite;
+		m_bFavouriteRequesting = true;
 		
 		#ifdef WORKSHOP_DEBUG
 		_print("OnChanged: SetFavourite()");
 		#endif
-		
-		SetChanged();
 	}
-	
 	
 	//-----------------------------------------------------------------------------------------------
 	bool GetFavourite()
@@ -397,6 +410,29 @@ class SCR_WorkshopItem
 			return m_Item.IsFavorite();
 		
 		return m_bFavourite;
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	void OnFavouriteSuccess()
+	{
+		m_CallbackRequestFavourite.GetEventOnSuccess().Remove(OnFavouriteSuccess);
+		m_CallbackRequestFavourite.GetEventOnFail().Remove(OnFavouriteFail);
+		m_CallbackRequestFavourite.GetEventOnTimeOut().Remove(OnFavouriteFail);
+		
+		m_bFavouriteRequesting = false;
+		SetChanged();
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	void OnFavouriteFail()
+	{
+		m_CallbackRequestFavourite.GetEventOnSuccess().Remove(OnFavouriteSuccess);
+		m_CallbackRequestFavourite.GetEventOnFail().Remove(OnFavouriteFail);
+		m_CallbackRequestFavourite.GetEventOnTimeOut().Remove(OnFavouriteFail);
+		
+		m_bFavourite = !m_bFavourite;
+		m_bFavouriteRequesting = false;
+		SetChanged();
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -549,13 +585,17 @@ class SCR_WorkshopItem
 	bool DeleteLocally()
 	{
 		if (!m_Item)
+		{
+			Debug.Error("SCR_WorkshopItem: Missing item to delete!");
 			return false;
+		}
 		
-		// Check if addon has download progress
-		Revision downloadingRevision = m_Item.GetDownloadingRevision();
-		
-		if (!downloadingRevision && !GetOffline())
+
+		if (!m_Item.GetPendingDownload() && !m_Item.GetActiveRevision())
+		{
+			Debug.Error("SCR_WorkshopItem: Attempt to delete item which is not downloaded!");
 			return true; // Already deleted
+		}
 		
 		m_Item.DeleteLocally();
 		
@@ -722,18 +762,41 @@ class SCR_WorkshopItem
 	//-----------------------------------------------------------------------------------------------
 	float GetSizeBytes()
 	{
-		if (m_Item && m_Item.GetLatestRevision())
+		if (m_Dependency)
 		{
-			float size = m_Item.GetLatestRevision().GetSizeBytes();
-			
-			if (size != 0)
-				return size;
-		}
-		
-		if(m_Dependency)
 			return m_Dependency.TotalFileSize();
-		
-		return 0;
+		}
+		else if (m_Item)
+		{
+			if (!m_LatestRevision)
+				m_LatestRevision = m_Item.GetLatestRevision();
+			
+			return m_LatestRevision.GetTotalSize();
+		}
+		else
+		{
+			Debug.Error("SCR_WorkshopItem: Dependency or WorkshopItem are not set!");
+			return 0;
+		}
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	protected void OnPatchComputed()
+	{
+		m_ComputeCallback.GetEventOnSuccess().Remove(OnPatchComputed);
+		m_ComputeCallback.GetEventOnFail().Remove(OnPatchComputedFailed);
+		m_ComputeCallback.GetEventOnTimeOut().Remove(OnPatchComputedFailed);
+		m_bSizeRequesting = false;
+		m_OnChanged.Invoke();
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	protected void OnPatchComputedFailed()
+	{
+		m_ComputeCallback.GetEventOnSuccess().Remove(OnPatchComputed);
+		m_ComputeCallback.GetEventOnFail().Remove(OnPatchComputedFailed);
+		m_ComputeCallback.GetEventOnTimeOut().Remove(OnPatchComputedFailed);
+		m_bSizeRequesting = false;
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -959,11 +1022,12 @@ class SCR_WorkshopItem
 		_print("DownloadLatestVersion()");
 		#endif
 		
-		Revision latestRevision = GetLatestRevision(); // Might return empty string if revs not loaded!
+		if (!m_LatestRevision)
+			m_LatestRevision = GetLatestRevision(); // Might return empty string if revs not loaded!
 		
 		bool running = false;
-		if (m_ActionDownload && latestRevision)
-			running = m_ActionDownload.GetTargetedAtLatestVersion() || Revision.AreEqual(latestRevision, m_ActionDownload.GetTargetRevision());
+		if (m_ActionDownload && m_LatestRevision)
+			running = m_ActionDownload.GetTargetedAtLatestVersion() || Revision.AreEqual(m_LatestRevision, m_ActionDownload.GetTargetRevision());
 		
 		return DownloadRevision(null, running);
 	}
@@ -1102,10 +1166,10 @@ class SCR_WorkshopItem
 		
 		if (!m_CallbackLoadMyReport)
 		{
-			m_CallbackLoadMyReport = new SCR_WorkshopItemCallback_LoadMyReport();
-			m_CallbackLoadMyReport.m_OnSuccess.Insert(Callback_LoadMyReport_OnSuccess);
-			m_CallbackLoadMyReport.m_OnTimeout.Insert(Callback_LoadMyReport_OnTimeout);
-			m_CallbackLoadMyReport.m_OnError.Insert(Callback_LoadMyReport_OnError);
+			m_CallbackLoadMyReport = new SCR_BackendCallback();
+			m_CallbackLoadMyReport.GetEventOnSuccess().Insert(Callback_LoadMyReport_OnSuccess);
+			m_CallbackLoadMyReport.GetEventOnTimeOut().Insert(Callback_LoadMyReport_OnTimeout);
+			m_CallbackLoadMyReport.GetEventOnFail().Insert(Callback_LoadMyReport_OnError);
 		}
 		
 		m_Item.LoadReport(m_CallbackLoadMyReport);
@@ -1199,14 +1263,18 @@ class SCR_WorkshopItem
 	//-----------------------------------------------------------------------------------------------
 	Revision GetLatestRevision()
 	{
-		Revision rev;
 		
-		if (m_Item)
-			rev = m_Item.GetLatestRevision();
+		if (!m_Item)
+		{
+			Debug.Error("SCR_WorkshopItem: Item is null!");
+			return null;
+		}
 		
+
+		Revision rev = m_Item.GetLatestRevision();
 		if (!rev)
-			Print("SCR_WorkshopItem - GetLatestRevision() - Latest revision is null! This should only occur when user manually tampers with the addon folder", LogLevel.ERROR);
-		
+			Debug.Error("SCR_WorkshopItem: Item is present but LatestRevision is null!");
+
 		return rev;
 	}
 	
@@ -1248,25 +1316,30 @@ class SCR_WorkshopItem
 			
 			if (!m_CallbackLoadDependencies)
 			{
-				m_CallbackLoadDependencies = new SCR_WorkshopItemCallback_LoadDependencies;
-				m_CallbackLoadDependencies.m_OnSuccess.Insert(Callback_LoadDependencies_OnSuccess);
-				m_CallbackLoadDependencies.m_OnError.Insert(Callback_LoadDependencies_OnError);
-				m_CallbackLoadDependencies.m_OnTimeout.Insert(Callback_LoadDependencies_OnTimeout);
+				m_CallbackLoadDependencies = new SCR_BackendCallback;
+				m_CallbackLoadDependencies.GetEventOnSuccess().Insert(Callback_LoadDependencies_OnSuccess);
+				m_CallbackLoadDependencies.GetEventOnFail().Insert(Callback_LoadDependencies_OnError);
+				m_CallbackLoadDependencies.GetEventOnTimeOut().Insert(Callback_LoadDependencies_OnTimeout);
 			}
 			
 			if (!m_CallbackLoadScenarios)
 			{
-				m_CallbackLoadScenarios = new SCR_WorkshopItemCallback_LoadScenarios;
-				m_CallbackLoadScenarios.m_OnSuccess.Insert(Callback_LoadScenarios_OnSuccess);
-				m_CallbackLoadScenarios.m_OnError.Insert(Callback_LoadScenarios_OnError);
-				m_CallbackLoadScenarios.m_OnTimeout.Insert(Callback_LoadScenarios_OnTimeout);
+				m_CallbackLoadScenarios = new SCR_BackendCallback;
+				m_CallbackLoadScenarios.GetEventOnSuccess().Insert(Callback_LoadScenarios_OnSuccess);
+				m_CallbackLoadScenarios.GetEventOnFail().Insert(Callback_LoadScenarios_OnError);
+				m_CallbackLoadScenarios.GetEventOnTimeOut().Insert(Callback_LoadScenarios_OnTimeout);
 			}
 			
 			if (m_Item)
 			{
-				Revision latestRevision = GetLatestRevision();
-				m_Item.LoadDependencies(m_CallbackLoadDependencies, latestRevision);
-				m_Item.LoadScenarios(m_CallbackLoadScenarios, latestRevision);
+				if (!m_LatestRevision)
+					m_LatestRevision = GetLatestRevision();
+				
+				if (m_LatestRevision)
+				{
+					m_LatestRevision.LoadDependencies(m_CallbackLoadDependencies);
+					m_LatestRevision.LoadScenarios(m_CallbackLoadScenarios);
+				}
 			}
 		}
 		
@@ -1278,7 +1351,6 @@ class SCR_WorkshopItem
 		#endif
 		
 		SetChanged();
-		
 		m_bWaitingLoadDetails = false;
 	}
 	
@@ -1296,7 +1368,7 @@ class SCR_WorkshopItem
 	}
 	
 	//-----------------------------------------------------------------------------------------------
-	protected void Callback_AskDetails_OnError(SCR_WorkshopCallbackBase callback, EBackendError code, int restCode, int apiCode )
+	protected void Callback_AskDetails_OnError(SCR_BackendCallback callback, EBackendError code, int restCode, int apiCode )
 	{
 		m_bRequestFailed = true;
 		m_bWaitingLoadDetails = false;
@@ -1458,11 +1530,16 @@ class SCR_WorkshopItem
 		
 
 		// Get array of dependencies - TODO: differentiate between dependencies version to load
-		Revision latestRevision = GetLatestRevision();
+		m_LatestRevision = GetLatestRevision();
 		array<Dependency> dependencies = new array<Dependency>;
 		
-		if (latestRevision)
-			latestRevision.GetDependencies(dependencies);
+		if (m_LatestRevision && !SCR_Enum.HasFlag(m_LatestRevision.GetLoadFlags(), EPendingLoadState.ELS_DEPENDENCIES))
+			m_LatestRevision.GetDependencies(dependencies);
+		else
+		{
+			m_OnDependenciesLoaded.Invoke(this);
+			return;
+		}
 
 		if (!m_aDependencies)
 			m_aDependencies = new array<ref SCR_WorkshopItem>;
@@ -1472,7 +1549,6 @@ class SCR_WorkshopItem
 		foreach (Dependency dep : dependencies)
 		{
 			SCR_WorkshopItem registeredItem = SCR_AddonManager.GetInstance().Register(dep);
-			
 			RegisterDependency(registeredItem);
 			registeredItem.RegisterDependent(this);
 		}
@@ -1491,12 +1567,12 @@ class SCR_WorkshopItem
 		#endif			
 		
 		// Load scenarios of latest revision
-		Revision latestRevision = GetLatestRevision();
+		m_LatestRevision = GetLatestRevision();
 		
 		m_aMissions = new array<MissionWorkshopItem>;
 		
-		if (latestRevision)
-			latestRevision.GetScenarios(m_aMissions);
+		if (m_LatestRevision && !SCR_Enum.HasFlag(m_LatestRevision.GetLoadFlags(), EPendingLoadState.ELS_SCENARIOS))
+			m_LatestRevision.GetScenarios(m_aMissions);
 
 		#ifdef WORKSHOP_DEBUG
 		_print(string.Format("TryLoadScenarios(): Received %1 scenarios", m_aMissions.Count()));
@@ -1583,13 +1659,22 @@ class SCR_WorkshopItem
 		{
 			if (!m_Dependency)
 			{
+				Debug.Error("SCR_WorkshopItem: Cannot download because Item and Dependency are missing!");
 				return false;
 			}
+			
 			m_Dependency.Download(callback);
+			m_Item = m_Dependency.GetCachedItem();
+			
+			
+			if (!m_Item)
+				Debug.Error("SCR_WorkshopItem: Item was not cached after download on Dependency!");
+			
+			return true;
 		}
-		else
-			m_Item.Download(callback, targetRevision);
 		
+		
+		m_Item.Download(callback, targetRevision);
 		return true;
 	}
 	
@@ -1602,7 +1687,11 @@ class SCR_WorkshopItem
 		#endif
 		
 		if (!m_Item)
+		{
+			Debug.Error("SCR_WorkshopItem: Cannot cancel download because Item is missing!");
 			return false;
+		}
+			
 		
 		// Pause
 		m_CancelDownloadCallback.GetEventOnResponse().Insert(OnCancelDownloadResponse);
@@ -2064,11 +2153,9 @@ class SCR_WorkshopItem
 		if (!m_CallbackAskDetails)
 		{
 			m_CallbackAskDetails = new SCR_WorkshopItemCallback_AskDetails(m_Item);
-			m_CallbackAskDetails.m_OnGetAsset.Insert(Callback_AskDetails_OnGetAsset);
-			//m_CallbackAskDetails.m_OnGetDependencyTree.Insert(Callback_AskDetails_OnGetDependencyTree); // Not needed any more - we load dependencies in another request.
-			// m_CallbackAskDetails.m_OnGetAssetScenarios.Insert(Callback_AskDetails_OnGetScenarios); // Not needed any more
-			m_CallbackAskDetails.m_OnTimeout.Insert(Callback_AskDetails_OnTimeout);
-			m_CallbackAskDetails.m_OnError.Insert(Callback_AskDetails_OnError);
+			m_CallbackAskDetails.GetEventOnSuccess().Insert(Callback_AskDetails_OnGetAsset);
+			m_CallbackAskDetails.GetEventOnTimeOut().Insert(Callback_AskDetails_OnTimeout);
+			m_CallbackAskDetails.GetEventOnFail().Insert(Callback_AskDetails_OnError);
 		}
 		
 		//Restarts waiting for details? - TODO review logic
@@ -2144,6 +2231,7 @@ class SCR_WorkshopItem
 	private void SCR_WorkshopItem(WorkshopItem item, Dependency dependency)
 	{
 		m_Item = item;
+		
 		m_Dependency = dependency;
 		
 		if (m_Item)
@@ -2240,11 +2328,8 @@ class SCR_WorkshopItem
 	//-----------------------------------------------------------------------------------------------
 	static SCR_WorkshopItem Internal_CreateFromDependency(Dependency dependency)
 	{
-		WorkshopItem cachedItem = dependency.GetCachedItem();
-		#ifdef WORKSHOP_DEBUG
-		_sprint(string.Format("Internal_CreateFromDependency(): cached Workshop Item was found"));
-		#endif
-		SCR_WorkshopItem wrapper = new SCR_WorkshopItem(cachedItem, dependency);
+
+		SCR_WorkshopItem wrapper = new SCR_WorkshopItem(null, dependency);
 		return wrapper;
 	}
 	

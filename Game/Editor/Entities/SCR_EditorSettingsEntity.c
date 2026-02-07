@@ -129,8 +129,11 @@ class SCR_EditorSettingsEntity : SCR_EditorBaseEntity
 	\param skipStreamingRules The array of EEditableEntityType for which to skip streaming logic.
 	\return True if there are any streaming rules set.
 	*/
-	bool GetSkipStreamingRules(notnull array<EEditableEntityType> skipStreamingRules)
+	bool GetSkipStreamingRules(out notnull array<EEditableEntityType> skipStreamingRules)
 	{		
+		if (!m_SkipStreamingRules)
+			return false;
+		
 		skipStreamingRules.InsertAll(m_SkipStreamingRules);
 		return !m_SkipStreamingRules.IsEmpty();
 	}

@@ -2,7 +2,7 @@
 class AnimateWidget
 {
 //---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
-// Solving this with an array resulted in a crapton of calls. In Mod Manager menu, it was reported we reached 26 million .Get() calls!
+// Solving this with an array resulted in a lot of calls, as stopping/getting animations is bruteforced. In Mod Manager menu, it was reported we reached 26 million .Get() calls, as we recreate the Widgets to update the lists of mods
 	
 	protected ref array<ref WidgetAnimationBase> m_aAnimations = {};
 		

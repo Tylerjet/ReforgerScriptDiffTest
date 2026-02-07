@@ -81,13 +81,6 @@ class SCR_GroupInviteStickyNotificationUIComponent : SCR_StickyNotificationUICom
 		m_PlayerControllerGroupComponent.GetOnInviteAccepted().Insert(OnInviteAcceptedOrCancelled);
 		m_PlayerControllerGroupComponent.GetOnInviteCancelled().Insert(OnInviteAcceptedOrCancelled);
 		
-		
-		SCR_BaseGameMode gm = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-		if(gm){
-			gm.GetOnGameModeEnd().Insert(OnInviteAcceptedOrCancelled);
-		}
-		
-		
 		int groupInviteID = m_PlayerControllerGroupComponent.GetGroupInviteID();
 		
 		if (groupInviteID > -1)
@@ -114,13 +107,6 @@ class SCR_GroupInviteStickyNotificationUIComponent : SCR_StickyNotificationUICom
 		m_PlayerControllerGroupComponent.GetOnInviteReceived().Remove(OnInviteReceived);
 		m_PlayerControllerGroupComponent.GetOnInviteAccepted().Remove(OnInviteAcceptedOrCancelled);
 		m_PlayerControllerGroupComponent.GetOnInviteCancelled().Remove(OnInviteAcceptedOrCancelled);
-		
-		
-		SCR_BaseGameMode gm = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-		if(gm){
-			gm.GetOnGameModeEnd().Remove(OnInviteAcceptedOrCancelled);
-		}
-		
 	}
 
 	//------------------------------------------------------------------------------------------------

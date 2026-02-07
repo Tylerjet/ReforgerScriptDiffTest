@@ -72,7 +72,7 @@ class SCR_AICombatTargetGetterTask : AITaskScripted
 	}
 	
 	//-------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() {return false;}
+	static override bool VisibleInPalette() {return false;}
 };
 
 
@@ -91,7 +91,7 @@ class SCR_AIGetCurrentEnemy: SCR_AICombatTargetGetterTask
 	}
 	
 	//-------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() {return true;}
+	static override bool VisibleInPalette() {return true;}
 };
 
 
@@ -110,5 +110,5 @@ class SCR_AIGetLastSeenEnemy: SCR_AICombatTargetGetterTask
 	}
 	
 	//-------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() {return true;}
+	static override bool VisibleInPalette() {return true;}
 };

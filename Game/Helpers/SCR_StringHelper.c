@@ -4,11 +4,19 @@ class SCR_StringHelper
 	static const string UPPERCASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	static const string LETTERS = LOWERCASE + UPPERCASE;
 	static const string DIGITS = "0123456789";
+	static const string ALPHANUMERICAL = LETTERS + DIGITS;
 	static const string UNDERSCORE = "_";
+	static const string ALPHANUMERICAL_U = ALPHANUMERICAL + UNDERSCORE;
 	static const string DASH = "-";
 	static const string COLON = ":";
 	static const string SEMICOLON = ";";
+	static const string COMMA = ",";
 	static const string SPACE = " ";
+	static const string STAR = "*";
+	static const string POUND = "#";
+	static const string HASHTAG = POUND;
+	static const string QUESTION_MARK = "?";
+	static const string EXCLAMATION_MARK = "!";
 	static const string DOUBLE_SPACE = SPACE + SPACE;
 	static const string QUADRUPLE_SPACE = DOUBLE_SPACE + DOUBLE_SPACE;
 	static const string SINGLE_QUOTE = "'";
@@ -22,6 +30,15 @@ class SCR_StringHelper
 	static const string LIPSUM = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
 	protected static const string TRANSLATION_KEY_CHARS = UNDERSCORE + DASH;
 
+	protected static const int MIN_LC = 97;		// a
+	protected static const int MAX_LC = 122;	// z
+
+	protected static const int MIN_UC = 65;		// A
+	protected static const int MAX_UC = 90;		// Z
+
+	protected static const int MIN_DIGIT = 48;	// 0
+	protected static const int MAX_DIGIT = 57;	// 9
+
 	//------------------------------------------------------------------------------------------------
 	//! Check if the provided input contains any digit
 	//! \param[in] input
@@ -31,7 +48,7 @@ class SCR_StringHelper
 		for (int i, len = input.Length(); i < len; i++)
 		{
 			int asciiValue = input[i].ToAscii();
-			if (asciiValue >= 48 && asciiValue <= 57)
+			if (asciiValue >= MIN_DIGIT && asciiValue <= MAX_DIGIT)
 				return true;
 		}
 
@@ -47,7 +64,7 @@ class SCR_StringHelper
 		for (int i, len = input.Length(); i < len; i++)
 		{
 			int asciiValue = input[i].ToAscii();
-			if (asciiValue >= 65 && asciiValue <= 90)
+			if (asciiValue >= MIN_UC && asciiValue <= MAX_UC)
 				return true;
 		}
 
@@ -63,7 +80,7 @@ class SCR_StringHelper
 		for (int i, len = input.Length(); i < len; i++)
 		{
 			int asciiValue = input[i].ToAscii();
-			if (asciiValue >= 97 && asciiValue <= 122)
+			if (asciiValue >= MIN_LC && asciiValue <= MAX_LC)
 				return true;
 		}
 
@@ -123,7 +140,7 @@ class SCR_StringHelper
 		for (int i, length = input.Length(); i < length; i++)
 		{
 			string letter = input[i];
-			if (characters.Contains(letter) != useCharactersAsBlacklist)
+			if (characters.Contains(letter) != useCharactersAsBlacklist) // if it contains but shouldn't, or vice-versa
 				result += letter;
 		}
 		return result;
@@ -144,6 +161,7 @@ class SCR_StringHelper
 			case SCR_EStringFormat.ALPHANUMERICAL_I:	return CheckCharacters(input, true, true, true);
 			case SCR_EStringFormat.DIGITS_ONLY:			return CheckCharacters(input, false, false, true);
 		}
+
 		return false;
 	}
 
@@ -163,9 +181,9 @@ class SCR_StringHelper
 		{
 			int asciiValue = input[i].ToAscii();
 			if (!(
-				(allowLC && asciiValue >= 97 && asciiValue <= 122) ||
-				(allowUC && asciiValue >= 65 && asciiValue <= 90) ||
-				(allowDigits && asciiValue >= 48 && asciiValue <= 57) ||
+				(allowLC && asciiValue >= MIN_LC && asciiValue <= MAX_LC) ||
+				(allowUC && asciiValue >= MIN_UC && asciiValue <= MAX_UC) ||
+				(allowDigits && asciiValue >= MIN_DIGIT && asciiValue <= MAX_DIGIT) ||
 				(allowUnderscore && asciiValue == 95)
 			))
 				return false;
@@ -207,8 +225,8 @@ class SCR_StringHelper
 	//! \return string.Format'ted string (with max 9 arguments)
 	static string Format(string input, notnull array<string> arguments)
 	{
-		if (input.IsEmpty())
-			return string.Empty;
+		if (SCR_StringHelper.IsEmptyOrWhiteSpace(input))
+			return input;
 
 		if (!input.Contains("%"))
 			return input;
@@ -231,27 +249,31 @@ class SCR_StringHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Turns e.g m_bIsValid to "Is Valid"
+	//! Turns e.g m_bIsValid to "Is Valid", m_bUsesAMagazine to "Uses A Magazine", m_bExportToPDFDocument to "Export To PDF Document"
 	//! \param[in] valueName
 	//! \return space-separated words without resourceName extension
 	static string FormatValueNameToUserFriendly(string valueName)
 	{
-		if (valueName.IsEmpty())
+		if (IsEmptyOrWhiteSpace(valueName))
 			return string.Empty;
 
 		int asciiValue;
 
 		if (valueName.StartsWith("m_") || valueName.StartsWith("s_"))
 		{
-			valueName = valueName.Substring(2, valueName.Length() - 2);
-
-			if (valueName.IsEmpty())
+			int length = valueName.Length();
+			if (length < 3)
 				return string.Empty;
+
+			valueName = valueName.Substring(2, valueName.Length() - 2);
 
 			// is first after prefix letter lowercase
 			asciiValue = valueName[0].ToAscii();
-			if (asciiValue >= 97 && asciiValue <= 122)
-				valueName = valueName.Substring(1, valueName.Length() - 1);
+			if (asciiValue >= MIN_LC && asciiValue <= MAX_LC)
+			{
+				if (length > 3)
+					valueName = valueName.Substring(1, valueName.Length() - 1);
+			}
 
 			if (valueName.IsEmpty())
 				return string.Empty;
@@ -259,20 +281,14 @@ class SCR_StringHelper
 
 		array<string> pieces = {};
 		string piece;
-		string prevChar;
 		string currChar;
-		string nextChar;
 		int prevCharType; // 0 = LC, 1 = UC, 2 = NUM
 		for (int i, len = valueName.Length(); i < len; i++)
 		{
 			currChar = valueName[i];
-			if (i < len - 1)
-				nextChar = valueName[i + 1];
-			else
-				nextChar = "a";
 
 			asciiValue = currChar.ToAscii();
-			if (asciiValue >= 97 && asciiValue <= 122)		// lowercase
+			if (asciiValue >= MIN_LC && asciiValue <= MAX_LC)		// lowercase
 			{
 				if (prevCharType < 2) // prev can be lower or upper
 				{
@@ -285,14 +301,26 @@ class SCR_StringHelper
 
 					piece = currChar;
 				}
+
 				prevCharType = 0;
 			}
-			else if (asciiValue >= 65 && asciiValue <= 90)	// uppercase
+			else if (asciiValue >= MIN_UC && asciiValue <= MAX_UC)	// uppercase
 			{
-				int nextAsciiValue = nextChar.ToAscii();
+				bool isNextCharUppercase;
+				if (i < len - 1)
+				{
+					int nextCharAsciiValue = valueName[i + 1].ToAscii();
+					isNextCharUppercase = nextCharAsciiValue >= MIN_UC && nextCharAsciiValue <= MAX_UC;
+				}
+				else // final letter
+				{
+					isNextCharUppercase = true;
+				}
+
 				if (
+					isNextCharUppercase &&
 					prevCharType == 1 &&
-					(asciiValue < 97 || asciiValue > 122)) // next char is NOT lowercase
+					(asciiValue < MIN_LC || asciiValue > MAX_LC)) // curr char is NOT lowercase
 				{
 					piece += currChar;
 				}
@@ -303,9 +331,10 @@ class SCR_StringHelper
 
 					piece = currChar;
 				}
+
 				prevCharType = 1;
 			}
-			else if (asciiValue >= 48 && asciiValue <= 57)	// digits
+			else if (asciiValue >= MIN_DIGIT && asciiValue <= MAX_DIGIT)	// digits
 			{
 				if (prevCharType == 2)
 				{
@@ -318,6 +347,7 @@ class SCR_StringHelper
 
 					piece = currChar;
 				}
+
 				prevCharType = 2;
 			}
 			else											// anything else
@@ -327,16 +357,15 @@ class SCR_StringHelper
 					pieces.Insert(piece);
 					piece = string.Empty;
 				}
+
 				prevCharType = 0;
 			}
-
-			prevChar = currChar;
 		}
 
 		if (!piece.IsEmpty())
 			pieces.Insert(piece);
 
-		return Join(" ", pieces);
+		return Join(SPACE, pieces);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -346,8 +375,8 @@ class SCR_StringHelper
 	static string FormatResourceNameToUserFriendly(ResourceName resourceName)
 	{
 		array<string> pieces = {};
-		FilePath.StripExtension(FilePath.StripPath(resourceName)).Split("_", pieces, true);
-		return Join(" ", pieces);
+		FilePath.StripExtension(FilePath.StripPath(resourceName)).Split(UNDERSCORE, pieces, true);
+		return Join(SPACE, pieces);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -357,18 +386,17 @@ class SCR_StringHelper
 	static string FormatSnakeCaseToUserFriendly(string snakeCase)
 	{
 		array<string> pieces = {};
-		snakeCase.Split("_", pieces, true);
+		snakeCase.Split(UNDERSCORE, pieces, true);
 		for (int i, count = pieces.Count(); i < count; i++)
 		{
 			string piece = pieces[i];
 			string firstChar = piece[0];
 			firstChar.ToUpper();
 			piece.ToLower();
-			piece = firstChar + piece.Substring(1, piece.Length() - 1);
-
-			pieces[i] = piece;
+			pieces[i] = firstChar + piece.Substring(1, piece.Length() - 1);
 		}
-		return Join(" ", pieces);
+
+		return Join(SPACE, pieces);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -393,24 +421,6 @@ class SCR_StringHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Gets int values from a string (e.g { 0, 3, 5, 7, 9 } from "0 3 5 abc 7 9)
-	//! numbers should be separated by spaces
-	static array<int> GetIntsFromString(string input)
-	{
-		array<int> result = {};
-		array<string> splits = {};
-		input.Split(SPACE, splits, true);
-
-		foreach (string split : splits)
-		{
-			int value = split.ToInt();
-			if (value != 0 || split == "0")
-				result.Insert(value);
-		}
-		return result;
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! Gets int values array from a string (e.g { 3, 5, 7 } from "3 5 abc 7")
 	//! \param[in] input
 	//! \param[in] splitter space by default, can be a comma from e.g IEntitySource values
@@ -423,7 +433,7 @@ class SCR_StringHelper
 
 		foreach (string split : splits)
 		{
-			int value = split.ToFloat();
+			int value = split.ToInt();
 			if (value != 0 || split.StartsWith("0"))
 				result.Insert(value);
 		}
@@ -432,7 +442,8 @@ class SCR_StringHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Obtain an array of lines from a multiline string - split is done on the \n character
+	//! Obtain an array of lines from a multiline string - split is done on the \\n character
+	//! \param[in] input
 	//! \param[in] removeEmptyLines if true, remove empty lines (including trimmed ones)
 	//! \param[in] trimLines if true, trim lines
 	//! \return array of lines, with or without empty/whitespace lines - can remove an empty array if removeEmptyLines is enabled
@@ -447,14 +458,13 @@ class SCR_StringHelper
 		}
 
 		array<string> result = {};
-		input.Split("\n", result, removeEmptyLines);
+		input.Split(LINE_RETURN, result, removeEmptyLines);
 
 		if (trimLines)
 		{
-			string line;
 			for (int i = result.Count() - 1; i >= 0; --i)
 			{
-				line = result[i];
+				string line = result[i];
 				line.TrimInPlace();
 				if (removeEmptyLines && !line)
 					result.RemoveOrdered(i);
@@ -469,6 +479,9 @@ class SCR_StringHelper
 	//------------------------------------------------------------------------------------------------
 	//! Finds the first occurrence of the provided samples
 	//! \see string.IndexOf
+	//! \param[in] input
+	//! \param[in] samples
+	//! \return
 	static int IndexOf(string input, notnull array<string> samples)
 	{
 		if (input.IsEmpty() || samples.IsEmpty())
@@ -491,6 +504,10 @@ class SCR_StringHelper
 	//------------------------------------------------------------------------------------------------
 	//! Finds the first occurrence of the provided samples from a position
 	//! \see string.IndexOfFrom
+	//! \param[in] input
+	//! \param[in] start
+	//! \param[in] samples
+	//! \return
 	static int IndexOfFrom(string input, int start, notnull array<string> samples)
 	{
 		if (start < 0 || start > input.Length() || input.IsEmpty() || samples.IsEmpty())
@@ -506,6 +523,34 @@ class SCR_StringHelper
 
 		if (result == int.MAX)
 			return -1;
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] input
+	//! \param[in] search
+	//! \return an array of indices - never returns null
+	array<int> IndicesOf(string input, string search)
+	{
+		if (!input || !search)
+			return {};
+
+		int inputLength = input.Length();
+		int searchLength = search.Length();
+
+		array<int> result = {};
+		for (int i; i < inputLength; ++i)
+		{
+			int index = input.IndexOfFrom(i, search);
+			if (index < 0)
+				break;
+
+			result.Insert(index);
+			if (searchLength > 1)
+				i += searchLength - 1;
+		}
 
 		return result;
 	}
@@ -528,6 +573,7 @@ class SCR_StringHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] input
 	//! \return true if input is empty or only made of spaces or tabs
 	static bool IsEmptyOrWhiteSpace(string input)
 	{
@@ -575,7 +621,7 @@ class SCR_StringHelper
 	//! \param[in] pieces the pieces to be joined
 	//! \param[in] joinEmptyEntries if set to false, will ignore empty pieces (to e.g avoid ", , " occurrences)
 	//! \return the string pieces joined with separator, or empty string if pieces is empty
-	// moved above others for autocompletion's sake
+	// moved above other methods for autocompletion's sake
 	static string Join(string separator, notnull array<string> pieces, bool joinEmptyEntries = true)
 	{
 		if (pieces.IsEmpty())
@@ -612,6 +658,7 @@ class SCR_StringHelper
 			else
 				result += separator + piece.ToString(numerical);
 		}
+
 		return result;
 	}
 
@@ -633,6 +680,7 @@ class SCR_StringHelper
 			else
 				result += separator + piece;
 		}
+
 		return result;
 	}
 
@@ -654,7 +702,202 @@ class SCR_StringHelper
 			else
 				result += separator + piece;
 		}
+
 		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Calculate the Levenshtein distance between two words (https://en.wikipedia.org/wiki/Levenshtein_distance)
+	//! \note not to be confused with Damerau-Levenshtein/OSA distance (see DamerauLevenshteinDistance)
+	//! \param[in] word1
+	//! \param[in] word2
+	//! \param[in] caseSensitive
+	//! \return number of operations to go from one word to the other (always in 0..inf range)
+	static int GetLevenshteinDistance(string word1, string word2, bool caseSensitive = true)
+	{
+		if (!word1) // .IsEmpty()
+			return word2.Length();
+
+		if (!word2) // .IsEmpty()
+			return word1.Length();
+
+		if (!caseSensitive)
+		{
+			word1.ToLower();
+			word2.ToLower();
+		}
+
+		if (word1 == word2)
+			return 0;
+
+		int word1Length = word1.Length();
+		int word2Length = word2.Length();
+
+		array<int> v0 = {};
+		array<int> v1 = {};
+		v0.Resize(word1Length + 1);
+		v1.Resize(word1Length + 1);
+
+		for (int i = 1; i <= word1Length; ++i)
+		{
+			v0[i] = i;
+		}
+
+		bool swapped;
+		for (int j = 1; j <= word2Length; ++j)
+		{
+			if (swapped)
+				v0[0] = j;
+			else
+				v1[0] = j;
+
+			for (int i = 1; i <= word1Length; ++i)
+			{
+				int cost = word1[i - 1] != word2[j - 1];
+				if (swapped)	// v0[i] = Math.Min(v1[i] + 1, Math.Min(v0[i - 1] + 1, v1[i - 1] + cost));
+				{
+					int min = v1[i] + 1;
+					int tmp = v0[i - 1] + 1;
+					if (tmp < min)
+						min = tmp;
+
+					tmp = v1[i - 1] + cost;
+					if (tmp < min)
+						min = tmp;
+
+					v0[i] = min;
+				}
+				else			// v1[i] = Math.Min(v0[i] + 1, Math.Min(v1[i - 1] + 1, v0[i - 1] + cost));
+				{
+					int min = v0[i] + 1;
+					int tmp = v1[i - 1] + 1;
+					if (tmp < min)
+						min = tmp;
+
+					tmp = v0[i - 1] + cost;
+					if (tmp < min)
+						min = tmp;
+
+					v1[i] = min;
+				}
+			}
+
+			swapped = !swapped; // simili vector swap
+		}
+
+		if (swapped)
+			return v1[word1Length];
+		else
+			return v0[word1Length];
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \see LevenshteinDistance
+	//! \return a 0..1 matching score - 0 being the farthest, 1 being the identical
+	static float GetLevenshteinDistanceScore(string word1, string word2, bool caseSensitive = true)
+	{
+		int distance = GetLevenshteinDistance(word1, word2, caseSensitive);
+		if (distance == 0)
+			return 1.0;
+
+		int word1Length = word1.Length();
+		int word2Length = word2.Length();
+
+		if (word1Length > word2Length)
+			return 1 - distance / word1Length;
+		else
+			return 1 - distance / word2Length;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Calculate the Damerau-Levenshtein Optimal string Alignment (OSA) distance between two words (https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance)\n
+	//! \note not to be confused with Levenshtein distance (see LevenshteinDistance)
+	//! \param[in] word1
+	//! \param[in] word2
+	//! \param[in] caseSensitive
+	//! \return
+	static int GetDamerauLevenshteinDistance(string word1, string word2, bool caseSensitive = true)
+	{
+		if (!word1) // .IsEmpty()
+			return word2.Length();
+
+		if (!word2) // .IsEmpty()
+			return word1.Length();
+
+		if (!caseSensitive)
+		{
+			word1.ToLower();
+			word2.ToLower();
+		}
+
+		if (word1 == word2)
+			return 0;
+
+		int word1Length = word1.Length();
+		int word2Length = word2.Length();
+
+		array<int> line;
+		array<ref array<int>> matrix = {};
+		matrix.Reserve(word1Length + 1);
+		for (int i; i <= word1Length; ++i)
+		{
+			line = { i };
+			line.Resize(word2Length + 1);
+			matrix.Insert(line);
+		}
+
+		for (int i = 1; i <= word1Length; ++i)
+		{
+			for (int j = 1; j <= word2Length; ++j)
+			{
+				string word1iMinus1 = word1[i - 1];
+				string word2jMinus1 = word2[j - 1];
+				int cost = word1iMinus1 != word2jMinus1;
+				if (i == 1)
+					matrix[0][j] = j;
+
+				int min = matrix[i - 1][j] + 1;
+				int tmp = matrix[i][j - 1] + 1;
+				if (tmp < min)
+					min = tmp;
+
+				tmp = matrix[i - 1][j - 1] + cost;
+				if (tmp < min)
+					min = tmp;
+
+				if (i > 1 && j > 1)
+				{
+					if (word1iMinus1 == word2[j - 2] && word1[i - 2] == word2jMinus1)
+					{
+						tmp = matrix[i - 2][j - 2] + cost;
+						if (tmp < min)
+							min = tmp;
+					}
+				}
+
+				matrix[i][j] = min;
+			}
+		}
+
+		return matrix[word1Length][word2Length];
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \see DamerauLevenshteinDistance
+	//! \return a 0..1 matching score - 0 being the farthest, 1 being identical
+	static float GetDamerauLevenshteinDistanceScore(string word1, string word2, bool caseSensitive = true)
+	{
+		int distance = GetDamerauLevenshteinDistance(word1, word2, caseSensitive);
+		if (distance == 0)
+			return 1.0;
+
+		int word1Length = word1.Length();
+		int word2Length = word2.Length();
+
+		if (word1Length > word2Length)
+			return 1 - distance / word1Length;
+		else
+			return 1 - distance / word2Length;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -713,27 +956,51 @@ class SCR_StringHelper
 		return input;
 	}
 
-
 	//------------------------------------------------------------------------------------------------
 	//! Replace until there is no trace of search
-	//! @code
+	//! \code
 	//! string input = "AAAAAABAAA";
 	//! input.Replace("AA", "A");										// input is now "AAABAA"
-	//! SCR_StringHelper.ReplaceRecursive("AAAAAABAAA", "AA", "A");	// returns "ABA"
+	//! SCR_StringHelper.ReplaceRecursive("AAAAAABAAA", "AA", "A");		// returns "ABA"
 	//! SCR_StringHelper.ReplaceRecursive("AAAAAABAAA", "AA", "AAX");	// returns "AAAAAABAAA"
-	//! @endcode
+	//! \endcode
 	//! \param[in] input the input in which to search and replace
 	//! \param[in] what to replace - an empty sample will do nothing
-	//! \param[in] replace CANNOT contain sample for an obvious reason
+	//! \param[in] replacement CANNOT contain sample for an obvious reason
 	//! \return the modified input, or the original one on wrong arguments
-	static string ReplaceRecursive(string input, string sample, string replace)
+	static string ReplaceRecursive(string input, string sample, string replacement)
 	{
-		if (input.IsEmpty() || sample.IsEmpty() || sample == replace || replace.Contains(sample))
+		if (!input || !sample || sample == replacement || replacement.Contains(sample)) // .IsEmpty() x2
 			return input;
 
 		while (input.IndexOf(sample) > -1)
 		{
-			input.Replace(sample, replace);
+			input.Replace(sample, replacement);
+		}
+
+		return input;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Replaces multiple entries by the same replacement
+	//! \param[in] input
+	//! \param[in] samples
+	//! \param[in] replacement
+	//! \return
+	static string ReplaceMultiple(string input, notnull array<string> samples, string replacement)
+	{
+		for (int i = samples.Count() - 1; i >= 0; --i)
+		{
+			if (replacement.Contains(samples[i]))
+				samples.Remove(i);
+		}
+
+		if (samples.IsEmpty())
+			return input;
+
+		foreach (string sample : samples)
+		{
+			input.Replace(sample, replacement);
 		}
 
 		return input;
@@ -742,26 +1009,26 @@ class SCR_StringHelper
 	//------------------------------------------------------------------------------------------------
 	//! Replace X times a string from within a string from left to right
 	//! the next occurrence is searched after the previous replacement, there is no overlap
-	//! @code
+	//! \code
 	//! SCR_StringHelper.ReplaceTimes("Hello Hallo Yellow", "llo", "ya");		// returns "Heya Hallo Yellow"
 	//! SCR_StringHelper.ReplaceTimes("Hello Hallo Yellow", "llo", "ya", 2);	// returns "Heya Haya Yellow"
 	//! SCR_StringHelper.ReplaceTimes("Hello Hallo Yellow", "llo", "ya", 4);	// returns "Heya Haya Yeyaw"
 	//! SCR_StringHelper.ReplaceTimes("A A A", "A", "BA", 2);		// returns "BA BA A"
 	//! SCR_StringHelper.ReplaceTimes("A A A", "A", "B", 1, 1);	// returns "A B A"
-	//! @endcode
+	//! \endcode
 	//! \param[in] input the input in which to search and replace
 	//! \param[in] sample what to replace - an empty sample will do nothing
-	//! \param[in] replace the replacement string
+	//! \param[in] replacement the replacement string
 	//! \param[in] howMany times the string must be replaced
 	//! \param[in] skip first occurrences -not- to be replaced
-	//! \return input with 'sample' replaced by 'replace' 'howMany' times after skipping 'skip' occurrences
-	static string ReplaceTimes(string input, string sample, string replace, int howMany = 1, int skip = 0)
+	//! \return input with 'sample' replaced by 'replacement' 'howMany' times after skipping 'skip' occurrences
+	static string ReplaceTimes(string input, string sample, string replacement, int howMany = 1, int skip = 0)
 	{
-		if (howMany < 1 || input.IsEmpty() || sample.IsEmpty() || sample == replace)
+		if (howMany < 1 || input.IsEmpty() || sample.IsEmpty() || sample == replacement)
 			return input;
 
 		int sampleLength = sample.Length();
-		int replaceLength = replace.Length();
+		int replaceLength = replacement.Length();
 
 		int index;
 		while (howMany > 0)
@@ -778,9 +1045,9 @@ class SCR_StringHelper
 			}
 
 			if (index == 0)
-				input = replace + input.Substring(sampleLength, input.Length() - sampleLength);
+				input = replacement + input.Substring(sampleLength, input.Length() - sampleLength);
 			else
-				input = input.Substring(0, index) + replace + input.Substring(index + sampleLength, input.Length() - (index + sampleLength));
+				input = input.Substring(0, index) + replacement + input.Substring(index + sampleLength, input.Length() - (index + sampleLength));
 
 			// no overlap
 			index += replaceLength;
@@ -796,6 +1063,7 @@ class SCR_StringHelper
 	//! \code
 	//! SCR_StringHelper.Reverse("ABC123"); // returns "321CBA"
 	//! \endcode
+	//! \param[in] input
 	//! \return reversed input
 	static string Reverse(string input)
 	{
@@ -804,11 +1072,80 @@ class SCR_StringHelper
 		{
 			result += input[i];
 		}
+
 		return result;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Search a string with star-keywords - only supports begin* / *end / *contains* search format
+	//! \param[in] haystack
+	//! \param[in] needle the star-based search:
+	//! - word		= exact search
+	//! - word*		= starting with
+	//! - *word		= starting with
+	//! - *word*	= containing
+	//! \param[in] caseSensitive whether or not the search is case-sensitive
+	//! \param[in] strictMatch star is a REQUIREMENT and not a POSSIBILITY:
+	//! - true:		*word*	= NEEDS a before/after (e.g matches with XwordX, does not match with Xword, wordX and word)
+	//! - false:	*word*	= CAN have a before/after (e.g matches with XwordX, Xword, wordX and word)
+	//! \return true if matches
+	static bool SimpleStarSearchMatches(string haystack, string needle, bool caseSensitive, bool strictMatch)
+	{
+		if (!haystack || !needle) // .IsEmpty()
+			return false;
+
+		if (!caseSensitive)
+		{
+			haystack.ToLower();
+			needle.ToLower();
+		}
+
+		if (!needle.Contains(STAR))		// exact match, boom
+			return needle == haystack;
+
+		bool startsWithStar = needle.StartsWith(STAR);
+		bool endsWithStar = needle.EndsWith(STAR);
+
+		if (startsWithStar)
+		{
+			int length = needle.Length();
+			if (length == 1)
+				return false;
+
+			needle = needle.Substring(1, length - 1);
+		}
+
+		if (endsWithStar)
+		{
+			int length = needle.Length();
+			if (length == 1)
+				return false;
+
+			needle = needle.Substring(0, length - 1);
+		}
+
+		bool isMatch = !strictMatch || needle != haystack;
+		if (!isMatch)
+			return false;
+
+		if (!startsWithStar && endsWithStar)	// starts with needle
+			return haystack.StartsWith(needle);
+
+		if (startsWithStar && endsWithStar)		// contains needle
+			return (!strictMatch || (needle != haystack && !haystack.StartsWith(needle) && !haystack.EndsWith(needle))) && haystack.Contains(needle);
+
+		if (startsWithStar && !endsWithStar)	// ends with needle
+			return haystack.EndsWith(needle);
+
+		// star in the middle of the word or something
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Check if input contains any needles
+	//! \param[in] input
+	//! \param[in] needles
+	//! \return
 	static bool ContainsAny(string input, notnull array<string> needles)
 	{
 		if (input.IsEmpty())
@@ -825,6 +1162,9 @@ class SCR_StringHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Check if input contains every needles
+	//! \param[in] input
+	//! \param[in] needles
+	//! \return
 	static bool ContainsEvery(string input, notnull array<string> needles)
 	{
 		if (input.IsEmpty())
@@ -840,9 +1180,52 @@ class SCR_StringHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] input the input string
+	//! \param[in] characters the characters that must compose input or that must not be present depending on useCharactersAsBlacklist
+	//! \param[in] useCharactersAsBlacklist false for characters to be a whitelist, true for a blacklist
+	//! \return true if no forbidden characters were found or if characters is empty, false otherwise or if input is empty
+	static bool ContainsOnly(string input, string characters, bool useCharactersAsBlacklist = false)
+	{
+		int inputLength = input.Length();
+		if (inputLength < 1)
+			return false;
+
+		int charsLength = characters.Length();
+		if (charsLength < 1)
+			return true;
+
+		if (charsLength == 1)	// go the easy way
+		{
+			for (int i; i < inputLength; ++i)
+			{
+				if ((input[i] == characters) == useCharactersAsBlacklist) // if it contains but shouldn't, or vice-versa
+					return false;
+			}
+
+			return true;
+		}
+
+		// else					// go the hard way
+
+		array<int> asciiValues = {};
+		for (int i; i < charsLength; ++i)
+		{
+			asciiValues.Insert(characters[i].ToAscii());
+		}
+
+		for (int i; i < inputLength; i++)
+		{
+			if (asciiValues.Contains(input[i].ToAscii()) == useCharactersAsBlacklist)
+				return false;
+		}
+
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Find out if a string's beginning matches one of the provided beginnings
 	//! \param[in] input the string to check
-	//! \param[in] lineEnds the beginning to parse
+	//! \param[in] lineStarts the beginnings to parse
 	//! \return whether or not the input begins with one of the provided line beginnings
 	static bool StartsWithAny(string input, notnull array<string> lineStarts)
 	{
@@ -881,6 +1264,16 @@ class SCR_StringHelper
 	//! Get the actual translation from the translation key
 	//! If not a translation key, the provided input is returned
 	//! It is NOT recommended to manipulate a potentially non-ASCII string (multibyte UTF-8), use at your own risk!
+	//! \param[in] input
+	//! \param[in] param1
+	//! \param[in] param2
+	//! \param[in] param3
+	//! \param[in] param4
+	//! \param[in] param5
+	//! \param[in] param6
+	//! \param[in] param7
+	//! \param[in] param8
+	//! \param[in] param9
 	//! \return translated string, multibyte UTF-8 format
 	static string Translate(
 		string input,
@@ -900,7 +1293,9 @@ class SCR_StringHelper
 	//------------------------------------------------------------------------------------------------
 	//! Get the actual translation from the translation key
 	//! If not a translation key, the provided input is returned
-	//! It is NOT recommended to manipulate a potentially non-ASCII string (multibyte UTF-8), use at your own risk!
+	//! It is NOT recommended to manipulate a potentially non-ASCII string (multibyte UTF-8) in script, use at your own risk!
+	//! \param[in] input
+	//! \param[in] arguments
 	//! \return translated string, multibyte UTF-8 format
 	static string Translate(string input, notnull array<string> arguments)
 	{

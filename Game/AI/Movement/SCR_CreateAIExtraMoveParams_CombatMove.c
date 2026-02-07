@@ -47,7 +47,7 @@ class SCR_CreateAIExtraMoveParams_CombatMove : AITaskScripted
 	};
 	
 	//----------------------------------------------------------------------------------------
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 	
 	protected static ref TStringArray s_aVarsOut = { PORT_PARAMS };
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }

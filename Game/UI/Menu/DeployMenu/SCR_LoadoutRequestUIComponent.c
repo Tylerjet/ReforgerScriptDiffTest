@@ -523,7 +523,11 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 			m_wExpandButtonName.SetText(loadout.GetLoadoutName());
 
 		if (m_wExpandButtonIcon && loadout)
-			m_wExpandButtonIcon.LoadImageTexture(0, GetUIInfo(loadout).GetIconPath());
+		{
+			SCR_EditableEntityUIInfo entityUIInfo = GetUIInfo(loadout);
+			
+			entityUIInfo.SetIconTo(m_wExpandButtonIcon);
+		}
 		
 		if (m_wSuppliesText && loadout)
 		{
@@ -660,7 +664,7 @@ class SCR_LoadoutButton : SCR_DeployButtonBase
 
 	protected SCR_BasePlayerLoadout m_Loadout;
 	protected int m_iPlayerId = -1;
-	protected bool m_bIsSelected = false;
+	protected bool m_bIsSelected;
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -718,8 +722,16 @@ class SCR_LoadoutButton : SCR_DeployButtonBase
 		if (!loadout)
 			return;
 
-		if (GetUIInfo())
-			SetImage(GetUIInfo().GetIconPath());
+		SCR_EditableEntityUIInfo entityUIInfo = GetUIInfo();
+		
+		if (entityUIInfo)
+		{
+			string iconPath = entityUIInfo.GetIconPath();
+			if (iconPath.IsEmpty())
+				SetImage(entityUIInfo.GetImageSetPath(), entityUIInfo.GetIconSetName());
+			else
+				SetImage(iconPath);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -727,7 +739,7 @@ class SCR_LoadoutButton : SCR_DeployButtonBase
 	void SetPlayer(int pid)
 	{
 		m_iPlayerId = pid;
-		SetPlayerName(GetGame().GetPlayerManager().GetPlayerName(pid));
+		SetPlayerName(SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(pid));
 		
 		if (m_wPlatformIcon)
 			SCR_PlayerController.Cast(GetGame().GetPlayerController()).SetPlatformImageTo(m_iPlayerId, m_wPlatformIcon);

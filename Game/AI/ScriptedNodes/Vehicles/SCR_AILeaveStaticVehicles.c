@@ -216,19 +216,19 @@ class SCR_AILeaveStaticVehicles : AITaskScripted
 	}
 		
 	//----------------------------------------------------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
 	{
 		return true;
 	};
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------
-	override string GetOnHoverDescription()
+	static override string GetOnHoverDescription()
 	{
 		return "LeaveStaticVehicles: goes over the array of known vehicles and group members leave all static or broken vehicles. Is running while change is ongoing.";
 	};
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------
-	override bool CanReturnRunning()
+	static override bool CanReturnRunning()
 	{
 		return true;
 	};

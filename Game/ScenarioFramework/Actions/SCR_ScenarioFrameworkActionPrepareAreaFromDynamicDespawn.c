@@ -47,7 +47,6 @@ class SCR_ScenarioFrameworkActionPrepareAreaFromDynamicDespawn : SCR_ScenarioFra
 			return;
 		}
 
-		area.SetDynamicDespawnRange(m_iDynamicDespawnRange);
-		scenarioFrameworkSystem.PrepareAreaSpecificDynamicDespawn(area, m_bStaySpawned);
+		scenarioFrameworkSystem.PrepareAreaSpecificDynamicDespawn(area, m_bStaySpawned, m_iDynamicDespawnRange);
 	}
 }

@@ -44,7 +44,7 @@ class SCR_CreateAIExtraMoveParams : AITaskScripted
 	}
 	
 	//----------------------------------------------------------------------------------------
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 	
 	protected static ref TStringArray s_aVarsOut = { PORT_PARAMS };
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
@@ -52,5 +52,5 @@ class SCR_CreateAIExtraMoveParams : AITaskScripted
 	protected static ref TStringArray s_aVarsIn = { PORT_FLANKING_START_POS, PORT_FLANKING_END_POS };
 	override TStringArray GetVariablesIn() { return s_aVarsIn; }
 	
-	override string GetOnHoverDescription() { return "Creates AIExtraMoveParams object which can be passed to AITaskMove"; }
+	static override string GetOnHoverDescription() { return "Creates AIExtraMoveParams object which can be passed to AITaskMove"; }
 }

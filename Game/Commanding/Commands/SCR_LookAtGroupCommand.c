@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------------------------
-[BaseContainerProps()]
+[BaseContainerProps(), SCR_BaseGroupCommandTitleField("m_sCommandName")]
 class SCR_LookAtGroupCommand : SCR_BaseGroupCommand
 {
 	//------------------------------------------------------------------------------------------------
@@ -38,5 +38,15 @@ class SCR_LookAtGroupCommand : SCR_BaseGroupCommand
 		}
 		
 		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool CanBeShown()
+	{
+		if (!CanBeShownInCurrentLifeState())
+			return false;
+		
+		SCR_PlayerControllerGroupComponent groupController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
+		return groupController && CanRoleShow();
 	}
 }

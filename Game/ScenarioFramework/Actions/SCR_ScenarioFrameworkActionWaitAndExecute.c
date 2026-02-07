@@ -22,7 +22,6 @@ class SCR_ScenarioFrameworkActionWaitAndExecute : SCR_ScenarioFrameworkActionBas
 		if (m_bLooped)
 		{
 			m_iDelay = m_iDelayInSeconds;
-			Math.Randomize(-1);
 			if (m_iDelayInSecondsMax > m_iDelayInSeconds)
 				m_iDelay = Math.RandomIntInclusive(m_iDelayInSeconds, m_iDelayInSecondsMax);
 		}
@@ -40,14 +39,13 @@ class SCR_ScenarioFrameworkActionWaitAndExecute : SCR_ScenarioFrameworkActionBas
 			return;
 
 		m_iDelay = m_iDelayInSeconds;
-		Math.Randomize(-1);
 		if (m_iDelayInSecondsMax > m_iDelayInSeconds)
 			m_iDelay = Math.RandomIntInclusive(m_iDelayInSeconds, m_iDelayInSecondsMax);
 
 		//Used to delay the call as it is the feature of this action
-		SCR_ScenarioFrameworkSystem.GetCallQueue().CallLater(ExecuteActions, m_iDelay * 1000, m_bLooped, object);
+		SCR_ScenarioFrameworkSystem.GetCallQueuePausable().CallLater(ExecuteActions, m_iDelay * 1000, m_bLooped, object);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override array<ref SCR_ScenarioFrameworkActionBase> GetSubActions()
 	{

@@ -2,10 +2,20 @@ class SCR_Math
 {
 	//~ Random generator used in scripted Math functions
 	protected const static ref RandomGenerator RANDOM_GENERATOR = new RandomGenerator();
-	
+
+	static const float MILS_NATO2DEG	= 0.05625;
+	static const float MILS_WP2DEG		= 0.06;
+	static const float MILS_STRECK2DEG	= 0.05714;
+
 	//------------------------------------------------------------------------------------------------
 	//! Takes two floats and returns the remainder after division
-	// TODO: [Obsolete("Use Math.Mod instead")]
+	//! \param[in] dividend
+	//! \param[in] divisor
+	//! \return an always-positive modulo (unlike Math.Mod)
+	// TODO: [Obsolete("Use Math.Mod instead")] ?
+	//		beware, negative numbers return different results:
+	//		Math.Mod(-500, 360)      = -140
+	//		SCR_Math.fmod(-500, 360) =  220
 	static float fmod(float dividend, float divisor)
 	{
 		if (divisor == 0)
@@ -15,13 +25,11 @@ class SCR_Math
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Shortest linear interpolation between two angles.
-	\param a Start angle in degrees
-	\param b Traget angle in degrees
-	\param time Progress in range [0,1]
-	\return Interpolated angle
-	*/
+	//! Shortest linear interpolation between two angles.
+	//! \param[in] a Start angle in degrees
+	//! \param[in] b Target angle in degrees
+	//! \param[in] time Progress in range [0,1]
+	//! \return Interpolated angle
 	static float LerpAngle(float a, float b, float t)
 	{
 		float dt = fmod(b - a, 360);
@@ -32,23 +40,19 @@ class SCR_Math
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get shortest angle between two angles.
-	\param a Start angle in degrees
-	\param b Traget angle in degrees
-	\return Difference in degrees
-	*/
+	//! Get shortest angle between two angles.
+	//! \param[in] a Start angle in degrees
+	//! \param[in] b Target angle in degrees
+	//! \return Difference in degrees
 	static float DeltaAngle(float a, float b)
 	{
 		return 180 - Math.AbsFloat(fmod(Math.AbsFloat(b - a), 360) - 180);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Minimum mask that can cover a provided number
-	\param x Positive integer value
-	\return Minimum mask
-	*/
+	//! Minimum mask that can cover a provided number
+	//! \param[in] x Positive integer value
+	//! \return Minimum mask
 	static int IntegerMask(int x)
 	{
 		x |= (x >> 1);
@@ -60,50 +64,114 @@ class SCR_Math
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Get distance to stop with given deceleration.
+	//! Get distance to stop with given deceleration
+	//! \param[in] speed
+	//! \param[in] deceleration
+	//! \return stop distance in metres
 	static float GetDistanceToStop(float speed, float deceleration)
 	{
 		float distance = 0;
 		if (deceleration > 0)
 			distance = 0.5 * speed * speed / deceleration;
 		else if (speed > 0)
-			distance = 1e10;
+			distance = float.INFINITY;
 
 		return distance;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Get speed necessary to reach given distance with specified deceleration.
+	//! \param[in] distance
+	//! \param[in] deceleration
+	//! \return
 	static float GetSpeedToReachDistance(float distance, float deceleration)
 	{
-		float speed = 0;
-		if (distance > 0 && deceleration > 0)
-			speed = Math.Sqrt(2 * distance * deceleration);
+		if (distance <= 0 || deceleration <= 0)
+			return 0;
 
-		return speed;
+		return Math.Sqrt(2 * distance * deceleration);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Get speed necessary to reach given distance with specified deceleration in specified time.
+	//! \param[in] distance
+	//! \param[in] deceleration
+	//! \param[in] time
+	//! \return
 	static float GetSpeedToReachDistanceInTime(float distance, float deceleration, float time)
 	{
 		if (time <= 0)
-			return 1e10;
+			return float.INFINITY;
 
 		// Get the decelerated part
 		float speed = GetSpeedToReachDistance(distance, deceleration);
 		float averageSpeed = distance / time;
-		float additionalSpeed = averageSpeed - speed*0.5;
-		speed += additionalSpeed;
-
-		return speed;
+		float additionalSpeed = averageSpeed - speed * 0.5;
+		return speed + additionalSpeed;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get the math random Generator
-	\return Random Generator
-	*/
+	//! \param[in] min (included)
+	//! \param[in] mid Gaussian curve's middle point
+	//! \param[in] max (included)
+	//! \return the random value
+	static float GetGaussianDistributionRandom(float min, float mid, float max)
+	{
+		if (min == max)
+			return min;
+
+		if (min > max)
+		{
+			float tmp = min;
+			min = max;
+			max = tmp;
+		}
+
+		float result = Math.RandomGaussFloat((max - min) / 6.0, mid); // ~99.73% cases covered
+
+		if (result < min)
+			return min;
+
+		if (result > max)
+			return max;
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! This is Arma 3's random (syntax 2) formula
+	//! \param[in] min (included)
+	//! \param[in] mid Bates curve's middle point
+	//! \param[in] max (included)
+	//! \return the random value
+	static float GetBatesDistributionRandom(float min, float mid, float max)
+	{
+		if (min == max)
+			return min;
+
+		if (min > max)
+		{
+			float tmp = min;
+			min = max;
+			max = tmp;
+		}
+
+		const float bates = (
+			RANDOM_GENERATOR.RandFloat01()
+			+ RANDOM_GENERATOR.RandFloat01()
+			+ RANDOM_GENERATOR.RandFloat01()
+			+ RANDOM_GENERATOR.RandFloat01()
+		) * 0.25;
+
+		if (bates < 0.5)
+			return Math.Lerp(min, mid, bates * 2);
+		else
+			return Math.Lerp(mid, max, bates * 2 - 1);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get the math random Generator
+	//! \return the one SCR_Math's random generator
 	static RandomGenerator GetMathRandomGenerator()
 	{
 		return RANDOM_GENERATOR;
@@ -111,9 +179,87 @@ class SCR_Math
 
 	//------------------------------------------------------------------------------------------------
 	//! Ensures the angle is in range <-units; +units>
+	//! \param[in] angle angle value
+	//! \param[in] units Math.PI or 180
 	//! \return float angle in range <-units; +units>
 	static float FixAngle(float angle, float units = Math.PI)
 	{
 		return Math.Repeat(units + angle, units * 2) - units;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Converts angle to provided unit type from radians
+	//! \param[in] radianAngleFrom
+	//! \param[in] toUnitType
+	//! \return
+	static float ConvertFromRadians(float radianAngleFrom, SCR_EOpticsAngleUnits toUnitType)
+	{
+		switch (toUnitType)
+		{
+			case SCR_EOpticsAngleUnits.DEGREES:
+				radianAngleFrom = radianAngleFrom * Math.RAD2DEG;
+				break;
+
+			case SCR_EOpticsAngleUnits.MILS_WP:
+				radianAngleFrom = radianAngleFrom * Math.RAD2DEG / MILS_WP2DEG;
+				break;
+
+			case SCR_EOpticsAngleUnits.MILS_NATO:
+				radianAngleFrom = radianAngleFrom * Math.RAD2DEG / MILS_NATO2DEG;
+				break;
+
+			case SCR_EOpticsAngleUnits.MILS_STRECK:
+				radianAngleFrom = radianAngleFrom * Math.RAD2DEG / MILS_STRECK2DEG;
+				break;
+
+			default:
+				radianAngleFrom = radianAngleFrom * 1000;	//from radians to milliradians
+				break;
+		}
+
+		return radianAngleFrom;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Converts angle from provided unit type to radians
+	//! \param[in] angleFrom
+	//! \param[in] fromUnitType
+	//! \return
+	static float ConvertToRadians(float angleFrom, SCR_EOpticsAngleUnits fromUnitType)
+	{
+		switch (fromUnitType)
+		{
+			case SCR_EOpticsAngleUnits.DEGREES:
+			{
+				angleFrom = angleFrom * Math.DEG2RAD;
+				break;
+			}
+
+			case SCR_EOpticsAngleUnits.MILS_WP:
+			{
+				angleFrom = angleFrom * MILS_WP2DEG * Math.DEG2RAD;
+				break;
+			}
+
+			case SCR_EOpticsAngleUnits.MILS_NATO:
+			{
+				angleFrom = angleFrom * MILS_NATO2DEG * Math.DEG2RAD;
+				break;
+			}
+
+			case SCR_EOpticsAngleUnits.MILS_STRECK:
+			{
+				angleFrom = angleFrom * MILS_STRECK2DEG * Math.DEG2RAD;
+				break;
+			}
+
+			default:
+			{
+				angleFrom = angleFrom * 0.001;	//from milliradians to radians
+				break;
+			}
+		}
+
+		return angleFrom;
 	}
 }

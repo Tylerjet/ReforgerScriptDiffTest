@@ -69,6 +69,8 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 	protected bool m_bCanShow;
 	protected bool m_bIsHintShown;
 	protected ref ScriptInvokerBool m_OnHintShown;
+	
+	protected const string PAGINATION_LOC_STRING = "#AR-Editor_ContentBrowser_PageIndex_Text";
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnHintShow(SCR_HintUIInfo info, bool isSilent)
@@ -296,7 +298,7 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 		m_IconWidget = ImageWidget.Cast(m_Widget.FindAnyWidget(m_sIconWidgetName));
 		m_ContextButtonWidget = m_Widget.FindAnyWidget(m_sContextButtonWidgetName);
 		m_PageWidget = TextWidget.Cast(m_Widget.FindAnyWidget(m_sPageWidgetName));
-		m_sPageText = m_PageWidget.GetText();
+		m_sPageText = PAGINATION_LOC_STRING;
 		m_TimeWidget = SizeLayoutWidget.Cast(m_Widget.FindAnyWidget(m_sTimeLeftWidgetName));
 		m_VisibilitySelector = m_Widget.FindAnyWidget(m_sVisibilitySelectorName);
 		m_BarColor = ImageWidget.Cast(m_Widget.FindAnyWidget(m_sColorWidgetName));

@@ -495,113 +495,109 @@ class SCR_CampaignBuildingBudgetEditorComponent : SCR_BudgetEditorComponent
 	//------------------------------------------------------------------------------------------------
 	override bool GetMaxBudget(EEditableEntityBudget type, out SCR_EntityBudgetValue budget)
 	{
-		foreach	(SCR_EntityBudgetValue maxBudget : m_MaxBudgets)
+		const bool valid = super.GetMaxBudget(type, budget);
+		
+		if(!valid)
+			return false;
+
+		//if some checks fail, the budget will not change
+		int newMaxBudget = budget.GetBudgetValue();
+
+		switch (type)
 		{
-			if (maxBudget.GetBudgetType() != type)
-				continue;
-			
-			int newMaxBudget;
-
-			switch (type)
+			case EEditableEntityBudget.CAMPAIGN:
 			{
-				case EEditableEntityBudget.CAMPAIGN:
-				{
-					if (!m_ResourceComponent)
-						break;
-					
-					SCR_ResourceConsumer consumer = m_ResourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
-					if (!consumer)
-						break;
-					
-					newMaxBudget = consumer.GetAggregatedResourceValue();
+				if (!m_ResourceComponent)
 					break;
-				}
 				
-				case EEditableEntityBudget.RANK_PRIVATE:
-				{
-					newMaxBudget = GetUserRank();
+				SCR_ResourceConsumer consumer = m_ResourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+				if (!consumer)
 					break;
-				}
-
-				case EEditableEntityBudget.RANK_CORPORAL:
-				{
-					newMaxBudget = GetUserRank();
-					break;
-				}
-
-				case EEditableEntityBudget.RANK_SERGEANT:
-				{
-					newMaxBudget = GetUserRank();
-					break;
-				}
 				
-				case EEditableEntityBudget.RANK_LIEUTENANT:
-				{
-					newMaxBudget = GetUserRank();
-					break;
-				}
-				
-				case EEditableEntityBudget.RANK_CAPTAIN:
-				{
-					newMaxBudget = GetUserRank();
-					break;
-				}
-				
-				case EEditableEntityBudget.RANK_MAJOR:
-				{
-					newMaxBudget = GetUserRank();
-					break;
-				}
-				
-				case EEditableEntityBudget.RANK_COLONEL:
-				{
-					newMaxBudget = GetUserRank();
-					break;
-				}
-				
-				case EEditableEntityBudget.RANK_GENERAL:
-				{
-					newMaxBudget = GetUserRank();
-					break;
-				}
-
-				case EEditableEntityBudget.PROPS:
-				{					
-					newMaxBudget = GetProviderMaxValue(EEditableEntityBudget.PROPS);
-					break;
-				}
-				
-				case EEditableEntityBudget.COOLDOWN:
-				{					
-					newMaxBudget = HasCooldownTime();
-					break;
-				}
-				
-				case EEditableEntityBudget.AI:
-				{					
-					newMaxBudget = GetProviderMaxValue(EEditableEntityBudget.AI);
-					break;
-				}
-				
-				case EEditableEntityBudget.AI_SERVER:
-				{	
-					AIWorld aiWorld = GetGame().GetAIWorld();
-					if (!aiWorld)
-						break;
-							
-					newMaxBudget = aiWorld.GetLimitOfActiveAIs();
-					break;
-				}
+				newMaxBudget = consumer.GetAggregatedResourceValue();
+				break;
+			}
+			
+			case EEditableEntityBudget.RANK_PRIVATE:
+			{
+				newMaxBudget = GetUserRank();
+				break;
 			}
 
-			maxBudget.SetBudgetValue(newMaxBudget);
+			case EEditableEntityBudget.RANK_CORPORAL:
+			{
+				newMaxBudget = GetUserRank();
+				break;
+			}
 
-			budget = maxBudget;
+			case EEditableEntityBudget.RANK_SERGEANT:
+			{
+				newMaxBudget = GetUserRank();
+				break;
+			}
+			
+			case EEditableEntityBudget.RANK_LIEUTENANT:
+			{
+				newMaxBudget = GetUserRank();
+				break;
+			}
+			
+			case EEditableEntityBudget.RANK_CAPTAIN:
+			{
+				newMaxBudget = GetUserRank();
+				break;
+			}
+			
+			case EEditableEntityBudget.RANK_MAJOR:
+			{
+				newMaxBudget = GetUserRank();
+				break;
+			}
+			
+			case EEditableEntityBudget.RANK_COLONEL:
+			{
+				newMaxBudget = GetUserRank();
+				break;
+			}
+			
+			case EEditableEntityBudget.RANK_GENERAL:
+			{
+				newMaxBudget = GetUserRank();
+				break;
+			}
 
-			return true;
+			case EEditableEntityBudget.PROPS:
+			{					
+				newMaxBudget = GetProviderMaxValue(EEditableEntityBudget.PROPS);
+				break;
+			}
+			
+			case EEditableEntityBudget.COOLDOWN:
+			{					
+				newMaxBudget = HasCooldownTime();
+				break;
+			}
+			
+			case EEditableEntityBudget.AI:
+			{					
+				newMaxBudget = GetProviderMaxValue(EEditableEntityBudget.AI);
+				break;
+			}
+			
+			case EEditableEntityBudget.AI_SERVER:
+			{	
+				AIWorld aiWorld = GetGame().GetAIWorld();
+				if (!aiWorld)
+					break;
+						
+				newMaxBudget = aiWorld.GetLimitOfActiveAIs();
+				break;
+			}
 		}
 
-		return false;
+		budget.SetBudgetValue(newMaxBudget);
+
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------

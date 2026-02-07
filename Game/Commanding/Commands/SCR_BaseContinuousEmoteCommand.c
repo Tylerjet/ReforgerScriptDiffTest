@@ -1,4 +1,4 @@
-[BaseContainerProps()]
+[BaseContainerProps(), SCR_BaseGroupCommandTitleField("m_sCommandName")]
 class SCR_ContinuousLoiterCommand : SCR_BaseRadialCommand
 {
 	protected ref SCR_ScriptedCharacterInputContext m_pScrInputContext;
@@ -59,14 +59,12 @@ class SCR_ContinuousLoiterCommand : SCR_BaseRadialCommand
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool CanBePerformed()
+	override bool CanBePerformed(notnull SCR_ChimeraCharacter user)
 	{
-		IEntity playerControlledEntity = GetGame().GetPlayerController().GetControlledEntity();
-		
-		if (!playerControlledEntity)
+		if (!user)
 			return false;
 		
-		SCR_CharacterControllerComponent characterComponent = SCR_CharacterControllerComponent.Cast(playerControlledEntity.FindComponent(SCR_CharacterControllerComponent));
+		SCR_CharacterControllerComponent characterComponent = SCR_CharacterControllerComponent.Cast(user.GetCharacterController());
 		if (!characterComponent)
 			return false;
 		

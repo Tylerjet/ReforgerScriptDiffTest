@@ -5,6 +5,7 @@ class SCR_Tutorial_SquadLeadership_SelectGroupClass : SCR_BaseTutorialStageClass
 
 class SCR_Tutorial_SquadLeadership_SelectGroup : SCR_BaseTutorialStage
 {
+	protected string m_sSpawnedEntityName = "REQUESTING_GROUP";
 	protected Widget m_wHighlight;
 	protected bool m_bPreviewSelected;
 	
@@ -38,7 +39,7 @@ class SCR_Tutorial_SquadLeadership_SelectGroup : SCR_BaseTutorialStage
 	//------------------------------------------------------------------------------------------------
 	override protected bool GetIsFinished()
 	{
-		return m_bPreviewSelected;
+		return m_bPreviewSelected || GetGame().GetWorld().FindEntityByName(m_sSpawnedEntityName);
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -58,7 +58,7 @@ class SCR_PlayerScoreInfoFiringRange
 	//! Dynamically returns the player name.
 	string GetName()
 	{
-		return GetGame().GetPlayerManager().GetPlayerName(m_iID);
+		return SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(m_iID);
 	}
 	
 	//------------------------------------------------------------------------------------------------

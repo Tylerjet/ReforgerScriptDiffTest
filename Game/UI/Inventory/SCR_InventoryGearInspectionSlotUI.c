@@ -72,12 +72,18 @@ class SCR_InventoryGearInspectionPointUI : SCR_InventoryAttachmentPointUI
 				name = string.Empty;
 			 	return typename.Empty;
 			}
-
+			
+			//TODO: FIX THIS, VERY BAD!
+			
 			type = attachment.GetAttachmentSlotType().Type();
 			if (type.IsInherited(AttachmentOptics))
 				name = "#AR-KeybindSeparator_WeaponOptics";
 			if (type.IsInherited(AttachmentUnderBarrel))
 				name = "#AR-AttachmentType_Underbarrel";
+			if (type.IsInherited(AttachmentBayonet))
+				name = "#AR-AttachmentType_Bayonet";
+			if (type.IsInherited(AttachmentMuzzle))
+				name = "#AR-AttachmentType_Suppressor";
 			if (type.IsInherited(AttachmentHandGuard))
 			{
 				name = string.Empty;

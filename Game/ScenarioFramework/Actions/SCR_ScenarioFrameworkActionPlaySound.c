@@ -15,6 +15,6 @@ class SCR_ScenarioFrameworkActionPlaySound : SCR_ScenarioFrameworkActionBase
 			return;
 
 		//After activation of this action, we want to play it with slight delay
-		SCR_ScenarioFrameworkSystem.GetCallQueue().CallLater(scenarioFrameworkSystem.PlaySoundOnEntity, 2000, false, null, m_sSound);
+		SCR_ScenarioFrameworkCallQueueSystem.GetCallQueueNonPausable().CallLater(scenarioFrameworkSystem.PlaySoundOnEntity, 2000, false, null, m_sSound);
 	}
 }

@@ -1134,11 +1134,14 @@ class SCR_BaseGameMode : BaseGameMode
 		SCR_InstigatorContextData instigatorContextData = new SCR_InstigatorContextData(-1, entity, killerEntity, instigator);
 		m_OnControllableDestroyed.Invoke(instigatorContextData);
 		
-		#ifdef ENABLE_DIAG
 		//~ Debug print to see death types of characters
-		if (ChimeraCharacter.Cast(entity) && IsMaster())
-			Print("Character Killed: " + typename.EnumToString(SCR_ECharacterDeathStatusRelations, instigatorContextData.GetVictimKillerRelation()) + " | Victim: " + typename.EnumToString(SCR_ECharacterControlType, instigatorContextData.GetVictimCharacterControlType()) + " (id: " + instigatorContextData.GetVictimPlayerID() + ") | Killer: " + typename.EnumToString(SCR_ECharacterControlType, instigatorContextData.GetKillerCharacterControlType()) + " (id: " + instigatorContextData.GetKillerPlayerID() + ")");
-		#endif
+		if (ChimeraCharacter.Cast(entity) && DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_CHARACTER_KILLED_LOG))
+		{
+			Print("Character Killed: " + typename.EnumToString(SCR_ECharacterDeathStatusRelations, instigatorContextData.GetVictimKillerRelation()) + 
+			" | Victim: " + typename.EnumToString(SCR_ECharacterControlType, instigatorContextData.GetVictimCharacterControlType()) + ", id: " + instigatorContextData.GetVictimPlayerID() + ", Disguise type: " + typename.EnumToString(SCR_ECharacterDisguiseType , instigatorContextData.GetVictimDisguiseType()) + 
+			" | Killer: " + typename.EnumToString(SCR_ECharacterControlType, instigatorContextData.GetKillerCharacterControlType()) + ", id: " + instigatorContextData.GetKillerPlayerID() + ", Disguise type: " + typename.EnumToString(SCR_ECharacterDisguiseType , instigatorContextData.GetKillerDisguiseType()),
+			LogLevel.NORMAL);
+		}
 		
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
 		{
@@ -1773,6 +1776,13 @@ class SCR_BaseGameMode : BaseGameMode
 		ChimeraWorld world = GetGame().GetWorld();
 		world.PauseGameTime(m_ePauseReasons != 0);
 		
+		const int mastersMask = (1 << AudioSystem.SFX) | (1 << AudioSystem.Dialog) | (1 << AudioSystem.Music);
+		
+		if (m_ePauseReasons != 0)
+			AudioSystem.Pause(mastersMask);
+		else
+			AudioSystem.Resume(mastersMask);
+		
 		return !pause && m_ePauseReasons != 0 || pause;
 	}
 	
@@ -1782,7 +1792,6 @@ class SCR_BaseGameMode : BaseGameMode
 	{
 		return !Replication.IsRunning();
 	}
-
 
 	//------------------------------------------------------------------------------------------------
 	// TODO@AS: Small thing, but get rid of m_fTimeElapsed and use
@@ -2006,6 +2015,7 @@ class SCR_BaseGameMode : BaseGameMode
 		{
 			DiagMenu.RegisterMenu(SCR_DebugMenuID.DEBUGUI_GAME_MODE_MENU, "GameMode", "");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_GAME_MODE, "", "Game Mode", "GameMode");
+			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CHARACTER_KILLED_LOG, "", "Show kill log", "GameMode");
 			s_DebugRegistered = true;
 		}
 		#endif

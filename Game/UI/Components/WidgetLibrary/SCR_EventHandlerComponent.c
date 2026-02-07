@@ -43,7 +43,7 @@ class SCR_EventHandlerComponent : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool OnChange(Widget w, int x, int y, bool finished)
+	override bool OnChange(Widget w, bool finished)
 	{
 		if (m_OnChange)
 			m_OnChange.Invoke(w);

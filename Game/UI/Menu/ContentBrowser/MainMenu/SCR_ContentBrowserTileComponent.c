@@ -363,8 +363,11 @@ class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 		string message;
 		Color iconColor;
 		Color messageColor;
+		
 		SCR_WorkshopUiCommon.GetPrimaryActionLook(m_ePrimaryActionState, m_eRevisionAvailability, m_Item, icon, iconColor, message, messageColor);
 	
+		m_Widgets.m_wMainActionButton.SetVisible(m_Item.GetSizeBytes() > 0);
+		
 		if (iconColor)	
 			iconColorEffect.m_cDefault = iconColor;
 		
@@ -374,7 +377,31 @@ class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 		m_Widgets.m_MainActionButtonComponent0.InvokeAllEnabledEffects(true);
 		
 		m_Widgets.m_MainActionButtonComponent1.SetImage(icon);
+		
 		m_Widgets.m_wMainActionText.SetText(message);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateMANWVisuals()
+	{
+		if (!m_Item.GetWorkshopItem())
+		{
+			m_Widgets.m_wMANWLogo.SetVisible(false);
+			return;
+		}
+		
+		array<WorkshopTag> items = {};
+		m_Item.GetWorkshopItem().GetTags(items);
+		foreach(WorkshopTag item: items)
+		{
+			if (item.Name() == "MANW_2025")
+			{
+				m_Widgets.m_wMANWLogo.SetVisible(true);
+				return;
+			}
+		}
+		
+		m_Widgets.m_wMANWLogo.SetVisible(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -403,6 +430,7 @@ class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 		UpdateDependencyCountWidgets();
 		
 		UpdateEnableButtonTooltip();
+		UpdateMANWVisuals();
 		
 		// Show type 
 		bool isSave = m_Item.IsWorldSave();
@@ -412,7 +440,7 @@ class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 		
 		if (isSave)
 		{
-			string imageType = "save-published";
+			const string imageType = "save-published"; // TODO: check for good const usage
 		
 			m_Widgets.m_wItemTypeImage.LoadImageFromSet(0, UIConstants.ICONS_IMAGE_SET, imageType);
 			m_Widgets.m_wItemTypeShadow.LoadImageFromSet(0, UIConstants.ICONS_GLOW_IMAGE_SET, imageType);
@@ -500,7 +528,7 @@ class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnWorkshopItemChange(SCR_WorkshopItem item)
+	protected void OnWorkshopItemChange()
 	{
 		UpdateAllWidgets();
 	}
@@ -598,8 +626,6 @@ class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 			m_Item.m_OnChanged.Insert(OnWorkshopItemChange);
 			m_Item.m_OnGetAsset.Insert(OnWorkshopItemChange);
 			m_Item.m_OnDependenciesLoaded.Insert(OnWorkshopItemChange);
-			if (!m_Item.GetDetailsLoaded())
-				m_Item.LoadDetails();
 		}
 
 		UpdateAllWidgets();

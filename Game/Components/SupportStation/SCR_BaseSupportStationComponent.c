@@ -57,21 +57,30 @@ class SCR_BaseSupportStationComponentClass : ScriptComponentClass
 	{
 		//~ Create Audio source if it does not yet exist
 		if (!m_OnUseAudioSourceConfiguration)
-		{
-			if (SCR_StringHelper.IsEmptyOrWhiteSpace(m_sOnUseSoundEffectFile) || SCR_StringHelper.IsEmptyOrWhiteSpace(m_sOnUseSoundEffectEventName))
-				return null;
-
-			m_OnUseAudioSourceConfiguration = new SCR_AudioSourceConfiguration();
-			m_OnUseAudioSourceConfiguration.m_sSoundProject = m_sOnUseSoundEffectFile;
-			m_OnUseAudioSourceConfiguration.m_sSoundEventName = m_sOnUseSoundEffectEventName;
-
-			if (!CanMoveWithPhysics())
-				m_OnUseAudioSourceConfiguration.m_eFlags = SCR_Enum.SetFlag(m_OnUseAudioSourceConfiguration.m_eFlags, EAudioSourceConfigurationFlag.Static);
-			else
-				m_OnUseAudioSourceConfiguration.m_eFlags = SCR_Enum.RemoveFlag(m_OnUseAudioSourceConfiguration.m_eFlags, EAudioSourceConfigurationFlag.Static);
-		}
+			m_OnUseAudioSourceConfiguration = CreateOnUseAudioConfig(m_sOnUseSoundEffectFile, m_sOnUseSoundEffectEventName);
 
 		return m_OnUseAudioSourceConfiguration;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get Audio config to play
+	//! Will create it if it not yet exists. Returns null if no SoundFile or SoundEvent is set
+	//! \return Sound Config
+	SCR_AudioSourceConfiguration CreateOnUseAudioConfig(ResourceName soundFile, string soundEvent)
+	{		
+		if (SCR_StringHelper.IsEmptyOrWhiteSpace(soundFile) || SCR_StringHelper.IsEmptyOrWhiteSpace(soundEvent))
+			return null;
+
+		SCR_AudioSourceConfiguration soundConfig = new SCR_AudioSourceConfiguration();
+		soundConfig.m_sSoundProject = soundFile;
+		soundConfig.m_sSoundEventName = soundEvent;
+
+		if (!CanMoveWithPhysics())
+			soundConfig.m_eFlags = SCR_Enum.SetFlag(soundConfig.m_eFlags, EAudioSourceConfigurationFlag.Static);
+		else
+			soundConfig.m_eFlags = SCR_Enum.RemoveFlag(soundConfig.m_eFlags, EAudioSourceConfigurationFlag.Static);
+
+		return soundConfig;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -115,17 +124,18 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 	protected LocalizedString m_sOverrideUserActionName;
 	
 	protected SCR_ResourceConsumer m_ResourceConsumer;
+	protected SCR_ResourceGenerator m_ResourceGenerator;
 	
 	//~ Will send bool over if enabled or not
 	protected ref ScriptInvoker Event_OnEnabledChanged;
 	
 	//Refs
-	protected Physics m_Physics;
+	protected Vehicle m_PhysicsVehicle;
 	protected EDamageState m_eCurrentDamageState = EDamageState.UNDAMAGED;
 	protected FactionAffiliationComponent m_FactionAffiliationComponent;
 	protected SCR_ServicePointComponent m_ServicePointComponent;
 	//~ if the handler exists than supplies are synced with server
-	protected SCR_ResourceSystemSubscriptionHandleBase m_ResourceSubscriptionHandleConsumer;
+	protected SCR_ResourceSystemSubscriptionHandleBase m_ResourceSubscriptionHandler;
 
 	//======================================== EXECUTE ========================================\\
 	//------------------------------------------------------------------------------------------------
@@ -225,7 +235,7 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 	protected void PlaySoundEffect(SCR_AudioSourceConfiguration audioConfig, notnull IEntity soundOwner, SCR_BaseUseSupportStationAction action)
 	{
 		//~ No audio given so ignore function. It might be that no event name or file name are assigned
-		if (!audioConfig)
+		if (!audioConfig || !soundOwner)
 			return;
 
 		//~ Get sound component
@@ -304,9 +314,9 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 	//! \param[in] action
 	//! \param[in] actionPosition
 	//! \param[out] reasonInvalid Reason why action is invalid
-	//! \param[out] supplyCost cost when using the support station
+	//! \param[out] supplyAmount cost or gain of supplies when using the support station
 	//! \return
-	bool IsValid(IEntity actionOwner, IEntity actionUser, SCR_BaseUseSupportStationAction action, vector actionPosition, out ESupportStationReasonInvalid reasonInvalid, out int supplyCost)
+	bool IsValid(IEntity actionOwner, IEntity actionUser, SCR_BaseUseSupportStationAction action, vector actionPosition, out ESupportStationReasonInvalid reasonInvalid, out int supplyAmount)
 	{
 		//~ Check if enabled
 		if (!IsEnabled())
@@ -361,19 +371,32 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 		if (AreSuppliesEnabled())
 		{
 			//~ Set amount of supplies used on action
-			supplyCost = GetSupplyCostAction(actionOwner, actionUser, action);
-
-			//~ Check if there are enough supplies
-			if (!HasEnoughSupplies(actionOwner, actionUser, supplyCost))
+			supplyAmount = GetSupplyAmountAction(actionOwner, actionUser, action);
+			
+			//~ Action costs supplies
+			if (!HasSupplyGainInsteadOfCost(action))
 			{
-				reasonInvalid = ESupportStationReasonInvalid.NO_SUPPLIES;
-				return false;
+				//~ Check if there are enough supplies
+				if (!HasEnoughSupplies(actionOwner, actionUser, supplyAmount))
+				{
+					reasonInvalid = ESupportStationReasonInvalid.NO_SUPPLIES;
+					return false;
+				}
+			}
+			//~ Action generates supplies
+			else 
+			{
+				if (!HasSpaceForSuppliesGeneration(actionOwner, actionUser, supplyAmount))
+				{
+					reasonInvalid = ESupportStationReasonInvalid.NO_SUPPLY_STORAGE_SPACE;
+					return false;
+				}
 			}
 		}
 		//~ No supplies used so set cost -1 so system knows not to display supply amount
 		else
 		{
-			supplyCost = -1;
+			supplyAmount = -1;
 		}
 
 		//~ Check if the support station is moving
@@ -461,16 +484,29 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 		
 		return Event_OnEnabledChanged;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Override if it has supply gain instead of cost
+	//! \param[in] action Action of the support station
+	//! \return True if it is gain and false if it is cost
+	bool HasSupplyGainInsteadOfCost(SCR_BaseUseSupportStationAction action)
+	{
+		return false;
+	}
 
 	//---------------------------------------- IsMoving ----------------------------------------\\
 	//------------------------------------------------------------------------------------------------
 	protected bool IsMoving()
 	{
 		//~ If has physics assigned check if it is moving. Otherwise return false
-		if (!m_Physics)
+		if (!m_PhysicsVehicle)
 			return false;
 
-		return m_Physics.GetVelocity() != vector.Zero || m_Physics.GetAngularVelocity() != vector.Zero;
+		Physics physics = m_PhysicsVehicle.GetPhysics();
+		if (!physics)
+			return false;
+
+		return physics.GetVelocity() != vector.Zero || physics.GetAngularVelocity() != vector.Zero;
 	}
 
 	//---------------------------------------- Faction Check ----------------------------------------\\
@@ -562,12 +598,11 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 	}
 
 	//======================================== SUPPLIES ========================================\\
-
 	//------------------------------------------------------------------------------------------------
-	//! Get the minimum amount of supplies needed for the action.
+	//! Get the minimum amount of supplies needed for the action (Can be cost or gain)
 	//! This is the amount of supplies needed to pass the IsValid check when using supplies and when executed
 	//! The method is generally overwritten in inherited support stations
-	protected int GetSupplyCostAction(IEntity actionOwner, IEntity actionUser, SCR_BaseUseSupportStationAction action)
+	protected int GetSupplyAmountAction(IEntity actionOwner, IEntity actionUser, SCR_BaseUseSupportStationAction action)
 	{
 		return m_iBaseSupplyCostOnUse;
 	}
@@ -583,10 +618,10 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 		//~ Make sure to create or poke the consumer handler so server sends updates for clients
 		if (Replication.IsClient())
 		{
-			if (m_ResourceSubscriptionHandleConsumer)
-				m_ResourceSubscriptionHandleConsumer.Poke();
+			if (m_ResourceSubscriptionHandler)
+				m_ResourceSubscriptionHandler.Poke();
 			else
-				m_ResourceSubscriptionHandleConsumer = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandleGraceful(m_ResourceConsumer, Replication.FindId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent))));
+				m_ResourceSubscriptionHandler = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandleGraceful(m_ResourceConsumer, Replication.FindId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent))));
 		}
 		//~ Simply update if server
 		else
@@ -601,16 +636,16 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 	//~ Check if enough supplies to execute the action
 	protected bool HasEnoughSupplies(IEntity actionOwner, IEntity actionUser, int supplyAmountToCheck)
 	{
-		if (supplyAmountToCheck <= 0 || !AreSuppliesEnabled())
+		if (supplyAmountToCheck <= 0 || !m_ResourceConsumer || !AreSuppliesEnabled())
 			return true;
 		
 		//~ Make sure to create or poke the consumer handler so server sends updates for clients
 		if (Replication.IsClient())
 		{
-			if (m_ResourceSubscriptionHandleConsumer)
-				m_ResourceSubscriptionHandleConsumer.Poke();
+			if (m_ResourceSubscriptionHandler)
+				m_ResourceSubscriptionHandler.Poke();
 			else
-				m_ResourceSubscriptionHandleConsumer = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandleGraceful(m_ResourceConsumer, Replication.FindId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent))));
+				m_ResourceSubscriptionHandler = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandleGraceful(m_ResourceConsumer, Replication.FindId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent))));
 		}
 		//~ Simply update if server
 		else
@@ -628,7 +663,7 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 	//! \return true if there were enough supplies and they are removed
 	protected bool OnConsumeSuppliesServer(int amount)
 	{
-		if (amount <= 0 || !AreSuppliesEnabled())
+		if (amount <= 0 || !m_ResourceConsumer || !AreSuppliesEnabled())
 			return true;
 
 		//~ Check if consumption was successful 
@@ -636,7 +671,52 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 		
 		return response.GetReason() == EResourceReason.SUFFICIENT;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//~ Check if there is enough storage for supplies to execute the action
+	protected bool HasSpaceForSuppliesGeneration(IEntity actionOwner, IEntity actionUser, int supplyAmountToCheck)
+	{
+		//~ TODO: For now it isn't easy for client to request for generators if there is both storage available as well as able to create an orphan supply. 
+		//~ This means we will always return this true but it will require the resourcecomponent to always generate orphans as well
+		return true;
+		
+		/*if (supplyAmountToCheck <= 0 || !m_ResourceGenerator || !AreSuppliesEnabled())
+			return true;
+		
+		//~ Make sure to create or poke the consumer handler so server sends updates for clients
+		if (Replication.IsClient())
+		{
+			if (m_ResourceSubscriptionHandleGenerator)
+				m_ResourceSubscriptionHandleGenerator.Poke();
+			else
+				m_ResourceSubscriptionHandleGenerator = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandleGraceful(m_ResourceGenerator, Replication.FindId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent))));
+		}
+		//~ Simply update if server
+		else
+		{
+			GetGame().GetResourceGrid().UpdateInteractor(m_ResourceGenerator);
+		}
+		
+		SCR_ResourceGenerationResponse response = m_ResourceGenerator.RequestAvailability(supplyAmountToCheck);
+		//~ Check availability 		
+		return response.GetReason() == EResourceReason.SUFFICIENT;*/
+	}
 
+	//------------------------------------------------------------------------------------------------
+	//! Action is executed and supplies are added to a storage (Server Only)
+	//! \param[in] amount
+	//! \return true if there was enough supply storage and they are added to the storage
+	protected bool OnGenerateSuppliesServer(int amount)
+	{
+		if (amount <= 0 || !m_ResourceGenerator || !AreSuppliesEnabled())
+			return true;
+
+		//~ Check if generation was successful
+		SCR_ResourceGenerationResponse response = m_ResourceGenerator.RequestGeneration(amount);
+		
+		return response.GetReason() == EResourceReason.SUFFICIENT;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Get if support station should check for supplies
 	//! \return true if should check for supplies
@@ -652,6 +732,13 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 	SCR_ResourceConsumer GetResourceConsumer()
 	{
 		return m_ResourceConsumer;
+	}	
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return Resource Generator if entity has any
+	SCR_ResourceGenerator GetResourceGenerator()
+	{
+		return m_ResourceGenerator;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -692,7 +779,7 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 				return true;
 		}
 
-		return Math3D.IntersectionSphereAABB(GetOwner().GetOrigin() - actionOwner.GetOrigin(), GetRange(), mins, maxs);
+		return Math3D.IntersectionSphereAABB(GetPosition() - actionOwner.GetOrigin(), GetRange(), mins, maxs);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -755,6 +842,16 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 			return null;
 
 		return classData.GetOnUseAudioConfig();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected SCR_AudioSourceConfiguration CreateOnUseAudioConfig(ResourceName soundFile, string soundEvent)
+	{
+		SCR_BaseSupportStationComponentClass classData = SCR_BaseSupportStationComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!classData)
+			return null;
+
+		return classData.CreateOnUseAudioConfig(soundFile, soundEvent);
 	}
 
 	//======================================== PLAYERS IN VEHICLE ========================================\\
@@ -965,7 +1062,11 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 	{
 		SCR_ResourceComponent resourceComponent = SCR_ResourceComponent.FindResourceComponent(GetOwner());
 		if (resourceComponent)
+		{
 			m_ResourceConsumer = resourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+			m_ResourceGenerator = resourceComponent.GetGenerator(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+		}
+			
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -985,8 +1086,10 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 		if (resourceComponent)
 		{
 			m_ResourceConsumer = resourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
-			if (!m_ResourceConsumer)
-				Print("'SCR_BaseSupportStationComponent' 'EOnInit': '" + GetOwner() + "' Support Station is set to use supplies but the consumer configuration in m_ResourceConsumer is missing", LogLevel.ERROR);
+			m_ResourceGenerator = resourceComponent.GetGenerator(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+			
+			if (!m_ResourceConsumer && !m_ResourceGenerator)
+				Print("'SCR_BaseSupportStationComponent' 'EOnInit': '" + GetOwner() + "' Support Station is set to use supplies as it has a Resource Component but it has no consumer nor generator set up", LogLevel.ERROR);
 			//~ Temp solution until replication fixed
 			else 
 				resourceComponent.TEMP_GetOnInteractorReplicated().Insert(TEMP_OnInteractorReplicated);
@@ -1005,7 +1108,7 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 				vehicle = Vehicle.Cast(owner.GetParent());
 			
 			if (vehicle)
-				m_Physics = vehicle.GetPhysics();
+				m_PhysicsVehicle = vehicle;
 		}
 			
 		//~ If faction is checked on use set faction affiliation ref
@@ -1088,7 +1191,7 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 
 		supportStationManager.RemoveSupportStation(this);
 		
-		if (m_ResourceConsumer && AreSuppliesEnabled())
+		if ((m_ResourceConsumer || m_ResourceGenerator) && AreSuppliesEnabled())
 		{
 			SCR_ResourceComponent resourceComponent = SCR_ResourceComponent.FindResourceComponent(owner);
 			if (!resourceComponent && owner.GetParent())

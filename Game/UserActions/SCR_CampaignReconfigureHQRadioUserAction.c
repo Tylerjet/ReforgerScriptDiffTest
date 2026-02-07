@@ -13,10 +13,7 @@ class SCR_CampaignReconfigureHQRadioUserAction : ScriptedUserAction
 
 		// Base was found, stop query
 		if (m_Base)
-		{
-			m_Base.RegisterHQRadio(m_HQRadio);
 			return false;
-		}
 		
 		// Keep looking
 		return true;
@@ -142,7 +139,7 @@ class SCR_CampaignReconfigureHQRadioUserAction : ScriptedUserAction
 			// Already ours
 			if (m_Base.GetFaction() == playerFaction)
 			{
-				SetCannotPerformReason("#AR-Campaign_Action_Done-UC");
+				SetCannotPerformReason("#AR-Campaign_Action_Done");
 				return false;
 			}
 			

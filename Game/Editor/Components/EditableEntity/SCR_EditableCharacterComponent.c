@@ -593,12 +593,12 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 		SCR_AIGroup aiGroup = group.GetAIGroupComponent();
 		if (!aiGroup)
 			return;
-
-		array<IEntity> usableVehicles = {};
-		aiGroup.GetUsableVehicles(usableVehicles);
-
-		if (!usableVehicles.Contains(vehicle))
-			aiGroup.AddUsableVehicle(vehicle);
+		
+		SCR_AIVehicleUsageComponent vehicleUsageComp = SCR_AIVehicleUsageComponent.FindOnNearestParent(vehicle, vehicle);
+		if (!vehicleUsageComp)
+			return;
+				
+		aiGroup.GetGroupUtilityComponent().m_VehicleMgr.TryAddVehicle(vehicleUsageComp);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -618,12 +618,15 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 		SCR_AIGroup aiGroup = group.GetAIGroupComponent();
 		if (!aiGroup)
 			return;
-
-		array<IEntity> usableVehicles = {};
-
+		
+		
+		SCR_AIVehicleUsageComponent vehicleUsageComp = SCR_AIVehicleUsageComponent.FindOnNearestParent(vehicle, vehicle);
+		if (!vehicleUsageComp)
+			return;
+		
+		SCR_AIGroupVehicleManager vehMgr = aiGroup.GetGroupUtilityComponent().m_VehicleMgr;
 		//Check if vehicle is used by group
-		aiGroup.GetUsableVehicles(usableVehicles);
-		if (!usableVehicles.Contains(vehicle))
+		if (vehMgr.FindVehicle(vehicleUsageComp) == null)
 			return;
 
 		if (checkIfVehicleStillUsed)
@@ -653,7 +656,7 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 		}
 
 		//Remove vehicle
-		aiGroup.RemoveUsableVehicle(vehicle);
+		vehMgr.RemoveVehicle(vehicleUsageComp);
 	}
 
 //	//------------------------------------------------------------------------------------------------

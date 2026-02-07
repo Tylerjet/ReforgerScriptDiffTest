@@ -14,7 +14,7 @@ class SCR_CreateEditablePrefabsPlugin : SCR_PrefabEditingPluginBase
 		//TODO: m_bOnlyUpdate = false is Hotfix needs to be fixed and removed
 		m_bOnlyUpdate = false;
 
-		// Workbench.OpenModule(WorldEditor); // already opened this is a World Editor plugin
+		Workbench.OpenModule(WorldEditor); // also used by SCR_CreateEditablePrefabsPluginResourceManager which is a ResourceManager plugin
 		WorldEditor worldEditor = Workbench.GetModule(WorldEditor);
 		if (!worldEditor)
 			return;

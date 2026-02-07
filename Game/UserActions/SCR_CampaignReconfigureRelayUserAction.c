@@ -3,7 +3,6 @@ class SCR_CampaignReconfigureRelayUserAction : ScriptedUserAction
 {
 	// Member variables
 	protected SCR_CampaignMilitaryBaseComponent m_Base;
-	protected IEntity m_TowerRadio;
 	protected bool m_bCanBeShownResult = false;
 
 	//------------------------------------------------------------------------------------------------
@@ -40,9 +39,6 @@ class SCR_CampaignReconfigureRelayUserAction : ScriptedUserAction
 		// Register parent base
 		if (parent && parent.FindComponent(SCR_CampaignMilitaryBaseComponent))
 			m_Base = SCR_CampaignMilitaryBaseComponent.Cast(parent.FindComponent(SCR_CampaignMilitaryBaseComponent));
-		
-		m_TowerRadio = pOwnerEntity;
-		m_Base.RegisterHQRadio(m_TowerRadio);
 	} 
 	
 	//------------------------------------------------------------------------------------------------
@@ -116,7 +112,7 @@ class SCR_CampaignReconfigureRelayUserAction : ScriptedUserAction
 		// Already ours
 		if (m_Base.GetFaction() == playerFaction)
 		{
-			SetCannotPerformReason("#AR-Campaign_Action_Done-UC");
+			SetCannotPerformReason("#AR-Campaign_Action_Done");
 			return false;
 		}
 		

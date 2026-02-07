@@ -87,7 +87,7 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 			m_Attributes = SCR_ItemAttributeCollection.Cast( m_pItem.GetAttributes() );			//set the slot attributes (size) based on the information stored in the item 
 		if (!m_Attributes)
 			return;
-		if (m_pItem && !m_Attributes.IsVisible())
+		if (m_pItem && !m_Attributes.IsVisible(m_pItem))
 			return;
 
 		auto vehicleAttributes = SCR_InventoryVehicleVisibilityAttribute.Cast(m_Attributes.FindAttribute(SCR_InventoryVehicleVisibilityAttribute));
@@ -713,6 +713,15 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 			InitFuelAmount();
 			return;
 		} 
+
+		if (SCR_GadgetComponent.Cast(item.FindComponent(SCR_GadgetComponent)))
+		{
+			m_eSlotFunction = ESlotFunction.TYPE_GADGET;
+			if (MagazineComponent.Cast(item.FindComponent(MagazineComponent)))
+				SetAmmoType();
+
+			return;
+		}
 		
 		if (MagazineComponent.Cast(item.FindComponent(MagazineComponent)))
 		{
@@ -727,12 +736,6 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 		{
 			m_eSlotFunction = ESlotFunction.TYPE_WEAPON;
 			SetAmmoType();
-			return;
-		}
-		
-		if (SCR_GadgetComponent.Cast(item.FindComponent(SCR_GadgetComponent)))
-		{
-			m_eSlotFunction = ESlotFunction.TYPE_GADGET;
 			return;
 		}
 	}
@@ -916,6 +919,8 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 
 		if (magazineCount > 0 && maxAmmoCount > 0)
 			m_wCurrentMagazineAmmoCount.SetMaskProgress(Math.InverseLerp(0, maxAmmoCount, currentAmmoCount));
+		else if (maxAmmoCount == 0)
+			m_wCurrentMagazineAmmoCount.SetMaskProgress(0);
 
 		m_wMagazineNumber.SetVisible(magazineCount > 0);
 
@@ -989,14 +994,6 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	
 	//------------------------------------------------------------------------ COMMON METHODS ----------------------------------------------------------------------
 	
-	//------------------------------------------------------------------------------------------------
-	override bool OnSelect(Widget w, int x, int y)
-	{
-		//GetGame().GetWorkspace().SetFocusedWidget(w);
-		//w.SetOpacity(  );
-		return false;
-	}
-		
 	//------------------------------------------------------------------------------------------------	
 	override bool OnFocus(Widget w, int x, int y)
 	{
@@ -1012,7 +1009,7 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------	
-	override bool OnChange(Widget w, int x, int y, bool finished)
+	override bool OnChange(Widget w, bool finished)
 	{
 		ClearItemDetails();
 		return false;

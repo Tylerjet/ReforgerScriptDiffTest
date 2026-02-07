@@ -271,9 +271,20 @@ class StringTableItem
 }
 
 //------------------------------------------------------------------------------------------------
+//! Base class for scripted string table item
 class ScriptStringTableItem: StringTableItem
 {
 	static string GetTargetPrefix();
+}
+
+//------------------------------------------------------------------------------------------------
+//! Default string table item
+class DefaultStringTableItem: ScriptStringTableItem
+{
+	static override string GetTargetPrefix() { return "Target_"; }
+	
+	[Attribute(category:"Default", desc: "English (United States)\nServes as a source for translated texts.", uiwidget: UIWidgets.EditBoxWithButton)]
+	string Target_en_us;
 }
 
 //------------------------------------------------------------------------------------------------

@@ -36,18 +36,22 @@ class SCR_DoxygenFillerPlugin : WorkbenchPlugin
 	[Attribute("1", category: "Other", desc: "Add missing separators to undocumented methods")]
 	protected bool m_bAddMissingSeparators;
 
-	[Attribute("1", category: "Other", desc: "Add \"" + CONSTRUCTOR_COMMENT + "\" / \"" + DESTRUCTOR_COMMENT + "\" comment")]
-	protected bool m_bAddConstructorDestructorNormalComment;
+	[Attribute("1", category: "Other", desc: "Add \"" + CONSTRUCTOR_COMMENT + "\" comment to constructor")]
+	protected bool m_bAddConstructorNormalComment;
 
-	protected static const string DOUBLE_SLASH = "/" + "/";
-	protected static const string METHOD_SEPARATOR = DOUBLE_SLASH + "------------------------------------------------------------------------------------------------";
-	protected static const string DOXYGEN_LINE_START = DOUBLE_SLASH + "!"; // the space is optional... unfortunately
+	[Attribute("1", category: "Other", desc: "Add \"" + DESTRUCTOR_COMMENT + "\" comment to destructor")]
+	protected bool m_bAddDestructorNormalComment;
+
+	protected static const string METHOD_SEPARATOR = SCR_StringHelper.DOUBLE_SLASH + "------------------------------------------------------------------------------------------------";
+	protected static const string DOXYGEN_LINE_START = SCR_StringHelper.DOUBLE_SLASH + "!"; // the space is optional... unfortunately
 	protected static const string GENERATED_SCRIPT_WARNING = "Do not modify, this script is generated"; // must be the exact line, tabs included if any
-	protected static const string CONSTRUCTOR_COMMENT = DOUBLE_SLASH + " constructor";
-	protected static const string DESTRUCTOR_COMMENT = DOUBLE_SLASH + " destructor";
+	protected static const string CONSTRUCTOR_COMMENT = SCR_StringHelper.DOUBLE_SLASH + " constructor";
+	protected static const string DESTRUCTOR_COMMENT = SCR_StringHelper.DOUBLE_SLASH + " destructor";
 	protected static const string COMMENT_BLOCK_START = "/" + "*";
 	protected static const string COMMENT_BLOCK_END = "*" + "/";
 	protected static const ref array<string> DOXYGEN_BLOCK_STARTS = { COMMENT_BLOCK_START + "*", COMMENT_BLOCK_START + "!" };
+	protected static const string BASE_PARAM = "\\param";
+	protected static const string FAULTY_PARAM = "\\param ";
 
 	//------------------------------------------------------------------------------------------------
 	protected override void Run()
@@ -211,7 +215,7 @@ class SCR_DoxygenFillerPlugin : WorkbenchPlugin
 				continue;
 			}
 
-			if (trimmedLine.StartsWith(DOUBLE_SLASH))
+			if (trimmedLine.StartsWith(SCR_StringHelper.DOUBLE_SLASH))
 			{
 				if (trimmedLine == METHOD_SEPARATOR)
 				{
@@ -371,7 +375,7 @@ class SCR_DoxygenFillerPlugin : WorkbenchPlugin
 					if (commentInfo.param1 > 0)
 					{
 						string trimmedPreviousLine = lines[commentInfo.param1 - 1].Trim();
-						if (trimmedPreviousLine && trimmedPreviousLine != "{" && !trimmedPreviousLine.StartsWith(DOUBLE_SLASH)) // }
+						if (trimmedPreviousLine && trimmedPreviousLine != "{" && !trimmedPreviousLine.StartsWith(SCR_StringHelper.DOUBLE_SLASH)) // }
 							commentInfo.param2 = "\n" + commentInfo.param2;
 					}
 
@@ -455,7 +459,7 @@ class SCR_DoxygenFillerPlugin : WorkbenchPlugin
 
 		line.Replace("\n", string.Empty); // in case multiple lines are provided - beware of comments for now
 
-		int index = line.IndexOf(DOUBLE_SLASH);
+		int index = line.IndexOf(SCR_StringHelper.DOUBLE_SLASH);
 		if (index == 0)
 			return null;
 
@@ -471,7 +475,7 @@ class SCR_DoxygenFillerPlugin : WorkbenchPlugin
 			return null;
 
 		string trimmedLine = line.Trim();
-		if (trimmedLine.StartsWith(DOUBLE_SLASH))
+		if (trimmedLine.StartsWith(SCR_StringHelper.DOUBLE_SLASH))
 			return null;
 
 		trimmedLine.Replace(SCR_StringHelper.TAB, SCR_StringHelper.SPACE);
@@ -681,15 +685,15 @@ class SCR_DoxygenFillerPlugin : WorkbenchPlugin
 		string generatedDoxygenDocumentation;
 
 		bool isConstrOrDestr;
-		if (m_bAddConstructorDestructorNormalComment && classname && method.m_sReturnType == "void")
+		if (classname && method.m_sReturnType == "void")
 		{
-			if (method.m_sName == "~" + classname)
+			if (m_bAddDestructorNormalComment && method.m_sName == "~" + classname)
 			{
 				generatedDoxygenDocumentation = DESTRUCTOR_COMMENT;
 				isConstrOrDestr = true;
 			}
 			else
-			if (method.m_sName == classname)
+			if (m_bAddConstructorNormalComment && method.m_sName == classname)
 			{
 				generatedDoxygenDocumentation = CONSTRUCTOR_COMMENT;
 				isConstrOrDestr = true;
@@ -794,7 +798,7 @@ class SCR_DoxygenFillerPlugin : WorkbenchPlugin
 					for (int j = method.m_aParameters.Count() - 1; j >= 0; --j)
 					{
 						param = method.m_aParameters[j];
-						if (line2.StartsWith("\\param " + param.m_sName))
+						if (line2.StartsWith(FAULTY_PARAM + param.m_sName))
 						{
 							string suffix;
 							switch (param.m_iInOut)
@@ -804,7 +808,7 @@ class SCR_DoxygenFillerPlugin : WorkbenchPlugin
 								case 2: suffix = "[in,out]"; break;
 							}
 
-							line2.Replace("\\param " + param.m_sName, "\\param" + suffix + " " + param.m_sName);
+							line2.Replace(FAULTY_PARAM + param.m_sName, BASE_PARAM + suffix + " " + param.m_sName);
 							break;
 						}
 					}

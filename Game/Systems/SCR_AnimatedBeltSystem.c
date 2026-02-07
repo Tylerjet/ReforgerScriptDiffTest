@@ -4,6 +4,13 @@ System to move any ammobelt UV's that are currently being fired
 
 class SCR_AnimatedBeltSystem : GameSystem
 {
+	override static void InitInfo(WorldSystemInfo outInfo)
+	{
+		outInfo
+			.SetAbstract(false)
+			.AddPoint(ESystemPoint.Frame);
+	}
+
 	protected ref array<SCR_AnimatedBeltComponent> m_aComponents = {};
 
 	//------------------------------------------------------------------------------------------------

@@ -4,7 +4,20 @@ class SCR_VehicleTagData : SCR_NameTagData
 	bool m_bIsControlledPresent = false; 			// is player within this vehicle
 	SCR_NameTagData m_MainTag;						// main entity in a vehicle - used to display name
 	ref array<SCR_NameTagData> m_aPassengers = {};	// tracked passangers, meaning those who have their own nametag
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns playerID of the most important player in the vehicle
+	int GetMainPlayerID()
+	{
+		if (m_MainTag)
+			return m_MainTag.m_iPlayerID;
+
+		if (!m_aPassengers.IsEmpty())
+			return m_aPassengers[0].m_iPlayerID;
+		
+		return 0;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Update current tracked passangers within the vehicle
 	void UpdatePassenger(SCR_NameTagData tag, bool IsEntering, bool isControlledEntity = false)

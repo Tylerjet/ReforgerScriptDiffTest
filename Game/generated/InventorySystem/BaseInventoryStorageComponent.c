@@ -58,8 +58,6 @@ class BaseInventoryStorageComponent: InventoryItemComponent
 	proto external sealed EStoragePurpose GetPurpose();
 	// Search for slot where item can be inserted
 	proto external InventoryStorageSlot FindSuitableSlotForItem(IEntity item);
-	//! returns amount of space occupied by attached items
-	proto external float GetOccupiedSpace();
 	//! does current storage serves as a compartment of other storage
 	proto external bool IsCompartment();
 	//! Fills array with attached items including items from storage compartments
@@ -73,22 +71,24 @@ class BaseInventoryStorageComponent: InventoryItemComponent
 	\return true if depth was reached
 	*/
 	proto external bool GetOwnedStorages(out notnull array<BaseInventoryStorageComponent> outStorages, int depth, bool includeHierarchy);
-	//! performs volume and item dimension validation.
-	proto external bool PerformVolumeValidation(IEntity item, bool includeDimensionValidation = true);
-	//! performs dimension validation.
-	proto external bool PerformDimensionValidation(IEntity item);
-	// convinience method, returns volume calculated from dimension limits
-	proto external float GetMaxVolumeCapacity();
-	// return dimension limits for storage
+	//! Get the weight of a prefab
+	proto external float GetWeightFromResource(ResourceName resourceName);
+	// Return dimension limits for storage
 	proto external vector GetMaxDimensionCapacity();
-	//!get a rough estimate of how many times the item can fit in the inventory
+	// Convinience method, returns volume calculated from dimension limits
+	proto external float GetMaxVolumeCapacity();
+	//! Returns amount of space occupied by attached items
+	proto external float GetOccupiedSpace();
+	//! Performs dimension validation.
+	proto external bool PerformDimensionValidation(IEntity item);
+	//! Performs item volume and (optionally) dimension validation.
+	proto external bool PerformVolumeValidation(IEntity item, bool includeDimensionValidation = true);
+	//! Performs prefab volume and (optionally) dimension validation.
+	proto external bool PerformVolumeValidationForResource(ResourceName resourceName, bool includeDimensionValidation = true);
+	//! Get an estimate of how many times the item can fit in the inventory
 	proto external int GetEstimatedCountFitForItem(IEntity item);
-	//! get the weight of a prefab
-	proto external float GetWeightFromResource(ResourceName resourceName, int count = 1);
-	//!get a rough estimate of how many times the resource can fit in the inventory
+	//! Get an estimate of how many times the resource can fit in the inventory
 	proto external int GetEstimatedCountFitForResource(ResourceName resourceName);
-	//! performs volume and item dimension validation.
-	proto external bool PerformVolumeAndDimensionValidationForResource(ResourceName resourceName, bool includeDimensionValidation = true, int count = 1);
 
 	// callbacks
 
@@ -127,7 +127,7 @@ class BaseInventoryStorageComponent: InventoryItemComponent
 	//! Implemented logics for can insert here, Manager will provide slotID of -1 in case slot is irrelevant.
 	event bool CanStoreItem(IEntity item, int slotID) { return true; };
 	//! Implemented logics for can insert here, Manager will provide slotID of -1 in case slot is irrelevant.
-	event bool CanStoreResource(ResourceName resourceName, int slotID, int count) { return true; };
+	event bool CanStoreResource(ResourceName resourceName, int slotID) { return true; };
 	//! Implemented logics for can remove here,
 	event bool CanRemoveItem(IEntity item) { return true; };
 	//! Implemented logics for can replace to nextItem at slotID,

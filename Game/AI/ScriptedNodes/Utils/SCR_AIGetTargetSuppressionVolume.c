@@ -11,9 +11,9 @@ class SCR_AIGetTargetSuppressionVolume : AITaskScripted
 	protected SCR_AICombatComponent m_CombatComponent;
 	protected ref SCR_AISuppressionVolumeBaseTargetBox m_SuppressionVolume;
 		
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 	
-	override string GetOnHoverDescription() { return "Converts baseTarget object instance to suppression volume object"; };
+	static override string GetOnHoverDescription() { return "Converts baseTarget object instance to suppression volume object"; };
 	
 	//---------------------------------------------------------------------------------------
 	override void OnInit(AIAgent owner)

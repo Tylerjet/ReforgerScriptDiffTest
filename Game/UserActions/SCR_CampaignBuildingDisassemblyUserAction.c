@@ -1,5 +1,6 @@
 class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 {	
+	protected SCR_CampaignBuildingLayoutComponent m_LayoutComponent;
 	protected SCR_CampaignBuildingCompositionComponent m_CompositionComponent;
 	protected SCR_EditableEntityComponent m_EditableEntity;
 	protected SCR_EditorManagerEntity m_EditorManager;
@@ -14,6 +15,7 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 	protected IEntity m_User;
 	protected bool m_bDisassembleOnlyWhenCapturing = false;
 	protected bool m_bSameFactionDisassembleOnly = false;
+	SCR_CampaignBuildingBuildUserAction m_BuildAction;
 	
 	protected SCR_GadgetManagerComponent m_GadgetManager;
 
@@ -24,7 +26,9 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 				
 		m_CompositionComponent = SCR_CampaignBuildingCompositionComponent.Cast(m_RootEntity.FindComponent(SCR_CampaignBuildingCompositionComponent));
 		m_EditableEntity = SCR_EditableEntityComponent.Cast(m_RootEntity.FindComponent(SCR_EditableEntityComponent));
-		
+		m_LayoutComponent = SCR_CampaignBuildingLayoutComponent.Cast(pOwnerEntity.FindComponent(SCR_CampaignBuildingLayoutComponent));
+					
+		GetBuildingAction();
 		SetEditorManager();
 		
 		if (m_CompositionComponent && GetOwner() == GetOwner().GetRootParent())
@@ -106,7 +110,7 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 			int itemActionId = pAnimationComponent.BindCommand("CMD_Item_Action");
 			CharacterCommandHandlerComponent cmdHandler = pAnimationComponent.GetCommandHandler();
 			if (cmdHandler)
-				cmdHandler.FinishItemUse();
+				cmdHandler.FinishItemUse(true);
 		}
 	}
 	
@@ -122,7 +126,7 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 		{
 			CharacterAnimationComponent pAnimationComponent = charController.GetAnimationComponent();
 			CharacterCommandHandlerComponent cmdHandler = pAnimationComponent.GetCommandHandler();
-			cmdHandler.FinishItemUse();
+			cmdHandler.FinishItemUse(true);
 		}
 	}
 
@@ -135,6 +139,10 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 		
 		if (HasCompositionService())
 			TryToSendNotification(pOwnerEntity, pUserEntity, networkComponent);
+		
+		SCR_CampaignBuildingCompositionComponent buildingComponent = SCR_CampaignBuildingCompositionComponent.Cast(pOwnerEntity.FindComponent(SCR_CampaignBuildingCompositionComponent));
+		if (buildingComponent)
+			buildingComponent.SetCanPlaySoundOnDeletion(true);
 		
 		networkComponent.DeleteCompositionByUserAction(m_RootEntity);
 	}
@@ -211,7 +219,10 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 		if (GetOwner() == GetOwner().GetRootParent())
 			return m_bCompositionSpawned;
 		
-		return GetOwner().FindComponent(SCR_CampaignBuildingLayoutComponent);
+		if (m_BuildAction && !m_BuildAction.IsShown())
+			return false;
+		
+		return m_LayoutComponent;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -287,6 +298,25 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 	override bool HasLocalEffectOnlyScript()
 	{
 		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Search for first instance of building action, as we can safely assume there is only one per entity.
+	void GetBuildingAction()
+	{
+		BaseActionsManagerComponent baseActionManager = GetActionsManager();
+		if (!baseActionManager)
+			return;
+
+		array<BaseUserAction> actions = {};
+		baseActionManager.GetActionsList(actions); 
+		
+		foreach (BaseUserAction action : actions)
+		{
+			m_BuildAction = SCR_CampaignBuildingBuildUserAction.Cast(action);
+			if (m_BuildAction)
+				break;
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

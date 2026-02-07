@@ -153,7 +153,7 @@ class SCR_NewsTileComponent : SCR_TileBaseComponent
 		if (m_wImage && !imagePreview.IsEmpty())
 		{
 			// Try to load image
-			bool loaded = m_wImage.LoadImageTexture(1, imagePreview);
+			bool loaded = m_wImage.LoadImageTexture(1, imagePreview, false, true);
 
 			// Set image 0 - Placeholder if load image failed
 			// Set image 1 - Downloaded image

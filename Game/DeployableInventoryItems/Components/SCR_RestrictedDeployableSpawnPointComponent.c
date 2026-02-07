@@ -846,49 +846,37 @@ class SCR_RestrictedDeployableSpawnPointComponent : SCR_BaseDeployableSpawnPoint
 	//------------------------------------------------------------------------------------------------
 	override void OnDelete(IEntity owner)
 	{
-		DisconnectFromDeployableSpawnPointSystem();
-		
-		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
-		if (!groupsManager)
-			return;
+		super.OnDelete(owner);
 
-		groupsManager.GetOnPlayableGroupRemoved().Remove(OnGroupRemoved);
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		if (groupsManager)
+			groupsManager.GetOnPlayableGroupRemoved().Remove(OnGroupRemoved);
 		
 		BaseGameMode gameMode = GetGame().GetGameMode();
-		if (!gameMode)
-			return;
+		SCR_PlayerSpawnPointManagerComponent playerSpawnPointManager;
+		if (gameMode)
+			playerSpawnPointManager = SCR_PlayerSpawnPointManagerComponent.Cast(gameMode.FindComponent(SCR_PlayerSpawnPointManagerComponent));
 		
-		SCR_PlayerSpawnPointManagerComponent playerSpawnPointManager = SCR_PlayerSpawnPointManagerComponent.Cast(gameMode.FindComponent(SCR_PlayerSpawnPointManagerComponent));
 		if (playerSpawnPointManager)
 		{
 			playerSpawnPointManager.GetOnSpawnPointBudgetTypeChanged().Remove(OnSpawnPointBudgetTypeChanged);
 			playerSpawnPointManager.GetOnSpawnPointTicketAmountChanged().Remove(OnSpawnPointTicketAmountChanged);
 		}
 		
-		if (m_bIsDeployed && Replication.IsServer())
-		{			
-			SCR_AIGroup playerGroup = groupsManager.FindGroup(m_iGroupID);
-			if (!playerGroup)
-				return;
-			
-			playerGroup.DecreaseDeployedRadioCount();
-		}
-		
 #ifdef ENABLE_DIAG
 		if (m_bIsWornByPlayer)
 			s_aDebugShapes.Clear();
 #endif
-		
-		PlayerController playerController = GetGame().GetPlayerController();
-		if (!playerController)
+
+		SCR_PlayerControllerGroupComponent groupComponent = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
+		if (groupComponent)
+			groupComponent.GetOnGroupChanged().Remove(OnGroupChanged);
+
+		if (!m_bIsDeployed || !m_RplComponent || m_RplComponent.IsProxy() || !groupsManager)
 			return;
-		
-		SCR_PlayerControllerGroupComponent groupComponent = SCR_PlayerControllerGroupComponent.Cast(playerController.FindComponent(SCR_PlayerControllerGroupComponent));
-		if (!groupComponent)
-			return;
-		
-		groupComponent.GetOnGroupChanged().Remove(OnGroupChanged);
-		
-		super.OnDelete(owner);
+
+		SCR_AIGroup playerGroup = groupsManager.FindGroup(m_iGroupID);
+		if (playerGroup)
+			playerGroup.DecreaseDeployedRadioCount();
 	}
 }

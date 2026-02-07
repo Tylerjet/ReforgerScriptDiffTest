@@ -72,14 +72,39 @@ class SCR_LightHitZone : SCR_VehicleHitZone
 		if (m_iParentSurfaceID > -1)
 			functionalityStateChanged = m_LightManager.TrySetSurfaceFunctional(m_iParentSurfaceID, isAlive);
 
+		int lightSide;
+		bool lastState;
 		foreach (BaseLightSlot lightSlot : m_aLightSlots)
 		{
 			if (!lightSlot)
 				continue;
 
 			lightSlot.SetLightFunctional(isAlive);
-			if (functionalityStateChanged)
-				m_LightManager.SetLightsState(lightSlot.GetLightType(), m_LightManager.GetLightsState(lightSlot.GetLightType()));
+			if (isAlive && functionalityStateChanged && lightSlot.GetLightType() == ELightType.Hazard)
+			{//hazards need to be reset as its possible that they will get out of sync
+				lightSide = lightSlot.GetLightSide();
+				lastState = m_LightManager.GetLightsState(lightSlot.GetLightType(), lightSide);
+				if (lightSide != -1)
+				{//check if other side is also turned on and in such case we need to reset both sides
+					if (lightSide == 0)
+						lightSide = 1;//right
+					else
+						lightSide = 0;//left
+
+					if (lastState == m_LightManager.GetLightsState(lightSlot.GetLightType(), lightSide))
+						lightSide = -1;//all sides
+					else
+						lightSide = lightSlot.GetLightSide();
+				}
+
+				if (!lastState)
+					return;
+
+				m_LightManager.SetLightsState(lightSlot.GetLightType(), false, lightSide);//first we need to turn them off or else they will blink faster
+				m_LightManager.SetLightsState(lightSlot.GetLightType(), lastState, lightSide);
+
+				functionalityStateChanged = false;
+			}
 		}
 	}
 

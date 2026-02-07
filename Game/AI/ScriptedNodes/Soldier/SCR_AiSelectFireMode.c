@@ -193,5 +193,5 @@ class SCR_AISelectFireMode: AITaskScripted
 		return "Selects a firemode closest to provided one.";
 	}
 	
-    override bool VisibleInPalette() {return true;}
+    static override bool VisibleInPalette() {return true;}
 };

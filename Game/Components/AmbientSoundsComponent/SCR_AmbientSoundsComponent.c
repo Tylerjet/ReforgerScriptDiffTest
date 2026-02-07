@@ -201,7 +201,7 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 		super.OnPostInit(owner);
 		
 		// Get world
-		m_World = GetGame().GetWorld();	
+		m_World = owner.GetWorld();	
 		if (!m_World)
 		{
 			SetScriptedMethodsCall(false);	
@@ -227,9 +227,7 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 	override void OnInit(IEntity owner)
 	{
 		super.OnInit(owner);
-		
-		m_World.RegisterEntityToBeUpdatedWhileGameIsPaused(owner);
-		
+				
 		foreach (SCR_AmbientSoundsEffect ambientSoundsEffect : m_aAmbientSoundsEffect)
 		{
 			ambientSoundsEffect.OnInit();
@@ -256,9 +254,6 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 	// destructor
 	void ~SCR_AmbientSoundsComponent()
 	{
-		if (m_World)
-			m_World.UnregisterEntityToBeUpdatedWhileGameIsPaused(GetOwner());
-
 #ifdef ENABLE_DIAG
 		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_SOUNDS_RELOAD_AMBIENT_SOUNDS_CONFIGS);
 #endif	

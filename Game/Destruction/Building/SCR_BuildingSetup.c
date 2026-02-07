@@ -294,7 +294,7 @@ class SCR_BuildingSetup
 		
 		if (ptcPath != "")
 		{
-			ParticleEffectEntitySpawnParams spawnParams();
+			ParticleEffectEntitySpawnParams spawnParams = new ParticleEffectEntitySpawnParams();
 			spawnParams.Transform[3] = fxMat[3];
 			spawnParams.UseFrameEvent = true;
 			ParticleEffectEntity.SpawnParticleEffect(ptcPath, spawnParams);

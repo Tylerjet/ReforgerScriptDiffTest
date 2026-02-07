@@ -335,11 +335,11 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 						if (charIdentity && charIdentity.GetIdentity())
 							data.m_Widgets.m_wName.SetText(charIdentity.GetIdentity().GetName());	 
 						else 
-							data.m_Widgets.m_wName.SetText(m_PlayerManager.GetPlayerName(data.m_iPlayerID));	
+							data.m_Widgets.m_wName.SetText(SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(data.m_iPlayerID));	
 					}
 				}
 				else
-					data.m_Widgets.m_wName.SetText(m_PlayerManager.GetPlayerName(data.m_iPlayerID));		
+					data.m_Widgets.m_wName.SetText(SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(data.m_iPlayerID));		
 			}
 			else
 				data.m_Widgets.m_wName.SetText(LABEL_UNKNOWN_SOURCE);

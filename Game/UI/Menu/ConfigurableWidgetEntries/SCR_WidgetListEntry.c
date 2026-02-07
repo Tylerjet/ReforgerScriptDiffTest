@@ -172,6 +172,9 @@ class SCR_WidgetListEntry
 	}
 	
 	//-------------------------------------------------------------------------------------------
+	void RemoveWidget();
+	
+	//-------------------------------------------------------------------------------------------
 	//! Empty function to override to assing custom handlers
 	protected void SetupHandlers();
 	
@@ -444,6 +447,10 @@ class SCR_WidgetListEntryEditBox : SCR_WidgetListEntry
 	protected SCR_EditBoxComponent m_EditBox;
 	protected EditBoxFilterComponent m_Filter;
 	
+	// It's a bad idea to store this on the Widget itself!
+	// Also, we need to be able to freely change it without triggering the Edit Box's OnChange invoker by calling SetText()
+	protected string m_sCurrentValue;
+	
 	//-------------------------------------------------------------------------------------------
 	override protected void SetupHandlers()
 	{
@@ -459,7 +466,9 @@ class SCR_WidgetListEntryEditBox : SCR_WidgetListEntry
 		m_sClassTag = "edit";
 		
 		// Editbox setup
-		m_EditBox.SetValue(m_sDefaultValue);
+		SetValue(m_sDefaultValue);
+		m_EditBox.m_OnTextChange.Insert(OnEditBoxTextChange);
+		
 		m_EditBox.SetPlaceholderText(m_sPlaceholderText);
 		m_EditBox.ShowWriteIcon(m_bShowWriteIcon);
 		
@@ -487,9 +496,7 @@ class SCR_WidgetListEntryEditBox : SCR_WidgetListEntry
 		
 		if (m_FormatCheck)
 		{
-			m_EditBox.m_OnConfirm.Insert(CheckValidity);
-			m_EditBox.m_OnChanged.Insert(CheckValidity);
-			m_EditBox.m_OnFocusChangedEditBox.Insert(OnFocusChange);
+			m_EditBox.m_OnWriteModeLeave.Insert(OnEditModeLeave);
 			
 			if (m_Filter)
 			{
@@ -524,9 +531,22 @@ class SCR_WidgetListEntryEditBox : SCR_WidgetListEntry
 	}
 	
 	//-------------------------------------------------------------------------------------------
+	override void RemoveWidget()
+	{
+		if (m_EditBox)
+			m_EditBox.m_OnWriteModeLeave.Remove(OnEditModeLeave);
+	}
+	
+	//-------------------------------------------------------------------------------------------
 	protected void SetCharLists()
 	{
 		m_Filter.SetCharBlacklist(m_sCharBlackList);
+	}
+	
+	//-------------------------------------------------------------------------------------------
+	protected void OnEditBoxTextChange(string text)
+	{
+		m_sCurrentValue = text;
 	}
 	
 	//-------------------------------------------------------------------------------------------
@@ -535,14 +555,21 @@ class SCR_WidgetListEntryEditBox : SCR_WidgetListEntry
 		if (!m_EditBox)
 			return INVALID_VALUE;
 		
-		return m_EditBox.GetValue();
+		return m_sCurrentValue;
 	}
 	
 	//-------------------------------------------------------------------------------------------
 	override void SetValue(string str)
 	{
+		m_sCurrentValue = str;
+		UpdateEditBoxText();
+	}
+	
+	//-------------------------------------------------------------------------------------------
+	protected void UpdateEditBoxText()
+	{
 		if (m_EditBox)
-			m_EditBox.SetValue(str);
+			m_EditBox.SetValue(m_sCurrentValue);
 	}
 	
 	//-------------------------------------------------------------------------------------------
@@ -551,30 +578,14 @@ class SCR_WidgetListEntryEditBox : SCR_WidgetListEntry
 		if (CanSkip())
 			return true;
 		
-		CheckEditBoxValidity(m_EditBox, m_EditBox.GetValue());
+		CheckEditBoxValidity(m_EditBox, m_sCurrentValue);
 		return m_bValidInput;
 	}
 	
-	//------------------------------------------------------------------------------------------- 
-	protected void OnFocusChange(SCR_EditBoxComponent editBox, Widget editBoxWidget, bool focused)
+	//-------------------------------------------------------------------------------------------
+	protected void OnEditModeLeave(string text)
 	{
-		if (!focused)
-		{
-			// Check input
-			bool valid = CheckValidity();
-			
-			if (!valid)
-				GetGame().GetCallqueue().Remove(ClearInvalidInput);
-		}
-		else
-		{
-			// Clear input error
-			if (!m_bValidInput)
-			{
-				m_bValidInput = true;
-				OnInvalidInput();
-			}
-		}
+		CheckValidity();
 	}
 	
 	//-------------------------------------------------------------------------------------------
@@ -598,8 +609,13 @@ class SCR_WidgetListEntryEditBox : SCR_WidgetListEntry
 		}
 		
 		// Setup error 
-		if (m_bUseFormatWarning)
-			m_EditBox.GetHint().SetMessage(m_FormatCheck.GetFormatMessage());
+		if (m_EditBox && m_bUseFormatWarning)
+		{
+			SCR_WidgetHintComponent hint = m_EditBox.GetHint();
+			
+			if (hint)
+				hint.SetMessage(m_FormatCheck.GetFormatMessage());
+		}
 	}
 	
 	//-------------------------------------------------------------------------------------------

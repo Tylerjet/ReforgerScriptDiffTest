@@ -682,7 +682,7 @@ class SCR_RandomPositionalSounds : SCR_AmbientSoundsEffect
 			name = soundGroup.ToString() + ". " + name;
 			
 			// Show number of playing sounds
-			int limitCount = 8;
+			const int limitCount = 8; // TODO: check for good const usage
 			int playingCount = 0;
 			
 			bool bSoundTypeChecked = false;					

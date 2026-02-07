@@ -143,21 +143,6 @@ class SCR_PopUpNotification : GenericEntity
 					root.SetZOrder(mapWidget.GetZOrder() - 1);
 			}
 		}
-		
-		// Initialize Interface settings
-		SCR_HUDManagerComponent hudManager = GetGame().GetHUDManager();
-		if (!hudManager)
-			return;
-		
-		BaseContainer interfaceSettings = GetGame().GetGameUserSettings().GetModule(hudManager.GetInterfaceSettingsClass());
-		if (!interfaceSettings)
-			return;
-		
-		bool state;
-		interfaceSettings.Get(INTERFACE_SETTINGS_NAME, state);
-		m_bIsEnabledInSettings = state;
-		
-		GetGame().OnUserSettingsChangedInvoker().Insert(OnSettingsChanged);	
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -231,6 +216,9 @@ class SCR_PopUpNotification : GenericEntity
 	{
 		// Don't show UI on headless
 		if (System.IsConsoleApp())
+			return;
+		
+		if (!m_bIsEnabledInSettings)
 			return;
 
 		// Check filter settings, stop if the message is filtered out
@@ -507,6 +495,19 @@ class SCR_PopUpNotification : GenericEntity
 		// Make sure init can be processed properly (when HUD Manager is ready, check in ProcessInit())
 		GetGame().GetCallqueue().Remove(ProcessInit);
 		GetGame().GetCallqueue().CallLater(ProcessInit, 1000, true);
+		
+		
+		// Initialize Interface settings
+		SCR_HUDManagerComponent hudManager = GetGame().GetHUDManager();
+		if (!hudManager)
+			return;
+		
+		BaseContainer interfaceSettings = GetGame().GetGameUserSettings().GetModule(hudManager.GetInterfaceSettingsClass());
+		if (!interfaceSettings)
+			return;
+		
+		if (interfaceSettings.Get(INTERFACE_SETTINGS_NAME, m_bIsEnabledInSettings))
+			GetGame().OnUserSettingsChangedInvoker().Insert(OnSettingsChanged);
 	}
 
 	//------------------------------------------------------------------------------------------------

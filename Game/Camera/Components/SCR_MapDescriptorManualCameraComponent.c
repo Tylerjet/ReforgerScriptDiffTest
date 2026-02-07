@@ -71,7 +71,7 @@ class SCR_MapDescriptorManualCameraComponent : SCR_BaseManualCameraComponent
 			return;
 		
 		//--- Trace left and right side of the screen
-		int widthLeft = 0;
+		const int widthLeft = 0; // TODO: check for good const usage
 		int widthRight = m_Workspace.GetWidth();
 		float height = m_Workspace.GetHeight() / 2;
 		float traceCoef;

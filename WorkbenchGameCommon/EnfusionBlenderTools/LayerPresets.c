@@ -10,38 +10,49 @@ class LayerPresetsRequest : JsonApiStruct
 
 class LayerPresetsResponse : JsonApiStruct
 {
-	string Layers;
+	ref array<string> layersPresets;
 
-	void LayerPresetsResponse()
+	void LayerPresetsResponse(array<string> layers)
 	{
-		RegV("Layers");
+		this.layersPresets = layers;
 	}
-}
-
-class LayerPresetsUtils
-{
-	void Getlayers(LayerPresetsResponse response)
+	
+	override void OnPack()
 	{
-		// get project setting conf
-		BaseContainer cont = Workbench.GetGameProjectSettings();
-		BaseContainerList config = cont.GetObjectArray(EBTContainerFields.conf);
-
-		cont = config.Get(0);
-		cont = cont.GetObject("PhysicsSettings");
-		cont = cont.GetObject("Interactions");
-		config = cont.GetObjectArray("LayerPresets");
-
-		// getting all LayerPresets
-		BaseContainer contLayerPresets;
-		for (int i = 0; i < config.Count(); i++; )
+		StartArray("Layer Presets");
+		foreach (string item : layersPresets)
 		{
-			contLayerPresets = config.Get(i);
-			response.Layers += contLayerPresets.GetName() + " ";
+			ItemString(item);
 		}
-		return;
+		EndArray();
 	}
 }
 
+
+static array<string> GetLayerPresets()
+{
+	// get project setting conf
+	BaseContainer cont = Workbench.GetGameProjectSettings();
+	BaseContainerList config = cont.GetObjectArray(EBTContainerFields.conf);
+
+	cont = config.Get(0);
+	cont = cont.GetObject("PhysicsSettings");
+	cont = cont.GetObject("Interactions");
+	config = cont.GetObjectArray("LayerPresets");
+
+	// getting all LayerPresets
+	BaseContainer contLayerPresets;
+	
+	array<string> result = new array<string>();
+	
+	for (int i = 0; i < config.Count(); i++; )
+	{
+		contLayerPresets = config.Get(i);
+		//response.Layers += contLayerPresets.GetName() + " ";
+		result.Insert(contLayerPresets.GetName());
+	}
+	return result;
+}
 
 class LayerPresets : NetApiHandler
 {
@@ -53,12 +64,8 @@ class LayerPresets : NetApiHandler
 	override JsonApiStruct GetResponse(JsonApiStruct request)
 	{
 		LayerPresetsRequest req = LayerPresetsRequest.Cast(request);
-		LayerPresetsResponse response = new LayerPresetsResponse();
-		LayerPresetsUtils utils = new LayerPresetsUtils();
-
-		utils.Getlayers(response);
-
-
-		return response;
+		
+		
+		return new LayerPresetsResponse(GetLayerPresets());
 	}
 }

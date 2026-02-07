@@ -1,10 +1,31 @@
 [BaseContainerProps()]
 class SCR_TutorialLogic_SquadLeadership : SCR_BaseTutorialCourseLogic
 {	
-
+	protected const ResourceName GROUP_PREFAB = "{3BF36BDEEB33AEC9}Prefabs/Groups/BLUFOR/Group_US_SentryTeam.et";
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnEntitySpawned(IEntity ent)
+	{
+		if (!ent || ent.GetPrefabData().GetPrefabName() != GROUP_PREFAB)
+			return;
+		
+		ent.SetName("REQUESTING_GROUP");
+		SCR_AIGroup group = SCR_AIGroup.Cast(ent);
+		if (group)
+			group.RemoveWaypoint(group.GetCurrentWaypoint());	
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnCourseStart()
 	{
+		SCR_TutorialGamemodeComponent tutorial = SCR_TutorialGamemodeComponent.GetInstance();
+		IEntity playerVeh = GetGame().GetWorld().FindEntityByName("PlayerVehicle");
+		if (tutorial && playerVeh)
+		{
+			tutorial.ChangeVehicleLockState(playerVeh, true);
+			tutorial.GetOnEntitySpawned().Insert(OnEntitySpawned);
+		}
+		
 		IEntity ent = GetGame().GetWorld().FindEntityByName("UNIT_REQUESTING_SUPPLIES");
 		if (!ent)
 			return;
@@ -22,11 +43,6 @@ class SCR_TutorialLogic_SquadLeadership : SCR_BaseTutorialCourseLogic
 		SCR_CommandingManagerComponent commandingManager = SCR_CommandingManagerComponent.GetInstance();
 		if (commandingManager)
 			commandingManager.SetMaxAIPerGroup(2);
-		
-		SCR_TutorialGamemodeComponent tutorial = SCR_TutorialGamemodeComponent.GetInstance();
-		IEntity playerVeh = GetGame().GetWorld().FindEntityByName("PlayerVehicle");
-		if (tutorial && playerVeh)
-			tutorial.ChangeVehicleLockState(playerVeh, true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -70,7 +86,10 @@ class SCR_TutorialLogic_SquadLeadership : SCR_BaseTutorialCourseLogic
 		SCR_TutorialGamemodeComponent tutorial = SCR_TutorialGamemodeComponent.GetInstance();
 		IEntity playerVeh = GetGame().GetWorld().FindEntityByName("PlayerVehicle");
 		if (tutorial && playerVeh)
+		{
 			tutorial.ChangeVehicleLockState(playerVeh, false);
+			tutorial.GetOnEntitySpawned().Remove(OnEntitySpawned);
+		}
 		
 		//TODO: GIVE group name and use HandleRemnantGroup, to get rid of redundant code
 		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());

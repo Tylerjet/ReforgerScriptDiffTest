@@ -16,13 +16,13 @@ class SCR_AISetBehaviorInterruptable : SCR_AIActionTask
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Sets behavior to be /not be interruptable by another behavior";
 	}		

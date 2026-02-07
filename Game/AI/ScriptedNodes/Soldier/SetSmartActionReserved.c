@@ -31,13 +31,13 @@ class SCR_AISetSmartActionReserved : AITaskScripted
 	};
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
 	{
 		return true;
 	};
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------------
-	override string GetOnHoverDescription()
+	static override string GetOnHoverDescription()
 	{
 		return "SetSmartActionInaccessible: makes the smart action reserved for other AIs, it is released when performActionBehavior completes/ fails.";
 	};	

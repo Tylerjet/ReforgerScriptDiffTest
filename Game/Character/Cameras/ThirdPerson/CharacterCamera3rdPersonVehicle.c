@@ -5,11 +5,11 @@
 class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 {
 	//-----------------------------------------------------------------------------
-	static const float 	CONST_UD_MIN	= -89.0;		//!< down limit
-	static const float 	CONST_UD_MAX	= 89.0;			//!< up limit
+	static const float 	CONST_UD_MIN	= -60.0;		//!< down limit
+	static const float 	CONST_UD_MAX	= 60.0;			//!< up limit
 
-	static const float 	CONST_LR_MIN	= -180.0;		//!< left limit
-	static const float 	CONST_LR_MAX	= 180.0;		//!< right limit
+	static const float 	CONST_LR_MIN	= -360.0;		//!< left limit
+	static const float 	CONST_LR_MAX	= 360.0;		//!< right limit
 
 	static const float STEERING_DEGREES	= 5;
 	static const float ANGULAR_INERTIA	= 5;
@@ -28,12 +28,24 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 
 	protected IEntity m_OwnerVehicle;
 	protected BaseCompartmentSlot m_pCompartment;
-	protected TurretControllerComponent m_TurretController;
-	protected vector m_vCenter;
+	protected vector m_vCameraCenter; // In vehicle space
 
 	protected vector m_vLastVel;
 	protected vector m_vLastAngVel;
 	protected vector m_vAcceleration;
+	
+	protected bool  m_bForceBasedCamera;
+	protected float m_fCameraMovementForceFactor;
+	protected float m_fCameraMovementForceThreshold;
+	protected float m_fCameraSpringForceFactor;
+	protected float m_fCameraHorizontalLag;
+	protected float m_fCameraHorizontalLagMax;
+	protected bool  m_bDollyZoomEffect;
+	protected float m_fCamVelocity;
+	protected float m_fCamDist;
+	protected float m_fCamDistTarget;
+	protected float m_fZoomTargetWidth;
+	protected float m_fCamFOV;
 
 	protected float m_f3rd_TraceClipPct;
 	protected float m_fBob_FastUp;
@@ -51,7 +63,9 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 	protected SCR_VehicleCameraAlignment m_pCameraAlignData;
 	protected PointInfo m_pCameraPivot;
 	protected bool m_bUseNoParent;
-	protected vector m_LastYawPitchRoll;
+	
+	protected bool m_bViewBob = true;
+	float m_fUpDownAngleCurrent;
 
 	//------------------------------------------------------------------------------------------------
 	void CharacterCamera3rdPersonVehicle(CameraHandlerComponent pCameraHandler)
@@ -71,7 +85,6 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 			if (vehicle)
 			{
 				m_OwnerVehicle = vehicle;
-				m_TurretController = TurretControllerComponent.Cast(m_pCompartment.GetController());
 
 				SCR_VehicleCameraDataComponent vehicleCamData = SCR_VehicleCameraDataComponent.Cast(vehicle.FindComponent(SCR_VehicleCameraDataComponent));
 				// Can owner replace Vehicle's camera data?
@@ -92,31 +105,42 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 					m_fSpeedMax = vehicleCamData.m_fSpeedMax;
 					m_pCameraAimpointData = vehicleCamData.m_pCameraAimpointData;
 					m_pCameraAlignData = vehicleCamData.m_pCameraAlignData;
-					m_fRollFactor = vehicleCamData.m_fRollFactor;
-					m_fPitchFactor = vehicleCamData.m_fPitchFactor;
+					m_fRollFactor = vehicleCamData.m_3rdPersonRollFactor;
+					m_fPitchFactor = vehicleCamData.m_3rdPersonPitchFactor;
 					m_fAngleThirdPerson = vehicleCamData.m_fAngleThirdPerson * Math.DEG2RAD;
 					m_pCameraPivot = vehicleCamData.m_pPivot;
 					m_bUseNoParent = vehicleCamData.m_bNoParent;
+					m_bForceBasedCamera = vehicleCamData.m_UseForceBased_3PVCamera;
+					m_fCameraMovementForceFactor = vehicleCamData.m_MovementForceFactor;
+					m_fCameraMovementForceThreshold = vehicleCamData.m_MovementForceThreshold;
+					m_fCameraSpringForceFactor = vehicleCamData.m_SpringForceFactor;
+					m_bDollyZoomEffect = vehicleCamData.m_3PVDollyZoomEffect;
+					m_fCameraHorizontalLag = vehicleCamData.m_HorizontalSpringLag;
+					m_fCameraHorizontalLagMax = vehicleCamData.m_HorizontalSpringLagMaxAngle;
+					
+					m_fCamDist = m_fDist_Desired;
+					m_fCamDistTarget = m_fDist_Desired;
+					m_fZoomTargetWidth = m_fCamDist * 2 * Math.Tan(0.5 * m_fFOV * Math.DEG2RAD);
 				}
 				
 				if (m_pCameraPivot)
 				{
 					vector matrix[4];
 					m_pCameraPivot.GetLocalTransform(matrix);
-					m_vCenter = matrix[3];
+					m_vCameraCenter = matrix[3];
 				}
 				else
 				{
 					Physics physics = vehicle.GetPhysics();
 					if (physics)
 					{
-						m_vCenter = physics.GetCenterOfMass();
+						m_vCameraCenter = physics.GetCenterOfMass();
 					}
 					else
 					{
 						vector mins, maxs;
 						vehicle.GetBounds(mins, maxs);
-						m_vCenter = (maxs - mins) * 0.5 + mins;
+						m_vCameraCenter = (maxs - mins) * 0.5 + mins;
 					}
 				}
 			}
@@ -127,6 +151,8 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 	override void OnActivate(ScriptedCameraItem pPrevCamera, ScriptedCameraItemResult pPrevCameraResult)
 	{
 		super.OnActivate(pPrevCamera, pPrevCameraResult);
+		
+		m_CharacterHeadAimingComponent.SetLimitAnglesOverride(CONST_UD_MIN, CONST_UD_MAX, CONST_LR_MIN, CONST_LR_MAX);
 		
 		if (pPrevCamera)
 		{
@@ -147,11 +173,6 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 		InitCameraData();
 	}
 	
-	override void OnBlendOut()
-	{
-		CompartmentAccessComponent compartmentAccess = m_OwnerCharacter.GetCompartmentAccessComponent();
-	}
-
 	//------------------------------------------------------------------------------------------------
 	override void OnUpdate(float pDt, out ScriptedCameraItemResult pOutResult)
 	{
@@ -166,8 +187,10 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 			}
 		}
 		
+		m_CharacterHeadAimingComponent.SetPitchLimitReductionMultiplier(0.0); // Remove pitch reduction.
+		
 		//! update angles
-		float udAngle = UpdateUDAngle(m_fUpDownAngle, CONST_UD_MIN, CONST_UD_MAX, pDt);
+		m_fUpDownAngleCurrent = UpdateUDAngle(m_fUpDownAngle, CONST_UD_MIN, CONST_UD_MAX, pDt);
 		m_fLeftRightAngle = UpdateLRAngle(m_fLeftRightAngle, CONST_LR_MIN, CONST_LR_MAX, pDt);
 		
 		pOutResult.m_vBaseAngles = GetBaseAngles();
@@ -188,15 +211,15 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 		{
 			m_OwnerVehicle.GetTransform(vehMat);
 
-			vector charMat[4];
-			if (EntityUtils.GetAncestorToChildTransform(m_OwnerCharacter, m_OwnerVehicle, charMat))
+			vector charaMat[4];
+			if (EntityUtils.GetAncestorToChildTransform(m_OwnerCharacter, m_OwnerVehicle, charaMat))
 			{
-				characterOffset = m_vCenter.Multiply4(charMat);
+				characterOffset = m_vCameraCenter.Multiply4(charaMat);
 			}
 			else
 			{
-				m_OwnerCharacter.GetTransform(charMat);
-				characterOffset = m_vCenter.Multiply4(vehMat).InvMultiply4(charMat);
+				m_OwnerCharacter.GetTransform(charaMat);
+				characterOffset = m_vCameraCenter.Multiply4(vehMat).InvMultiply4(charaMat);
 				bCharacterAttached = false;
 			}
 			
@@ -223,15 +246,16 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 		vector smoothVelocity = vector.Lerp(m_vLastVel, localVelocity, pDt);
 		vector smoothAngVelocity = vector.Lerp(m_vLastAngVel, localAngVelocity, pDt);
 		
-		m_fInertiaAngle = Math.Lerp(m_fInertiaAngle, smoothAngVelocity[1] * ANGULAR_INERTIA, pDt);
+		m_fInertiaAngle = Math.Lerp(m_fInertiaAngle, smoothAngVelocity[0] * ANGULAR_INERTIA, pDt); //smoothAngVelocity[0] is actually pitch
 		m_fSteeringAngle = Math.Lerp(m_fSteeringAngle, steeringAngle * STEERING_DEGREES, pDt);
+		
+		UpdateCameraDistanceAndFOV(localVelocity, m_vLastVel, pDt);
 		
 		// store phx values
 		m_vLastVel = localVelocity;
 		m_vLastAngVel = localAngVelocity;
 		
 		vector yawPitchRoll = Math3D.MatrixToAngles(vehMat);
-		vector smoothYawPitchRoll = vector.Lerp(m_LastYawPitchRoll, yawPitchRoll, pDt);
 		
 		// update auto align
 		if (m_pCameraAlignData && m_OwnerVehicle)
@@ -242,43 +266,53 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 			
 			vector aimChange = m_Input.GetAimChange();
 			vector newAngles;
-			if (m_pCameraAlignData.Update(aimChange, Vector(m_fLeftRightAngle, udAngle, 0.0), smoothVelocity, isFocused, pDt, newAngles))
+			if (m_pCameraAlignData.Update(aimChange, Vector(m_fLeftRightAngle, m_fUpDownAngleCurrent, 0.0), smoothVelocity, isFocused, pDt, newAngles))
 			{
 				vector v = Vector(GetGame().GetInputManager().GetActionValue("CharacterFreelookHorizontal"), GetGame().GetInputManager().GetActionValue("CharacterFreelookVertical"), 0.0);
 				if (float.AlmostEqual(v.LengthSq(), 0.0))
-					m_Input.AccumulateFreelookAdjustment(Math.DEG2RAD * (newAngles - Vector(m_fLeftRightAngle, udAngle, 0.0)));
+					m_Input.AccumulateFreelookAdjustment(Math.DEG2RAD * (newAngles - Vector(m_fLeftRightAngle, m_fUpDownAngleCurrent, 0.0)));
 			}
 		}
 		
-		//! yaw pitch roll vector
-		vector lookAngles;
-		lookAngles[0] = m_fLeftRightAngle + m_fInertiaAngle + m_fSteeringAngle;
-		lookAngles[1] = udAngle;
-		lookAngles[2] = 0.0;
-		
-		//! apply to rotation matrix
-		Math3D.AnglesToMatrix(lookAngles, pOutResult.m_CameraTM);
+		vector charMat[4];
+		m_OwnerCharacter.GetTransform(charMat);
+		vector anglesChar = Math3D.MatrixToAngles(charMat);
+		CalculateLookAngles(yawPitchRoll, anglesChar, pOutResult);
 		
 		//! Roll
 		if (bCharacterAttached)
 		{
+			float rollAngle;
 			if (!m_bUseNoParent)
 			{
 				//! Remove roll from parent
 				vector orientation[3];
 				Math3D.AnglesToMatrix(Vector(0, 0, -yawPitchRoll[2]), orientation);
 				Math3D.MatrixMultiply3(orientation, pOutResult.m_CameraTM, pOutResult.m_CameraTM);
-				
-				//! Dot product
-				float angle = yawPitchRoll[2] * m_fRollFactor * Math.DEG2RAD * pOutResult.m_CameraTM[2][2];
+
 				//! Apply roll factor
-				float rollMask = Math.Max(0, vehMat[1][1]); // Do not apply roll factor when the vehicle is upside-down.
-				SCR_Math3D.RotateAround(pOutResult.m_CameraTM, vector.Zero, pOutResult.m_CameraTM[2], -angle * rollMask, pOutResult.m_CameraTM);
+				rollAngle = yawPitchRoll[2] * m_fRollFactor * Math.DEG2RAD * pOutResult.m_CameraTM[2][2];
+				
+				// Camera offset
+				float heightSign = vehMat[1][1]; // Adjust the sign of the height direction as the vehicle rolls.
+				characterOffset = characterOffset + Vector(0, heightSign * m_fHeight, 0);
+			}
+			else
+			{
+				//! Apply roll factor
+				rollAngle = yawPitchRoll[2] * (1.0 - m_fRollFactor) * Math.DEG2RAD * pOutResult.m_CameraTM[2][2];
+				
+				// Camera offset
+				characterOffset = characterOffset + Vector(0, m_fHeight, 0);
+				vector pitchRollMat[3];
+				Math3D.AnglesToMatrix({0, yawPitchRoll[1], yawPitchRoll[2]}, pitchRollMat);				
+				characterOffset = characterOffset.Multiply3(pitchRollMat); // apply vehicle pitch and roll to camera center
 			}
 			
-			// Camera offset
-			float heightSign = vehMat[1][1]; // Adjust the sign of the height direction as the vehicle rolls.
-			pOutResult.m_CameraTM[3] = characterOffset + Vector(0, heightSign * m_fHeight, 0);
+			float rollMask = Math.Max(0, vehMat[1][1]); // Do not apply roll factor when the vehicle is upside-down.
+			SCR_Math3D.RotateAround(pOutResult.m_CameraTM, vector.Zero, pOutResult.m_CameraTM[2], -rollAngle * rollMask, pOutResult.m_CameraTM);
+			
+			pOutResult.m_CameraTM[3] = characterOffset;
 		}
 		else
 		{
@@ -288,11 +322,6 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 		// viewbob update
 		UpdateViewBob(pDt, localVelocity, localAngVelocity);
 		
-		// offset based on speed
-		float speed = localVelocity.Length();
-		float speedScale = Math.Clamp(speed / (m_fSpeedMax * KILOMETERS_PER_HOUR_TO_METERS_PER_SEC), 0, 1);
-		float camDist = Math.Clamp((m_fDist_Max - m_fDist_Min) * speedScale + m_fDist_Desired, m_fDist_Min, m_fDist_Max);
-				
 		// Translate camera aimpoint based on aimpoing curve data
 		if (m_pCameraAimpointData) 
 		{	
@@ -311,17 +340,20 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 					applyCharAngle = false;
 			}
 			if (applyCharAngle)
-				SCR_Math3D.RotateAround(pOutResult.m_CameraTM, pOutResult.m_CameraTM[3], pOutResult.m_CameraTM[0], m_fAngleThirdPerson - smoothYawPitchRoll[1] * Math.DEG2RAD, pOutResult.m_CameraTM);
+			{
+				if (m_bUseNoParent)
+					SCR_Math3D.RotateAround(pOutResult.m_CameraTM, pOutResult.m_CameraTM[3], pOutResult.m_CameraTM[0], m_fAngleThirdPerson - (1.0 - m_fPitchFactor) * yawPitchRoll[1] * Math.DEG2RAD, pOutResult.m_CameraTM);
+				else
+					SCR_Math3D.RotateAround(pOutResult.m_CameraTM, pOutResult.m_CameraTM[3], pOutResult.m_CameraTM[0], m_fAngleThirdPerson - m_fPitchFactor * yawPitchRoll[1] * Math.DEG2RAD, pOutResult.m_CameraTM);
+			}
 			else
 				SCR_Math3D.RotateAround(pOutResult.m_CameraTM, pOutResult.m_CameraTM[3], pOutResult.m_CameraTM[0], 0, pOutResult.m_CameraTM);
 		}
 		
-		m_LastYawPitchRoll = yawPitchRoll;
-		
 		// other parameters
 		pOutResult.m_fUseHeading 			= 0.0;
-		pOutResult.m_fFOV 					= m_fFOV + speedScale * m_fFOV_SpeedAdjustMax;
-		pOutResult.m_fDistance 				= camDist;
+		pOutResult.m_fFOV					= m_fCamFOV;
+		pOutResult.m_fDistance 				= m_fCamDist;
 		pOutResult.m_pWSAttachmentReference = null;
 		pOutResult.m_pOwner 				= m_OwnerCharacter;
 		pOutResult.m_bAllowCollisionSolver	= bCharacterAttached;
@@ -333,6 +365,78 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 			m_CharacterCameraHandler.AddShakeToToTransform(pOutResult.m_CameraTM, pOutResult.m_fFOV);
 	}
 	
+	void UpdateCameraDistanceAndFOV(vector localVelocity, vector lastLocalVelocity, float pDt)
+	{
+		float speed = localVelocity.Length();
+		float speedScale = Math.Clamp(speed / (m_fSpeedMax * KILOMETERS_PER_HOUR_TO_METERS_PER_SEC), 0, 1);
+
+		if (m_bForceBasedCamera)
+		{
+			float speedDelta = speed - lastLocalVelocity.Length();
+			
+			if (speedDelta < m_fCameraMovementForceThreshold)
+				speedDelta = 0;
+	
+			// Calculate camera movement local force
+			float fMovementForce = 0;
+			if (speedDelta > 0) // When vehicle is accelerating
+				fMovementForce = m_fCameraMovementForceFactor; // Move the camera away from the vehicle
+			else if (speedDelta < 0) // When vehicle is decelerating
+				fMovementForce = -m_fCameraMovementForceFactor; // MOve the camera towards the vehicle
+			
+			if (localVelocity[2] < 0) // When going reverse
+				fMovementForce *= -1;
+			
+			// Local force on the camera from an imaginary spring trying to bring it back to the m_fDist_Desired
+			const float fSpringForce = m_fCameraSpringForceFactor * (m_fDist_Desired - m_fCamDistTarget) / (m_fDist_Max - m_fDist_Min);
+	
+			// Apply the forces on the camera and Update its velocity
+			m_fCamVelocity += fMovementForce * pDt;
+			m_fCamVelocity += fSpringForce * pDt;
+	
+			// Update camera target position and clamp it
+			m_fCamDistTarget = Math.Clamp(m_fCamDistTarget + m_fCamVelocity * pDt, m_fDist_Min, m_fDist_Max);
+			
+			// Add friction and limits to the camera velocity
+			m_fCamVelocity = Math.Clamp(0.5 * m_fCamVelocity, -1.25, 1.25);
+			
+			// Smoothen out camera distance
+			m_fCamDist = Math.Lerp(m_fCamDist, m_fCamDistTarget, pDt);			
+		}
+		else
+		{			
+			m_fCamDist = Math.Clamp((m_fDist_Max - m_fDist_Min) * speedScale + m_fDist_Desired, m_fDist_Min, m_fDist_Max);
+		}
+		
+		if (m_bDollyZoomEffect)
+		{
+			m_fCamFOV = 2.0 * Math.RAD2DEG * Math.Atan2(0.5 * m_fZoomTargetWidth, m_fCamDist);
+			m_fCamFOV = Math.Clamp(m_fCamFOV, 60, 90);
+		}
+		else
+		{
+			m_fCamFOV = m_fFOV + speedScale * m_fFOV_SpeedAdjustMax;
+		}
+	}
+	
+	void CalculateLookAngles(vector vehicleAngles, vector characterAngles, out ScriptedCameraItemResult pOutResult)
+	{
+		// Offset rotation of 3rd person camera if player is sitting sideways in vehicle
+		float thirdPersonCameraOffset = vehicleAngles[0] - characterAngles[0];
+		
+		// Horizontal 3rd person camera lag
+		float horizontalLag = Math.Clamp(-m_vLastAngVel[1] * m_fCameraHorizontalLag, -m_fCameraHorizontalLagMax, m_fCameraHorizontalLagMax); //m_vLastAngVel[1] is actually yaw angular velocity
+		
+		//! yaw pitch roll vector
+		vector lookAngles;
+		lookAngles[0] = m_fLeftRightAngle + horizontalLag + thirdPersonCameraOffset;
+		lookAngles[1] = m_fUpDownAngleCurrent + m_fInertiaAngle;
+		lookAngles[2] = 0.0;
+		
+		//! apply to rotation matrix
+		Math3D.AnglesToMatrix(lookAngles, pOutResult.m_CameraTM);
+	}
+	
 	//-----------------------------------------------------------------------------
 	override void OnAfterCameraUpdate(float pDt, bool pIsKeyframe, inout vector transformMS[4])
 	{
@@ -342,6 +446,8 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 	//------------------------------------------------------------------------------------------------
 	private void UpdateViewBob(float pDt, vector localVelocity, vector localAngularVelocity)
 	{
+		if (!m_bViewBob)
+			return;
 		if (pDt <= 0)
 			return;
 		

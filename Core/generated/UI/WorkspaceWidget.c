@@ -18,7 +18,7 @@ sealed class WorkspaceWidget: RTTextureWidget
 	Sets focus (necessary when using keyboard/joyped) to a particular widget. Widget must have some inputs like button, listbox, checkbox, combobox etc.
 	\param newFocus A widget to focus. Passing null results in no widget being focused in this workspace.
 	*/
-	proto external void SetFocusedWidget(Widget newFocus, bool noCrossFase = false);
+	proto external void SetFocusedWidget(Widget newFocus, bool noCrossFade = false);
 	//! Returns focused widget in this workspace
 	proto external Widget GetFocusedWidget();
 	//! Gets the only top Widget, which receives events

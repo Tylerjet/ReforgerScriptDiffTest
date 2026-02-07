@@ -8,17 +8,23 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 	[Attribute("1", desc: "Show player left notification if player left.")]
 	protected bool m_bShowPlayerLeftNotification;
 	
-	[Attribute("10", desc: "Is killfeed enabled and what info will be displayed (Full killfeed is always displayed in open unlimited Editor)", uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EKillFeedType))]
+	[Attribute(EKillFeedType.UNKNOWN_KILLER.ToString(), desc: "Is killfeed enabled and what info will be displayed (Full killfeed is always displayed in open unlimited Editor)", uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EKillFeedType))]
 	protected EKillFeedType m_iKillFeedType;
 	
-	[Attribute("40", desc: "If killfeed is enabled, what is the relationship between the player that died and the local player. (Full killfeed is always displayed in open unlimited Editor)", uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EKillFeedReceiveType))]
+	[Attribute(EKillFeedReceiveType.GROUP_ONLY.ToString(), desc: "If killfeed is enabled, what is the relationship between the player that died and the local player. (Full killfeed is always displayed in open unlimited Editor)", uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EKillFeedReceiveType))]
 	protected EKillFeedReceiveType m_iReceiveKillFeedType;
+	
+	[Attribute(SCR_EFriendlyFireKillFeedType.SHOW_FRIENDLY_KILLS_TO_TEAM.ToString(), desc: "If on Friendly fire the players in volved or the entire team will be informed who killed whom. If set to default it will use the default killfeed notification", uiwidget : UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(SCR_EFriendlyFireKillFeedType))]
+	protected SCR_EFriendlyFireKillFeedType m_eFriendlyFireKillFeedType;
 	
 	[Attribute("0", desc: "Array of Killfeed names")]
 	protected ref array<ref SCR_NotificationKillfeedTypeName> m_aKillfeedTypeNames;
 	
 	[Attribute("0", desc: "Array of Killfeed receive names")]
 	protected ref array<ref SCR_NotificationKillfeedreceiveTypeName> m_aKillfeedReceiveTypeNames;
+	
+	[Attribute(desc: "Array of friendly fire Killfeed names")]
+	protected ref array<ref SCR_NotificationFriendlyFireKillfeedTypeName> m_aFriendlyFireKillfeedTypeNames;
 	
 	[Attribute("{D3BFEE28E7D5B6A1}Configs/ServerBrowser/KickDialogs.conf", desc: "If disconnect reason has a preset set to it then it will send a kick/ban notification", params: "conf")]
 	protected ref SCR_ConfigurableDialogUiPresets m_PlayerKickReasonsConfig;
@@ -65,6 +71,8 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 		if (!localPlayerFaction && !isUnlimitedEditor)
 			return;
 		
+		bool forceFullKillfeed;
+		
 		//~ Check if the player can show the notification of a player dying
 		if (localPlayerFaction && !isUnlimitedEditor && m_iReceiveKillFeedType != EKillFeedReceiveType.ALL)
 		{
@@ -89,77 +97,91 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 			SCR_Faction scrLocalPlayerFaction = SCR_Faction.Cast(localPlayerFaction);
 			bool victimIsFriendly = (scrLocalPlayerFaction && scrLocalPlayerFaction.DoCheckIfFactionFriendly(scrLocalPlayerFaction)) || (!scrLocalPlayerFaction && localPlayerFaction.IsFactionFriendly(victimFaction));
 			
-			switch (m_iReceiveKillFeedType)
+			//~ Victim was killed by friendly fire is friendly to local player and not suicide and the friendly fire killfeed is not Default
+			if (!isUnlimitedEditor && victimIsFriendly && m_eFriendlyFireKillFeedType != SCR_EFriendlyFireKillFeedType.DEFAULT_SETTINGS && instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_FRIENDLY_PLAYER))
 			{
-				//~ check if in group
-				case EKillFeedReceiveType.GROUP_ONLY :
+				//~ Show full killfeed if friendly fire involved the a friendly faction
+				if (m_eFriendlyFireKillFeedType == SCR_EFriendlyFireKillFeedType.SHOW_FRIENDLY_KILLS_TO_TEAM)
+					forceFullKillfeed = true;
+				//~ Show full killfeed if friendly fire involved the local player (Either as Victim or Killer)
+				else if (m_eFriendlyFireKillFeedType == SCR_EFriendlyFireKillFeedType.SHOW_FRIENDLY_KILLS_TO_PLAYERS_INVOLVED)
+					forceFullKillfeed = (localPlayerID == instigatorContextData.GetKillerPlayerID() || localPlayerID == victimPlayerId);
+			}
+			
+			if (!forceFullKillfeed)
+			{
+				switch (m_iReceiveKillFeedType)
 				{
-					//~ Check if local player is not the same as killed otherwise they are always in the same group
-					if (localPlayerID != victimPlayerId)
-					{
-						//~ Factions not friendly so don't show killfeed
-						if (!victimIsFriendly)
-							return;
+					//~ check if in group
+					case EKillFeedReceiveType.GROUP_ONLY :
+					{										
+						//~ Check if local player is not the same as killed otherwise they are always in the same group
+						if (localPlayerID != victimPlayerId)
+						{
+							//~ Factions not friendly so don't show killfeed
+							if (!victimIsFriendly)
+								return;
+							
+							//~ No group manager so don't send
+							SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
+							if (!groupManager)
+								return;
+							
+							SCR_AIGroup localPlayerGroup = groupManager.GetPlayerGroup(localPlayerID);
+							
+							//~ If not in a group or not in the same group do not send
+							if (!localPlayerGroup || !localPlayerGroup.IsPlayerInGroup(victimPlayerId))
+								return;
+						}
 						
-						//~ No group manager so don't send
-						SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
-						if (!groupManager)
-							return;
-						
-						SCR_AIGroup localPlayerGroup = groupManager.GetPlayerGroup(localPlayerID);
-						
-						//~ If not in a group or not in the same group do not send
-						if (!localPlayerGroup || !localPlayerGroup.IsPlayerInGroup(victimPlayerId))
-							return;
+						break;
 					}
-					
-					break;
-				}
-
-				//~ Check if the same faction
-				case EKillFeedReceiveType.SAME_FACTION_ONLY :
-				{
-					//~ Check if local player is not the same as killed otherwise they are always the same faction
-					if (localPlayerID != victimPlayerId)
+	
+					//~ Check if the same faction
+					case EKillFeedReceiveType.SAME_FACTION_ONLY :
 					{
-						//~ If no local faction or if not the same faction do not show killfeed
-						if (!localPlayerFaction || localPlayerFaction != victimFaction)
+						//~ Check if local player is not the same as killed otherwise they are always the same faction
+						if (localPlayerID != victimPlayerId)
+						{
+							//~ If no local faction or if not the same faction do not show killfeed
+							if (!localPlayerFaction || localPlayerFaction != victimFaction)
+								return;
+							
+							//~ If Faction is hostile towards itself still do not show killfeed (Deathmatch)
+							if (!victimIsFriendly)
+								return;
+						}
+						
+						break;
+					}
+	
+					//~ Check if allies
+					case EKillFeedReceiveType.ALLIES_ONLY :
+					{
+						//~ Check if local player is not the same as killed otherwise they are always allied
+						if (localPlayerID != victimPlayerId)
+						{
+							//~ Factions not friendly so don't show killfeed
+							if (!victimIsFriendly)
+								return;
+						}
+						
+						break;
+					}
+	
+					//~ Check if enemies
+					case EKillFeedReceiveType.ENEMIES_ONLY :
+					{
+						//~ If local player killed it is never an enemy
+						if (localPlayerID == victimPlayerId)
 							return;
 						
-						//~ If Faction is hostile towards itself still do not show killfeed (Deathmatch)
-						if (!victimIsFriendly)
+						//~ Factions friendly so don't show killfeed
+						if (victimIsFriendly)
 							return;
+						
+						break;
 					}
-					
-					break;
-				}
-
-				//~ Check if allies
-				case EKillFeedReceiveType.ALLIES_ONLY :
-				{
-					//~ Check if local player is not the same as killed otherwise they are always allied
-					if (localPlayerID != victimPlayerId)
-					{
-						//~ Factions not friendly so don't show killfeed
-						if (!victimIsFriendly)
-							return;
-					}
-					
-					break;
-				}
-
-				//~ Check if enemies
-				case EKillFeedReceiveType.ENEMIES_ONLY :
-				{
-					//~ If local player killed it is never an enemy
-					if (localPlayerID == victimPlayerId)
-						return;
-					
-					//~ Factions friendly so don't show killfeed
-					if (victimIsFriendly)
-						return;
-					
-					break;
 				}
 			}
 		}
@@ -200,8 +222,8 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 			return;
 		}
 		
-		//~ Never show killer so simply show player died if limited editor
-		if (!isUnlimitedEditor && m_iKillFeedType == EKillFeedType.UNKNOWN_KILLER)
+		//~ Never show killer so simply show player died if limited editor unless forceFullKillFeed is true
+		if (!isUnlimitedEditor && m_iKillFeedType == EKillFeedType.UNKNOWN_KILLER && !forceFullKillfeed)
 		{
 			//Player died
 			if (victimControlType != SCR_ECharacterControlType.POSSESSED_AI)
@@ -226,7 +248,7 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 			
 			return;
 		}
-		//If killed by other player or player that is has an unlimited editor
+		//If killed by other player or player that is has an unlimited editor or the full killfeed is forced
 		if (killerControlType == SCR_ECharacterControlType.PLAYER || killerControlType == SCR_ECharacterControlType.UNLIMITED_EDITOR)
 		{
 			if (victimControlType != SCR_ECharacterControlType.POSSESSED_AI)
@@ -503,7 +525,14 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 		Rpc(SetKillFeedTypeBroadcast, killFeedType);
 		
 		if (playerNotificationId > 0)
-			SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_CHANGED_KILLFEED_TYPE, playerNotificationId, killFeedType, false);
+			SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_CHANGED_KILLFEED_TYPE, playerNotificationId, killFeedType);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void SetKillFeedTypeBroadcast(EKillFeedType killFeedType)
+	{
+		m_iKillFeedType = killFeedType;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -526,14 +555,7 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 		Rpc(SetReceiveKillFeedTypeBroadcast, receiveKillFeedType);
 		
 		if (playerNotificationId > 0)
-			SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_CHANGED_KILLFEED_RECEIVE_TYPE, playerNotificationId, receiveKillFeedType, true);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	protected void SetKillFeedTypeBroadcast(EKillFeedType killFeedType)
-	{
-		m_iKillFeedType = killFeedType;
+			SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_CHANGED_KILLFEED_RECEIVE_TYPE, playerNotificationId, receiveKillFeedType);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -541,6 +563,51 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 	protected void SetReceiveKillFeedTypeBroadcast(EKillFeedReceiveType receiveKillFeedType)
 	{
 		m_iReceiveKillFeedType = receiveKillFeedType;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return the current friendly fire killfeed type
+	SCR_EFriendlyFireKillFeedType GetFriendlyFireKillFeedType()
+	{
+		return m_eFriendlyFireKillFeedType;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Server set friendly fire killfeed type
+	//! \param[in] friendlyFireKillFeedType new friendly fire killfeed type to set
+	//! \param[in] playerNotificationId add player ID of player that changed the type to display a notification
+	void SetFriendlyFireKillFeedType(SCR_EFriendlyFireKillFeedType friendlyFireKillFeedType, int playerNotificationId = -1)
+	{
+		if (friendlyFireKillFeedType == m_eFriendlyFireKillFeedType || !GetGameMode().IsMaster())
+			return;
+		
+		SetFriendlyFireKillFeedTypeBroadcast(friendlyFireKillFeedType);
+		Rpc(SetFriendlyFireKillFeedTypeBroadcast, friendlyFireKillFeedType);
+		
+		if (playerNotificationId > 0)
+			SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_CHANGED_FRIENDLY_FIRE_KILLFEED_TYPE, playerNotificationId, friendlyFireKillFeedType);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void SetFriendlyFireKillFeedTypeBroadcast(SCR_EFriendlyFireKillFeedType friendlyFireKillFeedType)
+	{
+		m_eFriendlyFireKillFeedType = friendlyFireKillFeedType;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get an list of all killfeed receive types and the localized name
+	//! \param[in] friendlyFireKillFeedTypeNames list of friendly fire killfeed type and name
+	//! \return the amount of names in the list
+	int GetFriendlyFireKillFeedTypeNames(notnull out array<ref SCR_NotificationFriendlyFireKillfeedTypeName> friendlyFireKillFeedTypeNames)
+	{
+		friendlyFireKillFeedTypeNames.Clear();
+		foreach (SCR_NotificationFriendlyFireKillfeedTypeName friendlyFireKillfeedTypeName : m_aFriendlyFireKillfeedTypeNames)
+		{
+			friendlyFireKillFeedTypeNames.Insert(friendlyFireKillfeedTypeName);
+		}
+		
+		return friendlyFireKillFeedTypeNames.Count();
 	}
 	
 	//======================================== RPL ========================================\\
@@ -626,6 +693,13 @@ enum EKillFeedReceiveType
 	GROUP_ONLY = 40,		//!< Will see killfeed from group members only
 }
 
+enum SCR_EFriendlyFireKillFeedType
+{
+	DEFAULT_SETTINGS = 0,				 			//!< Kill feed will be default depending on EKillFeedType and EKillFeedFriendlyKillsType
+	SHOW_FRIENDLY_KILLS_TO_PLAYERS_INVOLVED = 10, 	//!< When a player is killed by a friendly faction both they and the killer will see the full notification of the teamkill
+	SHOW_FRIENDLY_KILLS_TO_TEAM = 20,				//!< When a player is killed by a friendly faction the both teams will see the full notification of the teamkill
+}
+
 //! Class to get Killfeed type name
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EKillFeedType, "m_iKillfeedType")]
 class SCR_NotificationKillfeedTypeName
@@ -673,5 +747,30 @@ class SCR_NotificationKillfeedreceiveTypeName
 	string GetName()
 	{
 		return m_sKillfeedReceiveTypeName;
+	}
+}
+
+//! Class to get Killfeed receive type name
+[BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(SCR_EFriendlyFireKillFeedType, "m_eFriendlyFireKillfeedType")]
+class SCR_NotificationFriendlyFireKillfeedTypeName
+{
+	[Attribute(desc: "Friendly fire Killfeed type", uiwidget : UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(SCR_EFriendlyFireKillFeedType))]
+	protected SCR_EFriendlyFireKillFeedType m_eFriendlyFireKillfeedType;
+	
+	[Attribute(desc: "Name displayed in Notification", uiwidget: UIWidgets.LocaleEditBox)]
+	protected LocalizedString m_sFriendlyFireKillfeedTypeName;
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return the friendly fire killfeed type enum
+	SCR_EFriendlyFireKillFeedType GetFriendlyFireKillfeedType()
+	{
+		return m_eFriendlyFireKillfeedType;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return the killfeed receive type name as string
+	string GetName()
+	{
+		return m_sFriendlyFireKillfeedTypeName;
 	}
 }

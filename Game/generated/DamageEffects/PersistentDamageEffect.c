@@ -31,6 +31,14 @@ class PersistentDamageEffect: SCR_DamageEffect
 
 	//On frame logic for the persistent damage effect. Will only be called if active
 	event void EOnFrame(float timeSlice, SCR_ExtendedDamageManagerComponent dmgManager);
+	/*!
+	* It is indented to work togeter with SCR_OnEffectApplied to send replicated data to clients.
+	*/
+	event bool SaveApplyEffect(ScriptBitWriter w);
+	/*!
+	* It is indented to work togeter with SCR_OnEffectApplied to load replicated data to clients.
+	*/
+	event bool LoadApplyEffect(ScriptBitReader r);
 }
 
 /*!

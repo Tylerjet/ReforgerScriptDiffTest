@@ -11,6 +11,9 @@ Do not modify, this script is generated
 
 class BackendDebugApi
 {
+	private void BackendDebugApi();
+	private void ~BackendDebugApi();
+
 	//debug api is available only in developer mode
 	//rate is always a float <0,1>
 	//no host set == apply on any request

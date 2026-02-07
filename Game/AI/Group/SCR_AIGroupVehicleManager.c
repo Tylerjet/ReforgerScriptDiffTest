@@ -44,6 +44,14 @@ class SCR_AIGroupVehicleManager : Managed
 	}
 	
 	//---------------------------------------------------------------------------------------------------
+	void GetAllVehicleEntities(array<IEntity> outAllVehicles)
+	{
+		outAllVehicles.Clear();
+		foreach(SCR_AIGroupVehicle groupVehicle : m_aGroupVehicles)
+			outAllVehicles.Insert(groupVehicle.GetEntity());
+	}
+	
+	//---------------------------------------------------------------------------------------------------
 	int GetVehiclesCount()
 	{
 		return m_aGroupVehicles.Count();
@@ -52,11 +60,9 @@ class SCR_AIGroupVehicleManager : Managed
 	//---------------------------------------------------------------------------------------------------
 	SCR_AIGroupVehicle TryAddVehicle(notnull SCR_AIVehicleUsageComponent vehicleUsageComp)
 	{	
-		foreach (SCR_AIGroupVehicle groupVehicle : m_aGroupVehicles)
-		{
-			if (groupVehicle.GetVehicleUsageComponent() == vehicleUsageComp)
-				return groupVehicle;
-		}
+		SCR_AIGroupVehicle groupVehicle = FindVehicle(vehicleUsageComp);
+		if (groupVehicle)
+			return groupVehicle;
 		
 		SCR_AIGroupVehicle newGroupVehicle = new SCR_AIGroupVehicle(vehicleUsageComp);
 			m_aGroupVehicles.Insert(newGroupVehicle);
@@ -64,13 +70,12 @@ class SCR_AIGroupVehicleManager : Managed
 		return newGroupVehicle;
 	}
 	
-	
 	//---------------------------------------------------------------------------------------------------
 	bool RemoveVehicle(notnull SCR_AIVehicleUsageComponent vehicleUsageComp)
 	{
 		foreach (int index, SCR_AIGroupVehicle groupVehicle : m_aGroupVehicles)
 		{
-			if(groupVehicle.GetVehicleUsageComponent() == vehicleUsageComp)
+			if (groupVehicle.GetVehicleUsageComponent() == vehicleUsageComp)
 			{
 				m_aGroupVehicles.Remove(index);
 				return true;

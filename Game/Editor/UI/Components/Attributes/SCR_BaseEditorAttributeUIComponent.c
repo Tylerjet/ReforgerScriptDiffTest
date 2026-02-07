@@ -273,12 +273,18 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 	}
 
 	//============================ Varriable changed ============================\\
-	override bool OnChange(Widget w, int x, int y, bool finished)
+	override bool OnChange(Widget w, bool finished)
 	{
+		return OnChangeInternal(w, 0, 0, finished);
+		
+	}
+
+	bool OnChangeInternal(Widget w, int x, int y, bool finished)
+	{			
 		AttributeValueChanged();
 		return false;
 	}
-
+	
 	//On attribute value changed
 	protected void AttributeValueChanged()
 	{

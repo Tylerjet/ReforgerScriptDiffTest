@@ -212,29 +212,3 @@ class SCR_AIOrder_Unit_State : SCR_AIOrderBase // MESSAGE_CLASS(GenerateSendOrde
 			m_eUnitState = node.m_integer;
 	}
 };
-
-class SCR_AIOrder_CombatType : SCR_AIOrderBase // MESSAGE_CLASS(GenerateSendOrder, SCR_AISendOrder_CombatType)
-{
-	EAICombatType m_eCombatType; // VARIABLE(NodePort, CombatType, NodePropertyEnum, m_eCombatType)
-	
-	void SCR_AIOrder_CombatType()
-	{
-		m_eOrderType = EOrderType_Character.COMBAT_TYPE;
-	}
-	
-	override void GetOrderParameters(SCR_AIProcessOrder node)
-	{
-		node.SetVariableOut(node.ORDER_TYPE, EOrderType_Character.COMBAT_TYPE);
-		node.SetVariableOut(node.SCRIPTED_ORDER, true);
-		node.SetVariableOut(node.ORDER_VALUE, m_eCombatType);
-		if (node.m_bDebugMe) 
-			node.m_sDebugString = "Combat type "+ typename.EnumToString(EAICombatType, m_eCombatType) + " by " + node.m_Order.GetText();
-	}
-	
-	override void SetOrderParameters(SCR_AISendOrder node)
-	{
-		super.SetOrderParameters(node);
-		if(!node.GetVariableIn(node.ORDER_VALUE, m_eCombatType))
-			m_eCombatType = node.m_integer;
-	}
-};

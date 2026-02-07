@@ -2,6 +2,7 @@ class SCR_TutorialCourseSelectionUserAction: ScriptedUserAction
 {	
 	protected SCR_TutorialGamemodeComponent m_TutorialComponent;
 	protected SCR_TutorialInstructorComponent m_TutorialInstructor;
+	protected LocalizedString m_sCompletedSuffix = " #AR-Tutorial_TaskCompletedSuffix";
 	
 	//------------------------------------------------------------------------------------------------
 	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity) 
@@ -42,6 +43,19 @@ class SCR_TutorialCourseSelectionUserAction: ScriptedUserAction
 	override bool CanBroadcastScript()
 	{		
 		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override event bool GetActionNameScript(out string outName)
+	{
+		if (!m_TutorialComponent || !m_TutorialInstructor)
+			return false;
+		
+		if (!SCR_Enum.HasFlag(m_TutorialComponent.GetFinishedCourses(), m_TutorialInstructor.GetCourseType()))
+			return false;
+		
+		outName = GetUIInfo().GetName() + m_sCompletedSuffix;
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------

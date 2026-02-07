@@ -268,36 +268,6 @@ class CareerBackendData : JsonApiStruct
 };
 
 //------------------------------------------------------------------------------------------------
-class CampaignCallback : BackendCallback
-{
-	/**
-	\brief Request finished with error result
-	\param code Error code is type of EBackendError
-	*/
-	override void OnError( int code, int restCode, int apiCode )
-	{
-		Print("[BackendCallback] OnError: "+ GetGame().GetBackendApi().GetErrorCode(code));
-	}
-
-	/**
-	\brief Request finished with success result
-	\param code Code is type of EBackendRequest
-	*/
-	override void OnSuccess( int code )
-	{
-		Print("[BackendCallback] OnSuccess");
-	}
-
-	/**
-	\brief Request not finished due to timeout
-	*/
-	override void OnTimeout()
-	{
-		Print("[BackendCallback] OnTimeout");
-	}
-};
-
-//------------------------------------------------------------------------------------------------
 //! Used to identify various player skills
 enum EProfileSkillID
 {

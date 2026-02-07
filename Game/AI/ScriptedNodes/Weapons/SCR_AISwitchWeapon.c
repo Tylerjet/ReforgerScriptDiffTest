@@ -109,6 +109,7 @@ class SCR_AISwitchWeapon : SCR_AIWeaponHandlingBase
 			AddDebugMessage(string.Format("StartWeaponSwitchTurret: %1 %2 %3", newWeaponComp, newWeaponComp.GetOwner(), newWeaponComp.GetOwner().GetPrefabData().GetPrefabName()));
 			#endif
 			SCR_AIWeaponHandling.StartWeaponSwitchTurret(turretController, newWeaponComp, owner.GetControlledEntity());
+			return ENodeResult.RUNNING;
 		}
 		else
 		{
@@ -214,5 +215,5 @@ class SCR_AISwitchWeapon : SCR_AIWeaponHandlingBase
 	protected static ref TStringArray s_aVarsIn = {PORT_WEAPON_COMPONENT};
 	override TStringArray GetVariablesIn() { return s_aVarsIn; }
 	
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }

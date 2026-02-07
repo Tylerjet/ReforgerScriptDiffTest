@@ -1,5 +1,12 @@
 class SCR_DeployableSpawnPointSystem : GameSystem
 {
+	override static void InitInfo(WorldSystemInfo outInfo)
+	{
+		outInfo
+			.SetAbstract(false)
+			.AddPoint(ESystemPoint.FixedFrame);
+	}
+
 	protected ref array<SCR_BaseDeployableSpawnPointComponent> m_aComponents = {};
 	
 	//------------------------------------------------------------------------------------------------

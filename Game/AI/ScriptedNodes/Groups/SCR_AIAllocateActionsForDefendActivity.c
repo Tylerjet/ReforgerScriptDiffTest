@@ -13,7 +13,7 @@ class SCR_AIAllocateActionsForDefendActivity: AITaskScripted
 	protected SCR_AIDefendActivity m_RelatedActivity;
 	
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() {return true;}
+	static override bool VisibleInPalette() {return true;}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(AIAgent owner)
@@ -126,6 +126,10 @@ class SCR_AIAllocateActionsForDefendActivity: AITaskScripted
 		if (!vehicle)
 			return false;
 		
+		SCR_AIVehicleUsageComponent vehicleUsageComp = SCR_AIVehicleUsageComponent.FindOnNearestParent(vehicle, vehicle);
+		if (!vehicleUsageComp)
+			return false;
+		
 		if (teleport)
 		{
 			IEntity entityToTeleport = who.GetControlledEntity();
@@ -133,11 +137,12 @@ class SCR_AIAllocateActionsForDefendActivity: AITaskScripted
 				return false;
 			CompartmentAccessComponent CAComponent = CompartmentAccessComponent.Cast(entityToTeleport.FindComponent(CompartmentAccessComponent));
 			if(!CAComponent.GetInVehicle(vehicle, slot, true, -1, ECloseDoorAfterActions.INVALID, false))
-				Print("Unable to teleport to Turret", LogLevel.WARNING); // might be still in the process of teleporting...			
+				Print("Unable to teleport to Turret", LogLevel.WARNING); // might be still in the process of teleporting...
 		}		
-		SCR_AIMessage_GetIn getInMessage = SCR_AIMessage_GetIn.Create(vehicle, null, EAICompartmentType.Turret, m_bWaypointRelated, m_fPriorityLevel, m_RelatedWaypoint, m_RelatedActivity);
+		SCR_AIMessage_GetIn getInMessage = SCR_AIMessage_GetIn.Create(vehicle, null, EAICompartmentType.Turret, m_bWaypointRelated, m_fPriorityLevel, m_RelatedWaypoint, m_RelatedActivity, slot);
 		m_Mailbox.RequestBroadcast(getInMessage, who);
-		m_groupOwner.AddUsableVehicle(vehicle);
+		m_groupOwner.GetGroupUtilityComponent().AddUsableVehicle(vehicleUsageComp);
+		
 		return true;
 	}
 	
@@ -181,7 +186,7 @@ class SCR_AIAllocateActionsForDefendActivity: AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override string GetOnHoverDescription()
+	static override string GetOnHoverDescription()
 	{
 		return "AllocateActionsForDefendActivity: Goes over all group members and alocates them either turret, smart action or sector defend.\n Works only inside defend activity under defend waypoint.";
 	}

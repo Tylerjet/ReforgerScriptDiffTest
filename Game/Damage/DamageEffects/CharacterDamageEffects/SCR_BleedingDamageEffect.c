@@ -50,7 +50,7 @@ class SCR_BleedingDamageEffect : SCR_DotDamageEffect
 
 		// the rest of this function removes bleeding particle effects only if no bleeding effects remain on any hitzones in the group
 		array<HitZone> hitZones = {};
-		array<ref PersistentDamageEffect> effects = {};
+		array<ref SCR_PersistentDamageEffect> effects = {};
 		characterDamageManager.GetHitZonesOfGroup(scriptedHitZone.GetHitZoneGroup(), hitZones);
 		
 		//Unsubscribe from SCR_BloodOnClothesSystem if registered
@@ -59,12 +59,11 @@ class SCR_BleedingDamageEffect : SCR_DotDamageEffect
 		
 		foreach (HitZone groupHitZone : hitZones)
 		{
-			effects = characterDamageManager.GetAllPersistentEffectsOnHitZone(groupHitZone);
-			foreach (PersistentDamageEffect effect : effects)
-			{
-				if (effect.GetDamageType() == EDamageType.BLEEDING)
-					return;
-			}
+			characterDamageManager.FindAllDamageEffectsOfTypeOnHitZone(SCR_BleedingDamageEffect, groupHitZone, effects);
+			if (!effects.IsEmpty())
+				return;
+			
+			effects.Clear();
 		}
 
 		characterDamageManager.RemoveBleedingParticleEffect(hitZone);
@@ -90,9 +89,9 @@ class SCR_BleedingDamageEffect : SCR_DotDamageEffect
 	//------------------------------------------------------------------------------------------------
 	event override bool HijackDamageEffect(SCR_ExtendedDamageManagerComponent dmgManager)
 	{
-		array<ref PersistentDamageEffect> persistentEffects = dmgManager.GetAllPersistentEffectsOnHitZone(GetAffectedHitZone());
-		persistentEffects = dmgManager.FilterEffectsByType(persistentEffects, SCR_BleedingDamageEffect);
-
+		array<ref SCR_PersistentDamageEffect> persistentEffects = {};
+		dmgManager.FindAllDamageEffectsOfTypeOnHitZone(SCR_BleedingDamageEffect, GetAffectedHitZone(), persistentEffects);
+		
 		//if the effect is already present on the hitZone, we dont add a second one.
 		if (!persistentEffects.IsEmpty())
 		{

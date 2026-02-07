@@ -277,6 +277,7 @@ sealed class Math
 	\param seed New seed for the random number generator or -1 to use current time as seed.
 	\return Returns new seed.
 	*/
+	[Obsolete("If seed need to be used use RandomGenerator instead")]
 	static proto int Randomize(int seed);
 	/*!
 	Returns a random `float` number between `min` [inclusive] and `max` [exclusive].

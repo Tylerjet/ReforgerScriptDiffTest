@@ -15,23 +15,17 @@ class SCR_PowerPole : PowerPoleEntity
 		[OLD] Power Cable Slots
 	*/
 
-	[Attribute(desc: "[OBSOLETE (use Cable Slot Groups above)] Slots for connecting with other power poles", category: "[OLD] Power Cable Slots")]
-	protected ref array<ref SCR_PowerPoleSlotBase> m_aSlots; // obsolete since 2024-04-02
+	[Attribute(uiwidget: UIWidgets.None, desc: "[OBSOLETE (use Cable Slot Groups above)] Slots for connecting with other power poles", category: "[OLD] Power Cable Slots")]
+	protected ref array<ref SCR_PowerPoleSlotBase> m_aSlots; // obsolete since 2024-04-02 - hidden since 2024-08-07
 
 #ifdef WORKBENCH
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] sameLine is used by SCR_JunctionPowerPole.GetSlotsCount
-	int GetSlotsCount(bool sameLine = true)
-	{
-		return m_aSlots.Count();
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! Get the closest non-empty cable slot group for each available cable type
 	//! \param[in] worldPos the position from which to find the closest slots
+	//! \param[in] isSameLine true to get same line-accepting slots, false to get external line-accepting slots
 	//! \return a cableType-slotGroup map - never returns null
-	map<SCR_EPoleCableType, ref SCR_PoleCableSlotGroup> GetClosestCableSlotGroupsPerCableType(vector worldPos)
+	map<SCR_EPoleCableType, ref SCR_PoleCableSlotGroup> GetClosestCableSlotGroupsForEachCableType(vector worldPos, bool isSameLine)
 	{
 		map<SCR_EPoleCableType, ref SCR_PoleCableSlotGroup> result = new map<SCR_EPoleCableType, ref SCR_PoleCableSlotGroup>();
 		map<SCR_EPoleCableType, float> distancesSq = new map<SCR_EPoleCableType, float>();
@@ -47,13 +41,23 @@ class SCR_PowerPole : PowerPoleEntity
 			if (count < 1)
 				continue;
 
+			if (group.m_eConnectivity != SCR_EPoleCableSlotConnectivity.ALL_LINES)
+			{
+				// SCR_EPoleCableSlotConnectivity.ALL_LINES = OK
+				// SCR_EPoleCableSlotConnectivity.SAME_LINE + isSameLine = OK
+				// SCR_EPoleCableSlotConnectivity.EXTERNAL_LINE + !isSameLine = OK
+				// anything else skips
+				if ((group.m_eConnectivity == SCR_EPoleCableSlotConnectivity.SAME_LINE) != isSameLine)
+					continue;
+			}
+
 			if (group.m_vAnchorOverride == vector.Zero)
 			{
 				foreach (SCR_PoleCableSlot slot : group.m_aSlots)
 				{
 					avgPos += slot.m_vPosition;
 				}
-	
+
 				avgPos /= count;
 			}
 			else
@@ -61,11 +65,14 @@ class SCR_PowerPole : PowerPoleEntity
 				avgPos = group.m_vAnchorOverride;
 			}
 
+			float distanceSq = vector.DistanceSq(worldPos, CoordToParent(avgPos));
 			float storedGroupDistanceSq = distancesSq.Get(group.m_eCableType);
 			if (storedGroupDistanceSq == 0) // not present - I believe faster than Contains, Get, Set/Insert
-				storedGroupDistanceSq = float.INFINITY;
-
-			float distanceSq = vector.DistanceSq(worldPos, CoordToParent(avgPos));
+			{
+				distancesSq.Insert(group.m_eCableType, distanceSq);
+				result.Insert(group.m_eCableType, group);
+			}
+			else
 			if (distanceSq < storedGroupDistanceSq)
 			{
 				distancesSq.Set(group.m_eCableType, distanceSq);
@@ -74,42 +81,6 @@ class SCR_PowerPole : PowerPoleEntity
 		}
 
 		return result;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Tries to find position of the closest compatible slot.
-	//! \param[in] index is the index of the other slot, this method tries to find the slot under the same index.
-	//! \param[in] otherSlot is the world position of the other pole's slot.
-	//! \param[in] sameLine is used by SCR_JunctionPowerPole.TryGetSlot
-	//! \return vector with world origin of the closest compatible slot.
-	vector TryGetSlot(int index, vector otherSlot, bool sameLine)
-	{
-		if (index < 0)
-			return vector.Zero;
-
-		int slotCount = m_aSlots.Count();
-		if (slotCount < 1)
-			return vector.Zero;
-
-		if (index >= slotCount)
-			index = index % slotCount;
-
-		SCR_PowerPoleSlot dualSlot = SCR_PowerPoleSlot.Cast(m_aSlots[index]);
-		if (dualSlot)
-		{
-			vector slotAWorldPos = CoordToParent(dualSlot.m_vSlotA);
-			vector slotBWorldPos = CoordToParent(dualSlot.m_vSlotB);
-			if (vector.DistanceSq(otherSlot, slotAWorldPos) <= vector.DistanceSq(otherSlot, slotBWorldPos))
-				return slotAWorldPos;
-			else
-				return slotBWorldPos;
-		}
-
-		SCR_PowerPoleSlotSingle singleSlot = SCR_PowerPoleSlotSingle.Cast(m_aSlots[index]);
-		if (singleSlot)
-			return CoordToParent(singleSlot.m_vSlotA);
-
-		return vector.Zero;
 	}
 
 	//
@@ -141,7 +112,7 @@ class SCR_PowerPole : PowerPoleEntity
 		typename srcType = src.GetClassName().ToType();
 		if (
 			!srcType ||
-			(key != "m_vPosition" && key != "m_vAnchorOverride") ||
+			(key != "m_vPosition" && key != "m_vAnchorOverride" && key != "m_eConnectivity") ||
 			(!srcType.IsInherited(SCR_PoleCableSlot) && !srcType.IsInherited(SCR_PoleCableSlotGroup)))
 		{
 			if (s_DebugShapeManager)
@@ -159,9 +130,15 @@ class SCR_PowerPole : PowerPoleEntity
 		return result;
 	}
 
-//	why these two do not work, IDK
+//	why these two do not work reliably, IDK
 //	_WB_AfterWorldUpdate	// sometimes doesn't work
-//	thread				// never works / crashes WB
+//	thread					// never works / crashes WB
+
+	//------------------------------------------------------------------------------------------------
+	override int _WB_GetAfterWorldUpdateSpecs(IEntitySource src)
+	{
+		return EEntityFrameUpdateSpecs.CALL_WHEN_ENTITY_VISIBLE;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	override void _WB_AfterWorldUpdate(float timeSlice)
@@ -180,7 +157,7 @@ class SCR_PowerPole : PowerPoleEntity
 		const float angle = 45 * Math.DEG2RAD;
 		array<vector> lines = {
 			{ Math.Cos(angle), 0, Math.Sin(angle) } * DEBUG_PRECISION_LINE_SIZE,
-			{ 0, 1, 0 } * DEBUG_PRECISION_LINE_SIZE,
+			vector.Up * DEBUG_PRECISION_LINE_SIZE,
 			{ Math.Cos(-angle), 0, Math.Sin(-angle) } * DEBUG_PRECISION_LINE_SIZE,
 		};
 
@@ -249,8 +226,6 @@ class SCR_PowerPole : PowerPoleEntity
 			if (!s_DebugShapeManager)
 				s_DebugShapeManager = new SCR_DebugShapeManager();
 		}
-
-		SetEventMask(EntityEvent.INIT);
 #endif // WORKBENCH
 	}
 }

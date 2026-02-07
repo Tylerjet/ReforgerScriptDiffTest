@@ -93,6 +93,12 @@ class SCR_SpawnPositionComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override int _WB_GetAfterWorldUpdateSpecs(IEntity owner, IEntitySource src)
+	{
+		return EEntityFrameUpdateSpecs.CALL_WHEN_ENTITY_VISIBLE;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override event void _WB_AfterWorldUpdate(IEntity owner, float timeSlice)
 	{
 		if (GetGame().InPlayMode())

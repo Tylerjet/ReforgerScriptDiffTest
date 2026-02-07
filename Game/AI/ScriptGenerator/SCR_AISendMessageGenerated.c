@@ -82,5 +82,5 @@ class SCR_AISendMessageGenerated : AITaskScripted
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() { return false; }	
+	static override bool VisibleInPalette() { return false; }	
 }

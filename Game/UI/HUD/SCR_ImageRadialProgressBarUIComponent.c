@@ -22,10 +22,8 @@ class SCR_ImageRadialProgressBarUIComponent: SCR_RadialProgressBarUIComponent
 	//Script invoker
 	protected ref ScriptInvoker Event_OnFadeDone = new ScriptInvoker; //SCR_ImageRadialProgressBarUIComponent, bool wasFadingIn
 	
-
-	
 	override void SetProgress(float progress)
-	{ 		
+	{
 		super.SetProgress(progress);
 		
 		if (m_wFadeImage)

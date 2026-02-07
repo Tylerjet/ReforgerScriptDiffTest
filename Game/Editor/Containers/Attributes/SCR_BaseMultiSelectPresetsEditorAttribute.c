@@ -21,6 +21,8 @@ class SCR_BaseMultiSelectPresetsEditorAttribute: SCR_BasePresetsEditorAttribute
 	//Current flags for the current vector index
 	private int m_iCurrentFlagsPerIndex;
 	
+	//---- REFACTOR NOTE START: Not ideal handling flag manipulation ----
+	
 	//Saves the next entity state
 	protected void AddOrderedState(bool state)
 	{
@@ -130,6 +132,8 @@ class SCR_BaseMultiSelectPresetsEditorAttribute: SCR_BasePresetsEditorAttribute
 		else
 			m_iStateVectorIndex = 0;
 	}
+	
+	//---- REFACTOR NOTE END ----
 	
 	protected vector GetFlagVector()
 	{

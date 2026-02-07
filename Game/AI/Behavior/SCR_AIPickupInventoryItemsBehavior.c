@@ -15,6 +15,12 @@ class SCR_AIPickupInventoryItemsBehavior : SCR_AIBehaviorBase
 		m_MagazineWellType.Init(this, magazineWellType);
 	}
 	
+	//---------------------------------------------------------------------------------------------------------------------------------
+	override int GetCause()
+	{
+		return SCR_EAIBehaviorCause.SELF_AID;
+	}
+	
 	//-------------------------------------------------------------------------------------------------------------
 	void SCR_AIPickupInventoryItemsBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity,
 		vector pickupPosition, typename magazineWellType, float priorityLevel = PRIORITY_LEVEL_NORMAL)
@@ -55,5 +61,5 @@ class SCR_AIGetPickupInventoryItemsParameters: SCR_AIGetActionParameters
 {
 	static ref TStringArray s_aVarsOut = (new SCR_AIPickupInventoryItemsBehavior(null, null, vector.Zero, BaseMagazineWell)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 };

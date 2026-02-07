@@ -202,7 +202,11 @@ class SCR_AIGetFireTimes: AITaskScripted
 		
 		// Apply CQC factor to burst size
 		burstSize -= Math.RandomGaussFloat(0.32, 0) * cqcFactor;
-		stabilizationTime -= Math.RandomFloat(stabilizationTime / 3, stabilizationTime) * cqcFactor * 0.85;
+		
+		if (stabilizationTime > 0)
+			stabilizationTime -= Math.RandomFloat(stabilizationTime / 3, stabilizationTime) * cqcFactor * 0.85;
+		else
+			stabilizationTime = 0;
 				
 		// Ger fire time
 		float fireTime = m_fShotSpan * burstSize;			
@@ -247,9 +251,9 @@ class SCR_AIGetFireTimes: AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-    override bool VisibleInPalette() {return true;}
+    static override bool VisibleInPalette() {return true;}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription() {return "Get all time constants for fire - it is weapon dependent";}
+	protected static override string GetOnHoverDescription() {return "Get all time constants for fire - it is weapon dependent";}
 };
 

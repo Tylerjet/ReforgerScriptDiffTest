@@ -76,7 +76,7 @@ class SCR_AIDecoHasMagazineCount : DecoratorScripted
 		return result;			
 	}	
 		
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}
@@ -86,7 +86,7 @@ class SCR_AIDecoHasMagazineCount : DecoratorScripted
 		return "Checks: " + typename.EnumToString(EVariableTestType,m_TestType) + " with value: " +  m_iNumberOfMagazines.ToString();	
 	}	
 	
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Decorator that tests if entity has a weapon specified in attribute either as weapon type or as magazine well, in that case it returns the weapon type of the weapon";
 	}	

@@ -1,39 +1,63 @@
 [EntityEditorProps(insertable: false)]
-class SCR_Tutorial_SW_RPG_DISPOSEClass: SCR_BaseTutorialStageClass
+class SCR_Tutorial_SW_RPG_DISPOSEClass : SCR_BaseTutorialStageClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_Tutorial_SW_RPG_DISPOSE : SCR_BaseTutorialStage
 {
-	IEntity m_CourseRPG;
-	
+	protected SCR_InventoryStorageManagerComponent m_PlayerInventory;
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
 	{
 		SCR_HintManagerComponent.HideHint();
 		SCR_HintManagerComponent.ClearLatestHint();
-		
-		m_CourseRPG = GetGame().GetWorld().FindEntityByName("COURSE_RPG");
-		if (!m_CourseRPG)
+
+		m_PlayerInventory = m_TutorialComponent.GetPlayerInventory();
+		IEntity courseRPG = GetGame().GetWorld().FindEntityByName("COURSE_RPG");
+
+		if (!courseRPG || !m_PlayerInventory)
 		{
 			m_bFinished = true;
 			return;
 		}
-		
-		m_TutorialComponent.EnableRefunding(m_CourseRPG, true);
+
+		m_TutorialComponent.EnableRefunding(courseRPG, true);
 
 		PlayNarrativeCharacterStage("SPECIALWEAPONS_InstructorM", 11);
-
-		RegisterWaypoint("SW_ARSENAL_USSR", "", "CUSTOM");
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	protected bool IsLauncherDropped()
+	{
+		if (!m_PlayerInventory)
+			return true;
+
+		array<IEntity> entities = {};
+		m_PlayerInventory.GetAllRootItems(entities);
+		if (!entities.IsEmpty())
+		{
+			BaseWeaponComponent weaponComp;
+			BaseMuzzleComponent muzzle;
+			foreach (IEntity ent : entities)
+			{
+				weaponComp = BaseWeaponComponent.Cast(ent.FindComponent(BaseWeaponComponent));
+				if (!weaponComp)
+					continue;
+
+				if (weaponComp.GetWeaponType() == EWeaponType.WT_ROCKETLAUNCHER)
+					return false;
+			}
+		}
+
+		return true;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	override bool GetIsFinished()
 	{
-		return !m_CourseRPG;
+		return IsLauncherDropped();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_Tutorial_SW_RPG_DISPOSE()
 	{

@@ -466,7 +466,8 @@ class SCR_VONController : ScriptComponent
 				DeactivateVON(m_eVONType);
 		}
 
-		SetActiveTransmit(newEntry);
+		if (!ActivateVON(newEntry))
+			return;
 
 		if (m_VONDisplay)
 			m_VONDisplay.ShowSelectedVONHint(newEntry);
@@ -480,19 +481,38 @@ class SCR_VONController : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! VON activation
-	//! \param transmitType type of entry to be activated
+	//! \param[in] transmitType type of entry to be activated
  	protected void ActivateVON(EVONTransmitType transmitType)
-	{				
-		if (!m_VONComp)
-			return;
-		
-		m_eVONType = transmitType;
+	{
 		SCR_VONEntry entry = GetEntryByTransmitType(transmitType);
-				
-		if (!GetGame().GetVONCanTransmitCrossFaction())		// is cross faction transmit disabled
+		if (!entry)
+			return;
+
+		ActivateVON(entry, transmitType);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! VON activation
+	//! \param[in] entry which is being activated
+	//! \param[in] transmitType type of entry to be activated
+	//! \return true if activation was successful, false otherwise
+ 	protected bool ActivateVON(notnull SCR_VONEntry entry, EVONTransmitType transmitType = EVONTransmitType.NONE)
+	{
+		if (!m_VONComp)
+			return false;
+		
+		if (transmitType == EVONTransmitType.NONE)
 		{
-			if (!m_sLocalEncryptionKey)
-				InitEncryptionKey();
+			if (entry.GetVONMethod() == ECommMethod.SQUAD_RADIO)
+				transmitType = EVONTransmitType.CHANNEL;
+			else
+				transmitType = EVONTransmitType.DIRECT;
+		}
+
+		m_eVONType = transmitType;
+		if (transmitType != EVONTransmitType.DIRECT && !GetGame().GetVONCanTransmitCrossFaction() && !SCR_Global.IsAdmin())		// is cross faction transmit disabled
+		{
+			InitEncryptionKey();
 		
 			SCR_VONEntryRadio radioEntry = SCR_VONEntryRadio.Cast(entry);
 			if (radioEntry && m_sLocalEncryptionKey != string.Empty && radioEntry.GetTransceiver().GetRadio().GetEncryptionKey() != m_sLocalEncryptionKey)
@@ -501,13 +521,14 @@ class SCR_VONController : ScriptComponent
 				if (m_VONDisplay)
 					m_VONDisplay.ShowSelectedVONDisabledHint(true);
 
-				return;
+				return false;
 			}
 		}
 					
 		SetActiveTransmit(entry);
 		m_VONComp.SetCapture(true);
 		m_bIsActive = true;
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------

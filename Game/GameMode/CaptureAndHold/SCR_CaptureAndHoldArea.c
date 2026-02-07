@@ -222,6 +222,9 @@ class SCR_CaptureAndHoldArea : SCR_CaptureArea
 			return;
 
 		MapDescriptorProps props = item.GetProps();
+		if (!props)
+			return;
+		
 		props.SetIconSize(0.65, 0.65, 0.65);
 		props.SetTextSize(32, 32, 32);
 		props.SetTextBold();
@@ -260,13 +263,20 @@ class SCR_CaptureAndHoldArea : SCR_CaptureArea
 				color = m_pOwnerFaction.GetFactionColor();
 			}
 		}
+		
+		MapItem mapItem = target.Item();
+		if (!mapItem)
+			return;
 
-		MapDescriptorProps props = target.Item().GetProps();
+		MapDescriptorProps props = mapItem.GetProps();
+		if (!props)
+			return;
+		
 		props.SetFrontColor(color);
 		props.SetTextColor(color);
 
 		props.Activate(true);
-		target.Item().SetProps(props);
+		mapItem.SetProps(props);
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -17,6 +17,8 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 
 	//~ Instance
 	protected static SCR_EntityCatalogManagerComponent s_Instance;
+
+	protected static ref ScriptInvokerVoid s_OnEntityCatalogInitialized;
 	
 	protected bool m_bInitDone;
 
@@ -25,6 +27,16 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 	static SCR_EntityCatalogManagerComponent GetInstance()
 	{		
 		return s_Instance;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	static ScriptInvokerVoid GetOnEntityCatalogInitialized()
+	{
+		if (!s_OnEntityCatalogInitialized)
+			s_OnEntityCatalogInitialized = new ScriptInvokerVoid();
+
+		return s_OnEntityCatalogInitialized;
 	}
 
 	//======================================== GET CATALOG ========================================\\
@@ -567,9 +579,60 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 			
 		return filteredItems;
 	}
+	
+	//======================================== IDENTITY ITEM ========================================\\
+	//------------------------------------------------------------------------------------------------
+	//! \return Identity item for given character. Will take faction affiliation comp and try to find a valid identity item for the character
+	ResourceName GetIdentityItemForCharacter(ChimeraCharacter character)
+	{
+		if (!character)
+			return GetDefaultIdentityItem();
+		
+		FactionAffiliationComponent factionAffiliationComp = FactionAffiliationComponent.Cast(character.FindComponent(FactionAffiliationComponent));
+		if (!factionAffiliationComp)
+			return GetDefaultIdentityItem();
+		
+		SCR_Faction faction = SCR_Faction.Cast(factionAffiliationComp.GetAffiliatedFaction());
+		if (!faction)
+			return GetDefaultIdentityItem();
+		
+		SCR_EntityCatalog catalog = faction.GetFactionEntityCatalogOfType(EEntityCatalogType.ITEM);
+		if (!catalog)
+			return GetDefaultIdentityItem();
+		
+		array<SCR_EntityCatalogEntry> filteredEntityList = {};
+		
+		catalog.GetEntityListWithData(SCR_EntityCatalogIdentityItemData, filteredEntityList);
+		if (filteredEntityList.IsEmpty())
+			return string.Empty;
+		
+		if (filteredEntityList.Count() > 1)
+			Print("SCR_EntityCatalogManagerComponent: GetIdentityItemForCharacter Multiple Identity Items found for faction " + faction.GetFactionKey() + "! Only the first found will be used");
+		
+		return filteredEntityList[0].GetPrefab();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return Default Identity item which is not tied to any faction
+	ResourceName GetDefaultIdentityItem()
+	{
+		SCR_EntityCatalog catalog = GetEntityCatalogOfType(EEntityCatalogType.ITEM);
+		if (!catalog)
+			return string.Empty;
+		
+		array<SCR_EntityCatalogEntry> filteredEntityList = {};
+		
+		catalog.GetEntityListWithData(SCR_EntityCatalogIdentityItemData, filteredEntityList);
+		if (filteredEntityList.IsEmpty())
+			return string.Empty;
+		
+		if (filteredEntityList.Count() > 0)
+			Print("SCR_EntityCatalogManagerComponent: GetIdentityItemForCharacter Multiple Identity Items found for factionless list! Only the first found will be used");
+		
+		return filteredEntityList[0].GetPrefab();
+	}
 
 	//======================================== INIT ========================================\\
-
 	//------------------------------------------------------------------------------------------------
 	//! Init Catalog lists to move the arrays into a map for faster processing
 	//! \param[in] entityCatalogArray Array of entity catalog to move into the map
@@ -618,6 +681,9 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 		
 		//~ Clear array as no longer needed
 		m_aEntityCatalogs = null;
+
+		if (s_OnEntityCatalogInitialized)
+			s_OnEntityCatalogInitialized.Invoke();
 	}
 
 	//------------------------------------------------------------------------------------------------

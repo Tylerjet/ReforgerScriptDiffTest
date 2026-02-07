@@ -8,15 +8,16 @@ class PlatformService
 	\param			callback			Callback object used to notify result.
 	\return			Returns true if the request is submitted.
 	*/
-	proto native bool FilterProfanityAsync(array<string> textsToFilter, ProfanityFilterRequestCallback cb);
+	proto native bool FilterProfanityAsync(array<string> textsToFilter, ProfanityFilterRequestCallback callback);
 	
 	/*!
 	Requests privilege from platform. Implemented as queue. When the result for
 	one type of privilege is received, all requests of that type receive the result.
 	\param[privilege] Requested privilege
 	\param[callback] Callback object used to signalize result
-	\return Returns if the request was successfuly queued
+	\return Returns if the request was successfully queued
 	*/
+	[Obsolete("Use SocialComponent.RequestSocialPrivilege() or RequestMultiplayerPrivilege()")]
 	proto native bool GetPrivilegeAsync(UserPrivilege privilege, PlatformRequestCallback callback);
 
 	/*!
@@ -24,6 +25,7 @@ class PlatformService
 	\param[privilege] Requested privilege
 	\return Returns true if the privilege is granted
 	*/
+	[Obsolete("Use SocialComponent.IsPrivilegedTo() or IsMultiplayerAllowed()")]
 	proto native bool GetPrivilege(UserPrivilege privilege);
 
 	/*!

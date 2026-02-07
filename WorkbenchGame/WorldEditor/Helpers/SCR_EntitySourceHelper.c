@@ -107,7 +107,7 @@ class SCR_EntitySourceHelper
 					if (!worldEditorAPI.CreateObjectVariableMember(entitySource, path, varName, sourceObj.GetClassName()))
 						break;
 
-					array<ref ContainerIdPathEntry> path2 = SCR_ArrayHelperT<ContainerIdPathEntry>.GetCopy(path);
+					array<ref ContainerIdPathEntry> path2 = SCR_ArrayHelperRefT<ContainerIdPathEntry>.GetCopy(path);
 					path2.Insert(new ContainerIdPathEntry(varName));
 
 					if (CopyVariablesFromTo(entitySource, sourceObj, path2))
@@ -146,5 +146,13 @@ class SCR_EntitySourceHelper
 		}
 
 		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] value
+	//! \return
+	static string GetShortestVectorString(vector value)
+	{
+		return string.Format("%1 %2 %3", value[0], value[1], value[2]); // 20% faster than ("" + value[0] + " " + value[1] + " " + value[2]);
 	}
 }

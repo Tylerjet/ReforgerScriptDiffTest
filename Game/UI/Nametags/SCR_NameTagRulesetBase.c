@@ -9,19 +9,19 @@ class SCR_NameTagRulesetBase : Managed
 	[Attribute("0", UIWidgets.CheckBox, desc: "seconds \n how long it takes for nametag to fade in/out when switching visibility", "0 10")]
 	float m_fTagFadeTime;
 	
-	[Attribute("false", UIWidgets.CheckBox, "This will cancel fade out transitions if new primary tag is acquired")]
+	[Attribute("true", UIWidgets.CheckBox, "This will cancel fade out transitions if new primary tag is acquired")]
 	protected bool m_bCancelFadeOnNewFocus;
 	
 	[Attribute("1", UIWidgets.CheckBox, desc: "seconds \n how long does it take to delete tags from dead entities")]
 	float m_fDeadEntitiesCleanup;
-				
+	
 	[Attribute("true", UIWidgets.CheckBox, "Whether entities in this zone should be traced for obstructed visibility")]
 	protected bool m_bTraceForLOS;
 	
 	[Attribute("0", UIWidgets.CheckBox, desc: "seconds \n how long it takes for the tag to start fading if LOS is obstructed")]
 	protected float m_fLOSFadeDelay;
 	
-	[Attribute("90", UIWidgets.CheckBox, desc: "degrees \n base angle from center of the screen to entity required to display nametag, automatically scales with distance")]
+	[Attribute("120", UIWidgets.CheckBox, desc: "degrees \n base angle from center of the screen to entity required to display nametag, automatically scales with distance")]
 	protected int m_iMaxAngle;						// degrees, no tags may be visible outside of this angle to screen center
 	
 	// Consts
@@ -80,8 +80,10 @@ class SCR_NameTagRulesetBase : Managed
 			data.m_fDistance = vector.DistanceSq(m_CurrentPlayerTag.m_vEntWorldPos, data.m_Entity.GetOrigin()); // checked through origin here to avoid more expensive pos check bottom
 		}
 		
-		int distMax = m_ZoneCfg.m_fFarthestZoneRangePow2;
-		if ( data.m_fDistance >= distMax ) // distance of visible tag is updated per frame for scaling, which is why this check has its own scope
+		int notScopedMaxRangeSqrd = m_ZoneCfg.m_fFarthestZoneRangePow2 - 2500; // don't show tags farther than 50m (50^2) unless scoping
+		bool isZoomed = (SCR_2DPIPSightsComponent.IsPIPActive() || SCR_BinocularsComponent.IsZoomedView()) && !m_CurrentPlayerTag.m_CharController.IsFreeLookEnabled();
+		int distMax = m_ZoneCfg.m_fFarthestZoneRangePow2 - (int)(!isZoomed) * notScopedMaxRangeSqrd; // increase max distance if player is using a scope or binoculars
+		if (data.m_fDistance >= distMax) // distance of visible tag is updated per frame for scaling, which is why this check has its own scope
 		{
 			if (data.m_fDistance >= distMax + 100)		// cleanup tags which are more than distance + 10m (10^2) away from base zone query 
 				data.m_fTimeSliceCleanup += timeSlice;			
@@ -125,8 +127,7 @@ class SCR_NameTagRulesetBase : Managed
 		}
 					
 		CalculateScreenPos(data);
-		if (m_iRefResolutionY * 0.95 < data.m_vTagScreenPos[1] || m_iRefResolutionY / 9.5 > data.m_vTagScreenPos[1] ||		// dont draw if at/past screen edge	
-			m_iRefResolutionX * 0.95 < data.m_vTagScreenPos[0] || m_iRefResolutionX / 9.5 > data.m_vTagScreenPos[0])
+		if (m_iRefResolutionY * 1.1 < data.m_vTagScreenPos[1] || m_iRefResolutionX * 1.1 < data.m_vTagScreenPos[0] || 0 > data.m_vTagScreenPos[1] || 0 > data.m_vTagScreenPos[0])
 			return false;	
 			
 		return true;	
@@ -255,13 +256,13 @@ class SCR_NameTagRulesetBase : Managed
 		TraceParam param = new TraceParam;
 		param.Start = m_CurrentPlayerTag.m_vEntHeadPos;
 		param.End = data.m_vEntHeadPos + HEAD_LOS_OFFSET;
-		param.LayerMask = EPhysicsLayerDefs.Projectile;
+		param.LayerMask = EPhysicsLayerDefs.Camera;
 		param.Flags = TraceFlags.ANY_CONTACT | TraceFlags.WORLD | TraceFlags.ENTS; 
 		param.Exclude = m_CurrentPlayerTag.m_Entity;
 			
 		float percent = GetGame().GetWorld().TraceMove(param, null);
-		if (percent == 1 || param.TraceEnt == data.m_Entity)	// If trace travels the entire path, return true
-			return true;
+		if (percent == 1 || param.TraceEnt == data.m_Entity)
+			return true; // If trace travels the entire path, return true
 		
 		return false;
 	}
@@ -321,7 +322,7 @@ class SCR_NameTagRulesetBase : Managed
 	//! \param timeSlice is the frame slice
 	//! \param data is the subject nametag
 	protected void CollapseTag(float timeSlice, SCR_NameTagData data)
-	{		
+	{
 		m_fTimeElapsed = 0;
 		m_ExpandedTag = null;
 		
@@ -333,7 +334,7 @@ class SCR_NameTagRulesetBase : Managed
 	//! \param data is the subject nametag
 	//! \return True if tag was completely cleaned up
 	protected bool DisableTag(SCR_NameTagData data, float timeSlice)
-	{		
+	{
 		//It will take at least 3 DisableTag calls before the tag is cleaned up -> 1) Initial call which sets UPDATE_DISABLE 2) DISABLED flag when anims are finished  3) clean up
 		if (data.m_Flags & ENameTagFlags.DISABLED)
 		{						
@@ -349,7 +350,7 @@ class SCR_NameTagRulesetBase : Managed
 		// update screen pos while fading so it doesnt get stuck on screen side mid fade
 		data.UpdateTagPos();
 		data.m_fAngleToScreenCenter = GetCameraToEntityAngle(data.m_vEntWorldPos, VERT_ANGLE_ADJUST);
-		if (data. m_fAngleToScreenCenter > m_iMaxAngle) // player quickly turning 180 deg returns tag to screen space visibility if it has fade, this check removes it before that point
+		if (data.m_fAngleToScreenCenter > m_iMaxAngle) // player quickly turning 180 deg returns tag to screen space visibility if it has fade, this check removes it before that point
 			data.m_fTimeSliceVisibility = 0;
 		
 		CalculateScreenPos(data);
@@ -415,12 +416,12 @@ class SCR_NameTagRulesetBase : Managed
 		float angle = vectorsAngle * Math.RAD2DEG;																
 		return angle;
 	}
-		
+	
 	//------------------------------------------------------------------------------------------------
 	//! Calculate tag 2d screen pos
 	//! \param data is the subject nametag
 	protected void CalculateScreenPos(SCR_NameTagData data)
-	{			
+	{
 		if (!SCR_2DPIPSightsComponent.IsPIPActive())	// PIP support
 		{
 			data.m_vTagScreenPos = m_Workspace.ProjWorldToScreen( data.m_vTagWorldPos, m_World );	// no PIP
@@ -433,7 +434,7 @@ class SCR_NameTagRulesetBase : Managed
 				if (!m_PIPSightsComp)	// IsPIPActive() will return active for an extra frame while this cant be fetched anymore
 					return;
 			}
-						
+			
 			if (m_CurrentPlayerTag.m_CharController.IsFreeLookEnabled())
 			{
 				data.m_vTagScreenPos = m_Workspace.ProjWorldToScreen( data.m_vTagWorldPos, m_World );	// if PIP free look, draw tags standard way
@@ -443,11 +444,44 @@ class SCR_NameTagRulesetBase : Managed
 			else 
 			{
 				int camID = m_PIPSightsComp.GetPIPCameraIndex();
-				data.m_vTagScreenPos = m_Workspace.ProjWorldToScreen( data.m_vTagWorldPos, m_World, camID);
+				
+				vector aimRotationModification = m_CurrentPlayerTag.m_CharController.GetAimingComponent().GetAimingRotationModification();
+				
+				vector camTM[4];
+				m_PIPSightsComp.GetPIPCamera().GetWorldTransform(camTM);
+				
+				vector nametagTM[4];
+				Math3D.MatrixIdentity4(nametagTM);
+				nametagTM[3] = data.m_vTagWorldPos;
+				
+				float zoomCorrection = m_PIPSightsComp.GetFOV() / m_PIPSightsComp.GetMainCameraFOV(); // m_PIPSightsComp.GetFOV() * 0.04386 or m_PIPSightsComp.GetFOV() / 22.8 more accurate but these values seem random
+				SCR_Math3D.RotateAround(nametagTM, camTM[3], camTM[1], aimRotationModification[0] * zoomCorrection, nametagTM);
+				SCR_Math3D.RotateAround(nametagTM, camTM[3], camTM[0], -aimRotationModification[1] * zoomCorrection, nametagTM);
+				
+				data.m_vTagWorldPos = nametagTM[3];
+				
+				data.m_vTagScreenPos = m_Workspace.ProjWorldToScreen(data.m_vTagWorldPos, m_World, camID);
+
+				float screenWidth = m_Workspace.GetWidth();
+				float screenHeight = m_Workspace.GetHeight();
+				float screenAspectRatio = screenWidth / screenHeight;
+				float screenInverseAspectRatio = screenHeight / screenWidth;
+				
+				// GetSightsRadiusScreen doesnt work properly if you resize your screen :c
+				//float radiusOfScope = m_PIPSightsComp.GetSightsRadiusScreen();
+				float radiusOfScope = screenHeight * 0.5;
+				float widthCorrection = (screenWidth / (radiusOfScope * 2.0)) * screenInverseAspectRatio; // PIP scope uses a square render target but m_Workspace.ProjWorldToScreen() assumes the result will be used in a rectangular render target 
+				float heightCorrection = screenHeight / (radiusOfScope * 2.0);
+				
+				data.m_vTagScreenPos[0] = data.m_vTagScreenPos[0] / widthCorrection;
+				data.m_vTagScreenPos[1] = data.m_vTagScreenPos[1] / heightCorrection;
+				vector positionCorrection = { screenWidth * 0.5 - radiusOfScope * screenAspectRatio, // multiplied by aspect ratio for the same reason as above comment
+											 screenHeight * 0.5 - radiusOfScope,
+											 0.0 };
+				data.m_vTagScreenPos += positionCorrection;
 				
 				if (!m_PIPSightsComp.IsScreenPositionInSights(data.m_vTagScreenPos))
 					data.m_vTagScreenPos = {0,0};		// hide tags outside of scope area
-				
 			}
 		}
 	}

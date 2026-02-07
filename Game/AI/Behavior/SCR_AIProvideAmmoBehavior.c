@@ -32,6 +32,12 @@ class SCR_AIProvideAmmoBehavior : SCR_AIBehaviorBase
 		utility.AddAction(m_MoveBehavior);
 	}
 	
+	//---------------------------------------------------------------------------------------------------------------------------------
+	override int GetCause()
+	{
+		return SCR_EAIBehaviorCause.GROUP_GOAL;
+	}
+	
 	//------------------------------------------------------------------------------------------------------------------------------------
 	override float CustomEvaluate()
 	{
@@ -69,5 +75,5 @@ class SCR_AIGetProvideAmmoBehaviorParameters : SCR_AIGetActionParameters
 	static ref TStringArray s_aVarsOut = (new SCR_AIProvideAmmoBehavior(null, null, null, BaseMagazineWell)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 };

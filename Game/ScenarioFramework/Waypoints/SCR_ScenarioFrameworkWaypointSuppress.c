@@ -2,7 +2,7 @@
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkWaypointSuppress : SCR_ScenarioFrameworkWaypointTimed
 {
-	[Attribute(defvalue: "10", desc: "Radius in m")]
+	[Attribute(defvalue: "10", uiwidget: UIWidgets.Slider, desc: "Radius in m")]
 	float m_fCompletionRadius;
 
 	[Attribute(defvalue: "{ED8277F35B46B4AA}Prefabs/AI/Waypoints/AIWaypoint_Suppress.et", desc: "In Default, it will use specific prefab for each class, but here you can change it if you know what you are doing")]

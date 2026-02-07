@@ -1,9 +1,10 @@
 enum EAudioSourceConfigurationFlag
 {
-	Static = 1,
-	EnvironmentSignals = 2,
-	FinishWhenEntityDestroyed = 4,
-	BoundingVolume = 8,
+	Static 						= 1 << 0,
+	EnvironmentSignals 			= 1 << 1,
+	FinishWhenEntityDestroyed 	= 1 << 2,
+	BoundingVolume 				= 1 << 3,
+	ExteriorSource 				= 1 << 4
 }
 
 [BaseContainerProps()]

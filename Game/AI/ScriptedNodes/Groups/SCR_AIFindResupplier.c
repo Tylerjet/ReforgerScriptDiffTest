@@ -9,7 +9,7 @@ class SCR_AIFindResupplier: AITaskScripted
 	SCR_AIGroupUtilityComponent m_GroupUtilityComponent;
 	
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() {return true;}
+	static override bool VisibleInPalette() {return true;}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(AIAgent owner)
@@ -122,7 +122,7 @@ class SCR_AIFindResupplier: AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override protected bool CanReturnRunning()
+	static override protected bool CanReturnRunning()
 	{
 		return true;
 	}
@@ -149,7 +149,7 @@ class SCR_AIFindResupplier: AITaskScripted
     }
 	
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Getter returns group member available for ressuply";
 	}

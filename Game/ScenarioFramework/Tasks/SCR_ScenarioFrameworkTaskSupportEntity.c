@@ -20,11 +20,16 @@ class SCR_ScenarioFrameworkTaskSupportEntity : SCR_BaseTaskSupportEntity
 		if (!slotTask)
 			return;
 		
+		SCR_ScenarioFrameworkLayerTask layerTask = scenarioFrameworkTask.GetLayerTask();
+		if (!layerTask)
+			return;
+		
 		IEntity owner = slotTask.GetOwner();
 		if (!SCR_ScenarioFrameworkActivationConditionBase.EvaluateEmptyOrConditions(slotTask.m_eFinishConditionLogic, slotTask.m_aFinishConditions, owner))
 			return;
 		
 		super.FinishTask(task);
+		layerTask.SetLayerTaskState(SCR_TaskState.FINISHED);
 	}
 	
 	

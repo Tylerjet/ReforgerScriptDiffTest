@@ -25,7 +25,7 @@ class SCR_PlayerToolbarItemEditorUIComponent : SCR_EntityToolbarItemEditorUIComp
 		
 		m_wPlayerName = TextWidget.Cast(widget.FindAnyWidget(m_sPlayerNameWidgetName));
 		if (m_wPlayerName)
-			m_wPlayerName.SetText(playerManager.GetPlayerName(playerID));
+			m_wPlayerName.SetText(SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(playerID));
 
 		m_wPlatformIconWidget = ImageWidget.Cast(widget.FindAnyWidget(m_sPlayerPlatformIconName));
 		if (m_wPlatformIconWidget)
@@ -33,7 +33,7 @@ class SCR_PlayerToolbarItemEditorUIComponent : SCR_EntityToolbarItemEditorUIComp
 			SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
 			if (playerController)
 				playerController.SetPlatformImageToKind(playerManager.GetPlatformKind(playerID), m_wPlatformIconWidget, showOnPC: true, showOnXbox: true);
-		}
+	}
 	}
 	
 	//------------------------------------------------------------------------------------------------

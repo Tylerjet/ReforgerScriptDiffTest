@@ -82,7 +82,7 @@ class SCR_PlayInstrument : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_PlayInstrument()
 	{
-		AudioSystem.TerminateSound(m_AudioHandle);
+		AudioSystem.TerminateSoundFadeOut(m_AudioHandle, false, 0);
 	}
 };
 

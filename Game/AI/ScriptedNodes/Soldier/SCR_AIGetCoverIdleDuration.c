@@ -10,12 +10,12 @@ class SCR_AIGetCoverIdleDuration : AITaskScripted
 		return s_aVarsOut;
 	}
 	
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
 	{
 		return true;
 	}
 	
-	override string GetOnHoverDescription()
+	static override string GetOnHoverDescription()
 	{
 		return "Returns how many seconds the soldier should stay  in cover";
 	}

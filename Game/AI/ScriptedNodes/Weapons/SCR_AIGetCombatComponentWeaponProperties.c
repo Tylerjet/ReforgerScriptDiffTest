@@ -50,7 +50,7 @@ class SCR_AIGetCombatComponentWeaponProperties : AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool VisibleInPalette()
+	static override bool VisibleInPalette()
 	{
 		return true;
 	}

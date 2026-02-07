@@ -40,7 +40,12 @@ class SCR_AIGetInActivity : SCR_AIActivityBase
 	override void OnActionSelected()
 	{
 		if (m_Vehicle.m_Value)
-			m_OwnerGroup.AddUsableVehicle(m_Vehicle.m_Value);
+		{
+			SCR_AIVehicleUsageComponent vehicleUsageComp = SCR_AIVehicleUsageComponent.FindOnNearestParent(m_Vehicle.m_Value, m_Vehicle.m_Value);
+			if (vehicleUsageComp)
+				m_Utility.AddUsableVehicle(vehicleUsageComp);
+		}
+			
 		super.OnActionDeselected();	
 	}
 	
@@ -57,7 +62,14 @@ class SCR_AIGetInActivity : SCR_AIActivityBase
 	{
 		super.OnActionFailed();
 		SendCancelMessagesToAllAgents();
-		m_OwnerGroup.RemoveUsableVehicle(m_Vehicle.m_Value);
+		
+		if (m_Vehicle.m_Value)
+		{
+			SCR_AIVehicleUsageComponent vehicleUsageComp = SCR_AIVehicleUsageComponent.FindOnNearestParent(m_Vehicle.m_Value, m_Vehicle.m_Value);
+			if (vehicleUsageComp)
+				m_Utility.RemoveUsableVehicle(vehicleUsageComp);
+		}
+		
 		if (m_RelatedWaypoint)
 			m_OwnerGroup.CompleteWaypoint(m_RelatedWaypoint);
 	}

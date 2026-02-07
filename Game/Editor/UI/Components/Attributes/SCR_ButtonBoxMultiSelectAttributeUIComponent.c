@@ -75,7 +75,7 @@ class SCR_ButtonBoxMultiSelectAttributeUIComponent: SCR_ButtonBoxAttributeUIComp
 	}
 	
 	//x is index, y is selectState
-	override bool OnChange(Widget w, int x, int y, bool finished)
+	override bool OnChangeInternal(Widget w, int x, int y, bool finished)
 	{			
 		if (!m_bButtonValueInitCalled)
 			return false;
@@ -141,6 +141,6 @@ class SCR_ButtonBoxMultiSelectAttributeUIComponent: SCR_ButtonBoxAttributeUIComp
 	protected override void OnMultiSelectButton(SCR_ToolboxComponent toolbox, int index, bool state)
 	{		
 		super.OnMultiSelectButton(toolbox, index, state);
-		OnChange(toolbox.GetRootWidget(), index, state, false);
+		OnChangeInternal(toolbox.GetRootWidget(), index, state, false);
 	}
 };

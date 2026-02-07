@@ -10,15 +10,15 @@ Do not modify, this script is generated
 */
 
 /*!
-\brief Object hoding reference to resource. In destructor release the resource
+\brief Object holding reference to resource. In destructor release the resource
 @code
 // load
 Resource resource = Resource.Load(prefabResourceName);
-if (resoruce.IsValid())
+if (resource.IsValid())
 {
 	IEntity rootBall = GetGame().SpawnEntityPrefab(resource);
 }
-// At the end of scope is resoruce released.
+// At the end of scope is resource released.
 @endcode
 */
 class Resource: Managed

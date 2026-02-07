@@ -150,6 +150,8 @@ class SCR_ModesEditorUIComponent : SCR_DialogEditorUIComponent
 		}
 	}
 	
+	//---- REFACTOR NOTE START: Set current mode might be more clear? 
+	
 	//------------------------------------------------------------------------------------------------
 	protected void SetSiblingMode(int relIndex)
 	{
@@ -164,6 +166,8 @@ class SCR_ModesEditorUIComponent : SCR_DialogEditorUIComponent
 		int index = modes.Find(m_EditorManager.GetCurrentMode()) + relIndex;
 		m_EditorManager.SetCurrentMode(modes[(index + modesCount) % modesCount])
 	}
+	
+	//---- REFACTOR NOTE END ----
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnEditorModePrev(float value, EActionTrigger reason)

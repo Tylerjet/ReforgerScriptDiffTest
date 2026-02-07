@@ -3,6 +3,7 @@ class SCR_PauseGameTimeToolbarAction : SCR_BaseToggleToolbarAction
 {
 	protected bool m_bIsGameTimePaused;
 	protected ChimeraWorld m_World;
+	protected SCR_BaseGameMode m_GameMode; 
 	
 	//---------------------------------------------------------------------------------------------
 	//--- ToDo: Use event?
@@ -24,14 +25,26 @@ class SCR_PauseGameTimeToolbarAction : SCR_BaseToggleToolbarAction
 	
 	//---------------------------------------------------------------------------------------------
 	override bool CanBeShown(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition, int flags)
-	{		
-		return !Replication.IsRunning();
+	{
+		if (!m_GameMode)
+			m_GameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		
+		if (!m_GameMode)
+			return false;
+
+		return m_GameMode.CanBePaused();
 	}
 	
 	//---------------------------------------------------------------------------------------------
 	override bool CanBePerformed(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition, int flags)
 	{
-		return !Replication.IsRunning();
+		if (!m_GameMode)
+			m_GameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+
+		if (!m_GameMode)
+			return false;
+
+		return m_GameMode.CanBePaused();
 	}
 	
 	//---------------------------------------------------------------------------------------------
@@ -41,13 +54,14 @@ class SCR_PauseGameTimeToolbarAction : SCR_BaseToggleToolbarAction
 		if (pauseManager)
 			pauseManager.TogglePause();
 		else
-			m_World.PauseGameTime(!m_World.IsGameTimePaused());
+			m_GameMode.PauseGame(!m_World.IsGameTimePaused(), SCR_EPauseReason.EDITOR);
 	}
 	
 	//---------------------------------------------------------------------------------------------
 	override void Track()
 	{
 		m_World = GetGame().GetWorld();
+		m_GameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		m_bIsGameTimePaused = m_World.IsGameTimePaused();
 		GetGame().GetCallqueue().CallLater(UpdateGameTimePause, 1, true);
 		
@@ -59,4 +73,4 @@ class SCR_PauseGameTimeToolbarAction : SCR_BaseToggleToolbarAction
 	{
 		GetGame().GetCallqueue().Remove(UpdateGameTimePause);
 	}
-};
+}

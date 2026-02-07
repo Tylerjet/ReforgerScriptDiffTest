@@ -27,13 +27,13 @@ class SCR_AIGetTimedWaypointParameters : SCR_AIGetWaypointParameters
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}
 	
 	//----------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Gets holding time set on current timed waypoint";
 	}		

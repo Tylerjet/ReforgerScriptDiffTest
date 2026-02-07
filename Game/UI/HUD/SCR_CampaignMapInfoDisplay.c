@@ -15,7 +15,7 @@ class SCR_CampaignMapInfoDisplay : SCR_CampaignInfoDisplay
 	//------------------------------------------------------------------------------------------------
 	override void DisplayStopDraw(IEntity owner)
 	{
-		super.DisplayStartDraw(owner);
+		super.DisplayStopDraw(owner);
 		
 		SCR_MapEntity.GetOnMapOpen().Remove(OnMapOpen);
 		SCR_MapEntity.GetOnMapClose().Remove(OnMapClose);

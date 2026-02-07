@@ -2,22 +2,32 @@
 class SCR_ResourceGeneratorActionStore : SCR_ResourceGeneratorActionBase
 {
 	//------------------------------------------------------------------------------------------------
-	override void PerformAction(SCR_ResourceContainer containerTo, inout float resourceValue)
+	override float ComputeGeneratedResources(notnull SCR_ResourceGenerator generator, float resourceValue)
 	{
-		if (!containerTo)
-			return;
+		return Math.Min(resourceValue, generator.GetAggregatedMaxResourceValue() - generator.GetAggregatedResourceValue());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void PerformAction(notnull SCR_ResourceGenerator generator, inout float resourceValue)
+	{
+		SCR_ResourceContainer containerTo;
+		SCR_ResourceContainerQueueBase containerQueue = generator.GetContainerQueue();
+		int containerCount = containerQueue.GetContainerCount();
 		
-		SCR_ResourceComponent containerComponent = containerTo.GetComponent();
-		float usedResources	= Math.Min(containerTo.ComputeResourceDifference(), resourceValue);
-		resourceValue		-= usedResources;
-		
-		SCR_ResourceEncapsulator encapsulator = containerComponent.GetEncapsulator(containerTo.GetResourceType());
-		
-		if (encapsulator)
-			encapsulator.RequestGeneration(usedResources);
-		else
+		for (int i = 0; i < containerCount; i++)
+		{
+			if (resourceValue <= 0)
+				break;
+			
+			containerTo = containerQueue.GetContainerAt(i);
+			
+			if (!containerTo)
+				continue;
+			
+			float usedResources	= Math.Min(containerTo.ComputeResourceDifference(), resourceValue);
+			resourceValue		-= usedResources;
+			
 			containerTo.IncreaseResourceValue(usedResources);
-		
-		containerComponent.Replicate();
+		}
 	}
 }

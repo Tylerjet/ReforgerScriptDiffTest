@@ -73,8 +73,8 @@ class SCR_AIDecoBallisticPath : DecoratorScripted
 	}
 	
 	//--------------------------------------------------------------------------------
-	override string GetOnHoverDescription() { return "Estimates if projectile ballistic path can reach destination. It is performance heavy, use with some timer."; }
-	override bool VisibleInPalette() { return true; }
+	static override string GetOnHoverDescription() { return "Estimates if projectile ballistic path can reach destination. It is performance heavy, use with some timer."; }
+	static override bool VisibleInPalette() { return true; }
 	
 	protected static ref TStringArray s_aVarsIn = { PORT_DISTANCE_COMPENSATION, PORT_TARGET_POSITION };
 	override TStringArray GetVariablesIn() { return s_aVarsIn; }

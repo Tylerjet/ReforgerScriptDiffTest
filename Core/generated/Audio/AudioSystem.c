@@ -34,6 +34,8 @@ sealed class AudioSystem
 	static proto AudioHandle PlayEvent(string filename, string eventname, vector transf[], array<string> names = null, array<float> values = null);
 	static proto bool IsSoundPlayed(AudioHandle handle);
 	static proto void TerminateSound(AudioHandle handle);
+	//! Terminates a sound with specific a handle, where fade-out can be applied for a specific amount of time.
+	static proto void TerminateSoundFadeOut(AudioHandle handle, bool fade, float fadeTime);
 	//! Sets transformation for given audio handle, return FALSE if audio handle is not valid.
 	static proto bool SetSoundTransformation(AudioHandle handle, vector transf[]);
 	//! Returns -1.0 for the inaudible event, otherwise, it returns the distance from the passed position to the listener.
@@ -47,6 +49,10 @@ sealed class AudioSystem
 		BV_Cylinde	: param0 = radius, param1 = height
 	*/
 	static proto bool SetBoundingVolumeParams(AudioHandle handle, int volumeType, float params0, float param1, float param2);
+	//! Pauses currently playing sounds and rejects insert new sounds. Use: AudioSystem.Pause((1 << AudioSystem.SFX) | (1 << AudioSystem.VoiceChat))
+	static proto void Pause(int mastersMask);
+	//! Resumes paused sources and allow insertion of new ones.
+	static proto void Resume(int mastersMask);
 	//------------------------------------------------------------------------------------------------
 	static proto float OutputVolume();
 	//------------------------------------------------------------------------------------------------

@@ -75,6 +75,13 @@ class SCR_ConsumableSalineBag : SCR_ConsumableEffectHealthItems
 		return CanApplyEffect(target, user, failReason);
 	}
 	
+	override ItemUseParameters GetAnimationParameters(IEntity item, notnull IEntity target, ECharacterHitZoneGroup group = ECharacterHitZoneGroup.VIRTUAL)
+	{
+		ItemUseParameters itemUseParams = super.GetAnimationParameters(item, target, group);
+		itemUseParams.SetAllowMovementDuringAction(true);
+		return itemUseParams;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	EDamageType GetDefaultDamageType()
 	{

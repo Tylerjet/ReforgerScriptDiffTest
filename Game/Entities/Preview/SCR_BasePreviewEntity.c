@@ -453,6 +453,10 @@ class SCR_BasePreviewEntity: GenericEntity
 	{
 		GetBounds(min, max);
 	}
+	override int _WB_GetAfterWorldUpdateSpecs(IEntitySource src)
+	{
+		return EEntityFrameUpdateSpecs.CALL_WHEN_ENTITY_VISIBLE;
+	}
 	override void _WB_AfterWorldUpdate(float timeSlice)
 	{
 		//--- Show mesh name for easier World Editor debugging

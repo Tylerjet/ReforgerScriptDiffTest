@@ -9,10 +9,6 @@ Do not modify, this script is generated
 \{
 */
 
-class WeaponComponentClass: BaseWeaponComponentClass
-{
-}
-
 class WeaponComponent: BaseWeaponComponent
 {
 	//! Set/Clear the active flags to all attachements on this weapon

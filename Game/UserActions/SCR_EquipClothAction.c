@@ -69,7 +69,7 @@ class SCR_EquipClothAction: SCR_InventoryAction
 		}
 		
 		// Checks if the desired area is occupied. If it's occupied it will save the UI info related to the replaced item is saved.
-		if ( m_LoadoutStorage)
+		if (m_LoadoutStorage)
 		{
 			IEntity itemToSwap = m_LoadoutStorage.GetClothFromArea( targetArea.Type() );
 			if (itemToSwap)
@@ -87,6 +87,11 @@ class SCR_EquipClothAction: SCR_InventoryAction
 				
 				m_sItemToSwapName = itemComp.GetAttributes().GetUIInfo().GetName();
 				m_bIsSwappingItems = true;
+			}
+			else
+			{
+				m_sItemToSwapName = "";
+				m_bIsSwappingItems = false;
 			}
 		}
 		else

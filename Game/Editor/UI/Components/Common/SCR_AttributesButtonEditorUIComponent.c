@@ -1,7 +1,11 @@
 class SCR_AttributesButtonEditorUIComponent: SCR_BaseEditorUIComponent
 {
+	//---- REFACTOR NOTE START: Enum could be used for better clarity
+	
 	[Attribute("0", uiwidget: UIWidgets.ComboBox, "Attribute target type.", enums: { ParamEnum("Global", "0"), ParamEnum("Camera", "1"), ParamEnum("FactionsOnly", "2") })]
 	protected int m_iTarget;
+	
+	//---- REFACTOR NOTE END ----
 	
 	[Attribute(desc: "Config of the category that should be selected upon opening attribute window.", params: "conf class=SCR_EditorAttributeCategory")]
 	protected ResourceName m_Category;
@@ -15,6 +19,8 @@ class SCR_AttributesButtonEditorUIComponent: SCR_BaseEditorUIComponent
 		if (m_Category)
 			attributesManager.SetCurrentCategory(m_Category);
 		
+		//---- REFACTOR NOTE START: Enum could be used for better clarity
+		
 		switch (m_iTarget)
 		{
 			case 0:
@@ -27,6 +33,8 @@ class SCR_AttributesButtonEditorUIComponent: SCR_BaseEditorUIComponent
 				attributesManager.StartEditing(GetTaskManager());
 				break;
 		}
+		
+		//---- REFACTOR NOTE END ----
 	}
 	
 	override bool IsUnique()

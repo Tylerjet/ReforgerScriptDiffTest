@@ -35,9 +35,6 @@ class SCR_ScenarioFrameworkSlotTaskAI : SCR_ScenarioFrameworkSlotTask
 	[Attribute(defvalue: EAISkill.REGULAR.ToString(), UIWidgets.ComboBox, "AI skill in combat", "", ParamEnumArray.FromEnum(EAISkill), category: "Common")]
 	EAISkill m_eAISkill;
 
-	[Attribute(defvalue: EAICombatType.NORMAL.ToString(), UIWidgets.ComboBox, "AI combat type", "", ParamEnumArray.FromEnum(EAICombatType), category: "Common")]
-	EAICombatType m_eAICombatType;
-
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.EditBox, desc: "Sets perception ability. Affects speed at which perception detects targets. Bigger value means proportionally faster detection.", params: "0 100 0.001", category: "Common")]
 	float m_fPerceptionFactor;
 
@@ -53,6 +50,7 @@ class SCR_ScenarioFrameworkSlotTaskAI : SCR_ScenarioFrameworkSlotTask
 
 	// Temporary solution as we don't know if invoker or a different method will initialize waypoints
 	bool m_bWaypointsInitialized;
+	bool m_bGroupWasNull;
 
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] arrayForRemoval Array of resource names for AI prefab removal.
@@ -96,6 +94,9 @@ class SCR_ScenarioFrameworkSlotTaskAI : SCR_ScenarioFrameworkSlotTask
 			GetOnAllChildrenSpawned().Insert(DynamicDespawn);
 			return;
 		}
+		
+		GetOnAllChildrenSpawned().Remove(ProcessWaypoints);
+		GetOnAllChildrenSpawned().Remove(SetWaypointToAI);
 
 		if (!m_bInitiated || m_bExcludeFromDynamicDespawn)
 			return;
@@ -222,10 +223,10 @@ class SCR_ScenarioFrameworkSlotTaskAI : SCR_ScenarioFrameworkSlotTask
 	//! Activates AI group, removes unwanted prefabs, balances units count, sets on agent remove and add events,
 	void ActivateAI()
 	{
-		bool groupWasNull;
+		m_bGroupWasNull = false;
 		m_AIGroup = SCR_AIGroup.Cast(m_Entity);
 		if (!m_AIGroup)
-			groupWasNull = true;
+			m_bGroupWasNull = true;
 
 		if (!m_AIGroup && !CreateAIGroup())
 		{
@@ -260,7 +261,7 @@ class SCR_ScenarioFrameworkSlotTaskAI : SCR_ScenarioFrameworkSlotTask
 
 		m_AIGroup.GetOnAgentRemoved().Insert(DecreaseAIGroupMemberCount);
 
-		if (groupWasNull)
+		if (m_bGroupWasNull)
 		{
 			m_AIGroup.SetNumberOfMembersToSpawn(1);
 			OnAgentAdded(null);
@@ -342,7 +343,6 @@ class SCR_ScenarioFrameworkSlotTaskAI : SCR_ScenarioFrameworkSlotTask
 					if (combatComponent)
 					{
 						combatComponent.SetAISkill(m_eAISkill);
-						combatComponent.SetCombatType(m_eAICombatType);
 						combatComponent.SetPerceptionFactor(m_fPerceptionFactor);
 					}
 					
@@ -374,7 +374,6 @@ class SCR_ScenarioFrameworkSlotTaskAI : SCR_ScenarioFrameworkSlotTask
 				if (combatComponent)
 				{
 					combatComponent.SetAISkill(m_eAISkill);
-					combatComponent.SetCombatType(m_eAICombatType);
 					combatComponent.SetPerceptionFactor(m_fPerceptionFactor);
 				}
 				
@@ -488,7 +487,7 @@ class SCR_ScenarioFrameworkSlotTaskAI : SCR_ScenarioFrameworkSlotTask
 	{
 		if (m_bInitiated && !m_bWaypointsInitialized)
 			SetWaypointToAI(this);
-		else
+		else if (!m_bGroupWasNull)
 			GetOnAllChildrenSpawned().Insert(SetWaypointToAI);
 	}
 
@@ -556,7 +555,14 @@ class SCR_ScenarioFrameworkSlotTaskAI : SCR_ScenarioFrameworkSlotTask
 			array<AIWaypoint> cycleWaypoints = {};
 			cycleWaypoint.GetWaypoints(cycleWaypoints);
 			if (!cycleWaypoints.IsEmpty() && cycleWaypoints[0] != null)
+			{
 				waypoint = cycleWaypoints[0];
+			}
+			else
+			{
+				m_bWaypointsInitialized = false;
+				return;
+			}
 		}
 			
 		AIFormationComponent formComp = AIFormationComponent.Cast(m_AIGroup.FindComponent(AIFormationComponent));

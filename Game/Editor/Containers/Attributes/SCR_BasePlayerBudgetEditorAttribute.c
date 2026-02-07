@@ -6,6 +6,7 @@ class SCR_BasePlayerBudgetEditorAttribute: SCR_BaseValueListEditorAttribute
 {	
 	protected SCR_EditorManagerEntity m_EditorManager;
 	
+	//------------------------------------------------------------------------------------------------
 	protected void SetEditorManager(Managed item)
 	{	
 		m_EditorManager = null;
@@ -21,6 +22,9 @@ class SCR_BasePlayerBudgetEditorAttribute: SCR_BaseValueListEditorAttribute
 		m_EditorManager = core.GetEditorManager(delegate.GetPlayerID());
 	}
 	
+	//---- REFACTOR NOTE START: Mot used as it's just returning null ----
+	
+	//------------------------------------------------------------------------------------------------
 	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)
 	{		
 		//~ Todo: Disabled for now until serverwide budgets can be set
@@ -40,6 +44,9 @@ class SCR_BasePlayerBudgetEditorAttribute: SCR_BaseValueListEditorAttribute
 		return SCR_BaseEditorAttributeVar.CreateFloat(maxBudget);
 	}
 	
+	//---- REFACTOR NOTE END ----
+	
+	//------------------------------------------------------------------------------------------------
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)
 	{		
 		if (!var) 
@@ -57,6 +64,7 @@ class SCR_BasePlayerBudgetEditorAttribute: SCR_BaseValueListEditorAttribute
 		budgetComponent.DelayedSetMaxBudgetSetup(GetBudgetType(), var.GetFloat(), playerID);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected EEditableEntityBudget GetBudgetType()
 	{
 		return EEditableEntityBudget.SYSTEMS;

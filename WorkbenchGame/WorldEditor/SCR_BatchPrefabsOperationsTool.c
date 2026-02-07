@@ -186,7 +186,7 @@ class SCR_BatchPrefabsOperationsTool : WorldEditorTool
 		}
 
 		// Get addon
-		string addon = SCR_AddonTool.ToFileSystem(SCR_AddonTool.GetAddonIndex(m_iAddonToUse));
+		string addon = SCR_AddonTool.ToFileSystem(SCR_AddonTool.GetAddonID(m_iAddonToUse));
 
 		// Get absolute path for CreateEntityTemplate
 		string absPath;
@@ -276,7 +276,7 @@ class SCR_BatchPrefabsOperationsTool : WorldEditorTool
 
 		if (!m_sDirectoryToProcess.IsEmpty())
 		{
-			string addon = SCR_AddonTool.ToFileSystem(SCR_AddonTool.GetAddonIndex(m_iAddonToUse));
+			string addon = SCR_AddonTool.ToFileSystem(SCR_AddonTool.GetAddonID(m_iAddonToUse));
 
 			// Get all prefabs from the selected subdirectory
 			SearchResourcesFilter filter = new SearchResourcesFilter();
@@ -401,7 +401,7 @@ class SCR_BatchPrefabTemplatesData
 	[Attribute(desc: "Name of component to modify or add")]
 	string m_ComponentName;
 
-	[Attribute(defvalue: "1", UIWidgets.ComboBox, desc: "Create new component if its missing prefab", enums: ParamEnumArray.FromEnum(SCR_EBatchPrefabOperationComponentFlag))]
+	[Attribute(defvalue: "1", UIWidgets.ComboBox, desc: "Create new component if its missing prefab", enumType: SCR_EBatchPrefabOperationComponentFlag)]
 	SCR_EBatchPrefabOperationComponentFlag m_ComponentAction;
 
 	[Attribute(desc: "Array of attributes which will be modified inside component belonging to prefab. If component is not present, new one will be created")]
@@ -417,7 +417,7 @@ class SCR_BatchPrefabTemplatesAttributes
 	[Attribute(desc: "Value which will be stored in prefab. Simple math (adding, multiplying & dividing) & bitwise operations are allowed (use + to add and - to remove flag)")]
 	string m_AttributeValue;
 
-	[Attribute("1", UIWidgets.ComboBox, category: "", desc: "Specifies type of operation that is performed.", enums: ParamEnumArray.FromEnum(SCR_EBatchPrefabOperationFlag))]
+	[Attribute("1", UIWidgets.ComboBox, category: "", desc: "Specifies type of operation that is performed.", enumType: SCR_EBatchPrefabOperationFlag)]
 	SCR_EBatchPrefabOperationFlag m_AttributeOperation;
 
 	[Attribute(desc: "Feature not implemented yet!")]

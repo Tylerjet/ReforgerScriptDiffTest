@@ -97,18 +97,21 @@ class SCR_AIUpdateTargetSuppressionData : AITaskScripted
 		}
 		
 		// Update start and end pos
+		// If we were to trace from start to end, and trace fraction in result is above VISIBILITY_CHECK_TRACE_RESULT_THRESHOLD,
+		// then we treat it as good visibility to target.
+		// But it means that we don't need to trace whole length anyway, but only fraction of it.
+		// That's why actual trace end is lerped.
 		ChimeraCharacter myCharacter = ChimeraCharacter.Cast(myEntity);
 		if (myCharacter)
 			m_TraceParam.Start = myCharacter.EyePosition();
 		else
 			m_TraceParam.Start = myEntity.GetOrigin();
-		
-		// Randomize the end position a bit
-		m_TraceParam.End = suppressionVolume.GetCenterPosition() + Vector(0, 2, 0); // Raise it a few meters up, to help around slopes
+		vector traceEndPosIdeal = suppressionVolume.GetCenterPosition() + Vector(0, 2, 0); // Raise it a few meters up, to help around slopes
+		m_TraceParam.End = vector.Lerp(m_TraceParam.Start, traceEndPosIdeal, VISIBILITY_CHECK_TRACE_RESULT_THRESHOLD);
 		
 		float traceResult = GetGame().GetWorld().TraceMove(m_TraceParam, null);
 		
-		bool visible = traceResult > VISIBILITY_CHECK_TRACE_RESULT_THRESHOLD;
+		bool visible = traceResult == 1.0;
 		
 		#ifdef WORKBENCH
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_DEBUG_SHAPES))
@@ -164,5 +167,5 @@ class SCR_AIUpdateTargetSuppressionData : AITaskScripted
 	protected static ref TStringArray s_aVarsOut = { PORT_VISIBLE, PORT_TIME_LAST_SEEN, PORT_FIRE_TREE_ID };
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 }

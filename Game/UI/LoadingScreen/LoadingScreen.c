@@ -67,7 +67,7 @@ class ArmaReforgerLoadingAnim: BaseLoadingAnim
 	{
 		#ifdef DEBUG_LOADING_SCREENS
 		PrintFormat(">> %1 >> Hide", this);
-		#endif		
+		#endif
 		
 		s_bOpened = false;
 		
@@ -76,7 +76,7 @@ class ArmaReforgerLoadingAnim: BaseLoadingAnim
 		m_onExitLoadingScreen.Invoke();
 
 		if (m_LayoutComponent)
-			m_LayoutComponent.OnHide();		
+			m_LayoutComponent.OnHideInternal();		
 		
 		WidgetManager.SetCursor(0);		// Show cursor
 				

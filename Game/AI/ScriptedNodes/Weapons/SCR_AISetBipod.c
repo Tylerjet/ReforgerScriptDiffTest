@@ -27,8 +27,8 @@ class SCR_AISetBipod : AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() { return true; }
+	static override bool VisibleInPalette() { return true; }
 	
 	//------------------------------------------------------------------------------------------
-	override string GetOnHoverDescription() { return "Unfolds or folds a bipon on current weapon";}
+	static override string GetOnHoverDescription() { return "Unfolds or folds a bipon on current weapon";}
 }

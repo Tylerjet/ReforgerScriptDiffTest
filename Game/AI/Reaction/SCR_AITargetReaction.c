@@ -41,8 +41,15 @@ class SCR_AITargetReaction_RetreatFromEnemy : SCR_AITargetReactionBase
 		// Find if we already have a retreat action from that target
 		utility.SetStateAllActionsOfType(SCR_AIRetreatFromTargetBehavior, EAIActionState.COMPLETED, true);
 		
+		// Don't retreat if we are a car driver
+		if (utility.m_AIInfo.HasUnitState(EUnitState.PILOT))
+			return;
+		
 		SCR_AIRetreatFromTargetBehavior behavior = new SCR_AIRetreatFromTargetBehavior(utility, null, baseTarget);
 		utility.AddAction(behavior);
+		
+		// Cancel all investigations, if we have discovered something which we can't attack, it makes no sense to push further
+		utility.SetStateAllActionsOfType(SCR_AIMoveAndInvestigateBehavior, EAIActionState.FAILED);
 	}
 }
 

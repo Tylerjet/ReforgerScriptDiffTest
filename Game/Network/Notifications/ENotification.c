@@ -150,8 +150,8 @@ enum ENotification
 	EDITOR_ATTRIBUTES_UNMUTE_MUSIC = 726, //!< When the GM enables server wide music (param1 = GM that enables it) (Not in game)
 	EDITOR_ATTRIBUTES_MUTE_MUSIC = 727, //!< When the GM disables server wide music (param1 = GM that disables it) (Not in game)
 	//NOT IN GAME /\
-	EDITOR_CHANGED_KILLFEED_TYPE = 728, //!< Changed the killfeed type (param1 = GM who changed setting, param2 = The new KillfeedType, param3 = bool isReciveType)
-	EDITOR_CHANGED_KILLFEED_RECEIVE_TYPE = 729, //!< Changed killfeed receive type param1 = GM who changed setting, param2 = The new KillfeedReceiveType, param3 = bool isReciveType))
+	EDITOR_CHANGED_KILLFEED_TYPE = 728, //!< Changed the killfeed type (param1 = GM who changed setting, param2 = The new KillfeedType)
+	EDITOR_CHANGED_KILLFEED_RECEIVE_TYPE = 729, //!< Changed killfeed receive type param1 = GM who changed setting, param2 = The new KillfeedReceiveType)
 	EDITOR_ATTRIBUTES_UNCONSCIOUSNESS_ENABLED = 730, //!< GM enabled unconsciousness - (param1 = GameMasterID)
 	EDITOR_ATTRIBUTES_UNCONSCIOUSNESS_DISABLED = 731, //!< GM disabled unconsciousness - (param1 = GameMasterID)
 	EDITOR_FACTION_SET_FRIENDLY_TO = 735, //!< GM set faction relations to friendly - (param1 = GameMasterID, param2 = FactionA, param3 = FactionB)
@@ -184,6 +184,14 @@ enum ENotification
 	
 	EDITOR_TEAMKILL_PUNISHMENT_ENABLED = 758, //!< Called when the GM enables teamkill punishment (param1 = GM)
 	EDITOR_TEAMKILL_PUNISHMENT_DISABLED = 759, //!< Called when the GM disables teamkill punishment(param1 = GM)
+	
+	EDITOR_CHANGED_FRIENDLY_FIRE_KILLFEED_TYPE = 760, //!< Changed friendly killfeed receive type param1 = GM who changed setting, param2 = The new FriendlyFireKillfeedReceiveType)
+	
+	EDITOR_PERCEIVED_FACTION_PUNISHMENT_KILLING_SET = 761, //!< Called when the GM changes the punishment when killing a hostile and the players perceived faction is not the players default faction (param1 = GM)
+	
+	EDITOR_PERCEIVED_FACTION_TYPE_DISABLED = 762, //!< Called when the perceived faction logic is disabled (param1 = GM)
+	EDITOR_PERCEIVED_FACTION_TYPE_HIGHEST_VALUE = 763, //!< Called when the perceived faction logic is set to Highest value type (param1 = GM)
+	EDITOR_PERCEIVED_FACTION_TYPE_FULL_OUTFIT = 764, //!< Called when the perceived faction logic is set to full outfit type (param1 = GM)
 	
 	//GM
 	EDITOR_PLAYER_BECAME_GM = 800, //!<Player become GM - (param1 = PlayerID)
@@ -297,4 +305,16 @@ enum ENotification
 	// GM SAVES
 	EDITOR_SAVE_PUBLISH_SUCCESS = 1700,
 	EDITOR_SAVE_PUBLISH_FAIL = 1701,
+
+	//PLACEABLE INVENTORY ITEMS
+	PLACEABLE_ITEM_CANT_PLACE_GENERIC = 1800,
+	PLACEABLE_ITEM_CANT_PLACE_SURFACE_NO_LONGER_THERE = 1801,
+	PLACEABLE_ITEM_CANT_PLACE_DIFFERENT_SURFACE = 1802,
+	PLACEABLE_ITEM_CANT_PLACE_DISTANCE = 1803,
+	PLACEABLE_ITEM_CANT_PLACE_TOO_STEEP = 1804,
+	PLACEABLE_ITEM_CANT_PLACE_NOT_ENOUGH_SPACE = 1805,
+
+	//INVENTORY ITEMS
+	PLAYER_HAND_ITEM_DROPPED = 1900, //!< Player was forced to drop hand slot item
+	PLAYER_HAND_ITEM_PUT_IN_INVENTORY = 1901, //!< Player was forced to put hand item in inventory
 };

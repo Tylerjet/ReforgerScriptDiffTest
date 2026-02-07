@@ -40,14 +40,14 @@ class SCR_RadioComponentClass : SCR_GadgetComponentClass
 class SCR_RadioComponent : SCR_GadgetComponent
 {
 	[Attribute("0", UIWidgets.ComboBox, "Radio category", "", ParamEnumArray.FromEnum(ERadioCategory), category: "Radio")]
-	private int m_iRadioCategory;
+	protected int m_iRadioCategory;
 
 	[Attribute("0", UIWidgets.ComboBox, "Radio type", "", ParamEnumArray.FromEnum(ERadioType), category: "Radio")]
-	private int m_iRadioType;
+	protected int m_iRadioType;
 
-	private bool m_bIsPowered = true;		// radio on/off toggle
-	private BaseRadioComponent m_BaseRadioComp;
-	private SignalsManagerComponent m_SignalManager;
+	protected bool m_bIsPowered = true;		// radio on/off toggle
+	protected BaseRadioComponent m_BaseRadioComp;
+	protected SignalsManagerComponent m_SignalManager;
 	
 	// signals
 	protected bool m_bSignalInit = false;
@@ -56,8 +56,8 @@ class SCR_RadioComponent : SCR_GadgetComponent
 	protected int m_iSignalChannelMhz = -1;
 
 	// proc anims
-	private ref array<ref SCR_RadioProcAnimCtx> m_aProcAnims = new array<ref SCR_RadioProcAnimCtx>();
-	private bool m_bAnimInProgress;
+	protected ref array<ref SCR_RadioProcAnimCtx> m_aProcAnims = new array<ref SCR_RadioProcAnimCtx>();
+	protected bool m_bAnimInProgress;
 
 	//------------------------------------------------------------------------------------------------
 	//! Radio on/off toggle
@@ -135,7 +135,7 @@ class SCR_RadioComponent : SCR_GadgetComponent
 	//! Calculate target angle of a knob for procedural animation
 	//! \param[in] freqUnit is frequency unit
 	//! \return
-	private float GetKnobAngle(EFreqUnit freqUnit)
+	protected float GetKnobAngle(EFreqUnit freqUnit)
 	{
 		int step, stepsCount;
 		int currentStep = 0;
@@ -190,7 +190,7 @@ class SCR_RadioComponent : SCR_GadgetComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Set knob rotation according to the current state
-	private void UpdateKnobState()
+	protected void UpdateKnobState()
 	{
 		bool state;
 
@@ -218,7 +218,7 @@ class SCR_RadioComponent : SCR_GadgetComponent
 	//! \param[in] targetAngle is the final angle
 	//! \param[in] speed is animation length in seconds
 	//! \param[in] clumpAnim false - start anim instantly / false - clump anim with the next one
-	private void SetKnobAnim(int signal, float targetAngle, float speed, bool clumpAnim)
+	protected void SetKnobAnim(int signal, float targetAngle, float speed, bool clumpAnim)
 	{
 		if (m_bAnimInProgress || !m_SignalManager)
 			return;
@@ -243,7 +243,7 @@ class SCR_RadioComponent : SCR_GadgetComponent
 	//------------------------------------------------------------------------------------------------
 	//! Knob animation tick
 	//! \param[in] timeSlice is frame timeSlice
-	private void AnimKnob(float timeSlice)
+	protected void AnimKnob(float timeSlice)
 	{
 		int inProgress;
 
@@ -295,7 +295,7 @@ class SCR_RadioComponent : SCR_GadgetComponent
 	//! Amount of possible steps (numbers) on frequency dials for each radio
 	//! \param[in] freqUnit is frequency unit
 	//! \return
-	private int GetKnobAnimStepCount(EFreqUnit freqUnit)
+	protected int GetKnobAnimStepCount(EFreqUnit freqUnit)
 	{
 		if ( m_iRadioType == ERadioType.ANPRC68 )
 		{
@@ -379,12 +379,6 @@ class SCR_RadioComponent : SCR_GadgetComponent
 			return EGadgetType.RADIO_BACKPACK;
 		else
 			return EGadgetType.RADIO;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override bool CanBeHeld()
-	{
-		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------

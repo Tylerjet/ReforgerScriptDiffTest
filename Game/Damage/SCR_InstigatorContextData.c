@@ -13,6 +13,9 @@ class SCR_InstigatorContextData
 	protected SCR_ECharacterControlType m_eVictimControlType = SCR_ECharacterControlType.UNKNOWN;
 	protected SCR_ECharacterControlType m_eKillerControlType = SCR_ECharacterControlType.UNKNOWN;
 	
+	protected SCR_ECharacterDisguiseType m_eKillerDisguiseType = SCR_ECharacterDisguiseType.DEFAULT_FACTION;
+	protected SCR_ECharacterDisguiseType m_eVictimDisguiseType = SCR_ECharacterDisguiseType.DEFAULT_FACTION;
+	
 	//------------------------------------------------------------------------------------------------
 	//! If the relation ship between the killer and victim is the given relation. Note that this is a flag and it can check multiple relation types at the same time
 	//! \param[in] relation Relation (or relations as it is a flag) to check for
@@ -95,6 +98,86 @@ class SCR_InstigatorContextData
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return killer disguise type. Which is the relation between the perceived faction and affiliated faction. Will return DEFAULT_FACTION if disabled
+	SCR_ECharacterDisguiseType GetKillerDisguiseType()
+	{
+		return m_eKillerDisguiseType;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return victim disguise type. Which is the relation between the perceived faction and affiliated faction. Will return DEFAULT_FACTION if disabled
+	SCR_ECharacterDisguiseType GetVictimDisguiseType()
+	{
+		return m_eVictimDisguiseType;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Method to check wether or not the kill of this context action counts as team killing
+	//! \param[in] editorKillsCount If true then admins, GMs and players on admin list are not ignored
+	//! \param[in] possessedKillsCount If true then Kills done while possessing an AI are not ignored
+	//! \return True if it counts as a team kill
+	bool DoesPlayerKillCountAsTeamKill(bool editorKillsCount = false, bool possessedKillsCount = false)
+	{
+		//~ No friendly fire involved or not killed by player character
+		if (m_eVictimKillerRelation != SCR_ECharacterDeathStatusRelations.KILLED_BY_FRIENDLY_PLAYER)
+			return false;
+		
+		//~ Friendly kills do not count for admins, GMs
+		if (!editorKillsCount && m_eKillerControlType == SCR_ECharacterControlType.UNLIMITED_EDITOR)
+			return false;
+		
+		//~ Check if friendly kills count for AI that are possed by GM
+		if (!possessedKillsCount && m_eKillerControlType == SCR_ECharacterControlType.POSSESSED_AI)
+			return false;
+		
+		//~ Victim was disguised as a unknown or hostile faction so do not concider it friendly fire
+		if (m_eVictimDisguiseType == SCR_ECharacterDisguiseType.UNKNOWN_FACTION || m_eVictimDisguiseType == SCR_ECharacterDisguiseType.HOSTILE_FACTION)
+			return false;
+		
+		//~ Friendly kills only counted if friendly fire is punished
+		SCR_AdditionalGameModeSettingsComponent additionalGameModeSettings = SCR_AdditionalGameModeSettingsComponent.GetInstance();
+		if (additionalGameModeSettings && !additionalGameModeSettings.IsTeamKillingPunished())
+			return false;
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] punishmentToCheck Which flag(s) are checked to see if the enemy kill is punished
+	//! \param[in] editorKillsCount If true then admins, GMs and players on admin list are not ignored
+	//! \param[in] checkIfAllFlagsValid Will check all flags are equal to the setting if true. Otherwise if one of them is true the condition will return true
+	//! \return True if the enemy kill is punished
+	bool IsEnemyKillPunished(SCR_EDisguisedKillingPunishment punishmentToCheck, bool editorKillsCount = false, bool checkIfAllFlagsValid = false)
+	{
+		//~ Not disguised so no need to check
+		if (m_eKillerDisguiseType == SCR_ECharacterDisguiseType.DEFAULT_FACTION)
+			return false;
+		
+		//~ Needs to be killing a hostile
+		if (m_eVictimKillerRelation != SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER)
+			return false;
+		
+		//~ Disguised kills do not count for admins, GMs
+		if (!editorKillsCount && m_eKillerControlType == SCR_ECharacterControlType.UNLIMITED_EDITOR)
+			return false;
+		
+		//~ Check if team killing is punished
+		SCR_AdditionalGameModeSettingsComponent additionalGameModeSettings = SCR_AdditionalGameModeSettingsComponent.GetInstance();
+		if (additionalGameModeSettings && !additionalGameModeSettings.IsTeamKillingPunished())
+			return false;
+		
+		SCR_PerceivedFactionManagerComponent perceivedFactionManager = SCR_PerceivedFactionManagerComponent.GetInstance();
+		if (!perceivedFactionManager)
+			return false;
+		
+		//~ Check if all flags are valid
+		if (checkIfAllFlagsValid)
+			return SCR_Enum.HasFlag(perceivedFactionManager.GetPunishmentKillingWhileDisguisedFlags(), punishmentToCheck);
+
+		return SCR_Enum.HasPartialFlag(perceivedFactionManager.GetPunishmentKillingWhileDisguisedFlags(), punishmentToCheck);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! This method sets death relation and status based on victim, killer, and instigator entities, considering their control types, faction and if GM or not
 	//! \param[in] victimPlayerID Represents the ID of the player who is the victim in the context of this method.
 	//! \param[in] victimEntity The victimEntity represents the entity killed in the context, which can be a player or an AI character.
@@ -102,6 +185,18 @@ class SCR_InstigatorContextData
 	//! \param[in] instigator Instigator To obtain the actual killer and other information about the killer
 	//! \param[in] isDeleted If isDeleted is true, it represents that the victim entity has been deleted by the editor or other function
 	void SCR_InstigatorContextData(int victimPlayerID, IEntity victimEntity, IEntity killerEntity, notnull Instigator instigator, bool isDeleted = false)
+	{		
+		CreateInstigatorData(victimPlayerID, victimEntity, killerEntity, instigator, isDeleted);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! This method sets death relation and status based on victim, killer, and instigator entities, considering their control types, faction and if GM or not
+	//! \param[in] victimPlayerID Represents the ID of the player who is the victim in the context of this method.
+	//! \param[in] victimEntity The victimEntity represents the entity killed in the context, which can be a player or an AI character.
+	//! \param[in] killerEntity Killer entity represents the killer in the context of this method, which is used to determine the relationship between the killer and victim
+	//! \param[in] instigator Instigator To obtain the actual killer and other information about the killer
+	//! \param[in] isDeleted If isDeleted is true, it represents that the victim entity has been deleted by the editor or other function
+	void CreateInstigatorData(int victimPlayerID, IEntity victimEntity, IEntity killerEntity, notnull Instigator instigator, bool isDeleted = false)
 	{		
 		m_iVictimPlayerID = victimPlayerID;
 		m_VictimEntity = victimEntity;
@@ -114,6 +209,9 @@ class SCR_InstigatorContextData
 		
 		m_Instigator = instigator;
 		m_iKillerPlayerID = m_Instigator.GetInstigatorPlayerID();
+		
+		//~ Set perceived faction vars of killer and victim
+		SetPerceivedFaction(m_iVictimPlayerID, m_VictimEntity, m_KillerEntity, instigator, isDeleted);
 		
 		//~ Character was deleted
 		if (isDeleted)
@@ -174,7 +272,7 @@ class SCR_InstigatorContextData
 		else
 		{
 			if (instigatorType == InstigatorType.INSTIGATOR_NONE)
-				Print("SCR_InstigatorContextData: No instigator type is set on Character death. It is likely that the KillerVictimRelation will be set to OTHER_DEATH which will not punish the victim for suicice.", LogLevel.WARNING);
+				Print("SCR_InstigatorContextData: No instigator type is set on Character death. It is likely that the KillerVictimRelation will be set to OTHER_DEATH which will not punish the victim for suicide.", LogLevel.WARNING);
 			else 
 				Print("SCR_InstigatorContextData: instigatorType: '" + typename.EnumToString(InstigatorType, instigatorType) + "' is not supported!", LogLevel.ERROR);
 		}
@@ -243,6 +341,29 @@ class SCR_InstigatorContextData
 				m_eVictimKillerRelation = SCR_ECharacterDeathStatusRelations.KILLED_BY_FRIENDLY_AI;
 			
 			return;
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void SetPerceivedFaction(int victimPlayerID, IEntity victimEntity, IEntity killerEntity, notnull Instigator instigator, bool isDeleted = false)
+	{
+		SCR_PerceivedFactionManagerComponent perceivedFactionManager = SCR_PerceivedFactionManagerComponent.GetInstance();
+		if (!perceivedFactionManager || perceivedFactionManager.GetCharacterPerceivedFactionOutfitType() == SCR_EPerceivedFactionOutfitType.DISABLED)
+			return;
+		
+		SCR_CharacterFactionAffiliationComponent charFactionAffiliation;
+		if (killerEntity)
+		{
+			charFactionAffiliation = SCR_CharacterFactionAffiliationComponent.Cast(killerEntity.FindComponent(SCR_CharacterFactionAffiliationComponent));
+			if (charFactionAffiliation)
+				m_eKillerDisguiseType = charFactionAffiliation.GetCharacterDisguiseType();
+		}
+		
+		if (victimEntity)
+		{
+			charFactionAffiliation = SCR_CharacterFactionAffiliationComponent.Cast(victimEntity.FindComponent(SCR_CharacterFactionAffiliationComponent));
+			if (charFactionAffiliation)
+				m_eVictimDisguiseType = charFactionAffiliation.GetCharacterDisguiseType();
 		}
 	}
 	

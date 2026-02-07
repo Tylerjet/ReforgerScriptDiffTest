@@ -26,6 +26,7 @@ sealed class WorldTimestamp: handle64
 {
 	proto external WorldTimestamp PlusSeconds(float seconds);
 	proto external WorldTimestamp PlusMilliseconds(float milliseconds);
+	proto external float DiffSeconds(WorldTimestamp other);
 	proto external float DiffMilliseconds(WorldTimestamp other);
 	proto external int Compare(WorldTimestamp other);
 	proto external bool Equals(WorldTimestamp other);

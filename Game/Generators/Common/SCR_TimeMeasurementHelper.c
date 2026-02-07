@@ -28,7 +28,7 @@ class SCR_TimeMeasurementHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Begin a measurement with a name. If a measurement with this name is already started, its begin time is replaced
-	//! The name is case-sensitive and must be exactly provided to EndMeasure
+	//! \param[in] name case-sensitive measurement name
 	void BeginMeasure(string name)
 	{
 		SCR_TimeMeasurementHelper_Info info = m_mData.Get(name);
@@ -44,7 +44,7 @@ class SCR_TimeMeasurementHelper
 	//------------------------------------------------------------------------------------------------
 	//! End a started measurement
 	//! If the measurement has not been started, a warning is printed
-	//! \param name case-sensitive, must be identical to BeginMeasure's provided name
+	//! \param[in] name case-sensitive, must be identical to BeginMeasure's provided name
 	void EndMeasure(string name)
 	{
 		SCR_TimeMeasurementHelper_Info info = m_mData.Get(name);
@@ -61,6 +61,7 @@ class SCR_TimeMeasurementHelper
 	//! Get a measurement by name
 	//! If the measurement has never been ended, its value is 0
 	//! If the measurement has not been started, a warning is printed and -1 is returned
+	//! \param[in] name the case-sensitive measurement name
 	//! \return measured time in ms, 0 if the measurement has not been ended, -1 if the measurement does not exist
 	float GetMeasure(string name)
 	{
@@ -102,6 +103,6 @@ class SCR_TimeMeasurementHelper
 // databag
 class SCR_TimeMeasurementHelper_Info
 {
-	float m_fStart;
-	float m_fTotal;
+	int m_fStart;
+	int m_fTotal;
 }

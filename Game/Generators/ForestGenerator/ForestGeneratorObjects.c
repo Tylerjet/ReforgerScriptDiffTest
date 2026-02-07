@@ -2,40 +2,37 @@
 // Bindings of C++ helpers for ForestGeneratorEntity
 //------------------------------------------------------------------------------------------------
 
-//------------------------------------------------------------------------------------------------
-//! Do not change this unless you change c++ as well
+// Do not rename unless it is renamed gamecode-side as well
 class ForestGeneratorDistaceAttribute
 {
 	DistanceType m_iDistanceType;
+
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] distanceType
 	void ForestGeneratorDistaceAttribute(DistanceType distanceType)
 	{
 		m_iDistanceType = distanceType;
 	}
 }
 
-//------------------------------------------------------------------------------------------------
 class ForestGeneratorGroupIndexAttribute
 {
 }
 
-//------------------------------------------------------------------------------------------------
-/*!
-Used to annotate a vector which signifies the first point of a capsule segment
-If a member with the ForestGeneratorCapsuleEndAttribute is not specified,
-this is used as an offset i.e. both ends of the segment are set to this value.
-Only X and Z fields of the vector are used.
-*/
+//! Used to annotate a vector which signifies the first point of a capsule segment
+//! If a member with the ForestGeneratorCapsuleEndAttribute is not specified,
+//! this is used as an offset i.e. both ends of the segment are set to this value.
+//! Only X and Z fields of the vector are used.
 class ForestGeneratorCapsuleStartAttribute
 {
 }
 
-//------------------------------------------------------------------------------------------------
 //! \see ForestGeneratorCapsuleStartAttribute
 class ForestGeneratorCapsuleEndAttribute
 {
 }
 
-//------------------------------------------------------------------------------------------------
 class SCR_ForestGeneratorTreeBase : ForestGeneratorTreeBase
 {
 	[Attribute("0.8", UIWidgets.SpinBox, "Min scale of this object", params: "0 1000 0.01")]
@@ -56,7 +53,7 @@ class SCR_ForestGeneratorTreeBase : ForestGeneratorTreeBase
 	[Attribute("0", uiwidget: UIWidgets.SpinBox, "Maximum random roll angle", "0 180 1")]
 	float m_fRandomRollAngle;
 
-	[Attribute("0")]
+	[Attribute(defvalue: "0", desc: "Fixed vertical offset at which to place this object [m]")]
 	float m_fVerticalOffset;
 
 	[ForestGeneratorGroupIndexAttribute()]
@@ -65,20 +62,7 @@ class SCR_ForestGeneratorTreeBase : ForestGeneratorTreeBase
 	float m_fScale = 2;
 	SCR_ETreeType m_eType;
 
+	//------------------------------------------------------------------------------------------------
+	//!
 	void AdjustScale();
-}
-
-//------------------------------------------------------------------------------------------------
-class ForestGeneratorShapeImportData
-{
-	IEntitySource source;
-	IEntity entity;
-	int id;
-	ref SCR_AABB bbox;
-	ref array<vector> points = new array<vector>();
-
-	void GenerateAAB()
-	{
-		bbox = new SCR_AABB(points);
-	}
 }

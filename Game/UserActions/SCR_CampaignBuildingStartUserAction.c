@@ -9,14 +9,13 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 	protected SCR_ResourceComponent m_ResourceComponent;
 	protected SCR_ResourceConsumer m_ResourceConsumer;
 	protected SCR_CampaignBuildingProviderComponent m_ProviderComponent;
-	protected Physics m_ProviderPhysics;
+	protected IEntity m_MainParent;
 	protected RplComponent m_RplComponent;
 	protected DamageManagerComponent m_DamageManager;
 	protected SCR_CompartmentAccessComponent m_CompartmentAccess;
 	protected bool m_bUseRankLimitedAccess;
 	protected bool m_bTemporarilyBlockedAccess;
 	protected bool m_bAccessCanBeBlocked;
-	protected bool m_bRankLimitationCanBeUsed;
 
 	protected const int PROVIDER_SPEED_TO_REMOVE_BUILDING_SQ = 1;
 	protected const int TEMPORARY_BLOCKED_ACCESS_RESET_TIME = 1000;
@@ -34,17 +33,12 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 		
 		if (m_ProviderComponent && m_ProviderComponent.ObstrucViewWhenEnemyInRange())
 			m_bAccessCanBeBlocked = true;
-		
-		BaseGameMode gameMode = GetGame().GetGameMode();
-		if (gameMode)
-			m_bRankLimitationCanBeUsed = SCR_XPHandlerComponent.Cast(gameMode.FindComponent(SCR_XPHandlerComponent));
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void InitializeSuppliesComponent()
 	{
-		IEntity mainParent = SCR_EntityHelper.GetMainParent(GetOwner(), true);
-		m_ProviderPhysics = mainParent.GetPhysics();
+		m_MainParent = SCR_EntityHelper.GetMainParent(GetOwner(), true);
 		m_ProviderComponent = SCR_CampaignBuildingProviderComponent.Cast(GetOwner().FindComponent(SCR_CampaignBuildingProviderComponent));
 	}
 	
@@ -61,7 +55,7 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 		if (!m_ProviderComponent || m_bTemporarilyBlockedAccess)
 			return false;
 		
-		if (m_bRankLimitationCanBeUsed && m_ProviderComponent.GetAccessRank() > GetUserRank(user))
+		if (SCR_XPHandlerComponent.IsXpSystemEnabled() && m_ProviderComponent.GetAccessRank() > GetUserRank(user))
 		{
 			FactionAffiliationComponent factionAffiliationComp = FactionAffiliationComponent.Cast(user.FindComponent(FactionAffiliationComponent));
 			if (!factionAffiliationComp)
@@ -107,7 +101,7 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
 	{
-		if (!m_ProviderComponent)
+		if (!m_ProviderComponent || !m_MainParent)
 			return false;
 
 		if (!m_CompartmentAccess)
@@ -123,11 +117,13 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 		
 		if (m_CompartmentAccess.IsGettingIn())
 			return false;
+				
+		Physics providerPhysics = m_MainParent.GetPhysics();
 		
 		// Don't quit if the providerPhysics doesn't exist. The provider might not have one.
-		if (m_ProviderPhysics)
+		if (providerPhysics)
 		{
-			vector velocity = m_ProviderPhysics.GetVelocity();
+			vector velocity = providerPhysics.GetVelocity();
 			if ((velocity.LengthSq()) > PROVIDER_SPEED_TO_REMOVE_BUILDING_SQ)
 				return false;
 		}

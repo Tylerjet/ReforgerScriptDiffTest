@@ -289,28 +289,49 @@ class SCR_PlayerController : PlayerController
 			float gyroSensitivity;
 			float gyroVerticalHorizontalRatio;
 
-			float gyroDirectionYaw;
-			float gyroDirectionPitch;
-			float gyroDirectionRoll;
+			SCR_EGyroAxisDirection gyroDirectionYaw;
+			SCR_EGyroAxisDirection gyroDirectionPitch;
+			SCR_EGyroAxisDirection gyroDirectionRoll;
 
 			if (controllerSettings.Get("m_fGyroSensitivity", gyroSensitivity)
 				&& controllerSettings.Get("m_fGyroVerticalHorizontalRatio", gyroVerticalHorizontalRatio)
-				&& controllerSettings.Get("m_fGyroDirectionYaw", gyroDirectionYaw)
-				&& controllerSettings.Get("m_fGyroDirectionPitch", gyroDirectionPitch)
-				&& controllerSettings.Get("m_fGyroDirectionRoll", gyroDirectionRoll))
+				&& controllerSettings.Get("m_eGyroDirectionYaw", gyroDirectionYaw)
+				&& controllerSettings.Get("m_eGyroDirectionPitch", gyroDirectionPitch)
+				&& controllerSettings.Get("m_eGyroDirectionRoll", gyroDirectionRoll))
 			{
-				float sensitivityYaw   = gyroSensitivity * (1 - gyroDirectionYaw);
-				float sensitivityPitch = gyroSensitivity * (1 - gyroDirectionPitch);
-				float sensitivityRoll  = gyroSensitivity * (1 - gyroDirectionRoll);
+				float sensitivityYaw;
+				switch (gyroDirectionYaw)
+				{
+					case SCR_EGyroAxisDirection.ENABLED: sensitivityYaw = gyroSensitivity; break;
+					case SCR_EGyroAxisDirection.INVERTED: sensitivityYaw = -gyroSensitivity; break;
+				}
+
+				float sensitivityPitch;
+				switch (gyroDirectionPitch)
+				{
+					case SCR_EGyroAxisDirection.ENABLED: sensitivityPitch = gyroSensitivity; break;
+					case SCR_EGyroAxisDirection.INVERTED: sensitivityPitch = -gyroSensitivity; break;
+				}
+
+				float sensitivityRoll;
+				switch (gyroDirectionRoll)
+				{
+					case SCR_EGyroAxisDirection.ENABLED: sensitivityRoll = gyroSensitivity; break;
+					case SCR_EGyroAxisDirection.INVERTED: sensitivityRoll = -gyroSensitivity; break;
+				}
 
 				if (gyroVerticalHorizontalRatio > 1)
 				{
-					sensitivityYaw  *= 2 - gyroVerticalHorizontalRatio;
-					sensitivityRoll *= 2 - gyroVerticalHorizontalRatio;
+					// Slider over 50%: reduce horizontal
+					float horizontalRatio = Math.Max(2 - gyroVerticalHorizontalRatio, 0);
+					sensitivityYaw  *= horizontalRatio;
+					sensitivityRoll *= horizontalRatio;
 				}
 				else
 				{
-					sensitivityPitch *= gyroVerticalHorizontalRatio;
+					// Slider below 50%: reduce vertical
+					float verticalRatio = Math.Max(gyroVerticalHorizontalRatio, 0);
+					sensitivityPitch *= verticalRatio;
 				}
 
 				CharacterControllerComponent.SetGyroSensitivity(sensitivityYaw, sensitivityPitch, sensitivityRoll);
@@ -1033,9 +1054,8 @@ class SCR_PlayerController : PlayerController
 		// Always show on PSN
 		if (ownPlatformKind == PlatformKind.PSN	)
 			SetPlatformImagePSN(targetPlatformKind, image, glow, setVisible);
-		
-		if (!showOnPC && !showOnXbox)
-			return true;
+		else if (!showOnPC && !showOnXbox)
+			return false;
 		
 		switch (ownPlatformKind)
 		{

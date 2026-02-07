@@ -47,7 +47,7 @@ class SCR_Tutorial_SquadLeadership_ORDER_DEFEND : SCR_BaseTutorialStage
 		if (!areaPos)
 			return;
 		
-		if (vector.Distance(wp.GetOrigin(), areaPos.GetOrigin()) > 15)
+		if (vector.Distance(wp.GetOrigin(), areaPos.GetOrigin()) > 15 || !wp.IsInherited(SCR_DefendWaypoint))
 		{
 			ShowHint(1);
 			m_Group.RemoveWaypoint(wp);

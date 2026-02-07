@@ -21,10 +21,14 @@ class SCR_DataCollectorAchievementsModule : SCR_DataCollectorModule
 		// Achievement COMBAT_HYGIENE
 		SCR_FlushToilet.GetOnToiletFlushed().Insert(ToiletFlushed);
 		
-		RplComponent rplComp = RplComponent.Cast(GetGame().GetGameMode().FindComponent(RplComponent));
+		BaseGameMode gameMode = GetGame().GetGameMode();
+		if (!gameMode)
+			return;
+		
+		RplComponent rplComp = RplComponent.Cast(gameMode.FindComponent(RplComponent));
 		if (rplComp.IsMaster())
 		{
-			m_Conflict = SCR_GameModeCampaign.Cast(GetGame().GetGameMode());
+			m_Conflict = SCR_GameModeCampaign.Cast(gameMode);
 
 			// Invoke thhose only as authority
 			// Achievement NUTCRACKER

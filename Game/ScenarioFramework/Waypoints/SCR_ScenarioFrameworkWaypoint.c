@@ -66,6 +66,17 @@ class SCR_ScenarioFrameworkWaypoint
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkWaypointScripted : SCR_ScenarioFrameworkWaypoint
 {
+	[Attribute(desc: "Settings which are valid while this waypoint is active.")]
+	protected ref array<ref SCR_AISettingBase> m_aSettings;
+	
+	//------------------------------------------------------------------------------------------------
+	void SCR_ScenarioFrameworkWaypointScripted()
+	{
+		// Init all settings, they must have proper origin value
+		foreach (auto s : m_aSettings)
+			s.Internal_ConstructedAtProperty(SCR_EAISettingOrigin.SCENARIO, SCR_EAISettingFlags.SCENARIO_FRAMEWORK);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override void SetupWaypoint(IEntity waypointEntity)
 	{
@@ -76,6 +87,10 @@ class SCR_ScenarioFrameworkWaypointScripted : SCR_ScenarioFrameworkWaypoint
 			return;
 
 		waypointScripted.SetPriorityLevel(GetWaypointPriorityLevel());
+		
+		// Add settings
+		foreach (auto s : m_aSettings)
+			waypointScripted.AddSetting(s);
 	}
 
 	//------------------------------------------------------------------------------------------------

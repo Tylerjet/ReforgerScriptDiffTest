@@ -1,6 +1,6 @@
 class SCR_EntityHelper
 {
-	//! Function to find specific component on given entity or entity parent/slottedEntities/siblings/rootparents etc
+	//! Find a specific component on the provided entity or the entity's parent/slottedEntities/siblings/rootparents etc
 	//! \param[in] entity Entity to use to find the component on
 	//! \param[in] componentType Component Class to find
 	//! \param[in] queryFlags Where to find the component on. It can have multiple flags and is checked in order of lowest to highest flag value
@@ -148,8 +148,8 @@ class SCR_EntityHelper
 	
 	//------------------------------------------------------------------------------------------------
 	//! Returns number of children the input entity has
-	//! \param parent
-	//! \param recursive checks children's children if set to true, the number of direct children otherwise
+	//! \param[in] parent
+	//! \param[in] recursive checks children's children if set to true, the number of direct children otherwise
 	//! \return 0 if the provided entity is null
 	// unused
 	static int GetChildrenCount(IEntity parent, bool recursive = false)
@@ -173,7 +173,7 @@ class SCR_EntityHelper
 	//------------------------------------------------------------------------------------------------
 	//! Deletes input parent entity and all children
 	//! Just a wrapper for RplComponent.DeleteRplEntity(entity, false);
-	//! \param entity
+	//! \param[in] entity
 	static void DeleteEntityAndChildren(IEntity entity)
 	{
 		if (entity)
@@ -182,7 +182,7 @@ class SCR_EntityHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns the size of an entity from its bounding box
-	//! \param entity
+	//! \param[in] entity
 	//! \return vector of width, height, length
 	static vector GetEntitySize(notnull IEntity entity)
 	{
@@ -194,7 +194,7 @@ class SCR_EntityHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns the center of the entity from its bounding box in world coordinates
-	//! \param entity
+	//! \param[in] entity
 	//! \return bounding box' centre in world coordinates
 	static vector GetEntityCenterWorld(notnull IEntity entity)
 	{
@@ -205,7 +205,7 @@ class SCR_EntityHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns the radius of the entity based on the size of its bounding box
-	//! \param entity the entity to measure
+	//! \param[in] entity the entity to measure
 	static float GetEntityRadius(notnull IEntity entity)
 	{
 		return GetEntitySize(entity).Length() * 0.5;
@@ -213,7 +213,7 @@ class SCR_EntityHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns a list of all entities in the hierarchy
-	//! \param entity
+	//! \param[in] entity
 	//! \param[in,out] output
 	static void GetHierarchyEntityList(notnull IEntity entity, notnull inout array<IEntity> output)
 	{
@@ -228,11 +228,11 @@ class SCR_EntityHelper
 
 	//------------------------------------------------------------------------------------------------
 	//!
-	//! \param entity the entity to snap to the ground
-	//! \param excludeArray
-	//! \param maxLength
-	//! \param startOffset
-	//! \param onlyStatic only check static physics
+	//! \param[in] entity the entity to snap to the ground
+	//! \param[in] excludeArray
+	//! \param[in] maxLength
+	//! \param[in] startOffset
+	//! \param[in] onlyStatic only check static physics
 	// unused
 	static void SnapToGround(notnull IEntity entity, array<IEntity> excludeArray = null, float maxLength = 10, vector startOffset = "0 0 0", bool onlyStatic = false)
 	{
@@ -270,7 +270,7 @@ class SCR_EntityHelper
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! \param newUp
+	//! \param[in] newUp
 	//! \param[in,out] mat
 	static void OrientUpToVector(vector newUp, inout vector mat[4])
 	{
@@ -285,7 +285,8 @@ class SCR_EntityHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param entity
+	//! \param[in] entity
+	//! \return true if entity does not have physics or is not dynamic, false otherwise
 	// used by SnapToGround() which is unused
 	protected static bool OnlyStaticCallback(notnull IEntity entity)
 	{
@@ -298,8 +299,9 @@ class SCR_EntityHelper
 	
 	//------------------------------------------------------------------------------------------------
 	//! Returns the main parent of the input entity
-	//! \param entity Entity to get the main parent from
-	//! \param self return entity if there is no parent, false otherwise - default = false
+	//! \param[in] entity Entity to get the main parent from
+	//! \param[in] self return entity if there is no parent, false otherwise
+	//! \return
 	static IEntity GetMainParent(IEntity entity, bool self = false)
 	{
 		if (!entity)
@@ -318,8 +320,8 @@ class SCR_EntityHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Set transform for the whole hierarchy
-	//! \param entity
-	//! \param newTransform
+	//! \param[in] entity
+	//! \param[in] newTransform
 	static void SetHierarchyTransform(notnull IEntity entity, vector newTransform[4])
 	{
 		vector oldTransform[4];
@@ -336,10 +338,10 @@ class SCR_EntityHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Set child transformation
-	//! \param entity
-	//! \param oldTransform
-	//! \param newTransform
-	//! \param recursive
+	//! \param[in] entity
+	//! \param[in] oldTransform
+	//! \param[in] newTransform
+	//! \param[in] recursive
 	// used by SetHierarchyTransform
 	protected static void SetHierarchyChildTransform(notnull IEntity entity, vector oldTransform[4], vector newTransform[4], bool recursive = true)
 	{
@@ -434,13 +436,55 @@ class SCR_EntityHelper
 
 		return rplComp;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! QuickSort algorithm for ordering an array of Entities by distance to the specified world position
+	//! \param[inout] arr array whose content will be sorted
+	//! \param[in] pos world space position to which distance will be measured
+	//! \param[in] low index from the array that will be used as a starting point for sorting
+	//! \param[in] high index from the array that will be used as the end point for sorting
+	static void QuickSortEntitiesByDistanceToPoint(notnull inout array<IEntity> arr, vector pos, int low, int high)
+	{
+		if (low < high)
+		{
+			int pi = Partition(arr, pos, low, high);
+
+			QuickSortEntitiesByDistanceToPoint(arr, pos, low, pi - 1);
+			QuickSortEntitiesByDistanceToPoint(arr, pos, pi + 1, high);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Method used for sorting part of the provided array of entities based on their distance to the specified position
+	//! \param[inout] arr array whose content will be sorted
+	//! \param[in] pos world space position to which distance will be measured
+	//! \param[in] low index from the array that will be used as a starting point for sorting
+	//! \param[in] high index from the array that will be used as the end point for sorting
+	//! \return 
+	protected static int Partition(notnull inout array<IEntity> arr, vector pos, int low, int high)
+	{
+		float pivot = vector.DistanceSq(arr[high].GetOrigin(), pos);
+		int i = (low - 1);
+
+		for (int j = low; j <= high - 1; j++)
+		{
+			if (vector.DistanceSq(arr[j].GetOrigin(), pos) <= pivot)
+			{
+				i++;
+				arr.SwapItems(i, j);
+			}
+		}
+
+		arr.SwapItems(i + 1, high);
+		return (i + 1);
+	}
 }
 
 class SCR_EntityHelperT<Class T>
 {
 	//------------------------------------------------------------------------------------------------
 	//! Search for an entity of given type in hierarchy of provided parent
-	//! \param parent
+	//! \param[in] parent
 	//! \return the found entity or null if not found
 	static T GetEntityInHierarchy(notnull IEntity parent)
 	{

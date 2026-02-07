@@ -39,7 +39,7 @@ class SCR_CampaignBuildingEditableEntityFilter : SCR_BaseEditableEntityFilter
 		IEntity compositionOwner = compositionComponent.GetProviderEntity();
 		if (!compositionOwner)
 		{
-			SCR_FreeRoamBuildingClientTriggerEntity trigger = buildingComponent.GetTrigger();
+			ScriptedGameTriggerEntity trigger = buildingComponent.GetTrigger();
 			if (!trigger)
 				return false;
 
@@ -133,7 +133,7 @@ class SCR_CampaignBuildingEditableEntityFilter : SCR_BaseEditableEntityFilter
 		if (!buildingComponent)
 			return false;
 				
-		SCR_FreeRoamBuildingClientTriggerEntity trigger = buildingComponent.GetTrigger();
+		ScriptedGameTriggerEntity trigger = buildingComponent.GetTrigger();
 		if (!trigger)
 			return false;
 

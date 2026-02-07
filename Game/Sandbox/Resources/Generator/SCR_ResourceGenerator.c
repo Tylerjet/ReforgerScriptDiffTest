@@ -221,19 +221,22 @@ class SCR_ResourceGenerator : SCR_ResourceInteractor
 		
 		SCR_ResourceGenerationResponse response = new SCR_ResourceGenerationResponse(GetAggregatedMaxResourceValue() - GetAggregatedResourceValue(), m_fResourceMultiplier, m_fStorageRange, EResourceReason.SUFFICIENT);
 		
-		if (resourceAmount > response.GetAvailableResourceSpace())
-		{
-			response.SetReason(EResourceReason.INSUFICIENT);
-			
-			return response;
-		}
-		
 		if (response.GetAvailableResourceSpace() == 0)
 		{
 			response.SetReason(EResourceReason.UNAVAILABLE);
 			
 			return response;
 		}
+		
+		foreach (SCR_ResourceGeneratorActionBase action: m_aActions)
+		{
+			resourceAmount -= action.ComputeGeneratedResources(this, resourceAmount);
+			
+			if (resourceAmount <= 0)
+				return response;
+		}
+		
+		response.SetReason(EResourceReason.INSUFICIENT);
 		
 		return response;
 	}
@@ -242,6 +245,9 @@ class SCR_ResourceGenerator : SCR_ResourceInteractor
 	SCR_ResourceGenerationResponse RequestGeneration(float resourceAmount, SCR_ResourceGenerator generator = null)
 	{
 		SCR_ResourceGenerationResponse response = RequestAvailability(resourceAmount);
+		
+		if (response.GetReason() != EResourceReason.SUFFICIENT)
+			return response;
 		
 		m_ContainerQueue.PerformSorting();
 		
@@ -252,16 +258,7 @@ class SCR_ResourceGenerator : SCR_ResourceInteractor
 			if (resourceAmount <= 0)
 				break;
 			
-			for (int i = 0; i < containerCount; i++)
-			{
-				action.PerformAction(m_ContainerQueue.GetContainerAt(i), resourceAmount);	
-				
-				if (m_ContainerQueue.GetContainerCount() != containerCount)
-				{
-					containerCount--;
-					i--;
-				}
-			}
+			action.PerformAction(this, resourceAmount);	
 		}
 		
 		m_ResourceComponent.Replicate();

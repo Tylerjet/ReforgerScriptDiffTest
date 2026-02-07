@@ -308,6 +308,9 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 	//!
 	void DeletePreview()
 	{
+		if (!m_PreviewEntity)
+			return;
+		
 		IEntity playerEntity = SCR_PlayerController.GetLocalMainEntity();
 		if (!playerEntity)
 			return;
@@ -323,6 +326,14 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 		if (modeEntity)
 			modeEntity.GetOnClosed().Remove(DeletePreview);
 
+		IEntity ent = m_PreviewEntity.GetRootParent();
+		if (!ent)
+			ent = GetOwner().GetRootParent();
+		
+		if (ent)
+			ent.RemoveChild(m_PreviewEntity);
+		
+		m_PreviewEntity.Update();
 		SCR_EntityHelper.DeleteEntityAndChildren(m_PreviewEntity);
 	}
 

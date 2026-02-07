@@ -59,12 +59,12 @@ class DecoratorScripted_IsEqual : DecoratorScripted
 		return false;
 	}
 	
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}	
 	
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "DecoratorScripted_IsEqual: Compares whether the given variables are equal. Supports int-int, float-float, bool - bool, IEntity - IEntity and children of Managed comparison";
 	}

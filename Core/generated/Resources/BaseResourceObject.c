@@ -9,7 +9,7 @@ Do not modify, this script is generated
 \{
 */
 
-sealed class BaseResourceObject: pointer
+sealed class BaseResourceObject: global_pointer
 {
 	proto external BaseContainer ToBaseContainer();
 	proto external IEntitySource ToEntitySource();

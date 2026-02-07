@@ -1,30 +1,50 @@
 class SCR_DebugShapeManager
 {
 	protected ref array<ref Shape> m_aShapes = {};
+	protected ref array<ref DebugTextWorldSpace> m_aScreenSpaceTexts = {};
 
-	protected static const int DEFAULT_COLOUR = Color.RED;
-	protected static const ShapeFlags DEFAULT_FLAGS = ShapeFlags.NOZBUFFER | ShapeFlags.TRANSP;
+	protected static const int DEFAULT_SHAPE_COLOUR = Color.RED;
+	protected static const ShapeFlags DEFAULT_SHAPE_FLAGS = ShapeFlags.NOZBUFFER | ShapeFlags.TRANSP;
+
+	protected static const int DEFAULT_TEXT_COLOUR = Color.WHITE;
+	protected static const int DEFAULT_TEXT_BACKGROUND_COLOUR = 0x88000000;
+	protected static const DebugTextFlags DEFAULT_TEXT_FLAGS = DebugTextFlags.CENTER | DebugTextFlags.FACE_CAMERA | DebugTextFlags.IN_WORLD;
 
 	//------------------------------------------------------------------------------------------------
-	Shape AddBBox(vector min, vector max, int colour = DEFAULT_COLOUR, ShapeFlags additionalFlags = 0)
+	//! Create an axis-aligned bounding box
+	//! \param[in] min
+	//! \param[in] max
+	//! \param[in] colour the shape's colour
+	//! \param[in] additionalFlags additional Shape flags
+	//! \return the created bounding box
+	Shape AddBBox(vector min, vector max, int colour = DEFAULT_SHAPE_COLOUR, ShapeFlags additionalFlags = 0)
 	{
-		Shape shape = Shape.Create(ShapeType.BBOX, colour, DEFAULT_FLAGS | additionalFlags, min, max);
+		Shape shape = Shape.Create(ShapeType.BBOX, colour, DEFAULT_SHAPE_FLAGS | additionalFlags, min, max);
 		m_aShapes.Insert(shape);
 		return shape;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	Shape AddLine(vector from, vector to, int colour = DEFAULT_COLOUR, ShapeFlags additionalFlags = 0)
+	//! Create a straight line
+	//! \param[in] from origin
+	//! \param[in] to destination
+	//! \param[in] colour the shape's colour
+	//! \param[in] additionalFlags additional Shape flags
+	//! \return the created line
+	Shape AddLine(vector from, vector to, int colour = DEFAULT_SHAPE_COLOUR, ShapeFlags additionalFlags = 0)
 	{
 		vector points[2] = { from, to };
-		Shape shape = Shape.CreateLines(colour, DEFAULT_FLAGS | additionalFlags, points, 2);
+		Shape shape = Shape.CreateLines(colour, DEFAULT_SHAPE_FLAGS | additionalFlags, points, 2);
 		m_aShapes.Insert(shape);
 		return shape;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! max 50 points
-	Shape AddPolyLine(notnull array<vector> points, int colour = DEFAULT_COLOUR)
+	//! 
+	//! \param[in] points from 2 up to 50 points (array will be clipped)
+	//! \param[in] colour the shape's colour
+	//! \return the created polyline or null on error (e.g not enough points)
+	Shape AddPolyLine(notnull array<vector> points, int colour = DEFAULT_SHAPE_COLOUR)
 	{
 		int count = points.Count();
 		if (count < 2)
@@ -39,31 +59,46 @@ class SCR_DebugShapeManager
 			pointsS[i] = points[i];
 		}
 
-		Shape shape = Shape.CreateLines(colour, DEFAULT_FLAGS, pointsS, count);
+		Shape shape = Shape.CreateLines(colour, DEFAULT_SHAPE_FLAGS, pointsS, count);
 		m_aShapes.Insert(shape);
 		return shape;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	Shape AddArrow(vector from, vector to, int colour = DEFAULT_COLOUR)
+	//! Create an arrow
+	//! \param[in] from arrow's origin
+	//! \param[in] to arrrow's destination, the pointy thing
+	//! \param[in] colour the shape's colour
+	//! \return the created arrow
+	Shape AddArrow(vector from, vector to, int colour = DEFAULT_SHAPE_COLOUR)
 	{
-		Shape shape = Shape.CreateArrow(from, to, vector.Distance(from, to) * 0.333, colour, DEFAULT_FLAGS);
+		Shape shape = Shape.CreateArrow(from, to, vector.Distance(from, to) * 0.333, colour, DEFAULT_SHAPE_FLAGS);
 		m_aShapes.Insert(shape);
 		return shape;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	Shape AddCircleXZ(vector centre, float radius, int colour = DEFAULT_COLOUR)
+	//! Create a horizontal circle
+	//! \param[in] centre
+	//! \param[in] radius
+	//! \param[in] colour the shape's colour
+	//! \return the created circle
+	Shape AddCircleXZ(vector centre, float radius, int colour = DEFAULT_SHAPE_COLOUR)
 	{
-		Shape shape = CreateCircle(centre, vector.Up, radius, colour, radius * Math.PI, DEFAULT_FLAGS);
+		Shape shape = CreateCircle(centre, vector.Up, radius, colour, radius * Math.PI, DEFAULT_SHAPE_FLAGS);
 		m_aShapes.Insert(shape);
 		return shape;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param angleStartRad in counter-clockwise radians
-	//! \param coveredAngleRad in counter-clockwise radians - can be negative
-	Shape AddCircleArcXZ(vector centre, float angleStartRad, float coveredAngleRad, float radius, int colour = DEFAULT_COLOUR)
+	//! Create a horizontal arc (portion of a circleà
+	//! \param[in] centre
+	//! \param[in] angleStartRad counter-clockwise radians
+	//! \param[in] coveredAngleRad counter-clockwise radians - can be negative
+	//! \param[in] radius
+	//! \param[in] colour the shape's colour
+	//! \return the created arc
+	Shape AddCircleArcXZ(vector centre, float angleStartRad, float coveredAngleRad, float radius, int colour = DEFAULT_SHAPE_COLOUR)
 	{
 		if (coveredAngleRad < 0)
 		{
@@ -79,15 +114,20 @@ class SCR_DebugShapeManager
 
 		vector forward = { Math.Cos(angleStartRad), 0, Math.Sin(angleStartRad) };
 
-		Shape shape = CreateCircleArc(centre, vector.Up, forward, 0, coveredAngleRad * Math.RAD2DEG, radius, colour, radius * (Math.PI2 - coveredAngleRad), DEFAULT_FLAGS);
+		Shape shape = CreateCircleArc(centre, vector.Up, forward, 0, coveredAngleRad * Math.RAD2DEG, radius, colour, radius * (Math.PI2 - coveredAngleRad), DEFAULT_SHAPE_FLAGS);
 		m_aShapes.Insert(shape);
 		return shape;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param angleStartRad in counter-clockwise radians
-	//! \param coveredAngleRad in counter-clockwise radians
-	Shape AddCircleSliceXZ(vector centre, float angleStartRad, float coveredAngleRad, float radius, int colour = DEFAULT_COLOUR)
+	//! Create a horizontal circle slice
+	//! \param[in] centre
+	//! \param[in] angleStartRad counter-clockwise radians
+	//! \param[in] coveredAngleRad counter-clockwise radians
+	//! \param[in] radius
+	//! \param[in] colour the shape's colour
+	//! \return the created pie slice
+	Shape AddCircleSliceXZ(vector centre, float angleStartRad, float coveredAngleRad, float radius, int colour = DEFAULT_SHAPE_COLOUR)
 	{
 		if (coveredAngleRad < 0)
 		{
@@ -104,13 +144,20 @@ class SCR_DebugShapeManager
 		vector forward = { Math.Cos(angleStartRad), 0, Math.Sin(angleStartRad) };
 
 		float angleDeg = coveredAngleRad * Math.RAD2DEG;
-		Shape shape = CreateCircleSlice(centre, vector.Up, forward, 0, angleDeg, radius, colour, radius * (Math.PI2 - coveredAngleRad), DEFAULT_FLAGS);
+		Shape shape = CreateCircleSlice(centre, vector.Up, forward, 0, angleDeg, radius, colour, radius * (Math.PI2 - coveredAngleRad), DEFAULT_SHAPE_FLAGS);
 		m_aShapes.Insert(shape);
 		return shape;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	Shape AddRectangle(vector origin, vector vectorDir, float length, float width, int colour = DEFAULT_COLOUR)
+	//! Create a rectangle
+	//! \param[in] origin
+	//! \param[in] vectorDir
+	//! \param[in] length
+	//! \param[in] width
+	//! \param[in] colour the shape's colour
+	//! \return the created rectangle
+	Shape AddRectangle(vector origin, vector vectorDir, float length, float width, int colour = DEFAULT_SHAPE_COLOUR)
 	{
 		vector endPos = origin + vectorDir.Normalized() * length;
 
@@ -127,12 +174,18 @@ class SCR_DebugShapeManager
 			endPos + leftWidth,		// top-right
 		};
 
-		Shape shape = Shape.CreateLines(colour, DEFAULT_FLAGS, points, 5);
+		Shape shape = Shape.CreateLines(colour, DEFAULT_SHAPE_FLAGS, points, 5);
 		m_aShapes.Insert(shape);
 		return shape;
 	}
 
-	Shape AddAABBRectangleXZ(vector min, vector max, int colour = DEFAULT_COLOUR)
+	//------------------------------------------------------------------------------------------------
+	//! Create an axis-aligned horizontal rectangle
+	//! \param[in] min
+	//! \param[in] max
+	//! \param[in] colour the shape's colour
+	//! \return the created horizontal rectangle
+	Shape AddAABBRectangleXZ(vector min, vector max, int colour = DEFAULT_SHAPE_COLOUR)
 	{
 		vector points[5];
 		points[0] = Vector(min[0], min[1], max[2]);	// top-left
@@ -140,13 +193,20 @@ class SCR_DebugShapeManager
 		points[2] = Vector(max[0], max[1], min[2]);	// bottom-right
 		points[3] = Vector(min[0], min[1], min[2]);	// bottom-left
 		points[4] = Vector(min[0], min[1], max[2]);	// top-left
-		Shape shape = Shape.CreateLines(colour, DEFAULT_FLAGS, points, 5);
+		Shape shape = Shape.CreateLines(colour, DEFAULT_SHAPE_FLAGS, points, 5);
 		m_aShapes.Insert(shape);
 		return shape;
 	}
 
-	//! \param directionRad is in counter-clockwise radians
-	Shape AddRectangleXZ(vector origin, float directionRad, float length, float width, int colour = DEFAULT_COLOUR)
+	//------------------------------------------------------------------------------------------------
+	//! Create a horizontal rectangle
+	//! \param[in] origin
+	//! \param[in] directionRad in counter-clockwise radians
+	//! \param[in] length
+	//! \param[in] width
+	//! \param[in] colour the shape's colour
+	//! \return the created horizontal rectangle
+	Shape AddRectangleXZ(vector origin, float directionRad, float length, float width, int colour = DEFAULT_SHAPE_COLOUR)
 	{
 		vector endPos = origin + { Math.Cos(directionRad) * length, 0, Math.Sin(directionRad) * length };
 
@@ -161,13 +221,86 @@ class SCR_DebugShapeManager
 			endPos + leftWidth,		// top-right
 		};
 
-		Shape shape = Shape.CreateLines(colour, DEFAULT_FLAGS, points, 5);
+		Shape shape = Shape.CreateLines(colour, DEFAULT_SHAPE_FLAGS, points, 5);
 		m_aShapes.Insert(shape);
 		return shape;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	array<ref Shape> AddParallelLines(vector origin, vector vectorDir, float length, float width, int colour = DEFAULT_COLOUR)
+	//! \param[in] centerOfTopBasePos position in worldspace that is the center of the smaller (top) base
+	//! \param[in] directionUp normalized direction in worldspace that points toward larger (bottom) base
+	//! \param[in] smallBaseRadius
+	//! \param[in] largeBaseRadius
+	//! \param[in] height distance between smaller (top) base and center of larger (bottom) base
+	//! \param[in] color
+	//! \param[in] subdivisions
+	//! \param[in] flags
+	Shape CreateTrapezoidalPrism(vector centerOfTopBasePos, vector directionUp, float smallBaseRadius, float largeBaseRadius, float height, int color, int subdivisions, ShapeFlags additionalFlags = 0)
+	{
+		if (subdivisions < 2)
+			subdivisions = 2;
+		if (subdivisions > 50)
+			subdivisions = 50;
+
+		vector forward = directionUp.Perpend();
+		forward.Normalize();
+		vector right = directionUp * forward;
+		right.Normalize();
+
+		vector mat[3];
+		mat[0] = right;
+		mat[1] = directionUp;
+		mat[2] = forward;
+
+		float sectionDeg = 360 / subdivisions;
+		subdivisions++;
+
+		vector pts[400];
+		int curPts = 0;
+		vector pt;
+		vector bigBasePos = centerOfTopBasePos + vector.Up.Multiply3(mat) * height;
+		for (int i = 0; i < subdivisions; i++)
+		{
+			pt = vector.FromYaw(sectionDeg * i) * smallBaseRadius;
+			pt = pt.Multiply3(mat);
+			pts[curPts] = pt + centerOfTopBasePos;
+			curPts++;
+
+			pt = vector.FromYaw(sectionDeg * i) * largeBaseRadius;
+			pt = pt.Multiply3(mat);
+			pts[curPts] = pt + bigBasePos;
+			curPts++;
+
+			pt = vector.FromYaw(sectionDeg * (i + 1)) * largeBaseRadius;
+			pt = pt.Multiply3(mat);
+			pts[curPts] = pt + bigBasePos;
+			curPts++;
+
+			pts[curPts] = pts[curPts - 2];
+			curPts++;
+			pts[curPts] = pts[curPts - 4];
+			curPts++;
+
+			pt = vector.FromYaw(sectionDeg * (i + 1)) * smallBaseRadius;
+			pt = pt.Multiply3(mat);
+			pts[curPts] = pt + centerOfTopBasePos;
+			curPts++;
+		}
+
+		Shape shape = Shape.CreateLines(color, DEFAULT_SHAPE_FLAGS | additionalFlags, pts, curPts);
+		m_aShapes.Insert(shape);
+		return shape;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Create two parallel lines on the left and on the right of the provided virtual line
+	//! \param[in] origin
+	//! \param[in] vectorDir
+	//! \param[in] length
+	//! \param[in] width
+	//! \param[in] colour the shape's colour
+	//! \return an array with the two created lines
+	array<ref Shape> AddParallelLines(vector origin, vector vectorDir, float length, float width, int colour = DEFAULT_SHAPE_COLOUR)
 	{
 		vector endPos = origin + vectorDir.Normalized() * length;
 
@@ -182,22 +315,108 @@ class SCR_DebugShapeManager
 	}
 
 	//------------------------------------------------------------------------------------------------
-	Shape AddSphere(vector centre, float radius, int colour = DEFAULT_COLOUR, ShapeFlags additionalFlags = 0)
+	//! Create a sphere
+	//! \param[in] centre world position of the sphere's centre
+	//! \param[in] radius radius in metres
+	//! \param[in] colour the shape's colour
+	//! \param[in] additionalFlags additional Shape flags
+	//! \return the created sphere
+	Shape AddSphere(vector centre, float radius, int colour = DEFAULT_SHAPE_COLOUR, ShapeFlags additionalFlags = 0)
 	{
-		Shape shape = Shape.CreateSphere(colour, DEFAULT_FLAGS | additionalFlags, centre, radius);
+		Shape shape = Shape.CreateSphere(colour, DEFAULT_SHAPE_FLAGS | additionalFlags, centre, radius);
 		m_aShapes.Insert(shape);
 		return shape;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] text
+	//! \param[in] worldPos
+	//! \param[in] size in metres
+	//! \param[in] colour
+	//! \param[in] backgroundColour
+	//! \return
+	DebugTextWorldSpace AddText(string text, vector worldPos, float size = 2.0, int colour = DEFAULT_TEXT_COLOUR, int backgroundColour = DEFAULT_TEXT_BACKGROUND_COLOUR)
+	{
+#ifdef WORKBENCH
+		BaseWorld world = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi().GetWorld();
+#else	// normal game
+		BaseWorld world = GetGame().GetWorld();
+#endif	// WORKBENCH
+
+		if (!world)
+		{
+			Print("[SCR_DebugShapeManager.AddText] cannot determine world (" + __FILE__ + " L" + __LINE__ + ")", LogLevel.WARNING);
+			return null;
+		}
+
+		if (size < 0.1)
+			size = 0.1;
+
+		if (size > 10)
+			size = 10;
+
+		DebugTextWorldSpace debugText = DebugTextWorldSpace.Create(world, text, DEFAULT_TEXT_FLAGS, worldPos[0], worldPos[1], worldPos[2], size, colour, backgroundColour);
+		m_aScreenSpaceTexts.Insert(debugText);
+		return debugText;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Add an external shape to be held by the manager
+	//! \param[in] shape
+	void Add(notnull Shape shape)
+	{
+		if (!m_aShapes.Contains(shape))
+			m_aShapes.Insert(shape);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Add an external text to be held by the manager
+	//! \param[in] text
+	void Add(notnull DebugTextWorldSpace text)
+	{
+		if (!m_aScreenSpaceTexts.Contains(text))
+		{
+			m_aScreenSpaceTexts.Insert(text);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Remove the provided shape, if managed
+	//! \param[in] shape
 	void Remove(notnull Shape shape)
 	{
 		m_aShapes.RemoveItem(shape);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Remove the provided text, if managed
+	//! \param[in] shape
+	void Remove(notnull DebugTextWorldSpace text)
+	{
+		m_aScreenSpaceTexts.RemoveItem(text);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Remove all stored shapes and texts
 	void Clear()
 	{
 		m_aShapes.Clear();
+		m_aScreenSpaceTexts.Clear();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Remove all stored shapes
+	void ClearShapes()
+	{
+		m_aShapes.Clear();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Remove all stored texts
+	void ClearTexts()
+	{
+		m_aScreenSpaceTexts.Clear();
 	}
 }
+

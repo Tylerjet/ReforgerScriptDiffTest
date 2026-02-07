@@ -1,101 +1,243 @@
 #ifdef WORKBENCH
-[WorkbenchPluginAttribute(name: "Find Linked Resources", wbModules: { "ResourceManager" }, awesomeFontCode: 0xF0C1)]
+[WorkbenchPluginAttribute(name: "Find Linked Resources", description: "Find resources referenced by the resources selected in Resource Browser", wbModules: { "ResourceManager" }, awesomeFontCode: 0xF0C1)]
 class SCR_FindResourcesPlugin : ResourceManagerPlugin
 {
-	[Attribute(desc: "File extensions, divided by comma, e.g.: edds,imageset")]
-	protected string m_sExtension;
+	[Attribute(defvalue: "", desc: "File extensions separated by a comma (e.g.: \"edds,imageset\")\nNo value means all extensions")]
+	protected string m_sExtensions;
+
+	[Attribute(defvalue: "0", desc: "Show only values set directly in the resource (and not in its parents or default value)")]
+	protected bool m_bOnlyShowDirectlySetVariables;
+
+	protected static const ref array<string> ALLOWED_EXTENSIONS = { "conf", "et" };
+//	protected static const ref array<string> FORBIDDEN_DOTTED_EXTENSIONS = { ".c", ".edds", ".fbx", ".png", ".txt", ".wav", ".xob" };
 
 	//------------------------------------------------------------------------------------------------
 	override void Run()
 	{
-		if (!Workbench.ScriptDialog("Find Linked Resources", "Scan all selected file and print out resource of given extension(s)\nlinked to from attributes.", this))
+		if (!Workbench.ScriptDialog("Find Linked Resources", "Scan all selected files and print out resources of given extension(s) linked to from attributes.", this))
 			return;
 
-		array<string> uiWidgets = { "resourcePickerSimple", "resourcePickerThumbnail", "fileNamePicker" };
-
-		m_sExtension.ToLower();
+		m_sExtensions.ToLower();
 		array<string> extensions = {};
-		m_sExtension.Split(",", extensions, true);
+		m_sExtensions.Split(",", extensions, true);
+
+		for (int i = extensions.Count() - 1; i >= 0; --i)
+		{
+			string extension = extensions[i];
+			extension.TrimInPlace();
+			if (extension)
+				extensions[i] = extension;
+			else
+				extensions.Remove(i);
+		}
+
+		m_sExtensions = SCR_StringHelper.Join(",", extensions, false);
+
+		bool noExtensionsDefined = extensions.IsEmpty();
 
 		array<ResourceName> selection = {};
 		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
 		resourceManager.GetResourceBrowserSelection(selection.Insert, true);
-		WBProgressDialog progress = new WBProgressDialog("Processing...", resourceManager);
+
+		int count = selection.Count();
+		if (count < 1)
+		{
+			Print("No resources selected in Resource Browser", LogLevel.NORMAL);
+			return;
+		}
 
 		array<ref Resource> resourceObjects = {}; // reference MUST be kept
 		Resource resource;
 		array<BaseContainer> containers = {};
-		foreach (ResourceName resourceName : selection)
+		float prevProgress, currProgress;
+		WBProgressDialog progress = new WBProgressDialog("Loading " + count + " resources...", resourceManager);
+		foreach (int i, ResourceName resourceName : selection)
 		{
+			string extension;
+			FilePath.StripExtension(resourceName.GetPath(), extension);
+			extension.ToLower();
+			if (!ALLOWED_EXTENSIONS.Contains(extension))
+				continue;
+
 			resource = Resource.Load(resourceName);
-			if (resource.IsValid())
+			if (!resource.IsValid())
 			{
-				resourceObjects.Insert(resource);
-				containers.Insert(resource.GetResource().ToBaseContainer());
+				Print("Cannot load resource " + resourceName.GetPath(), LogLevel.WARNING);
+				continue;
+			}
+
+			resourceObjects.Insert(resource);
+			containers.Insert(resource.GetResource().ToBaseContainer());
+
+			currProgress = i / count;
+			if (currProgress - prevProgress >= 0.01)	// min 1%
+			{
+				progress.SetProgress(currProgress);		// expensive
+				prevProgress = currProgress;
 			}
 		}
 
-		array<string> resources = {};
+		array<string> resourcePaths = {};
 		BaseContainer container, object;
-		string varName, varExtension;
-		ResourceName varValue;
+		BaseContainerList list;
+
+		prevProgress = 0;
+		currProgress = 0;
+		count = containers.Count();
+		if (count < 1)
+		{
+			Print("No containers found.", LogLevel.NORMAL);
+			return;
+		}
+
+		array<ResourceName> resourceNames;
+		progress = new WBProgressDialog("Processing " + count + " main containers...", resourceManager);
 		while (!containers.IsEmpty())
 		{
 			container = containers[0];
 			containers.RemoveOrdered(0);
 
-			for (int i, count = container.GetNumVars(); i < count; i++)
+			if (!container)
 			{
-				varName = container.GetVarName(i);
-				if (!container.IsVariableSetDirectly(varName))
+				Print("null container?!", LogLevel.WARNING);
+				continue;
+			}
 
-				if (container.Get(varName, varValue))
-				{
-					FilePath.StripExtension(varValue, varExtension);
-					varExtension.ToLower();
-					if (extensions.Contains(varExtension))
-					{
-						varValue = varValue.GetPath();
-						if (!resources.Contains(varValue))
-							resources.Insert(varValue);
-					}
-				}
+			// add children already
+			for (int i = container.GetNumChildren() - 1; i >= 0; --i)
+			{
+				containers.Insert(container.GetChild(i));
+			}
 
-				object = container.GetObject(varName);
-				if (object)
+			for (int i, varCount = container.GetNumVars(); i < varCount; ++i)
+			{
+				string varName = container.GetVarName(i);
+				if (m_bOnlyShowDirectlySetVariables && !container.IsVariableSetDirectly(varName))
+					continue;
+
+				switch (container.GetDataVarType(i))
 				{
-					//--- Object, process its variables
-					containers.Insert(object);
-				}
-				else
-				{
-					//--- Array of objects, process every element
-					BaseContainerList list = container.GetObjectArray(varName);
-					if (list)
-					{
+					case DataVarType.RESOURCE_NAME:
+//					case DataVarType.STRING:
+						ResourceName resourceName;
+						if (!container.Get(varName, resourceName))
+						{
+							Print("Cannot read " + varName + " (resourceName)", LogLevel.WARNING);
+							break;
+						}
+
+						if (!resourceName) // .IsEmpty()
+						{
+							// Print(varName + " is empty", LogLevel.NORMAL);
+							break;
+						}
+
+						if (!noExtensionsDefined)
+						{
+							string varExtension;
+							FilePath.StripExtension(resourceName, varExtension);
+							varExtension.ToLower();
+						
+							if (!extensions.Contains(varExtension))
+								break;
+						}
+
+						string path = resourceName.GetPath();
+						if (!path) // .IsEmpty()
+						{
+							PrintFormat("%1 has no path (%2)", varName, resourceName, level: LogLevel.WARNING);
+							break;
+						}
+
+						if (!resourcePaths.Contains(path))
+							resourcePaths.Insert(path);
+
+						break;
+
+					case DataVarType.RESOURCE_NAME_ARRAY:
+						if (!container.Get(varName, resourceNames))
+						{
+							Print("Cannot read " + varName + " (resourceName array)", LogLevel.WARNING);
+							break;
+						}
+
+						foreach (ResourceName resourceName : resourceNames)
+						{
+							if (!noExtensionsDefined)
+							{
+								string varExtension;
+								FilePath.StripExtension(resourceName, varExtension);
+								varExtension.ToLower();
+							
+								if (!extensions.Contains(varExtension))
+									continue;
+							}
+
+							string path = resourceName.GetPath();
+							if (!path) // .IsEmpty()
+							{
+								PrintFormat("%1 has no path (%2)", varName, resourceName, level: LogLevel.WARNING);
+								break;
+							}
+
+							if (!resourcePaths.Contains(resourceName))
+								resourcePaths.Insert(resourceName);
+						}
+
+						break;
+
+					case DataVarType.OBJECT:
+						object = container.GetObject(varName);
+						if (!object)
+						{
+							Print("Cannot read " + varName + " (object)", LogLevel.WARNING);
+							break;
+						}
+
+						containers.Insert(object);
+						break;
+
+					case DataVarType.OBJECT_ARRAY:
+						list = container.GetObjectArray(varName);
+						if (!list)
+						{
+							Print("Cannot read " + varName + " (object array)", LogLevel.WARNING);
+							break;
+						}
+
 						for (int l = 0, listCount = list.Count(); l < listCount; l++)
 						{
 							containers.Insert(list.Get(l));
 						}
-					}
+
+						break;
 				}
 			}
 
-			//--- Process children
-			if (container)
+			currProgress = (count - containers.Count()) / count;
+			if (currProgress - prevProgress >= 0.01)	// min 1%
 			{
-				for (int e = 0, count = container.GetNumChildren(); e < count; e++)
-				{
-					containers.Insert(container.GetChild(e));
-				}
+				progress.SetProgress(currProgress);		// expensive
+				prevProgress = currProgress;
 			}
 		}
 
-		Print(string.Format("Linked resources of type(s) %1 (%2):", m_sExtension, resources.Count()), LogLevel.NORMAL);
-		resources.Sort();
-		foreach (string resource2 : resources)
+		int resourcesCount = resourcePaths.Count();
+		if (resourcesCount < 1)
 		{
-			Print(string.Format("@\"%1\"", resource2), LogLevel.NORMAL);
+			Print("No resources found.", LogLevel.NORMAL);
+			return;
+		}
+
+		if (noExtensionsDefined)
+			PrintFormat("Linked resources of all types (%1):", resourcesCount, level: LogLevel.NORMAL);
+		else
+			PrintFormat("Linked resources of type(s) %1 (%2):", SCR_StringHelper.Join(", ", extensions, false), resourcesCount, level: LogLevel.NORMAL);
+
+		resourcePaths.Sort();
+		foreach (string resourcePath : resourcePaths)
+		{
+			PrintFormat("@\"%1\"", resourcePath, level: LogLevel.NORMAL);
 		}
 	}
 

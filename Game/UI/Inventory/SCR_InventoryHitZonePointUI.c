@@ -656,7 +656,8 @@ class SCR_InventoryHitZonePointUI : ScriptedWidgetComponent
 		int groupDamageIntensity;
 		bool regenerating;
 		float bleedingRate, bloodHealth;
-		bool isTourniquetted, isSalineBagged, isMorphined, isArmFractured, isLegFractured;
+		bool isTourniquetted, isSalineBagged, isArmFractured, isLegFractured;
+		const bool isMorphined; // TODO: check for good const usage
 		string damageIntensity, damageIntensityText, bleedingIntensityText;
 		
 		GetHitZoneInfo(group, groupDamageIntensity, regenerating, bleedingRate, bloodHealth, isTourniquetted, isSalineBagged, isArmFractured, isLegFractured);

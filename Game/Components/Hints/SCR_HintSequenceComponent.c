@@ -34,7 +34,7 @@ class SCR_HintSequenceComponent : ScriptComponent
 		}
 		
 		SCR_HintManagerComponent hintManager = SCR_HintManagerComponent.GetInstance();
-		if (!hintManager.Show(prefabData.GetSequence().GetHint(0), ignoreShown: true))
+		if (!hintManager || !hintManager.Show(prefabData.GetSequence().GetHint(0), ignoreShown: true))
 			return false;
 		
 		m_bIsActive = true;

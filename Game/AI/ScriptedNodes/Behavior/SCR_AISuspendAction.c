@@ -14,13 +14,13 @@ class SCR_AISuspendAction : SCR_AIActionTask
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}	
 
 	//------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Suspends the action, calls SetSuspended(true).";
 	}

@@ -22,6 +22,9 @@ class SCR_ArsenalComponent : ScriptComponent
 
 	[Attribute(category: "Overwrite", desc: "If empty this will be ignored. For ease of use do not edit this directly in the prefab, use a config instead. The items added the config will allow the arsenal to spawn these items within it. Note that it will still filter on type, meaning that if weapons are added to the list but disabled in the Supported types then they will not show in the arsenal. Changing faction will not have any effect if this is not null")]
 	protected ref SCR_ArsenalItemListConfig m_OverwriteArsenalConfig;
+	
+	[Attribute("0", desc: "Whether or not the overwrite arsenal config still checks if the items are in the correct faction. Hides any items not belonging to the arsenal's faction.", category: "Overwrite")]
+	protected bool m_bCheckFactionForOverwriteArsenalConfig;
 
 	[Attribute("1", desc: "Get default faction if current faction could not be found", category: "Settings")]
 	protected bool m_bGetDefaultIfNoFaction;
@@ -360,7 +363,13 @@ class SCR_ArsenalComponent : ScriptComponent
 	//! \return true if any filtered items were found
 	bool GetFilteredOverwriteArsenalItems(out notnull array<SCR_ArsenalItem> filteredArsenalItems, EArsenalItemDisplayType requiresDisplayType = -1)
 	{
-		filteredArsenalItems = m_OverwriteArsenalConfig.GetFilteredArsenalItems(m_eSupportedArsenalItemTypes, m_eSupportedArsenalItemModes, requiresDisplayType);
+		//~ If overwrite should check if item is valid for arsenal faction
+		if (m_bCheckFactionForOverwriteArsenalConfig)
+			filteredArsenalItems = m_OverwriteArsenalConfig.GetFilteredArsenalItems(m_eSupportedArsenalItemTypes, m_eSupportedArsenalItemModes, requiresDisplayType, GetAssignedFaction());
+		//~ Simply get the filtered items as no need to check the faction
+		else 
+			filteredArsenalItems = m_OverwriteArsenalConfig.GetFilteredArsenalItems(m_eSupportedArsenalItemTypes, m_eSupportedArsenalItemModes, requiresDisplayType);
+		
 		return !filteredArsenalItems.IsEmpty();
 	}
 

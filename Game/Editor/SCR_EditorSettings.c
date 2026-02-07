@@ -8,4 +8,7 @@ class SCR_EditorSettings: ModuleGameSettings
 	
 	[Attribute("1", uiwidget: UIWidgets.CheckBox, desc: "Preview vertical snap, When enabled, will snap entities to the terrain, if false it will be possible for entities to be placed inside the ground.", enums: ParamEnumArray.FromEnum(EEditorTransformVertical))]
 	bool m_PreviewVerticalSnap;
+	
+	[Attribute(defvalue: "1", desc: "If true will show identities for characters in the editor tooltip.")]
+	bool m_bShowIdentityBioTooltip;
 };

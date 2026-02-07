@@ -22,6 +22,7 @@ sealed class RplNode: pointer
 	proto external int GetItemCount();
 	proto external RplId GetItemId(int idx);
 	proto external Managed GetItem(int idx);
+	proto external void AddItem(notnull Managed item);
 }
 
 /*!

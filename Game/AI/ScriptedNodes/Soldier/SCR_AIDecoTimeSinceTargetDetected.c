@@ -32,13 +32,13 @@ class SCR_AIDecoTimeSinceTargetDetected : DecoratorScripted
 	}
 	
 	//-----------------------------------------------------------------------------------------------------
-	protected override bool VisibleInPalette()
+	protected static override bool VisibleInPalette()
 	{
 		return true;
 	}	
 	
 	//-----------------------------------------------------------------------------------------------------
-	protected override string GetOnHoverDescription()
+	protected static override string GetOnHoverDescription()
 	{
 		return "Checks time since target was detected and compares it with threshold. Returns true when time is below the threshold.";
 	}
