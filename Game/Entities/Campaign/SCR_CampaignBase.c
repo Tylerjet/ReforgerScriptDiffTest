@@ -1487,7 +1487,7 @@ class SCR_CampaignBase : GenericEntity
 		
 		for (int i = m_aInMyRange.Count() - 1; i >= 0; i--)
 		{
-			if (m_aInMyRange[i].GetIsHQ() && m_aInMyRange[i].GetOwningFaction() != localPlayerFaction)
+			if (!m_aInMyRange[i].GetIsEnabled() || (m_aInMyRange[i].GetIsHQ() && m_aInMyRange[i].GetOwningFaction() != localPlayerFaction))
 				continue;
 			
 			if (FindMapLink(this, m_aInMyRange[i]))

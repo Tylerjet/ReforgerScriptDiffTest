@@ -5,16 +5,12 @@ class SCR_SpawnEntityUserAction : ScriptedUserAction
 {
 	protected SCR_EntitySpawnerComponent m_EntitySpawner; 
 	protected int m_iCanRequestResult = SCR_EntityRequestDeniedReason.CAN_SPAWN;
-	//------------------------------------------------------------------------------------------------
-	override bool HasLocalEffectOnlyScript()
-	{
-		return true;
-	}
+	
+	static const int INIT_DELAY = 1000;
 	
 	//------------------------------------------------------------------------------------------------
-	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
+	protected void DelayedInit(IEntity parent)
 	{
-		IEntity parent = pOwnerEntity;
 		SCR_EntitySpawnerComponent comp;
 		while (parent)
 		{
@@ -27,6 +23,18 @@ class SCR_SpawnEntityUserAction : ScriptedUserAction
 			
 			parent = parent.GetParent();
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool HasLocalEffectOnlyScript()
+	{
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
+	{
+		GetGame().GetCallqueue().CallLater(DelayedInit, 1000, false, pOwnerEntity);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -117,7 +125,7 @@ class SCR_SpawnEntityUserAction : ScriptedUserAction
 		SCR_EntityInfo entityInfo = m_EntitySpawner.GetEntryAtIndex(GetActionIndex());
 		if (!entityInfo)
 			return false;
-			
+		
 		//nothing will be shown, if entity is not allowed at this spawner
 		if (!m_EntitySpawner.GetIsEntityAllowed(entityInfo))
 			return false;

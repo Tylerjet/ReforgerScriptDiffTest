@@ -29,16 +29,14 @@ class SCR_WheelHitZone : SCR_DestructibleHitzone
 	protected float m_fDestroyedRoughnessIncrease;
 	[Attribute( defvalue: "1.0", uiwidget: UIWidgets.Auto, desc: "Drag of a destroyed wheel.", category: "Wheel Damage")]
 	protected float m_fDestroyedDrag;
-	
-	protected AudioHandle m_iDamagedAudioHandle = AudioHandle.Invalid;
-	
+		
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(IEntity pOwnerEntity, GenericComponent pManagerComponent)
 	{
 		super.OnInit(pOwnerEntity, pManagerComponent);
 		
 		UpdateWheelState();
-		UpdateSound();
+		UpdateDamageSignal();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -47,7 +45,7 @@ class SCR_WheelHitZone : SCR_DestructibleHitzone
 		super.OnDamageStateChanged();
 	
 		UpdateWheelState();
-		UpdateSound();
+		UpdateDamageSignal()
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -56,7 +54,7 @@ class SCR_WheelHitZone : SCR_DestructibleHitzone
 		m_iWheelId = index;
 	
 		UpdateWheelState();
-		UpdateSound();
+		UpdateDamageSignal();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -111,46 +109,43 @@ class SCR_WheelHitZone : SCR_DestructibleHitzone
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Update sound effects based on damage state changes
-	void UpdateSound()
-	{
-		IEntity owner = GetOwner();
-		if (!owner)
+	protected void UpdateDamageSignal()
+	{		
+		if (m_iWheelId == -1)
 			return;
 		
-		IEntity parent = SCR_EntityHelper.GetMainParent(owner, true);
+		IEntity parent = SCR_EntityHelper.GetMainParent(GetOwner(), true);
+		if (!parent)
+			return;
 		
 		// Set TireDamage signal
-		float damageSignalValue;
-		if (GetDamageState() == EWheelDamageState.PUNCTURED)
-			damageSignalValue = 1;
+		float damageState = GetDamageState();
 		
 		SignalsManagerComponent signalManager = SignalsManagerComponent.Cast(parent.FindComponent(SignalsManagerComponent));
 		if (signalManager)
 		{
 			int damageSignal = signalManager.AddOrFindSignal("TireDamage" + m_iWheelId.ToString());
 			if (damageSignal != -1)
-				signalManager.SetSignalValue(damageSignal, damageSignalValue);
+				signalManager.SetSignalValue(damageSignal, damageState);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void PlayDestructionSound(int damageState)
+	{
+		EWheelDamageState pDS = GetPreviousDamageState();
 		
-		// Tire puncture sound
-		SoundComponent soundComponent = SoundComponent.Cast(parent.FindComponent(SoundComponent));
-		if (!soundComponent)
-			return;
-		
-		// No serious damage
-		if (damageSignalValue == 0)
+		if (pDS <= EWheelDamageState.INTERMEDIARY && damageState >= EWheelDamageState.DESTROYED)
 		{
-			if (soundComponent.IsHandleValid(m_iDamagedAudioHandle))
-			{
-				soundComponent.Terminate(m_iDamagedAudioHandle);
-				m_iDamagedAudioHandle = AudioHandle.Invalid;
-			}
-		}
-		else if (!soundComponent.IsHandleValid(m_iDamagedAudioHandle))
-		{
+			IEntity owner = GetOwner();
+			
+			IEntity parent = SCR_EntityHelper.GetMainParent(owner, true);
+			if (!parent)
+				return;
+			
+			SoundComponent soundComponent = SoundComponent.Cast(parent.FindComponent(SoundComponent));			
 			Physics physics = owner.GetPhysics();
-			if (!physics)
+			if (!physics || !soundComponent)
 				return;
 			
 			vector offset;
@@ -180,7 +175,7 @@ class SCR_WheelHitZone : SCR_DestructibleHitzone
 			}
 			
 			offset = parent.CoordToLocal(offset);
-			m_iDamagedAudioHandle = soundComponent.SoundEventOffset(SCR_SoundEvent.SOUND_TIRE_PUNCTURE, offset);
+			soundComponent.SoundEventOffset(SCR_SoundEvent.SOUND_TIRE_PUNCTURE, offset);
 		}
 	}
 	

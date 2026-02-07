@@ -104,12 +104,17 @@ class MainMenuUI : ChimeraMenuBase
 		//SCR_MenuLoadingComponent.ClearLastMenu();
 
 		// Show experimental dialog 
-		if (GetGame().IsExperimentalBuild())
+		bool exp = GetGame().IsExperimentalBuild();
+		bool first = SplashScreen.IsFirstLoadingScreen();
+		
+		if (GetGame().IsExperimentalBuild() && GameSessionStorage.s_Data["m_bMenuFirstOpening"].IsEmpty())
 		{
 			m_ExperimentalDialog = DialogUI.Cast(
 				GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.ExperimentalDialog, DialogPriority.CRITICAL));
 			m_ExperimentalDialog.m_OnConfirm.Insert(OnExperitementalDialogClose);
 		}
+		
+		GameSessionStorage.s_Data["m_bMenuFirstOpening"] = "false";
 		
 		// Check playing for the first time, do not show to devs
 		if (Game.IsDev())

@@ -1,46 +1,39 @@
 #define ENABLE_BASE_DESTRUCTION
 //------------------------------------------------------------------------------------------------
-class SCR_DestructibleHitzone: ScriptedHitZone
+class SCR_DestructibleHitzone : ScriptedHitZone
 {
 	private DamageManagerComponent					m_ParentDamageManager; // Damage manager of the direct parent
 	protected SCR_BaseCompartmentManagerComponent	m_pCompartmentManager; // The part may have occupants that we want to damage
-	
-	//! Audio features
-	protected SoundComponent					m_pSoundComponent;
-	
+
 	[Attribute("0", UIWidgets.EditBox, "Scale of received damage that will be passed to parent vehicle", "0 10 0.01")]
 	private float m_fPassDamageToOwnerParent;
 
 	[Attribute("", UIWidgets.Auto, desc: "Destruction Handler")]
 	protected ref SCR_DestructionBaseHandler m_pDestructionHandler;
-	
+
 	[Attribute(desc: "Destruction sound event name", category: "Effects")]
 	private string m_sDestructionSoundEvent;
-	
+
 #ifdef ENABLE_BASE_DESTRUCTION
-	
+
 	//------------------------------------------------------------------------------------------------
 	ref SCR_DestructionBaseHandler GetDestructionHandler()
 	{
 		return m_pDestructionHandler;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(IEntity pOwnerEntity, GenericComponent pManagerComponent)
 	{
 		super.OnInit(pOwnerEntity, pManagerComponent);
-		
+
 		m_pCompartmentManager = SCR_BaseCompartmentManagerComponent.Cast(pOwnerEntity.FindComponent(SCR_BaseCompartmentManagerComponent));
-		
+
 		// Parent damage manager
 		IEntity parent = pOwnerEntity.GetParent();
 		if (parent)
 			m_ParentDamageManager = DamageManagerComponent.Cast(parent.FindComponent(DamageManagerComponent));
-		
-		// Topmost entity
-		IEntity mainParent = SCR_EntityHelper.GetMainParent(pOwnerEntity, true);
-		m_pSoundComponent = SoundComponent.Cast(mainParent.FindComponent(SoundComponent));
-		
+
 		if (m_pDestructionHandler)
 			m_pDestructionHandler.Init(pOwnerEntity, this);
 	}
@@ -61,75 +54,81 @@ class SCR_DestructibleHitzone: ScriptedHitZone
 	override void OnDamage(EDamageType type, float damage, HitZone pOriginalHitzone, IEntity instigator, inout vector hitTransform[3], float speed, int colliderID, int nodeID)
 	{
 		super.OnDamage(type, damage, pOriginalHitzone, instigator, hitTransform, speed, colliderID, nodeID);
-		
+
 		if (this != pOriginalHitzone)
 			return;
-		
+
 		if (IsProxy())
 			return;
 
 		// Skip delay when hit with strong ammunition and destruction is already scheduled
 		if (damage > GetCriticalDamageThreshold()*GetMaxHealth() && m_pDestructionHandler && m_pDestructionHandler.IsDestructionQueued())
 			m_pDestructionHandler.StartDestruction(true);
-		
+
 		if (m_fPassDamageToOwnerParent == 0)
 			return;
 
 		if (!m_ParentDamageManager)
 			return;
-				
+
 		m_ParentDamageManager.HandleDamage(type, damage * m_fPassDamageToOwnerParent, hitTransform, m_ParentDamageManager.GetOwner(), m_ParentDamageManager.GetDefaultHitZone(), instigator, null, -1, -1);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Kill occupants and start destruction
 	override void OnDamageStateChanged()
 	{
 		super.OnDamageStateChanged();
-		
+
 		EDamageState state = GetDamageState();
-		
+
 		// Restrict AI from accessing this parts compartments
 		if (m_pCompartmentManager)
 			m_pCompartmentManager.SetCompartmentsAccessibleForAI(state != EDamageState.DESTROYED);
-		
+
 		// Change from destroyed can only mean repair
 		if (GetPreviousDamageState() == EDamageState.DESTROYED)
 		{
 			if (m_pDestructionHandler)
 				m_pDestructionHandler.OnRepair();
-			
+
 			return;
 		}
-		
+
+		SCR_HitZoneContainerComponent hitZoneContainer = SCR_HitZoneContainerComponent.Cast(GetHitZoneContainer());
+		if (!hitZoneContainer)
+			return;
+
+		// Dont play sound when console app and when JIP
+		if (!System.IsConsoleApp() && (!IsProxy() || hitZoneContainer.IsRplReady()))
+			PlayDestructionSound(state);
+
 		if (state != EDamageState.DESTROYED)
 			return;
-		
-		if (!IsProxy() || GetHitZoneContainer().IsRplReady())
-			StartDestructionSound();
-		
+
 		SCR_VehicleDamageManagerComponent parentDamageManager = FindParentVehicleDamageManager();
-		
+
 		// Kill and eject occupants
+		// Only main hitzone should deal damage to occupants.
 		// TODO: Make passengers suffer random fire and bleeding instead, and let them get out if they are conscious.
 		// TODO: Depends on ability to move the occupants to proper positions inside wrecks.
-		if (m_pCompartmentManager && !IsProxy())
+		if (hitZoneContainer.GetDefaultHitZone() == this && m_pCompartmentManager && !IsProxy())
 		{
 			SCR_DamageManagerComponent damageManager = parentDamageManager;
 			if (!damageManager)
 				damageManager = SCR_DamageManagerComponent.Cast(GetHitZoneContainer());
-			
+
 			IEntity instigator;
 			if (damageManager)
 				instigator = damageManager.GetInstigatorEntity();
-			
+
 			m_pCompartmentManager.KillOccupants(instigator, true);
 		}
-		
+
 		if (m_pDestructionHandler && !m_pDestructionHandler.IsDestructionQueued())
 			m_pDestructionHandler.StartDestruction(false, parentDamageManager && parentDamageManager.IsInContact());
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected SCR_VehicleDamageManagerComponent FindParentVehicleDamageManager()
 	{
@@ -137,79 +136,74 @@ class SCR_DestructibleHitzone: ScriptedHitZone
 		HitZoneContainerComponent hitZoneContainer = GetHitZoneContainer();
 		if (!hitZoneContainer)
 			return null;
-		
+
 		SCR_VehicleDamageManagerComponent damageManager = SCR_VehicleDamageManagerComponent.Cast(hitZoneContainer);
 		if (damageManager)
 			return damageManager;
-		
+
 		damageManager = SCR_VehicleDamageManagerComponent.Cast(m_ParentDamageManager);
 		if (damageManager)
 			return damageManager;
-		
+
 		IEntity parent = GetOwner().GetParent();
 		while (parent)
 		{
 			damageManager = SCR_VehicleDamageManagerComponent.Cast(parent.FindComponent(SCR_VehicleDamageManagerComponent));
 			if (damageManager)
 				return damageManager;
-			
+
 			parent = parent.GetParent();
 		}
-		
+
 		return damageManager;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Start destruction sounds
-	protected void StartDestructionSound()
+	protected void PlayDestructionSound(int damageState)
 	{
-		if (System.IsConsoleApp())
+		if (m_sDestructionSoundEvent.IsEmpty())
 			return;
-		
-		if (!GetGame().GetWorld())
+
+		if (damageState != EDamageState.DESTROYED)
 			return;
-		
-		// Play sound, but ignore join in progress
-		if (IsProxy() && !GetHitZoneContainer().IsRplReady())
-			return;
-		
-		if (!m_pSoundComponent || m_sDestructionSoundEvent.IsEmpty())
-			return;
-		
+
 		IEntity owner = GetOwner();
 		if (!owner)
 			return;
-		
+
 		IEntity mainParent = SCR_EntityHelper.GetMainParent(owner);
-		if (!mainParent)
+		if (mainParent)
 		{
-			// Play destruction sound on own sound source
-			m_pSoundComponent.SoundEvent(m_sDestructionSoundEvent);
-			return;
+			// Get position offset for slotted entities
+			vector mins;
+			vector maxs;
+			owner.GetBounds(mins, maxs);
+			vector center = vector.Lerp(mins, maxs, 0.5);
+
+			// Add bone offset
+			EntitySlotInfo slotInfo = EntitySlotInfo.GetSlotInfo(owner);
+			if (slotInfo)
+			{
+				vector mat[4];
+				slotInfo.GetModelTransform(mat);
+				center = center + mat[3];
+			}
+
+			SoundComponent soundComponent = SoundComponent.Cast(mainParent.FindComponent(SoundComponent));
+			if (!soundComponent)
+				return;
+
+			soundComponent.SoundEventOffset(m_sDestructionSoundEvent, center);
 		}
-		
-		// Get position offset for slotted entities
-		vector mins;
-		vector maxs;
-		owner.GetBounds(mins, maxs);
-		
-		vector center;
-		for (int i = 0; i < 3; i++)
+		else
 		{
-			center[i] = mins[i] + Math.AbsFloat(((maxs[i] - mins[i]) * 0.5));
+			SoundComponent soundComponent = SoundComponent.Cast(owner.FindComponent(SoundComponent));
+			if (!soundComponent)
+				return;
+
+			soundComponent.SoundEvent(m_sDestructionSoundEvent);
 		}
-		
-		// Add bone offset
-		EntitySlotInfo slotInfo = EntitySlotInfo.GetSlotInfo(owner);
-		if (slotInfo)
-		{
-			vector mat[4];
-			slotInfo.GetModelTransform(mat);
-			center = center + mat[3];
-		}
-		
-		// Play sound on parent sound source
-		m_pSoundComponent.SoundEventOffset(m_sDestructionSoundEvent, center);		
 	}
 #endif
 };

@@ -161,13 +161,22 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 			if (!m_DisconnectedModes)
 				m_DisconnectedModes = new array<ref SCR_EditorManagerDisconnectData>();
 			
+			bool isAdmin = SCR_Global.IsAdmin(playerID);
+			
 			EEditorMode modes = editorManager.GetModes();
 			EEditorMode persistentModes;
 			foreach (SCR_EditorModePrefab prefab: m_ModePrefabs)
 			{
-				if (SCR_Enum.HasFlag(modes, prefab.GetMode()) && SCR_Enum.HasFlag(prefab.GetFlags(), EEditorModeFlag.PERSISTENT))
+				if (
+					SCR_Enum.HasFlag(modes, prefab.GetMode()) //--- Player has the mode
+					&& SCR_Enum.HasFlag(prefab.GetFlags(), EEditorModeFlag.PERSISTENT) //--- Mode is marked as persistent
+					&& (!isAdmin || !SCR_Enum.HasFlag(prefab.GetFlags(), EEditorModeFlag.ADMIN)) //--- If player is admin, don't preserve modes added with admin rights
+				)
+				{
 					persistentModes |= prefab.GetMode();
+				}
 			}
+			
 			if (persistentModes != 0)
 				m_DisconnectedModes.Insert(new SCR_EditorManagerDisconnectData(playerID, persistentModes));
 		
