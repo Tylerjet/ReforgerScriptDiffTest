@@ -272,6 +272,10 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 	//------------------------------------------------------------------------------------------------
 	bool AssociateCompositionsToProvider(IEntity ent)
 	{
+		SCR_EditableEntityComponent editableComponent = SCR_EditableEntityComponent.Cast(ent.FindComponent(SCR_EditableEntityComponent));
+		if (!editableComponent || editableComponent.GetParentEntity())
+			return true;
+
 		SCR_CampaignBuildingCompositionComponent comp = SCR_CampaignBuildingCompositionComponent.Cast(ent.FindComponent(SCR_CampaignBuildingCompositionComponent));
 		if (!comp)
 			return true;
@@ -286,6 +290,10 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 	//------------------------------------------------------------------------------------------------
 	bool UnassignCompositionProvider(IEntity ent)
 	{
+		SCR_EditableEntityComponent editableComponent = SCR_EditableEntityComponent.Cast(ent.FindComponent(SCR_EditableEntityComponent));
+		if (!editableComponent || editableComponent.GetParentEntity())
+			return true;
+		
 		SCR_CampaignBuildingCompositionComponent comp = SCR_CampaignBuildingCompositionComponent.Cast(ent.FindComponent(SCR_CampaignBuildingCompositionComponent));
 		if (!comp)
 			return true;

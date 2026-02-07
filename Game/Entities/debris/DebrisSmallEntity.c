@@ -145,10 +145,6 @@ class SCR_DebrisSmallEntity : GenericEntity
 		if (spdDiff < 20)
 			return;
 		
-		vector mat[4];
-		GetTransform(mat); 
-		vector pos = Vector(mat[3][0], mat[3][1], mat[3][2]);
-		SCR_ParticleEmitter.CreateAsChild("{065B39FFF4D32DF8}graphics/particle/legacy/tkom/contact/debris_stone_s.ptc", owner, pos);
 		
 		DeleteDebris();
 	}

@@ -138,7 +138,12 @@ class SCR_CampaignBaseTask : SCR_BaseTask
 	//------------------------------------------------------------------------------------------------
 	protected void SetAIWaypoint()
 	{
-		if (GetTargetBase().GetType() != CampaignBaseType.RELAY)
+		if (!m_AssignedWaypoint)
+			return;
+		
+		SCR_CampaignBase base = GetTargetBase();
+		
+		if (base && base.GetType() != CampaignBaseType.RELAY)
 			m_AssignedWaypoint = GetTargetBase().GetTaskWaypoint();
 	}
 	

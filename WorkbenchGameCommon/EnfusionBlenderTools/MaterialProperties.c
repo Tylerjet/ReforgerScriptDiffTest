@@ -41,7 +41,7 @@ class MaterialPropertiesUtils
 			//If its a class -> Tiling
 			if(ematCont.GetObject(ematCont.GetVarName(i)) != empty) //Uv Tiling
 			{
-				props.mat_props += ematCont.GetVarName(i)  + " " + "1 ";
+				props.mat_props += ematCont.GetVarName(i)  + "||" + "1||";
 				//Getting child and same thing as up
 				uvTransform = ematCont.GetObject(ematCont.GetVarName(i));
 				for(int j = 0; j < uvTransform.GetNumVars(); j++)
@@ -51,7 +51,7 @@ class MaterialPropertiesUtils
 					if(temp != "")
 					{
 						//Output is stylized for processing in blender | Example: "DirtUVTransform_TilingU 5"
-						props.mat_props += ematCont.GetVarName(i) + "_" + uvTransform.GetVarName(j) + " " + temp + " ";
+						props.mat_props += ematCont.GetVarName(i) + "_" + uvTransform.GetVarName(j) + "||" + temp + "||";
 					}
 				}
 			}
@@ -60,13 +60,13 @@ class MaterialPropertiesUtils
 			if(temp != "")
 			{
 				//Add Varname -> Color/Metalness/etc.
-				props.mat_props += ematCont.GetVarName(i) + " ";
+				props.mat_props += ematCont.GetVarName(i) + "||";
 				if(temp.Contains(".edds"))
 				{
 					//If texture
 					if(tUtils.GetEdds(temp, false) == "")
 					{
-						props.mat_props += ("InvalidGUID" + "|" + "PBRBasic" + "|" + "TosRGB" + "|" + "RedGreenHQCompression" + " ");
+						props.mat_props += ("InvalidGUID" + "|" + "PBRBasic" + "|" + "TosRGB" + "|" + "RedGreenHQCompression" + "||");
 					}
 					else
 					{
@@ -77,12 +77,12 @@ class MaterialPropertiesUtils
 				{
 					//Conversion from spaces to |
 					temp.Replace(" ", "|");
-					props.mat_props += temp + " ";
+					props.mat_props += temp + "||";
 				}
 				else
 				{	
 					//If nothing of that then just output
-					props.mat_props += temp + " ";
+					props.mat_props += temp + "||";
 				}
 				temp = "";
 			}
@@ -107,7 +107,7 @@ class MaterialProperties: NetApiHandler
 		MaterialPropertiesUtils utils = new MaterialPropertiesUtils();
 		ResourceName path = req.path;
 		
-		
+
 		utils.GetEmat(path, props);
 		return props;
 	}

@@ -18,6 +18,19 @@ class SCR_CampaignTutorialStage63 : SCR_BaseCampaignTutorialStage
 		GetGame().GetCallqueue().Remove(OverrideGMHint);
 		GetGame().GetCallqueue().CallLater(OverrideGMHint, 250, true);
 		SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_BuildingBunker_GM", duration: -1);
+		
+		// Find local player controller
+		PlayerController playerController = GetGame().GetPlayerController();
+		if (!playerController)
+			return;
+		
+		// Find campaign network component to send RPC to server
+		SCR_CampaignNetworkComponent campaignNetworkComponent = SCR_CampaignNetworkComponent.Cast(playerController.FindComponent(SCR_CampaignNetworkComponent));
+		if (!campaignNetworkComponent)
+			return;
+		
+		campaignNetworkComponent.CheatRank();
+		campaignNetworkComponent.CheatRank();
 	}
 	
 	//------------------------------------------------------------------------------------------------

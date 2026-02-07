@@ -7,12 +7,30 @@ class SCR_CampaignBuildingBudgetEditorComponent : SCR_BudgetEditorComponent
 {
 	SCR_CampaignBuildingEditorComponent m_CampaignBuildingComponent;
 	SCR_CampaignSuppliesComponent m_SuppliesComponent;
+	ECharacterRank m_eHighestRank;
 
 	//------------------------------------------------------------------------------------------------
 	protected override void EOnEditorActivateServer()
 	{
 		m_EntityCore = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
 		m_CampaignBuildingComponent = SCR_CampaignBuildingEditorComponent.Cast(FindEditorComponent(SCR_CampaignBuildingEditorComponent, true, true));
+
+		SCR_MilitaryFactionManager factionManager = SCR_MilitaryFactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
+			return;
+
+		array<ref SCR_RankID> ranks = factionManager.GetAllAvailableRanks();
+		if (!ranks)
+			return;
+
+		ranks.Sort();
+
+		SCR_RankID highestRankID = ranks[ranks.Count() - 1];
+		if (!highestRankID)
+			return;
+
+		m_eHighestRank = highestRankID.GetRankID();
+
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -34,9 +52,11 @@ class SCR_CampaignBuildingBudgetEditorComponent : SCR_BudgetEditorComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected EEditableEntityBudget GetMainBudgetType()
+	protected void GetMainBudgetType(out array<ref EEditableEntityBudget> budgets)
 	{
-		return EEditableEntityBudget.CAMPAIGN;
+		budgets.Insert(EEditableEntityBudget.CAMPAIGN);
+		budgets.Insert(EEditableEntityBudget.RANK_PRIVATE);
+		budgets.Insert(EEditableEntityBudget.RANK_CORPORAL);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -81,50 +101,164 @@ class SCR_CampaignBuildingBudgetEditorComponent : SCR_BudgetEditorComponent
 	//------------------------------------------------------------------------------------------------
 	override bool GetMaxBudgetValue(EEditableEntityBudget type, out int maxBudget)
 	{
-		if (m_SuppliesComponent)
-			maxBudget = m_SuppliesComponent.GetSuppliesMax();
+		switch (type)
+		{
+			case EEditableEntityBudget.CAMPAIGN:
+			{
+				if (m_SuppliesComponent)
+					maxBudget = m_SuppliesComponent.GetSuppliesMax();
+					return true;
+			};
+			case EEditableEntityBudget.RANK_PRIVATE:
+			{
+				maxBudget = m_eHighestRank;
+				return true;
+			};
+			case EEditableEntityBudget.RANK_CORPORAL:
+			{
+				maxBudget = m_eHighestRank;
+				return true;
+			};
+		}
+
 		return true;
+
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override int GetCurrentBudgetValue(EEditableEntityBudget type)
 	{
-		return m_SuppliesComponent.GetSuppliesMax() - m_SuppliesComponent.GetSupplies();
+		switch (type)
+		{
+			case EEditableEntityBudget.CAMPAIGN:
+			{
+				return m_SuppliesComponent.GetSuppliesMax() - m_SuppliesComponent.GetSupplies();
+			};
+			case EEditableEntityBudget.RANK_PRIVATE:
+			{
+				return m_eHighestRank - GetUserRank();
+			};
+			case EEditableEntityBudget.RANK_CORPORAL:
+			{
+				return m_eHighestRank - GetUserRank();
+			};
+		}
+
+		return -1;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ECharacterRank GetUserRank()
+	{
+		int playerId = SCR_PlayerController.GetLocalPlayerId();
+
+		PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(playerId);
+		if (!playerController)
+			return ECharacterRank.INVALID;
+
+		SCR_CampaignFactionManager factionManager = SCR_CampaignFactionManager.GetInstance();
+		if (!factionManager)
+			return ECharacterRank.INVALID;
+
+		SCR_CampaignNetworkComponent campaignNetworkComponent = SCR_CampaignNetworkComponent.Cast(playerController.FindComponent(SCR_CampaignNetworkComponent));
+		if (!campaignNetworkComponent)
+			return ECharacterRank.INVALID;
+
+		return SCR_CharacterRankComponent.GetCharacterRank(playerController.GetControlledEntity());
 	}
 
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected override void OnEntityCoreBudgetUpdatedOwner(EEditableEntityBudget entityBudget, int budgetValue, int budgetChange, bool sendBudgetMaxEvent, bool budgetMaxReached)
-	{		
+	{
 		if (entityBudget != EEditableEntityBudget.CAMPAIGN)
 			return;
-			
+
 		if (m_SuppliesComponent && m_SuppliesComponent.GetSupplies() - budgetChange <= 0)
-			Event_OnBudgetMaxReached.Invoke( entityBudget, true);
+			Event_OnBudgetMaxReached.Invoke(entityBudget, true);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected override void RefreshBudgetSettings()
 	{
-		EEditableEntityBudget budgetType = GetMainBudgetType();
-		m_BudgetSettingsMap.Clear();
+		array<ref EEditableEntityBudget> budgetsType = {};
+		GetMainBudgetType(budgetsType);
 
-		int maxBudgetValue;
 		SCR_EditableEntityCoreBudgetSetting budget;
-		if (m_EntityCore.GetBudget(budgetType, budget) && GetMaxBudgetValue(budgetType, maxBudgetValue))
+		for (int i = budgetsType.Count() - 1; i >= 0; i--)
 		{
-			m_BudgetSettingsMap.Insert(budgetType, budget);
+			EEditableEntityBudget budgetType = budgetsType[i];
+			int maxBudgetValue;
+			if (m_EntityCore.GetBudget(budgetType, budget) && GetMaxBudgetValue(budgetType, maxBudgetValue))
+			{
+				m_BudgetSettingsMap.Insert(budgetType, budget);
+			}
 		}
 
 		RefreshSuppliesComponent();
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override bool CanPlaceEntitySource(IEntityComponentSource editableEntitySource, out EEditableEntityBudget blockingBudget, bool isPlacingPlayer = false, bool updatePreview = true, bool showNotification = true)
+	{
+		bool canPlace = true;
+		if (IsBudgetCapEnabled() && editableEntitySource)
+		{
+			array<ref SCR_EntityBudgetValue> budgetCosts = {};
+			if (!GetEntitySourcePreviewBudgetCosts(editableEntitySource, budgetCosts))
+			{
+				canPlace = false;
+			}
+			// Clear budget cost when placing as player
+			if (isPlacingPlayer)
+			{
+				budgetCosts.Clear();
+			}
+
+			if (updatePreview)
+			{
+				UpdatePreviewCost(budgetCosts);
+			}
+
+			canPlace = canPlace && CanPlace(budgetCosts, blockingBudget);
+		}
+		return CanPlaceResultCampaignBuilding(canPlace, showNotification, blockingBudget);
+	}
+
+	protected bool CanPlaceResultCampaignBuilding(bool canPlace, bool showNotification, EEditableEntityBudget blockingBudget)
+	{
+		if (showNotification)
+		{
+			Rpc(CanPlaceOwnerCampaignBuilding, canPlace, blockingBudget);
+		}
+		return canPlace;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
-	override void CanPlaceOwner(bool canPlace)
+	void CanPlaceOwnerCampaignBuilding(bool canPlace, EEditableEntityBudget blockingBudget)
 	{
 		if (!canPlace)
-			GetManager().SendNotification(ENotification.EDITOR_PLACING_NO_ENOUGH_SUPPLIES);
+		{
+			switch (blockingBudget)
+			{
+				case EEditableEntityBudget.CAMPAIGN:
+				{
+					GetManager().SendNotification(ENotification.EDITOR_PLACING_NO_ENOUGH_SUPPLIES);
+					break;
+				};
+				case EEditableEntityBudget.RANK_PRIVATE:
+				{
+					//GetManager().SendNotification();
+					break;
+				};
+				case EEditableEntityBudget.RANK_CORPORAL:
+				{
+					//GetManager().SendNotification();
+					break;
+				};
+			}
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -135,8 +269,24 @@ class SCR_CampaignBuildingBudgetEditorComponent : SCR_BudgetEditorComponent
 			if (maxBudget.GetBudgetType() == type)
 			{
 				int newMaxBudget;
-				if (m_SuppliesComponent)
-					newMaxBudget = m_SuppliesComponent.GetSupplies();
+				switch (type)
+				{
+					case EEditableEntityBudget.CAMPAIGN:
+					{
+						newMaxBudget = m_SuppliesComponent.GetSupplies();
+						break;
+					};
+					case EEditableEntityBudget.RANK_PRIVATE:
+					{
+						newMaxBudget = GetUserRank();
+						break;
+					};
+					case EEditableEntityBudget.RANK_CORPORAL:
+					{
+						newMaxBudget = GetUserRank();
+						break;
+					};
+				}
 
 				maxBudget.SetBudgetValue(newMaxBudget);
 				budget = maxBudget;

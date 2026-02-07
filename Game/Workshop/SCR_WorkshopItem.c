@@ -1342,6 +1342,11 @@ class SCR_WorkshopItem
 		m_aRevisions = revisionsTemp;
 	}
 	
+	//-----------------------------------------------------------------------------------------------
+	array<ref SCR_WorkshopItem> GetLoadedDependencies()
+	{
+		return m_aDependencies;
+	}
 	
 	//-----------------------------------------------------------------------------------------------
 	protected void TryLoadDependencies(bool log = true)

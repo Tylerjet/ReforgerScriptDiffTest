@@ -215,7 +215,7 @@ class SCR_VehicleDust : ScriptComponent
 					
 					if (surface_type.Length() > 0)
 					{
-						m_Effect = VehicleBodyEffectBase.Cast(SCR_ParticleEmitter.CreateAsChildEx(VehicleBodyEffectBase, surface_type, owner, m_vLocalOffset, m_vLocalOrientation));
+						m_Effect = VehicleBodyEffectBase.Cast(SCR_ParticleEmitter.CreateEx(VehicleBodyEffectBase, surface_type, m_vLocalOffset, m_vLocalOrientation, owner));
 						m_Effect.UpdateVehicleDustEffect(speed, m_fDustStartSpeed*3.6, m_fDustTopSpeed);
 					}
 				}

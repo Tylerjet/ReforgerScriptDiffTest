@@ -92,7 +92,7 @@ class SCR_ParticleAPI
 	}
 	
 	//! Creates the given particle class and plays it on the given object with optional parameters: offset, rotation and bone ID.
-	[Obsolete("Use SCR_ParticleEmitter.CreateAsChildEx()")]
+	[Obsolete("Use SCR_ParticleEmitter.CreateEx()")]
 	static SCR_ParticleEmitter PlayOnObject(IEntity object, typename particle_class, vector local_pos = "0 0 0", vector local_ang = "0 0 0", int bone_id = -1, bool rotate_with_object = true )
 	{
 		SCR_ParticleEmitter ptc = SCR_ParticleEmitter.Cast(GetGame().SpawnEntity( particle_class ));

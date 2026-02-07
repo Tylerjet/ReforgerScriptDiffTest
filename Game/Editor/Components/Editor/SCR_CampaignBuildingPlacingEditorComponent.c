@@ -3,12 +3,12 @@ class SCR_CampaignBuildingPlacingEditorComponentClass : SCR_PlacingEditorCompone
 {
 	[Attribute(params: "et", desc: "List of prefabs that are ignored for clipping check.")]
 	protected ref array<ResourceName> m_aClippingCheckIgnoredPrefabs;
-	
+
 	bool ContainPrefab(ResourceName res)
 	{
 		if (m_aClippingCheckIgnoredPrefabs.Contains(res))
 			return true;
-		
+
 		return false;
 	}
 };
@@ -25,10 +25,13 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 	protected SCR_FreeRoamBuildingClientTriggerEntity m_AreaTrigger;
 	protected IEntity m_Provider;
 	protected ECantBuildNotificationType m_eBlockingReason;
+	protected SCR_EditablePreviewEntity m_PreviewEnt;
+	protected ref array<ref Tuple2<SCR_BasePreviewEntity, float>> m_CompositionEntities = {};
 
 	protected float m_fSafezoneRadius = 10;
-	static const float WATER_SURFACE_OFFSET = 0.1; //- 0.4;
-	static const float BOUNDING_BOX_FACTOR = 0.25;
+	//Adding this value to a sea level as the composition preview, even above sea doesn't have it's Y value exactly a zero.
+	protected static const float SEA_LEVEL_OFFSET = 0.01;
+	protected static const float BOUNDING_BOX_FACTOR = 0.3;
 
 	//------------------------------------------------------------------------------------------------
 	//! Let the Conflict know player builds (or dissassambled) a service at the base.
@@ -98,8 +101,10 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 		if (!previewEnt)
 			return;
 
+		m_PreviewEnt = previewEnt;
 		SetInitialCanBeCreatedState(previewEnt);
 		SetSafezoneRadius(previewEnt);
+		GetAllEntitiesToEvaluate(previewEnt);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -258,9 +263,9 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 	{
 		if (!m_bPreviewOutOfArea)
 			CheckPosition();
-		
+
 		SCR_CampaignBuildingPlacingEditorComponentClass componentData = SCR_CampaignBuildingPlacingEditorComponentClass.Cast(GetComponentData(GetOwner()));
-		if (!componentData) 
+		if (!componentData)
 			return false;
 
 		if (m_bCanBeCreated || componentData.ContainPrefab(GetSelectedPrefab()))
@@ -340,34 +345,97 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Set the safe zone radius around the center of the preview in which can't be any entities with simulated physic.
-	void SetSafezoneRadius(notnull SCR_EditablePreviewEntity previewEnt)
+	protected void SetSafezoneRadius(notnull SCR_EditablePreviewEntity previewEnt)
 	{
 		vector vectorMin, vectorMax;
 		previewEnt.GetPreviewBounds(vectorMin, vectorMax);
 		float dist = vector.DistanceXZ(vectorMin, vectorMax);
-
 		m_fSafezoneRadius = dist * BOUNDING_BOX_FACTOR;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// Make an array of all entities to evaluate
+	protected void GetAllEntitiesToEvaluate(notnull SCR_EditablePreviewEntity rootEnt)
+	{
+		m_CompositionEntities.Clear();
+
+		array<SCR_BasePreviewEntity> previewEntities = rootEnt.GetPreviewChildren();
+		if (previewEntities.IsEmpty())
+			return;
+
+		foreach (SCR_BasePreviewEntity ent : previewEntities)
+		{
+			array<SCR_BasePreviewEntity> previewEntities1 = ent.GetPreviewChildren();
+			if (!previewEntities1)
+			{
+
+				// one entity composition. it's root has to go to the list.
+				float protectionRadius = GetEntityProtectionRadius(ent);
+				if (protectionRadius > 0)
+				{
+					if (ent.GetOrigin()[1] > 0)
+						continue;
+
+					m_CompositionEntities.Insert(new Tuple2<SCR_BasePreviewEntity, float>(ent, protectionRadius));
+				}
+
+				return;
+			}
+
+			foreach (SCR_BasePreviewEntity ent1 : previewEntities1)
+			{
+				float protectionRadius = GetEntityProtectionRadius(ent1);
+				if (protectionRadius > 0)
+				{
+					if (ent.GetOrigin()[1] > 0)
+						continue;
+
+					m_CompositionEntities.Insert(new Tuple2<SCR_BasePreviewEntity, float>(ent1, protectionRadius));
+				}
+			}
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Check the preview position. Is suitable to build the composition here?
 	protected bool CheckPosition()
 	{
-		if (!m_PreviewManager)
-			return false;
+		m_bCanBeCreated = true;
 
+		foreach (Tuple2<SCR_BasePreviewEntity, float> compositionEntity : m_CompositionEntities)
+		{
+			if (compositionEntity.param1 && !CheckEntityPosition(compositionEntity.param1.GetOrigin(), compositionEntity.param2))
+			{
+				m_bCanBeCreated = false;
+				break;
+			}
+		}
+
+		return m_bCanBeCreated;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Calculate a sphere radius about the entity which will be tested for obstruction
+	protected float GetEntityProtectionRadius(notnull SCR_BasePreviewEntity ent)
+	{
+		vector vectorMin, vectorMax;
+		ent.GetBounds(vectorMin, vectorMax);
+		return vector.DistanceXZ(vectorMin, vectorMax) * BOUNDING_BOX_FACTOR;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected bool CheckEntityPosition(vector pos, float safeZoneRadius)
+	{
 		BaseWorld world = GetOwner().GetWorld();
 		if (!world)
 			return false;
 
-		IEntity previewEnt = m_PreviewManager.GetPreviewEntity();
-		if (!previewEnt)
+		// First do the sea level check as it is cheep and don't need to continue with trace if the composition is in the sea.
+		if (pos[1] < world.GetOceanBaseHeight() + SEA_LEVEL_OFFSET)
 			return false;
 
-		vector previewOrigin = previewEnt.GetOrigin();
-
 		// Check clipping with another entity. If can't be placed don't continue.
-		if (TraceEntityOnPosition(previewOrigin, world))
+		if (TraceEntityOnPosition(pos, world, safeZoneRadius))
 			return false;
 
 		// Check if the placing isn't blocked because the origin of the preview is in water.
@@ -376,44 +444,28 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 		EWaterSurfaceType outType;
 		vector transformWS[4];
 		vector obbExtents;
-		previewOrigin[1] = previewOrigin[1] + WATER_SURFACE_OFFSET;
 
-		if (ChimeraWorldUtils.TryGetWaterSurface(world, previewOrigin, outWaterSurfacePoint, outType, transformWS, obbExtents))
-		{
-			if (!m_bCanBeCreated)
-				return false;
+		if (ChimeraWorldUtils.TryGetWaterSurface(world, pos, outWaterSurfacePoint, outType, transformWS, obbExtents))
+			return false;
 
-			m_bCanBeCreated = false;
-			return m_bCanBeCreated;
-		}
-
-		if (m_bCanBeCreated)
-			return true;
-
-		m_bCanBeCreated = true;
-		return m_bCanBeCreated;
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Trace at the position of the preview to find any possibly cliping entities.
-	protected bool TraceEntityOnPosition(vector position, notnull BaseWorld world)
+	protected bool TraceEntityOnPosition(vector position, notnull BaseWorld world, float safeZoneRadius)
 	{
 		TraceSphere sphere = new TraceSphere();
-		sphere.Radius = m_fSafezoneRadius;
+		sphere.Radius = safeZoneRadius;
 		sphere.Start = position;
 		sphere.LayerMask = EPhysicsLayerPresets.Projectile;
 		sphere.Flags = TraceFlags.ENTS | TraceFlags.WORLD;
 
 		float done = world.TracePosition(sphere, null);
-
 		if (done > 0)
-		{
-			m_bCanBeCreated = true;
 			return false;
-		}
 
 		m_eBlockingReason = ECantBuildNotificationType.BLOCKED;
-		m_bCanBeCreated = false;
 		return true;
 	}
 

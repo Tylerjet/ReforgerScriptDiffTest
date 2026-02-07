@@ -15,7 +15,7 @@ Script API to Particle Effect Component.
 sealed class Particles: pointer
 {
 	/*!
-	Sets a physical velocity source (PhysicsComponent) for the particle effect.
+	Sets a physical velocity source (entity with a PhysicsComponent) for the particle effect.
 	
 	If the physical velocity source is available, the effect will get parent velocity from that (which is preferred).
 	Otherwise the effect calculates the velocity from current position, previous position and delta time.

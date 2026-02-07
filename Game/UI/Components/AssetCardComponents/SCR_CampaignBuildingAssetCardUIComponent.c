@@ -86,16 +86,12 @@ class SCR_CampaignBuildingAssetCardUIComponent : ScriptedWidgetComponent
 		if (!disableCard)
 			return;
 		
-		SCR_AssetCardFrontUIComponent assetCardUI = SCR_AssetCardFrontUIComponent.Cast(m_wRootWidget.FindHandler(SCR_AssetCardFrontUIComponent));
-		if (!assetCardUI)
-			return;
-		
-		SetUI(assetCardUI, editableUIInfo, disableCard);
+		SetUI(editableUIInfo, disableCard);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	// Set the icon and saturation of the asset card.
-	void SetUI(notnull SCR_AssetCardFrontUIComponent assetCardUI, notnull SCR_EditableEntityUIInfo editableUIInfo, bool disableCard)
+	void SetUI(notnull SCR_EditableEntityUIInfo editableUIInfo, bool disableCard)
 	{
 		Widget budgetW = Widget.Cast(m_wRootWidget.FindAnyWidget("NoBudget"));
 		if (!budgetW)

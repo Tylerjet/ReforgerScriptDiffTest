@@ -48,6 +48,18 @@ class SCR_MilitaryFactionManager : SCR_FactionManager
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	array<ref SCR_RankID> GetAllAvailableRanks()
+	{
+		array<ref SCR_RankID> outArray = {};
+		foreach (SCR_RankID rank: m_aRanks)
+		{
+			outArray.Insert(rank);
+		}
+		
+		return outArray;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	bool IsRankRenegade(ECharacterRank rankID)
 	{
 		SCR_RankID rank = GetRankByID(rankID);

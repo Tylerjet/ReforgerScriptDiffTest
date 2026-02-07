@@ -77,7 +77,7 @@ class SCR_ParticleEmitter : GenericEntity
 		ResourceName name, IEntity parent,
 		vector localPos = "0 0 0", vector localRot = "0 0 0", int boneID = -1, bool play = true)
 	{
-		return CreateAsChildEx(SCR_ParticleEmitter, name, parent, localPos, localRot, boneID, play);
+		return CreateEx(SCR_ParticleEmitter, name, localPos, localRot, parent, boneID, play);
 	}
 		
 	/*!
@@ -100,26 +100,50 @@ class SCR_ParticleEmitter : GenericEntity
 	{
 		return CreateWithTransformEx(SCR_ParticleEmitter, name, transform, parent, boneID, play);
 	}
-	
+		
 	/*!
-	Spawns an SCR_ParticleEmitter entity instance with a given particle effect and transformation matrix as a child of
-	given parent entity.
-	Convenience alternative for CreateWithTransform() / the same as CreateAsChild() but with transformation matrix
-	instad of position and rotation.
+	Spawns an SCR_ParticleEmitter entity instance with a given particle effect 
+	at a given position with its y-axis aligned to a given up-vector.
+	The effect is expected to be axisymetric around its y-axis.
+	The same as Create() but with upVec param instead of rotation.
 	
 	\param name         ResourceName of a particle effect (ptc file)
-	\param parent       Parent entity
-	\param transform    Local entity transformation matrix (transform relative to the parent)
-	\param boneID       Optional ID of a bone to attach the entity to. -1 for no bone.
+	\param pos          Position of the entity to spawn (relative to the given parent, world position when parent is null)
+	\param upVec        Vector to which the effect's y-axis will be aliged (world space)
+	\param parent       Optional parent entity, may be null.
+	                    If not null, the new entity will be spawned in its hiearchy with auto-transform enabled.
+	\param boneID       Optional ID of a bone to attach the entity to. -1 for none. Only used when parent is not null.
 	\param play         Optional - true (default) to play the effect immediately after creation.
 	
 	\return The spawned entity, null if something went wrong.
 	*/
-	static SCR_ParticleEmitter CreateWithTransformAsChild(
-		ResourceName name, IEntity parent, vector transform[4],
-		int boneID = -1, bool play = true)
+	static SCR_ParticleEmitter CreateOriented(
+		ResourceName name, vector pos, vector upVec,
+		IEntity parent = null, int boneID = -1, bool play = true)
 	{
-		return CreateWithTransformAsChildEx(SCR_ParticleEmitter, name, parent, transform, boneID, play);
+		return CreateOrientedEx(SCR_ParticleEmitter, name, pos, upVec, parent, boneID, play);
+	}
+	
+	/*!
+	Spawns an SCR_ParticleEmitter entity instance as a child of given parent entity
+	with its y-axis aligned to a given up-vector.
+	The effect is expected to be axisymetric around its y-axis.
+	Convenience alternative for CreateOriented().
+	
+	\param name         ResourceName of a particle effect (ptc file)
+	\param parent       Parent entity
+	\param upVec        Vector to which the effect's y-axis will be aliged (world space)
+	\param localPos     Optional position of the entity to spawn (relative to the parent)
+	\param boneID       Optional ID of a bone to attach the entity to. -1 for none. Only used when parent is not null.
+	\param play         Optional - true (default) to play the effect immediately after creation.
+	
+	\return The spawned entity, null if something went wrong.
+	*/
+	static SCR_ParticleEmitter CreateAsChildOriented(
+		ResourceName name, IEntity parent, vector upVec,
+		vector localPos = "0 0 0", int boneID = -1, bool play = true)
+	{
+		return CreateOrientedEx(SCR_ParticleEmitter, name, localPos, upVec, parent, boneID, play);
 	}
 	
 	/*!
@@ -153,17 +177,6 @@ class SCR_ParticleEmitter : GenericEntity
 	}
 	
 	/*!
-	The same as CreateAsChild() but this one can spawn entities of different types.
-	\param type Type of the entity to spawn. Must be inherited from SCR_ParticleEmitter.
-	*/
-	static SCR_ParticleEmitter CreateAsChildEx(
-		typename type, ResourceName name, IEntity parent,
-		vector localPos = "0 0 0", vector localRot = "0 0 0", int boneID = -1, bool play = true)
-	{
-		return CreateEx(type, name, localPos, localRot, parent, boneID, play);
-	}
-	
-	/*!
 	The same as CreateWithTransform() but this one can spawn entities of different types.
 	\param type Type of the entity to spawn. Must be inherited from SCR_ParticleEmitter.
 	*/
@@ -193,14 +206,32 @@ class SCR_ParticleEmitter : GenericEntity
 	}
 	
 	/*!
-	The same as CreateWithTransformAsChild() but this one can spawn entities of different types.
+	The same as CreateOriented() but this one can spawn entities of different types.
 	\param type Type of the entity to spawn. Must be inherited from SCR_ParticleEmitter.
 	*/
-	static SCR_ParticleEmitter CreateWithTransformAsChildEx(
-		typename type, ResourceName name, IEntity parent, vector localTransform[4],
-		int boneID = -1, bool play = true)
+	static SCR_ParticleEmitter CreateOrientedEx(
+		typename type, ResourceName name, vector pos, vector upVec,
+		IEntity parent = null, int boneID = -1, bool play = true)
 	{
-		return CreateWithTransformEx(type, name, localTransform, parent, boneID, play);
+		vector transform[4];
+		transform[3] = pos;
+		if (parent == null)
+		{
+			// no parent - we are setting world transform
+			Math3D.MatrixFromUpVec(upVec, transform);
+			return CreateWithTransformEx(type, name, transform, parent, boneID, play);
+		}
+		else
+		{
+			// we have parent - let's create it without orientation first
+			SCR_ParticleEmitter ent = CreateWithTransformEx(type, name, transform, parent, boneID, play);
+			
+			// now get the world transform (updated by the parent in the CreateWithTransformEx) and modify its orientation
+			ent.GetWorldTransform(transform);
+			Math3D.MatrixFromUpVec(upVec, transform);
+			ent.SetWorldTransform(transform);
+			return ent;
+		}
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------------
@@ -379,4 +410,35 @@ class SCR_ParticleEmitter : GenericEntity
 	{
 		SetObject(null, "");
 	}
+	
+	
+	
+	//----------------------------------------------------------------------------------------------------------------
+	// OBSOLETE METHODS
+	//----------------------------------------------------------------------------------------------------------------
+	
+	[Obsolete("Use CreateWithTransform()")]
+	static SCR_ParticleEmitter CreateWithTransformAsChild(
+		ResourceName name, IEntity parent, vector transform[4],
+		int boneID = -1, bool play = true)
+	{
+		return CreateWithTransformAsChildEx(SCR_ParticleEmitter, name, parent, transform, boneID, play);
+	}
+		
+	[Obsolete("Use CreateWithTransformEx()")]
+	static SCR_ParticleEmitter CreateWithTransformAsChildEx(
+		typename type, ResourceName name, IEntity parent, vector localTransform[4],
+		int boneID = -1, bool play = true)
+	{
+		return CreateWithTransformEx(type, name, localTransform, parent, boneID, play);
+	}
+		
+	[Obsolete("Use CreateEx()")]
+	static SCR_ParticleEmitter CreateAsChildEx(
+		typename type, ResourceName name, IEntity parent,
+		vector localPos = "0 0 0", vector localRot = "0 0 0", int boneID = -1, bool play = true)
+	{
+		return CreateEx(type, name, localPos, localRot, parent, boneID, play);
+	}
+	
 };

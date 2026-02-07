@@ -84,7 +84,7 @@ class TextureUtils
 		}
 		else
 		{
-			return (path + "|" + cfg.GetClassName() + "|" + colorSpace + "|" + conversion + " ");
+			return (path + "|" + cfg.GetClassName() + "|" + colorSpace + "|" + conversion + "||");
 		}
 	} 	
 	array<string> TextureFormat(string texture)

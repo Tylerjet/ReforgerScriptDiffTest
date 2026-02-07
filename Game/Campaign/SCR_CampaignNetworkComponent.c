@@ -143,7 +143,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 	{	
 		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
 		
-		if (IsProxy() || !campaign || campaign.IsTutorial())
+		if (IsProxy() || !campaign /*|| campaign.IsTutorial()*/)
 			return;
 		
 		if (addDirectly != 0)

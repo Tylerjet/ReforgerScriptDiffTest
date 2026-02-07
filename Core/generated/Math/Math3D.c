@@ -183,6 +183,7 @@ sealed class Math3D
 	static proto vector MatrixToAngles(vector mat[3]);
 	static proto float MatrixToAnglesAndScale(vector mat[3], out vector angles);
 	static proto void MatrixFromForwardVec(vector forwardVec, out vector mat[3]);
+	static proto void MatrixFromUpVec(vector upVec, out vector mat[3]);
 	/*!
 	\brief Creates rotation matrix from angles (yaw, pitch, roll in degrees)
 	\param ang \p vector which contains angles

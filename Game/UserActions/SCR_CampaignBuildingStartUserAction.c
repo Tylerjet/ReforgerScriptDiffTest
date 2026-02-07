@@ -72,10 +72,7 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 		if (!campaignNetworkComponent)
 			return ECharacterRank.INVALID;
 		
-		if (IsProxy())
-			return SCR_CharacterRankComponent.GetCharacterRank(playerController.GetControlledEntity());
-		else
-			return factionManager.GetRankByXP(campaignNetworkComponent.GetPlayerXP());
+		return SCR_CharacterRankComponent.GetCharacterRank(playerController.GetControlledEntity());
 	}
 	
 	//------------------------------------------------------------------------------------------------

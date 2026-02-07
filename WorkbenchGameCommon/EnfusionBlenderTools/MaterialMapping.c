@@ -2,10 +2,14 @@
 class MaterialPreviewRequest: JsonApiStruct
 {
 	ResourceName name;
+	ref array<string> newRelPaths = new array<string>;
+	ref array<string> matNames = new array<string>; 
 	
 	void MaterialPreviewRequest()
 	{
 		RegV("name");
+		RegV("newRelPaths");
+		RegV("matNames");
 	}
 };
 
@@ -32,7 +36,9 @@ class MaterialPreviewGetMapping : JsonApiStruct
 class MaterialPreviewUtils
 {
 	
-	void ReadXOB(ResourceName xob, MaterialPreviewGetMapping mapping)
+
+	
+	void ReadXOB(ResourceName xob, MaterialPreviewGetMapping mapping, MaterialPreviewRequest req)
 	{
 		string absolutePath;
 		string absPathEmat;
@@ -56,13 +62,19 @@ class MaterialPreviewUtils
 		cfg.Get("MaterialAssigns", sourceMatText);
 		
 		sourceMatText.Split(";", sourceMat, false);
-		
 		for(int i = 0; i < sourceMat.Count(); i++)
 		{
-			//Source name
+			//Material name
 			source = sourceMat[i].Substring(0,sourceMat[i].IndexOf(","));
+			if(req.matNames.Contains(source))
+			{
+				ematPath = req.newRelPaths[req.matNames.Find(source)];
+			}
 			//Extracting rel path
-			ematPath = sourceMat[i].Substring(sourceMat[i].IndexOf("{"), sourceMat[i].IndexOf(".emat") + 5 - sourceMat[i].IndexOf("{"));
+			else
+			{
+				ematPath = sourceMat[i].Substring(sourceMat[i].IndexOf("{"), sourceMat[i].IndexOf(".emat") + 5 - sourceMat[i].IndexOf("{"));
+			}
 			Workbench.GetAbsolutePath(ematPath.GetPath(), absPathEmat);
 			
 			mapping.source_mat += source + ";";
@@ -101,11 +113,10 @@ class MaterialMapping: NetApiHandler
 		MaterialPreviewRequest req = MaterialPreviewRequest.Cast(request);
 		MaterialPreviewGetMapping mapping = new MaterialPreviewGetMapping();
 		MaterialPreviewUtils matutils = new MaterialPreviewUtils();	
-
 		//Input to variable
-		ResourceName xob = req.name;
-		matutils.ReadXOB(xob, mapping);
-		//mapping.SaveToFile("material_mapping.json");
+		ResourceName xob = req.name;		
+		matutils.ReadXOB(xob, mapping, req);
+
 		return mapping;
 	}
 }

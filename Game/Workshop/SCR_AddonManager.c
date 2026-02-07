@@ -96,6 +96,7 @@ class SCR_AddonManager : GenericEntity
 	
 
 	// Other
+	protected ref array<WorkshopItem> m_aAddonsToRegister = {};
 	protected ref map<string, ref SCR_WorkshopItem> m_mItems = new map<string, ref SCR_WorkshopItem>();
 	protected static SCR_AddonManager s_Instance;		// Pointer to instance of this class
 	protected ref SCR_WorkshopAddonManagerPresetStorage m_Storage;
@@ -682,8 +683,7 @@ class SCR_AddonManager : GenericEntity
 			offlineItem.LoadDetails();
 		}
 	}
-
-
+	
 	//-----------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
@@ -702,8 +702,11 @@ class SCR_AddonManager : GenericEntity
 			array<WorkshopItem> items = {};
 			api.GetOfflineItems(items);
 
+			// Prepare items to registration
 			foreach (WorkshopItem item : items)
-				this.Register(item);
+			{
+				m_aAddonsToRegister.Insert(item);
+			}
 		}
 
 		// If addon enabling is managed externally, disable all other addons
@@ -725,14 +728,13 @@ class SCR_AddonManager : GenericEntity
 			foreach (SCR_WorkshopItem item : GetOfflineAddons())
 				item.SetEnabled(false);
 		}
-
+		
 		Internal_CheckAddons();
 		
 		if(GetGame().InPlayMode())
 			m_Storage = new SCR_WorkshopAddonManagerPresetStorage();
 	}
-
-
+	
 	//-----------------------------------------------------------------------------------------------
 	protected void Callback_CheckAddons_OnSuccess()
 	{
@@ -742,11 +744,15 @@ class SCR_AddonManager : GenericEntity
 
 		// Update state of items after the check is complete
 		// This will make the addons instantly update list of dependencies and revisions
-		foreach (string id, SCR_WorkshopItem item : m_mItems)
+		for (int i = 0; i < m_aAddonsToRegister.Count(); i++)
 		{
-			item.Internal_OnAddonsChecked();
+			SCR_WorkshopItem scrItem = Register(m_aAddonsToRegister[i]);
+			scrItem.Internal_OnAddonsChecked();
+			array<ref SCR_WorkshopItem> dependencies = scrItem.GetLoadedDependencies();
 		}
-
+		
+		m_aAddonsToRegister.Clear();
+		
 		FinalizeInitAfterAsyncChecks();
 
 		m_OnAddonsChecked.Invoke();
