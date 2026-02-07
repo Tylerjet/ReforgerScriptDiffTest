@@ -32,6 +32,9 @@ class SCR_MANW_Banner : SCR_ScriptedWidgetComponent
 		TextWidget textTitle = TextWidget.Cast(m_wRoot.FindAnyWidget(NAME_TEXT));
 		textTitle.SetText(popupItem.BannerText());
 		
+		//ImageWidget imgTitle = ImageWidget.Cast(m_wRoot.FindAnyWidget("BG"));
+		//imgTitle.LoadImageTexture(0, popupItem.BackgroundImagePath());
+		
 		m_wBannerButtonMain = m_wRoot.FindAnyWidget(NAME_BUTTON);
 	}
 	
@@ -52,6 +55,12 @@ class SCR_MANW_Banner : SCR_ScriptedWidgetComponent
 	protected void OnCommStatusCheckFinished(SCR_ECommStatus status, float responseTime, float lastSuccessTime, float lastFailTime)
 	{
 		if (!m_wRoot.IsVisible() && SCR_ServicesStatusHelper.IsBackendConnectionAvailable())
+		{
 			Init();
+			
+			//m_Callback = new BackendCallback();
+			//GetGame().GetBackendApi().OnPopupReady(m_Callback);
+			//m_Callback.SetOnSuccess(OnPopupReady);
+		}
 	}
 }
