@@ -5,15 +5,9 @@ class SCR_PlaceableInventoryItemComponentClass : SCR_BaseInventoryItemComponentC
 
 class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 {
-	[Attribute("1")]
-	protected bool m_bSnapToGround;
-
-	[Attribute("1", "Only works with Snap to ground")]
-	protected bool m_bAlignToNormal;
-
 	protected vector m_vMat[4];
 	protected bool m_bUseTransform = false;
-	protected RplId m_ParentRplId;
+	protected RplId m_ParentRplId = RplId.Invalid();
 	protected int m_iParentNodeId;
 	protected IEntity m_Parent;
 	protected IEntity m_RootParent;
@@ -42,12 +36,8 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 
 	//------------------------------------------------------------------------------------------------
 	//!
-	//! \param[in] right
-	//! \param[in] up
-	//! \param[in] forward
-	//! \param[in] position
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	protected void RPC_DoPlaceItem(vector right, vector up, vector forward, vector position)
+	protected void RPC_DoPlaceItem()
 	{
 		IEntity item = GetOwner();
 		InventoryItemComponent itemComponent = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
@@ -57,25 +47,18 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 		itemComponent.EnablePhysics();
 		itemComponent.ActivateOwner(true);
 
-		m_vMat[0] = right;
-		m_vMat[1] = up;
-		m_vMat[2] = forward;
-		m_vMat[3] = position;
-		m_bUseTransform = true;
+		m_ParentRplId = -1;
+		m_iParentNodeId = -1;
 
-		PlayPlacedSound(up, position);
+		PlayPlacedSound(m_vMat[1], m_vMat[3]);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//!
-	//! \param[in] right
-	//! \param[in] up
-	//! \param[in] forward
-	//! \param[in] position
-	void PlaceItem(vector right, vector up, vector forward, vector position)
+	void PlaceItem()
 	{
-		Rpc(RPC_DoPlaceItem, right, up, forward, position);
-		RPC_DoPlaceItem(right, up, forward, position);
+		Rpc(RPC_DoPlaceItem);
+		RPC_DoPlaceItem();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -117,36 +100,41 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Authority method used to change the position at which item will placed when removed from the inventory
+	void SetPlacementPosition(vector right, vector up, vector forward, vector position)
+	{
+		m_vMat[0] = right;
+		m_vMat[1] = up;
+		m_vMat[2] = forward;
+		m_vMat[3] = position;
+		m_bUseTransform = true;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool OverridePlacementTransform(IEntity caller, out vector computedTransform[4])
 	{
 		ActivateOwner(true);
 
-		IEntity owner = GetOwner();
-		owner.Update();
-
 		// Enable physics to receive contact events
-		Physics physics = owner.GetPhysics();
+		Physics physics = GetOwner().GetPhysics();
 		if (physics)
 			EnablePhysics();
 
 		if (m_bUseTransform)
 		{
-			// Entity was purposefully "placed" somewhere so we assume it should stay there (e.g. mines and flags to mark them)
-			auto garbageSystem = SCR_GarbageSystem.GetByEntityWorld(owner);
-			if (garbageSystem)
-				garbageSystem.Withdraw(owner);
-
-			Math3D.MatrixCopy(m_vMat, computedTransform);
 			m_bUseTransform = false;
+			computedTransform = m_vMat;
+
+			// Entity was purposefully "placed" somewhere so we assume it should stay there (e.g. mines and flags to mark them)
+			SCR_GarbageSystem garbageSystem = SCR_GarbageSystem.GetByEntityWorld(GetOwner());
+			if (garbageSystem)
+				garbageSystem.Withdraw(GetOwner());
+
 			return true;
 		}
 
-		if (m_bSnapToGround)
-		{
-			SCR_EntityHelper.SnapToGround(owner, {caller}, onlyStatic: true);
-
-			return true;
-		}
+		m_ParentRplId = -1;
+		m_iParentNodeId = -1;
 
 		return false;
 	}
@@ -205,25 +193,20 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Same as PlaceItem but with params that allow attaching the object to new parent entity
-	void PlaceItemWithParentChange(vector right, vector up, vector forward, vector position, RplId newParentRplId, int nodeId = -1)
+	void PlaceItemWithParentChange(RplId newParentRplId, int nodeId = -1)
 	{
-		Rpc(RPC_DoPlaceItemWithParentChange, right, up, forward, position, newParentRplId, nodeId);
-		RPC_DoPlaceItemWithParentChange(right, up, forward, position, newParentRplId, nodeId);
+		Rpc(RPC_DoPlaceItemWithParentChange, newParentRplId, nodeId);
+		RPC_DoPlaceItemWithParentChange(newParentRplId, nodeId);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//!
-	//! \param[in] right
-	//! \param[in] up
-	//! \param[in] forward
-	//! \param[in] position
 	//! \param[in] newParentRplId
 	//! \param[in] nodeId
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	protected void RPC_DoPlaceItemWithParentChange(vector right, vector up, vector forward, vector position, RplId newParentRplId, int nodeId)
+	protected void RPC_DoPlaceItemWithParentChange(RplId newParentRplId, int nodeId)
 	{
-		IEntity item = GetOwner();
-		InventoryItemComponent itemComponent = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
+		InventoryItemComponent itemComponent = InventoryItemComponent.Cast(GetOwner().FindComponent(InventoryItemComponent));
 		if (!itemComponent)
 			return;
 
@@ -245,13 +228,22 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 			m_iParentNodeId = -1;
 		}
 
-		m_vMat[0] = right;
-		m_vMat[1] = up;
-		m_vMat[2] = forward;
-		m_vMat[3] = position;
-		m_bUseTransform = true;
+		PlayPlacedSound(m_vMat[1], m_vMat[3]);
+	}
 
-		PlayPlacedSound(up, position);
+	//------------------------------------------------------------------------------------------------
+	//! Method for updating parent when proxy streams in placeable item
+	//! \param[in] parentId replication id of a entity to which this item should be attached
+	//! \param[in] nodeId id of a node to which this item will be attached to
+	void SetNewParent(RplId parentId = RplId.Invalid(), int nodeId = -1)
+	{
+		if (m_ParentRplId == parentId)
+			return;
+
+		m_ParentRplId = parentId;
+		m_iParentNodeId = nodeId;
+
+		AttachToNewParent();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -276,6 +268,10 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 		if (!m_ParentRplId.IsValid())
 			return;
 
+		IEntity item = GetOwner();
+		if (!item || item.IsDeleted())
+			return;
+
 		RplComponent newParentRplComp = RplComponent.Cast(Replication.FindItem(m_ParentRplId));
 		IEntity newParentEntity;
 		if (newParentRplComp)
@@ -284,8 +280,23 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 		if (!m_Parent)
 			m_Parent = IEntity.Cast(Replication.FindItem(m_ParentRplId));
 
-		if (m_Parent)
-			m_Parent.AddChild(GetOwner(), m_iParentNodeId);
+		if (!m_Parent)
+			return;
+
+		item.GetWorldTransform(m_vMat);
+
+		RplComponent rplComp = RplComponent.Cast(item.FindComponent(RplComponent));
+		if (rplComp && newParentRplComp && rplComp.IsOwner())
+		{
+			RplNode explosiveCharge = rplComp.GetNode();
+			RplNode newParent = newParentRplComp.GetNode();
+
+			explosiveCharge.SetParent(newParent);
+		}
+
+		m_Parent.AddChild(item, m_iParentNodeId);
+		item.SetWorldTransform(m_vMat);
+		item.Update();
 
 		HitZoneContainerComponent parentDamageManager = HitZoneContainerComponent.Cast(m_Parent.FindComponent(HitZoneContainerComponent));
 		if (parentDamageManager)
@@ -295,7 +306,7 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 				hitZone.GetOnDamageStateChanged().Insert(OnParentDamageStateChanged);
 		}
 
-		InventoryItemComponent iic = InventoryItemComponent.Cast(GetOwner().FindComponent(InventoryItemComponent));
+		InventoryItemComponent iic = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
 		if (iic)
 			iic.m_OnParentSlotChangedInvoker.Insert(StartWatchingParentSlots);
 
@@ -328,16 +339,20 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 		if (!m_Parent)
 			return;
 
+		IEntity owner = GetOwner();
+		if (!owner || owner.IsDeleted())
+			return;
+
 		m_ParentRplId = -1;
 		m_iParentNodeId = -1;
-		m_Parent.RemoveChild(GetOwner(), true);
+		m_Parent.RemoveChild(owner, true);
 		array<IEntity> excludeArray = {m_Parent};
 		if (m_RootParent)
 			excludeArray.Insert(m_RootParent);
 
-		SCR_EntityHelper.SnapToGround(GetOwner(), excludeArray, onlyStatic: true);
-		GetOwner().SetAngles({0, GetOwner().GetAngles()[1], 0});
-		GetOwner().Update();
+		SCR_EntityHelper.SnapToGround(owner, excludeArray, onlyStatic: true);
+		owner.SetAngles({0, owner.GetAngles()[1], 0});
+		owner.Update();
 
 		HitZoneContainerComponent parentDamageManager = HitZoneContainerComponent.Cast(m_Parent.FindComponent(HitZoneContainerComponent));
 		if (parentDamageManager)
@@ -347,7 +362,7 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 				hitZone.GetOnDamageStateChanged().Remove(OnParentDamageStateChanged);
 		}
 
-		InventoryItemComponent iic = InventoryItemComponent.Cast(GetOwner().FindComponent(InventoryItemComponent));
+		InventoryItemComponent iic = InventoryItemComponent.Cast(owner.FindComponent(InventoryItemComponent));
 		if (iic)
 			iic.m_OnParentSlotChangedInvoker.Remove(StopWatchingParentSlots);
 
@@ -382,6 +397,9 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 	//! Callback method when item is being transfered (f.e. picked up) after it was attached to some object
 	protected void StopWatchingParentSlots()
 	{
+		if (!GetOwner())
+			return;
+
 		InventoryItemComponent iic = InventoryItemComponent.Cast(GetOwner().FindComponent(InventoryItemComponent));
 		if (iic)
 			iic.m_OnParentSlotChangedInvoker.Remove(StopWatchingParentSlots);
@@ -411,5 +429,11 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 			iic.m_OnParentSlotChangedInvoker.Remove(DetachFromParent);
 
 		m_RootParent = null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnDelete(IEntity owner)
+	{
+		StopWatchingParentSlots();
 	}
 }

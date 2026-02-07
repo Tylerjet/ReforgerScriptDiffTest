@@ -68,7 +68,7 @@ class SCR_GadgetComponent : ScriptGameComponent
 	bool m_bFocused;
 	protected bool m_bActivated = false;					// current state if the gadget can be toggled on	
 	protected EGadgetMode m_iMode = EGadgetMode.ON_GROUND;	// curent gadget mode
-	protected IEntity m_CharacterOwner;						// current entity in posession of this gadget
+	protected ChimeraCharacter m_CharacterOwner;			// current entity in posession of this gadget
 				
 	//------------------------------------------------------------------------------------------------
 	//! \return
@@ -139,7 +139,7 @@ class SCR_GadgetComponent : ScriptGameComponent
 		if (mode == EGadgetMode.ON_GROUND)
 			m_CharacterOwner = null;
 		else
-			m_CharacterOwner = charOwner;
+			m_CharacterOwner = ChimeraCharacter.Cast(charOwner);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -234,8 +234,7 @@ class SCR_GadgetComponent : ScriptGameComponent
 			OnToggleActive(state);	// activate client side to avoid server delay
 
 		// Sync
-		if (m_CharacterOwner)
-			SCR_GadgetManagerComponent.GetGadgetManager(m_CharacterOwner).AskToggleGadget(this, state);
+		SCR_GadgetManagerComponent.GetGadgetManager(m_CharacterOwner).AskToggleGadget(this, state);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -260,7 +259,7 @@ class SCR_GadgetComponent : ScriptGameComponent
 	//------------------------------------------------------------------------------------------------
 	//! Get IEntity in possession of this Gadget
 	//! \return returns entity m_CharacterOwner
-	IEntity GetCharacterOwner()
+	ChimeraCharacter GetCharacterOwner()
 	{
 		return m_CharacterOwner;
 	}

@@ -877,10 +877,13 @@ class SCR_CampaignMilitaryBaseManager
 	//------------------------------------------------------------------------------------------------
 	void OnEnemyDetectedByDefenders(SCR_AIGroup group, SCR_AITargetInfo target, AIAgent reporter)
 	{
+		if (!m_aBases || !target || !target.m_Faction || !group)
+			return;
+
 		// Identify the base under attack, notify about it
 		foreach (SCR_CampaignMilitaryBaseComponent base : m_aBases)
 		{
-			if (!base.IsInitialized())
+			if (!base || !base.IsInitialized())
 				continue;
 
 			if (base.ContainsGroup(group))

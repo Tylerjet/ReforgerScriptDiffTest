@@ -8,6 +8,20 @@ class SCR_ScenarioFrameworkAIActionOnThreatStateChanged : SCR_ScenarioFrameworkA
 	ref array<ref SCR_ScenarioFrameworkActionBase> m_aActionsOnThreatStateChanged;
 	
 	ref array<ref SCR_AIThreatSystem> m_aAIThreatSystems = {};
+	IEntity m_AISlotEntity;
+	
+	//------------------------------------------------------------------------------------------------
+	override void Init(SCR_AIGroup targetAIGroup, IEntity entity)
+	{
+		if (entity)
+		{
+			SCR_ScenarioFrameworkLayerBase layer = SCR_ScenarioFrameworkLayerBase.Cast(entity.FindComponent(SCR_ScenarioFrameworkLayerBase));
+			if (layer && (SCR_ScenarioFrameworkSlotAI.Cast(layer) || SCR_ScenarioFrameworkSlotTaskAI.Cast(layer)))
+				m_AISlotEntity = entity;
+		}
+		
+		super.Init(targetAIGroup, entity);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate()
@@ -51,7 +65,7 @@ class SCR_ScenarioFrameworkAIActionOnThreatStateChanged : SCR_ScenarioFrameworkA
 		
 		foreach (SCR_ScenarioFrameworkActionBase action : m_aActionsOnThreatStateChanged)
 		{
-			action.Init(null);
+			action.Init(m_AISlotEntity);
 		}
 	}
 }

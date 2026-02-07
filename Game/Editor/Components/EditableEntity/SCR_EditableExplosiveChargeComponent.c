@@ -4,8 +4,6 @@ class SCR_EditableExplosiveChargeComponentClass : SCR_EditableSystemComponentCla
 }
 
 //! @ingroup Editable_Entities
-
-//! Editable Mine
 class SCR_EditableExplosiveChargeComponent : SCR_EditableSystemComponent
 {
 	[Attribute(desc: "If charge should be armed by default when spawned by the GM.")]
@@ -19,7 +17,7 @@ class SCR_EditableExplosiveChargeComponent : SCR_EditableSystemComponent
 	{
 		super.OnPostInit(owner);
 
-		//~ Activate Mine on server one frame later so the SCR_PressureTriggerComponent can initialize
+		//Activate charge on server one frame later so the TriggerComponent can initialize
 		if (IsServer())
 			GetGame().GetCallqueue().CallLater(ActivateCharge);
 	}

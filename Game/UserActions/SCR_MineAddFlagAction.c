@@ -43,7 +43,8 @@ class SCR_MineAddFlagAction : ScriptedUserAction
 		{
 			vector mat[4];
 			owner.GetTransform(mat);
-			itemComponent.PlaceItem(mat[0], mat[1], mat[2], mat[3] + m_vFlagOffset);
+			mat[3] = mat[3] + m_vFlagOffset;
+			itemComponent.SetPlacementPosition(mat[0], mat[1], mat[2], mat[3]);
 		}
 		
 		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();

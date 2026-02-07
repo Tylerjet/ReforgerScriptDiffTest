@@ -47,9 +47,9 @@ class SCR_AIGetInActivity : SCR_AIActivityBase
 	//------------------------------------------------------------------------------------------------
 	override void OnActionCompleted()
 	{
+		super.OnActionCompleted();
 		if (m_RelatedWaypoint)
 			m_OwnerGroup.CompleteWaypoint(m_RelatedWaypoint);
-		super.OnActionCompleted();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -58,6 +58,8 @@ class SCR_AIGetInActivity : SCR_AIActivityBase
 		super.OnActionFailed();
 		SendCancelMessagesToAllAgents();
 		m_OwnerGroup.RemoveUsableVehicle(m_Vehicle.m_Value);
+		if (m_RelatedWaypoint)
+			m_OwnerGroup.CompleteWaypoint(m_RelatedWaypoint);
 	}
 	
 	//------------------------------------------------------------------------------------------------

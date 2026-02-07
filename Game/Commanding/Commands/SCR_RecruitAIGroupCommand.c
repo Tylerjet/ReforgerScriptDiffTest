@@ -26,8 +26,6 @@ class SCR_RecruitAIGroupCommand : SCR_BaseGroupCommand
 		if (GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(character) == 0)
 			groupController.RequestAddAIAgent(character, playerID);
 		
-		//Hotfix until we get api to know when the speaker is done saying the command voiceline
-		GetGame().GetCallqueue().CallLater(PlayAIResponse, 1200, false, target);
 		return true;
 	}
 	

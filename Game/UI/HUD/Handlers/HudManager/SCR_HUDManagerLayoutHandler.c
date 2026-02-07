@@ -322,6 +322,9 @@ class SCR_HUDManagerLayoutHandler : SCR_HUDManagerHandler
 		
 		// Wait until the main layout is initialized to prevent changing to editor layouts before the HudLayout are fully initialized
 		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
+		if (!editorManager)
+			return;
+		
 		editorManager.GetOnOpened().Insert(OnEditorOpen);
 		editorManager.GetOnClosed().Insert(OnEditorClose);
 		editorManager.GetOnModeChange().Insert(OnEditorChange);

@@ -1,27 +1,19 @@
-class SCR_AIOccupyDriversInUsedVehicles : AITaskScripted
+class SCR_AILeaveStaticVehicles : AITaskScripted
 {
-	[Attribute(defvalue: "0", uiwidget: UIWidgets.CheckBox, desc: "Test vehicles that are not registered inside the group?")]
-	protected bool m_bTestNewVehicles;
-	
-	[Attribute(defvalue: "-1", uiwidget: UIWidgets.EditBox, desc: "Limit search for replacement by this distance [m]?")]
-	protected float m_fMaxDistanceOfSearch_m;
-	
 	[Attribute(defvalue: "100", uiwidget: UIWidgets.EditBox, desc: "Update time of checks [ms]")]
 	protected float m_fUpdateInterval_ms;
 	
-	static const string PORT_CAN_USE_VEHICLE = "CanUseVehicle";
-	static const string NODE_NAME = "SCR_AIOccupyDriversInUsedVehicles";
+	static const string NODE_NAME = "SCR_AILeaveStaticVehicles";
 	
 	protected float m_fNextUpdate_ms;
 	protected ref array<AIAgent> m_aAgents = {};
 	protected ref array<AIAgent> m_aInformedAgents = {};
 	protected ref array<ref SCR_AIGroupVehicle> m_aUsedVehicles = {};
-	protected ref array<ref SCR_AIGroupVehicle> m_aVehiclesToOccupy = {};
+	protected ref array<ref SCR_AIGroupVehicle> m_aVehiclesToLeave = {};
 	protected SCR_AIGroup m_Group;
 	protected SCR_AIGroupUtilityComponent m_Utility;
-	protected int m_iStateOfExecution;
-	protected int m_iNumberOfUnpilotableVehicles;
-	
+	protected int m_iStateOfExecution;	
+		
 	protected static int STATE_TESTING_STATE 	= 0; // testing initial setup
 	protected static int STATE_SENDING_SIGNALS 	= 1; // sending signals to agents
 	protected static int STATE_WAITING 			= 2; // waiting for agents to obey
@@ -42,11 +34,9 @@ class SCR_AIOccupyDriversInUsedVehicles : AITaskScripted
 		m_aAgents.Clear();
 		m_aInformedAgents.Clear();
 		m_aUsedVehicles.Clear();
-		m_aVehiclesToOccupy.Clear();
 		m_Utility.m_OnAgentLifeStateChanged.Remove(OnAgentLifeStateChanged);
 		m_Utility.m_OnAgentLifeStateChanged.Insert(OnAgentLifeStateChanged);
-		m_iStateOfExecution = STATE_TESTING_STATE;
-		m_iNumberOfUnpilotableVehicles = 0;
+		m_iStateOfExecution = STATE_TESTING_STATE;	
 	}
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------------
@@ -101,24 +91,9 @@ class SCR_AIOccupyDriversInUsedVehicles : AITaskScripted
 				if (inTransition)
 					return ENodeResult.RUNNING;
 			}
-			// check all vehicles are registered as usable
-			if (m_bTestNewVehicles)
-			{
-				foreach(AIAgent ag: m_aAgents)
-				{
-					ChimeraCharacter char = ChimeraCharacter.Cast(ag.GetControlledEntity());
-					if (!char || !char.IsInVehicle())
-						continue;
-					CompartmentAccessComponent acc = char.GetCompartmentAccessComponent();
-					if (!acc)
-						continue;
-					IEntity vehicleEntity = acc.GetVehicleIn(char);
-					SCR_AIVehicleUsageComponent vehicleUsageComp = SCR_AIVehicleUsageComponent.FindOnNearestParent(vehicleEntity, vehicleEntity); 
-					m_Utility.AddUsableVehicle(vehicleUsageComp);
-				}
-			}
-		}
-		m_aVehiclesToOccupy.Clear();
+		}	
+		
+		m_aVehiclesToLeave.Clear();
 		m_Utility.m_VehicleMgr.GetAllVehicles(m_aUsedVehicles);
 		
 		foreach (SCR_AIGroupVehicle groupVehicle : m_aUsedVehicles)
@@ -127,19 +102,14 @@ class SCR_AIOccupyDriversInUsedVehicles : AITaskScripted
 				continue;
 			// we skip group helicopters and static turrets
 			SCR_AIVehicleUsageComponent vehicleUsage = groupVehicle.GetVehicleUsageComponent();
-			if (groupVehicle.IsStatic() || (vehicleUsage && !vehicleUsage.CanBePiloted()))
+			if (groupVehicle.IsStatic() || !groupVehicle.CanMove() || (vehicleUsage && !vehicleUsage.CanBePiloted()))
 			{
-				m_iNumberOfUnpilotableVehicles++;
+				m_aVehiclesToLeave.Insert(groupVehicle);
 				continue;
-			}
-			// add vehicles that dont have operational driver
-			if (!groupVehicle.DriverIsConscious())
-			{
-				m_aVehiclesToOccupy.Insert(groupVehicle);
-			}
+			}			
 		}
-		bool willTryToReoccupy = m_aVehiclesToOccupy.Count() > 0;
-		if (willTryToReoccupy)
+		bool willTryToLeave = m_aVehiclesToLeave.Count() > 0;
+		if (willTryToLeave)
 			m_iStateOfExecution = STATE_SENDING_SIGNALS;
 		else
 			m_iStateOfExecution = STATE_FINISHED;
@@ -149,39 +119,24 @@ class SCR_AIOccupyDriversInUsedVehicles : AITaskScripted
 	//----------------------------------------------------------------------------------------------------------------------------------------------
 	protected ENodeResult SendingMessages_State()
 	{
-		if (m_aVehiclesToOccupy.Count() == 0)
+		if (m_aVehiclesToLeave.Count() == 0)
 		{ 
 			m_iStateOfExecution = STATE_FINISHED;
 			return ENodeResult.RUNNING;
 		};
 		m_aInformedAgents.Clear();
-		foreach (SCR_AIGroupVehicle groupVehicle : m_aVehiclesToOccupy)
+		AICommunicationComponent myComms = m_Utility.m_Owner.GetCommunicationComponent();	
+		foreach (SCR_AIGroupVehicle groupVehicle : m_aVehiclesToLeave)
 		{
-			AIAgent agentToUseAsDriver;
 			int vehicleHandleId = groupVehicle.GetSubgroupHandleId();
 			array<AIAgent> agentsOfHandler = {};
-			// try to occupy with driver in the same subgroup
 			m_Utility.m_GroupMovementComponent.GetAgentsInHandler(agentsOfHandler, vehicleHandleId);
-			agentToUseAsDriver = GetAgentThatIsConscious(agentsOfHandler, m_aInformedAgents, excludeDistance: m_fMaxDistanceOfSearch_m, locationOfAccident: groupVehicle.GetEntity().GetOrigin());
-			// try to occupy with driver subgroup on foot
-			if (!agentToUseAsDriver) 
+			
+			foreach (int index, AIAgent agent : agentsOfHandler)
 			{
-				m_Utility.m_GroupMovementComponent.GetAgentsInHandler(agentsOfHandler, AIGroupMovementComponent.DEFAULT_HANDLER_ID);				
-				agentToUseAsDriver = GetAgentThatIsConscious(agentsOfHandler, m_aInformedAgents, excludeDistance: m_fMaxDistanceOfSearch_m, locationOfAccident: groupVehicle.GetEntity().GetOrigin());
-			}
-			// try to occupy with any alive agent
-			if (!agentToUseAsDriver)
-			{
-				agentToUseAsDriver = GetAgentThatIsConscious(m_aAgents, m_aInformedAgents, true, excludeDistance: m_fMaxDistanceOfSearch_m, locationOfAccident: groupVehicle.GetEntity().GetOrigin());
-			}
-			if (agentToUseAsDriver)
-			{
-				AICommunicationComponent myComms = m_Utility.m_Owner.GetCommunicationComponent();
-				SCR_AIMessageHandling.SendGetInMessage(agentToUseAsDriver, groupVehicle.GetEntity(), EAICompartmentType.Pilot, null, myComms, NODE_NAME);
-				m_aInformedAgents.Insert(agentToUseAsDriver);
-			}
-			else 
-				continue;
+				SCR_AIMessageHandling.SendDismountMessage(agent, groupVehicle.GetEntity(), index, null, myComms, NODE_NAME);					
+				m_aInformedAgents.Insert(agent);	
+			}			
 		}
 		if (m_aInformedAgents.IsEmpty())
 			m_iStateOfExecution = STATE_FINISHED;
@@ -193,11 +148,16 @@ class SCR_AIOccupyDriversInUsedVehicles : AITaskScripted
 	//----------------------------------------------------------------------------------------------------------------------------------------------	
 	protected ENodeResult Waiting_State()
 	{
-		foreach (AIAgent agent : 	m_aInformedAgents)
+		foreach (AIAgent agent : m_aInformedAgents)
 		{
-			SCR_AIInfoComponent info = SCR_AIInfoComponent.Cast(agent.FindComponent(SCR_AIInfoComponent));
-			if (info &&  !info.HasUnitState(EUnitState.PILOT))
-				return ENodeResult.RUNNING;
+			SCR_ChimeraAIAgent chimAg = SCR_ChimeraAIAgent.Cast(agent);
+			if (!chimAg)
+				continue;
+			SCR_AIInfoComponent info = chimAg.m_InfoComponent;
+			if (!info)
+				continue;
+			if (info.HasUnitState(EUnitState.IN_VEHICLE))
+				return ENodeResult.RUNNING;					
 		}
 		m_iStateOfExecution = STATE_FINISHED;
 		return ENodeResult.RUNNING;
@@ -206,14 +166,7 @@ class SCR_AIOccupyDriversInUsedVehicles : AITaskScripted
 	//----------------------------------------------------------------------------------------------------------------------------------------------	
 	protected ENodeResult Finished_State()
 	{
-		bool haveUsableVehicles = m_aUsedVehicles.Count() - m_iNumberOfUnpilotableVehicles > 0;
-		int vehiclesToOccupy = m_aVehiclesToOccupy.Count();
-		bool canOccupyVehicles = vehiclesToOccupy == 0 || m_aInformedAgents.Count() == vehiclesToOccupy;
-		bool canUseVehicles = haveUsableVehicles && canOccupyVehicles;
-		SetVariableOut(PORT_CAN_USE_VEHICLE, canUseVehicles);
-		if (canUseVehicles)
-			return ENodeResult.SUCCESS;
-		return ENodeResult.FAIL;
+		return ENodeResult.SUCCESS;		
 	}
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------------	
@@ -256,38 +209,12 @@ class SCR_AIOccupyDriversInUsedVehicles : AITaskScripted
 	//----------------------------------------------------------------------------------------------------------------------------------------------
 	void OnAgentLifeStateChanged(AIAgent incapacitatedAgent, SCR_AIInfoComponent infoIncap, IEntity vehicle, ECharacterLifeState lifeState)
 	{
-		if (vehicle && infoIncap.HasUnitState(EUnitState.PILOT) && m_iStateOfExecution != STATE_FINISHED)
+		if (vehicle && infoIncap.HasUnitState(EUnitState.IN_VEHICLE) && m_iStateOfExecution != STATE_FINISHED)
 			Testing_State(false);
 		else if (m_aInformedAgents.Find(incapacitatedAgent) > -1)
 			m_iStateOfExecution = STATE_SENDING_SIGNALS;
 	}
-	
-	//----------------------------------------------------------------------------------------------------------------------------------------------
-	protected AIAgent GetAgentThatIsConscious(notnull array<AIAgent> agents, array<AIAgent> restrictedAgents, bool excludeDrivers = false, float excludeDistance = -1, vector locationOfAccident = vector.Zero)
-	{
-		foreach (AIAgent agent : agents)
-		{
-			if (excludeDrivers)
-			{
-				SCR_AIInfoComponent info = SCR_AIInfoComponent.Cast(agent.FindComponent(SCR_AIInfoComponent));
-				if (!info || info.HasUnitState(EUnitState.PILOT))
-					continue;
-			}
-			IEntity agentEntity = agent.GetControlledEntity();
-			if (SCR_AIDamageHandling.IsConscious(agentEntity) && restrictedAgents.Find(agent) == -1)
-			{
-				if (excludeDistance > 0)
-				{
-					vector agentPos = agent.GetControlledEntity().GetOrigin();
-					if (vector.Distance(agentPos,locationOfAccident) > excludeDistance)
-						continue;
-				}
-				return agent;
-			}
-		}
-		return null;
-	}
-	
+		
 	//----------------------------------------------------------------------------------------------------------------------------------------------
 	override bool VisibleInPalette()
 	{
@@ -295,15 +222,9 @@ class SCR_AIOccupyDriversInUsedVehicles : AITaskScripted
 	};
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------
-	protected static ref TStringArray s_aVarsOut = { PORT_CAN_USE_VEHICLE };
-	
-	//----------------------------------------------------------------------------------------------------------------------------------------
-	override TStringArray GetVariablesOut() { return s_aVarsOut; }
-	
-	//----------------------------------------------------------------------------------------------------------------------------------------
 	override string GetOnHoverDescription()
 	{
-		return "OccupyDriversInUsedVehicles: goes over the array of known vehicles and tries to occupy the drivers with alive group members. Is running while seats are not occupied.\nReturns bool if we can occupy (at least one) driver.";
+		return "LeaveStaticVehicles: goes over the array of known vehicles and group members leave all static or broken vehicles. Is running while change is ongoing.";
 	};
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------

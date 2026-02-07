@@ -13,9 +13,6 @@ class SCR_PatrolGroupCommand : SCR_WaypointGroupCommand
 		if (!target || !targetPosition)
 			return false;
 		
-		//Hotfix until we get api to know when the speaker is done saying the command voiceline
-		GetGame().GetCallqueue().CallLater(PlayAIResponse, 2000, false, target);
-		
 		return Patrol(target, targetPosition, playerID);
 	}
 	

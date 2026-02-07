@@ -27,12 +27,12 @@ class SCR_AIFindAvailableVehicle: AITaskScripted
 	override void OnInit(AIAgent owner)
 	{
 		m_world = owner.GetWorld();
-		m_groupUtilityCompoment = SCR_AIGroupUtilityComponent.Cast(owner.FindComponent(SCR_AIGroupUtilityComponent));
 		m_group = SCR_AIGroup.Cast(owner);
 		if (!m_group)
 		{
 			SCR_AgentMustBeAIGroup(this, owner);
-		};
+		}
+		m_groupUtilityCompoment = m_group.GetGroupUtilityComponent();
 		m_VehicleToTestForCompartments = null;
 		m_Compartment = null;
 	}
@@ -91,20 +91,22 @@ class SCR_AIFindAvailableVehicle: AITaskScripted
 		if (m_CompartmentSlots.IsEmpty())
 			return true;
 		
-		VehicleHelicopterSimulation heliSim = VehicleHelicopterSimulation.Cast(ent.FindComponent(VehicleHelicopterSimulation));
+		SCR_AIVehicleUsageComponent vehicleUsage = SCR_AIVehicleUsageComponent.Cast(ent.FindComponent(SCR_AIVehicleUsageComponent));
+		if (!vehicleUsage)
+			return true;
+		bool canBePiloted = vehicleUsage.CanBePiloted();
 		BaseCompartmentSlot pilotCompartment, turretCompartment, cargoCompartment;
 		
 		foreach (BaseCompartmentSlot slot : m_CompartmentSlots)
 		{
 			if (slot.IsOccupied() || !slot.IsCompartmentAccessible() || slot.IsReserved())
 				continue;
-			if (m_WaypointParameter.m_bIsDriverAllowed && PilotCompartmentSlot.Cast(slot) && !heliSim) //exclude helicopter pilot slots for now
+			if (m_WaypointParameter.m_bIsDriverAllowed && PilotCompartmentSlot.Cast(slot) && canBePiloted) //exclude helicopter pilot slots for now
 				pilotCompartment = slot;
 			else if (m_WaypointParameter.m_bIsGunnerAllowed && TurretCompartmentSlot.Cast(slot))
 				turretCompartment = slot;
 			else if (m_WaypointParameter.m_bIsCargoAllowed && CargoCompartmentSlot.Cast(slot))
 				cargoCompartment = slot;
-			break;
 		}
 		// going through priorities: pilot > turret > cargo
 		if (pilotCompartment)

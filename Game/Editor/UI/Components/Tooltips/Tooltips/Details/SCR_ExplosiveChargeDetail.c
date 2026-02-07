@@ -23,9 +23,17 @@ class SCR_ExplosiveChargeDetail : SCR_EntityTooltipDetail
 		if (!m_ExplosiveChargeComp)
 			return;
 
+		ChimeraWorld world = ChimeraWorld.CastFrom(GetGame().GetWorld());
+		if (!world)
+			return;
+
+		TimeAndWeatherManagerEntity timeAndWeatherManager = world.GetTimeAndWeatherManager();
+		if (!timeAndWeatherManager)
+			return;
+
 		int remainingTime;
 		if (m_ExplosiveChargeComp.GetUsedFuzeType() == SCR_EFuzeType.TIMED)
-			remainingTime = (m_ExplosiveChargeComp.GetTimeOfDetonation() - GetGame().GetWorld().GetWorldTime()) * 0.001;
+			remainingTime = Math.Max((m_ExplosiveChargeComp.GetTimeOfDetonation() - timeAndWeatherManager.GetEngineTime()), 0);
 
 		if (!m_wText)
 			return;

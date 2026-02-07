@@ -236,6 +236,7 @@ class SCR_AIGoalReaction_GetInVehicle : SCR_AIGoalReaction
 			return;
 		// from msg.m_eRoleInVehicle and msg.m_Vehicle we deduce empty compartment to get in, if none found, we dont add behavior get in
 		BaseCompartmentSlot compartmentSlot;
+		EAICompartmentType wantedCompartmentType = msg.m_eRoleInVehicle;
 		BaseCompartmentManagerComponent compMan = BaseCompartmentManagerComponent.Cast(msg.m_Vehicle.FindComponent(BaseCompartmentManagerComponent));
 		if (!compMan)
 			return;
@@ -243,7 +244,10 @@ class SCR_AIGoalReaction_GetInVehicle : SCR_AIGoalReaction
 		compMan.GetCompartments(compartments);
 		foreach (BaseCompartmentSlot comp: compartments)
 		{
-			if (comp.IsReserved() || SCR_AICompartmentHandling.CompartmentClassToType(comp.Type()) != msg.m_eRoleInVehicle)
+			if (msg.m_eRoleInVehicle == EAICompartmentType.None)
+				wantedCompartmentType = SCR_AICompartmentHandling.CompartmentClassToType(comp.Type());
+			
+			if (comp.IsReserved() || (SCR_AICompartmentHandling.CompartmentClassToType(comp.Type()) != wantedCompartmentType))
 				continue;
 			
 			IEntity occupant = comp.GetOccupant();
@@ -263,7 +267,7 @@ class SCR_AIGoalReaction_GetInVehicle : SCR_AIGoalReaction
 #endif
 			return;
 		}
-		auto behavior = new SCR_AIGetInVehicle(utility, msg.m_RelatedGroupActivity, msg.m_Vehicle, compartmentSlot, msg.m_eRoleInVehicle, SCR_AIActionBase.PRIORITY_BEHAVIOR_GET_IN_VEHICLE, msg.m_fPriorityLevel);
+		auto behavior = new SCR_AIGetInVehicle(utility, msg.m_RelatedGroupActivity, msg.m_Vehicle, compartmentSlot, wantedCompartmentType, SCR_AIActionBase.PRIORITY_BEHAVIOR_GET_IN_VEHICLE, msg.m_fPriorityLevel);
 		if (m_OverrideBehaviorTree != string.Empty)
 			behavior.m_sBehaviorTree = m_OverrideBehaviorTree;
 

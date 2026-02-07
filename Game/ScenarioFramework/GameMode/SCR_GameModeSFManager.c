@@ -483,8 +483,11 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	//!
 	// Spawns random Task based on available tasks and Areas that haven't spawned any
-	void SpawnRandomTask()
+	void SpawnRandomTask(int countSafe = 0)
 	{
+		if (countSafe >= m_iMaxNumberOfTasks)
+			return; 
+		
 		// In case of more max tasks to be spawned but with less task types, we need to refill it again
 		if (m_aESFTaskTypeForRandomization.IsEmpty())
 			m_aESFTaskTypeForRandomization.Copy(m_aESFTaskTypesAvailable);
@@ -508,7 +511,7 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 			}
 			
 			if (m_aESFTaskTypesAvailable.Contains(taskType))
-				SpawnRandomTask();
+				SpawnRandomTask(countSafe + 1);
 		}
 		m_aESFTaskTypeForRandomization.RemoveItem(taskType);
 		
@@ -625,6 +628,23 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 		        layerTasksToRandomize.Remove(i);
 		}
 		
+		// Cleans unused task types
+		for (int i = m_aESFTaskTypesAvailable.Count() - 1; i >= 0; i--)
+		{
+			bool invalidType = true;
+			foreach (SCR_ScenarioFrameworkLayerTask layerTask : m_aLayerTasksForRandomization) 
+			{
+				if (layerTask.GetTaskType() == m_aESFTaskTypesAvailable[i])
+				{
+					invalidType = false;
+					break;
+				}
+				
+				if (invalidType)
+					m_aESFTaskTypesAvailable.Remove(m_aESFTaskTypesAvailable[i])	
+			}
+		}
+		
 		//Creating a copy so we can work with these in loops
 		m_aESFTaskTypeForRandomization.Copy(m_aESFTaskTypesAvailable);
 		m_aLayerTasksForRandomization.Copy(layerTasksToRandomize);
@@ -650,7 +670,7 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 				}
 			}
 			
-			SpawnRandomTask();
+			SpawnRandomTask(m_aLayerTasksToBeInitialized.Count());
 		}
 
 		if (m_aLayerTasksToBeInitialized.Count() < m_iMaxNumberOfTasks)

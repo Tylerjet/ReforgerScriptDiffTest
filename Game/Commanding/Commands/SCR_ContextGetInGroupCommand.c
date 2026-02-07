@@ -17,8 +17,6 @@ class SCR_ContextGetIngroupCommand : SCR_WaypointGroupCommand
 		if (!m_sWaypointPrefab || !m_sSpecificEntityWP || !target || !targetPosition)
 			return false;
 		
-		//Hotfix until we get api to know when the speaker is done saying the command voiceline
-		GetGame().GetCallqueue().CallLater(PlayAIResponse, 2000, false, target);
 		return DecideAndSetWP(cursorTarget, target, targetPosition, playerID);
 	}
 	

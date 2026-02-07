@@ -193,6 +193,32 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 
 		return null;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[out] aLayerTasks
+	void GetAllLayerTasks(out notnull array<SCR_ScenarioFrameworkLayerTask> aLayerTasks)
+	{
+		aLayerTasks = {};
+		array<SCR_ScenarioFrameworkLayerTask> aSiblingLayerTasks = {};
+		SCR_ScenarioFrameworkLayerTask layerTask;
+		SCR_ScenarioFrameworkLayerBase layerBase;
+		IEntity child = GetOwner().GetChildren();
+		while (child)
+		{
+			layerBase = SCR_ScenarioFrameworkLayerBase.Cast(child.FindComponent(SCR_ScenarioFrameworkLayerBase));
+			if (layerBase)
+			{
+				layerTask = SCR_ScenarioFrameworkLayerTask.Cast(layerBase);
+				if (layerTask)
+					aLayerTasks.Insert(layerTask);
+				
+				layerBase.GetAllLayerTasks(aSiblingLayerTasks);
+				aLayerTasks.InsertAll(aSiblingLayerTasks);
+			}
+			
+			child = child.GetSibling();
+		}
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Get layer task the object is nested into if there is some
@@ -480,6 +506,9 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 				if (activationType == SCR_ScenarioFrameworkEActivationType.ON_TRIGGER_ACTIVATION || activationType == SCR_ScenarioFrameworkEActivationType.ON_AREA_TRIGGER_ACTIVATION
 					|| activationType == SCR_ScenarioFrameworkEActivationType.ON_TASKS_INIT)
 					continue;
+				
+				if (child.GetIsTerminated())
+					continue;
 
 				if (child.GetIsInitiated())
 					m_iCurrentlySpawnedChildren++;
@@ -501,6 +530,9 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 			{
 				int activationType = child.GetActivationType();
 				if (activationType == SCR_ScenarioFrameworkEActivationType.ON_TRIGGER_ACTIVATION || activationType == SCR_ScenarioFrameworkEActivationType.ON_AREA_TRIGGER_ACTIVATION)
+					continue;
+				
+				if (child.GetIsTerminated())
 					continue;
 
 				if (child.GetIsInitiated())

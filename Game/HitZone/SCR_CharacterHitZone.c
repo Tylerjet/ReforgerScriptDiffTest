@@ -153,7 +153,7 @@ class SCR_RegeneratingHitZone : SCR_HitZone
 //------------------------------------------------------------------------------------------------
 class SCR_CharacterHitZone : SCR_RegeneratingHitZone
 {
-	protected static const float DAMAGE_TO_BLOOD_MULTIPLIER = 1.3; //Const value is based on previous testing by caliber
+	protected static const float DAMAGE_TO_BLOOD_MULTIPLIER = 15; //Const value is based on previous testing by caliber
 	
 	[Attribute("0.65", UIWidgets.Auto, "Multiplier of hitzone health that will be applied as bleeding damage over time when damaged")]
 	protected float m_fBleedingRateScale;
@@ -196,19 +196,19 @@ class SCR_CharacterHitZone : SCR_RegeneratingHitZone
 		bool critical = damageContext.damageType == EDamageType.FIRE || damageContext.damageValue >= GetCriticalDamageThreshold() * GetMaxHealth();
 		
 		SCR_CharacterDamageManagerComponent manager = SCR_CharacterDamageManagerComponent.Cast(GetHitZoneContainer());
-		if (manager)
-			manager.SoundHit(critical, damageContext.damageType);
-
+		if (!manager)
+			return;
+		
+		manager.SoundHit(critical, damageContext.damageType);
+		
 		// FireDamage shouldn't make character look bloody
 		if (damageContext.damageType == EDamageType.FIRE)
 			return;
 		
-		// Only serious hits should cause staining of clothes
-		if (!critical)
-			return;
+		float bloodAddition = damageContext.damageValue / GetMaxHealth() * DAMAGE_TO_BLOOD_MULTIPLIER;
 		
 		// Adding immediately some blood to the clothes - currently it's based on the damage dealt.
-		AddBloodToClothes(Math.Clamp(damageContext.damageValue * DAMAGE_TO_BLOOD_MULTIPLIER, 0, 255));
+		manager.AddBloodToClothes(this, Math.Clamp(bloodAddition , 0, 255));
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------
@@ -286,35 +286,6 @@ class SCR_CharacterHitZone : SCR_RegeneratingHitZone
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------
-	void AddBloodToClothes(float immediateBloodEffect = 0)
-	{
-		EquipedLoadoutStorageComponent loadoutStorage = EquipedLoadoutStorageComponent.Cast(GetOwner().FindComponent(EquipedLoadoutStorageComponent));
-		if (!loadoutStorage)
-			return;
-		
-		IEntity clothEntity;
-		ParametricMaterialInstanceComponent materialComponent;
-		for (int i = m_aBleedingAreas.Count() - 1; i >= 0; i--)
-		{
-			clothEntity = loadoutStorage.GetClothFromArea(m_aBleedingAreas[i].Type());
-			if (!clothEntity)
-				continue;
-			
-			materialComponent = ParametricMaterialInstanceComponent.Cast(clothEntity.FindComponent(ParametricMaterialInstanceComponent));
-			if (!materialComponent)
-				continue;
-			
-			if (immediateBloodEffect > 0)
-			{
-				materialComponent.SetUserParam2(Math.Clamp(materialComponent.GetUserParam2() + immediateBloodEffect, 1, 255));
-				continue;
-			}
-			
-			materialComponent.SetUserParam2(Math.Clamp(materialComponent.GetUserParam2() + GetMaxBleedingRate() * 0.1, 1, 255));
-		}
-	}
-	
-	//-----------------------------------------------------------------------------------------------------------
 	void SetWoundedSubmesh(bool wounded)
 	{
 		m_bIsWounded = wounded;
@@ -357,6 +328,12 @@ class SCR_CharacterHitZone : SCR_RegeneratingHitZone
 	{
 		return m_eHitZoneGroup;
 	}	
+
+	//-----------------------------------------------------------------------------------------------------------
+	array<ref LoadoutAreaType> GetBleedingAreas()
+	{
+		return m_aBleedingAreas;
+	}
 	
 	//-----------------------------------------------------------------------------------------------------------
 	EBandagingAnimationBodyParts GetBodyPartToHeal()

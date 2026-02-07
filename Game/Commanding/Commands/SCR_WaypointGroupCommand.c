@@ -29,9 +29,7 @@ class SCR_WaypointGroupCommand : SCR_BaseGroupCommand
 		SpawnWPVisualization(targetPosition, playerID);
 		if (!m_sWaypointPrefab || !target || !targetPosition)
 			return false;
-		
-		//Hotfix until we get api to know when the speaker is done saying the command voiceline
-		GetGame().GetCallqueue().CallLater(PlayAIResponse, 2000, false, target);
+
 		return SetWaypointForAIGroup(target, targetPosition, playerID);
 	}
 	

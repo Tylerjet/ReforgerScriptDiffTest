@@ -3,6 +3,8 @@ class SCR_BleedingDamageEffect : SCR_DotDamageEffect
 	SCR_CharacterBloodHitZone m_BloodHitZone;
 	int m_iColliderDescriptorIndex = -1;
 	
+	protected static SCR_BloodOnClothesSystem s_System;
+	
 	//------------------------------------------------------------------------------------------------
 	protected override void HandleConsequences(SCR_ExtendedDamageManagerComponent dmgManager, DamageEffectEvaluator evaluator)
 	{
@@ -17,14 +19,17 @@ class SCR_BleedingDamageEffect : SCR_DotDamageEffect
 		super.OnEffectAdded(dmgManager);
 
 		dmgManager.TerminateDamageEffectsOfType(SCR_PhysicalHitZonesRegenDamageEffect);
-		
+
 		SCR_CharacterDamageManagerComponent characterDamageManager = SCR_CharacterDamageManagerComponent.Cast(dmgManager);
 		if (!characterDamageManager)
 			return;
-		
+
 		m_BloodHitZone = characterDamageManager.GetBloodHitZone();
-		
+
 		characterDamageManager.CreateBleedingParticleEffect(GetAffectedHitZone(), m_iColliderDescriptorIndex);
+		
+		TryAddBleedingToCloth(dmgManager);
+		
 		characterDamageManager.AddBleedingToArray(GetAffectedHitZone());
 	}
 
@@ -35,18 +40,22 @@ class SCR_BleedingDamageEffect : SCR_DotDamageEffect
 
 		SCR_CharacterDamageManagerComponent characterDamageManager = SCR_CharacterDamageManagerComponent.Cast(dmgManager);
 		characterDamageManager.RegenPhysicalHitZones();
-		
+
 		HitZone hitZone = GetAffectedHitZone();
-		
+
 		// Don't remove particle effect if there is still a bleeding on the hitZoneGroup
 		SCR_HitZone scriptedHitZone = SCR_HitZone.Cast(hitZone);
-		
+
 		characterDamageManager.RemoveBleedingFromArray(hitZone);
-		
+
 		// the rest of this function removes bleeding particle effects only if no bleeding effects remain on any hitzones in the group
 		array<HitZone> hitZones = {};
-		array <ref PersistentDamageEffect> effects = {};
+		array<ref PersistentDamageEffect> effects = {};
 		characterDamageManager.GetHitZonesOfGroup(scriptedHitZone.GetHitZoneGroup(), hitZones);
+		
+		//Unsubscribe from SCR_BloodOnClothesSystem if registered
+		if (s_System)
+			s_System.Unregister(this);
 		
 		foreach (HitZone groupHitZone : hitZones)
 		{
@@ -57,7 +66,7 @@ class SCR_BleedingDamageEffect : SCR_DotDamageEffect
 					return;
 			}
 		}
-		
+
 		characterDamageManager.RemoveBleedingParticleEffect(hitZone);
 	}
 
@@ -68,7 +77,7 @@ class SCR_BleedingDamageEffect : SCR_DotDamageEffect
 		SCR_CharacterDamageManagerComponent characterDmgManager = SCR_CharacterDamageManagerComponent.Cast(dmgManager);
 
 		float damageAmount = GetDPS() * timeSlice;
-		
+
 		//Check if bleeding hitzone also has a tourniquet on it
 		SCR_CharacterHitZone affectedHitZone = SCR_CharacterHitZone.Cast(GetAffectedHitZone());
 		if (affectedHitZone && characterDmgManager.GetGroupTourniquetted(affectedHitZone.GetHitZoneGroup()))
@@ -109,37 +118,74 @@ class SCR_BleedingDamageEffect : SCR_DotDamageEffect
 		float hitZoneDamageMultiplier = affectedHitZone.GetHealthScaled();
 		return affectedHitZone.GetMaxBleedingRate() - affectedHitZone.GetMaxBleedingRate() * hitZoneDamageMultiplier;
 	}
-	
+		
+	//------------------------------------------------------------------------------------------------
+	protected void TryAddBleedingToCloth(SCR_ExtendedDamageManagerComponent dmgManager)
+	{
+		SCR_CharacterHitZone charHZ = SCR_CharacterHitZone.Cast(GetAffectedHitZone());
+		if (!charHZ)
+			return;
+		
+		EquipedLoadoutStorageComponent loadoutStorage = EquipedLoadoutStorageComponent.Cast(dmgManager.GetOwner().FindComponent(EquipedLoadoutStorageComponent));
+		if (!loadoutStorage)
+			return;
+		
+		array<ref LoadoutAreaType> bleedingAreas = charHZ.GetBleedingAreas();
+		if (bleedingAreas.IsEmpty())
+			return;
+		
+		IEntity clothEntity;
+		ParametricMaterialInstanceComponent materialComponent;
+		foreach (LoadoutAreaType bleedingArea : bleedingAreas)
+		{
+			clothEntity = loadoutStorage.GetClothFromArea(bleedingArea.Type());
+			if (!clothEntity)
+				continue;
+			
+			materialComponent = ParametricMaterialInstanceComponent.Cast(clothEntity.FindComponent(ParametricMaterialInstanceComponent));
+			if (!materialComponent)
+				continue;
+		
+			World world = GetGame().GetWorld();
+			s_System = SCR_BloodOnClothesSystem.Cast(world.FindSystem(SCR_BloodOnClothesSystem));
+			if (s_System)
+				s_System.Register(this);
+			
+			// A damageEffect only needs to be registered once even if more bleedingareas are valid
+			return;
+		}
+	}
+
 	//------------------------------------------------------------------------------------------------
 	override bool Save(ScriptBitWriter w)
 	{
 		super.Save(w);
-		
+
 		w.WriteInt(m_iColliderDescriptorIndex);
-		
+
 		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override bool Load(ScriptBitReader r)
 	{
 		super.Load(r);
-		
+
 		r.ReadInt(m_iColliderDescriptorIndex);
 		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override EDamageType GetDefaultDamageType()
 	{
 		return EDamageType.BLEEDING;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void OnDiag(SCR_ExtendedDamageManagerComponent dmgManager)
 	{
 		super.OnDiag(dmgManager);
-		
+
 		string text;
 		text += text.Format("  ColliderIndex: %1 \n", m_iColliderDescriptorIndex);
 		DbgUI.Text(text);

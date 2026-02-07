@@ -75,12 +75,11 @@ class SCR_AnimatedBeltComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! remove listeners to gunner when they leave
+	//! remove listeners to gunner when they leave and disconnect system
 	void OnCompartmentLeft(IEntity vehicle, BaseCompartmentManagerComponent mgr, IEntity occupant, int managerId, int slotID)
 	{
-		EventHandlerManagerComponent eventHandlerManager = EventHandlerManagerComponent.Cast(occupant.FindComponent(EventHandlerManagerComponent));
-		if (eventHandlerManager)
-			eventHandlerManager.RemoveScriptHandler("OnProjectileShot", this, OnProjectileShot);
+		DisconnectSystem();
+		RemoveCharacterInvokers(occupant);
 	}
 
 	//------------------------------------------------------------------------------------------------

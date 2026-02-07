@@ -26,14 +26,14 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	protected IEntity m_TargetEntity;
 
 	//------------------------------------------------------------------------------------------------
-	//! placeableId = id of items rpl component
+	//! Client side method for informing the authority about where item should be placed upon removal from their inventory
 	//! \param[in] right
 	//! \param[in] up
 	//! \param[in] forward
 	//! \param[in] position
-	//! \param[in] placeableId
+	//! \param[in] placeableId replication id of placed item
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	void RPC_AskPlaceItem(vector right, vector up, vector forward, vector position, RplId placeableId)
+	void RPC_AskSetPlacementPosition(vector right, vector up, vector forward, vector position, RplId placeableId)
 	{
 		RplComponent rplComponent = RplComponent.Cast(Replication.FindItem(placeableId));
 		if (!rplComponent)
@@ -44,21 +44,35 @@ class SCR_ItemPlacementComponent : ScriptComponent
 		if (!itemComponent)
 			return;
 
-		itemComponent.PlaceItem(right, up, forward, position);
+		itemComponent.SetPlacementPosition(right, up, forward, position);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! placeableId = id of items rpl component
+	//! \param[in] placeableId
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	void RPC_AskPlaceItem(RplId placeableId)
+	{
+		RplComponent rplComponent = RplComponent.Cast(Replication.FindItem(placeableId));
+		if (!rplComponent)
+			return;
+
+		IEntity item = rplComponent.GetEntity();
+		SCR_PlaceableInventoryItemComponent itemComponent = SCR_PlaceableInventoryItemComponent.Cast(item.FindComponent(SCR_PlaceableInventoryItemComponent));
+		if (!itemComponent)
+			return;
+
+		itemComponent.PlaceItem();
 		NotifyItemPlacementDone(item);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! placeableId = id of items rpl component
-	//! \param[in] right
-	//! \param[in] up
-	//! \param[in] forward
-	//! \param[in] position
 	//! \param[in] placeableId
 	//! \param[in] targetId is an RplId of the owner of the surface to which this item is meant to be attached to
 	//! \param[in] nodeId is an node id of the surface to which this object is meant to be attached to
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	void RPC_AskPlaceItemWithParentChange(vector right, vector up, vector forward, vector position, RplId placeableId, RplId targetId, int nodeId)
+	void RPC_AskPlaceItemWithParentChange(RplId placeableId, RplId targetId, int nodeId)
 	{
 		RplComponent rplComponent = RplComponent.Cast(Replication.FindItem(placeableId));
 		if (!rplComponent)
@@ -70,9 +84,9 @@ class SCR_ItemPlacementComponent : ScriptComponent
 			return;
 
 		if (targetId.IsValid())
-			itemComponent.PlaceItemWithParentChange(right, up, forward, position, targetId, nodeId);
+			itemComponent.PlaceItemWithParentChange(targetId, nodeId);
 		else
-			itemComponent.PlaceItem(right, up, forward, position);
+			itemComponent.PlaceItem();
 
 		NotifyItemPlacementDone(item);
 	}
@@ -270,8 +284,14 @@ class SCR_ItemPlacementComponent : ScriptComponent
 		SCR_PlaceableInventoryItemComponent placeableItem = SCR_PlaceableInventoryItemComponent.Cast(m_EquippedItem.FindComponent(SCR_PlaceableInventoryItemComponent));
 		if (placeableItem)
 		{
+			SCR_PlacementCallback cb = new SCR_PlacementCallback();
+			cb.m_PlaceableId = rplComponent.Id();
+			cb.m_TargetId = m_TargetId;
+			cb.m_iNodeId = m_iTargetEntityNodeID;
+			cb.m_bIsBeingAttachedToEntity = m_bIsBeingAttachedToEntity;
 
-			if (storageManager.TryRemoveItemFromStorage(m_EquippedItem, storage.GetWeaponStorage()))
+			Rpc(RPC_AskSetPlacementPosition, m_vCurrentMat[0], m_vCurrentMat[1], m_vCurrentMat[2], m_vCurrentMat[3], rplComponent.Id());
+			if (storageManager.TryRemoveItemFromStorage(m_EquippedItem, storage.GetWeaponStorage(), cb))
 			{
 				InventoryItemComponent equippedItemIIC = InventoryItemComponent.Cast(m_EquippedItem.FindComponent(InventoryItemComponent));
 				if (equippedItemIIC && equippedItemIIC.GetAttributes())
@@ -295,14 +315,23 @@ class SCR_ItemPlacementComponent : ScriptComponent
 					}
 				}
 			}
-
-			if (!m_bIsBeingAttachedToEntity)
-				Rpc(RPC_AskPlaceItem, m_vCurrentMat[0], m_vCurrentMat[1], m_vCurrentMat[2], m_vCurrentMat[3], rplComponent.Id());
-			else if (m_TargetId.IsValid())
-				Rpc(RPC_AskPlaceItemWithParentChange, m_vCurrentMat[0], m_vCurrentMat[1], m_vCurrentMat[2], m_vCurrentMat[3], rplComponent.Id(), m_TargetId, m_iTargetEntityNodeID);
 		}
 
 		DisablePreview();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Client side method for finishing item placement when that item was successfully removed from their inventory
+	//! \param[in] placeableId replication id of placed item
+	//! \param[in] targetId replication id of object to which this item is being attached to
+	//! \param[in] nodeId node of the target object to which placed item will be attached to
+	//! \param[in] isBeingAttachedToEntity
+	void AskPlaceItem(RplId placeableId, RplId targetId, int nodeId, bool isBeingAttachedToEntity)
+	{
+		if (!m_bIsBeingAttachedToEntity)
+			Rpc(RPC_AskPlaceItem, placeableId);
+		else if (targetId.IsValid())
+			Rpc(RPC_AskPlaceItemWithParentChange, placeableId, targetId, nodeId);
 	}
 
 	//------------------------------------------------------------------------------------------------

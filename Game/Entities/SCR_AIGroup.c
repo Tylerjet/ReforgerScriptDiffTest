@@ -172,11 +172,18 @@ class SCR_AIGroup : ChimeraAIGroup
 	protected SCR_AIGroup m_SlaveGroup;
 	protected SCR_AIGroup m_MasterGroup;
 	protected ref array<SCR_ChimeraCharacter> m_aAIMembers = {};
+	protected SCR_AIGroupUtilityComponent m_GroupUtilityComponent;
 	
 	// entity spawn list
 	protected ref array<ref SCR_AIGroup_DelayedSpawn> m_delayedSpawnList = {};
-	protected ref ScriptInvokerBase<ScriptInvokerAIGroup> Event_OnAllDelayedEntitySpawned;
+	protected ref ScriptInvokerBase<ScriptInvokerAIGroup> Event_OnAllDelayedEntitySpawned;	
 
+	//------------------------------------------------------------------------------------------------
+	SCR_AIGroupUtilityComponent GetGroupUtilityComponent()
+	{
+		return m_GroupUtilityComponent;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	int GetNumberOfMembersToSpawn()
 	{
@@ -1567,14 +1574,13 @@ class SCR_AIGroup : ChimeraAIGroup
 		
 		if (vehicle)
 		{
-			SCR_AIGroupUtilityComponent utility = SCR_AIGroupUtilityComponent.Cast(FindComponent(SCR_AIGroupUtilityComponent));
 			SCR_AIVehicleUsageComponent vehicleUsageComp = SCR_AIVehicleUsageComponent.Cast(vehicle.FindComponent(SCR_AIVehicleUsageComponent));
 			
 			if (!vehicleUsageComp)
 				SCR_AIVehicleUsageComponent.ErrorNoComponent(vehicle);
 			
-			if (utility && vehicleUsageComp)
-				utility.AddUsableVehicle(vehicleUsageComp);
+			if (m_GroupUtilityComponent && vehicleUsageComp)
+				m_GroupUtilityComponent.AddUsableVehicle(vehicleUsageComp);
 		}
 	}
 	
@@ -1595,11 +1601,10 @@ class SCR_AIGroup : ChimeraAIGroup
 		
 		if (vehicle)
 		{
-			SCR_AIGroupUtilityComponent utility = SCR_AIGroupUtilityComponent.Cast(FindComponent(SCR_AIGroupUtilityComponent));
 			SCR_AIVehicleUsageComponent vehicleUsageComp = SCR_AIVehicleUsageComponent.Cast(vehicle.FindComponent(SCR_AIVehicleUsageComponent));
 			
-			if (utility && vehicleUsageComp)
-				utility.RemoveUsableVehicle(vehicleUsageComp);
+			if (m_GroupUtilityComponent && vehicleUsageComp)
+				m_GroupUtilityComponent.RemoveUsableVehicle(vehicleUsageComp);
 		}
 	}
 	
@@ -2107,6 +2112,7 @@ class SCR_AIGroup : ChimeraAIGroup
 	{
 		m_aUsableVehicles =  new array<IEntity>;
 		m_aAllocatedCompartments = new array<BaseCompartmentSlot>;
+		m_GroupUtilityComponent = SCR_AIGroupUtilityComponent.Cast(this.FindComponent(SCR_AIGroupUtilityComponent));
 		
 		if (s_bIgnoreSpawning)
 		{

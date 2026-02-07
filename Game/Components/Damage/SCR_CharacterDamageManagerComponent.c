@@ -345,10 +345,6 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 			if (GetState() == EDamageState.DESTROYED)
 				return;
 			
-			SCR_CharacterHitZone characterHitZone = SCR_CharacterHitZone.Cast(dmgEffect.GetAffectedHitZone());
-			if (characterHitZone)
-				characterHitZone.AddBloodToClothes();
-			
 			//Terminate passive regeneration on bloodHZ when bleeding effect is added
 			array<ref PersistentDamageEffect> effects = GetAllPersistentEffectsOnHitZone(m_pBloodHitZone);
 			foreach (PersistentDamageEffect effect : effects)
@@ -468,6 +464,37 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 		// Damage over time is not simulated after character death
 		GetGame().GetCallqueue().Remove(RemoveAllBleedingParticles);
 		GetGame().GetCallqueue().CallLater(RemoveAllBleedingParticles, delay * 1000);
+	}
+	
+	//! \param[in] hitZone Hitzone used to get bleeding areas to visualize
+	//! \param[in] immediateBloodEffect Intensity of effect. Intensity will be rounded to nearest round number. Must be => 1
+	//-----------------------------------------------------------------------------------------------------------
+	void AddBloodToClothes(notnull SCR_CharacterHitZone hitZone, float immediateBloodEffect)
+	{
+		if (immediateBloodEffect < 1)
+			return;
+		
+		EquipedLoadoutStorageComponent loadoutStorage = EquipedLoadoutStorageComponent.Cast(GetOwner().FindComponent(EquipedLoadoutStorageComponent));
+		if (!loadoutStorage)
+			return;
+		
+		array<ref LoadoutAreaType> bleedingAreas = hitZone.GetBleedingAreas();
+		
+		IEntity clothEntity;
+		ParametricMaterialInstanceComponent materialComponent;
+		foreach (LoadoutAreaType bleedingArea : bleedingAreas)
+		{
+			clothEntity = loadoutStorage.GetClothFromArea(bleedingArea.Type());
+			if (!clothEntity)
+				continue;
+			
+			materialComponent = ParametricMaterialInstanceComponent.Cast(clothEntity.FindComponent(ParametricMaterialInstanceComponent));
+			if (!materialComponent)
+				continue;
+			
+			float newBloodValue = materialComponent.GetUserParam2() + Math.Ceil(immediateBloodEffect * 0.1);
+			materialComponent.SetUserParam2(Math.Clamp(newBloodValue, 1, 255));
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

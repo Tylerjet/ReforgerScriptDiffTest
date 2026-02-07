@@ -239,9 +239,8 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 		}
 		else
 		{
-			ChimeraCharacter character = ChimeraCharacter.Cast(m_CharacterOwner);
-			if (character)
-				m_CharController = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
+			if (m_CharacterOwner)
+				m_CharController = SCR_CharacterControllerComponent.Cast(m_CharacterOwner.GetCharacterController());
 
 			if (m_CharController)
 				m_CharController.m_OnLifeStateChanged.Insert(OnOwnerLifeStateChanged);

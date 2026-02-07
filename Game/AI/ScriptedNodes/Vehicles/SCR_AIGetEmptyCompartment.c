@@ -35,15 +35,21 @@ class SCR_AIGetEmptyCompartment : AITaskScripted
 			return NodeError(this, owner, "Missing compartment manager on IEntity" + m_VehicleEntity.ToString());
 		}
 
-		VehicleHelicopterSimulation heliSim = VehicleHelicopterSimulation.Cast(m_VehicleEntity.FindComponent(VehicleHelicopterSimulation));
-		
 		ref array<BaseCompartmentSlot>	compartments = {}, pilotComp = {}, turretComp = {}, cargoComp = {};
 		int numOfComp = compartmentMan.GetCompartments(compartments);
 		SCR_AIGroup group = SCR_AIGroup.Cast(owner);
 		if (!group)
 		{
 			group = SCR_AIGroup.Cast(owner.GetParentGroup());
+			if (!group)
+				return NodeError(this, owner, "Missing parent SCR_AIGroup class");
 		}
+		SCR_AIGroupVehicle groupVehicle = group.GetGroupUtilityComponent().m_VehicleMgr.FindVehicle(m_VehicleEntity);
+		if (!groupVehicle)
+			return NodeError(this, owner, "vehicle provided is not registered as used inside group!");
+		
+		bool canBePiloted = groupVehicle.GetVehicleUsageComponent().CanBePiloted();
+		
 		AIAgent groupMember;
 		BaseCompartmentSlot compartmentToAlocate;
 		bool foundEmptyCompartment;
@@ -56,7 +62,7 @@ class SCR_AIGetEmptyCompartment : AITaskScripted
 		{
 			if (!comp.AttachedOccupant() && comp.IsCompartmentAccessible() && !comp.IsReserved())
 			{
-				if (PilotCompartmentSlot.Cast(comp) && params.m_bIsDriverAllowed && !heliSim) //exclude helicopter pilot slots for now
+				if (PilotCompartmentSlot.Cast(comp) && params.m_bIsDriverAllowed && canBePiloted) //exclude helicopter pilot slots for now
 					pilotComp.Insert(comp);
 				else if (TurretCompartmentSlot.Cast(comp) && params.m_bIsGunnerAllowed)
 					turretComp.Insert(comp);

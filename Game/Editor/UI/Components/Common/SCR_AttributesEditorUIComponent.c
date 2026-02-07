@@ -434,7 +434,7 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 			if (m_ResetButton)
 				m_ResetButton.SetVisible(false);
 			
-			inputManager.AddActionListener("EditorAttributeClose", EActionTrigger.DOWN, OnCancelEndGame);
+			inputManager.AddActionListener("EditorAttributes", EActionTrigger.DOWN, OnCancelEndGame);
 		}
 		else 
 		{
@@ -462,7 +462,7 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 			if (onWindowClose) 
 				onWindowClose.Insert(ButtonClose);
 			
-			inputManager.AddActionListener("EditorAttributeClose", EActionTrigger.DOWN, ButtonClose);
+			inputManager.AddActionListener("EditorAttributes", EActionTrigger.DOWN, ButtonClose);
 		}
 		
 		//Init
@@ -819,9 +819,9 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 		if (inputManager)
 		{
 			if (m_bIsEndGame)
-				inputManager.RemoveActionListener("EditorAttributeClose", EActionTrigger.DOWN, OnCancelEndGame);
+				inputManager.RemoveActionListener("EditorAttributes", EActionTrigger.DOWN, OnCancelEndGame);
 			else 
-				inputManager.RemoveActionListener("EditorAttributeClose", EActionTrigger.DOWN, ButtonClose);
+				inputManager.RemoveActionListener("EditorAttributes", EActionTrigger.DOWN, ButtonClose);
 		}
 		
 		if (m_bIsEndGame)

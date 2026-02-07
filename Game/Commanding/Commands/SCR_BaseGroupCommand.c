@@ -28,6 +28,9 @@ class SCR_BaseGroupCommand : SCR_BaseRadialCommand
 
 	[Attribute(defvalue: "0", desc: "Will the command show preview in world before it is given out")]
 	protected bool m_bShowPreview;
+	
+	[Attribute(defvalue: "1", desc: "Will the AI respond with voicelines to given command")]
+	protected bool m_bPlayAIResponse;
 
 	[Attribute(SCR_ECommandVisualizationDuration.BRIEF.ToString(), UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_ECommandVisualizationDuration))]
 	protected SCR_ECommandVisualizationDuration m_eVisualizationDuration;
@@ -55,28 +58,6 @@ class SCR_BaseGroupCommand : SCR_BaseRadialCommand
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void PlayAIResponse(IEntity slaveGroup)
-	{
-		SCR_AIGroup aiGroup = SCR_AIGroup.Cast(slaveGroup);
-		if (!slaveGroup)
-			return;
-
-		AIAgent agent = aiGroup.GetLeaderAgent();
-		if (!agent)
-			return;
-
-		IEntity owner = agent.GetControlledEntity();
-		if (!owner)
-			return;
-
-		SCR_CommunicationSoundComponent soundComponent = SCR_CommunicationSoundComponent.Cast(owner.FindComponent(SCR_CommunicationSoundComponent));
-		if (!soundComponent)
-			return;
-
-		soundComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_POSITIVEFEEDBACK, 50);
-	}
-
-	//------------------------------------------------------------------------------------------------
 	string GetSoundEventName()
 	{
 		return m_sSoundEventName;
@@ -91,6 +72,11 @@ class SCR_BaseGroupCommand : SCR_BaseRadialCommand
 	bool CanShowPreview()
 	{
 		return m_bShowPreview;
+	}
+	
+	bool ShouldPlayAIResponse()
+	{
+		return m_bPlayAIResponse;
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -1,3 +1,18 @@
+//! Vehicle type from point view of AI usage
+enum EAIVehicleType
+{
+	INVALID,				// Default value when not configured
+	
+	GROUND_VEHICLE_WHEELED,	// All wheeled ground vehicles, with weapon or not
+	GROUND_VEHICLE_TRACKED,	// All tracked ground vehicles, with weapon or not
+	
+	STATIC_WEAPON,			// Static weapons which shoot directly, like static MGs
+	STATIC_ARTILLERY,		// Static mortars
+	
+	AIRCRAFT_HELICOPTER,	// Helicopters
+	AIRCRAFT_PLANE			// Planes
+}
+
 class SCR_AIVehicleUsageComponentClass : ScriptComponentClass
 {
 }
@@ -13,6 +28,12 @@ typedef func SCR_AIOnVehicleDamageStateChanged;
 //! Other AI systems depend on this, so some AI functionality might not work with vehicles without this component.
 class SCR_AIVehicleUsageComponent : ScriptComponent
 {
+	[Attribute("0", UIWidgets.ComboBox, "Vehicle type from point view of AI usage", enums: ParamEnumArray.FromEnum(EAIVehicleType))]
+	protected EAIVehicleType m_eVehicleType;
+	
+	[Attribute("1", UIWidgets.CheckBox, "Can be AI a pilot of this vehicle")]
+	protected bool m_bCanBePiloted;
+	
 	protected ref ScriptInvokerBase<SCR_AIOnVehicleDeleted> m_OnDeleted;
 	protected ref ScriptInvokerBase<SCR_AIOnVehicleDamageStateChanged> m_OnDamageStateChanged;
 	
@@ -32,6 +53,25 @@ class SCR_AIVehicleUsageComponent : ScriptComponent
 			m_OnDamageStateChanged = new ScriptInvokerBase<SCR_AIOnVehicleDamageStateChanged>();
 		
 		return m_OnDamageStateChanged;
+	}
+	
+	//------------------------------------------------------------------------------
+	//! AI can use the pilot compartments on this vehicle
+	bool CanBePiloted()
+	{
+		return m_bCanBePiloted;
+	}
+	
+	//------------------------------------------------------------------------------
+	EAIVehicleType GetVehicleType()
+	{
+		return m_eVehicleType;
+	}
+	
+	//------------------------------------------------------------------------------
+	bool IsVehicleTypeValid()
+	{
+		return m_eVehicleType != EAIVehicleType.INVALID;
 	}
 
 	//---------------------------------------------------------------------------------------------------
@@ -74,6 +114,9 @@ class SCR_AIVehicleUsageComponent : ScriptComponent
 	protected override void OnPostInit(IEntity owner)
 	{
 		SetEventMask(owner, EntityEvent.INIT);
+		
+		if (!IsVehicleTypeValid())
+			ErrorIncorrectType(owner);
 	}
 	
 	//------------------------------------------------------------------------------
@@ -88,5 +131,11 @@ class SCR_AIVehicleUsageComponent : ScriptComponent
 	static void ErrorNoComponent(notnull IEntity entity)
 	{
 		Print(string.Format("SCR_AIVehicleUsageComponent not found on entity: %1", entity), LogLevel.ERROR);
+	}
+	
+	//------------------------------------------------------------------------------
+	static void ErrorIncorrectType(notnull IEntity entity)
+	{
+		Print(string.Format("SCR_AIVehicleUsageComponent has incorrect type on entity: %1", entity), LogLevel.ERROR);
 	}
 }

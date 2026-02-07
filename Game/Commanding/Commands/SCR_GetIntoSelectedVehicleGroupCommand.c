@@ -42,9 +42,7 @@ class SCR_GetINtoSelectedVehicleGroupCommand : SCR_WaypointGroupCommand
 		AIWaypoint wp = AIWaypoint.Cast(GetGame().SpawnEntityPrefabLocal(waypointPrefab, null, params));
 		if (wp)	
 			slaveGroup.AddWaypoint(wp);
-		
-		//Hotfix until we get api to know when the speaker is done saying the command voiceline
-		GetGame().GetCallqueue().CallLater(PlayAIResponse, 2000, false, target);
+
 		return true;
 	}
 	

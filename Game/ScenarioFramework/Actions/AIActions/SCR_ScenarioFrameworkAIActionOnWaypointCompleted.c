@@ -11,7 +11,20 @@ class SCR_ScenarioFrameworkAIActionOnWaypointCompleted : SCR_ScenarioFrameworkAI
 	bool m_bRemoveOnCompleted;
 	
 	AIWaypoint m_Waypoint;
-	IEntity m_GetterEntity;
+	IEntity m_AISlotEntity;
+	
+	//------------------------------------------------------------------------------------------------
+	override void Init(SCR_AIGroup targetAIGroup, IEntity entity)
+	{
+		if (entity)
+		{
+			SCR_ScenarioFrameworkLayerBase layer = SCR_ScenarioFrameworkLayerBase.Cast(entity.FindComponent(SCR_ScenarioFrameworkLayerBase));
+			if (layer && (SCR_ScenarioFrameworkSlotAI.Cast(layer) || SCR_ScenarioFrameworkSlotTaskAI.Cast(layer)))
+				m_AISlotEntity = entity;
+		}
+		
+		super.Init(targetAIGroup, entity);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate()
@@ -29,14 +42,14 @@ class SCR_ScenarioFrameworkAIActionOnWaypointCompleted : SCR_ScenarioFrameworkAI
 			return;
 		}
 
-		m_GetterEntity = entityWrapper.GetValue();
-		if (!m_GetterEntity)
+		IEntity getterEntity = entityWrapper.GetValue();
+		if (!getterEntity)
 		{
 			Print(string.Format("ScenarioFramework Action: Entity not found for Action %1.", this), LogLevel.ERROR);
 			return;
 		}
 		
-		SCR_ScenarioFrameworkLayerBase layer = SCR_ScenarioFrameworkLayerBase.Cast(m_GetterEntity.FindComponent(SCR_ScenarioFrameworkLayerBase));
+		SCR_ScenarioFrameworkLayerBase layer = SCR_ScenarioFrameworkLayerBase.Cast(getterEntity.FindComponent(SCR_ScenarioFrameworkLayerBase));
 		if (!layer)
 		{
 			Print(string.Format("ScenarioFramework Action: Entity is not Layer Base for Action %1.", this), LogLevel.ERROR);
@@ -63,7 +76,6 @@ class SCR_ScenarioFrameworkAIActionOnWaypointCompleted : SCR_ScenarioFrameworkAI
 	//------------------------------------------------------------------------------------------------
 	void OnWaypointSpawned(SCR_ScenarioFrameworkLayerBase layer)
 	{
-		m_AIGroup.GetOnWaypointCompleted().Insert(OnWaypointCompleted);
 		layer.GetOnAllChildrenSpawned().Remove(OnWaypointSpawned);
 		
 		IEntity spawnedEntity = layer.GetSpawnedEntity();
@@ -94,7 +106,7 @@ class SCR_ScenarioFrameworkAIActionOnWaypointCompleted : SCR_ScenarioFrameworkAI
 		
 		foreach (SCR_ScenarioFrameworkActionBase action : m_aActionsOnWaypointCompleted)
 		{
-			action.Init(m_GetterEntity);
+			action.Init(m_AISlotEntity);
 		}
 	}
 }

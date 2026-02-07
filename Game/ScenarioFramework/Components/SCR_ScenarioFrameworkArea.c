@@ -330,23 +330,6 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! \param[out] aLayerTasks
-	void GetAllLayerTasks(out notnull array<SCR_ScenarioFrameworkLayerTask> aLayerTasks)
-	{
-		aLayerTasks = {};
-		SCR_ScenarioFrameworkLayerTask layerTask;
-		IEntity child = GetOwner().GetChildren();
-		while (child)
-		{
-			layerTask = SCR_ScenarioFrameworkLayerTask.Cast(child.FindComponent(SCR_ScenarioFrameworkLayerTask));
-			if (layerTask)
-				aLayerTasks.Insert(layerTask);
-			
-			child = child.GetSibling();
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! \param[in] bSet
 	void SetAreaSelected(bool bSet)
 	{

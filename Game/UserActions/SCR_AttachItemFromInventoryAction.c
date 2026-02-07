@@ -64,6 +64,9 @@ class SCR_AttachItemFromInventoryAction : SCR_InventoryAction
 		if (!m_ItemComponent.GetParentSlot())
 			return false;
 
+		if (m_ItemComponent.GetParentSlot().GetStorage().IsInherited(WeaponAttachmentsStorageComponent))
+			return false;
+
 		ChimeraCharacter character = ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
 		if(!character)
 			return false;

@@ -877,7 +877,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			if (m_pActiveStorageUI)
 			{
 				m_pActiveStorageUI.ShowContainerBorder(false);
-				FocusOnSlotInStorage(m_pActiveStorageUI);
+				FocusOnSlotInStorage(m_pActiveStorageUI, m_pActiveStorageUI.GetSlotId(m_pActiveStorageUI.GetLastFocusedSlot()));
 			}
 		}
 
@@ -946,7 +946,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 				while (slots.IsIndexValid(++slotIndex) && !slotToFocus)
 				{
 					slotToFocus = slots[slotIndex].GetButtonWidget();
-		}
+				}
 			}
 
 			GetGame().GetWorkspace().SetFocusedWidget(slotToFocus);
@@ -3011,6 +3011,9 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (!pStorageToComponent)
 			pStorageToComponent = m_pCallBack.m_pStorageTo.GetStorage();
 		
+		if (!pStorageToComponent && SCR_SupplyInventorySlotUI.Cast(m_pFocusedSlotUI))
+			return;
+
 		if (IsStorageArsenal(pStorageToComponent))
 		{
 			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_DROP_ERROR);
@@ -4590,17 +4593,6 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (!itemEntity)
 			return;
 		
-		InventoryStorageSlot itemParentSlot = itemComp.GetParentSlot();
-		BaseInventoryStorageComponent originStorage;
-		if (itemParentSlot)
-			originStorage = itemParentSlot.GetStorage();
-		
-		
-		SCR_InventoryStorageManagerComponent invManagerTo = m_pActiveHoveredStorageUI.GetInventoryManager();
-		
-		if (!invManagerTo)
-			return;
-		
 		SCR_EntityCatalogManagerComponent entityCatalogManager = SCR_EntityCatalogManagerComponent.GetInstance();
 		string smallestContainerPrefab = "";
 		
@@ -4656,12 +4648,11 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 				continue;
 			if (storageBaseUI.Type() == SCR_InventoryStorageLootUI)
 				continue;
+			if (storageBaseUI == m_pActiveHoveredStorageUI)
+				continue;
+			
 			contStorage = storageBaseUI.GetStorage();	
 			if (!contStorage)
-				continue;
-			if (originStorage && contStorage == originStorage)
-				continue;		
-			if (IsStorageInsideLBS(originStorage, ClothNodeStorageComponent.Cast(contStorage)))	
 				continue;
 			
 			float itemWeight = itemComp.GetTotalWeight();
@@ -4683,22 +4674,12 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			bool shouldUpdateVolumePercentage = true;
 			
 			// Check to see if the itemEntity can fit into any equipment Storages so that volume is not updated in those cases.
-			for (int i = 0, count = contStorageOwnedStorages.Count(); i < count; i++)
+			BaseInventoryStorageComponent validStorage = m_InventoryManager.FindStorageForInsert(itemEntity, contStorage, EStoragePurpose.PURPOSE_EQUIPMENT_ATTACHMENT);
+			if (validStorage)
 			{
-				equipmentStorage = SCR_EquipmentStorageComponent.Cast(contStorageOwnedStorages.Get(i));
-				if (!equipmentStorage)
-					continue;
-				
-				bool canInsert = m_InventoryManager.CanInsertItemInStorage(itemEntity, equipmentStorage, -1); //split because of debug purposes
-				bool canMove = m_InventoryManager.CanMoveItemToStorage(itemEntity, equipmentStorage, -1);
-				
-				if (canInsert || canMove)
-				{
-					shouldUpdateVolumePercentage = false;
-					break;
-				}
+				shouldUpdateVolumePercentage = false;
 			}
-			
+
 			if (!m_InventoryManager.CanInsertItemInActualStorage(itemEntity, contStorage) && itemEntity.FindComponent(SCR_ResourceComponent))
 				shouldUpdateVolumePercentage = false;
 			
@@ -4710,6 +4691,9 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			if (!canInsert && SCR_ResourceComponent.FindResourceComponent(itemEntity))
 				canInsert = m_InventoryManager.CanInsertItemInActualStorage(smallestContainerEntity, contStorage);
 
+			if (!canInsert && validStorage)
+				canInsert = m_InventoryManager.CanInsertItemInActualStorage(itemEntity, validStorage);
+			
 			SCR_UniversalInventoryStorageComponent uniContStorage = SCR_UniversalInventoryStorageComponent.Cast(contStorage);
 			bool weightCheck = true;
 			if (uniContStorage)

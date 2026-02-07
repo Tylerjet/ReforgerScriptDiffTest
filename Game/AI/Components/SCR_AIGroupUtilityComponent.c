@@ -459,6 +459,12 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 			return;
 		}
 		
+		if (!vehicleUsageComp.IsVehicleTypeValid())
+		{
+			SCR_AIVehicleUsageComponent.ErrorIncorrectType(targetEntity);
+			return;
+		}
+		
 		AddUsableVehicle(vehicleUsageComp);
 		
 		// Not from our group? Should not happen.

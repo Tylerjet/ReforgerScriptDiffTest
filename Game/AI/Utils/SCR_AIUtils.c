@@ -223,6 +223,25 @@ class SCR_AICompartmentHandling
 		outCompartmentSlot = slot;
 		return outCompartmentSlot.GetVehicle();
 	}
+	
+	//--------------------------------------------------------------------------------------------
+	static int GetAvailableCompartmentCount (notnull IEntity vehicle)
+	{
+		int availableCompCount;
+		BaseCompartmentManagerComponent compartmentMan = BaseCompartmentManagerComponent.Cast(vehicle.FindComponent(BaseCompartmentManagerComponent));
+		if (!compartmentMan)
+			return 0;
+		ref array<BaseCompartmentSlot> compartments = {};
+		compartmentMan.GetCompartments(compartments);
+		foreach (BaseCompartmentSlot compartment: compartments)
+		{
+			if (!compartment.GetOccupant() && compartment.IsCompartmentAccessible() && !compartment.IsReserved())
+			{
+				availableCompCount++;
+			}
+		}
+		return availableCompCount;
+	}
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -519,14 +538,14 @@ class SCR_AIMessageHandling
 	}
 	
 	//------------------------------------------------------------------------------------
-	static void SendGetInDriverMessage(notnull AIAgent agent, notnull IEntity vehicleEntity, SCR_AIActivityBase relatedActivity, 
-									notnull AICommunicationComponent myComms, string sendFrom = string.Empty)
+	static void SendGetInMessage(notnull AIAgent agent, notnull IEntity vehicleEntity, EAICompartmentType roleInVehicle,
+								SCR_AIActivityBase relatedActivity, notnull AICommunicationComponent myComms, string sendFrom = string.Empty)
 	{
 		SCR_AIBoardingParameters bParams = new SCR_AIBoardingParameters();
 		int priorityLevel = SCR_AIActionBase.PRIORITY_LEVEL_NORMAL;
 		if (relatedActivity)
 			priorityLevel = relatedActivity.EvaluatePriorityLevel();
-		SCR_AIMessage_GetIn msg = SCR_AIMessage_GetIn.Create(vehicleEntity, bParams, EAICompartmentType.Pilot, false, 
+		SCR_AIMessage_GetIn msg = SCR_AIMessage_GetIn.Create(vehicleEntity, bParams, roleInVehicle, false, 
 										priorityLevel: priorityLevel, null, relatedActivity: relatedActivity);	
 		
 		msg.SetReceiver(agent);
@@ -537,24 +556,7 @@ class SCR_AIMessageHandling
 	}
 	
 	//------------------------------------------------------------------------------------
-	static void SendGetInGunnerMessage(notnull AIAgent agent, notnull IEntity vehicleEntity, SCR_AIActivityBase relatedActivity, 
-									notnull AICommunicationComponent myComms, string sendFrom = string.Empty)
-	{
-		SCR_AIBoardingParameters bParams = new SCR_AIBoardingParameters();
-		int priorityLevel = SCR_AIActionBase.PRIORITY_LEVEL_NORMAL;
-		if (relatedActivity)
-			priorityLevel = relatedActivity.EvaluatePriorityLevel();
-		SCR_AIMessage_GetIn msg = SCR_AIMessage_GetIn.Create(vehicleEntity, bParams, EAICompartmentType.Pilot, false, 
-										priorityLevel: priorityLevel, null, relatedActivity: relatedActivity);	
-		msg.SetReceiver(agent);
-		#ifdef AI_DEBUG
-		msg.m_sSentFromBt = sendFrom;
-		#endif
-		myComms.RequestBroadcast(msg, agent);
-	}
-	
-	//------------------------------------------------------------------------------------
-	static void SendMoveDriverMessage(notnull AIAgent agent, IEntity moveToEntity, SCR_AIActivityBase relatedActivity, 
+	static void SendMoveMessage(notnull AIAgent agent, IEntity moveToEntity, SCR_AIActivityBase relatedActivity, 
 									notnull AICommunicationComponent myComms, string sendFrom = string.Empty)
 	{
 		SCR_AIMessage_Move msg = SCR_AIMessage_Move.Create(moveToEntity, vector.Zero, EMovementType.SPRINT, true, relatedActivity);

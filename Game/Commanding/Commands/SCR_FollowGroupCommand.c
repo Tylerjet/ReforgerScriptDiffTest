@@ -50,8 +50,6 @@ class SCR_FollowGroupCommand : SCR_WaypointGroupCommand
 		if (slaveGroupMovementComp)
 			slaveGroupMovementComp.SetFormationDisplacement(1);
 		
-		//Hotfix until we get api to know when the speaker is done saying the command voiceline
-		GetGame().GetCallqueue().CallLater(PlayAIResponse, 2000, false, target);
 		return true;
 	}
 }

@@ -16,16 +16,35 @@ class SCR_AnimatedBeltSystem : GameSystem
 	override void OnUpdate(ESystemPoint point)
 	{
 		float timeSlice = GetWorld().GetTimeSlice();
-
+		bool nullValuePresent;
+		
 		foreach (SCR_AnimatedBeltComponent comp : m_aComponents)
 		{
+			if (!comp)
+			{
+				nullValuePresent = true;
+				continue;
+			}
+			
 			comp.Update(timeSlice);
+		}
+		
+		if (nullValuePresent)
+		{
+			for (int i = m_aComponents.Count() - 1; i >= 0; i--)
+			{
+				if (!m_aComponents[i])
+					m_aComponents.Remove(i);
+			}
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	void Register(SCR_AnimatedBeltComponent component)
 	{
+		if (!component)
+			return;
+		
 		if (!m_aComponents.Contains(component))
 			m_aComponents.Insert(component);
 		

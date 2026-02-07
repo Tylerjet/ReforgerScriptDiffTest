@@ -64,9 +64,6 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	protected Widget 									m_wProgressBar;
 	
 	//~ FUEL
-	protected const string FUEL_WIDGET_HOLDER_NAME = "FuelCountHolder";
-	protected const string FUEL_WIDGET_FILL_NAME = "FuelFill";
-	protected ImageWidget m_wFuelCount;
 	protected SCR_FuelManagerComponent m_FuelManager;
 	
 	#ifdef DEBUG_INVENTORY20
@@ -262,25 +259,22 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnFuelAmountChanged(float newFuelValue)
 	{
-		if (!m_wFuelCount || !m_FuelManager)
-			return;
-		
-		m_wFuelCount.SetMaskProgress(1 - (newFuelValue / m_FuelManager.GetTotalMaxFuel()));
+		m_ProgressBar.SetProgressRange(0, m_FuelManager.GetTotalMaxFuel());
+		m_ProgressBar.SetCurrentProgress(newFuelValue);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void InitFuelAmount()
 	{
-		m_wFuelCount = ImageWidget.Cast(m_widget.FindAnyWidget(FUEL_WIDGET_FILL_NAME));
-		if (!m_wFuelCount)
-			return;
-		
-		m_FuelManager.GetOnFuelChanged().Insert(OnFuelAmountChanged);			
-		OnFuelAmountChanged(m_FuelManager.GetTotalFuel());
-		
-		Widget fuelCountHolder = m_widget.FindAnyWidget(FUEL_WIDGET_HOLDER_NAME);
-		if (fuelCountHolder)
-			fuelCountHolder.SetVisible(true);
+		if (!m_wProgressBar)
+			m_wProgressBar = m_widget.FindAnyWidget("ProgressBar");
+
+		if (m_wProgressBar)
+		{
+			m_ProgressBar = SCR_InventoryProgressBar.Cast(m_wProgressBar.FindHandler(SCR_InventoryProgressBar));
+			m_ProgressBar.FlipColors();
+			m_wProgressBar.SetVisible(true);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1109,7 +1103,7 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	{
 		super.HandlerDeattached(w);
 		
-		if (m_FuelManager && m_wFuelCount)
+		if (m_FuelManager && m_wProgressBar)
 			m_FuelManager.GetOnFuelChanged().Remove(OnFuelAmountChanged);
 	}
 };

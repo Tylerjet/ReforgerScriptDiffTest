@@ -5,11 +5,13 @@ class SCR_ExplosiveChargeComponentClass : ScriptGameComponentClass
 
 class SCR_ExplosiveChargeComponent : ScriptGameComponent
 {
-	protected float m_fTimer;
 	protected RplId m_RplID;
 	protected RplComponent m_RplComp;
 	protected SCR_ExplosiveTriggerComponent m_Trigger;
 	protected float m_fFuzeTime = 20;
+
+	[RplProp()]
+	protected float m_fTimer;
 
 	[RplProp(onRplName: "OnFuzeTypeChanged")]
 	protected SCR_EFuzeType m_eUsedFuzeType = SCR_EFuzeType.NONE;
@@ -105,9 +107,9 @@ class SCR_ExplosiveChargeComponent : ScriptGameComponent
 		if (!garbageManager)
 			return;
 
+		garbageCollectable = garbageCollectable && !GetOwner().GetParent();
+
 		garbageManager.UpdateBlacklist(GetOwner(), !garbageCollectable);
-		if (garbageCollectable)
-			garbageManager.Insert(GetOwner());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -120,7 +122,15 @@ class SCR_ExplosiveChargeComponent : ScriptGameComponent
 
 		if (m_RplComp && !m_RplComp.Role())
 		{
-			m_fTimer = GetGame().GetWorld().GetWorldTime() + m_fFuzeTime * 1000;
+			ChimeraWorld world = ChimeraWorld.CastFrom(GetGame().GetWorld());
+			if (!world)
+				return;
+	
+			TimeAndWeatherManagerEntity timeAndWeatherManager = world.GetTimeAndWeatherManager();
+			if (!timeAndWeatherManager)
+				return;
+
+			m_fTimer = timeAndWeatherManager.GetEngineTime() + m_fFuzeTime;
 			SetEventMask(GetOwner(), EntityEvent.FRAME);
 			SetGarbageCollectable(false);
 			Replication.BumpMe();
@@ -317,7 +327,19 @@ class SCR_ExplosiveChargeComponent : ScriptGameComponent
 	//------------------------------------------------------------------------------------------------
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
-		if (GetGame().GetWorld().GetWorldTime() > m_fTimer)
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (!gameMode)
+			return;
+
+		ChimeraWorld world = ChimeraWorld.CastFrom(GetGame().GetWorld());
+		if (!world)
+			return;
+
+		TimeAndWeatherManagerEntity timeAndWeatherManager = world.GetTimeAndWeatherManager();
+		if (!timeAndWeatherManager)
+			return;
+
+		if (timeAndWeatherManager.GetEngineTime() > m_fTimer)
 		{
 			ClearEventMask(owner, EntityEvent.FRAME);
 			m_Trigger.UseTrigger();

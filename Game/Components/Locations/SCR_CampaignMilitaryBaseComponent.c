@@ -814,13 +814,18 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 	//! \param[in] attackingFaction
 	void NotifyAboutEnemyAttack(notnull Faction attackingFaction)
 	{
-		if (!GetFaction())
+		SCR_CampaignFaction campaignFaction = GetCampaignFaction();
+		if (!campaignFaction)
 			return;
 
-		if (!IsHQRadioTrafficPossible(GetCampaignFaction()))
+		if (!IsHQRadioTrafficPossible(campaignFaction))
 			return;
 
 		ChimeraWorld world = GetOwner().GetWorld();
+		
+		if (!world)
+			return;
+		
 		WorldTimestamp curTime = world.GetServerTimestamp();
 		if (m_fLastEnemyContactTimestamp != 0)
 		{
@@ -828,11 +833,18 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 				return;
 		}
 
-		GetCampaignFaction().SendHQMessage(SCR_ERadioMsg.BASE_UNDER_ATTACK, GetCallsign());
+		campaignFaction.SendHQMessage(SCR_ERadioMsg.BASE_UNDER_ATTACK, GetCallsign());
 		m_fLastEnemyContactTimestamp = curTime;
 
-		if (!GetCapturingFaction())
-			SetAttackingFaction(GetGame().GetFactionManager().GetFactionIndex(attackingFaction));
+		if (GetCapturingFaction())
+			return;
+		
+		FactionManager fManager = GetGame().GetFactionManager();
+		
+		if (!fManager)
+			return;
+		
+		SetAttackingFaction(fManager.GetFactionIndex(attackingFaction));
 	}
 
 	//------------------------------------------------------------------------------------------------

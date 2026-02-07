@@ -22,8 +22,6 @@ class SCR_StopMovementGroupCommand : SCR_BaseGroupCommand
 			slaveGroup.RemoveWaypoint(currentwp);
 		}
 		
-		//Hotfix until we get api to know when the speaker is done saying the command voiceline
-		GetGame().GetCallqueue().CallLater(PlayAIResponse, 2000, false, target);
 		return true;
 	}
 	

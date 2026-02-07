@@ -115,13 +115,13 @@ class SCR_DetonatorGadgetComponent : SCR_GadgetComponent
 
 		if (!m_User)
 		{
-			m_User = ChimeraCharacter.Cast(m_CharacterOwner);
+			m_User = m_CharacterOwner;
 
 			if (!m_User)
 				return;
 		}
 
-		ChimeraCharacter character = ChimeraCharacter.Cast(m_CharacterOwner);
+		ChimeraCharacter character = m_CharacterOwner;
 		if (character)
 		{
 			SCR_CharacterControllerComponent charController = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
@@ -143,8 +143,7 @@ class SCR_DetonatorGadgetComponent : SCR_GadgetComponent
 			OnToggleActive(state);	// activate client side to avoid server delay
 
 		// Sync
-		if (m_User)
-			SCR_GadgetManagerComponent.GetGadgetManager(m_User).AskToggleGadget(this, state);
+		SCR_GadgetManagerComponent.GetGadgetManager(m_User).AskToggleGadget(this, state);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -155,7 +154,7 @@ class SCR_DetonatorGadgetComponent : SCR_GadgetComponent
 			if (!m_CharacterOwner)
 				return;
 
-			m_User = ChimeraCharacter.Cast(m_CharacterOwner);
+			m_User = m_CharacterOwner;
 			if (!m_User)
 				return;
 		}

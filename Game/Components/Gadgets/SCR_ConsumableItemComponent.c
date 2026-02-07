@@ -91,9 +91,8 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 	protected void SetHealedGroup(EBandagingAnimationBodyParts group, bool healed)
 	{
 		m_iStoredHealedGroup = group * healed;
-		
-		ChimeraCharacter ownerChar = ChimeraCharacter.Cast(m_CharacterOwner);
-		if (!ownerChar)
+
+		if (!m_CharacterOwner)
 			return;
 
 		SCR_CharacterDamageManagerComponent targetDamageMan;
@@ -102,7 +101,7 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 		if (target)
 			targetChar = ChimeraCharacter.Cast(target);
 		else
-			targetChar = ChimeraCharacter.Cast(m_CharacterOwner);
+			targetChar = m_CharacterOwner;
 
 		if (targetChar)
 			targetDamageMan = SCR_CharacterDamageManagerComponent.Cast(targetChar.GetDamageManager());

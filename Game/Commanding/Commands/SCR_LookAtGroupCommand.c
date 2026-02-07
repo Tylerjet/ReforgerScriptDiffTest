@@ -11,10 +11,6 @@ class SCR_LookAtGroupCommand : SCR_BaseGroupCommand
 		if (!target || !targetPosition)
 			return false;
 		
-		//Hotfix until we get api to know when the speaker is done saying the command voiceline
-		GetGame().GetCallqueue().CallLater(PlayAIResponse, 2000, false, target);
-		
-		
 		return LookAtPosition(target, targetPosition, playerID);
 	}
 	

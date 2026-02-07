@@ -26,8 +26,6 @@ class SCR_RemoveAIGroupCommand : SCR_BaseGroupCommand
 		if (GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(character) == 0)
 			groupController.RequestRemoveAgent(character, playerID);
 		
-		//Hotfix until we get api to know when the speaker is done saying the command voiceline
-		GetGame().GetCallqueue().CallLater(PlayAIResponse, 2000, false, target);
 		return true;
 	}
 	

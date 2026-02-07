@@ -232,17 +232,40 @@ class SCR_PlaceableItemComponent : ScriptComponent
 
 		return vector.Distance(charPos, destination);
 	}
-}
 
-enum SCR_EPlacementType
-{
-	XZ_FIXED,
-	XYZ
-}
+	//------------------------------------------------------------------------------------------------
+	protected override bool RplSave(ScriptBitWriter writer)
+	{
+		RplId parentId = RplId.Invalid();
+		int nodeId = -1;
+		SCR_PlaceableInventoryItemComponent placeableIIC = SCR_PlaceableInventoryItemComponent.Cast(GetOwner().FindComponent(SCR_PlaceableInventoryItemComponent));
+		if (placeableIIC)
+		{
+			parentId = placeableIIC.GetParentRplId();
+			nodeId = placeableIIC.GetParentNodeId();
+		}
+		writer.WriteRplId(parentId);
+		if (parentId.IsValid())
+			writer.WriteInt(nodeId);
 
-enum SCR_ECharacterDistanceMeasurementMethod
-{
-	FROM_EYES = 0,
-	FROM_ORIGIN,
-	FROM_CENTER_OF_MASS
+		return super.RplSave(writer);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected override bool RplLoad(ScriptBitReader reader)
+	{
+		RplId parentId = RplId.Invalid();
+		reader.ReadRplId(parentId);
+		if (parentId.IsValid())
+		{
+			int nodeId = -1;
+			reader.ReadInt(nodeId);
+
+			SCR_PlaceableInventoryItemComponent placeableIIC = SCR_PlaceableInventoryItemComponent.Cast(GetOwner().FindComponent(SCR_PlaceableInventoryItemComponent));
+			if (placeableIIC)
+				placeableIIC.SetNewParent(parentId, nodeId);
+		}
+
+		return super.RplLoad(reader);
+	}
 }

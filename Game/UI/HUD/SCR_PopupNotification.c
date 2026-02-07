@@ -45,7 +45,7 @@ class SCR_PopUpNotification : GenericEntity
 
 	protected bool m_bInventoryOpen;
 	protected bool m_bOffset;
-	protected bool m_bIsEnabledInSettings;
+	protected bool m_bIsEnabledInSettings = true;
 
 	protected IEntity m_Player;
 
@@ -133,18 +133,15 @@ class SCR_PopUpNotification : GenericEntity
 
 		// Popups should not be visible in map
 		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
-
 		if (mapEntity)
 		{
 			MapConfiguration config = mapEntity.GetMapConfig();
-
-			if (!config)
-				return;
-
-			Widget mapWidget = config.RootWidgetRef;
-
-			if (mapWidget)
-				root.SetZOrder(mapWidget.GetZOrder() - 1);
+			if (config)
+			{
+				Widget mapWidget = config.RootWidgetRef;
+				if (mapWidget)
+					root.SetZOrder(mapWidget.GetZOrder() - 1);
+			}
 		}
 		
 		// Initialize Interface settings

@@ -10,29 +10,40 @@ class SCR_AIDecoTestCanGroupDriveVehicle: DecoratorTestScripted
 		SCR_AIGroup group = SCR_AIGroup.Cast(agent);
 		if (!group)
 			return false;
+		SCR_AIGroupUtilityComponent utility = group.GetGroupUtilityComponent();
+		if (!utility)
+			return false;
 		array<IEntity> vehicles = {};
 		array<AIAgent> agents = {};
 		group.GetUsableVehicles(vehicles);
 		if (vehicles.IsEmpty())
 			return false;
-		int agentsCount = group.GetAgents(agents);		
+		int agentsCount = group.GetAgents(agents);	// number of agents we need to find compartments for	
 		if (agents.IsEmpty())
 			return false;
 		IEntity vehicleToUse;
 		foreach (AIAgent ag: agents)
 		{
-			IEntity agentEntity = ag.GetControlledEntity();
+			ChimeraCharacter agentEntity = ChimeraCharacter.Cast(ag.GetControlledEntity());
 			if (!agentEntity)
 				continue;
 			IEntity vehicleOfAgent = CompartmentAccessComponent.GetVehicleIn(agentEntity);
-			if (vehicles.Find(vehicleOfAgent) < 0)
+			if (!vehicleOfAgent)
 				continue;
-			agentsCount --;
-			CompartmentAccessComponent compAcc = CompartmentAccessComponent.Cast(agentEntity.FindComponent(CompartmentAccessComponent));
+			SCR_AIGroupVehicle groupVehicle = utility.m_VehicleMgr.FindVehicle(vehicleOfAgent);
+			if (!groupVehicle)
+				continue;
+			SCR_AIVehicleUsageComponent vehicleUsage = groupVehicle.GetVehicleUsageComponent();
+			if (!vehicleUsage)
+				continue;
+			if (!vehicleUsage.CanBePiloted())
+				continue;
+			CompartmentAccessComponent compAcc = agentEntity.GetCompartmentAccessComponent();
 			if (!compAcc)
 				continue;
+			agentsCount --;
 			if (!PilotCompartmentSlot.Cast(compAcc.GetCompartment()))
-				continue;			
+				continue;
 			vehicleToUse = vehicleOfAgent;	// group agent is driver inside some of groups registered vehicle	
 		}
 		
@@ -47,21 +58,28 @@ class SCR_AIDecoTestCanGroupDriveVehicle: DecoratorTestScripted
 		
 		while (!vehicles.IsEmpty() && agentsCount > 0 && vehicleToUse)
 		{
-			compMan = BaseCompartmentManagerComponent.Cast(vehicleToUse.FindComponent(BaseCompartmentManagerComponent));
-			if (!compMan)
+			SCR_AIGroupVehicle groupVehicle = utility.m_VehicleMgr.FindVehicle(vehicleToUse);
+			if (!groupVehicle)
 				break;
-			compMan.GetCompartments(compartments);
-			foreach (BaseCompartmentSlot comp: compartments)
-			{
-				if (!comp.GetOccupant() && comp.IsCompartmentAccessible())
-					agentsCount --;
-				if (agentsCount == 0)
+			SCR_AIVehicleUsageComponent vehicleUsage = groupVehicle.GetVehicleUsageComponent();
+			if (vehicleUsage && vehicleUsage.CanBePiloted())
+			{	
+				compMan = BaseCompartmentManagerComponent.Cast(vehicleToUse.FindComponent(BaseCompartmentManagerComponent));
+				if (!compMan)
 					break;
+				compMan.GetCompartments(compartments);
+				foreach (BaseCompartmentSlot comp: compartments)
+				{
+					if (!comp.GetOccupant() && comp.IsCompartmentAccessible())
+						agentsCount --;
+					if (agentsCount == 0)
+						break;
+				}
 			}
 			vehicles.Remove(vehicles.Find(vehicleToUse));
 			if (!SCR_AICompartmentHandling.FindAvailableCompartmentInVehicles(vehicles, ECompartmentType.PILOT, compartment, vehicleToUse))
 				break; // no vehicle with available driver
 		}
-		return agentsCount == 0;			
+		return agentsCount == 0;
 	}
 };

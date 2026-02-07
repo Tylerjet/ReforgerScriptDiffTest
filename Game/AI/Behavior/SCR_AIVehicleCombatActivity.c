@@ -110,7 +110,7 @@ class SCR_AIVehicleCombatActivity : SCR_AIActivityBase
 						if (GetAvailableAgent(cargoFireteams, newDriver, newDriversFireTeam))
 						{
 							newDriversFireTeam.RemoveMember(newDriver);
-							SCR_AIMessageHandling.SendGetInDriverMessage(newDriver, vehicleEntity, this, myComms, ACTIVITY_NAME);
+							SCR_AIMessageHandling.SendGetInMessage(newDriver, vehicleEntity, EAICompartmentType.Pilot, this, myComms, ACTIVITY_NAME);
 						};
 					}
 					else if (agentInfo.HasUnitState(EUnitState.IN_TURRET) && ftAgents.Count() == 1)
@@ -121,10 +121,10 @@ class SCR_AIVehicleCombatActivity : SCR_AIActivityBase
 						if (GetAvailableAgent(cargoFireteams, newDriver, newDriversFireTeam))
 						{
 							newDriversFireTeam.RemoveMember(newDriver);
-							SCR_AIMessageHandling.SendGetInDriverMessage(newDriver, vehicleEntity, this, myComms, ACTIVITY_NAME);
+							SCR_AIMessageHandling.SendGetInMessage(newDriver, vehicleEntity, EAICompartmentType.Pilot, this, myComms, ACTIVITY_NAME);
 						}
 						else // we are alone in vehicle on gunner pos, we must take driver seat
-							SCR_AIMessageHandling.SendGetInDriverMessage(agent, vehicleEntity, this, myComms, ACTIVITY_NAME);
+							SCR_AIMessageHandling.SendGetInMessage(agent, vehicleEntity, EAICompartmentType.Pilot, this, myComms, ACTIVITY_NAME);
 					} 
 				}
 			}
@@ -247,11 +247,11 @@ class SCR_AIVehicleCombatActivity : SCR_AIActivityBase
 					}
 				}
 				if (newDriverAgent)
-					SCR_AIMessageHandling.SendGetInDriverMessage(newDriverAgent, vehicle, this, myComms, ACTIVITY_NAME);
+					SCR_AIMessageHandling.SendGetInMessage(newDriverAgent, vehicle, EAICompartmentType.Pilot, this, myComms, ACTIVITY_NAME);
 				if (newGunnerAgent)
 				{
-					SCR_AIMessageHandling.SendGetInGunnerMessage(newGunnerAgent, vehicle, this, myComms, ACTIVITY_NAME);
-					SCR_AIMessageHandling.SendMoveDriverMessage(newDriverAgent, newGunnerAgent.GetControlledEntity(), this, myComms, ACTIVITY_NAME);
+					SCR_AIMessageHandling.SendGetInMessage(newGunnerAgent, vehicle, EAICompartmentType.Turret, this, myComms, ACTIVITY_NAME);
+					SCR_AIMessageHandling.SendMoveMessage(newDriverAgent, newGunnerAgent.GetControlledEntity(), this, myComms, ACTIVITY_NAME);
 				}
 			}
 		}

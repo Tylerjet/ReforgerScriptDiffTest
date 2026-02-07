@@ -1802,6 +1802,12 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	int GetSlotId(SCR_InventorySlotUI slot)
+	{
+		return m_aSlots.Find(slot);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	int GetSlotIdForItem(ResourceName itemName)
 	{
 		int slotCount = m_aSlots.Count();

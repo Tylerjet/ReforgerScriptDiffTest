@@ -15,8 +15,6 @@ class SCR_CharacterEntityWaypointGroupCommand : SCR_WaypointGroupCommand
 		if (m_sWaypointPrefab.Empty || !target || !targetPosition)
 			return false;
 		
-		//Hotfix until we get api to know when the speaker is done saying the command voiceline
-		GetGame().GetCallqueue().CallLater(PlayAIResponse, 2000, false, target);
 		IEntity targetEntity;
 		if (cursorTarget)
 			targetEntity = cursorTarget.GetRootParent();
@@ -33,8 +31,7 @@ class SCR_CharacterEntityWaypointGroupCommand : SCR_WaypointGroupCommand
 		
 		if (!character)
 			return false;
-	
-		Print(character);	
+
 		Resource waypointPrefab = Resource.Load(GetWaypointPrefab());
 		if (!waypointPrefab.IsValid())
 		{

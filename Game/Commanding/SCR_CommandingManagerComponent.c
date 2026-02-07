@@ -104,7 +104,7 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 		
 		//no need to do this for empty group because there are no AIs to mess things up
 		SCR_AIGroup slaveGroup = masterGroup.GetSlave();
-		if (!slaveGroup || slaveGroup.GetAgentsCount() <= 0)
+		if (!slaveGroup)
 			return;
 		
 		//reset the waypoints for slave group, so they go to their default behavior
@@ -118,39 +118,6 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 		AIGroupMovementComponent slaveGroupMovementComp = AIGroupMovementComponent.Cast(slaveGroup.FindComponent(AIGroupMovementComponent));
 		if (slaveGroupMovementComp)
 			slaveGroupMovementComp.SetFormationDisplacement(0);
-		
-		//remove master-slave connection from slave
-		slaveGroup.SetMaster(null);
-		
-		SCR_CommandingManagerComponent commandingManager = SCR_CommandingManagerComponent.GetInstance();
-		if (!commandingManager)
-			return;
-		
-		//prepare new slave group for player
-		Resource groupPrefabRes = Resource.Load(commandingManager.GetGroupPrefab());
-		if (!groupPrefabRes.IsValid())
-			return;
-		
-		IEntity groupEntity = GetGame().SpawnEntityPrefab(groupPrefabRes);
-		
-		if (!groupEntity)
-			return;
-		
-		SCR_AIGroup newSlaveGroup = SCR_AIGroup.Cast(groupEntity);
-		if (!newSlaveGroup)
-			return;
-		
-		RplComponent RplComp = RplComponent.Cast(newSlaveGroup.FindComponent(RplComponent));
-		if (!RplComp)
-			return;
-		
-		RplId slaveGroupRplID = RplComp.Id();
-		
-		RplComp = RplComponent.Cast(masterGroup.FindComponent(RplComponent));
-		if (!RplComp)
-			return;
-		
-		groupsManager.RequestSetGroupSlave(RplComp.Id(), slaveGroupRplID);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -162,9 +129,36 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 	//! \param[in] playerID
 	void RequestCommandExecution(int commandIndex, RplId cursorTargetID, RplId groupRplID, vector targetPosition, int playerID, float seed)
 	{
-		//check if the passed arguments are valid, if yes, send a callback RPC to commanders playercontroller so he can make a gesture.	
-		RPC_DoExecuteCommand(commandIndex, cursorTargetID, groupRplID, targetPosition, playerID, seed);
-		Rpc(RPC_DoExecuteCommand, commandIndex, cursorTargetID, groupRplID, targetPosition, playerID, seed);
+		//find entity of AI that will be responding to commands
+		SCR_BaseGroupCommand command = SCR_BaseGroupCommand.Cast(FindCommand(FindCommandNameFromIndex(commandIndex)));
+		RplId responderRplId;
+		if (command && command.ShouldPlayAIResponse())
+		{
+			//find speaking AI, find its rplid and pass it, then in playing response, get the entity from rpl it
+			SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+			if (!groupsManager)
+				return;
+			
+			SCR_AIGroup playerGroup = groupsManager.GetPlayerGroup(playerID);
+			if (!playerGroup)
+				return;
+			
+			SCR_AIGroup slaveGroup = playerGroup.GetSlave();
+			if (!slaveGroup)
+				return;
+	
+			AIAgent agent = slaveGroup.GetLeaderAgent();
+			if (agent)
+			{
+				IEntity owner = agent.GetControlledEntity();
+				if (owner)
+					responderRplId = Replication.FindId(owner);	
+			}
+		}
+		
+		//check if the passed arguments are valid, if yes, send a callback RPC to commanders playercontroller so he can make a gesture.			
+		RPC_DoExecuteCommand(commandIndex, cursorTargetID, groupRplID, responderRplId, targetPosition, playerID, seed);
+		Rpc(RPC_DoExecuteCommand, commandIndex, cursorTargetID, groupRplID, responderRplId, targetPosition, playerID, seed);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -175,7 +169,7 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 	//! \param[in] targetPosition
 	//! \param[in] playerID
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	void RPC_DoExecuteCommand(int commandIndex, RplId cursorTargetID, RplId groupRplID, vector targetPosition, int playerID, float seed)
+	void RPC_DoExecuteCommand(int commandIndex, RplId cursorTargetID, RplId groupRplID, RplId responderRplID, vector targetPosition, int playerID, float seed)
 	{
 		RplComponent rplComp;
 		IEntity cursorTarget, group;
@@ -194,6 +188,13 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 			if (command.Execute(cursorTarget, group, targetPosition, playerID, rplComp.IsProxy()))
 			{
 				PlayCommanderSound(playerID, commandIndex, seed);
+				
+				//call this later when the commander is done speaking
+				//todo: replace with callback from audio
+				SCR_BaseGroupCommand groupCommand = SCR_BaseGroupCommand.Cast(command);
+				if (groupCommand && groupCommand.ShouldPlayAIResponse())
+					GetGame().GetCallqueue().CallLater(PlayAICommandResponse, 2000, false, playerID, true, seed, responderRplID);
+				
 				if (!rplComp.IsMaster())
 					return;
 				
@@ -245,6 +246,26 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 		signalManager.SetSignalValue(signalSoldierCaller, 0);
 		signalManager.SetSignalValue(signalSeed, seed);
 		soundComponent.SoundEventPriority(soundEventName, NORMAL_PRIORITY);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void PlayAICommandResponse(int playerID, bool positive, float seed, RplId responderRplId)
+	{
+		IEntity character = IEntity.Cast(Replication.FindItem(responderRplId));
+		if (!character)
+			return;
+		
+		SCR_CommunicationSoundComponent soundComponent = SCR_CommunicationSoundComponent.Cast(character.FindComponent(SCR_CommunicationSoundComponent));
+		if (!soundComponent)
+			return;
+		
+		SignalsManagerComponent signalManager = SignalsManagerComponent.Cast(character.FindComponent(SignalsManagerComponent));
+		if (!signalManager)
+			return;
+
+		int signalSeed = signalManager.FindSignal("Seed");
+		signalManager.SetSignalValue(signalSeed, seed);
+		soundComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_POSITIVEFEEDBACK, 50);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -371,5 +392,27 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 	void SetMaxAIPerGroup(int max)
 	{
 		m_iMaxAIPerGroup = max;
+	}
+	
+	//------------------------------------------------------------------------------------------------		
+	IEntity GetRespondingAI(int playerID)
+	{
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupsManager)
+			return null;
+		
+		SCR_AIGroup playerGroup = groupsManager.GetPlayerGroup(playerID);
+		if (!playerGroup)
+			return null;
+		
+		SCR_AIGroup slaveGroup = playerGroup.GetSlave();
+		if (!slaveGroup)
+			return null;
+
+		AIAgent agent = slaveGroup.GetLeaderAgent();
+		if (!agent)
+			return null;
+
+		return agent.GetControlledEntity();
 	}
 }
