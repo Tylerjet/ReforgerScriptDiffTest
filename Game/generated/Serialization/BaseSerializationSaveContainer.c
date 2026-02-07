@@ -10,9 +10,10 @@ Do not modify, this script is generated
 */
 
 /*!
-Base class for serialization containers
+Base class providing interface for save container.
+Child classes should implement different ways of storing data (different formats)
 */
-class BaseSerializationContainer: Managed
+class BaseSerializationSaveContainer: BaseSerializationContainer
 {
 };
 

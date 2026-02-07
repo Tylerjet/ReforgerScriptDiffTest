@@ -66,6 +66,8 @@ class SCR_WeaponSwitchingBaseUI: SCR_InfoDisplay
 	//------------------------------------------------------------------------------------------------
 	protected void RemoveActionListeners()
 	{
+		if (!m_pInputmanager)
+			return;
         m_pInputmanager.RemoveActionListener("Inventory_WeaponSwitching", EActionTrigger.DOWN, Action_OpenQuickSelectionBar );
         m_pInputmanager.RemoveActionListener("Inventory_WeaponSwitching", EActionTrigger.UP, Action_CloseQuickSelectionBar );
 		for (int i = 0; i < 10; ++i)
@@ -149,11 +151,11 @@ class SCR_WeaponSwitchingBaseUI: SCR_InfoDisplay
 		
 		int targetSlot = -1;
 
-		if (m_pInputmanager.GetActionTriggered("SwitchWeaponCategory1") || m_pInputmanager.GetActionTriggered("Weapon1"))
+		if (m_pInputmanager.GetActionTriggered("SwitchWeaponCategory1"))
 			targetSlot = 0;
-		else if (m_pInputmanager.GetActionTriggered("SwitchWeaponCategory2") || m_pInputmanager.GetActionTriggered("Weapon2"))
+		else if (m_pInputmanager.GetActionTriggered("SwitchWeaponCategory2"))
 			targetSlot = 1;
-		else if (m_pInputmanager.GetActionTriggered("SwitchWeaponCategory3") || m_pInputmanager.GetActionTriggered("Weapon3"))
+		else if (m_pInputmanager.GetActionTriggered("SwitchWeaponCategory3"))
 			targetSlot = 2;
 		else if (m_pInputmanager.GetActionTriggered("SwitchWeaponCategory4"))
 			targetSlot = 3;

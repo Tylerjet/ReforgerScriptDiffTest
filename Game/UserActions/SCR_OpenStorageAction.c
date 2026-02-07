@@ -9,26 +9,9 @@ class SCR_OpenStorageAction : SCR_InventoryAction
 		auto vicinity = CharacterVicinityComponent.Cast( pUserEntity .FindComponent( CharacterVicinityComponent ));
 		if ( !vicinity )
 			return;
-		vicinity.SetItemOfInterest(pOwnerEntity);
-		//manager.SetLootStorage( pOwnerEntity );
-		manager.OpenInventory();
 		
-		// Play sound
-		RplComponent rplComp = RplComponent.Cast(pOwnerEntity.FindComponent(RplComponent));
-		if (rplComp)
-			manager.PlayItemSound(rplComp.Id(), "SOUND_OPEN");
-		else
-		{
-			SimpleSoundComponent simpleSoundComp = SimpleSoundComponent.Cast(pOwnerEntity.FindComponent(SimpleSoundComponent));
-			if (simpleSoundComp)
-			{
-				vector mat[4];
-				pOwnerEntity.GetWorldTransform(mat);
-				
-				simpleSoundComp.SetTransformation(mat);
-				simpleSoundComp.PlayStr("SOUND_OPEN");
-			}
-		}
+		manager.SetStorageToOpen(pOwnerEntity);
+		manager.OpenInventory();
 	}
 	
 	#endif

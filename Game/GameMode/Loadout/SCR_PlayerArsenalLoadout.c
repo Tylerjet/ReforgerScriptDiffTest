@@ -57,7 +57,7 @@ class SCR_PlayerArsenalLoadout : SCR_FactionPlayerLoadout
 		loadSuccess &= context.ImportFromString(playerArsenalItems);
 		// Read faction key and ensure same faction, otherwise delete saved arsenal loadout
 		string factionKey;
-		loadSuccess &= context.ReadStrValue(ARSENALLOADOUT_FACTION_KEY, factionKey) && factionKey != ARSENALLOADOUT_FACTIONKEY_NONE;		
+		loadSuccess &= context.ReadValue(ARSENALLOADOUT_FACTION_KEY, factionKey) && factionKey != ARSENALLOADOUT_FACTIONKEY_NONE;		
 		loadSuccess &= factionKey == factionComponent.GetAffiliatedFaction().GetFactionKey();
 		loadSuccess &= context.ReadGameEntity(ARSENALLOADOUT_KEY, playerEntity);
 		

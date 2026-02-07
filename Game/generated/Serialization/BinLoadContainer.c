@@ -9,10 +9,12 @@ Do not modify, this script is generated
 * @{
 */
 
-//! Container for loading data in json format
-class JsonLoadContainer: BaseSerializationLoadContainer
+/*!
+Implementation of BaseLoadContainer to read data from json format.
+*/
+//! Container for loading data in binary format
+class BinLoadContainer: BaseSerializationLoadContainer
 {
-	proto external bool ImportFromString(string jsonData);
 	proto external bool LoadFromFile(string fileName);
 };
 

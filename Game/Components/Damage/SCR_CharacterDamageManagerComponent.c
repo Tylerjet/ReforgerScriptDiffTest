@@ -289,7 +289,7 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 		array<HitZone> hitZones = {};
 		GetAllHitZones(hitZones);
 		int hitZoneIndex = hitZones.Find(hitZone);
-		if (hitZoneIndex >= 0)
+		if (hitZoneIndex >= 0 && !GetOwner().IsDeleted())
 			Rpc(RpcDo_RemoveBleedingHitZone, hitZoneIndex);
 	}
 	

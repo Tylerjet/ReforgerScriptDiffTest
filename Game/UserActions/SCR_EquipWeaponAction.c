@@ -46,21 +46,7 @@ class SCR_EquipWeaponAction : SCR_BaseWeaponAction
 		if (manager.TryInsertItemInStorage(pOwnerEntity, weaponStorage, m_iTargetSlotID, m_pEquipCB))
 		{
 			// Play sound
-			RplComponent rplComp = RplComponent.Cast(pOwnerEntity.FindComponent(RplComponent));
-			if (rplComp)
-				manager.PlayItemSound(rplComp.Id(), "SOUND_EQUIP");
-			else
-			{
-				SimpleSoundComponent simpleSoundComp = SimpleSoundComponent.Cast(pOwnerEntity.FindComponent(SimpleSoundComponent));
-				if (simpleSoundComp)
-				{
-					vector mat[4];
-					pOwnerEntity.GetWorldTransform(mat);
-					
-					simpleSoundComp.SetTransformation(mat);
-					simpleSoundComp.PlayStr("SOUND_EQUIP");
-				}
-			}
+			manager.PlayItemSound(pOwnerEntity, "SOUND_EQUIP");
 		}
 		
 		m_iTargetSlotID = -1;
@@ -247,21 +233,7 @@ class SCR_EquipWeaponHolsterAction : SCR_BaseWeaponAction
 		}
 		m_iTargetSlotID = -1;
 		// Play sound
-		RplComponent rplComp = RplComponent.Cast(pOwnerEntity.FindComponent(RplComponent));
-		if (rplComp)
-			manager.PlayItemSound(rplComp.Id(), "SOUND_EQUIP");
-		else
-		{
-			SimpleSoundComponent simpleSoundComp = SimpleSoundComponent.Cast(pOwnerEntity.FindComponent(SimpleSoundComponent));
-			if (simpleSoundComp)
-			{
-				vector mat[4];
-				pOwnerEntity.GetWorldTransform(mat);
-				
-				simpleSoundComp.SetTransformation(mat);
-				simpleSoundComp.PlayStr("SOUND_EQUIP");
-			}
-		}
+		manager.PlayItemSound(pOwnerEntity, "SOUND_EQUIP");
 	}
 	
 	//------------------------------------------------------------------------------------------------

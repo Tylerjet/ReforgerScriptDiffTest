@@ -84,6 +84,7 @@ class Game
 	proto external bool InPlayMode();
 	proto external bool IsSafeMode();
 	proto external int FailureAddon(out notnull array<string> addons);
+	proto external ScriptModule GetScriptModule();
 	proto external BaseWorld GetWorld();
 	proto external InputManager GetInputManager();
 	proto external MenuManager GetMenuManager();

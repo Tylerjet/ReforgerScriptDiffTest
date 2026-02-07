@@ -4,11 +4,11 @@
 /*-----------------------------------------------------------
  Context to save data to given serliazation container
 */
-class SCR_JsonSaveContext : ContainerSaveContext
+class SCR_JsonSaveContext : ContainerSerializationSaveContext
 {
 	private ref JsonSaveContainer container;
 
-	void SCR_JsonSaveContext()
+	void SCR_JsonSaveContext(bool skipEmptyObjects = true)
 	{
 		container = new JsonSaveContainer();
 		SetContainer(container);
@@ -34,11 +34,11 @@ class SCR_JsonSaveContext : ContainerSaveContext
 /*-----------------------------------------------------------
  Context to load data from given serliazation container
 */
-class SCR_JsonLoadContext : ContainerLoadContext
+class SCR_JsonLoadContext : ContainerSerializationLoadContext
 {
 	private ref JsonLoadContainer container;
 	
-	void SCR_JsonLoadContext()
+	void SCR_JsonLoadContext(bool skipEmptyObjects = true)
 	{
 		container = new JsonLoadContainer();
 		SetContainer(container);

@@ -235,19 +235,40 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 		FillItemsFromStorage( storage );
 		SortSlots();
 		ShowPage( 0 );
-		SCR_UISoundEntity.SoundEvent( "SOUND_INV_CONTAINER_OPEN" );
+		
+		//play open sound  
+		if (!m_aTraverseStorage.Find(storage))
+		{
+			IEntity entity = storage.GetOwner();
+			m_InventoryManager.PlayItemSound(entity, "SOUND_CONTAINER_OPEN");
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	void Back(int traverseStorageIndex)
 	{
 		DeleteSlots();
+		
+		//play CLOSE sound 
+		BaseInventoryStorageComponent lastStorage = m_aTraverseStorage.Get(traverseStorageIndex);
+		if (lastStorage)
+		{
+			IEntity entity = lastStorage.GetOwner();
+			
+			if (entity.Type() == Vehicle)
+					m_InventoryManager.PlayItemSound(entity, "SOUND_VEHICLE_TRUNK_CLOSE");
+			else 
+					m_InventoryManager.PlayItemSound(entity, "SOUND_CLOSE");
+		}
+		
 		auto storage = PopState( traverseStorageIndex );
+		
 		if (!storage)
 		{
 			Home();
 			return;
 		}
+		
 		FillItemsFromStorage( storage );
 		SortSlots();
 		ShowPage( 0 );

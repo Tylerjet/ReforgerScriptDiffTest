@@ -61,7 +61,7 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 		}
 		
 		SCR_JsonSaveContext context = new SCR_JsonSaveContext();
-		if (!context.WriteStrValue(SCR_PlayerArsenalLoadout.ARSENALLOADOUT_FACTION_KEY, factionKey) || !context.WriteGameEntity(SCR_PlayerArsenalLoadout.ARSENALLOADOUT_KEY, characterEntity))
+		if (!context.WriteValue(SCR_PlayerArsenalLoadout.ARSENALLOADOUT_FACTION_KEY, factionKey) || !context.WriteGameEntity(SCR_PlayerArsenalLoadout.ARSENALLOADOUT_KEY, characterEntity))
 		{
 			return;
 		}

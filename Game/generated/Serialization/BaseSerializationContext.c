@@ -10,10 +10,13 @@ Do not modify, this script is generated
 */
 
 /*!
-Base class for serialization containers
+Base class for serialization contexts
 */
-class BaseSerializationContainer: Managed
+class BaseSerializationContext: Managed
 {
+	proto external bool IsValid();
+	proto external bool StartObject(string name);
+	proto external bool EndObject();
 };
 
 /** @}*/

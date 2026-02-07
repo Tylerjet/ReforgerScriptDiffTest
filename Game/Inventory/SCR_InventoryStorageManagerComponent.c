@@ -145,9 +145,22 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void PlayItemSound(RplId itemRplId, string soundEvent)
-	{
-		Rpc(RpcAsk_PlaySound, itemRplId, soundEvent);
+	void PlayItemSound(IEntity entity, string soundEvent)
+	{	
+		RplComponent rplComp = RplComponent.Cast(entity.FindComponent(RplComponent));
+		if (rplComp)
+			Rpc(RpcAsk_PlaySound, rplComp.Id(), soundEvent);
+		else
+		{
+			SimpleSoundComponent soundComp = SimpleSoundComponent.Cast(entity.FindComponent(SimpleSoundComponent));
+			if (!soundComp)
+				return;
+			
+			vector transformation[4];
+			entity.GetTransform(transformation);
+			soundComp.SetTransformation(transformation);
+			soundComp.PlayStr(soundEvent);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -177,7 +190,6 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 		vector transformation[4];
 		entity.GetTransform(transformation);
 		soundComp.SetTransformation(transformation);
-		
 		soundComp.PlayStr(soundAction);
 	}
 	
@@ -389,25 +401,10 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 		if ( slot )
 			prefered = slot.GetWeaponSlotIndex();
 		
-		if (EquipAny( m_pStorage.GetWeaponStorage(), pOwnerEntity, prefered, cb ))
-			{
-				// Play sound
-				RplComponent RplComp = RplComponent.Cast(pOwnerEntity.FindComponent(RplComponent));
-				if (RplComp)
-					Rpc(RpcAsk_PlaySound, RplComp.Id(), "SOUND_EQUIP");
-				else
-				{
-					SimpleSoundComponent simpleSoundComp = SimpleSoundComponent.Cast(pOwnerEntity.FindComponent(SimpleSoundComponent));
-					if (simpleSoundComp)
-					{
-						vector mat[4];
-						pOwnerEntity.GetWorldTransform(mat);
-				
-						simpleSoundComp.SetTransformation(mat);
-						simpleSoundComp.PlayStr("SOUND_EQUIP");
-					}		
-		}
-			}
+		EquipAny( m_pStorage.GetWeaponStorage(), pOwnerEntity, prefered, cb );
+			
+		// Play sound
+		PlayItemSound(pOwnerEntity, "SOUND_EQUIP");
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -426,13 +423,11 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 		auto storage = BaseInventoryStorageComponent.Cast(weaponEntity.FindComponent(BaseInventoryStorageComponent));
 		if (!storage)
 			return;
-		if (EquipAny(storage, pOwnerEntity, -1, cb ))
-		{
-			// Play sound
-			RplComponent RplComp = RplComponent.Cast(pOwnerEntity.FindComponent(RplComponent));
-			if (RplComp)
-				Rpc(RpcAsk_PlaySound, RplComp.Id(), "SOUND_EQUIP");
-		}
+		
+		EquipAny(storage, pOwnerEntity, -1, cb );
+		
+		// Play sound
+		PlayItemSound(pOwnerEntity, "SOUND_EQUIP");
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -442,25 +437,12 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 		//(kamil) the gadget slots are now present directly on individual clothing items - will have to revise logic here if swapping is wanted
 		BaseInventoryStorageComponent storageComp = FindStorageForItem(pOwnerEntity, EStoragePurpose.PURPOSE_EQUIPMENT_ATTACHMENT);
 		if (storageComp)
-			if (EquipAny( storageComp, pOwnerEntity, 0, cb ))
-			{
-				// Play sound
-				RplComponent RplComp = RplComponent.Cast(pOwnerEntity.FindComponent(RplComponent));
-				if (RplComp)
-					Rpc(RpcAsk_PlaySound, RplComp.Id(), "SOUND_EQUIP");
-				else
-				{
-					SimpleSoundComponent simpleSoundComp = SimpleSoundComponent.Cast(pOwnerEntity.FindComponent(SimpleSoundComponent));
-					if (simpleSoundComp)
-					{
-						vector mat[4];
-						pOwnerEntity.GetWorldTransform(mat);
-						
-						simpleSoundComp.SetTransformation(mat);
-						simpleSoundComp.PlayStr("SOUND_EQUIP");
-					}
-				}
-			}
+		{
+			EquipAny( storageComp, pOwnerEntity, 0, cb );
+			
+			// Play sound
+			PlayItemSound(pOwnerEntity, "SOUND_EQUIP");
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -468,25 +450,10 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 	void EquipCloth( IEntity pOwnerEntity )
 	{
 		// m_pStorage because character storage is inherited from SCR_EquipedLoadoutStorageComponent
-		if (EquipAny(m_pStorage, pOwnerEntity))
-			{
-				// Play sound
-				RplComponent RplComp = RplComponent.Cast(pOwnerEntity.FindComponent(RplComponent));
-				if (RplComp)
-					Rpc(RpcAsk_PlaySound, RplComp.Id(), "SOUND_EQUIP");
-				else
-				{
-					SimpleSoundComponent simpleSoundComp = SimpleSoundComponent.Cast(pOwnerEntity.FindComponent(SimpleSoundComponent));
-					if (simpleSoundComp)
-					{
-						vector mat[4];
-						pOwnerEntity.GetWorldTransform(mat);
-						
-						simpleSoundComp.SetTransformation(mat);
-						simpleSoundComp.PlayStr("SOUND_EQUIP");
-					}
-				}
-			}
+		EquipAny(m_pStorage, pOwnerEntity);
+		
+		// Play sound
+		PlayItemSound(pOwnerEntity, "SOUND_EQUIP");
 	}
 	//------------------------------------------------------------------------------------------------
 	//! try equip the item into the storage at provided slot
@@ -574,11 +541,13 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	void ResupplyItems(array<RplId> resupplyItemIds)
 	{
 		Rpc(ResupplyItemsOwner, resupplyItemIds);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	void ResupplyItemsOwner(array<RplId> resupplyItemIds)
 	{
@@ -638,7 +607,7 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 	{
 		IEntity result = m_pStorageToOpen;
 		m_pStorageToOpen = null;
-
+		
 		return result;
 	}
 

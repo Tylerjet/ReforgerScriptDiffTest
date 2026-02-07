@@ -9,11 +9,11 @@ Do not modify, this script is generated
 * @{
 */
 
-class BaseMuzzleComponentClass: AttachmentSlotComponentClass
+class BaseMuzzleComponentClass: GameComponentClass
 {
 };
 
-class BaseMuzzleComponent: AttachmentSlotComponent
+class BaseMuzzleComponent: GameComponent
 {
 	proto external EMuzzleType GetMuzzleType();
 	proto external int GetNextFireModeIndex();

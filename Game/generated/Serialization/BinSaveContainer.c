@@ -9,10 +9,9 @@ Do not modify, this script is generated
 * @{
 */
 
-//! Container for saving data in json format
-class JsonSaveContainer: BaseSerializationSaveContainer
+//! Container for saving data in binary format
+class BinSaveContainer: BaseSerializationSaveContainer
 {
-	proto string ExportToString();
 	proto external bool SaveToFile(string fileName);
 };
 

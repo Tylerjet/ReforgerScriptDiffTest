@@ -1548,6 +1548,19 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void Action_CloseInventory()
 	{
+		SCR_InventoryStorageBaseUI storageUIHandler = SCR_InventoryStorageBaseUI.Cast( m_wLootStorage.FindHandler( SCR_InventoryStorageBaseUI ) );
+		array<BaseInventoryStorageComponent> traverseStorage = {};
+		storageUIHandler.GetTraverseStorage(traverseStorage);
+		if (!traverseStorage.IsEmpty())
+		{
+			BaseInventoryStorageComponent storage = traverseStorage[0];
+			if (storage)
+			{
+				IEntity entity = storage.GetOwner();
+				m_InventoryManager.PlayItemSound(entity, "SOUND_CONTAINER_CLOSE");
+			}
+		}
+		
 		GetGame().GetInputManager().RemoveActionListener( "Inventory_Drag", EActionTrigger.DOWN, Action_DragDown );
 		GetGame().GetInputManager().RemoveActionListener( "Inventory", EActionTrigger.DOWN, Action_CloseInventory );
 		//m_bColdStart = false; 
@@ -1556,7 +1569,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		{
 			m_pVicinity.ManipulationComplete();
 		}
-
+		
 		/*
 		TODO: enable once the performance issue with invokers is solved in characterdamagemanager
 		if ( m_CharDamageManager )
@@ -1601,7 +1614,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 
 			m_InventoryManager.OnInventoryMenuClosed();
 		}
-
+		
 		SCR_UISoundEntity.SoundEvent("SOUND_INV_CLOSE");
 	}
 
@@ -1710,6 +1723,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 						//ToggleStorageContainerVisibility( m_pFocusedSlotUI.GetAsStorage() );
 						m_EStateMenuStorage = EStateMenuStorage.STATE_IDLE;
 					}
+					
 				}
 				else
 				{
@@ -2194,9 +2208,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		{
 			auto parentUIContainer = m_pFocusedSlotUI.GetStorageUI();
 			if (parentUIContainer.IsTraversalAllowed())
-			{
 				parentUIContainer.Traverse(storage);
-			}
 			
 			ButtonWidget lastCloseTraverseButton = parentUIContainer.GetLastCloseTraverseButton();
 			

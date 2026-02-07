@@ -8,6 +8,7 @@ class SCR_VONController : ScriptComponent
 {
 	const string VON_DIRECT_HOLD = "VONDirect";
 	const string VON_CHANNEL_HOLD = "VONChannel";
+	const float TOGGLE_OFF_DELAY = 0.5;		// seconds, delay before toggle state can get canceled, to avoid collision of double click and press
 	
 	static bool s_bIsInit;					// component init done, static so its only done once
 	bool m_bIsInitEntries;					// entry init done
@@ -16,6 +17,7 @@ class SCR_VONController : ScriptComponent
 	protected bool m_bIsToggledDirect;		// VON direct speech toggle is active
 	protected bool m_bIsToggledChannel;		// VON channel speech toggle is active
 	protected bool m_bIsActiveModeDirect;	// used for controller, switch between direct VON = true / channel VON = false
+	protected float m_fToggleOffDelay;		// used to track delay before toggle can be cancelled
 	protected string m_sActiveHoldAction;	// tracker for ending the hold action VON 
 	
 	protected IEntity m_VONEntity;							// cached ent, compared to currently controlled for update
@@ -125,8 +127,8 @@ class SCR_VONController : ScriptComponent
 			}
 		}
 		
-		if (m_bIsToggledDirect)	// direct speech toggle is active, do nothing
-			return;
+		if (m_bIsToggledDirect && m_fToggleOffDelay <= 0)	// direct speech toggle is active, cancel it
+			OnVONToggle(0,0);
 		
 		m_sActiveHoldAction = VON_DIRECT_HOLD;
 		
@@ -148,9 +150,12 @@ class SCR_VONController : ScriptComponent
 				return;
 			}
 		}
-		
-		if (!m_ActiveEntry || !m_ActiveEntry.m_bIsEnabled || m_bIsToggledChannel)
+	
+		if (!m_ActiveEntry || !m_ActiveEntry.m_bIsEnabled)
 			return;
+		
+		if (m_bIsToggledChannel && m_fToggleOffDelay <= 0) // channel speech toggle is active, cancel it
+			OnVONToggle(0,0);
 		
 		m_sActiveHoldAction = VON_CHANNEL_HOLD;
 		
@@ -186,12 +191,14 @@ class SCR_VONController : ScriptComponent
 		
 		if (value == 0)
 		{
+			m_fToggleOffDelay = 0;
 			m_bIsToggledDirect = false;
 			m_bIsToggledChannel = false;
 			ActivateVON(m_DirectSpeechEntry, false);
 		}
 		else if (value == 1)
 		{
+			m_fToggleOffDelay = TOGGLE_OFF_DELAY;
 			m_bIsToggledDirect = !m_bIsToggledDirect;
 			m_bIsToggledChannel = false;
 			ActivateVON(m_DirectSpeechEntry, m_bIsToggledDirect);
@@ -201,6 +208,7 @@ class SCR_VONController : ScriptComponent
 			if (!m_ActiveEntry)
 				return;
 			
+			m_fToggleOffDelay = TOGGLE_OFF_DELAY;
 			m_bIsToggledDirect = false;
 			m_bIsToggledChannel = !m_bIsToggledChannel;
 			ActivateVON(m_ActiveEntry, m_bIsToggledChannel);
@@ -477,7 +485,8 @@ class SCR_VONController : ScriptComponent
 		m_InputManager.AddActionListener(VON_CHANNEL_HOLD, EActionTrigger.UP, OnVONChannel);
 		m_InputManager.AddActionListener("VONGamepad", EActionTrigger.DOWN, OnVONGamepad);
 		m_InputManager.AddActionListener("VONGamepad", EActionTrigger.UP, OnVONGamepad);
-		m_InputManager.AddActionListener("VONToggle", EActionTrigger.DOWN, OnVONToggle);
+		m_InputManager.AddActionListener("VONDirectToggle", EActionTrigger.DOWN, OnVONToggle);
+		m_InputManager.AddActionListener("VONChannelToggle", EActionTrigger.DOWN, OnVONToggle);
 		m_InputManager.AddActionListener("VONToggleGamepad", EActionTrigger.DOWN, OnVONToggleGamepad);
 		m_InputManager.AddActionListener("VONSwitch", EActionTrigger.DOWN, OnVONSwitch);
 		
@@ -511,7 +520,8 @@ class SCR_VONController : ScriptComponent
 		m_InputManager.RemoveActionListener(VON_CHANNEL_HOLD, EActionTrigger.UP, OnVONChannel);
 		m_InputManager.RemoveActionListener("VONGamepad", EActionTrigger.DOWN, OnVONGamepad);
 		m_InputManager.RemoveActionListener("VONGamepad", EActionTrigger.UP, OnVONGamepad);
-		m_InputManager.RemoveActionListener("VONToggle", EActionTrigger.DOWN, OnVONToggle);
+		m_InputManager.RemoveActionListener("VONDirectToggle", EActionTrigger.DOWN, OnVONToggle);
+		m_InputManager.RemoveActionListener("VONDChannelToggle", EActionTrigger.DOWN, OnVONToggle);
 		m_InputManager.RemoveActionListener("VONToggleGamepad", EActionTrigger.DOWN, OnVONToggleGamepad);
 		m_InputManager.RemoveActionListener("VONSwitch", EActionTrigger.DOWN, OnVONSwitch);
 	}
@@ -538,6 +548,9 @@ class SCR_VONController : ScriptComponent
 		if (!m_bIsDisabled)
 		{
 			m_InputManager.ActivateContext("VONContext");
+			
+			if (m_fToggleOffDelay > 0)
+				m_fToggleOffDelay -= timeSlice;
 			
 			/* 	When non overlaying context such as chat is activated during hold action, we will no longer receive the EActionTrigger.UP callback from the previous context, which is currently intended
 				This timeouts it in such case so the VON will not be stuck in an active state	*/

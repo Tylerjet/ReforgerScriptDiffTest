@@ -21,17 +21,6 @@ class SCR_EquipClothAction: SCR_InventoryAction
 	override protected void PerformActionInternal(SCR_InventoryStorageManagerComponent manager, IEntity pOwnerEntity, IEntity pUserEntity)
 	{
 		manager.EquipCloth( pOwnerEntity );
-		
-		// Sound
-		vector itemTransform[4]; // transform of item before it was picked up
-		pOwnerEntity.GetWorldTransform(itemTransform);
-		GenericEntity genericOwnerEntity = GenericEntity.Cast(pOwnerEntity);
-		BaseSoundComponent soundComponent = BaseSoundComponent.Cast(genericOwnerEntity.FindComponent(BaseSoundComponent));
-		if (soundComponent)
-		{
-			soundComponent.SetTransformation(itemTransform);
-			soundComponent.PlayStr("SOUND_EQUIP");
-		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -71,7 +71,7 @@ class ScriptModule
 	Return value of called method is returned via 'returnVal' (only when 'asynch' is false!)
 	Returns true, when success.
   */
-	proto volatile int Call(Class inst, string function, bool asynch, out void returnVal, void param1 = NULL, void param2 = NULL, void param3 = NULL, void param4 = NULL, void param5 = NULL, void param6 = NULL, void param7 = NULL, void param8 = NULL, void param9 = NULL );
+	proto volatile bool Call(Class inst, string function, bool asynch, out void returnVal, void param1 = NULL, void param2 = NULL, void param3 = NULL, void param4 = NULL, void param5 = NULL, void param6 = NULL, void param7 = NULL, void param8 = NULL, void param9 = NULL );
 	
 	proto native void Release();
 	

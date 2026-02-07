@@ -6,24 +6,12 @@ class SCR_PickUpItemAction : SCR_InventoryAction
 	//------------------------------------------------------------------------------------------------
 	override protected void PerformActionInternal(SCR_InventoryStorageManagerComponent manager, IEntity pOwnerEntity, IEntity pUserEntity)
 	{
-		manager.InsertItem( pOwnerEntity );
-		
 		// Play sound
-		RplComponent rplComp = RplComponent.Cast(pOwnerEntity.FindComponent(RplComponent));
-		if (rplComp)
-			manager.PlayItemSound(rplComp.Id(), "SOUND_PICK_UP");
-		else
-		{
-			SimpleSoundComponent simpleSoundComp = SimpleSoundComponent.Cast(pOwnerEntity.FindComponent(SimpleSoundComponent));
-			if (simpleSoundComp)
-			{
-				vector mat[4];
-				pOwnerEntity.GetWorldTransform(mat);
-				
-				simpleSoundComp.SetTransformation(mat);
-				simpleSoundComp.PlayStr("SOUND_PICK_UP");
-			}
-		}
+		vector transformation[4];
+		pOwnerEntity.GetTransform(transformation);
+		
+		manager.PlayItemSound(pOwnerEntity, "SOUND_PICK_UP");
+		manager.InsertItem( pOwnerEntity );
 	}
 	
 	

@@ -641,13 +641,17 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 
 		buildingPhases = campaignFaction.GetCampaignSlotsComposition()[compIndex].GetBuildingPhaseResources();
 		
+		PlayerController pc = PlayerController.Cast(GetOwner());
+		if (!pc)
+			return;
+		
 		for (int i = 0; i < buildingPhases.Count(); i++)
 		{
 			completeBuildingTime += buildingPhases[i].GetBuildingTime()*1000; 
 			// 1st building phase goes imidiately, no need to call CallLater
 			if (i == 0)
 			{
-				buildingQueue.BuildPhase(slotEnt, buildingPhases[i].GetPhaseResourceName(), false);
+				buildingQueue.BuildPhase(slotEnt, buildingPhases[i].GetPhaseResourceName(), false, pc.GetPlayerId());
 				continue;
 			}
 					
@@ -659,7 +663,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		ResourceName resName = campaignFaction.GetAvailableSlotResources()[compIndex];	
 			
 		// Final phase of composition
-		GetGame().GetCallqueue().CallLater(buildingQueue.BuildPhase, completeBuildingTime, false, slotEnt, resName, true);
+		GetGame().GetCallqueue().CallLater(buildingQueue.BuildPhase, completeBuildingTime, false, slotEnt, resName, true, pc.GetPlayerId());
 		
 		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
 		if (!campaign)
@@ -1274,8 +1278,33 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 					BaseGameTriggerEntity thisTrg = BaseGameTriggerEntity.Cast(child);
 					thisTrg.QueryEntitiesInside();
 					array<IEntity> inside = new array<IEntity>();
-					thisTrg.GetEntitiesInside(inside);
-					if (inside.Count() == 0)
+					int cntInside = thisTrg.GetEntitiesInside(inside);
+					
+					// Delete wrecks blocking the spawnpoints
+					if (cntInside != 0)
+					{
+						GarbageManager garbageMan = GetGame().GetGarbageManager();
+						
+						foreach (IEntity ent : inside)
+						{
+							if (!ent)
+								continue;
+							
+							DamageManagerComponent comp = DamageManagerComponent.Cast(ent.FindComponent(DamageManagerComponent));
+							
+							if (!comp || !comp.IsDestroyed())
+								continue;
+							
+							if (garbageMan && garbageMan.IsInserted(ent))
+								garbageMan.Withdraw(ent);
+							
+							SCR_EntityHelper.DeleteEntityAndChildren(ent);
+						}
+						
+						cntInside = thisTrg.GetEntitiesInside(inside);
+					};
+					
+					if (cntInside == 0)
 						trg = thisTrg;
 				}
 			}
@@ -1747,7 +1776,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 
 class SCR_CompositionBuildingQueue
 {
-	void BuildPhase(notnull SCR_SiteSlotEntity slotEnt, ResourceName resName, bool isFinalStage)
+	void BuildPhase(notnull SCR_SiteSlotEntity slotEnt, ResourceName resName, bool isFinalStage, int playerID)
 	{
 		// if there is any previous stage, delete entity
 		if (slotEnt.IsOccupied())
@@ -1767,13 +1796,8 @@ class SCR_CompositionBuildingQueue
 		// if this is final stage of composition, remove it from building queue
 		if (isFinalStage)
 		{
-			// Find local player controller
-			PlayerController playerController = GetGame().GetPlayerController();
-			if (!playerController)
-				return;
-			
 			// Find campaign network component to send RPC to server
-			SCR_CampaignNetworkComponent campaignNetworkComponent = SCR_CampaignNetworkComponent.Cast(playerController.FindComponent(SCR_CampaignNetworkComponent));
+			SCR_CampaignNetworkComponent campaignNetworkComponent = SCR_CampaignNetworkComponent.GetCampaignNetworkComponent(playerID);
 			if (!campaignNetworkComponent)
 				return;
 		

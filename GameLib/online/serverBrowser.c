@@ -266,6 +266,8 @@ class Room: Managed
 	proto native float GetPing();
 	
 	proto native bool Connect();
+	
+	proto native bool HasBattlEye();
 };
 
 class ClientLobbyApi

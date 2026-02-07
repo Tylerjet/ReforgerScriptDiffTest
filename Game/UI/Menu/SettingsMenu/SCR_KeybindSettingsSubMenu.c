@@ -12,10 +12,14 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 
 	// Bindings
 	protected static ref InputBinding s_Binding;
+	protected static const string PRIMARY_PRESET_PREFIX = "primary:";
 
 	// Strings (should be localised)
 	protected static const string RESET_ALL_DIALOG_TITLE = "#AR-Settings_Keybind_WarningResetAll";
 	protected static const string RESET_ALL_DIALOG_MESSAGE = "#AR-Settings_Keybind_MessageResetAll";
+	
+	protected SCR_KeybindRowComponent m_SelectedRowComponent;
+	protected SCR_NavigationButtonComponent m_ResetSingleButtonComponent;
 
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen(SCR_SuperMenuBase parentMenu)
@@ -26,8 +30,11 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 			return;
 
 		s_Binding = GetGame().GetInputManager().CreateUserBinding();
-		SCR_NavigationButtonComponent reset = CreateNavigationButton("MenuRefresh", "#AR-Settings_Keybind_ResetAllKeybinds", true);
+		SCR_NavigationButtonComponent reset = CreateNavigationButton("MenuRefresh", "#AR-Settings_Keybind_ResetEveryKeybind", true);
 		reset.m_OnActivated.Insert(ResetKeybindsToDefault);
+		m_ResetSingleButtonComponent = CreateNavigationButton("MenuResetKeybind", "#AR-Settings_Keybind_ResetAllKeybinds", true);
+		m_ResetSingleButtonComponent.m_OnActivated.Insert(ResetSingleKeybindToDefault);
+		m_ResetSingleButtonComponent.SetEnabled(false);
 
 		//read the categories and actions from KEY_BINDING_CONFIG
 		Resource holder = BaseContainerTools.LoadContainer(KEY_BINDING_CONFIG);
@@ -136,18 +143,31 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 		menu.SetMessage(RESET_ALL_DIALOG_MESSAGE);
 		menu.m_OnConfirm.Insert(ResetKeybindsToDefaultConfirm);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ResetSingleKeybindToDefault()
+	{
+		if (!m_SelectedRowComponent)
+			return;
+		m_SelectedRowComponent.ResetAction();
+	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void ResetKeybindsToDefaultConfirm()
 	{
-		array<string> m_Contexts = {};
-		s_Binding.GetContexts(m_Contexts);
-
-		foreach (SCR_KeyBindingCategory category : m_KeybindConfig.keyBindingCategories)
+		array<string> contexts = {};
+		s_Binding.GetContexts(contexts);
+		
+		foreach (SCR_KeyBindingCategory category: m_KeybindConfig.keyBindingCategories)
 		{
-			foreach (SCR_KeyBindingEntry entry : category.keyBindingEntries)
+			foreach (SCR_KeyBindingEntry entry: category.keyBindingEntries)
 			{
-				s_Binding.ResetDefault(entry.actionName, EInputDeviceType.KEYBOARD, entry.preset);
+				string finalPreset = entry.preset;
+				if (!entry.preset.IsEmpty())
+					finalPreset = PRIMARY_PRESET_PREFIX + entry.preset;
+				
+				s_Binding.ResetDefault(entry.actionName, EInputDeviceType.KEYBOARD, finalPreset);
+				s_Binding.ResetDefault(entry.actionName, EInputDeviceType.MOUSE, finalPreset);
 			}
 		}
 		ListActionsFromCurrentCategory();
@@ -159,5 +179,23 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 	{
 		super.OnMenuShow(parentMenu);
 		ListActionsFromCurrentCategory();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_KeybindRowComponent GetSelectedRowComponent()
+	{
+		return m_SelectedRowComponent;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetSelectedRowComponent(SCR_KeybindRowComponent rowComponent)
+	{
+		m_SelectedRowComponent = rowComponent;
+	}
+	
+	void SingleResetEnabled(bool isEnabled)
+	{
+		if (m_ResetSingleButtonComponent)
+			m_ResetSingleButtonComponent.SetEnabled(isEnabled);
 	}
 };
