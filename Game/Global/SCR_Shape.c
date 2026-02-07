@@ -49,7 +49,7 @@ class SCR_Shape
 	\param strechMaterial True to stretch the material along the area border instead of mapping it on each segment.
 	\return Mesh to be mapped on an entity
 	*/
-	static MeshObject CreateAreaMesh(array<vector> positions, float height, string material, bool strechMaterial)
+	static Resource CreateAreaMesh(array<vector> positions, float height, string material, bool strechMaterial)
 	{
 		if (!material)
 			return null;
@@ -132,11 +132,12 @@ class SCR_Shape
 		int numIndices[] = {iI};
 		string materials[1] = {material};
 		
-		MeshObject meshObject = MeshObject.Create(1, numVertices, numIndices, materials, 0);
+		Resource res = MeshObject.Create(1, numVertices, numIndices, materials, 0);
+		MeshObject meshObject = res.GetResource().ToMeshObject();
 		meshObject.UpdateVerts(0, verts, uvs);
 		meshObject.UpdateIndices(0, indices);
 		
-		return meshObject;
+		return res;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -152,10 +153,6 @@ class SCR_Shape
 	*/
 	static void DrawCircle(vector transform[4], float radius, int colorOutline, int colorPlane, ShapeFlags shapeFlags)
 	{
-		vector axis = transform[1];
-		vector pivot = transform[3];
-		vector circleMat[4] = transform;
-		circleMat[3] = circleMat[3] + transform[2] * radius;
 
 		const int sectionCount = 36;
 		const int linesCount = sectionCount + 1; // one extra line is needed to complete outline
@@ -164,19 +161,23 @@ class SCR_Shape
 		vector tris[trisCount];
 
 		// If angle and section count become parametrized, this could become DrawArc
-		float sectionStep = Math.DEG2RAD * (360 / sectionCount);
+		float sectionStep = -360 / sectionCount;
+
+		vector pivot = transform[3];
+		vector point = (vector.Forward * radius).Multiply4(transform);
 
 		for (int i; i < sectionCount; i++)
 		{
-			lines[i] = circleMat[3];
+			lines[i] = point;
 			tris[i*3] = pivot;
-			tris[i*3 + 1] = circleMat[3];
-			SCR_Math3D.RotateAround(circleMat, pivot, axis, sectionStep, circleMat);
-			tris[i*3 + 2] = circleMat[3];
+			tris[i*3 + 1] = point;
+			point = (Vector(sectionStep * (i + 1), 0, 0).AnglesToVector() * radius);
+			point = point.Multiply4(transform);
+			tris[i*3 + 2] = point;
 		}
 
 		// one extra line is needed to complete outline
-		lines[sectionCount] = circleMat[3];
+		lines[sectionCount] = point;
 
 		Shape.CreateLines(colorOutline, shapeFlags, lines, linesCount);
 		Shape.CreateTris(colorPlane, shapeFlags, tris, sectionCount);

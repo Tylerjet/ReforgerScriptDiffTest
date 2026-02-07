@@ -7,19 +7,20 @@ class SCR_SpawnPositionComponentClass : ScriptComponentClass
 	protected vector m_vMaxBounds;
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	vector GetMinBoundsVector()
 	{
 		return m_vMinBounds;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	vector GetMaxBoundsVector()
 	{
 		return m_vMaxBounds;
 	}
 }
 
-//------------------------------------------------------------------------------------------------
 class SCR_SpawnPositionComponent : ScriptComponent
 {
 #ifdef WORKBENCH
@@ -111,6 +112,7 @@ class SCR_SpawnPositionComponent : ScriptComponent
 #endif
 
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_SpawnPositionComponent()
 	{
 		SCR_SpawnPositionComponentManager manager = SCR_SpawnPositionComponentManager.GetInstance(false);

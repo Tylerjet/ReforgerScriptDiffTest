@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 class SCR_AccountWidgetComponent : SCR_ScriptedWidgetComponent
 {
 	[Attribute(UIColors.GetColorAttribute(UIColors.CONFIRM), UIWidgets.ColorPicker)]
@@ -10,13 +9,13 @@ class SCR_AccountWidgetComponent : SCR_ScriptedWidgetComponent
 	[Attribute(UIColors.GetColorAttribute(UIColors.NEUTRAL_ACTIVE_STANDBY), UIWidgets.ColorPicker)]
 	protected ref Color m_ColorConnecting;
 
-	[Attribute(SCR_ServicesStatusHelper.ICON_CONNECTION)]
+	[Attribute(UIConstants.ICON_CONNECTION)]
 	protected string m_sIconOnline;
 
-	[Attribute(SCR_ServicesStatusHelper.ICON_SERVICES_ISSUES)]
+	[Attribute(UIConstants.ICON_SERVICES_ISSUES)]
 	protected string m_sIconOffline;
 
-	[Attribute(SCR_ServicesStatusHelper.ICON_CONNECTION)]
+	[Attribute(UIConstants.ICON_CONNECTION)]
 	protected string m_sIconConnecting;
 	
 	[Attribute("0")]
@@ -154,7 +153,6 @@ class SCR_AccountWidgetComponent : SCR_ScriptedWidgetComponent
 			tooltipMessage = m_sTooltipMessageConnecting;
 			tooltipMessageColor = m_ColorConnecting;
 		}
-		
 		else if (m_BackendApi.IsAuthenticated())
 		{
 			color = m_ColorOnline;
@@ -165,7 +163,7 @@ class SCR_AccountWidgetComponent : SCR_ScriptedWidgetComponent
 			if (m_Tooltip)
 				tooltipMessage = m_Tooltip.GetDefaultMessage();
 			
-			tooltipMessageColor = Color.White;
+			tooltipMessageColor = Color.FromInt(Color.WHITE);
 		}
 
 		m_ProfileStatusIcon.SetIconColor(color);

@@ -2,11 +2,14 @@ void SCR_HintManagerComponent_OnHint(SCR_HintUIInfo info, bool isSilent);
 typedef func SCR_HintManagerComponent_OnHint;
 
 [ComponentEditorProps(category: "GameScripted/GameMode/Components", description: "")]
-class SCR_HintManagerComponentClass: SCR_BaseGameModeComponentClass
+class SCR_HintManagerComponentClass : SCR_BaseGameModeComponentClass
 {
 	[Attribute()]
 	protected ref array<ref SCR_HintConditionList> m_aConditionLists;
 
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] owner
 	void InitConditionLists(IEntity owner)
 	{
 		for (int i, count = m_aConditionLists.Count(); i < count; i++)
@@ -14,6 +17,10 @@ class SCR_HintManagerComponentClass: SCR_BaseGameModeComponentClass
 			m_aConditionLists[i].Init(owner);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] owner
 	void ExitConditionLists(IEntity owner)
 	{
 		for (int i, count = m_aConditionLists.Count(); i < count; i++)
@@ -21,8 +28,9 @@ class SCR_HintManagerComponentClass: SCR_BaseGameModeComponentClass
 			m_aConditionLists[i].Exit(owner);
 		}
 	}
-};
-class SCR_HintManagerComponent: SCR_BaseGameModeComponent
+}
+
+class SCR_HintManagerComponent : SCR_BaseGameModeComponent
 {
 	[Attribute("4")]
 	protected float m_fDefaultDuration;
@@ -46,14 +54,13 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Public functions
 	////////////////////////////////////////////////////////////////////////////////////////////////////
-	/*!
-	Show hint based on existing configuration.
-	
-	\param info Hint UI info
-	\param isSilent True to show the hint without any sound effect
-	\param ignoreShown When true, the hint will be shown even if it was shown previously
-	\return True if the hint was shown
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Show hint based on existing configuration.
+	//! \param[in] info Hint UI info
+	//! \param[in] isSilent True to show the hint without any sound effect
+	//! \param[in] ignoreShown When true, the hint will be shown even if it was shown previously
+	//! \return True if the hint was shown
 	bool Show(SCR_HintUIInfo info, bool isSilent = false, bool ignoreShown = false)
 	{
 		//--- Ignore if hints are disabled in gameplay settings (not for sequence hints, because they're triggered manually)
@@ -120,30 +127,35 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 		//info.Log("SCR_HintManagerComponent.Show: ");
 		return true;
 	}
-	/*!
-	Show hint made of custom texts.
-	
-	*************************************************************************************************
-	## WARNING! ##
-	
-	Use only for quick debugging.
-	For legit use, please configure the hint as SCR_UIInfo attribute on your entity/component/config!
-	That will allow you to set all hint properties, as well as to localize it using LocParserPlugin.
-	
-	*************************************************************************************************
-	
-	\param description Hint text
-	\param name Hint title
-	\param duration For how long should the hint be shown (in seconds)
-	\param isSilent True to show the hint without any sound effect
-	\param type Hint type. When defined, the hint will be shown only once and never again.
-	\return True if the hint was shown
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Show hint made of custom texts.
+	//!
+	//! *************************************************************************************************
+	//! ## WARNING! ##
+	//!
+	//! Use only for quick debugging.
+	//! For legit use, please configure the hint as SCR_UIInfo attribute on your entity/component/config!
+	//! That will allow you to set all hint properties, as well as to localize it using LocParserPlugin.
+	//!
+	//! *************************************************************************************************
+	//!
+	//! \param[in] description Hint text
+	//! \param[in] name Hint title
+	//! \param[in] duration For how long should the hint be shown (in seconds)
+	//! \param[in] isSilent True to show the hint without any sound effect
+	//! \param[in] type Hint type. When defined, the hint will be shown only once and never again.
+	//! \return True if the hint was shown
+	//!
 	bool ShowCustom(string description, string name = string.Empty, float duration = 0, bool isSilent = false, EHint type = EHint.UNDEFINED, EFieldManualEntryId fieldManualEntry = EFieldManualEntryId.NONE, bool isTimerVisible = false)
 	{
 		m_CustomHint = SCR_HintUIInfo.CreateInfo(description, name, duration, type, fieldManualEntry, isTimerVisible);
 		return Show(m_CustomHint, isSilent);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	bool ClearHint()
 	{
 		if(m_LatestHint)
@@ -154,10 +166,11 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 		else
 			return false;
 	}
-	/*!
-	Repeat previously shown hint.
-	\return True if the hint was shown
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Repeat previously shown hint.
+	//! \param[in] isSilent
+	//! \return True if the hint was shown
 	bool Repeat(bool isSilent = false)
 	{
 		if (m_LatestHint)
@@ -165,10 +178,10 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 		else
 			return false;
 	}
-	/*!
-	Silently refresh currently shown hint.
-	\return True if the hint was refreshed
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Silently refresh currently shown hint.
+	//! \return True if the hint was refreshed
 	bool Refresh()
 	{
 		if (m_bIsShown)
@@ -176,11 +189,11 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 		else
 			return false;
 	}
-	/*!
-	Hide currently shown hint.
-	\param info When defined, clear only this hint. If other hint is shown, do nothing.
-	\return True if a hint was cleared
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Hide currently shown hint.
+	//! \param[in] info When defined, clear only this hint. If other hint is shown, do nothing.
+	//! \return True if a hint was cleared
 	bool Hide(SCR_HintUIInfo info = null)
 	{
 		//--- Nothing to clear
@@ -197,9 +210,9 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 		m_OnHintHide.Invoke(m_LatestHint, false);
 		return true;
 	}
-	/*!
-	Toggle hint. Hide it if it's shown, and open it again if it's hidden.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Toggle hint. Hide it if it's shown, and open it again if it's hidden.
 	void Toggle()
 	{
 		if (IsShown())
@@ -207,9 +220,9 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 		else
 			Repeat();
 	}
-	/*!
-	Open context to currently shown hint.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Open context to currently shown hint.
 	void OpenContext()
 	{
 		if (!IsShown() || !m_LatestHint)
@@ -219,18 +232,18 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 		if (link != EFieldManualEntryId.NONE)
 			SCR_FieldManualUI.Open(link);
 	}
-	/*!
-	Get the most recent hint.
-	\return Hint UI info
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get the most recent hint.
+	//! \return Hint UI info
 	SCR_HintUIInfo GetLatestHint()
 	{
 		return m_LatestHint;
 	}
-	/*!
-	Get thecurrently shown hint.
-	\return Hint UI info
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get thecurrently shown hint.
+	//! \return Hint UI info
 	SCR_HintUIInfo GetCurrentHint()
 	{
 		if (m_bIsShown)
@@ -238,28 +251,28 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 		else
 			return null;
 	}
-	/*!
-	Check if a hint is shown at this moment.
-	\return True when shown
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if a hint is shown at this moment.
+	//! \return True when shown
 	bool IsShown()
 	{
 		return m_bIsShown;
 	}
-	/*!
-	Check if hints are enabled in gameplay settings.
-	\return True when enabled
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if hints are enabled in gameplay settings.
+	//! \return True when enabled
 	bool CanShow()
 	{
 		return m_bIgnoreHintSettings || !m_Settings || m_Settings.AreHintsEnabled();
 	}
-	/*!
-	Check if hint type was shown previously (even in previous game sessions; the information is stored persistently).
-	\param hint Hint type
-	\param limit How many times can the hint be shown
-	\return True when shown
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if hint type was shown previously (even in previous game sessions; the information is stored persistently).
+	//! \param[in] hint Hint type
+	//! \param[in] limit How many times can the hint be shown
+	//! \return True when shown
 	bool WasShown(EHint hint, int limit = 1)
 	{
 		return hint > 0 //--- Is type defined (hints without type are never remembered)?
@@ -269,42 +282,41 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 				)
 				&& !DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_HINT_IGNORE_SHOWN); //--- Is debug mode suppressing this check?
 	}
-	/*!
-	Check if hint info was shown previously (even in previous game sessions; the information is stored persistently).
-	\return True when shown
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if hint info was shown previously (even in previous game sessions; the information is stored persistently).
+	//! \return True when shown
 	bool WasShown(SCR_HintUIInfo info)
 	{
 		return info && WasShown(info.GetType(), info.GetShowLimit());
 	}
-	/*!
-	Override hint duration.
-	\param duration. When 0, override is reset.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Override hint duration.
+	//! \param[in] duration. When 0, override is reset.
 	void SetDurationOverride(float duration)
 	{
 		m_fDurationOverride = duration;
 	}
-	/*!
-	Get override of hint duration.
-	\return Duration. When 0, no override is active.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get override of hint duration.
+	//! \return Duration. When 0, no override is active.
 	float GetDurationOverride()
 	{
 		return m_fDurationOverride;
 	}
-	/*!
-	Get even called when a hint is shown.
-	\return Script invoker
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get the event called when a hint is shown.
+	//! \return Script invoker
 	ScriptInvokerBase<SCR_HintManagerComponent_OnHint> GetOnHintShow()
 	{
 		return m_OnHintShow;
 	}
-	/*!
-	Get even called when a hint is hidden.
-	\return Script invoker
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get the event called when a hint is hidden.
+	//! \return Script invoker
 	ScriptInvokerBase<SCR_HintManagerComponent_OnHint> GetOnHintHide()
 	{
 		return m_OnHintHide;
@@ -313,10 +325,10 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Static functions
 	////////////////////////////////////////////////////////////////////////////////////////////////////
-	/*!
-	Get instance of the hint manager.
-	\return Hint manager
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get instance of the hint manager.
+	//! \return Hint manager
 	static SCR_HintManagerComponent GetInstance()
 	{
 		BaseGameMode gameMode = GetGame().GetGameMode();
@@ -325,13 +337,13 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 		else
 			return null;
 	}
-	/*!
-	Show hint based on existing configuration.
-	\param info Hint UI info
-	\param isSilent True to show the hint without any sound effect
-	\param ignoreShown When true, the hint will be shown even if it was shown previously
-	\return True if the hint was shown
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Show hint based on existing configuration.
+	//! \param[in] info Hint UI info
+	//! \param[in] isSilent True to show the hint without any sound effect
+	//! \param[in] ignoreShown When true, the hint will be shown even if it was shown previously
+	//! \return True if the hint was shown
 	static bool ShowHint(SCR_HintUIInfo info, bool isSilent = false, bool ignoreShown = false)
 	{
 		SCR_HintManagerComponent hintManager = GetInstance();
@@ -340,24 +352,25 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 		else
 			return false;
 	}
-	/*!
-	Show hint made of custom texts.
-	
-	*************************************************************************************************
-	## WARNING! ##
-	
-	Use only for quick debugging.
-	For legit use, please configure the hint as SCR_UIInfo attribute on your entity/component/config!
-	That will allow you to set all hint properties, as well as to localize it using LocParserPlugin.
-	
-	*************************************************************************************************
-	
-	\param description Hint text
-	\param name Hint title
-	\param duration For how long should the hint be shown (in seconds)
-	\param isSilent True to show the hint without any sound effect
-	\return True if the hint was shown
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Show hint made of custom texts.
+	//!
+	//! *************************************************************************************************
+	//! ## WARNING! ##
+	//!
+	//! Use only for quick debugging.
+	//! For legit use, please configure the hint as SCR_UIInfo attribute on your entity/component/config!
+	//! That will allow you to set all hint properties, as well as to localize it using LocParserPlugin.
+	//!
+	//! *************************************************************************************************
+	//!
+	//! \param[in] description Hint text
+	//! \param[in] name Hint title
+	//! \param[in] duration For how long should the hint be shown (in seconds)
+	//! \param[in] isSilent True to show the hint without any sound effect
+	//! \return True if the hint was shown
+	//!
 	static bool ShowCustomHint(string description, string name = string.Empty, float duration = 0, bool isSilent = false, EFieldManualEntryId fieldManualEntry = EFieldManualEntryId.NONE, bool isTimerVisible = false)
 	{
 		SCR_HintManagerComponent hintManager = GetInstance();
@@ -366,9 +379,9 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 		else
 			return false;
 	}
-	/*!
-	Clear the last used hint so it no longer shows.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Clear the last used hint so it no longer shows.
 	static bool ClearLatestHint()
 	{
 		SCR_HintManagerComponent hintManager = GetInstance();
@@ -377,10 +390,11 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 		else
 			return false;
 	}
-	/*!
-	Repeat previously shown hint.
-	\return True if the hint was shown
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Repeat previously shown hint.
+	//! \param[in] isSilent
+	//! \return True if the hint was shown
 	static bool RepeatHint(bool isSilent = false)
 	{
 		SCR_HintManagerComponent hintManager = GetInstance();
@@ -389,11 +403,11 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 		else
 			return false;
 	}
-	/*!
-	Clear currently shown hint.
-	\param info When defined, clear only this hint. If other hint is shown, do nothing.
-	\return True if a hint was cleared
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Clear currently shown hint.
+	//! \param[in] info When defined, clear only this hint. If other hint is shown, do nothing.
+	//! \return True if a hint was cleared
 	static bool HideHint(SCR_HintUIInfo info = null)
 	{
 		SCR_HintManagerComponent hintManager = GetInstance();
@@ -402,10 +416,10 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 		else
 			return false;
 	}
-	/*!
-	Check if a hint is shown at this moment.
-	\return True when shown
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if a hint is shown at this moment.
+	//! \return True when shown
 	static bool IsHintShown()
 	{
 		SCR_HintManagerComponent hintManager = GetInstance();
@@ -414,10 +428,10 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 		else
 			return false;
 	}
-	/*!
-	Check if hints are enabled in gameplay settings.
-	\return True when enabled
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if hints are enabled in gameplay settings.
+	//! \return True when enabled
 	static bool CanShowHints()
 	{
 		SCR_HintManagerComponent hintManager = GetInstance();
@@ -430,6 +444,8 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Protected functions
 	////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	protected void LoadSettings()
 	{
 		m_Settings = new SCR_HintSettings();
@@ -440,6 +456,8 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 		if (!m_Settings.AreHintsEnabled() && (m_bIsShown && !m_LatestHint.IsInSequence()))
 			Hide();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void SetShown(SCR_HintUIInfo info)
 	{
 		if (!info || WasShown(info) || DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_HINT_IGNORE_SHOWN))
@@ -456,6 +474,8 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Default functions
 	////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		if (System.IsConsoleApp())
@@ -480,6 +500,8 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 		GetGame().GetInputManager().AddActionListener("HintToggle", EActionTrigger.DOWN, Toggle);
 		GetGame().GetInputManager().AddActionListener("HintContext", EActionTrigger.DOWN, OpenContext);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnDelete(IEntity owner)
 	{		
 		if (System.IsConsoleApp())
@@ -495,4 +517,4 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 		GetGame().GetInputManager().RemoveActionListener("HintToggle", EActionTrigger.DOWN, Toggle);
 		GetGame().GetInputManager().RemoveActionListener("HintContext", EActionTrigger.DOWN, OpenContext);
 	}
-};
+}

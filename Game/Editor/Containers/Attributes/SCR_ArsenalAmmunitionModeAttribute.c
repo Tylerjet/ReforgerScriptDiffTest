@@ -1,22 +1,16 @@
 [BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
 class SCR_ArsenalAmmunitionModeAttribute : SCR_BaseFloatValueHolderEditorAttribute
 {	
+	//------------------------------------------------------------------------------------------------
 	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)
 	{
 		SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(item);
 		if (!editableEntity)
 			return null;
 		
-		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.Cast(editableEntity.GetOwner().FindComponent(SCR_ArsenalComponent));
+		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.FindArsenalComponent(editableEntity.GetOwner());
 		if (!arsenalComponent)
-		{
-			//~ If vehicle check if arsenal is on children
-			if (editableEntity.GetEntityType() == EEditableEntityType.VEHICLE)
-				arsenalComponent = SCR_ArsenalComponent.GetArsenalComponentFromChildren(editableEntity.GetOwner());
-			
-			if (!arsenalComponent)
-				return null;
-		}
+			return null;
 		
 		SCR_EArsenalAttributeGroup arsenalGroups = arsenalComponent.GetEditableAttributeGroups();
 		if (!(arsenalGroups & SCR_EArsenalAttributeGroup.AMMUNITION_MODE) || !(arsenalGroups & SCR_EArsenalAttributeGroup.WEAPONS))
@@ -36,6 +30,7 @@ class SCR_ArsenalAmmunitionModeAttribute : SCR_BaseFloatValueHolderEditorAttribu
 		return SCR_BaseEditorAttributeVar.CreateInt(weaponsAmmunitionIndex);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)
 	{
 		if (!var)
@@ -45,16 +40,9 @@ class SCR_ArsenalAmmunitionModeAttribute : SCR_BaseFloatValueHolderEditorAttribu
 		if (!editableEntity)
 			return;
 		
-		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.Cast(editableEntity.GetOwner().FindComponent(SCR_ArsenalComponent));
+		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.FindArsenalComponent(editableEntity.GetOwner());
 		if (!arsenalComponent)
-		{
-			//~ If vehicle check if arsenal is on children
-			if (editableEntity.GetEntityType() == EEditableEntityType.VEHICLE)
-				arsenalComponent = SCR_ArsenalComponent.GetArsenalComponentFromChildren(editableEntity.GetOwner());
-				
-			if (!arsenalComponent)
-				return;
-		}
+			return;
 		
 		SCR_EArsenalItemMode itemMode =  arsenalComponent.GetSupportedArsenalItemModes();
 		
@@ -81,4 +69,4 @@ class SCR_ArsenalAmmunitionModeAttribute : SCR_BaseFloatValueHolderEditorAttribu
 		
 		arsenalComponent.SetSupportedArsenalItemModes(itemMode);
 	}
-};
+}

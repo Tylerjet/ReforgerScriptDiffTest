@@ -20,7 +20,7 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 	[Attribute("0.25", desc: "Subattribute indicator disabled alpha")]
 	protected float m_fSubAttributeDisabledAlphaColor;
 	
-	protected ref SCR_EditorAttributeUIInfo m_ButtonDescriptionUIInfo = new ref SCR_EditorAttributeUIInfo;
+	protected ref SCR_EditorAttributeUIInfo m_ButtonDescriptionUIInfo = new SCR_EditorAttributeUIInfo;
 	protected SCR_AttributeButtonUIComponent m_ActiveButtonDescription;
 	
 	protected SCR_ChangeableComponentBase m_UIComponent;
@@ -44,11 +44,11 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 	protected string m_sButtonDescription;
 	protected string m_sButtonDescriptionParam1;
 	
-	protected ref ScriptInvoker Event_OnAttributeChanged = new ref ScriptInvoker;
-	protected ref ScriptInvoker Event_OnEnabledByAttribute = new ref ScriptInvoker;
-	protected ref ScriptInvoker Event_OnAttributeUIFocusChanged = new ref ScriptInvoker;
-	protected ref ScriptInvoker Event_OnInputDeviceChanged = new ref ScriptInvoker;
-	protected ref ScriptInvoker Event_OnMouseLeave = new ref ScriptInvoker;
+	protected ref ScriptInvoker Event_OnAttributeChanged = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnEnabledByAttribute = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnAttributeUIFocusChanged = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnInputDeviceChanged = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnMouseLeave = new ScriptInvoker;
 	
 	
 	//============================ Getters ============================\\
@@ -108,7 +108,7 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 	//============================ Init ============================\\
 	/*!
 	Initialize GUI from attribute.
-	To be overriden by inherited classes.
+	To be overridden by inherited classes.
 	\param w Widget this component is attached to
 	\param attribute Editor attribute this component represents
 	*/
@@ -456,7 +456,7 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 	{		
 		if (m_SubAttributeIndicator)
 		{
-			Color color = m_SubAttributeIndicator.GetColor();
+			Color color = Color.FromInt(m_SubAttributeIndicator.GetColor().PackToInt());
 			if (!enabled)
 				color.SetA(m_fSubAttributeDisabledAlphaColor);
 			else 

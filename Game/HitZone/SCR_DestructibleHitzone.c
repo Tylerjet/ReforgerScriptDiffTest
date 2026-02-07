@@ -1,6 +1,6 @@
 #define ENABLE_BASE_DESTRUCTION
 //------------------------------------------------------------------------------------------------
-class SCR_DestructibleHitzone : ScriptedHitZone
+class SCR_DestructibleHitzone : SCR_HitZone
 {
 	[Attribute("0", UIWidgets.Slider, "Scale of damage passed to parent default hitzone\nIgnores base damage multiplier, reduction and threshold\nDamage type multipliers are applied", "0 100 0.001")]
 	protected float m_fPassDamageToParentScale;
@@ -75,13 +75,13 @@ class SCR_DestructibleHitzone : ScriptedHitZone
 	\param nodeID Bone index in mesh object
 	\param isDOT True if this is a calculation for DamageOverTime
 	*/
-	override float ComputeEffectiveDamage(EDamageType damageType, float rawDamage, IEntity hitEntity, HitZone struckHitZone, IEntity damageSource, notnull Instigator instigator, const GameMaterial hitMaterial, int colliderID, inout vector hitTransform[3], const vector impactVelocity, int nodeID, bool isDOT)
+	override float ComputeEffectiveDamage(notnull BaseDamageContext damageContext, bool isDOT)
 	{
+		vector hitTransform[3] = {damageContext.hitPosition, damageContext.hitDirection, damageContext.hitNormal};		
 
-		
 		// Forward non-DOT damage to parent, ignoring own base damage multiplier
 		if (!isDOT && m_fPassDamageToParentScale != 0)
-			PassDamageToParent(damageType, rawDamage * m_fPassDamageToParentScale, instigator, hitTransform, hitMaterial);
+			PassDamageToParent(damageContext.damageType, damageContext.damageValue, damageContext.instigator, hitTransform, damageContext.material);
 		
 		// Forward non-DOT damage to root or parent default hitzone, ignoring own base damage multiplier
 		EDamageType type;
@@ -91,7 +91,7 @@ class SCR_DestructibleHitzone : ScriptedHitZone
 				continue;
 
 			// If damage types are defined, only allow passing specified damage types
-			if (!rule.m_aSourceDamageTypes.IsEmpty() && !rule.m_aSourceDamageTypes.Contains(damageType))
+			if (!rule.m_aSourceDamageTypes.IsEmpty() && !rule.m_aSourceDamageTypes.Contains(damageContext.damageType))
 				continue;
 
 			// If damage states are defined, only allow passing while damage state is allowed
@@ -99,21 +99,21 @@ class SCR_DestructibleHitzone : ScriptedHitZone
 				continue;
 
 			if (rule.m_eOutputDamageType == EDamageType.TRUE)
-				type = damageType;
+				type = damageContext.damageType;
 			else
 				type = rule.m_eOutputDamageType;
 
 			if (rule.m_bPassToRoot)
-				PassDamageToRoot(type, rawDamage * rule.m_fMultiplier, instigator, hitTransform, hitMaterial);
+				PassDamageToRoot(damageContext.damageType, damageContext.damageValue * rule.m_fMultiplier, damageContext.instigator, hitTransform, damageContext.material);
 
 			if (rule.m_bPassToParent)
-				PassDamageToParent(type, rawDamage * rule.m_fMultiplier, instigator, hitTransform, hitMaterial);
+				PassDamageToParent(damageContext.damageType, damageContext.damageValue * rule.m_fMultiplier, damageContext.instigator, hitTransform, damageContext.material);
 			
 			if (rule.m_bPassToDefaultHitZone)
-				PassDamageToDefaultHitZone(type, rawDamage * rule.m_fMultiplier, instigator, hitTransform, hitMaterial);
+				PassDamageToDefaultHitZone(damageContext.damageType, damageContext.damageValue * rule.m_fMultiplier, damageContext.instigator, hitTransform, damageContext.material);
 		}
 
-		return super.ComputeEffectiveDamage(damageType, rawDamage, hitEntity, struckHitZone, damageSource, instigator, hitMaterial, colliderID, hitTransform, impactVelocity, nodeID, isDOT);
+		return super.ComputeEffectiveDamage(damageContext, isDOT);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -133,7 +133,9 @@ class SCR_DestructibleHitzone : ScriptedHitZone
 		if (damage == 0)
 			return;
 
-		m_ParentDamageManager.HandleDamage(type, damage, transform, m_ParentDamageManager.GetOwner(), m_ParentDamageManager.GetDefaultHitZone(), instigator, surface, -1, -1);
+		SCR_DamageContext damageContext = new SCR_DamageContext(type, damage, transform, m_ParentDamageManager.GetOwner(), m_ParentDamageManager.GetDefaultHitZone(), instigator, surface, -1, -1);
+			
+		m_ParentDamageManager.HandleDamage(damageContext);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -155,9 +157,13 @@ class SCR_DestructibleHitzone : ScriptedHitZone
 
 		HitZone defaultHZ = m_RootDamageManager.GetDefaultHitZone();
 		if (defaultHZ != this)
-			m_RootDamageManager.HandleDamage(type, damage, transform, m_RootDamageManager.GetOwner(), defaultHZ, instigator, surface, -1, -1);
+		{
+			SCR_DamageContext damageContext = new SCR_DamageContext(type, damage, transform, m_RootDamageManager.GetOwner(), defaultHZ, instigator, surface, -1, -1);
+		
+			m_RootDamageManager.HandleDamage(damageContext);
+		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	/*!
 	Pass damage to default hitzone of owner damage manager, ignoring base damage multiplier, reduction and threshold
@@ -178,7 +184,10 @@ class SCR_DestructibleHitzone : ScriptedHitZone
 
 		HitZone defaultHZ = damageManager.GetDefaultHitZone();
 		if (defaultHZ != this)
-			damageManager.HandleDamage(type, damage, transform, damageManager.GetOwner(), defaultHZ, instigator, surface, -1, -1);
+		{
+			SCR_DamageContext damageContext = new SCR_DamageContext(type, damage, transform, damageManager.GetOwner(), defaultHZ, instigator, surface, -1, -1);
+			damageManager.HandleDamage(damageContext);		
+		}		
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -306,7 +315,7 @@ class SCR_DestructibleHitzone : ScriptedHitZone
 			return;
 
 		// Play destruction effects only if not streaming in
-		SCR_HitZoneContainerComponent hitZoneContainer = SCR_HitZoneContainerComponent.Cast(GetHitZoneContainer());
+		SCR_DamageManagerComponent hitZoneContainer = SCR_DamageManagerComponent.Cast(GetHitZoneContainer());
 		if (IsProxy() && hitZoneContainer && !hitZoneContainer.IsRplReady())
 			return;
 

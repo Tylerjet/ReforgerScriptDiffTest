@@ -1,9 +1,10 @@
 [BaseContainerProps(), SCR_BaseContainerHintCondition()]
-class SCR_InputHintCondition: SCR_BaseHintCondition
+class SCR_InputHintCondition : SCR_BaseHintCondition
 {
 	[Attribute()]
 	protected ref array<string> m_aActionNames;
 	
+	//------------------------------------------------------------------------------------------------
 	override protected void OnInitCondition(Managed owner)
 	{
 		InputManager inputManager = GetGame().GetInputManager();
@@ -12,6 +13,8 @@ class SCR_InputHintCondition: SCR_BaseHintCondition
 			inputManager.AddActionListener(m_aActionNames[i], EActionTrigger.DOWN, Activate);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void OnExitCondition(Managed owner)
 	{
 		InputManager inputManager = GetGame().GetInputManager();
@@ -20,4 +23,4 @@ class SCR_InputHintCondition: SCR_BaseHintCondition
 			inputManager.RemoveActionListener(m_aActionNames[i], EActionTrigger.DOWN, Activate);
 		}
 	}
-};
+}

@@ -14,8 +14,8 @@ class SCR_DestructibleTreesSynchManager : ScriptComponent
 	private IEntity m_OwnerEntity;
 	private BaseSoundComponent m_SoundComponent;
 	
-	private ref array<ref SCR_DestroyedTreesData> m_aDestroyedTreesData = new ref array<ref SCR_DestroyedTreesData>();
-	private ref array<ref SCR_ActiveTreeData> m_aActiveTreesData = new ref array<ref SCR_ActiveTreeData>();
+	private ref array<ref SCR_DestroyedTreesData> m_aDestroyedTreesData = new array<ref SCR_DestroyedTreesData>();
+	private ref array<ref SCR_ActiveTreeData> m_aActiveTreesData = new array<ref SCR_ActiveTreeData>();
 	
 	protected RplComponent m_RplComponent;
 	
@@ -38,7 +38,7 @@ class SCR_DestructibleTreesSynchManager : ScriptComponent
 		if (!m_aActiveTreesData)
 			return -3;
 		
-		return m_aActiveTreesData.Insert(new ref SCR_ActiveTreeData());
+		return m_aActiveTreesData.Insert(new SCR_ActiveTreeData());
 	}
 	
 	//------------------------------------------------------------------------------------------------

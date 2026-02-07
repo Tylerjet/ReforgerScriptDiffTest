@@ -95,7 +95,7 @@ class SCR_SectorSpawn: GenericEntity
 			vector mat[4];
 			prefabSpawnPoint.GetWorldTransform(mat);
 			
-			if (prefabSpawnPoint.ShouldSnapToGound())
+			if (prefabSpawnPoint.ShouldSnapToGround())
 			{
 				vector position = mat[3];
 				position[1] = prefabSpawnPoint.GetWorld().GetSurfaceY(position[0], position[2]);

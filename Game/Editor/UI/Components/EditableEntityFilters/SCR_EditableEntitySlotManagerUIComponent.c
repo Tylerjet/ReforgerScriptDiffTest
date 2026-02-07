@@ -1,4 +1,4 @@
-class SCR_EditableEntitySlotManagerUIComponent: SCR_BaseEditorUIComponent
+class SCR_EditableEntitySlotManagerUIComponent : SCR_BaseEditorUIComponent
 {
 	[Attribute()]
 	protected ref SCR_EditableEntityUIConfig m_EditableEntityUI;
@@ -16,11 +16,13 @@ class SCR_EditableEntitySlotManagerUIComponent: SCR_BaseEditorUIComponent
 	protected bool m_bAddAllEntities;
 	
 	protected EEditableEntityState m_States;
-	protected ref map<SCR_EditableEntityComponent, SCR_EditableEntityBaseSlotUIComponent> m_EntitySlots = new map<SCR_EditableEntityComponent, SCR_EditableEntityBaseSlotUIComponent>;
+	protected ref map<SCR_EditableEntityComponent, SCR_EditableEntityBaseSlotUIComponent> m_mEntitySlots = new map<SCR_EditableEntityComponent, SCR_EditableEntityBaseSlotUIComponent>();
 	protected bool m_bInteractive;
 	
 	protected ref map<SCR_EntitiesEditorUIRule, ref SCR_EditableEntityUIRuleTracker> m_RuleTrackers;// = new map<SCR_EntitiesEditorUIRule, ref SCR_EditableEntityUIRuleTracker>();
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	EEditableEntityState GetForcedStates()
 	{
 		return m_ForcedStates;
@@ -28,12 +30,25 @@ class SCR_EditableEntitySlotManagerUIComponent: SCR_BaseEditorUIComponent
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Registration
+	////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] entity
+	//! \param[in] createIfNull
+	//! \return
 	SCR_EditableEntityBaseSlotUIComponent FindSlot(SCR_EditableEntityComponent entity, bool createIfNull = false)
 	{
 		SCR_EditableEntityBaseSlotUIComponent slot;
-		m_EntitySlots.Find(entity, slot);
+		m_mEntitySlots.Find(entity, slot);
 		return slot;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] entity
+	//! \param[in] forced
+	//! \return
 	bool DeleteSlot(SCR_EditableEntityComponent entity, bool forced = false)
 	{
 		//--- If some other state is active, don't unregister
@@ -42,10 +57,10 @@ class SCR_EditableEntitySlotManagerUIComponent: SCR_BaseEditorUIComponent
 		
 		//--- Unregister
 		SCR_EditableEntitySceneSlotUIComponent entitySlot;
-		if (m_EntitySlots.Find(entity, entitySlot))
+		if (m_mEntitySlots.Find(entity, entitySlot))
 		{
 			entitySlot.DeleteSlot();
-			m_EntitySlots.Remove(entity);
+			m_mEntitySlots.Remove(entity);
 			return true;
 		}
 		else
@@ -53,21 +68,31 @@ class SCR_EditableEntitySlotManagerUIComponent: SCR_BaseEditorUIComponent
 			return false;
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] entity
+	//! \param[in] slot
 	void InsertSlot(SCR_EditableEntityComponent entity, SCR_EditableEntityBaseSlotUIComponent slot)
 	{
 		slot.InitSlot(entity);
-		m_EntitySlots.Insert(entity, slot);
+		m_mEntitySlots.Insert(entity, slot);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] entity
+	//! \param[in] slot
 	void InsertSlotExternal(SCR_EditableEntityComponent entity, SCR_EditableEntityBaseSlotUIComponent slot)
 	{
-		if (m_EntitySlots.Contains(entity))
+		if (m_mEntitySlots.Contains(entity))
 		{
 			entity.Log("Attempting to create duplicate GUI slot for editable entity. Duplicates are not allowed!", true, LogLevel.WARNING);
 			return;
 		}
 		
 		slot.InitSlot(entity);
-		m_EntitySlots.Insert(entity, slot);
+		m_mEntitySlots.Insert(entity, slot);
 		
 		InitSlotManager();
 		
@@ -76,18 +101,22 @@ class SCR_EditableEntitySlotManagerUIComponent: SCR_BaseEditorUIComponent
 		
 		if (m_RuleTrackers)
 		{
-			foreach (SCR_EditableEntityUIRuleTracker ruleTracker: m_RuleTrackers)
+			foreach (SCR_EditableEntityUIRuleTracker ruleTracker : m_RuleTrackers)
 			{
 				ruleTracker.AddEntity(entity);
 				//ruleTracker.OnChanged(entity.GetEntityStates(), entities, null);
 			}
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
 	void ClearSlots()
 	{
-		m_EntitySlots.Clear();
+		m_mEntitySlots.Clear();
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected SCR_EditableEntityBaseSlotUIComponent GetEntitySlot(Widget w)
 	{
 		SCR_EditableEntityBaseSlotUIComponent entityUI;
@@ -99,9 +128,12 @@ class SCR_EditableEntitySlotManagerUIComponent: SCR_BaseEditorUIComponent
 			
 			w = w.GetParent();
 		}
+
 		return null;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
 	void InitSlotManager()
 	{
 		if (m_RuleTrackers)
@@ -116,9 +148,9 @@ class SCR_EditableEntitySlotManagerUIComponent: SCR_BaseEditorUIComponent
 		if (entityUIConfig)
 		{
 			array<ref SCR_EntitiesEditorUIRule> rules = entityUIConfig.GetRules();
-			SCR_EditableEntityUIRuleTracker ruleTracker;
 			if (rules && !rules.IsEmpty())
 			{
+				SCR_EditableEntityUIRuleTracker ruleTracker;
 				m_RuleTrackers = new map<SCR_EntitiesEditorUIRule, ref SCR_EditableEntityUIRuleTracker>();
 				foreach (SCR_EntitiesEditorUIRule rule: rules)
 				{
@@ -147,11 +179,16 @@ class SCR_EditableEntitySlotManagerUIComponent: SCR_BaseEditorUIComponent
 	}
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////
-	//--- Default functions
+	//--- Default methods
+	////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	override bool IsUnique()
 	{
 		return false;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttachedScripted(Widget w)
 	{
 		super.HandlerAttachedScripted(w);
@@ -159,6 +196,8 @@ class SCR_EditableEntitySlotManagerUIComponent: SCR_BaseEditorUIComponent
 		
 		InitSlotManager();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
@@ -182,4 +221,4 @@ class SCR_EditableEntitySlotManagerUIComponent: SCR_BaseEditorUIComponent
 			}
 		}
 	}
-};
+}

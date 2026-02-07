@@ -1,15 +1,14 @@
-//------------------------------------------------------------------------------------------------
-void MarkerPlacedInvoker(int posX, int posY, bool isPublic);	// world pos X, world pos Y, is visible to everyone or just the player who placed it
+
+void MarkerPlacedInvoker(int posX, int posY, bool isLocal);	// world pos X, world pos Y, is visible to everyone or just the player who placed it
 typedef func MarkerPlacedInvoker;
 
-//------------------------------------------------------------------------------------------------
 //! Markers UI map component 
 class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 {
 	[Attribute("#AR-MapMarker_ParentCategory", UIWidgets.Auto, "Menu category name" )]
 	protected string m_sCategoryName;
 	
-	[Attribute("{2EFEA2AF1F38E7F0}UI/Textures/Icons/icons_wrapperUI-64.imageset", UIWidgets.ResourceNamePicker, desc: "Icons imageset", params: "imageset" )]
+	[Attribute("{3262679C50EF4F01}UI/Textures/Icons/icons_wrapperUI.imageset", UIWidgets.ResourceNamePicker, desc: "Icons imageset", params: "imageset" )]
 	protected ResourceName m_sIconImageset;
 	
 	[Attribute("scenarios", UIWidgets.Auto, "Category icon quad" )]
@@ -24,13 +23,20 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 	[Attribute("{8A5D43FC8AC6C171}UI/layouts/Map/MapColorSelectorEntry.layout", UIWidgets.ResourceNamePicker, desc: "Color selection entry layout", params: "layout" )]
 	protected ResourceName m_sSelectorColorEntry;
 	
+	[Attribute("{4B6A50B3D8200779}UI/layouts/Map/MapDimensionSelectorEntry.layout", UIWidgets.ResourceNamePicker, desc: "Dimension selection entry layout", params: "layout" )]
+	protected ResourceName m_sSelectorDimensionEntry;
+	
+	[Attribute("{DF5BCE91F8A59977}UI/layouts/Map/MapMilitaryMarkerEditBox.layout", UIWidgets.ResourceNamePicker, desc: "Edit box dialog when placing military symbol marker", params: "layout" )]
+	protected ResourceName m_sMilitaryEditBoxLayout;
+	
 	[Attribute("cancel", UIWidgets.Auto, "Delete icon quad" )]
 	protected string m_sDeleteIconName;
 	
 	[Attribute("20", UIWidgets.Auto, "Icon selector entries per line" )]
 	protected int m_iIconsPerLine;
 
-	protected const int USERID_EDITBOX = 1000;	// unique id set to editbox allowing us to find it in case there are other editboxes
+	protected const int USERID_EDITBOX = 1000;		// unique id set to editbox allowing us to find it in case there are other editboxes
+	protected const int USERID_EDITBOX_MIL = 1001; 	// unique id set to military editbox allowing us to find it in case there are other editboxes
 	protected const string ICON_ENTRY = "IconEntry";
 	protected const string COLOR_ENTRY = "ColorEntry";
 	protected const string ICON_SELECTOR = "IconSelector";
@@ -40,37 +46,58 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 	protected ref Color BACKGROUND_DEFAULT = new Color(4,4,4,255);
 	protected ref Color BACKGROUND_SELECTED = new Color(16,16,16,255);
  	
+	protected bool m_bIsMilitaryMarker;								// is custom or military marker
 	protected int m_bIsDelayed;										// used to delay input context for marker dialog by one frame so it doesnt trigger inputs used to open it
 	protected int m_iIconEntryCount;								// how many icon entries are within the current tab
-	protected int m_iIconLines;								
+	protected int m_iIconLines;	
 	protected SCR_MapMarkerEntryPlaced m_PlacedMarkerConfig;		// saved entry for custom text placed markers
+	protected SCR_MapMarkerEntryMilitary m_MilitaryMarkerConfig;
 	protected Widget m_MarkerEditRoot;
 	protected Widget m_IconSelector;
 	protected ImageWidget m_wMarkerPreview;
 	protected ImageWidget m_wMarkerPreviewGlow;
 	protected TextWidget m_wMarkerPreviewText;
+	protected OverlayWidget m_wMarkerPreviewMilitary;
+	protected SCR_MilitarySymbolUIComponent m_MarkerPreviewMilitaryComp;
+	protected ref SCR_MilitarySymbol m_MilSymbolPreview;
 	protected SCR_TabViewComponent m_TabComponent;
 	protected SCR_EditBoxComponent m_EditBoxComp;
 	protected SCR_SliderComponent m_SliderComp;
+	protected TextWidget m_wFactionSelectionText;
+	protected TextWidget m_wDimensionSelectionText;
+	protected SCR_ComboBoxComponent m_ComboBoxComp1;
+	protected SCR_ComboBoxComponent m_ComboBoxComp2;
 	
 	// Placed marker attributes
 	protected int m_iWantedIconEntry;
 	protected int m_iSelectedIconID;							// used for selecting icon when edit dialog is confirmed
 	protected int m_iSelectedColorID;
+	protected int m_iSelectedFactionID;
+	protected int m_iWantedDimensionEntry;
+	protected int m_iSelectedDimensionID;
 	protected float m_fRotation;
-	protected string m_sEditBoxText; 
+	protected SCR_MarkerMilitaryType m_eMilitaryTypeA;
+	protected SCR_MarkerMilitaryType m_eMilitaryTypeB;
+	protected EMilitarySymbolIcon m_eMilitaryTypeAIcon;
+	protected EMilitarySymbolIcon m_eMilitaryTypeBIcon;
 	protected SCR_ButtonBaseComponent m_SelectedIconButton;		// used for (un)coloring and selecting proper button when navigating on controller
 	protected SCR_ButtonBaseComponent m_SelectedColorButton;
+	protected SCR_ButtonBaseComponent m_SelectedFactionButton;
+	protected SCR_ButtonBaseComponent m_SelectedDimensionButton;
 	
 	protected SCR_MapMarkerManagerComponent m_MarkerMgr;
 	protected SCR_SelectionMenuCategoryEntry m_RootCategoryEntry;
 	protected SCR_SelectionMenuEntry m_MarkerRemoveEntry;
 	protected SCR_MapMarkerBase m_RemovableMarker;
+	protected SCR_MapMarkerBase m_EditedMarker;					// when edit is used, original marked being edited is hidden and cached here so it doesnt clash with edit preview
+	protected SCR_MapCursorModule m_CursorModule;
 	
 	protected ref ScriptInvokerBase<MarkerPlacedInvoker> m_OnCustomMarkerPlaced = new ScriptInvokerBase<MarkerPlacedInvoker>();
 	
-	protected ref map<SCR_ButtonBaseComponent, int> m_mIconIDs = new map<SCR_ButtonBaseComponent, int>();		// map icon buttons to config ids
-	protected ref map<SCR_ButtonBaseComponent, int> m_mColorIDs = new map<SCR_ButtonBaseComponent, int>();	// map color buttons to config ids
+	protected ref map<SCR_ButtonBaseComponent, int> m_mIconIDs = new map<SCR_ButtonBaseComponent, int>();	// marker icon buttons to config ids
+	protected ref map<SCR_ButtonBaseComponent, int> m_mColorIDs = new map<SCR_ButtonBaseComponent, int>();	// marker color buttons to config ids
+	protected ref map<SCR_ButtonBaseComponent, int> m_mFactionIDs = new map<SCR_ButtonBaseComponent, int>();// marker faction buttons to config ids
+	protected ref map<SCR_ButtonBaseComponent, int> m_mDimensionIDs = new map<SCR_ButtonBaseComponent, int>();// marker dimension buttons to config ids
 	
 	//------------------------------------------------------------------------------------------------
 	ScriptInvokerBase<MarkerPlacedInvoker> GetOnCustomMarkerPlaced()
@@ -91,34 +118,15 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 		
 		return false;
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Spawn a placed marker 
-	protected void CreateMarkerPlaced(SCR_MapMarkerMenuEntry entry)
-	{		
-		if (entry.GetMarkerType() == SCR_EMapMarkerType.PLACED_CUSTOM)
-		{
-			CreateMarkerEditDialog();
-		}		
-		else if (entry.GetMarkerType() == SCR_EMapMarkerType.PLACED_MILITARY)			
-		{
-			float wX, wY;
-			m_MapEntity.GetMapCenterWorldPosition(wX, wY);
-			
-			SCR_MapMarkerBase marker = new SCR_MapMarkerBase();
-			marker.SetType(entry.GetMarkerType());
-			marker.SetWorldPos(wX, wY);
-			marker.SetMarkerConfigID(entry.GetMarkerConfigID());
-			m_MarkerMgr.InsertStaticMarker(marker);
-		}
-	}
-	
+		
 	//------------------------------------------------------------------------------------------------
 	//! Create custom marker dialog
 	//! \param tabID is ID of selected tabWidget tab, if not set first is default
-	//! \param focusedIconEntry is ID of selected icon, if not set first is default
-	protected void CreateMarkerEditDialog(int tabID = 0, int selectedIconEntry = -1, int selectedColorEntry = -1)
+	//! \param selectedIconEntry is ID of selected icon, if not set first is default
+	protected void CreateMarkerEditDialog(bool isEditing = false, int tabID = 0, int selectedIconEntry = -1, int selectedColorEntry = -1)
 	{
+		m_bIsMilitaryMarker = false;
+		
 		if (m_MarkerEditRoot)
 			CleanupMarkerEditWidget();
 		
@@ -149,7 +157,7 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 			m_TabComponent.AddTab(string.Empty, category.m_sName, identifier: category.m_sIdentifier);
 		}
 		
-		m_TabComponent.m_OnChanged.Insert(OnTabChanged);
+		m_TabComponent.GetOnChanged().Insert(OnTabChanged);
 		m_TabComponent.ShowTab(tabID, true, false);
 		
 		Widget editBoxRoot = m_MarkerEditRoot.FindAnyWidget("EditBoxRoot");
@@ -157,19 +165,99 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 		m_EditBoxComp = SCR_EditBoxComponent.Cast(editBoxRoot.FindHandler(SCR_EditBoxComponent));
 		m_EditBoxComp.m_OnTextChange.Insert(OnEditBoxTextChanged);
 		m_EditBoxComp.SetValue(string.Empty);
-		
+				
 		SCR_InputButtonComponent confirmComp = SCR_InputButtonComponent.Cast(m_MarkerEditRoot.FindAnyWidget("ButtonPublic").FindHandler(SCR_InputButtonComponent));
-		confirmComp.m_OnClicked.Insert(OnEditConfirmed);
+		confirmComp.m_OnClicked.Insert(OnPlaceMarkerConfirmed);
 		
-		confirmComp = SCR_InputButtonComponent.Cast(m_MarkerEditRoot.FindAnyWidget("ButtonPrivate").FindHandler(SCR_InputButtonComponent));
-		confirmComp.m_OnClicked.Insert(OnEditConfirmedPrivate);
+		if (isEditing)
+		{
+			confirmComp.SetLabel("#AR-ServerHosting_Edit");
+			
+			m_MarkerEditRoot.FindAnyWidget("ButtonPrivate").SetVisible(false);
+			m_MarkerEditRoot.FindAnyWidget("ButtonPrivate").SetEnabled(false);
+		}
+		else 
+		{
+			confirmComp.SetLabel("#AR-MapMarker_PlacePublic");
 		
+			confirmComp = SCR_InputButtonComponent.Cast(m_MarkerEditRoot.FindAnyWidget("ButtonPrivate").FindHandler(SCR_InputButtonComponent));
+			confirmComp.m_OnClicked.Insert(OnPlaceMarkerConfirmedPrivate);
+		}
+				
 		confirmComp = SCR_InputButtonComponent.Cast(m_MarkerEditRoot.FindAnyWidget("ButtonCancel").FindHandler(SCR_InputButtonComponent));
-		confirmComp.m_OnClicked.Insert(CleanupMarkerEditWidget);
+		confirmComp.m_OnClicked.Insert(OnEditCancelled);
 			
 		FocusWidget(m_SelectedIconButton.GetRootWidget());
+		
+		m_CursorModule.HandleDialog(true);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected void CreateMilitaryMarkerEditDialog(bool isEditing = false, int selectedFactionEntry = -1, int selectedDimensionEntry = -1)
+	{
+		m_bIsMilitaryMarker = true;
+		m_iWantedDimensionEntry = selectedDimensionEntry;
+		
+		m_MarkerEditRoot = GetGame().GetWorkspace().CreateWidgets(m_sMilitaryEditBoxLayout, m_RootWidget);
+		
+		float screenX, screenY;
+		m_MapEntity.GetMapWidget().GetScreenSize(screenX, screenY);
+		FrameSlot.SetPos(m_MarkerEditRoot, GetGame().GetWorkspace().DPIUnscale(screenX * 0.5), GetGame().GetWorkspace().DPIUnscale(screenY * 0.5));
+		
+		m_wMarkerPreviewMilitary = OverlayWidget.Cast(m_MarkerEditRoot.FindAnyWidget("SymbolOverlay"));
+		m_MarkerPreviewMilitaryComp = SCR_MilitarySymbolUIComponent.Cast(m_wMarkerPreviewMilitary.FindHandler(SCR_MilitarySymbolUIComponent));
+		m_wMarkerPreviewText = TextWidget.Cast(m_MarkerEditRoot.FindAnyWidget("MarkerText"));
+		
+		m_MilSymbolPreview = new SCR_MilitarySymbol();
+		m_MilSymbolPreview.SetIdentity(EMilitarySymbolIdentity.BLUFOR);
+		m_MilSymbolPreview.SetDimension(EMilitarySymbolDimension.LAND);
+		
+		InitFactionIcons(selectedFactionEntry);
+						
+		m_ComboBoxComp1 = SCR_ComboBoxComponent.Cast(m_MarkerEditRoot.FindAnyWidget("ComboBox1").FindHandler(SCR_ComboBoxComponent));
+		m_ComboBoxComp1.m_OnChanged.Insert(OnComboBoxChangedA);
+		
+		m_ComboBoxComp2 = SCR_ComboBoxComponent.Cast(m_MarkerEditRoot.FindAnyWidget("ComboBox2").FindHandler(SCR_ComboBoxComponent));
+		m_ComboBoxComp2.m_OnChanged.Insert(OnComboBoxChangedB);
+			
+		m_ComboBoxComp1.AddItem("");
+		m_ComboBoxComp2.AddItem("");
+		
+		array<ref SCR_MarkerMilitaryType> types = m_MilitaryMarkerConfig.GetMilitaryTypes();
+		foreach (int i, SCR_MarkerMilitaryType markerType : types)
+		{
+			m_ComboBoxComp1.AddItem(markerType.GetTranslation(), false, markerType);
+			m_ComboBoxComp2.AddItem(markerType.GetTranslation(), false, markerType);
+		}
+				
+		m_ComboBoxComp1.SetCurrentItem(0);
+		OnComboBoxChangedA(m_ComboBoxComp1, -1);
+		
+		m_ComboBoxComp2.SetCurrentItem(0);
+		OnComboBoxChangedB(m_ComboBoxComp2, -1);
+		
+		Widget editBoxRoot = m_MarkerEditRoot.FindAnyWidget("EditBoxRoot");
+		editBoxRoot.FindAnyWidget("EditBox").SetUserID(USERID_EDITBOX_MIL);
+		m_EditBoxComp = SCR_EditBoxComponent.Cast(editBoxRoot.FindHandler(SCR_EditBoxComponent));
+		m_EditBoxComp.m_OnTextChange.Insert(OnEditBoxTextChanged);
+		m_EditBoxComp.SetValue(string.Empty);
+		
+		SCR_InputButtonComponent confirmComp = SCR_InputButtonComponent.Cast(m_MarkerEditRoot.FindAnyWidget("ButtonPublic").FindHandler(SCR_InputButtonComponent));
+		confirmComp.m_OnClicked.Insert(OnPlaceMarkerConfirmed);
+		
+		if (isEditing)
+			confirmComp.SetLabel("#AR-ServerHosting_Edit");
+		else 
+			confirmComp.SetLabel("#AR-MapMarker_PlacePublic");
+		
+		confirmComp = SCR_InputButtonComponent.Cast(m_MarkerEditRoot.FindAnyWidget("ButtonCancel").FindHandler(SCR_InputButtonComponent));
+		confirmComp.m_OnClicked.Insert(OnEditCancelled);
+		
+		FocusWidget(m_SelectedFactionButton.GetRootWidget());
+		
+		m_CursorModule.HandleDialog(true);
+	}
+		
 	//------------------------------------------------------------------------------------------------
 	protected void FocusWidget(Widget widget)
 	{
@@ -177,7 +265,119 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Init colors
+	//! Init faction icons
+	protected void InitFactionIcons(int selectedFactionEntry)
+	{
+		array<ref SCR_MarkerMilitaryFactionEntry> factionsArr = m_MilitaryMarkerConfig.GetMilitaryFactionEntries();
+		Widget factionSelector = m_MarkerEditRoot.FindAnyWidget("FactionSelector");		
+		Widget factionSelectorLine = factionSelector.FindAnyWidget("FactionSelectorLine");
+		m_wFactionSelectionText = TextWidget.Cast(factionSelector.FindAnyWidget("TextSelection"));
+		SCR_ButtonImageComponent firstFactionEntry;
+		
+		m_mFactionIDs.Clear();
+		m_SelectedFactionButton = null;
+		
+		string imageset, quad;
+		
+		foreach (int i, SCR_MarkerMilitaryFactionEntry factionEntry : factionsArr)
+		{			
+			Widget button = GetGame().GetWorkspace().CreateWidgets(m_sSelectorIconEntry, factionSelectorLine);
+			button.SetName("FactionEntry" + i.ToString());
+			SCR_ButtonImageComponent buttonComp = SCR_ButtonImageComponent.Cast(button.FindHandler(SCR_ButtonImageComponent));
+			buttonComp.GetImageWidget().SetColor(factionEntry.GetColor());
+			factionEntry.GetIconResource(imageset, quad);
+			buttonComp.SetImage(imageset, quad);
+		
+			buttonComp.m_OnClicked.Insert(OnFactionEntryClicked);
+			buttonComp.m_OnFocus.Insert(OnFactionEntryFocused);
+			
+			m_mFactionIDs.Insert(buttonComp, i);
+			
+			if (!firstFactionEntry)
+				firstFactionEntry = buttonComp;
+		}
+		
+		if (selectedFactionEntry == -1)
+		{
+			OnFactionEntryClicked(firstFactionEntry);
+		}
+		else
+		{
+			SCR_ButtonBaseComponent buttonComp = m_mFactionIDs.GetKeyByValue(selectedFactionEntry);
+			if (buttonComp)
+				OnFactionEntryClicked(buttonComp);
+			else 
+				OnFactionEntryClicked(firstFactionEntry);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Init dimension icons
+	protected void InitDimensionIcons()
+	{
+		SCR_MarkerMilitaryFactionEntry factionEntry = m_MilitaryMarkerConfig.GetFactionEntry(m_iSelectedFactionID);
+		array<ref SCR_MarkerMilitaryDimension> dimensionsArr = m_MilitaryMarkerConfig.GetMilitaryDimensions();
+		if (!factionEntry || dimensionsArr.IsEmpty())
+			return;
+		
+		Widget dimensionSelector = m_MarkerEditRoot.FindAnyWidget("DimensionSelector");		
+		Widget dimensionSelectorLine = dimensionSelector.FindAnyWidget("DimensionSelectorLine");
+		m_wDimensionSelectionText = TextWidget.Cast(dimensionSelector.FindAnyWidget("TextSelection"));
+		SCR_ButtonImageComponent firstDimensionEntry;
+		
+		m_mDimensionIDs.Clear();
+		m_SelectedDimensionButton = null;
+						
+		Widget child = dimensionSelectorLine.GetChildren();
+		while (child)
+		{
+			child.RemoveFromHierarchy();
+			child = dimensionSelectorLine.GetChildren();
+		}
+		
+		string imageset, quad;
+		
+		foreach (int i, SCR_MarkerMilitaryDimension dimensionEntry : dimensionsArr)
+		{			
+			Widget button = GetGame().GetWorkspace().CreateWidgets(m_sSelectorDimensionEntry, dimensionSelectorLine);
+			button.SetName("DimensionEntry" + i.ToString());
+			
+			SCR_MilitarySymbol milSymbol = new SCR_MilitarySymbol();
+			milSymbol.SetIdentity(factionEntry.GetFactionIdentity());
+			milSymbol.SetDimension(dimensionEntry.GetDimension());
+			
+			Widget overlay = button.FindAnyWidget("OverlaySymbol");
+			overlay.SetColor(factionEntry.GetColor());
+			
+			SCR_MilitarySymbolUIComponent symbolComp = SCR_MilitarySymbolUIComponent.Cast(overlay.FindHandler(SCR_MilitarySymbolUIComponent));
+			symbolComp.Update(milSymbol);
+			
+			SCR_ButtonImageComponent buttonComp = SCR_ButtonImageComponent.Cast(button.FindHandler(SCR_ButtonImageComponent));
+			buttonComp.m_OnClicked.Insert(OnDimensionEntryClicked);
+			buttonComp.m_OnFocus.Insert(OnDimensionEntryFocused);
+			
+			m_mDimensionIDs.Insert(buttonComp, i);
+			
+			if (!firstDimensionEntry)
+				firstDimensionEntry = buttonComp;
+		}
+		
+		if (m_iWantedDimensionEntry == -1)
+		{
+			OnDimensionEntryClicked(firstDimensionEntry);
+		}
+		else
+		{
+			SCR_ButtonBaseComponent buttonComp = m_mDimensionIDs.GetKeyByValue(m_iWantedDimensionEntry);
+			if (buttonComp)
+				OnDimensionEntryClicked(buttonComp);
+			else 
+				OnDimensionEntryClicked(firstDimensionEntry);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Init color icons
 	protected void InitColorIcons(int selectedColorEntry)
 	{
 		array<ref SCR_MarkerColorEntry> colorsArr = m_PlacedMarkerConfig.GetColorEntries();
@@ -280,74 +480,31 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 				OnIconEntryClicked(firstEntry);
 		}
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Init radial menu marker entries along with their visual previews
-	protected void InitFactionPlacedMarkers(SCR_MapMarkerConfig markerConfig, SCR_MapRadialUI radialUI)
-	{
-		SCR_MapMarkerEntryMilitary milConf = SCR_MapMarkerEntryMilitary.Cast(markerConfig.GetMarkerEntryConfigByType(SCR_EMapMarkerType.PLACED_MILITARY));
-		if (!milConf)
-			return;
-		
-		array<ref SCR_MarkerMilitaryFactionEntry> milFactionEntries = milConf.GetMilitaryFactionEntries();
-		array<ref SCR_MarkerMilitaryEntry> milEntries = milConf.GetMilitaryEntries();
-		
-		if (milFactionEntries.IsEmpty() || milEntries.IsEmpty())
-			return;
-		
-		foreach (int i, SCR_MarkerMilitaryFactionEntry milFaction : milFactionEntries)
-		{			
-			SCR_MapMarkerMenuCategory categoryEntry = new SCR_MapMarkerMenuCategory();
-			categoryEntry.SetMarkerType(SCR_EMapMarkerType.PLACED_MILITARY);
-			categoryEntry.SetLayout();
-			categoryEntry.SetSymbolProps(milFaction.GetFactionIdentity(), milFaction.GetColor());
-			radialUI.InsertCustomRadialCategory(categoryEntry, m_RootCategoryEntry);
 			
-			foreach (SCR_MarkerMilitaryEntry milEntry : milEntries)
-			{
-				SCR_MapMarkerMenuEntry menuEntry = new SCR_MapMarkerMenuEntry();
-				menuEntry.SetMarkerType(SCR_EMapMarkerType.PLACED_MILITARY);
-				menuEntry.SetLayout();
-				menuEntry.SetName(milEntry.GetDescription());
-				menuEntry.GetOnPerform().Insert(OnEntryPerformed);
-				menuEntry.SetSymbolProps(milFaction.GetFactionIdentity(), milFaction.GetColor(), milEntry.GetDimension(), milEntry.GetIcons(), milEntry.GetAmplifier());
-						
-				menuEntry.SetMarkerConfigID(i * 1000 + milEntry.GetEntryID());
-
-				radialUI.InsertCustomRadialEntry(menuEntry, categoryEntry);
-			}
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Create local markers
-	protected void CreateLocalMarkers()
-	{
-		array<ref SCR_MapMarkerBase> markers = m_MarkerMgr.GetLocalMarkers();
-		foreach (SCR_MapMarkerBase marker : markers)
-		{
-			marker.OnCreateMarker();
-		}
-	}
-	
 	//------------------------------------------------------------------------------------------------
 	//! Create static markers
 	protected void CreateStaticMarkers()
 	{
 		array<ref SCR_MapMarkerBase> markersSimple = m_MarkerMgr.GetStaticMarkers();
 		FactionManager factionManager = GetGame().GetFactionManager();
-		if (!factionManager)
-			return;
 		
-		for (int i; i < markersSimple.Count(); i++)
+		int count = markersSimple.Count();
+		for (int i; i < count; i++)
 		{
 			if (!markersSimple.IsIndexValid(i))
 				continue;
 			
 			SCR_MapMarkerBase marker = markersSimple[i];
-			Faction markerFaction = factionManager.GetFactionByKey(marker.GetMarkerFactionKey());	
+			if (marker.GetMarkerFactionFlags() == 0 || !factionManager)
+			{
+				marker.OnCreateMarker();
+				continue;
+			}
+						
 			Faction localFaction = SCR_FactionManager.SGetLocalPlayerFaction();
-			if ( (marker.GetMarkerOwnerID() != GetGame().GetPlayerController().GetPlayerId()) && (!localFaction || localFaction.IsFactionEnemy(markerFaction)))
+			bool isMyFaction = marker.IsFaction(factionManager.GetFactionIndex(localFaction));
+			
+			if (!isMyFaction || !localFaction)
 			{
 				if (Replication.IsServer())				// if server, enemy markers have to be kept for sync but are disabled
 					marker.SetServerDisabled(true);
@@ -355,6 +512,7 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 				{
 					markersSimple.RemoveItem(marker);
 					i--;
+					count--;
 					continue;
 				}
 			}
@@ -385,12 +543,7 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 	//! Attemt to remove marker, only works if owned
 	protected void RemoveOwnedMarker(SCR_MapMarkerBase marker)
 	{		
-		if (!marker)
-			return;
-		
-		if (marker.GetMarkerID() == -1)		// basic
-			m_MarkerMgr.RemoveLocalMarker(marker);
-		else 
+		if (marker)
 			m_MarkerMgr.RemoveStaticMarker(marker);
 	}
 	
@@ -402,6 +555,8 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 			m_MarkerEditRoot.RemoveFromHierarchy();
 		
 		m_bIsDelayed = false;
+				
+		m_CursorModule.HandleDialog(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -416,6 +571,76 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 		m_SliderComp.SetValue(0);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! SCR_ButtonImageComponent event
+	protected void OnFactionEntryClicked(SCR_ButtonBaseComponent component)
+	{
+		if (m_SelectedFactionButton)
+		{
+			m_SelectedFactionButton.SetBackgroundColors(BACKGROUND_DEFAULT);
+			m_SelectedFactionButton.ColorizeBackground(false);
+		}
+		
+		component.SetBackgroundColors(BACKGROUND_SELECTED);
+		component.ColorizeBackground(false);	// this will color the button to hover color for KBM
+		m_SelectedFactionButton = component;
+		m_iSelectedFactionID = m_mFactionIDs.Get(component);
+		
+		SCR_MarkerMilitaryFactionEntry entry = m_MilitaryMarkerConfig.GetFactionEntry(m_iSelectedFactionID);
+		m_wFactionSelectionText.SetText(entry.GetTranslation());
+		m_wMarkerPreviewMilitary.SetColor(entry.GetColor());
+		m_MilSymbolPreview.SetIdentity(entry.GetFactionIdentity());
+		m_MarkerPreviewMilitaryComp.Update(m_MilSymbolPreview);	
+		
+		InitDimensionIcons();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! SCR_ButtonImageComponent event
+	protected void OnFactionEntryFocused(Widget rootW)
+	{
+		if (GetGame().GetInputManager().IsUsingMouseAndKeyboard())
+			return;
+		
+		SCR_ButtonBaseComponent buttonComp = SCR_ButtonBaseComponent.Cast(rootW.FindHandler(SCR_ButtonBaseComponent));
+		if (buttonComp)
+			OnFactionEntryClicked(buttonComp);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! SCR_ButtonImageComponent event
+	protected void OnDimensionEntryClicked(SCR_ButtonBaseComponent component)
+	{
+		if (m_SelectedDimensionButton)
+		{
+			m_SelectedDimensionButton.SetBackgroundColors(BACKGROUND_DEFAULT);
+			m_SelectedDimensionButton.ColorizeBackground(false);
+		}
+		
+		component.SetBackgroundColors(BACKGROUND_SELECTED);
+		component.ColorizeBackground(false);	// this will color the button to hover color for KBM
+		m_SelectedDimensionButton = component;
+		m_iSelectedDimensionID = m_mDimensionIDs.Get(component);
+		m_iWantedDimensionEntry = m_iSelectedDimensionID;
+	
+		SCR_MarkerMilitaryDimension entry = m_MilitaryMarkerConfig.GetDimensionEntry(m_iSelectedDimensionID);
+		m_wDimensionSelectionText.SetText(entry.GetTranslation());	
+		m_MilSymbolPreview.SetDimension(entry.GetDimension());
+		m_MarkerPreviewMilitaryComp.Update(m_MilSymbolPreview);	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! SCR_ButtonImageComponent event
+	protected void OnDimensionEntryFocused(Widget rootW)
+	{
+		if (GetGame().GetInputManager().IsUsingMouseAndKeyboard())
+			return;
+		
+		SCR_ButtonBaseComponent buttonComp = SCR_ButtonBaseComponent.Cast(rootW.FindHandler(SCR_ButtonBaseComponent));
+		if (buttonComp)
+			OnDimensionEntryClicked(buttonComp);
+	}
+		
 	//------------------------------------------------------------------------------------------------
 	//! SCR_ButtonImageComponent event
 	protected void OnColorEntryClicked(SCR_ButtonBaseComponent component)
@@ -486,7 +711,6 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 	protected void OnEditBoxTextChanged(string text)
 	{
 		m_wMarkerPreviewText.SetText(text);
-		m_sEditBoxText = text;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -499,39 +723,104 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! SCR_ComboBoxComponent event
+	protected void OnComboBoxChangedA(SCR_ComboBoxComponent comp, int value)
+	{
+		m_eMilitaryTypeA = SCR_MarkerMilitaryType.Cast(comp.GetItemData(value));
+		if (m_eMilitaryTypeA)
+			m_eMilitaryTypeAIcon = m_eMilitaryTypeA.GetType();
+		else 
+			m_eMilitaryTypeAIcon = 0;
+		
+		m_MilSymbolPreview.SetIcons(m_eMilitaryTypeAIcon | m_eMilitaryTypeBIcon);
+		m_MarkerPreviewMilitaryComp.Update(m_MilSymbolPreview);	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! SCR_ComboBoxComponent event
+	protected void OnComboBoxChangedB(SCR_ComboBoxComponent comp, int value)
+	{
+		m_eMilitaryTypeB = SCR_MarkerMilitaryType.Cast(comp.GetItemData(value));
+		if (m_eMilitaryTypeB)
+			m_eMilitaryTypeBIcon = m_eMilitaryTypeB.GetType();
+		else 
+			m_eMilitaryTypeBIcon = 0;
+		
+		m_MilSymbolPreview.SetIcons(m_eMilitaryTypeAIcon | m_eMilitaryTypeBIcon);
+		m_MarkerPreviewMilitaryComp.Update(m_MilSymbolPreview);	
+	}
+		
+	//------------------------------------------------------------------------------------------------
 	//! SCR_ButtonTextComponent event
-	protected void OnEditConfirmed(SCR_InputButtonComponent button)
+	protected void OnPlaceMarkerConfirmed(SCR_InputButtonComponent button)
+	{
+		if (m_EditedMarker)
+		{
+			RemoveOwnedMarker(m_EditedMarker);
+			m_EditedMarker = null;
+		}
+		
+		OnInsertMarker(false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! SCR_ButtonTextComponent event
+	protected void OnPlaceMarkerConfirmedPrivate(SCR_InputButtonComponent button)
 	{
 		OnInsertMarker(true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! SCR_ButtonTextComponent event
-	protected void OnEditConfirmedPrivate(SCR_InputButtonComponent button)
+	protected void OnEditCancelled(SCR_InputButtonComponent button)
 	{
-		OnInsertMarker(false);
+		if (m_EditedMarker)
+		{
+			m_EditedMarker.SetVisible(true);
+			m_EditedMarker = null;
+		}
+		
+		CleanupMarkerEditWidget();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnInsertMarker(bool isPublic)
+	protected void OnInsertMarker(bool isLocal)
 	{
 		float wX, wY;
 		m_MapEntity.GetMapCenterWorldPosition(wX, wY);
 		
 		SCR_MapMarkerBase marker = new SCR_MapMarkerBase();
-		marker.SetType(SCR_EMapMarkerType.PLACED_CUSTOM);
+		
+		if (m_bIsMilitaryMarker)
+		{
+			marker.SetType(SCR_EMapMarkerType.PLACED_MILITARY);
+			marker.SetFlags(m_eMilitaryTypeAIcon | m_eMilitaryTypeBIcon);
+			marker.SetMarkerConfigID(m_iSelectedDimensionID * 100 + m_iSelectedFactionID); // combination of faction and dimension id
+		}
+		else 
+		{
+			marker.SetType(SCR_EMapMarkerType.PLACED_CUSTOM);
+			marker.SetRotation(m_fRotation);
+			marker.SetColorEntry(m_iSelectedColorID);
+			marker.SetIconEntry(m_iSelectedIconID);
+		}
+		
+		marker.SetCustomText(m_EditBoxComp.GetValue());
 		marker.SetWorldPos(wX, wY);
-		marker.SetRotation(m_fRotation);
-		marker.SetColorEntry(m_iSelectedColorID);
-		marker.SetIconEntry(m_iSelectedIconID);
-		marker.SetCustomText(m_sEditBoxText);
 		
-		if (isPublic)
-			m_MarkerMgr.InsertStaticMarker(marker);
-		else
-			m_MarkerMgr.InsertLocalMarker(marker);
+		if (!isLocal)
+		{
+			FactionManager factionManager = GetGame().GetFactionManager();
+			if (factionManager)
+			{
+				Faction markerOwnerFaction = SCR_FactionManager.SGetPlayerFaction(GetGame().GetPlayerController().GetPlayerId());
+				if (markerOwnerFaction)
+					marker.AddMarkerFactionFlags(factionManager.GetFactionIndex(markerOwnerFaction));
+			}
+		}
 		
-		m_OnCustomMarkerPlaced.Invoke(wX, wY, isPublic);
+		m_MarkerMgr.InsertStaticMarker(marker, isLocal);
+		m_OnCustomMarkerPlaced.Invoke(wX, wY, isLocal);
 		
 		CleanupMarkerEditWidget();
 	}
@@ -554,8 +843,16 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 		foreach (SCR_MapMarkerEntryConfig entry : entryConfigs)		// menu entries
 		{			
 			if (entry.GetMarkerType() == SCR_EMapMarkerType.PLACED_MILITARY)
-			{
-				InitFactionPlacedMarkers(markerConfig, radialUI);
+			{				
+				SCR_MapMarkerEntryMilitary entryMil = SCR_MapMarkerEntryMilitary.Cast(entry);
+				
+				SCR_MapMarkerMenuEntry menuEntry = new SCR_MapMarkerMenuEntry();
+				menuEntry.SetMarkerType(SCR_EMapMarkerType.PLACED_MILITARY);
+				menuEntry.SetName(entryMil.GetMenuDescription());
+				menuEntry.GetOnPerform().Insert(OnEntryPerformed);
+				menuEntry.SetIcon(entryMil.GetMenuImageset(), entryMil.GetMenuIcon());
+				
+				radialUI.InsertCustomRadialEntry(menuEntry, m_RootCategoryEntry);
 			}
 			else if (entry.GetMarkerType() == SCR_EMapMarkerType.PLACED_CUSTOM)
 			{
@@ -596,7 +893,7 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 			SCR_MapMarkerBase marker = m_MarkerMgr.GetMarkerByWidget(widget);
 			if (marker)
 			{
-				if (!IsOwnedMarker(marker) || (marker.GetType() != SCR_EMapMarkerType.PLACED_CUSTOM && marker.GetType() != SCR_EMapMarkerType.PLACED_MILITARY))
+				if (marker.GetType() != SCR_EMapMarkerType.PLACED_CUSTOM && marker.GetType() != SCR_EMapMarkerType.PLACED_MILITARY)
 					continue;
 				
 				m_MarkerRemoveEntry = radialUI.AddRadialEntry("#AR-MapMarker_DeleteHint");
@@ -615,7 +912,37 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 	protected void OnEntryPerformed(SCR_SelectionMenuEntry entry)
 	{
 		SCR_MapMarkerMenuEntry markerEntry = SCR_MapMarkerMenuEntry.Cast(entry);
-		CreateMarkerPlaced(markerEntry);
+		
+		if (markerEntry.GetMarkerType() == SCR_EMapMarkerType.PLACED_CUSTOM)
+		{
+			if (!m_PlacedMarkerConfig)
+			{
+				SCR_MapMarkerConfig markerConfig = m_MarkerMgr.GetMarkerConfig();
+				if (!markerConfig)
+					return;
+				
+				m_PlacedMarkerConfig = SCR_MapMarkerEntryPlaced.Cast(markerConfig.GetMarkerEntryConfigByType(markerEntry.GetMarkerType()));
+				if (!m_PlacedMarkerConfig)
+					return;
+			}
+			
+			CreateMarkerEditDialog();
+		}		
+		else if (markerEntry.GetMarkerType() == SCR_EMapMarkerType.PLACED_MILITARY)			
+		{			
+			if (!m_MilitaryMarkerConfig)
+			{
+				SCR_MapMarkerConfig markerConfig = m_MarkerMgr.GetMarkerConfig();
+				if (!markerConfig)
+					return;
+				
+				m_MilitaryMarkerConfig = SCR_MapMarkerEntryMilitary.Cast(markerConfig.GetMarkerEntryConfigByType(markerEntry.GetMarkerType()));
+				if (!m_MilitaryMarkerConfig)
+					return;
+			}
+			
+			CreateMilitaryMarkerEditDialog();
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -647,12 +974,11 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 			SCR_MapMarkerBase marker = m_MarkerMgr.GetMarkerByWidget(widget);
 			if (marker)
 			{
-				if (!IsOwnedMarker(marker) || (marker.GetType() != SCR_EMapMarkerType.PLACED_CUSTOM && marker.GetType() != SCR_EMapMarkerType.PLACED_MILITARY))
+				if (marker.GetType() != SCR_EMapMarkerType.PLACED_CUSTOM && marker.GetType() != SCR_EMapMarkerType.PLACED_MILITARY)
 					continue;
 				
 				RemoveOwnedMarker(marker);
-			}
-				
+			}		
 		}
 	}
 	
@@ -660,9 +986,6 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 	//! Marker select
 	protected void OnInputMapSelect(float value, EActionTrigger reason)
 	{
-		if (!m_PlacedMarkerConfig)
-			return;
-		
 		array<Widget> widgets = SCR_MapCursorModule.GetMapWidgetsUnderCursor();
 		
 		SCR_MapMarkerWidgetComponent markerComp;
@@ -676,7 +999,10 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 			if (!marker)
 				continue;
 		
-			if (IsOwnedMarker(marker) && marker.GetType() == SCR_EMapMarkerType.PLACED_CUSTOM)
+			m_EditedMarker = marker;
+			SCR_EMapMarkerType type = marker.GetType();
+			
+			if (IsOwnedMarker(marker) && (type == SCR_EMapMarkerType.PLACED_CUSTOM || type == SCR_EMapMarkerType.PLACED_MILITARY))
 			{	
 				int wPos[2];
 				float screenX, screenY;
@@ -684,12 +1010,54 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 				m_MapEntity.WorldToScreen(wPos[0], wPos[1], screenX, screenY);
 				m_MapEntity.PanSmooth(screenX, screenY, 0.1);
 								
-				CreateMarkerEditDialog(m_PlacedMarkerConfig.GetIconCategoryID(marker.GetIconEntry()), marker.GetIconEntry(), marker.GetColorEntry());
-																
-				m_EditBoxComp.SetValue(marker.GetCustomText());
-				m_SliderComp.SetValue(marker.GetRotation());
+				if (type == SCR_EMapMarkerType.PLACED_CUSTOM )
+				{
+					if (!m_PlacedMarkerConfig)
+						return;
+					
+					CreateMarkerEditDialog(true, m_PlacedMarkerConfig.GetIconCategoryID(marker.GetIconEntry()), marker.GetIconEntry(), marker.GetColorEntry());
+					
+					OnEditBoxTextChanged(marker.GetCustomText());
+					m_SliderComp.SetValue(marker.GetRotation());
+					m_EditBoxComp.SetValue(marker.GetCustomText());
+				} 
+				else 
+				{
+					if (!m_MilitaryMarkerConfig)
+						return;
+					
+					CreateMilitaryMarkerEditDialog(true, marker.GetMarkerConfigID() % SCR_MapMarkerEntryMilitary.FACTION_DETERMINATOR, marker.GetMarkerConfigID() * SCR_MapMarkerEntryMilitary.DIMENSION_DETERMINATOR);
+					OnEditBoxTextChanged(marker.GetCustomText());
+					m_EditBoxComp.SetValue(marker.GetCustomText());
+					
+					int markerFlags = marker.GetFlags();
+					bool secondType;
+					
+					array<ref SCR_MarkerMilitaryType> milTypes = m_MilitaryMarkerConfig.GetMilitaryTypes();
+					foreach (int i, SCR_MarkerMilitaryType milType : milTypes)
+					{
+						if (markerFlags & milType.GetType())
+						{
+							if (secondType)
+							{
+								m_ComboBoxComp2.SetCurrentItem(i+1);	// +1 is here and below since we add a NONE entry to the combo boxes during creation
+								OnComboBoxChangedB(m_ComboBoxComp2, i+1);
+								break;
+							}
+							else 
+							{
+								m_ComboBoxComp1.SetCurrentItem(i+1);
+								OnComboBoxChangedA(m_ComboBoxComp1, i+1);					
+								if (markerFlags == milType.GetType())	// return if singular flag
+									break;
+								
+								secondType = true;
+							}
+						}
+					}
+				}
 				
-				RemoveOwnedMarker(marker);
+				marker.SetVisible(false);												
 				
 				break;
 			}
@@ -704,11 +1072,17 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 			return;
 		
 		Widget focused = GetGame().GetWorkspace().GetFocusedWidget();
-		if (!focused || focused.GetUserID() == USERID_EDITBOX)
+		if (!focused || focused.GetUserID() == USERID_EDITBOX || focused.GetUserID() == USERID_EDITBOX_MIL)
+			return;
+		
+		if (m_ComboBoxComp1 && (m_ComboBoxComp1.IsOpened() || m_ComboBoxComp1.GetRootWidget().FindAnyWidget("ComboButton") == focused))
+			return;
+		
+		if (m_ComboBoxComp2 && (m_ComboBoxComp2.IsOpened() || m_ComboBoxComp2.GetRootWidget().FindAnyWidget("ComboButton") == focused))
 			return;
 		
 		if (m_MarkerEditRoot)
-			OnInsertMarker(true);
+			OnPlaceMarkerConfirmed(null);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -716,7 +1090,7 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 	protected void OnInputMenuConfirmAlter(float value, EActionTrigger reason)
 	{
 		if (m_MarkerEditRoot)
-			OnInsertMarker(false);
+			OnPlaceMarkerConfirmedPrivate(null);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -724,7 +1098,7 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 	protected void OnInputMenuBack(float value, EActionTrigger reason)
 	{
 		if (m_MarkerEditRoot)
-			CleanupMarkerEditWidget();
+			OnEditCancelled(null);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -738,6 +1112,8 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 		
 		if (name.Contains(ICON_ENTRY))
 			FocusWidget(m_SelectedColorButton.GetRootWidget());
+		else if (name.Contains("FactionEntry"))
+			FocusWidget(m_SelectedDimensionButton.GetRootWidget());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -755,6 +1131,22 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 			FocusWidget(m_SelectedIconButton.GetRootWidget());
 		else if (focused.GetUserID() == USERID_EDITBOX)
 			FocusWidget(m_SelectedColorButton.GetRootWidget());
+		else if (focused.GetUserID() == USERID_EDITBOX_MIL)
+			FocusWidget(m_ComboBoxComp2.GetRootWidget());
+		else if (name.Contains("DimensionEntry")) 
+			FocusWidget(m_SelectedFactionButton.GetRootWidget());
+		else if (name.Contains("ComboButton"))
+		{
+			while (focused.GetParent() != null)
+			{
+				focused = focused.GetParent();
+				if (focused.GetName().Contains("ComboBox1"))
+				{
+					FocusWidget(m_SelectedDimensionButton.GetRootWidget());
+					break;
+				}
+			}
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -810,7 +1202,7 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 		SCR_MapMarkerBase marker = m_MarkerMgr.GetMarkerByWidget(widget);
 		if (marker)
 		{
-			if (!IsOwnedMarker(marker) || marker.GetType() != SCR_EMapMarkerType.PLACED_CUSTOM)
+			if (!IsOwnedMarker(marker) || (marker.GetType() != SCR_EMapMarkerType.PLACED_CUSTOM && marker.GetType() != SCR_EMapMarkerType.PLACED_MILITARY) )
 				return;
 			
 			marker.SetDragged(true);
@@ -819,15 +1211,21 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! SCR_MapToolInteractionUI event
-	protected void OnDragEnd(Widget widget)
-	{
+	protected void OnDragEnd(Widget widget, bool wasDragged)
+	{		
 		SCR_MapMarkerBase marker = m_MarkerMgr.GetMarkerByWidget(widget);
 		if (marker)
 		{
-			if (!IsOwnedMarker(marker) || marker.GetType() != SCR_EMapMarkerType.PLACED_CUSTOM)
+			SCR_EMapMarkerType type = marker.GetType();
+			
+			if (!IsOwnedMarker(marker) || (type != SCR_EMapMarkerType.PLACED_CUSTOM && type != SCR_EMapMarkerType.PLACED_MILITARY))
 				return;
 			
 			marker.SetDragged(false);
+			
+			if (!wasDragged)
+				return;
+			
 			vector pos = FrameSlot.GetPos(widget);
 
 			float wX, wY;
@@ -838,20 +1236,28 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 			SCR_MapMarkerBase markerNew = new SCR_MapMarkerBase();
 			markerNew.SetType(marker.GetType());
 			markerNew.SetWorldPos(wX, wY);
-			markerNew.SetColorEntry(marker.GetColorEntry());
-			markerNew.SetIconEntry(marker.GetIconEntry());
 			markerNew.SetCustomText(marker.GetCustomText());
-			markerNew.SetRotation(marker.GetRotation());
+			markerNew.SetMarkerFactionFlags(marker.GetMarkerFactionFlags());
+			
+			if (type == SCR_EMapMarkerType.PLACED_CUSTOM)
+			{
+				markerNew.SetColorEntry(marker.GetColorEntry());
+				markerNew.SetIconEntry(marker.GetIconEntry());
+				markerNew.SetRotation(marker.GetRotation());
+			}
+			else 
+			{
+				markerNew.SetFlags(marker.GetFlags());
+				markerNew.SetMarkerConfigID(marker.GetMarkerConfigID()); // combination of faction and dimension id
+			}
 			
 			int markerID = marker.GetMarkerID();
 			RemoveOwnedMarker(marker);
 			
-			if (markerID != -1)
-				m_MarkerMgr.InsertStaticMarker(markerNew);
-			else
-				m_MarkerMgr.InsertLocalMarker(markerNew);
-			
-			m_OnCustomMarkerPlaced.Invoke(wX, wY, marker.GetMarkerID() != -1);
+			bool isLocal = markerID == -1;
+			m_MarkerMgr.InsertStaticMarker(markerNew, isLocal);
+		
+			m_OnCustomMarkerPlaced.Invoke(wX, wY, isLocal);
 		}
 	}
 		
@@ -862,14 +1268,6 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 	{
 		super.OnMapOpen(config);
 		
-		m_MarkerMgr = SCR_MapMarkerManagerComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_MapMarkerManagerComponent));
-		SCR_MapMarkerConfig markerConfig = m_MarkerMgr.GetMarkerConfig();
-		if (!markerConfig)
-			return;
-		
-		m_PlacedMarkerConfig = SCR_MapMarkerEntryPlaced.Cast(markerConfig.GetMarkerEntryConfigByType(SCR_EMapMarkerType.PLACED_CUSTOM));
-		
-		CreateLocalMarkers();
 		CreateStaticMarkers();
 		CreateDynamicMarkers();
 		
@@ -891,11 +1289,29 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 			SCR_MapToolInteractionUI.GetOnDragWidgetInvoker().Insert(OnDragWidget);
 			SCR_MapToolInteractionUI.GetOnDragEndInvoker().Insert(OnDragEnd);
 		}
+		
+		SCR_MapMarkerConfig markerConfig = m_MarkerMgr.GetMarkerConfig();
+		if (markerConfig)
+		{
+			foreach (SCR_MapMarkerEntryConfig entryType : markerConfig.GetMarkerEntryConfigs())
+			{
+				entryType.OnMapOpen(m_MapEntity, this);
+			}
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnMapClose(MapConfiguration config)
 	{				
+		SCR_MapMarkerConfig markerConfig = m_MarkerMgr.GetMarkerConfig();
+		if (!markerConfig)
+			return;
+		
+		foreach (SCR_MapMarkerEntryConfig entryType : markerConfig.GetMarkerEntryConfigs())
+		{
+			entryType.OnMapClose(m_MapEntity, this);
+		}
+		
 		CleanupMarkerEditWidget();
 		GetGame().GetInputManager().RemoveActionListener("MapQuickMarkerMenu", EActionTrigger.DOWN, OnInputQuickMarkerMenu);
 		GetGame().GetInputManager().RemoveActionListener("MapMarkerDelete", EActionTrigger.DOWN, OnInputMarkerDelete);
@@ -920,6 +1336,23 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 		{
 			radialMenu.GetOnMenuInitInvoker().Insert(OnRadialMenuInit);
 			radialMenu.GetRadialController().GetOnInputOpen().Insert(OnRadialMenuOpen);
+		}
+		
+		m_CursorModule = SCR_MapCursorModule.Cast(m_MapEntity.GetMapModule(SCR_MapCursorModule));
+		
+		m_MarkerMgr = SCR_MapMarkerManagerComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_MapMarkerManagerComponent));
+		SCR_MapMarkerConfig markerConfig = m_MarkerMgr.GetMarkerConfig();
+		if (!markerConfig)
+			return;
+		
+		m_PlacedMarkerConfig = SCR_MapMarkerEntryPlaced.Cast(markerConfig.GetMarkerEntryConfigByType(SCR_EMapMarkerType.PLACED_CUSTOM));
+		m_MilitaryMarkerConfig = SCR_MapMarkerEntryMilitary.Cast(markerConfig.GetMarkerEntryConfigByType(SCR_EMapMarkerType.PLACED_MILITARY));
+		
+		array<ref SCR_MapMarkerEntryConfig> entryConfigs = markerConfig.GetMarkerEntryConfigs();
+		
+		foreach (SCR_MapMarkerEntryConfig entryType : entryConfigs)
+		{
+			entryType.OnMapInit(m_MapEntity, this);
 		}
 	}
 	

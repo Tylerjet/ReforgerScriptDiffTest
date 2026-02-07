@@ -4,7 +4,7 @@
 //! Inventory Storage UI Layout
 class SCR_InventoryStorageLBSUI : SCR_InventoryStorageBaseUI
 {
-	protected ref array<InventoryItemComponent>					m_pInventoryItemsComponent 	= new ref array<InventoryItemComponent>();
+	protected ref array<InventoryItemComponent>					m_pInventoryItemsComponent 	= new array<InventoryItemComponent>();
 	private array<IEntity>										m_pItems;	
 //	protected string											sGridPath 					= "centerFrame.gridFrame.size.grid";	
 	
@@ -16,7 +16,7 @@ class SCR_InventoryStorageLBSUI : SCR_InventoryStorageBaseUI
 	// ! 
 	protected override int CreateSlots( )
 	{
-		ref array<IEntity> pItemsInStorage = new ref array<IEntity>();
+		ref array<IEntity> pItemsInStorage = new array<IEntity>();
 		//GetAllItems( pItemsInStorage, 2 );
 		GetAllItems( pItemsInStorage );
 		UpdateOwnedSlots(pItemsInStorage);

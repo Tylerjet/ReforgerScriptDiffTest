@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 enum SCR_ECannotAssignReasons
 {
 	TASK_IS_ASSIGNED,
@@ -8,13 +7,12 @@ enum SCR_ECannotAssignReasons
 	TASK_ABANDONED,
 	LOCAL_EXECUTOR_IS_ASSIGNED,
 	IS_TASK_REQUESTER
-};
+}
 
-//------------------------------------------------------------------------------------------------
 enum SCR_EUnassignReason
 {
 	ASSIGNEE_TIMEOUT,
 	ASSIGNEE_DISCONNECT,
 	ASSIGNEE_ABANDON,
 	GM_REASSIGN
-};
+}

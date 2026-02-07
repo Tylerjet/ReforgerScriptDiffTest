@@ -1,7 +1,11 @@
 class SCR_GetInUserAction : SCR_CompartmentUserAction
-{
+{	
+	protected const LocalizedString OCCUPIED_BY_SUPPLIES = "#AR-UserAction_SeatOccupied";
+	
 	protected SCR_BaseLockComponent m_pLockComp;
 	protected DamageManagerComponent m_DamageManager;
+	protected SCR_ResourceComponent m_ResourceComp;
+	protected SCR_BaseCompartmentManagerComponent m_CompartmentManager;
 
 	//------------------------------------------------------------------------------------------------
 	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
@@ -12,6 +16,11 @@ class SCR_GetInUserAction : SCR_CompartmentUserAction
 
 		m_pLockComp = SCR_BaseLockComponent.Cast(pOwnerEntity.FindComponent(SCR_BaseLockComponent));
 		m_DamageManager = DamageManagerComponent.Cast(vehicle.FindComponent(DamageManagerComponent));
+		
+		//~ Hotfix to prevent get in action if the vehicle has supplies
+		m_CompartmentManager = SCR_BaseCompartmentManagerComponent.Cast(pOwnerEntity.FindComponent(SCR_BaseCompartmentManagerComponent));
+		if (m_CompartmentManager && m_CompartmentManager.BlockSuppliesIfOccupied())
+			m_ResourceComp = SCR_ResourceComponent.FindResourceComponent(pOwnerEntity, true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -55,6 +64,17 @@ class SCR_GetInUserAction : SCR_CompartmentUserAction
 		CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();
 		if (!compartmentAccess)
 			return false;
+		
+		//~ TODO: Hotfix until proper solution, only blocks player does not block AI or Editor actions
+		float storedResources;
+		if (m_ResourceComp && m_CompartmentManager && m_CompartmentManager.BlockSuppliesIfOccupied())
+		{
+			if (SCR_ResourceSystemHelper.GetStoredResources(m_ResourceComp, storedResources) && storedResources > 0)
+			{
+				SetCannotPerformReason(OCCUPIED_BY_SUPPLIES);
+				return false;
+			}
+		}
 		
 		IEntity owner = compartment.GetOwner();
 		Vehicle vehicle = Vehicle.Cast(SCR_EntityHelper.GetMainParent(owner, true));

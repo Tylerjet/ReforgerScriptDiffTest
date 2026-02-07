@@ -1,14 +1,18 @@
 [ComponentEditorProps(category: "GameScripted/Area Mesh", description: "")]
-class SCR_TriggerAreaMeshComponentClass: SCR_BaseAreaMeshComponentClass
+class SCR_TriggerAreaMeshComponentClass : SCR_BaseAreaMeshComponentClass
 {
-};
-class SCR_TriggerAreaMeshComponent: SCR_BaseAreaMeshComponent
+}
+
+class SCR_TriggerAreaMeshComponent : SCR_BaseAreaMeshComponent
 {
+	//------------------------------------------------------------------------------------------------
 	override float GetRadius()
 	{
 		BaseGameTriggerEntity trigger = BaseGameTriggerEntity.Cast(GetOwner());
 		return trigger.GetSphereRadius();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
 		if (!owner.IsInherited(BaseGameTriggerEntity))
@@ -19,4 +23,4 @@ class SCR_TriggerAreaMeshComponent: SCR_BaseAreaMeshComponent
 		
 		GenerateAreaMesh();
 	}
-};
+}

@@ -1,10 +1,8 @@
-[EntityEditorProps(category: "GameScripted/ScriptWizard", description: "ScriptWizard generated script file.")]
+[EntityEditorProps(category: "GameScripted/ScenarioFramework/Slot", description: "")]
 class SCR_ScenarioFrameworkSlotExtractionClass : SCR_ScenarioFrameworkSlotTaskClass
 {
-	// prefab properties here
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_ScenarioFrameworkSlotExtraction : SCR_ScenarioFrameworkSlotTask
 {
 	//------------------------------------------------------------------------------------------------
@@ -33,4 +31,4 @@ class SCR_ScenarioFrameworkSlotExtraction : SCR_ScenarioFrameworkSlotTask
 
 		SCR_PlayersPresentTriggerEntity.Cast(m_Entity).SetOwnerFaction(factionManager.GetFactionByKey(m_sFactionKey));
 	}
-};
+}

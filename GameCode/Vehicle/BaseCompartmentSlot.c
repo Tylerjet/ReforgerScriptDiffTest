@@ -8,17 +8,20 @@ class BaseCompartmentSlot : ExtBaseCompartmentSlot
 
 	[Attribute(desc: "Contains Default Prefab of character to be spawned into compartment", params: "et")]
 	protected ref SCR_DefaultOccupantData m_DefaultOccupantData;
+	
+	[Attribute(desc: "Contains parameters for executing screenshake upon crashing vehicle for passengers", params: "et")]
+	protected ref SCR_BaseScreenShakeData m_ScreenShakeData;
 
 	static const vector SPAWN_IN_VEHICLE_OFFSET = Vector(0, 250, 0); //~ Offset added when characters are spawned to add to vehicle. To make sure they are close and streamed but not on the vehicle as this would kill them
 
-	private bool m_bCompartmentAccessible = true;
+	protected bool m_bCompartmentAccessible = true;
 
 	//------------------------------------------------------------------------------------------------
 	override void DebugDrawPosition()
 	{
-		Color c = Color.White;
+		Color c = Color.FromInt(Color.WHITE);
 		if (!m_bCompartmentAccessible)
-			c = Color.Black;
+			c = Color.FromInt(Color.BLACK);
 		vector pos = GetPosition();
 		if (pos != vector.Zero)
 			Shape.CreateCylinder(c.PackToInt(), ShapeFlags.ONCE, GetPosition(), 0.05, 5);
@@ -41,22 +44,6 @@ class BaseCompartmentSlot : ExtBaseCompartmentSlot
 	int GetCompartmentSection()
 	{
 		return m_iCompartmentSection;
-	}
-
-	/*!
-	Get type of a compartment.
-	\return Compartment type, or -1 if invalid
-	*/
-	ECompartmentType GetType()
-	{
-		switch (Type())
-		{
-			case CargoCompartmentSlot: return ECompartmentType.Cargo;
-			case PilotCompartmentSlot: return ECompartmentType.Pilot;
-			case TurretCompartmentSlot:	return ECompartmentType.Turret;
-		}
-
-		return -1;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -152,6 +139,27 @@ class BaseCompartmentSlot : ExtBaseCompartmentSlot
 		if (damageManager)
 			damageManager.DamageRandomHitZones(damage, damageType, instigator);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ScreenShakeOccupant(float damage)
+	{
+		ChimeraCharacter character = ChimeraCharacter.Cast(GetOccupant());
+		if (!character)
+			return;
+
+		SCR_DamageManagerComponent damageManager = character.GetDamageManager();
+		if (!damageManager)
+			return;
+		
+		float inTime, sustainTime, outTime, maxScreenShakeHealthThreshold, linearMagnitude, angularMagnitude;
+		m_ScreenShakeData.GetScreenShakeData(inTime, sustainTime, outTime, maxScreenShakeHealthThreshold, linearMagnitude, angularMagnitude);
+		
+		float maxScreenShake = damageManager.GetMaxHealth() * maxScreenShakeHealthThreshold;
+		if (maxScreenShake == 0)
+			return;
+		
+		SCR_CameraShakeManagerComponent.AddCameraShake(Math.Lerp(0, linearMagnitude, damage / maxScreenShake), Math.Lerp(0, angularMagnitude, damage / maxScreenShake), inTime, sustainTime, outTime);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	void KillOccupant(notnull Instigator instigator, bool eject = false, bool gettingIn = false, bool gettingOut = false)
@@ -215,7 +223,7 @@ class BaseCompartmentSlot : ExtBaseCompartmentSlot
 	/*!
 	Spawn default character within the compartment (Server only)
 	Default characters are defined on the CompartmentSlot
-	\param[inout] group if Left empty it will create a new group and place the character in it and return it. Else it will place the character in the given group
+	\param[in,out] group if Left empty it will create a new group and place the character in it and return it. Else it will place the character in the given group
 	\param groupPrefabGroup prefab, Generally want to keep it as default value as faction and usch is set automaticly
 	\return Returns spawned character
 	*/
@@ -228,7 +236,7 @@ class BaseCompartmentSlot : ExtBaseCompartmentSlot
 	/*!
 	Spawn character within the compartment (Server only)
 	\param characterPrefab Prefab to spawn in compartment
-	\param[inout] group if Left empty it will create a new group and place the character in it and return it. Else it will place the character in the given group
+	\param[in,out] group if Left empty it will create a new group and place the character in it and return it. Else it will place the character in the given group
 	\param createGroupForCharacter If a group should be created for the spawned character
 	\return Returns spawned character
 	*/
@@ -272,7 +280,7 @@ class BaseCompartmentSlot : ExtBaseCompartmentSlot
 		//~ Could not move in compartment so delete
 		if (!compartmentAccess.MoveInVehicle(GetOwner(), this))
 		{
-			Print(string.Format("'BaseCompartmentSlot' Trying to spawn character in compartment but it could not be moved into it so character is deleted. Compartment type: %1", typename.EnumToString(ECompartmentType, SCR_CompartmentAccessComponent.GetCompartmentType(this))), LogLevel.WARNING);
+			Print(string.Format("'BaseCompartmentSlot' Trying to spawn character in compartment but it could not be moved into it so character is deleted. Compartment type: %1", typename.EnumToString(ECompartmentType, GetType())), LogLevel.WARNING);
 			delete spawnedCharacter;
 			return null;
 		}
@@ -333,5 +341,38 @@ class SCR_DefaultOccupantData
 	bool IsValid()
 	{
 		return m_bEnabled && !m_sDefaultOccupantPrefab.IsEmpty();
+	}
+}
+
+[BaseContainerProps(configRoot: true)]
+class SCR_BaseScreenShakeData
+{
+	//ScreenShake parameters
+	[Attribute(defvalue: "0.05", desc: "Screen shake effect fade in duration")]
+	protected float m_fInTime;
+	
+	[Attribute(defvalue: "0.05", desc: "Screen shake effect peak intensity sustain duration")]
+	protected float m_fSustainTime;
+	
+	[Attribute(defvalue: "0.01", desc: "Screen shake effect fade out duration")]
+	protected float m_fOutTime;
+	
+	[Attribute(defvalue: "0.5", desc: "At this health (scaled) the maximum shake effect will occur")]
+	protected float m_fMaxScreenShakeHealthThreshold;
+	
+	[Attribute(defvalue: "7", desc: "Magnitude of linear (positional change) shake")]
+	protected float m_fLinearMagnitude;
+	
+	[Attribute(defvalue: "5", desc: "Magnitude of angular (rotational change) shake")]
+	protected float m_fAngularMagnitude;
+
+	void GetScreenShakeData(out float inTime, out float sustainTime, out float outTime, out float maxScreenShakeHealthThreshold, out float linearMagnitude, out float angularMagnitude)
+	{
+		inTime = m_fInTime;
+		sustainTime = m_fSustainTime;
+		outTime = m_fOutTime;
+		maxScreenShakeHealthThreshold = m_fMaxScreenShakeHealthThreshold;
+		linearMagnitude = m_fLinearMagnitude;
+		angularMagnitude = m_fAngularMagnitude;
 	}
 }

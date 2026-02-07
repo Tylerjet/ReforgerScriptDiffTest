@@ -30,94 +30,84 @@ class SCR_DamageStateUIInfo : SCR_UIInfo
 
 	[Attribute("", desc: "Used for access of multiple icons from a single imageset")]
 	protected ref array<string> m_aIconNames;
-	
-	/*!
-	Get color of Icon and Outline
-	\return Color
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get color of Icon and Outline
+	//! \return icon/outline colour
 	Color GetColor()
 	{
-		return m_Color;
+		return Color.FromInt(m_Color.PackToInt());
 	}
-	
-	/*!
-	Get color of background
-	\return Color
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get color of background
+	//! \return background colour
 	Color GetBackgroundColor()
 	{
-		return m_BackgroundColor;
+		return Color.FromInt(m_BackgroundColor.PackToInt());
 	}
 
-	/*!
-	Get color of outline
-	\return Color
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get color of outline
+	//! \return outline colour
 	Color GetOutlineColor()
 	{
-		return m_OutlineColor;
+		return Color.FromInt(m_OutlineColor.PackToInt());
 	}
 
-	/*!
-	Get regeneration color of background
-	\return Color
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get regeneration color of background
+	//! \return background's regeneration colour
 	Color GetBackgroundColorRegen()
 	{
-		return m_BackgroundColorRegen;
+		return Color.FromInt(m_BackgroundColorRegen.PackToInt());
 	}
 
-	/*!
-	Get regeneration color of outline
-	\return Color
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get regeneration color of outline
+	//! \return
 	Color GetOutlineColorRegen()
 	{
-		return m_OutlineColorRegen;
+		return Color.FromInt(m_OutlineColorRegen.PackToInt());
 	}
-	
-	/*!
-	Get ResourceName of outline image
-	\return Outline image
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get ResourceName of outline image
+	//! \return Outline image
 	ResourceName GetOutlineImage()
 	{
 		return m_sOutlineImage;
 	}
-	
-	/*!
-	Get ResourceName of outline image
-	\return Outline image
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get ResourceName of outline image
+	//! \return Outline image
 	ResourceName GetBackgroundImage()
 	{
 		return m_sBackgroundImage;
 	}
 
-	/*!
-	Get name of outline image quad (if is from imageset)
-	\return Outline image quad name
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get name of outline image quad (if is from imageset)
+	//! \return Outline image quad name
 	string GetOutlineQuadName()
 	{
 		return m_sOutlineQuadName;
 	}
 
-	/*!
-	Get name of background image quad (if is from imageset)
-	\return Background image quad name
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get name of background image quad (if is from imageset)
+	//! \return Background image quad name
 	string GetBackgroundQuadName()
 	{
 		return m_sBackgroundQuadName;
 	}
 
-	/*!
-	Set image to given image widget.
-	\param imageWidget Target image widget
-	\param imageRes Source image resource
-	\return True when the image was set
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Set image to given image widget.
+	//! \param imageWidget Target image widget
+	//! \param imageRes Source image resource
+	//! \return True when the image was set
 	bool SetImageTo(ImageWidget imageWidget, ResourceName imageRes, string quadName = string.Empty)
 	{
 		if (!imageWidget)
@@ -133,12 +123,11 @@ class SCR_DamageStateUIInfo : SCR_UIInfo
 		return true;
 	}
 
-	/*!
-	SetIconTo() overload that accepts an index when m_aIconNames is not empty
-	\param imageWidget Target image widget
-	\param iconIndex Index of an icon from m_aIconNames array
-	\return True when the image was set
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! SetIconTo() overload that accepts an index when m_aIconNames is not empty
+	//! \param imageWidget Target image widget
+	//! \param iconIndex Index of an icon from m_aIconNames array
+	//! \return True when the image was set
 	bool SetIconTo(ImageWidget imageWidget, int iconIndex)
 	{
 		if (!imageWidget || Icon.IsEmpty())
@@ -154,14 +143,15 @@ class SCR_DamageStateUIInfo : SCR_UIInfo
 		return true;
 	}	
 
-	/*!
-	GetIconSetName() overload specified by an array index
-	\param iconIndex Index of an icon from m_aIconNames array
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! GetIconSetName() overload specified by an array index
+	//! \param iconIndex Index of an icon from m_aIconNames array
+	//! \return
 	string GetIconSetName(int iconIndex)
 	{
 		if (!m_aIconNames || !m_aIconNames.IsIndexValid(iconIndex))
 			return GetIconSetName();
+
 		return m_aIconNames[iconIndex];
 	}
 };

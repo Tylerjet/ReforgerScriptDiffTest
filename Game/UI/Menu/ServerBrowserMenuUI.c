@@ -2,12 +2,11 @@
 Main class for server browser menu handling
 Handles cooperation of varios components for server searching, joning, mods handling, etc.
 */
-//------------------------------------------------------------------------------------------------
+
 void ScriptInvokerRoomMethod(Room room);
 typedef func ScriptInvokerRoomMethod;
 typedef ScriptInvokerBase<ScriptInvokerRoomMethod> ScriptInvokerRoom;
 
-//------------------------------------------------------------------------------------------------
 class ServerBrowserMenuUI : MenuRootBase
 {
 	// Server list feedback strings
@@ -19,8 +18,6 @@ class ServerBrowserMenuUI : MenuRootBase
 	const int SERVER_LIST_VIEW_SIZE = 32;
 	const int ROOM_CONTENT_LOAD_DELAY = 500;
 	const int ROOM_REFRESH_RATE = 10 * 1000;
-
-	protected const int REJOIN_DELAY = 10;
 
 	// This should be the same value as in High latency filter in {4F6F41C387ADC14E}Configs/ServerBrowser/ServerBrowserFilterSet.conf
 	// TODO: unify with the value set in filters
@@ -42,14 +39,11 @@ class ServerBrowserMenuUI : MenuRootBase
 	protected SCR_FilterPanelComponent m_FilterPanel;
 	protected SCR_PooledServerListComponent m_ScrollableList;
 	protected SCR_ServerScenarioDetailsPanelComponent m_ServerScenarioDetails;
+	protected SCR_CoreMenuHeaderComponent m_MenuHeader;
 
 	// States
 	protected Widget m_wFirstServerEntry;
 	protected SCR_EListMenuWidgetFocus m_iFocusedWidgetState = SCR_EListMenuWidgetFocus.LIST;
-
-	protected static string m_sErrorMessage = "";
-	protected static string m_sErrorMessageGroup = "";
-	protected static string m_sErrorMessageDetail = "";
 
 	// Skip the details dialog on double click
 	protected bool m_bQuickJoin = true;
@@ -61,7 +55,6 @@ class ServerBrowserMenuUI : MenuRootBase
 
 	protected WorkshopApi m_WorkshopApi;
 	protected ClientLobbyApi m_Lobby;
-	protected ref ServerDetailsMenuUI m_DetailsDialog;
 	protected SCR_ConfigurableDialogUi m_ModListFailDialog;
 
 	// Privileges
@@ -73,7 +66,7 @@ class ServerBrowserMenuUI : MenuRootBase
 	protected ref SCR_RoomCallback m_CallbackFavorite = new SCR_RoomCallback();
 
 	protected ref OnDirectJoinCallback m_CallbackSearchTarget = new OnDirectJoinCallback();
-
+	
 	// Room data refresh
 	protected ref ServerBrowserCallback m_CallbackAutoRefresh = new ServerBrowserCallback();
 	protected bool m_bFirstRoomLoad = true;
@@ -90,7 +83,7 @@ class ServerBrowserMenuUI : MenuRootBase
 	// Filter parameters
 	protected ref FilteredServerParams m_ParamsFilter = new FilteredServerParams();
 	protected ref FilteredServerParams m_DirectJoinParams;
-
+	
 	// Server mod content
 	protected ref SCR_RoomModsManager m_ModsManager = new SCR_RoomModsManager();
 	protected ref array<ref SCR_WorkshopItem> m_aRequiredMods = {}; 
@@ -119,13 +112,12 @@ class ServerBrowserMenuUI : MenuRootBase
 	ref ScriptInvoker m_OnScenarioLoad = new ScriptInvoker();
 	
 	protected ref ScriptInvokerVoid m_OnFavoritesResponse = new ScriptInvokerVoid();
-	
-	protected static ref ScriptInvoker<> m_OnErrorMessageSet = new ScriptInvoker<>();
 
 	// Entry Actions
 	protected EInputDeviceType m_eLastInputType;
 	protected bool m_bWasEntrySelected;
 	protected SCR_ServerBrowserEntryComponent m_ClickedEntry; // Cache last clicked entry to trigger the correct dialog after the double click window
+	protected SCR_MenuActionsComponent m_ActionsComponent;
 	
 	//------------------------------------------------------------------------------------------------
 	// OVERRIDES
@@ -162,9 +154,9 @@ class ServerBrowserMenuUI : MenuRootBase
 			m_ScrollableList.ShowEmptyRooms();
 
 		// Setup Actions
-		SCR_MenuActionsComponent actionsComp = SCR_MenuActionsComponent.FindComponent(GetRootWidget());
-		if (actionsComp)
-			actionsComp.GetOnAction().Insert(OnActionTriggered);
+		m_ActionsComponent = SCR_MenuActionsComponent.FindComponent(GetRootWidget());
+		if (m_ActionsComponent)
+			m_ActionsComponent.GetOnAction().Insert(OnActionTriggered);
 
 		UpdateNavigationButtons();
 
@@ -176,13 +168,12 @@ class ServerBrowserMenuUI : MenuRootBase
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpened()
 	{
+		// Kick errors
+		SCR_KickDialogs.SetReconnectEnabled(true);
+		SCR_KickDialogs.GetOnReconnect().Insert(OnLastRoomReconnectConfirm);
+		SCR_KickDialogs.GetOnCancel().Insert(OnRejoinCancel);
+		
 		super.OnMenuOpened();
-		
-		// Show last server
-		if (!m_sErrorMessage.IsEmpty() && !GetGame().GetBackendApi().GetClientLobby().GetPreviousRoomId().IsEmpty())
-			DisplayKick();
-		
-		m_OnErrorMessageSet.Insert(DisplayKick);
 		
 		Refresh();
 	}
@@ -197,23 +188,27 @@ class ServerBrowserMenuUI : MenuRootBase
 			SwitchFocus(SCR_EListMenuWidgetFocus.LIST, true);
 		
 		super.OnMenuFocusGained();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void OnMenuFocusLost()
-	{
-		super.OnMenuFocusLost();
+		
+		if (m_ActionsComponent)
+			m_ActionsComponent.ActivateActions();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Closing menu - clearing server browser data
 	override void OnMenuClose()
 	{
+		// Kick errors
+		SCR_KickDialogs.SetReconnectEnabled(false);
+		SCR_KickDialogs.GetOnReconnect().Remove(OnLastRoomReconnectConfirm);
+		SCR_KickDialogs.GetOnCancel().Remove(OnRejoinCancel);
+		
+		ClearScenarioFilters();
+		
 		// Clearing handlers
 		if (m_TabView)
-			m_TabView.m_OnChanged.Remove(OnTabViewSwitch);
+			m_TabView.GetOnChanged().Remove(OnTabViewSwitch);
 
-		// Store filter pamarameters
+		// Store filter parameters
 		m_Lobby.StoreParams();
 
 		// Remove callbacks
@@ -256,6 +251,15 @@ class ServerBrowserMenuUI : MenuRootBase
 		m_bWasEntrySelected = isEntrySelected;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuShow()
+	{
+		super.OnMenuShow();
+		
+		if (m_ActionsComponent)
+			m_ActionsComponent.ActivateActions();
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	// INPUTS
 	//------------------------------------------------------------------------------------------------
@@ -403,14 +407,6 @@ class ServerBrowserMenuUI : MenuRootBase
 	[MenuBindAttribute()]
 	void OnActionBack()
 	{
-		// Remove specific filters
-		if (m_ParamsFilter)
-		{
-			m_ParamsFilter.SetScenarioId("");
-			m_ParamsFilter.SetHostedScenarioModId("");
-		}
-
-		// Close
 		Close();
 	}
 
@@ -520,9 +516,6 @@ class ServerBrowserMenuUI : MenuRootBase
 		// Call room search or find last server
 		string lastId = m_Lobby.GetPreviousRoomId();
 
-		// Is there last server and reconnect is enabled
-		bool reconnectEnabled = IsKickReconnectEnabled(m_Dialogs.GetCurrentKickDialog());
-
 		if (!m_Lobby.IsPingAvailable())
 			return;
 
@@ -530,7 +523,7 @@ class ServerBrowserMenuUI : MenuRootBase
 		Refresh();
 
 		// Clear error msg
-		ClearErrorMessage();
+		SCR_KickDialogs.Clear();
 
 		// Stop waiting for backend
 		m_bIsWaitingForBackend = false;
@@ -549,9 +542,8 @@ class ServerBrowserMenuUI : MenuRootBase
 		if (!IsBackendReady())
 		{
 			m_bIsWaitingForBackend = true;
-			auto callQueue = GetGame().GetCallqueue();
-			callQueue.Remove(ConnectionTimeout);
-			callQueue.CallLater(ConnectionTimeout, SCR_ServicesStatusHelper.CONNECTION_CHECK_EXPIRE_TIME);
+			GetGame().GetCallqueue().Remove(ConnectionTimeout);
+			GetGame().GetCallqueue().CallLater(ConnectionTimeout, SCR_ServicesStatusHelper.CONNECTION_CHECK_EXPIRE_TIME);
 		}
 	}
 	
@@ -920,47 +912,6 @@ class ServerBrowserMenuUI : MenuRootBase
 		m_ScrollableList.GetOnSetPage().Insert(CallOnServerListSetPage);
 	}
 
-	//------------------------------------------------------------------------------------------------
-	protected void DisplayKick()
-	{
-		m_Dialogs.DisplayKickErrorDialog(m_sErrorMessage, m_sErrorMessageGroup, m_sErrorMessageDetail);
-
-		// Find last
-		string lastId = m_Lobby.GetPreviousRoomId();
-		bool hasLastServer = !lastId.IsEmpty();
-		bool reconnectEnabled = IsKickReconnectEnabled(m_Dialogs.GetCurrentKickDialog());
-
-		if (hasLastServer && reconnectEnabled)
-		{
-			m_Dialogs.GetEventOnRejoinTimerOver().Insert(OnLastRoomReconnectConfirm);
-
-			m_Dialogs.GetOnConfirm().Insert(OnLastRoomReconnectConfirm);
-			m_Dialogs.GetOnCancel().Remove(OnRejoinCancel);
-			m_Dialogs.GetOnCancel().Insert(OnRejoinCancel);
-
-			m_Dialogs.DisplayReconnectDialog(m_RejoinRoom, REJOIN_DELAY, m_sErrorMessageDetail);
-		}
-
-		// Clear messages and backend check
-		ClearErrorMessage();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Return true if reconnect can be displayed after this kick dialog
-	protected bool IsKickReconnectEnabled(SCR_ConfigurableDialogUi dialog)
-	{
-		// Check dialog
-		if (!dialog)
-			return false;
-
-		// Get kick comp
-		SCR_KickDialogUiPreset kickPreset = SCR_KickDialogUiPreset.Cast(dialog.GetDialogPreset());
-		if (!kickPreset)
-			return false;
-
-		// Result
-		return kickPreset.m_bCanBeReconnected;
-	}
 
 	//------------------------------------------------------------------------------------------------
 	// ENTRIES
@@ -1013,12 +964,7 @@ class ServerBrowserMenuUI : MenuRootBase
 	//------------------------------------------------------------------------------------------------
 	protected void ReceiveRoomContent(notnull Room room, bool receiveMods)
 	{
-		// Call queue handling
-		ScriptCallQueue callQueue = GetGame().GetCallqueue();
-
-		// Clear previous call latter
-
-		callQueue.Remove(ReceiveRoomContent_Mods);
+		GetGame().GetCallqueue().Remove(ReceiveRoomContent_Mods);
 		
 		if (m_ServerScenarioDetails)
 			m_ServerScenarioDetails.DisplayRoomData(room, receiveMods);
@@ -1040,14 +986,13 @@ class ServerBrowserMenuUI : MenuRootBase
 		// Receive mod data only if currently view is focused
 		if (room.IsDownloadListLoaded())
 		{
-
 			ReceiveRoomContent_Mods(room);
 			return;
 		}
 		else
 		{
 			// Load mods after short delay - to prevent spamming mods receive requiest with fast server selecting
-			callQueue.CallLater(ReceiveRoomContent_Mods, ROOM_CONTENT_LOAD_DELAY, false, room);
+			GetGame().GetCallqueue().CallLater(ReceiveRoomContent_Mods, ROOM_CONTENT_LOAD_DELAY, false, room);
 		}		
 	}
 
@@ -1083,7 +1028,7 @@ class ServerBrowserMenuUI : MenuRootBase
 		m_TabView = SCR_TabViewComponent.Cast(m_Widgets.FindHandlerReference(null, m_Widgets.WIDGET_TAB_VIEW, SCR_TabViewComponent));
 		if (m_TabView)
 		{
-			m_TabView.m_OnChanged.Insert(OnTabViewSwitch);
+			m_TabView.GetOnChanged().Insert(OnTabViewSwitch);
 			OnTabViewSwitch(null, null, m_TabView.GetShownTab());
 
 			if (!GetGame().IsPlatformGameConsole())
@@ -1154,11 +1099,17 @@ class ServerBrowserMenuUI : MenuRootBase
 		// Messages
 		m_SimpleMessageWrap = SCR_SimpleMessageComponent.Cast(m_Widgets.FindHandlerReference(null, m_Widgets.WIDGET_MESSAGE_WRAP, SCR_SimpleMessageComponent));
 		m_SimpleMessageList = SCR_SimpleMessageComponent.Cast(m_Widgets.FindHandlerReference(null, m_Widgets.WIDGET_MESSAGE_LIST, SCR_SimpleMessageComponent));
-
+		if (m_SimpleMessageList)
+			m_SimpleMessageList.SetVisible(false);
+		
+		
 		// Navigation buttons
 		m_Widgets.m_JoinButton.m_OnActivated.Insert(OnJoinButton);
 		m_Widgets.m_DetailsButton.m_OnActivated.Insert(OnActionDetails);
 		m_Widgets.m_FavoritesButton.m_OnActivated.Insert(OnActionFavorite);
+		
+		// Header
+		m_MenuHeader = SCR_CoreMenuHeaderComponent.FindComponentInHierarchy(GetRootWidget());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1207,7 +1158,7 @@ class ServerBrowserMenuUI : MenuRootBase
 			return; 
 
 		Widget focusTarget;
-		
+
 		switch(focus)
 		{
 			case SCR_EListMenuWidgetFocus.LIST:
@@ -1323,12 +1274,10 @@ class ServerBrowserMenuUI : MenuRootBase
 	//! showWrap = true will hide server list and display message on full layout
 	protected void Messages_ShowMessage(string messageTag, bool showWrap = false)
 	{
-		Widget wrapLayout = m_Widgets.m_wPanelEmpty;
-
 		// Check message component references
-		if (!wrapLayout || !m_SimpleMessageWrap || !m_SimpleMessageList)
+		if (!m_Widgets.m_wPanelEmpty || !m_SimpleMessageWrap || !m_SimpleMessageList)
 		{
-			string msg = string.Format("Missing ref - WrapLayout: %1 Wrap: %2, List: %3", wrapLayout, m_SimpleMessageWrap, m_SimpleMessageList);
+			string msg = string.Format("Missing ref - WrapLayout: %1 Wrap: %2, List: %3", m_Widgets.m_wPanelEmpty, m_SimpleMessageWrap, m_SimpleMessageList);
 			PrintDebug(msg, "Messages_ShowMessage");
 			return;
 		}
@@ -1336,20 +1285,13 @@ class ServerBrowserMenuUI : MenuRootBase
 		// Show menu content
 		if (m_Widgets.m_wContent)
 			m_Widgets.m_wContent.SetVisible(!showWrap);
-
+		
+		m_Widgets.m_wPanelEmpty.SetVisible(showWrap);
+		
 		// Display messages
-		wrapLayout.SetVisible(showWrap);
-		m_SimpleMessageWrap.GetRootWidget().SetVisible(showWrap);
-
-		m_SimpleMessageList.GetRootWidget().SetVisible(!showWrap);
-
-		// Wrapper
-		if (showWrap)
-		{
-			m_SimpleMessageWrap.SetContentFromPreset(messageTag);
-			//return;
-		}
-
+		m_SimpleMessageWrap.SetVisible(showWrap);
+		m_SimpleMessageList.SetVisible(!showWrap);
+		
 		// List
 		m_SimpleMessageWrap.SetContentFromPreset(messageTag);
 		m_SimpleMessageList.SetContentFromPreset(messageTag);
@@ -1363,7 +1305,6 @@ class ServerBrowserMenuUI : MenuRootBase
 		
 		if (m_Widgets.m_FilterButton)
 			m_Widgets.m_FilterButton.SetVisible(!showWrap, false);
-			
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1381,21 +1322,13 @@ class ServerBrowserMenuUI : MenuRootBase
 		}
 
 		// Hide
-		m_SimpleMessageWrap.GetRootWidget().SetVisible(false);
-		m_SimpleMessageList.GetRootWidget().SetVisible(false);
+		m_SimpleMessageWrap.SetVisible(false);
+		m_SimpleMessageList.SetVisible(false);
 
 		wrapLayout.SetVisible(false);
 
 		if (m_Widgets.m_wContent)
 			m_Widgets.m_wContent.SetVisible(true);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void ClearErrorMessage()
-	{
-		m_sErrorMessage = "";
-		m_sErrorMessageGroup = "";
-		m_sErrorMessageDetail = "";
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1489,9 +1422,7 @@ class ServerBrowserMenuUI : MenuRootBase
 
 			// Hostest
 			case 5:
-			{
-				// Widgets
-				m_Widgets.m_wHostNewServerButton.SetVisible(true);
+			{				
 				// Call focus later to prevent override from auto widget focus
 				GetGame().GetCallqueue().CallLater(FocusWidget, 0, false, m_Widgets.m_wHostNewServerButton);
 
@@ -1504,6 +1435,10 @@ class ServerBrowserMenuUI : MenuRootBase
 			}
 		}
 
+		// Hosting widgets 
+		m_Widgets.m_wHostNewServerButton.SetVisible(m_bHostedServers);
+		m_Widgets.m_wHostNewServerButton.SetEnabled(m_bHostedServers);
+		
 		// Set tab filter json
 		if (m_ParamsFilter)
 			m_ParamsFilter.SetSelectedTab(id);
@@ -1512,10 +1447,10 @@ class ServerBrowserMenuUI : MenuRootBase
 			Refresh();
 		
 		Widget focus = GetGame().GetWorkspace().GetFocusedWidget();
-		if (!focus || !focus.IsVisible())
+		if (!m_FilterPanel || !m_FilterPanel.GetFilterListBoxShown() || !focus || !focus.IsVisible())
 			SwitchFocus(SCR_EListMenuWidgetFocus.LIST, true);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	protected void OnFilterPanelToggle(bool show)
 	{
@@ -1798,13 +1733,8 @@ class ServerBrowserMenuUI : MenuRootBase
 	//!  Call this on rejoin dialog cancel
 	protected void OnRejoinCancel()
 	{
-		if (m_Dialogs.GetCurrentKickDialog())
-		{
-			m_Dialogs.GetOnConfirm().Remove(OnLastRoomReconnectConfirm);
-			m_Dialogs.GetOnCancel().Remove(OnRejoinCancel);
-		}
-
-		GetGame().GetCallqueue().Remove(OnLastRoomReconnectConfirm);
+		SCR_KickDialogs.GetOnReconnect().Remove(OnLastRoomReconnectConfirm);
+		SCR_KickDialogs.GetOnCancel().Remove(OnRejoinCancel);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1913,7 +1843,24 @@ class ServerBrowserMenuUI : MenuRootBase
 
 		return comp;
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ClearScenarioFilters()
+	{
+		if (!m_ParamsFilter)
+			return;
+		
+		m_ParamsFilter.SetScenarioId("");
+		m_ParamsFilter.SetHostedScenarioModId("");
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void SetMenuHeader(string header)
+	{
+		if (m_MenuHeader)
+			m_MenuHeader.SetTitle(header);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	// API
 	//------------------------------------------------------------------------------------------------
@@ -1932,20 +1879,12 @@ class ServerBrowserMenuUI : MenuRootBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Set to find server by scenario id and scenario source mod id
-	static void OpenWithScenarioFilter(string scenarioId, string scenarioModId = string.Empty)
+	void SetFilteredScenario(MissionWorkshopItem scenario)
 	{
-		ServerBrowserMenuUI sb = ServerBrowserMenuUI.Cast(GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.ServerBrowserMenu));
-		if (sb)
-		{
- 			sb.FilterScenarioId(scenarioId);
-
-			// Modded
-			if (scenarioModId != string.Empty)
-				sb.FilterHostedScenarioModId(scenarioModId);
-		}
+		if (m_Widgets && m_Widgets.m_HostButton)
+			m_Widgets.m_HostButton.SetScenario(scenario);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	//! Set to find server by mission workshop item
 	static void OpenWithScenarioFilter(MissionWorkshopItem mission)
@@ -1966,18 +1905,10 @@ class ServerBrowserMenuUI : MenuRootBase
 
 		if (modId != string.Empty)
 			sb.FilterHostedScenarioModId(modId);
-	}
 
-	//------------------------------------------------------------------------------------------------
-	//! Set message for error dialog
-	//! Error is display if message has text, message is cleared after displaying dialog
-	static void SetErrorMessage(string msg, string group, string details = "")
-	{
-		m_sErrorMessage = msg;
-		m_sErrorMessageGroup = group;
-		m_sErrorMessageDetail = details;
-		
-		m_OnErrorMessageSet.Invoke();
+		sb.SetMenuHeader(mission.Name());
+		sb.SetFilteredScenario(mission);
+		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.ServerBrowserMenu);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -2021,14 +1952,8 @@ class ServerBrowserMenuUI : MenuRootBase
 	//! Confirm action to find new server
 	protected void OnLastRoomReconnectConfirm()
 	{
-		// Clearup
-		if (m_Dialogs.GetCurrentKickDialog())
-		{
-			m_Dialogs.GetOnConfirm().Remove(OnLastRoomReconnectConfirm);
-			m_Dialogs.GetOnCancel().Remove(OnRejoinCancel);
-		}
-
-		GetGame().GetCallqueue().Remove(OnLastRoomReconnectConfirm);
+		SCR_KickDialogs.GetOnReconnect().Remove(OnLastRoomReconnectConfirm);
+		SCR_KickDialogs.GetOnCancel().Remove(OnRejoinCancel);
 
 		// Find
 		string lastId = m_Lobby.GetPreviousRoomId();
@@ -2378,7 +2303,7 @@ class ServerBrowserMenuUI : MenuRootBase
 	protected void OnPasswordFailVerification(string message)
 	{
 		m_Dialogs.DisplayDialog(EJoinDialogState.PASSWORD_REQUIRED);
-		m_PasswordVerification.SetupDialog(m_Dialogs.GetCurrentDialog(), m_RoomToJoin, "#AR-Password_FailMessage");
+		m_PasswordVerification.SetupDialog(m_Dialogs.GetCurrentDialog(), m_RoomToJoin, message);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -2395,7 +2320,7 @@ class ServerBrowserMenuUI : MenuRootBase
 		// Skip the dialog on double click
 		if (m_bQuickJoin)
 		{
-			JoinProcess_LoadModContent(roomToJoin);
+			JoinProcess_LoadModContent();
 			return;
 		}
 
@@ -2403,7 +2328,7 @@ class ServerBrowserMenuUI : MenuRootBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void CreateServerDetailsDialog(Room roomToJoin)
+	protected void CreateServerDetailsDialog(Room roomToJoin)
 	{
 		if (!roomToJoin)
 			return;
@@ -2449,7 +2374,7 @@ class ServerBrowserMenuUI : MenuRootBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnServerDetailsClosed()
+	protected void OnServerDetailsClosed(SCR_ConfigurableDialogUi dialog)
 	{
 		m_ModsManager.GetOnGetAllDependencies().Remove(OnServerDetailModsLoaded);
 	}
@@ -2457,7 +2382,7 @@ class ServerBrowserMenuUI : MenuRootBase
 	//------------------------------------------------------------------------------------------------
 	//! Load data about room mods to check which data is client missing
 	//! Show state if mods are already loaded or wait for receiving mods data
-	protected void JoinProcess_LoadModContent(Room roomToJoin)
+	protected void JoinProcess_LoadModContent()
 	{
 		// Check references
 		if (!m_Dialogs || !m_ModsManager)
@@ -2781,6 +2706,7 @@ class ServerBrowserMenuUI : MenuRootBase
 	protected void JoinProcess_OnJoinTimeout(ServerBrowserCallback callback)
 	{
 		JoinProcess_Clear();
+		m_Dialogs.CloseCurrentDialog();
 		SCR_CommonDialogs.CreateTimeoutOkDialog();
 	}
 

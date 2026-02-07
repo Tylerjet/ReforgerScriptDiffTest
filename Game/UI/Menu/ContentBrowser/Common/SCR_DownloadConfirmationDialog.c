@@ -85,24 +85,24 @@ class SCR_DownloadConfirmationDialog : SCR_ConfigurableDialogUi
 		
 		// Buttons
 		SCR_InputButtonComponent confirmButton  = FindButton("confirm");
-		SCR_InputButtonComponent confirm2Button  = FindButton("confirm2");
+		SCR_InputButtonComponent confirmAlternativeButton  = FindButton("confirm2");
 		
-		if (confirm2Button)
-			confirm2Button.m_OnActivated.Insert(OnConfirm2);
+		if (confirmAlternativeButton)
+			confirmAlternativeButton.m_OnActivated.Insert(OnConfirmAlternative);
 		
 		if (m_aDependencies.IsEmpty())
 		{
 			// When we are downloading only one addon, 'download all' button becomes 'download'
-			if (confirm2Button)
-				confirm2Button.SetVisible(false);
+			if (confirmAlternativeButton)
+				confirmAlternativeButton.SetVisible(false);
 			
 			confirmButton.SetLabel("#AR-Workshop_Dialog_ConfirmDownload_ButtonDownload");
 		}
 		else if (!m_bDownloadMainItem)
 		{
 			// When we are not downloading the main addon, 'download one' button is hidden
-			if (confirm2Button)
-				confirm2Button.SetVisible(false);
+			if (confirmAlternativeButton)
+				confirmAlternativeButton.SetVisible(false);
 		}
 			
 		// Hide other optional text
@@ -172,7 +172,6 @@ class SCR_DownloadConfirmationDialog : SCR_ConfigurableDialogUi
 		// Setup addon revision
 		Dependency dependency = dep.GetDependency();
 		
-		
 		Revision revision = null;
 		if (dependency)
 			revision = dependency.GetRevision();
@@ -225,7 +224,6 @@ class SCR_DownloadConfirmationDialog : SCR_ConfigurableDialogUi
 	
 	//! This dialog can be used in a few contexts.
 	//! These SetStyle methods set up the widgets according to specific use cases.
-	
 	//------------------------------------------------------------------------------------------------
 	//! Sets text: "%1 dependencies will be downloaded:" over the dependencies list
 	void SetStyleDownloadAddonsWithDependencies()
@@ -239,14 +237,12 @@ class SCR_DownloadConfirmationDialog : SCR_ConfigurableDialogUi
 		}
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
 	//! Hides all explanation text
 	void SetStyleDownloadAddons()
 	{
 		m_Widgets.m_OtherAddonsMessage.SetVisible(false);
 	}
-	
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnConfirm()
@@ -262,6 +258,9 @@ class SCR_DownloadConfirmationDialog : SCR_ConfigurableDialogUi
 			for (int i = 0; i < m_aDependencies.Count(); i++)
 			{
 				SCR_WorkshopItem dep = m_aDependencies[i];
+				if (dep.IsDownloadRunning())
+					continue;
+				
 				Revision targetVersion;
 				if (m_aDependencyVersions != null)
 					targetVersion = m_aDependencyVersions[i];
@@ -293,17 +292,12 @@ class SCR_DownloadConfirmationDialog : SCR_ConfigurableDialogUi
 			}
 		}
 		
-		if (m_OnDownloadConfirmed)
-			m_OnDownloadConfirmed.Invoke(this);
-		
-		this.Close();
+		super.OnConfirm();
 	}
-	
-	
 	
 	//------------------------------------------------------------------------------------------------
 	//! This is only valid when we can download the main addon
-	void OnConfirm2()
+	void OnConfirmAlternative()
 	{
 		m_aDependencies.Clear(); // Don't download any dependencies
 		
@@ -318,12 +312,8 @@ class SCR_DownloadConfirmationDialog : SCR_ConfigurableDialogUi
 				m_Item.SetSubscribed(true);
 		}
 		
-		if (m_OnDownloadConfirmed)
-			m_OnDownloadConfirmed.Invoke(this);
-		
-		this.Close();
+		super.OnConfirm();
 	}
-	
 	
 	//------------------------------------------------------------------------------------------------
 	//! Returns the internal array with created download actions
@@ -338,12 +328,4 @@ class SCR_DownloadConfirmationDialog : SCR_ConfigurableDialogUi
 		
 		return a;
 	}
-	
-	ScriptInvoker GetOnDownloadConfirmed()
-	{
-		if (!m_OnDownloadConfirmed)
-			m_OnDownloadConfirmed = new ScriptInvoker();
-		
-		return m_OnDownloadConfirmed;
-	}
-};
+}

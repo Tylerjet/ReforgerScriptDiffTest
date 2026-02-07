@@ -10,27 +10,29 @@ class SCR_ArsenalItemDisplayData
 	[Attribute("0 0 0", desc: "Rotation of item when displayed", uiwidget: UIWidgets.EditBox, category: "Display settings")]
 	protected vector m_vItemRotation;
 
-	//----------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	vector GetItemOffset()
 	{
 		return m_vItemOffset;
 	}
 	
-	//----------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	vector GetItemRotation()
 	{
 		return m_vItemRotation;
 	}
 	
-	//----------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	EArsenalItemDisplayType GetDisplayType()
 	{
 		return m_eArsenalItemDisplayType;
 	}
-};
+}
 
-//----------------------------------------------------------------------------
 enum EArsenalItemDisplayType
 {
 	WEAPON_RACK,
-};
+}

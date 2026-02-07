@@ -373,6 +373,8 @@ class PauseMenuUI: ChimeraMenuBase
 		SCR_CampaignTutorialArlandComponent component = SCR_CampaignTutorialArlandComponent.Cast(campaign.FindComponent(SCR_CampaignTutorialArlandComponent));
 		
 		component.SetActiveConfig(0);
+		
+		GetGame().GetMenuManager().CloseAllMenus();
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 [BaseContainerProps(), BaseContainerCustomTitleField("m_sDisplayName")]
-class SCR_TaskCompleteDescriptionTooltipDetail: SCR_EntityTooltipDetail
+class SCR_TaskCompleteDescriptionTooltipDetail : SCR_EntityTooltipDetail
 {
 	[Attribute()]
 	protected LocalizedString m_sManualCompleteOnlyText;
@@ -12,7 +12,7 @@ class SCR_TaskCompleteDescriptionTooltipDetail: SCR_EntityTooltipDetail
 	
 	protected ref Color m_cDefaultColor;
 
-	
+	//------------------------------------------------------------------------------------------------
 	override void UpdateDetail(SCR_EditableEntityComponent entity)
 	{
 		if (m_Task.GetTaskCompletionType() == EEditorTaskCompletionType.MANUAL || m_Task.GetTaskCompletionType() == EEditorTaskCompletionType.ALWAYS_MANUAL)
@@ -26,6 +26,8 @@ class SCR_TaskCompleteDescriptionTooltipDetail: SCR_EntityTooltipDetail
 			m_Text.SetColor(m_cDefaultColor);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool InitDetail(SCR_EditableEntityComponent entity, Widget widget)
 	{
 		m_Text = RichTextWidget.Cast(widget);
@@ -47,4 +49,4 @@ class SCR_TaskCompleteDescriptionTooltipDetail: SCR_EntityTooltipDetail
 		
 		return true;
 	}
-};
+}

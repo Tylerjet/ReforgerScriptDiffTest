@@ -1,20 +1,23 @@
 [EntityEditorProps(category: "GameScripted/ScriptWizard", description: "Component handling Armory and ammo storage compositions.", color: "0 0 255 255")]
-class SCR_ArmoryComponentClass: ScriptComponentClass
+class SCR_ArmoryComponentClass : ScriptComponentClass
 {
-};
+}
 
-class SCR_ArmoryComponent: ScriptComponent
+class SCR_ArmoryComponent : ScriptComponent
 {
 	protected ref array <SCR_FactionAffiliationComponent> m_aFactionAffiliationComponents = {};
 	protected RplComponent m_RplComponent;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsProxy()
 	{
 		return (m_RplComponent && m_RplComponent.IsProxy());
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] faction
 	void ChangeOwningFaction(notnull Faction faction)
 	{
 		if (IsProxy())
@@ -28,6 +31,7 @@ class SCR_ArmoryComponent: ScriptComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnLinkedEntitiesSpawned(SCR_EditorLinkComponent link)
 	{
 		FindFactionComponentsInHiearchy(GetOwner());
@@ -36,6 +40,7 @@ class SCR_ArmoryComponent: ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Goes though entity children (recursively) and finds all faction control components
+	//! \param[in] entity cannot be null
 	protected void FindFactionComponentsInHiearchy(IEntity entity)
 	{
 		IEntity child = entity.GetChildren();
@@ -82,5 +87,3 @@ class SCR_ArmoryComponent: ScriptComponent
 		SetEventMask(owner, EntityEvent.INIT);
 	}
 }
-
-

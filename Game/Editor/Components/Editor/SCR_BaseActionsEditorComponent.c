@@ -8,15 +8,16 @@ class SCR_EditorActionGroup
 	int m_iOrder;
 	
 	ref SCR_SortedArray<SCR_BaseEditorAction> m_aActions;
-};
+}
+
 [BaseContainerProps(configRoot: true)]
 class SCR_EditorActionList
 {
 	[Attribute(desc: "Editor actions")]
 	ref array<ref SCR_BaseEditorAction> m_Actions;
-};
+}
 
-class SCR_BaseActionsEditorComponentClass: SCR_BaseEditorComponentClass
+class SCR_BaseActionsEditorComponentClass : SCR_BaseEditorComponentClass
 {
 	[Attribute(desc: "Editor actions", category: "Editor Actions")]
 	protected ref array<ref SCR_EditorActionList> m_ActionsLists;
@@ -26,53 +27,60 @@ class SCR_BaseActionsEditorComponentClass: SCR_BaseEditorComponentClass
 	
 	protected ref array<SCR_BaseEditorAction> m_ActionsSorted = {};
 	
-	/*!
-	Get actions in this list.
-	\param outActions Array to be filled with actions
-	\return Number of actions
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get actions in this list.
+	//! \param[out] outActions Array to be filled with actions
+	//! \return Number of actions
 	int GetActions(out notnull array<SCR_BaseEditorAction> outActions)
 	{
 		return outActions.Copy(m_ActionsSorted);
 	}
 	
-	/*!
-	Get action on given index.
-	\param Desired index
-	\return Action
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get action on given index.
+	//! \param[in] index Desired index
+	//! \return Action
 	SCR_BaseEditorAction GetAction(int index)
 	{
+		if (!m_ActionsSorted.IsIndexValid(index))
+			return null;
+
 		return m_ActionsSorted[index];
 	}
-	/*!
-	Get index of an action from the list.
-	\param action Queried action
-	\return Index
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get index of an action from the list.
+	//! \param[in] action Queried action
+	//! \return Index
 	int FindAction(SCR_BaseEditorAction action)
 	{
 		return m_ActionsSorted.Find(action);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] manager
+	//! \param[in] toAdd
 	void SetShortcuts(SCR_BaseActionsEditorComponent manager, bool toAdd)
 	{
 		if (toAdd)
 		{
-			foreach (SCR_BaseEditorAction action: m_ActionsSorted)
+			foreach (SCR_BaseEditorAction action : m_ActionsSorted)
 			{
 				action.AddShortcut(manager);
 			}
 		}
 		else
 		{
-			foreach (SCR_BaseEditorAction action: m_ActionsSorted)
+			foreach (SCR_BaseEditorAction action : m_ActionsSorted)
 			{
 				action.RemoveShortcut();
 			}
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] prefab
 	void SCR_BaseActionsEditorComponentClass(BaseContainer prefab)
 	{
 		if (!m_ActionGroups || m_ActionGroups.IsEmpty())
@@ -128,12 +136,14 @@ class SCR_BaseActionsEditorComponentClass: SCR_BaseEditorComponentClass
 			{
 				actionGroup = actionGroupsSorted[g];
 				for (int a, actionCount = actionGroup.m_aActions.Count(); a < actionCount; a++)
+				{
 					m_ActionsSorted.Insert(actionGroup.m_aActions[a]);
+				}
 			}
 		}
 		m_ActionGroups = null;
 	}
-};
+}
 
 class SCR_BaseActionsEditorComponent : SCR_BaseEditorComponent
 {
@@ -142,20 +152,19 @@ class SCR_BaseActionsEditorComponent : SCR_BaseEditorComponent
 	protected SCR_MenuLayoutEditorComponent m_MenuLayoutManager;
 	
 	protected SCR_EditableEntityComponent m_HoveredEntity;
-	protected ref set<SCR_EditableEntityComponent> m_SelectedEntities = new set<SCR_EditableEntityComponent>;
+	protected ref set<SCR_EditableEntityComponent> m_SelectedEntities = new set<SCR_EditableEntityComponent>();
 	
-	/*!
-	\return Entity under cursor when context menu was opened
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return Entity under cursor when context menu was opened
 	SCR_EditableEntityComponent GetHoveredEntity()
 	{
 		return m_HoveredEntity;
 	}
-	/*!
-	Gets all actions on the component
-	\param actions output array containing all actions on this component
-	\return Amount of total actions
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Gets all actions on the component
+	//! \param[out] actions output array containing all actions on this component
+	//! \return Amount of total actions
 	int GetActions(out notnull array<SCR_BaseEditorAction> actions)
 	{
 		SCR_BaseActionsEditorComponentClass prefabData = SCR_BaseActionsEditorComponentClass.Cast(GetEditorComponentData());
@@ -165,28 +174,23 @@ class SCR_BaseActionsEditorComponent : SCR_BaseEditorComponent
 			return 0;
 	}
 	
-	/*!
-	Evaluates passed list of actions for the current context
-	\param actions input array with all actions
-	\param cursorWorldPositioin world positon used to evaluate actions
-	\param[out] filteredActions output array containing all available actions for the current context
-	\param[out] flags Conitions to be cached for faster evaluation in functions
-	\return Amount of available actions
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Evaluates passed list of actions for the current context
+	//! \param[in] actions input array with all actions
+	//! \param[in] cursorWorldPositioin world positon used to evaluate actions
+	//! \param[out] filteredActions output array containing all available actions for the current context
+	//! \param[out] flags Conitions to be cached for faster evaluation in functions
+	//! \return Amount of available actions
 	void EvaluateActions(notnull array<SCR_BaseEditorAction> actions, vector cursorWorldPosition, out notnull array<ref SCR_EditorActionData> filteredActions, out int flags = 0)
 	{
 		filteredActions.Clear();
 		
 		flags |= ValidateSelection(false);
 		
-		for (int i = 0; i < actions.Count(); i++)
+		foreach (SCR_BaseEditorAction action : actions)
 		{
-			SCR_BaseEditorAction action = actions[i];
-			
 			if (!ActionCanBeShown(action, cursorWorldPosition, flags))
-			{
 				continue;
-			}
 			
 			bool canBePerformed = ActionCanBePerformed(action, cursorWorldPosition, flags);
 			
@@ -194,13 +198,12 @@ class SCR_BaseActionsEditorComponent : SCR_BaseEditorComponent
 		}
 	}
 	
-	/*!
-	Gets and evaluates actions for current context, combination of GetActions and EvaluateActions functions
-	\param cursorWorldPositioin world positon used to evaluate actions
-	\param filteredActions output array containing all available actions for the current context
-	\param flags Cached results of common conditions
-	\return Amount of available actions
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Gets and evaluates actions for current context, combination of GetActions and EvaluateActions functions
+	//! \param[in] cursorWorldPosition world positon used to evaluate actions
+	//! \param[in] filteredActions output array containing all available actions for the current context
+	//! \param[in] flags Cached results of common conditions
+	//! \return Amount of available actions
 	int GetAndEvaluateActions(vector cursorWorldPosition, out notnull array<ref SCR_EditorActionData> filteredActions, out int flags = 0)
 	{
 		array<SCR_BaseEditorAction> actions = {};
@@ -209,31 +212,42 @@ class SCR_BaseActionsEditorComponent : SCR_BaseEditorComponent
 		return filteredActions.Count();
 	}
 	
-	/*!
-	Evaluate which entities are under cursor and which are selected.
-	To be overriden by inherited classes.
-	\param isInstant True if an action is performed right after this evaluation
-	\return Condition flags passed to actions
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Evaluate which entities are under cursor and which are selected.
+	//! To be overridden by inherited classes.
+	//! \param[in] isInstant True if an action is performed right after this evaluation
+	//! \return Condition flags passed to actions
 	protected int ValidateSelection(bool isInstant)
 	{
 		return 0;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] action
+	//! \param[in] cursorWorldPosition
+	//! \param[in] flags
+	//! \return
 	bool ActionCanBeShown(SCR_BaseEditorAction action, vector cursorWorldPosition, int flags)
 	{
 		return false;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] action
+	//! \param[in] cursorWorldPosition
+	//! \param[in] flags
+	//! \return
 	bool ActionCanBePerformed(SCR_BaseEditorAction action, vector cursorWorldPosition, int flags)
 	{
 		return true;
 	}
 	
-	/*!
-	When action shortcut is activated, check if the action can be performed and if so, perform it.
-	\param action Action to be performed
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! When action shortcut is activated, check if the action can be performed and if so, perform it.
+	//! \param[in] action Action to be performed
+	//! \param[in] flags
 	void ActionPerformInstantly(SCR_BaseEditorAction action, int flags = 0)
 	{
 		flags |= ValidateSelection(true);
@@ -245,6 +259,8 @@ class SCR_BaseActionsEditorComponent : SCR_BaseEditorComponent
 		if (ActionCanBePerformed(action, cursorWorldPosition, flags))
 			ActionPerformInstantlyNoDialog(action, cursorWorldPosition, flags);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void ActionPerformInstantlyNoDialog(SCR_BaseEditorAction action, vector cursorWorldPosition, int flags = 0)
 	{
 		//--- Editor closed while waiting, terminate the loop
@@ -257,14 +273,18 @@ class SCR_BaseActionsEditorComponent : SCR_BaseEditorComponent
 		else
 			ActionPerform(action, cursorWorldPosition, flags);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected TraceFlags GetInstantActionTraceFlags()
 	{
 		return -1;
 	}
 	
-	/*!
-	Perform given action
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Perform given action
+	//! \param[in] action
+	//! \param[in] cursorWorldPosition
+	//! \param[in] flags
 	void ActionPerform(SCR_BaseEditorAction action, vector cursorWorldPosition, int flags)
 	{
 		int param = action.GetParam();
@@ -285,6 +305,7 @@ class SCR_BaseActionsEditorComponent : SCR_BaseEditorComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void ActionPerformRpc(SCR_BaseEditorAction action, vector cursorWorldPosition, int flags, int param = -1)
 	{
 		SCR_BaseActionsEditorComponentClass prefabData = SCR_BaseActionsEditorComponentClass.Cast(GetEditorComponentData());
@@ -292,19 +313,23 @@ class SCR_BaseActionsEditorComponent : SCR_BaseEditorComponent
 			return;
 		
 		int actionIndex = prefabData.FindAction(action);
-		if (actionIndex == -1) return;
+		if (actionIndex == -1)
+			return;
 			
 		RplId hoveredEntityID = -1;
-		array<RplId> selectedEntityIds = new array<RplId>;
+		array<RplId> selectedEntityIds = {};
 		SerializeEntities(hoveredEntityID, selectedEntityIds);
 		
 		Rpc(ActionPerformServer, actionIndex, hoveredEntityID, selectedEntityIds, cursorWorldPosition, flags, param);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void ActionPerform(SCR_BaseEditorAction action, SCR_EditableEntityComponent hoveredEntityComponent, set<SCR_EditableEntityComponent> selectedEntityComponents, vector cursorWorldPosition, int flags, int param)
 	{
 		action.Perform(hoveredEntityComponent, selectedEntityComponents, cursorWorldPosition, flags, param);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void ActionPerformLocal(SCR_BaseEditorAction action, SCR_EditableEntityComponent hoveredEntityComponent, set<SCR_EditableEntityComponent> selectedEntityComponents, vector cursorWorldPosition, int flags, int param)
 	{
 		action.PerformOwner(m_HoveredEntity, m_SelectedEntities, cursorWorldPosition, flags, param);
@@ -312,15 +337,14 @@ class SCR_BaseActionsEditorComponent : SCR_BaseEditorComponent
 		SCR_BaseEditorEffect.Activate(action.GetEffects(), this, cursorWorldPosition, selectedEntityComponents);
 	}
 	
-	/*!
-	Perform given action on server, exclusively called by ActionPerform
-	\param actionIndex Index of the action in the m_Actions list, same on server and client
-	\param hoveredEntityID RplID of the hovered entity, -1 if none hovered
-	\param selectedEntityIds RplIDs of the selected entities, empty array if none selected
-	\param cursorWorldPosition world position where action was intitiated
-	\param flags EEditorContextActionFlags / EEditorCommandActionFlags for placing
-	\param integer parameter obtained through SCR_BaseEditorAction.GetParam() on client, use to pass client data/ids to server
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Perform given action on server, exclusively called by ActionPerform
+	//! \param[in] actionIndex Index of the action in the m_Actions list, same on server and client
+	//! \param[in] hoveredEntityID RplID of the hovered entity, -1 if none hovered
+	//! \param[in] selectedEntityIds RplIDs of the selected entities, empty array if none selected
+	//! \param[in] cursorWorldPosition world position where action was intitiated
+	//! \param[in] flags EEditorContextActionFlags / EEditorCommandActionFlags for placing
+	//! \param[in] param parameter obtained through SCR_BaseEditorAction.GetParam() on client, use to pass client data/ids to server
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void ActionPerformServer(int actionIndex, RplId hoveredEntityID, array<RplId> selectedEntityIds, vector cursorWorldPosition, int flags, int param)
 	{
@@ -344,9 +368,8 @@ class SCR_BaseActionsEditorComponent : SCR_BaseEditorComponent
 		Rpc(ActionPerformOwner, actionIndex, cursorWorldPosition, flags, param);
 	}
 	
-	/*!
-	Server callback for when action is executed succesfully, calls PerformOwner function on action for e.g. local effects
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Server callback for when action is executed succesfully, calls PerformOwner function on action for e.g. local effects
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void ActionPerformOwner(int actionIndex, vector cursorWorldPosition, int flags, int param)
 	{
@@ -363,6 +386,7 @@ class SCR_BaseActionsEditorComponent : SCR_BaseEditorComponent
 		ActionPerformLocal(action, m_HoveredEntity, m_SelectedEntities, cursorWorldPosition, flags, param);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	private void SerializeEntities(out RplId hoveredEntityId, out array<RplId> selectedEntityIds)
 	{
 		// Serialize hovered entity to RplId int
@@ -391,21 +415,21 @@ class SCR_BaseActionsEditorComponent : SCR_BaseEditorComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	private bool GetRplIdFromEditableEntity(SCR_EditableEntityComponent entity, out RplId entityRplId)
 	{
 		entityRplId = Replication.FindId(entity);
 		return entityRplId != -1;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	private void DeSerializeEntities(RplId hoveredEntityId, array<RplId> selectedEntityIds, out SCR_EditableEntityComponent hoveredEntityComponent, out set<SCR_EditableEntityComponent> selectedEntityComponents)
 	{
 		// Deserialize hovered entity RplId
 		if (hoveredEntityId != -1)
 		{
 			if (!GetEditableEntityFromRplId(hoveredEntityId, hoveredEntityComponent))
-			{
-				PrintFormat("Hovered entity with RplID: %1 not found on server", hoveredEntityId);
-			}
+				Print(string.Format("Hovered entity with RplID: %1 not found on server", hoveredEntityId), LogLevel.NORMAL);
 		}
 		
 		// Deserialize selected entity RplIds
@@ -414,19 +438,20 @@ class SCR_BaseActionsEditorComponent : SCR_BaseEditorComponent
 			SCR_EditableEntityComponent selectedEntityComponent;
 			if (!GetEditableEntityFromRplId(selectedEntityRplId, selectedEntityComponent))
 			{
-				PrintFormat("Selected entity with RplID: %1 not found on server", selectedEntityRplId);
+				Print(string.Format("Selected entity with RplID: %1 not found on server", selectedEntityRplId), LogLevel.NORMAL	);
 				continue;
 			}
 			selectedEntityComponents.Insert(selectedEntityComponent);
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	private bool GetEditableEntityFromRplId(RplId entityRplId, out SCR_EditableEntityComponent editableEntityComponent)
 	{
 		Managed entityComponent = Replication.FindItem(entityRplId);
 		if (!entityComponent)
 		{
-			PrintFormat("Entity with RplID: %1 not found on server", entityRplId);
+			Print(string.Format("Entity with RplID: %1 not found on server", entityRplId), LogLevel.NORMAL);
 			return false;
 		}
 		
@@ -434,6 +459,7 @@ class SCR_BaseActionsEditorComponent : SCR_BaseEditorComponent
 		return editableEntityComponent != null;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnEditorActivate()
 	{
 		SCR_BaseActionsEditorComponentClass prefabData = SCR_BaseActionsEditorComponentClass.Cast(GetEditorComponentData());
@@ -452,6 +478,7 @@ class SCR_BaseActionsEditorComponent : SCR_BaseEditorComponent
 		prefabData.SetShortcuts(this, true);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnEditorDeactivate()
 	{
 		SCR_BaseActionsEditorComponentClass prefabData = SCR_BaseActionsEditorComponentClass.Cast(GetEditorComponentData());
@@ -460,4 +487,4 @@ class SCR_BaseActionsEditorComponent : SCR_BaseEditorComponent
 		
 		prefabData.SetShortcuts(this, false);
 	}
-};
+}

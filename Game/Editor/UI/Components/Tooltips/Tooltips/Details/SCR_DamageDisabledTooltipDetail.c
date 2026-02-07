@@ -1,12 +1,12 @@
 [BaseContainerProps(), BaseContainerCustomTitleField("m_sDisplayName")]
-class SCR_DamageDisabledTooltipDetail: SCR_EntityTooltipDetail
+class SCR_DamageDisabledTooltipDetail : SCR_EntityTooltipDetail
 {
 	protected TextWidget m_Text;
 	
 	[Attribute("loc INVINCIBLE")]
 	protected LocalizedString m_sInvincibleText;
 	
-		
+	//------------------------------------------------------------------------------------------------
 	override bool InitDetail(SCR_EditableEntityComponent entity, Widget widget)
 	{			
 		m_Text = TextWidget.Cast(widget);
@@ -24,4 +24,4 @@ class SCR_DamageDisabledTooltipDetail: SCR_EntityTooltipDetail
 		
 		return true;
 	}
-};
+}

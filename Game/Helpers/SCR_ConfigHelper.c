@@ -1,58 +1,55 @@
 class SCR_ConfigHelper
 {
 	//------------------------------------------------------------------------------------------------
-	//! Get BaseContainer from config file path, ensuring the whole thing is valid
-	//! returns the found sub-container or null if not found
-	//! \param container if null, returns null
-	//! \param subChildPath path is case-insensitive, separated by /, spaces can be involved \
+	//! Get BaseContainer from resource, ensuring the whole thing is valid
+	//! \param[in] resource if invalid, returns null
+	//! \param[in] subChildPath path is case-insensitive, separated by /, spaces can be involved \
 	//! examples: "level1/level2/level3", "level1 / level2   /   level3" \
 	//! if empty, returns the provided container
-	//! \param removeEntryPart if true, removes the last path element \
+	//! \param[in] removeEntryPart if true, removes the last path element \
 	//! examples: path/to/entryName → path/to (to target the parent container itself)
-	//! \return found child BaseContainer, or null if path is incorrect or if base container is invalid
-	static BaseContainer GetBaseContainer(ResourceName configPath, string subChildPath = "", bool removeEntryPart = false)
+	//! \return found child BaseContainer, or null if base container or path is invalid
+	static BaseContainer GetBaseContainerByPath(notnull Resource resource, string subChildPath = "", bool removeEntryPart = false)
 	{
-		if (configPath.IsEmpty())
+		if (!resource.IsValid())
 			return null;
 
-		Resource holder = BaseContainerTools.LoadContainer(configPath);
-		if (!holder || !holder.IsValid())
-			return null;
+		if (subChildPath.IsEmpty())
+			return resource.GetResource().ToBaseContainer();
 
-		return GetChildBaseContainer(holder.GetResource().ToBaseContainer(), subChildPath, removeEntryPart);
+		return GetChildBaseContainerByPath(resource.GetResource().ToBaseContainer(), subChildPath, removeEntryPart);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! returns the found sub-container or null if not found
-	//! \param container if null, returns null
-	//! \param subChildPath path is case-insensitive, separated by /, spaces can be involved \
+	//! \param[in] container if null, returns null
+	//! \param[in] subChildPath path is case-insensitive, separated by /, spaces can be involved \
 	//! examples: "level1/level2/level3", "level1 / level2   /   level3" \
 	//! if empty, returns the provided container
-	//! \param removeEntryPart if true, removes the last path element \
+	//! \param[in] removeEntryPart if true, removes the last path element \
 	//! examples: path/to/entryName → path/to (to target the parent container itself)
 	//! \return found child BaseContainer, or null if path is incorrect
-	protected static BaseContainer GetChildBaseContainer(BaseContainer container, string subChildPath, bool removeEntryPart = false)
+	protected static BaseContainer GetChildBaseContainerByPath(BaseContainer container, string subChildPath, bool removeEntryPart = false)
 	{
 		if (!container)
 			return null;
 
-		if (subChildPath.Trim().IsEmpty())
-			return container;
-
 		array<string> paths = {};
 		SplitConfigPath(subChildPath, paths, removeEntryPart);
+		if (paths.IsEmpty())
+			return container;
 
-		return GetChildBaseContainer(container, paths);
+		return GetChildBaseContainerByPath(container, paths);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! returns the found sub-container or null if not found
-	//! \param container if null, returns null
-	//! \param paths case-insensitive, items will be trimmed \
+	//! \param[in] container if null, returns null
+	//! \param[in] paths case-insensitive, items will be trimmed \
 	//! if empty, returns the provided container
 	//! \return found child BaseContainer, or null if path is incorrect
 	// to do: split in smaller methods?
-	protected static BaseContainer GetChildBaseContainer(notnull BaseContainer container, array<string> paths)
+	protected static BaseContainer GetChildBaseContainerByPath(notnull BaseContainer container, array<string> paths)
 	{
 		if (!container)
 			return null;
@@ -65,11 +62,11 @@ class SCR_ConfigHelper
 		BaseContainer prevChild = container;
 		BaseContainer child = container;
 		BaseContainerList containerList;
-		for (int i, cntMinus1 = paths.Count() -1; i <= cntMinus1; i++)
+		for (int i, cntMinus1 = paths.Count() - 1; i <= cntMinus1; i++)
 		{
 			path = paths[i];
 			if (i < cntMinus1)
-				nextPath = paths[i+1];
+				nextPath = paths[i + 1];
 			else
 				nextPath = string.Empty;
 
@@ -83,9 +80,7 @@ class SCR_ConfigHelper
 
 			containerList = prevChild.GetObjectArray(path);
 			if (!containerList)
-			{
 				return null; // no child, no array of children, get out
-			}
 
 			child = GetChildFromList(containerList, nextPath);
 			if (!child)
@@ -98,11 +93,11 @@ class SCR_ConfigHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! get BaseContainer from BaseContainerList by its (case-insensitive) name
-	//! \param containerList list of containers from which to look
-	//! \param childName case-insensitive child name
+	//! Get BaseContainer from BaseContainerList by its (case-insensitive) name
+	//! \param[in] containerList list of containers from which to look
+	//! \param[in] childName case-insensitive child name
 	//! \return BaseContainer found child or null
-	protected static BaseContainer GetChildFromList(BaseContainerList containerList, string childName)
+	protected static BaseContainer GetChildFromList(notnull BaseContainerList containerList, string childName)
 	{
 		if (childName.IsEmpty())
 			return null;
@@ -123,9 +118,7 @@ class SCR_ConfigHelper
 			arrayItemName.ToLower();
 			childName.ToLower();
 			if (arrayItemName == childName)
-			{
 				return containerListElement;
-			}
 		}
 
 		return null;
@@ -133,9 +126,9 @@ class SCR_ConfigHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! split "config path" (separator: / ), trims and toLower parts and returns last part if any
-	//! \param input the input string
-	//! \param output the target output array
-	//! \param removeLastPart removes last part if entry path is provided
+	//! \param[in] input the input string
+	//! \param[out] output the target output array
+	//! \param[in] removeLastPart removes last part if entry path is provided
 	//! \return last part (trimmed but not ToLower'ed), whether it has been removed or not
 	static string SplitConfigPath(string input, out array<string> output, bool removeLastPart = false)
 	{
@@ -148,9 +141,7 @@ class SCR_ConfigHelper
 		int lastIndex = output.Count() -1;
 		lastPart = output[lastIndex].Trim();
 		if (removeLastPart)
-		{
 			output.Remove(lastIndex);
-		}
 
 		for (int i, cnt = output.Count(); i < cnt; i++)
 		{
@@ -159,40 +150,45 @@ class SCR_ConfigHelper
 
 		return lastPart;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Extract GUID from full resource name.
-	\param path Full path
-	\return GUID
-	*/
-	static string GetGUID(ResourceName path)
+	//! Extract GUID from full resource name
+	//! \param[in] resourceName full resource path
+	//! \param[in] removeBrackets if true, remove brackets
+	//! \return resourceName's GUID
+	static string GetGUID(ResourceName resourceName, bool removeBrackets = false)
 	{
-		"{"; // fix indent
-		int guidIndex = path.LastIndexOf("}");
-		if (guidIndex >= 0)
-			return path.Substring(0, guidIndex + 1);
-		else
+		int guidIndex = resourceName.LastIndexOf("}");
+		if (guidIndex < 0)
 			return string.Empty;
+
+		if (removeBrackets)
+			return resourceName.Substring(1, guidIndex - 1);
+		else
+			return resourceName.Substring(0, guidIndex + 1);
 	}
-};
+}
 
 class SCR_ConfigHelperT<Class T>
 {
 	//------------------------------------------------------------------------------------------------
-	//! get typed container instance (or null)
-	//! \param configPath
+	//! Get typed container instance (or null)
+	//! See also ConfType.Cast(SCR_BaseContainerTools.CreateInstanceFromPrefab(configPath));
+	//! \param[in] configPath
 	//! \return T-casted BaseContainer instance or null if not found/wrong type
 	static T GetConfigObject(ResourceName configPath)
 	{
 		if (configPath.IsEmpty())
 			return null;
 
-		BaseContainer container = SCR_ConfigHelper.GetBaseContainer(configPath);
+		Resource resource = BaseContainerTools.LoadContainer(configPath);
+		if (!resource || !resource.IsValid())
+			return null;
+
+		BaseContainer container = resource.GetResource().ToBaseContainer();
 		if (!container)
 			return null;
 
-		Managed managed = BaseContainerTools.CreateInstanceFromContainer(container);
-		return T.Cast(managed);
+		return T.Cast(BaseContainerTools.CreateInstanceFromContainer(container));
 	}
-};
+}

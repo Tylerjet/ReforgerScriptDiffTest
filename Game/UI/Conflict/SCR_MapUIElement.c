@@ -194,9 +194,9 @@ class SCR_MapUIElement : ScriptedWidgetComponent
 
 		Faction faction = fm.GetFactionByKey(factionKey);
 		if (!faction)
-			return m_UnknownFactionColor;
+			return Color.FromInt(m_UnknownFactionColor.PackToInt());
 
-		return faction.GetFactionColor();
+		return Color.FromInt(faction.GetFactionColor().PackToInt());
 	}
 	
 	//------------------------------------------------------------------------------
@@ -204,4 +204,7 @@ class SCR_MapUIElement : ScriptedWidgetComponent
 	{
 		return RplId.Invalid();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetName(string name);
 };

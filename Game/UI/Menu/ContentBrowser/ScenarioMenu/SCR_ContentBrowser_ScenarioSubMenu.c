@@ -24,7 +24,6 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 	protected const string MESSAGE_TAG_NOTHING_RECENT_2 =	"nothing_recent2";
 	
 	// Other
-	protected WorkshopApi m_WorkshopApi;
 	protected ref SCR_ContentBrowser_ScenarioSubMenuWidgets m_Widgets = new SCR_ContentBrowser_ScenarioSubMenuWidgets;
 
 	protected Widget m_wBeforeSort;
@@ -33,36 +32,24 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 	protected int m_iEntriesCurrent;
 
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuOpen(SCR_SuperMenuBase parentMenu)
+	override void OnTabCreate(Widget menuRoot, ResourceName buttonsLayout, int index)
 	{
-		super.OnMenuOpen(parentMenu);
-
-		m_WorkshopApi = GetGame().GetBackendApi().GetWorkshop();
+		super.OnTabCreate(menuRoot, buttonsLayout, index);
 
 		InitWidgets();
-
+		
+		m_ScenarioDetailsPanel = m_Widgets.m_ScenarioDetailsPanelComponent;
+		
 		// Try to restore filters
 		m_Widgets.m_FilterPanelComponent.TryLoad();
-
-		m_WorkshopApi = GetGame().GetBackendApi().GetWorkshop();
-		InitWorkshopApi();
 
 		UpdateScenarioList(true);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuUpdate(SCR_SuperMenuBase parentMenu, float tDelta)
+	override void OnTabShow()
 	{
-		super.OnMenuUpdate(parentMenu, tDelta);
-
-		//! Set current scenario in the info panel
-		m_Widgets.m_ScenarioDetailsPanelComponent.SetScenario(GetSelectedScenario());
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void OnMenuShow(SCR_SuperMenuBase parentMenu)
-	{
-		super.OnMenuShow(parentMenu);
+		super.OnTabShow();
 
 		// Init workshop API
 		// We do it on tab show becasue this tab and others persists when all other tabs are closed,
@@ -71,9 +58,9 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuHide(SCR_SuperMenuBase parentMenu)
+	override void OnTabHide()
 	{
-		super.OnMenuHide(parentMenu);
+		super.OnTabHide();
 
 		// Save configuration of filters
 		m_Widgets.m_FilterPanelComponent.Save();
@@ -94,6 +81,18 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 			GetGame().GetWorkspace().SetFocusedWidget(target);
 		
 		super.OnMenuFocusGained();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void InitWidgets()
+	{
+		super.InitWidgets();
+		
+		// We provide scenarioSubMenuRoot as root because the widgets of the layours were exported starting from scenarioSubMenuRoot
+		m_Widgets.Init(m_wRoot.FindWidget("scenarioSubMenuRoot"));
+
+		m_Widgets.m_FilterPanelComponent.GetEditBoxSearch().m_OnConfirm.Insert(OnSearchConfirm);
+		m_Widgets.m_SortingHeaderComponent.m_OnChanged.Insert(OnSortingHeaderChange);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -135,30 +134,10 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 	override void OnScenarioStateChanged(SCR_ContentBrowser_ScenarioLineComponent comp)
 	{
 		UpdateNavigationButtons();
+		super.OnScenarioStateChanged(comp);
 	}
 
 	// ---- PROTECTED ----
-	//------------------------------------------------------------------------------------------------
-	protected void InitWidgets()
-	{
-		// We provide scenarioSubMenuRoot as root because the widgets of the layours were exported starting from scenarioSubMenuRoot
-		m_Widgets.Init(m_wRoot.FindWidget("scenarioSubMenuRoot"));
-
-		m_Widgets.m_FilterPanelComponent.GetEditBoxSearch().m_OnConfirm.Insert(OnSearchConfirm);
-		//m_Widgets.m_FilterPanelComponent.GetOnFilterPanelToggled().Insert(OnFilterPanelToggled);
-
-		m_Widgets.m_SortingHeaderComponent.m_OnChanged.Insert(OnSortingHeaderChange);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	// Inits workshop API according to current mode
-	protected void InitWorkshopApi()
-	{
-		// Scan offline items if needed
-		if (m_WorkshopApi.NeedScan())
-			m_WorkshopApi.ScanOfflineItems();
-	}
-
 	//------------------------------------------------------------------------------------------------
 	//! Requests missions from API and shows them in the list
 	protected void UpdateScenarioList(bool setNewFocus)

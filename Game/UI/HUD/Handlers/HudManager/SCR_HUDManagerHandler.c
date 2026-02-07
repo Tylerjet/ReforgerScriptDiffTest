@@ -13,6 +13,12 @@ class SCR_HUDManagerHandler
 	}
 
 	//------------------------------------------------------------------------------------------------
+	void SetCanUpdate(bool canUpdate)
+	{
+		m_bCanUpdate = canUpdate;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void OnInit(notnull SCR_HUDManagerComponent owner)
 	{
 		m_HUDManager = owner;

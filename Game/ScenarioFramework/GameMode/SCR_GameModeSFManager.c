@@ -1,10 +1,8 @@
 [EntityEditorProps(category: "GameScripted/GameMode", description: "")]
 class SCR_GameModeSFManagerClass : SCR_BaseGameModeComponentClass
 {
-	// prefab properties here
-};
+}
 
-//------------------------------------------------------------------------------------------------
 enum SCR_ScenarioFrameworkEActivationType
 {
 	SAME_AS_PARENT = 0,
@@ -16,7 +14,7 @@ enum SCR_ScenarioFrameworkEActivationType
 	CUSTOM2,
 	CUSTOM3,
 	CUSTOM4,
-};
+}
 
 enum SCR_ESFTaskType
 {
@@ -29,7 +27,7 @@ enum SCR_ESFTaskType
 	LAST,
 	EXTRACTION,
 	DEFAULT
-};
+}
 
 class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 {	
@@ -64,20 +62,24 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	protected SCR_BaseTask m_LastFinishedTask;
 	protected EGameOverTypes m_eGameOverType = EGameOverTypes.COMBATPATROL_DRAW;
 	
-	protected ref array<SCR_ScenarioFrameworkArea> m_aAreas = {};
-	protected ref array<SCR_ScenarioFrameworkArea> m_aSelectedAreas = {};
-	protected ref array<SCR_ScenarioFrameworkLayerTask> m_aLayerTasksToBeInitialized = {};
-	protected ref array<SCR_ScenarioFrameworkLayerTask> m_aLayerTasksForRandomization = {};
-	protected ref array<string> m_aAreasTasksToSpawn = {};
-	protected ref array<string> m_aLayersTaskToSpawn = {};
-	protected ref array<SCR_ESFTaskType> m_aESFTaskTypesAvailable = {};
-	protected ref array<SCR_ESFTaskType> m_aESFTaskTypeForRandomization = {};
+	ref array<SCR_ScenarioFrameworkArea> m_aAreas = {};
+	ref array<SCR_ScenarioFrameworkArea> m_aSelectedAreas = {};
+	ref array<SCR_ScenarioFrameworkLayerTask> m_aLayerTasksToBeInitialized = {};
+	ref array<SCR_ScenarioFrameworkLayerTask> m_aLayerTasksForRandomization = {};
+	ref array<int> m_aIntroVoicelineIndexes = {};
+	ref array<string> m_aAreasTasksToSpawn = {};
+	ref array<string> m_aLayersTaskToSpawn = {};
+	ref array<SCR_ESFTaskType> m_aESFTaskTypesAvailable = {};
+	ref array<SCR_ESFTaskType> m_aESFTaskTypeForRandomization = {};
 	
 	protected ref array<ref Tuple3<SCR_ScenarioFrameworkArea, vector, int>> m_aSpawnedAreas = {};
 	protected ref array<ref Tuple3<SCR_ScenarioFrameworkArea, vector, int>> m_aDespawnedAreas = {};
 	protected ref array<vector> m_aObservers = {};
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] pEntID
+	//! \param[in] sSndName
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	void RpcDo_PlaySoundOnEntity(EntityID pEntID, string sSndName)
 	{
@@ -88,14 +90,17 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 		if (!entity)
 			return;
 
-		SCR_CommunicationSoundComponent pSndComp = SCR_CommunicationSoundComponent.Cast(entity.FindComponent(SCR_CommunicationSoundComponent));
+		SoundComponent pSndComp = SoundComponent.Cast(entity.FindComponent(SoundComponent));
 		if (!pSndComp)
 			return;
 
-		pSndComp.PlayStr(sSndName);
+		pSndComp.SoundEvent(sSndName);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] entity
+	//! \param[in] sSndName
 	void PlaySoundOnEntity(IEntity entity, string sSndName)
 	{
 		if (!entity)
@@ -111,39 +116,176 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void PlaySoundOnPlayer(string sSndName)
+	//!
+	//! \param[in] playerID
+	//! \param[in] eventName
+	//! \param[in] entityID
+	void PlayIntroVoiceline(int playerID, string eventName, EntityID entityID)
 	{
-		SCR_PlayerController pc = SCR_PlayerController.Cast(GetGame().GetPlayerController());
-		
-		if (!pc)
-			return;
-		IEntity player = pc.GetMainEntity();
-		
-		if (!player)
-			return;
-		
-		PlaySoundOnEntity(player, sSndName);
+		Rpc(RpcDo_PlayIntroVoiceline, playerID, eventName, entityID);
+		RpcDo_PlayIntroVoiceline(playerID, eventName, entityID);	
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerID
+	//! \param[in] eventName
+	//! \param[in] entityID
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RpcDo_PlayIntroVoiceline(int playerID, string eventName, EntityID entityID)
+	{
+		PlayerManager playerManager = GetGame().GetPlayerManager();
+		if (!playerManager)
+			return;
+		
+		PlayerController playerController = GetGame().GetPlayerController();
+		if (!playerController)
+			return;
+		
+		if (playerID != playerController.GetPlayerId())
+			return;
+		
+		IEntity entity;
+		if (entityID)
+		{
+			entity = GetGame().GetWorld().FindEntityByID(entityID);
+			if (!entity)
+				return;
+		}
+		else
+		{
+			entity = playerManager.GetPlayerControlledEntity(playerID);
+			if (!entity)
+				return;
+		}
+		
+		SignalsManagerComponent signalComp = SignalsManagerComponent.Cast(entity.FindComponent(SignalsManagerComponent));
+		if (!signalComp)
+			return;
+
+		if (m_aIntroVoicelineIndexes.IsEmpty())
+		{
+			signalComp.SetSignalValue(signalComp.AddOrFindSignal("PlanName"), 0);
+		}
+		else
+		{
+			int seed;
+			foreach (int index : m_aIntroVoicelineIndexes)
+			{
+				seed += index;
+			}
+			
+			Math.Randomize(seed);
+			signalComp.SetSignalValue(signalComp.AddOrFindSignal("PlanName"), Math.RandomIntInclusive(0, 2));
+		}
+		
+		int indexCount = m_aIntroVoicelineIndexes.Count();
+		
+		if (indexCount > 0)
+			signalComp.SetSignalValue(signalComp.AddOrFindSignal("Objective1"), m_aIntroVoicelineIndexes[0]);
+		else
+			signalComp.SetSignalValue(signalComp.AddOrFindSignal("Objective1"), 1);
+
+		if (indexCount > 1)
+			signalComp.SetSignalValue(signalComp.AddOrFindSignal("Objective2"), m_aIntroVoicelineIndexes[1]);
+		else
+			signalComp.SetSignalValue(signalComp.AddOrFindSignal("Objective2"), 2);
+		
+		if (indexCount > 2)
+			signalComp.SetSignalValue(signalComp.AddOrFindSignal("Objective3"), m_aIntroVoicelineIndexes[2]);
+		else
+			signalComp.SetSignalValue(signalComp.AddOrFindSignal("Objective3"), 3);
+		
+		if (indexCount > 3)
+			signalComp.SetSignalValue(signalComp.AddOrFindSignal("Objective4"), m_aIntroVoicelineIndexes[3]);
+		else
+			signalComp.SetSignalValue(signalComp.AddOrFindSignal("Objective4"), 4);
+		
+		if (indexCount > 4)
+			signalComp.SetSignalValue(signalComp.AddOrFindSignal("Objective5"), m_aIntroVoicelineIndexes[4]);
+		else
+			signalComp.SetSignalValue(signalComp.AddOrFindSignal("Objective5"), 5);
+		
+		if (indexCount > 5)
+			signalComp.SetSignalValue(signalComp.AddOrFindSignal("Objective6"), m_aIntroVoicelineIndexes[5]);
+		else
+			signalComp.SetSignalValue(signalComp.AddOrFindSignal("Objective6"), 6);
+		
+		SoundComponent soundComp = SoundComponent.Cast(entity.FindComponent(SoundComponent));
+		if (!soundComp)
+			return;
+		
+		soundComp.SoundEvent(eventName);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] objectID replication id of entity from which this sound event will be played
+	//! \param[in] soundFile resource name of a sound file that contains desired event
+	//! \param[in] soundEventName name of a sound event that will be used to play a sound
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RpcDo_PlaySoundOnEntityPosition(RplId objectID, string soundFile, string soundEventName)
+	{
+		IEntity object = IEntity.Cast(Replication.FindItem(objectID));
+		if(!object)
+			return;
+
+		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
+		if (!soundManagerEntity)
+			return;
+
+		SCR_AudioSourceConfiguration audioConfig = new SCR_AudioSourceConfiguration();
+		audioConfig.m_sSoundProject = soundFile;
+		audioConfig.m_sSoundEventName = soundEventName;
+		audioConfig.m_eFlags = EAudioSourceConfigurationFlag.FinishWhenEntityDestroyed;
+		soundManagerEntity.CreateAndPlayAudioSource(object, audioConfig);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Plays sound event on the position of provided entity
+	//! \param[in] object where taht sound will be played
+	//! \param[in] soundFile resource name of a sound file that contains desired event
+	//! \param[in] soundEventName name of a sound event that will be used to play a sound
+	void PlaySoundOnEntityPosition(IEntity object, string soundFile, string soundEventName)
+	{
+		RplId objectID = Replication.FindId(object);
+		if (!objectID.IsValid())
+			return;
+
+		if (SCR_StringHelper.IsEmptyOrWhiteSpace(soundFile))
+			return;
+
+		if (SCR_StringHelper.IsEmptyOrWhiteSpace(soundEventName))
+			return;
+
+		if (IsMaster())
+			Rpc(RpcDo_PlaySoundOnEntityPosition, objectID, soundFile, soundEventName);
+
+		RpcDo_PlaySoundOnEntityPosition(objectID, soundFile, soundEventName);		
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_BaseTask GetLastFinishedTask()
 	{
 		return m_LastFinishedTask;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_ScenarioFrameworkLayerBase GetLastFinishedTaskLayer()
 	{
 		return m_LastFinishedTaskLayer;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	array<SCR_ScenarioFrameworkArea> GetAreas()
 	{
 		return m_aAreas;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] task
 	void OnTaskCreated(SCR_BaseTask task)
 	{
 		Faction faction =  task.GetTargetFaction();
@@ -154,9 +296,11 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] task
+	//! \param[in] mask
 	void OnTaskUpdate(SCR_BaseTask task, SCR_ETaskEventMask mask)
 	{
-		if (!task) 
+		if (!SCR_ScenarioFrameworkTask.Cast(task))
 			return;
 
 		Faction faction =  task.GetTargetFaction();
@@ -173,7 +317,7 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 				PopUpMessage(task.GetTitle(), "#AR-Workshop_ButtonUpdate", faction.GetFactionKey());
 			else
 				PopUpMessage(task.GetTitle(), "#AR-Workshop_ButtonUpdate");
-			
+
 			SCR_ScenarioFrameworkLayerTask taskLayer = SCR_ScenarioFrameworkTask.Cast(task).GetLayerTask();
 			SCR_ScenarioFrameworkSlotTask subject = taskLayer.GetSlotTask();
 			if (subject)
@@ -183,12 +327,15 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 		GetOnTaskStateChanged().Invoke(task, mask);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] GameOverType
 	void SetMissionEndScreen(EGameOverTypes GameOverType)
 	{
 		m_eGameOverType = GameOverType;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void Finish()
 	{
 		SCR_GameModeEndData endData = SCR_GameModeEndData.CreateSimple(m_eGameOverType, 0,0);
@@ -199,12 +346,14 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetIsMatchOver()
 	{
 		return m_bMatchOver;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnAllAreasInitiated()
 	{
 		if (!m_OnAllAreasInitiated)
@@ -214,6 +363,7 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnTaskStateChanged()
 	{
 		if (!m_OnTaskStateChanged)
@@ -223,6 +373,9 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] eTaskType
+	//! \return
 	SCR_ScenarioFrameworkArea SelectNearestAreaByTaskType(SCR_ESFTaskType eTaskType)
 	{
 		if (m_aAreas.IsEmpty())
@@ -252,7 +405,9 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 
 	
 	//------------------------------------------------------------------------------------------------	
-	bool IsMaster()// IsServer
+	//!
+	//! \return
+	bool IsMaster() // IsServer
 	{
 		RplComponent comp = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
 		if (!comp)
@@ -262,6 +417,8 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] area
 	void RegisterArea(SCR_ScenarioFrameworkArea area)
 	{
 		if (m_aAreas.Find(area) == -1)
@@ -269,6 +426,8 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[out] outEntries
 	void StoreAreaStates(out notnull array<ref SCR_ScenarioFrameworkAreaStruct> outEntries)
 	{
 		if (!m_aAreas)
@@ -283,6 +442,8 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] loadedAreaStruct
 	void LoadAreaStates(notnull array<ref SCR_ScenarioFrameworkAreaStruct> loadedAreaStruct)
 	{
 		if (!m_aAreas)
@@ -540,6 +701,7 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	// Spawns random Task based on available tasks and Areas that haven't spawned any
 	void SpawnRandomTask()
 	{
@@ -597,6 +759,7 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	// Main function responsible for selecting available tasks and spawning the areas related to the tasks
 	void GenerateTasks()
 	{
@@ -732,13 +895,26 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Checks if all Layer Tasks that were selected by ON_TASK_INIT activation for invoking AfterTasksInitActions are finished with spawning
-	protected void CheckLayerTasksAfterInit()
+	protected void CheckLayerTasksAfterInit(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		m_iCurrentlySpawnedLayerTasks++;
 		if (m_iCurrentlySpawnedLayerTasks == m_aLayerTasksToBeInitialized.Count())
 			//Due to how Task System sometimes works, not everything is initialized right after the Layer Task so we need to wait a bit
 			GetGame().GetCallqueue().CallLater(AfterLayerTasksInit, 1000);
 	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	void ProcessVoicelineEnumAndString(typename targetEnum, string targetString)
+	{
+		targetEnum = SCR_ECombatOps_Everon_Tasks;
+		array<string> stringValues = {};
+		SCR_Enum.GetEnumNames(targetEnum, stringValues);
+	
+		int index = stringValues.Find(targetString);
+		if (index != -1)
+			m_aIntroVoicelineIndexes.Insert(index)
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -752,7 +928,7 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 			
 			layerTask.GetOnAllChildrenSpawned().Remove(CheckLayerTasksAfterInit);
 			if (m_bDynamicDespawn && !layerTask.GetDynamicDespawnExcluded())
-				layerTask.DynamicDespawn();
+				layerTask.DynamicDespawn(null);
 		}
 		
 		foreach (SCR_ScenarioFrameworkActionBase afterTasksInitActions : m_aAfterTasksInitActions)
@@ -801,6 +977,9 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] eTaskType
+	//! \return
 	SCR_ScenarioFrameworkArea SelectRandomAreaByTaskType(SCR_ESFTaskType eTaskType)
 	{
 		if (m_aAreas.IsEmpty())
@@ -828,6 +1007,8 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Get parent area the object is nested into
+	//! \param[in] child
+	//! \return
 	SCR_ScenarioFrameworkArea GetParentArea(IEntity child) 
 	{ 
 		if (!child)
@@ -849,6 +1030,8 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Prepares dynamic spawn/despawn for specific area (Intended for runtime usage)
+	//! \param[in] area
+	//! \param[in] staySpawned
 	void PrepareAreaSpecificDynamicDespawn(SCR_ScenarioFrameworkArea area, bool staySpawned = false)
 	{
 		int despawnRange = area.GetDynamicDespawnRange();
@@ -857,7 +1040,7 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 		if (!staySpawned)
 		{
 			m_aDespawnedAreas.Insert(new Tuple3<SCR_ScenarioFrameworkArea, vector, int>(area, area.GetOwner().GetOrigin(), (despawnRange * despawnRange)));
-			area.DynamicDespawn();
+			area.DynamicDespawn(null);
 		}
 		else
 		{
@@ -867,13 +1050,15 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Removes dynamic spawn/despawn for specific area (Intended for runtime usage)
+	//! \param[in] area
+	//! \param[in] staySpawned
 	void RemoveAreaSpecificDynamicDespawn(SCR_ScenarioFrameworkArea area, bool staySpawned = false)
 	{
 		int despawnRange = area.GetDynamicDespawnRange();
 			
 		//If this method is called with staySpawned = false, area will be despawned
 		if (!staySpawned)
-			area.DynamicDespawn();
+			area.DynamicDespawn(null);
 		
 		for (int i = m_aDespawnedAreas.Count() - 1; i >= 0; i--)
 		{
@@ -907,7 +1092,7 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 			int despawnRange = area.GetDynamicDespawnRange();
 			m_aDespawnedAreas.Insert(new Tuple3<SCR_ScenarioFrameworkArea, vector, int>(area, area.GetOwner().GetOrigin(), (despawnRange * despawnRange)));
 			
-			area.DynamicDespawn();
+			area.DynamicDespawn(null);
 		}
 		
 		GetGame().GetCallqueue().CallLater(CheckDistance, 1000 * m_iUpdateRate, true);
@@ -978,7 +1163,7 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 
 			if (!observerInRange)
 			{
-				areaInfo.param1.DynamicDespawn();
+				areaInfo.param1.DynamicDespawn(null);
 				m_aDespawnedAreas.Insert(areaInfo);
 				m_aSpawnedAreas.Remove(i);
 			}
@@ -999,24 +1184,85 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void PopUpMessage(string sTitle, string sSubtitle, FactionKey factionKey = "")
+	//!
+	//! \param[in] sTitle
+	//! \param[in] sSubtitle
+	//! \param[in] timeOut
+	//! \param[in] factionKey
+	//! \param[in] playerID
+	void ShowHint(string sTitle, string sSubtitle, int timeOut, FactionKey factionKey = "", int playerID = -1)
 	{
-		Rpc(RpcDo_PopUpMessage, sTitle, sSubtitle, factionKey);
-		
-		if (factionKey != "")
-			if (SCR_FactionManager.SGetLocalPlayerFaction() != GetGame().GetFactionManager().GetFactionByKey(factionKey))
-				return;
-		
-		SCR_PopUpNotification.GetInstance().PopupMsg(sTitle, text2: sSubtitle);
+		Rpc(RpcDo_ShowHint, sTitle, sSubtitle, timeOut, factionKey, playerID);
+		RpcDo_ShowHint(sTitle, sSubtitle, timeOut, factionKey, playerID);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] sTitle
+	//! \param[in] sSubtitle
+	//! \param[in] timeOut
+	//! \param[in] factionKey
+	//! \param[in] playerID
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	void RpcDo_PopUpMessage(string sTitle, string sSubtitle, FactionKey factionKey)
+	void RpcDo_ShowHint(string sTitle, string sSubtitle, int timeOut, FactionKey factionKey, int playerID)
 	{
-		if (factionKey != "")
+		if (!SCR_StringHelper.IsEmptyOrWhiteSpace(factionKey))
+		{
 			if (SCR_FactionManager.SGetLocalPlayerFaction() != GetGame().GetFactionManager().GetFactionByKey(factionKey))
 				return;
+		}
+		
+		if (playerID != -1)
+		{
+			PlayerController playerController = GetGame().GetPlayerController();
+			if (!playerController)
+				return;
+			
+			if (playerID != playerController.GetPlayerId())
+				return;
+		}
+		
+		SCR_HintUIInfo info = SCR_HintUIInfo.CreateInfo(WidgetManager.Translate(sTitle), WidgetManager.Translate(sSubtitle), timeOut, 0, 0, true);
+		if (info)
+			SCR_HintManagerComponent.ShowHint(info);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] sTitle
+	//! \param[in] sSubtitle
+	//! \param[in] factionKey
+	//! \param[in] playerID
+	void PopUpMessage(string sTitle, string sSubtitle, FactionKey factionKey = "", int playerID = -1)
+	{
+		Rpc(RpcDo_PopUpMessage, sTitle, sSubtitle, factionKey, playerID);
+		RpcDo_PopUpMessage(sTitle, sSubtitle, factionKey, playerID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] sTitle
+	//! \param[in] sSubtitle
+	//! \param[in] factionKey
+	//! \param[in] playerID
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RpcDo_PopUpMessage(string sTitle, string sSubtitle, FactionKey factionKey, int playerID)
+	{
+		if (!SCR_StringHelper.IsEmptyOrWhiteSpace(factionKey))
+		{
+			if (SCR_FactionManager.SGetLocalPlayerFaction() != GetGame().GetFactionManager().GetFactionByKey(factionKey))
+				return;
+		}
+		
+		if (playerID != -1)
+		{
+			PlayerController playerController = GetGame().GetPlayerController();
+			if (!playerController)
+				return;
+			
+			if (playerID != playerController.GetPlayerId())
+				return;
+		}
 		
 		SCR_PopUpNotification.GetInstance().PopupMsg(sTitle, text2: sSubtitle);
 	}

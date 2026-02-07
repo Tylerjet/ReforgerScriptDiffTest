@@ -6,9 +6,9 @@ class SCR_GameLogHelper
 		array<ResourceName> officialScenarioResourceNames = GetGame().GetDefaultGameConfigs();
 		array<MissionWorkshopItem> missionWorkshopItems = {};
 
-		WorkshopApi workshopApi = GetGame().GetBackendApi().GetWorkshop();
-		if (workshopApi)
-			workshopApi.GetPageScenarios(missionWorkshopItems, 0, maxWorkshopScenarios);
+		WorkshopApi workshopAPI = GetGame().GetBackendApi().GetWorkshop();
+		if (workshopAPI)
+			workshopAPI.GetPageScenarios(missionWorkshopItems, 0, maxWorkshopScenarios);
 
 		Print("--------------------------------------------------");
 		if (!officialScenarioResourceNames)
@@ -17,6 +17,7 @@ class SCR_GameLogHelper
 		}
 		else
 		{
+			Resource resource;
 			BaseContainer container;
 			SCR_MissionHeader missionHeader;
 			string missionName;
@@ -31,30 +32,37 @@ class SCR_GameLogHelper
 				}
 				else
 				{
-					container = SCR_ConfigHelper.GetBaseContainer(officialScenarioResourceName);
-					if (container)
-						container.Get("m_sName", missionName);
-					else
-						missionName = "n/a";
+					missionName = "n/a";
+					resource = Resource.Load(officialScenarioResourceName);
+					if (resource.IsValid())
+					{
+						container = resource.GetResource().ToBaseContainer();
+						if (container)
+							container.Get("m_sName", missionName);
+					}
 				}
+
 				if (missionName.Contains("#"))
 					missionName = WidgetManager.Translate(missionName);
+
 				PrintFormat("%1 (%2)", officialScenarioResourceName, missionName);
 			}
 		}
+
 		Print("--------------------------------------------------");
 
-		if (!workshopApi)
+		if (!workshopAPI)
 		{
 			Print("could not get Workshop API to read mod scenarios conf paths", LogLevel.WARNING);
 			Print("--------------------------------------------------");
 			return;
 		}
 
-		if (missionWorkshopItems.IsEmpty())
+		int workshopCount = missionWorkshopItems.Count() - officialScenarioResourceNames.Count();
+		if (workshopCount < 1)
 			return;
 
-		PrintFormat("Workshop scenarios (%1 entries)", missionWorkshopItems.Count() - officialScenarioResourceNames.Count());
+		PrintFormat("Workshop scenarios (%1 entries)", workshopCount);
 		Print("--------------------------------------------------");
 		foreach (MissionWorkshopItem mission : missionWorkshopItems)
 		{

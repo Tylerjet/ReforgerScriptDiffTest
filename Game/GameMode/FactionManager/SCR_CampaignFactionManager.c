@@ -1,6 +1,5 @@
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
-class SCR_RankIDCampaign: SCR_RankID
+class SCR_RankIDCampaign : SCR_RankID
 {	
 	[Attribute("10", UIWidgets.EditBox, "How long does this rank has to wait between requests (sec).", params: "0 inf 1")]
 	protected int m_iRequestCD;
@@ -15,42 +14,46 @@ class SCR_RankIDCampaign: SCR_RankID
 	protected SCR_ERadioMsg m_eRadioMsg;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetRankRequestCooldown()
 	{
 		return m_iRequestCD * 1000;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetRankRadioRespawnCooldown()
 	{
 		return m_iRadioRespawnCooldown;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetRankFastTravelCooldown()
 	{
 		return m_iFastTravelCooldown;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_ERadioMsg GetRadioMsg()
 	{
 		return m_eRadioMsg;
 	}
 };
 
-//------------------------------------------------------------------------------------------------
-class SCR_CampaignFactionManagerClass: SCR_FactionManagerClass
+class SCR_CampaignFactionManagerClass : SCR_FactionManagerClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_CampaignFactionManager : SCR_FactionManager
 {
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] alliedFaction
+	//! \return
 	SCR_CampaignFaction GetEnemyFaction(notnull SCR_CampaignFaction alliedFaction)
 	{
-		array<Faction> factions = new array<Faction>();
+		array<Faction> factions = {};
 		GetFactionsList(factions);
 		
 		for (int i = factions.Count() - 1; i >= 0; i--)
@@ -65,6 +68,8 @@ class SCR_CampaignFactionManager : SCR_FactionManager
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] factionKey
+	//! \return
 	SCR_CampaignFaction GetCampaignFactionByKey(string factionKey)
 	{
 		Faction faction = GetFactionByKey(factionKey);
@@ -75,12 +80,16 @@ class SCR_CampaignFactionManager : SCR_FactionManager
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] index
+	//! \return
 	SCR_CampaignFaction GetCampaignFactionByIndex(int index)
 	{
 		return SCR_CampaignFaction.Cast(GetFactionByIndex(index));
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] rankID
+	//! \return
 	int GetRankRequestCooldown(SCR_ECharacterRank rankID)
 	{
 		SCR_RankIDCampaign rank = SCR_RankIDCampaign.Cast(GetRankByID(rankID));
@@ -92,6 +101,8 @@ class SCR_CampaignFactionManager : SCR_FactionManager
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] rankID
+	//! \return
 	int GetRankRadioRespawnCooldown(SCR_ECharacterRank rankID)
 	{
 		SCR_RankIDCampaign rank = SCR_RankIDCampaign.Cast(GetRankByID(rankID));
@@ -103,6 +114,8 @@ class SCR_CampaignFactionManager : SCR_FactionManager
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] rankID
+	//! \return
 	int GetRankFastTravelCooldown(SCR_ECharacterRank rankID)
 	{
 		SCR_RankIDCampaign rank = SCR_RankIDCampaign.Cast(GetRankByID(rankID));
@@ -112,12 +125,11 @@ class SCR_CampaignFactionManager : SCR_FactionManager
 
 		return rank.GetRankFastTravelCooldown();
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 enum SCR_ECampaignFaction
 {
 	INDFOR,
 	BLUFOR,
 	OPFOR
-};
+}

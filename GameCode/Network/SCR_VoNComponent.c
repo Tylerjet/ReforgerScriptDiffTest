@@ -10,8 +10,8 @@ class SCR_VoNComponent : VoNComponent
 	private float m_fTransmitRadioTimeout;
 	private SCR_VonDisplay m_VONDisplay;
 	
-	ref ScriptInvoker m_OnReceivedVON = new ref ScriptInvoker();
-	ref ScriptInvoker m_OnCaptureVON = new ref ScriptInvoker();
+	ref ScriptInvoker m_OnReceivedVON = new ScriptInvoker();
+	ref ScriptInvoker m_OnCaptureVON = new ScriptInvoker();
 	
 	//------------------------------------------------------------------------------------------------
 	//! Get Display Info script

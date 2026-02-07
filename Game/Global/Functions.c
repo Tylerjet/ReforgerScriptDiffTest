@@ -1665,7 +1665,10 @@ class SCR_Global
 		vector transform[4];
 		player.GetWorldTransform(transform);
 		transform[3] = worldPosition;
-		SCR_TerrainHelper.OrientToTerrain(transform);
+		
+		//~ Align to terrain if not a character
+		if (!ChimeraCharacter.Cast(player))
+			SCR_TerrainHelper.OrientToTerrain(transform);
 
 		BaseGameEntity baseGameEntity = BaseGameEntity.Cast(player);
 		if (baseGameEntity)

@@ -1,9 +1,8 @@
 [EntityEditorProps(category: "GameScripted/Commanding", description: "This component should be attached to player controller and is used by commanding to send requests to server.")]
 class SCR_PlayerControllerCommandingComponentClass : ScriptComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_PlayerControllerCommandingComponent : ScriptComponent
 {
 	[Attribute("{ECC45EC468D76CF4}Configs/Commanding/CommandingMenu.conf")]
@@ -30,12 +29,15 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	protected bool m_bSlaveGroupRequested = false;
 	protected ref SCR_PhysicsHelper m_PhysicsHelper;
 	
-	//used to offset the position to spawn waypoint so it is not spawned in terrain
-	const float ABOVE_TERRAIN_OFFSET = 0.5;
-	//maximal range for command in meters
-	const float COMMANDING_VISUAL_RANGE = 10000;
+	//! Used to offset the position to spawn waypoint so it is not spawned in terrain
+	protected static const float ABOVE_TERRAIN_OFFSET = 0.5;
+
+	//! Maximal range for command in meters
+	protected static const float COMMANDING_VISUAL_RANGE = 10000;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] playerID
+	//! \return
 	static SCR_PlayerControllerCommandingComponent GetPlayerControllerCommandingComponent(int playerID)
 	{
 		PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(playerID);
@@ -46,6 +48,7 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	static SCR_PlayerControllerCommandingComponent GetLocalPlayerControllerCommandingComponent()
 	{
 		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
@@ -79,14 +82,19 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 		m_PhysicsHelper.InitPhysicsHelper();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnControllerTakeControl(SCR_RadialMenuController controller)
 	{
+		if (GetGame().GetPlayerController() != GetOwner())
+			return;
+		
 		// Send/update entries in radial menu when control is gained
 		controller.UpdateMenuData();
 		SetupPlayerRadialMenu(GetOwner());
 	}
 		
 	//------------------------------------------------------------------------------------------------
+	//!
 	void SetupMapListener()
 	{
 		SCR_MapRadialUI mapMenu = SCR_MapRadialUI.GetInstance();
@@ -97,6 +105,7 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void RemoveMapListener()
 	{
 		SCR_MapRadialUI mapMenu = SCR_MapRadialUI.GetInstance();
@@ -107,6 +116,8 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] owner
 	void SetupPlayerRadialMenu(IEntity owner)
 	{
 		
@@ -123,6 +134,7 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] config
 	void OnMapOpen(MapConfiguration config)
 	{
 		m_MapContextualMenu = SCR_MapRadialUI.GetInstance();
@@ -134,6 +146,7 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] config
 	void OnMapClose(MapConfiguration config)
 	{
 		if (!m_MapContextualMenu)
@@ -144,6 +157,7 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void SetupMapRadialMenu()
 	{
 		if (!m_CommandingMenuConfig || !m_MapContextualMenu)
@@ -157,6 +171,8 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] element
+	//! \param[in] worldPos
 	void OnMapCommandPerformed(SCR_SelectionMenuEntry element, float[] worldPos)
 	{
 		SCR_MapMenuCommandingEntry mapEntry = SCR_MapMenuCommandingEntry.Cast(element);
@@ -175,6 +191,8 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] groupID
+	//! \param[in] playerID
 	void OnGroupLeaderChanged(int groupID, int playerID)
 	{
 		SCR_PlayerControllerGroupComponent playerGroupController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
@@ -189,6 +207,7 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] groupID
 	void OnGroupChanged(int groupID)
 	{
 		//check if player is the new leader of the group
@@ -208,6 +227,8 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] menu
+	//! \param[in] entry
 	void OnRadialMenuPerformed(SCR_SelectionMenu menu, SCR_SelectionMenuEntry entry)
 	{
 		SCR_SelectionMenuEntry element = SCR_SelectionMenuEntry.Cast(entry);
@@ -224,10 +245,12 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] commandName
 	void PrepareExecuteCommand(string commandName, vector targetPosition = "0 0 0")
 	{
 		//if another command is waiting for trace, do nothing
-		if (commandName.IsEmpty() || m_bIsCommandExecuting)
+		if (m_bIsCommandExecuting || commandName.IsEmpty())
 			return;
 	
 		m_sExecutedCommandName = commandName;
@@ -259,6 +282,9 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] targetPosition
+	//! \param[in] tracedEntity
 	void ExecuteCommand(vector targetPosition, IEntity tracedEntity)	
 	{
 		m_bIsCommandExecuting = false;
@@ -284,14 +310,15 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 			return;
 		
 		RplComponent rplComp;
-		if (!playersGroup.GetSlave() && !m_bSlaveGroupRequested)
+		if (!m_bSlaveGroupRequested && !playersGroup.GetSlave())
 		{
 			rplComp = RplComponent.Cast(playersGroup.FindComponent(RplComponent));
 			groupController.RequestCreateSlaveGroup(rplComp.Id());
 			m_bSlaveGroupRequested = true;
 		}
+
 		SCR_AIGroup slaveGroup = playersGroup.GetSlave();
-		
+		//todo:mour Unlink this, only AI commands should be reliant on slave group, so commands should have that as option, not for all commands		
 		if (!slaveGroup)
 		{
 			//if there is not slaveGroup, we try to execute the command later because newly created group takes a bit of time to replicate
@@ -312,10 +339,17 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 			if (rplComp)
 				cursorTargetRplID = rplComp.Id();
 		}
+
 		Rpc(RPC_RequestExecuteCommand, commandIndex, cursorTargetRplID, groupRplID, targetPosition, playerID);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] commandIndex
+	//! \param[in] cursorTargetID
+	//! \param[in] groupRplID
+	//! \param[in] targetPoisition
+	//! \param[in] playerID
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RPC_RequestExecuteCommand(int commandIndex, RplId cursorTargetID, RplId groupRplID, vector targetPoisition, int playerID)
 	{
@@ -327,12 +361,16 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] commandIndex
 	void CommandExecutedCallback(int commandIndex)
 	{
 		Rpc(RPC_CommandExecutedCallback, commandIndex);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] commandIndex
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	void RPC_CommandExecutedCallback(int commandIndex)
 	{
@@ -340,6 +378,8 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] commandIndex
 	void PlayCommandGesture(int commandIndex)
 	{
 		if (commandIndex <= 0)
@@ -351,9 +391,10 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 		if (mapEntity && mapEntity.IsOpen())
 			return;
 		
-		SCR_BaseGroupCommand command = m_CommandingManager.FindCommand(m_CommandingManager.FindCommandNameFromIndex(commandIndex)); 
+		SCR_BaseGroupCommand command = SCR_BaseGroupCommand.Cast(m_CommandingManager.FindCommand(m_CommandingManager.FindCommandNameFromIndex(commandIndex))); 
 		if (!command)
 			return;
+
 		int gestureID = command.GetCommandGestureID();
 		
 		IEntity playerControlledEntity = GetGame().GetPlayerController().GetControlledEntity();
@@ -369,6 +410,9 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] owner
+	//! \param[in] isOpen
 	void UpdateRadialMenu(IEntity owner, bool isOpen)
 	{
 		if (!m_RadialMenu || !m_CommandingMenuConfig || !isOpen)
@@ -388,7 +432,10 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void AddElementsFromCategory(SCR_PlayerCommandingMenuCategoryElement category, SCR_SelectionMenuCategoryEntry rootCategory = null )
+	//!
+	//! \param[in] category cannot be null
+	//! \param[in] rootCategory
+	void AddElementsFromCategory(SCR_PlayerCommandingMenuCategoryElement category, SCR_SelectionMenuCategoryEntry rootCategory = null)
 	{
 		array<ref SCR_PlayerCommandingMenuBaseElement> elements = category.GetCategoryElements();
 		
@@ -414,21 +461,21 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void AddElementsFromCategoryToMap(notnull SCR_PlayerCommandingMenuCategoryElement category)
+	//!
+	//! \param[in] category cannot be null
+	void AddElementsFromCategoryToMap(notnull SCR_PlayerCommandingMenuCategoryElement category, SCR_SelectionMenuCategoryEntry rootCategory = null)
 	{
 		array<ref SCR_PlayerCommandingMenuBaseElement> elements = category.GetCategoryElements();
-		
-		SCR_PlayerCommandingMenuCategoryElement elementCategory;
-		
 		SCR_SelectionMenuCategoryEntry mapEntryCategory = m_MapContextualMenu.AddRadialCategory(category.GetCategoryDisplayText()); // add map category entry
 		
+		SCR_PlayerCommandingMenuCategoryElement elementCategory;
 		foreach (SCR_PlayerCommandingMenuBaseElement element : elements)
 		{
 			elementCategory = SCR_PlayerCommandingMenuCategoryElement.Cast(element);
 			if (elementCategory)
 			{
-				//TODO@kuceramar: map menu doesnt support subcategories right now
-				InsertElementToMapRadial(element, category, mapEntryCategory);
+				if (elementCategory.GetCanShowOnMap())
+					AddElementsFromCategoryToMap(elementCategory, mapEntryCategory);
 			} 
 			else 
 			{
@@ -438,6 +485,10 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] element cannot be null
+	//! \param[in] category
+	//! \param[in] mapCategory
 	void InsertElementToMapRadial(SCR_PlayerCommandingMenuBaseElement element, notnull SCR_PlayerCommandingMenuCategoryElement category, SCR_SelectionMenuCategoryEntry mapCategory)
 	{
 		SCR_CommandingManagerComponent commandingManager = SCR_CommandingManagerComponent.GetInstance();
@@ -448,7 +499,7 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 		if (!commandingManager.CanShowOnMap(commandElement.GetCommandName()))
 			return;
 	
-		SCR_BaseGroupCommand command = commandingManager.FindCommand(commandElement.GetCommandName());
+		SCR_BaseRadialCommand command = commandingManager.FindCommand(commandElement.GetCommandName());
 		
 		SCR_MapMenuCommandingEntry mapEntry = new SCR_MapMenuCommandingEntry(commandElement.GetCommandName());
 		mapEntry.SetName(commandElement.GetCommandDisplayText());
@@ -460,6 +511,10 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] newElement
+	//! \param[in] parentCategory
+	//! \return
 	SCR_SelectionMenuEntry AddRadialMenuElement(SCR_PlayerCommandingMenuBaseElement newElement, SCR_SelectionMenuCategoryEntry parentCategory = null)
 	{
 		SCR_PlayerCommandingMenuCommand commandElement = SCR_PlayerCommandingMenuCommand.Cast(newElement);
@@ -474,6 +529,10 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] category cannot be null
+	//! \param[in] parentCategory
+	//! \return
 	SCR_SelectionMenuEntry AddCategoryElement(SCR_PlayerCommandingMenuCategoryElement category, SCR_SelectionMenuCategoryEntry parentCategory = null)
 	{
 		SCR_SelectionMenuCategoryEntry newCategory = new SCR_SelectionMenuCategoryEntry();
@@ -492,6 +551,10 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] command cannot be null
+	//! \param[in] parentCategory
+	//! \return
 	SCR_SelectionMenuEntry AddCommandElement(SCR_PlayerCommandingMenuCommand command, SCR_SelectionMenuCategoryEntry parentCategory = null)
 	{
 		SCR_CommandingManagerComponent commandingManager = SCR_CommandingManagerComponent.GetInstance();
@@ -501,27 +564,31 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 		if (!commandingManager.CanShowCommand(command.GetCommandName()))
 			return null;
 		
-		SCR_BaseGroupCommand groupCommand = commandingManager.FindCommand(command.GetCommandName());
+		SCR_BaseRadialCommand groupCommand = commandingManager.FindCommand(command.GetCommandName());
 		
 		SCR_SelectionMenuEntry entry = new SCR_SelectionMenuEntry();
-			
+
 		string displayName = command.GetCommandCustomName();
 		if (displayName.IsEmpty())
 			displayName = command.GetCommandDisplayText();
-				
+
 		entry.SetName(displayName);
 		entry.SetId(command.GetCommandName());
 		entry.SetIcon(groupCommand.GetIconImageset(), groupCommand.GetIconName());
 		entry.Enable(groupCommand.CanBePerformed());
 		
-		m_RadialMenu.AddEntry(entry);
+		if (parentCategory)
+			parentCategory.AddEntry(entry);
+		else
+			m_RadialMenu.AddEntry(entry);
 		
 		return entry;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void OnPlayerRadialMenuOpen()
-	{	
+	{
 		if (!m_RadialMenu || !m_CommandingMenuConfig)
 			return;
 		

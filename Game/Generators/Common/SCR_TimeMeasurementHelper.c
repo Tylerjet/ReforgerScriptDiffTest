@@ -4,20 +4,31 @@
 //! Debug.BeginTimeMeasure();
 //! foreach (SCR_Object obj : m_aObjects)
 //! {
+//!		benchmark.BeginMeasure("opAandC");
 //! 	obj.OperationA();
+//!		benchmark.EndMeasure("opAandC");	// names are case-sensitive
+//!
 //! 	benchmark.BeginMeasure("opB");
 //! 	obj.OperationB();
-//! 	benchmark.EndMeasure("opB"); // names must match
+//! 	benchmark.EndMeasure("opB");
+//!
+//!		benchmark.BeginMeasure("opAandC");
 //! 	obj.OperationC();
+//!		benchmark.EndMeasure("opAandC");	// time will be -added- to this measurement
 //! }
 //! Debug.EndTimeMeasure("Operation A, B and C total benchmark");
+//! Print("Operation A && C: " + benchmark.GetMeasure("opAandC") + " ms", LogLevel.NORMAL);
 //! Print("Operation B only: " + benchmark.GetMeasure("opB") + " ms", LogLevel.NORMAL);
+//! // or
+//! benchmark.PrintAllMeasures();
 //! \code
 class SCR_TimeMeasurementHelper
 {
 	protected ref map<string, ref SCR_TimeMeasurementHelper_Info> m_mData;
 
 	//------------------------------------------------------------------------------------------------
+	//! Begin a measurement with a name. If a measurement with this name is already started, its begin time is replaced
+	//! The name is case-sensitive and must be exactly provided to EndMeasure
 	void BeginMeasure(string name)
 	{
 		SCR_TimeMeasurementHelper_Info info = m_mData.Get(name);
@@ -31,6 +42,9 @@ class SCR_TimeMeasurementHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! End a started measurement
+	//! If the measurement has not been started, a warning is printed
+	//! \param name case-sensitive, must be identical to BeginMeasure's provided name
 	void EndMeasure(string name)
 	{
 		SCR_TimeMeasurementHelper_Info info = m_mData.Get(name);
@@ -44,6 +58,10 @@ class SCR_TimeMeasurementHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Get a measurement by name
+	//! If the measurement has never been ended, its value is 0
+	//! If the measurement has not been started, a warning is printed and -1 is returned
+	//! \return measured time in ms, 0 if the measurement has not been ended, -1 if the measurement does not exist
 	float GetMeasure(string name)
 	{
 		SCR_TimeMeasurementHelper_Info info = m_mData.Get(name);
@@ -57,6 +75,7 @@ class SCR_TimeMeasurementHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Print all measurements to the console, ended or not
 	void PrintAllMeasures()
 	{
 		foreach (string name, SCR_TimeMeasurementHelper_Info info : m_mData)
@@ -66,6 +85,7 @@ class SCR_TimeMeasurementHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Delete all stored measurements, ended or not
 	void Reset()
 	{
 		m_mData.Clear();

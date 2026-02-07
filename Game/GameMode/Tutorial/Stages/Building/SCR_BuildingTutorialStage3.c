@@ -18,6 +18,7 @@ class SCR_BuildingTutorialStage3 : SCR_BaseCampaignTutorialArlandStage
 		SCR_HintManagerComponent.GetInstance().GetOnHintShow().Remove(CheckGMHint);
 		SCR_HintManagerComponent.GetInstance().GetOnHintShow().Insert(CheckGMHint);
 		
+		PlaySoundSystem("Building_Structures", true);
 		OverrideGMHint();
 		
 		GetGame().GetCallqueue().Remove(OverrideGMHint);

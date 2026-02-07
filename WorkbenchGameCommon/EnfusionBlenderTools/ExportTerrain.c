@@ -76,13 +76,13 @@ class ExportTerrain: NetApiHandler
 	// coords[X,Z,Y]
 	private void ModifyTerrain(WorldEditorAPI api, array<float> coords)
 	{
-		api.BeginTerrainAction(TerrainToolType.TTT_HEIGHT_EXACT);
+		api.BeginTerrainAction(TerrainToolType.HEIGHT_EXACT);
 		TerrainToolDesc_HeightExact tool = new TerrainToolDesc_HeightExact();	
 		
 		for(int i = 0; i < coords.Count(); i+=3)
 		{
 			tool.fExactHeight = coords[i+2];
-			api.ModifyHeightMap(coords[i+0], coords[i+1],FilterMorphOperation.MORPH_EXACT, tool, FilterMorphShape.SHAPE_SQUARE, FilterMorphLerpFunc.FUNC_LINEAR);
+			api.ModifyHeightMap(coords[i+0], coords[i+1],FilterMorphOperation.EXACT, tool, FilterMorphShape.SQUARE, FilterMorphLerpFunc.LINEAR);
 		}
 		api.EndTerrainAction();
 	}

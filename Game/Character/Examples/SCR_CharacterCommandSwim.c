@@ -3,6 +3,8 @@
 // *************************************************************************************
 class SCR_CharacterCommandSwimST
 {
+	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_CharacterCommandSwimST(CharacterAnimationComponent pAnimationComponent)
 	{
 		m_CmdStartSwimming 	= pAnimationComponent.BindCommand("CMD_Swim");		
@@ -15,15 +17,15 @@ class SCR_CharacterCommandSwimST
 	TAnimGraphVariable 		m_VarSpeed;				//! float variable - 0,1,2,3 speed
 	TAnimGraphVariable 		m_VarDirection;			//! float variable - angle 
 	TAnimGraphTag			m_TagIsSwimming;		//! 
-};
+}
 
 // *************************************************************************************
 // ! Fully Working Swimming implemented by AnimPhysCommandScripted
 // *************************************************************************************
 class SCR_CharacterCommandSwim : ScriptedCommand
 {
-
-	//! constructor
+	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_CharacterCommandSwim(BaseAnimPhysComponent pAnimPhysComponent, SCR_CharacterCommandSwimST pTable, ChimeraCharacter pCharacter, CharacterControllerComponent pController)
 	{
 		m_pCharacter 			= pCharacter;
@@ -32,18 +34,20 @@ class SCR_CharacterCommandSwim : ScriptedCommand
 		m_Table 				= pTable;
 	}
 
-	//!
+	//------------------------------------------------------------------------------------------------
 	void StartSwimming()
 	{
 		PreAnim_CallCommand(m_Table.m_CmdStartSwimming, 1, 1);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	void EndSwimming()
 	{
 		PreAnim_CallCommand(m_Table.m_CmdStartSwimming, -1, 0);
 	}
 	
-	//	
+	//------------------------------------------------------------------------------------------------
+	//! empty, does nothing
 	void UpdateWaterDepth()
 	{
 		//vector 	pp = m_pPlayer.GetPosition();
@@ -53,20 +57,21 @@ class SCR_CharacterCommandSwim : ScriptedCommand
 		//m_fCharacterDepth = wl[1];		// whats character depth  at player's position
 	}
 
-
-	//! 
+	//------------------------------------------------------------------------------------------------
 	override void OnActivate()
 	{
 		StartSwimming();
 		m_AnimationComponent.PhysicsEnableGravity(false);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void OnDeactivate()
 	{
 		Print("SCR_CharacterCommandSwim::OnDeactivate");
 		m_AnimationComponent.PhysicsEnableGravity(true);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	// called to set values to animation graph processing 
 	override void PreAnimUpdate(float pDt)
 	{
@@ -128,13 +133,12 @@ class SCR_CharacterCommandSwim : ScriptedCommand
 		m_fTime += pDt;
 	}
 
-
+	//------------------------------------------------------------------------------------------------
 	//! called to change local translations / rotations
 	//! called to get events / tags from animation graph processing 
 	override void 	PrePhysUpdate(float pDt)
 	{
 		Print("SCR_CharacterCommandSwim::PrePhysUpdate: " + pDt.ToString());
-
 
 		UpdateWaterDepth();
 		// Print("Char Depth: " + m_fCharacterDepth.ToString());
@@ -177,8 +181,6 @@ class SCR_CharacterCommandSwim : ScriptedCommand
 			swimSpeedX = locDir[0] * m_fMovementSpeed;
 		} 
 
-
-
 		// filter velocities			
 		m_fSpeedX = Math.SmoothCD(m_fSpeedX, swimSpeedX, m_fSpeedXV, m_fMovementSpeedFltTime, m_fMovementSpeedFltMaxChange, pDt);		
 		m_fSpeedZ = Math.SmoothCD(m_fSpeedZ, swimSpeedZ, m_fSpeedZV, m_fMovementSpeedFltTime, m_fMovementSpeedFltMaxChange, pDt);		
@@ -191,12 +193,12 @@ class SCR_CharacterCommandSwim : ScriptedCommand
 		PrePhys_SetTranslation(trans);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! called when all animation / pre phys update is handled
 	override bool PostPhysUpdate(float pDt)
 	{
 		Print("SCR_CharacterCommandSwim::PostPhysUpdate: " + pDt.ToString());
 
-		//!
 		if (m_bNeedFinish)
 		{
 			return false;
@@ -210,7 +212,6 @@ class SCR_CharacterCommandSwim : ScriptedCommand
 
 		return true;	// handled with SetFlagFinished();
 	}
-
 
 	ChimeraCharacter					m_pCharacter;
 	CharacterInputContext 				m_Input;
@@ -236,4 +237,4 @@ class SCR_CharacterCommandSwim : ScriptedCommand
 	float		m_fWaterLevelSwim = 1.4;				//!< when swimming - entity position depth (1.4 m)
 	float		m_fWaterLevelIn = 1.5;					//!< when entering water - what level cases swimming (1.5m)
 	float		m_fWaterLevelOut = 1.3;
-};
+}

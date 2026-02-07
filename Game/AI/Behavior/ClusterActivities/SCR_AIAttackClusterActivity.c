@@ -81,7 +81,7 @@ class SCR_AIAttackClusterActivity : SCR_AIFireteamsClusterActivity
 						IEntity talkRequestEntity = ftLock.GetFireteam().GetFirstMemberEntity();		
 						
 						int flankValue = Math.RandomIntInclusive(0, 1);
-						SCR_AITalkRequest rq = new SCR_AITalkRequest(ECommunicationType.REPORT_FLANK, talkRequestEntity, vector.Zero, flankValue, false, SCR_EAITalkRequestPreset.MANDATORY);
+						SCR_AITalkRequest rq = new SCR_AITalkRequest(ECommunicationType.REPORT_FLANK, talkRequestEntity, vector.Zero, flankValue, false, false, SCR_EAITalkRequestPreset.MANDATORY);
 						commsHandler.AddRequest(rq);
 					}
 				}
@@ -143,6 +143,9 @@ class SCR_AIAttackClusterActivity : SCR_AIFireteamsClusterActivity
 				if (!agent)
 					continue;
 				
+				if (SCR_AICompartmentHandling.IsInCompartment(agent))
+					continue;
+				
 				SCR_AIMessage_AttackCluster msg = SCR_AIMessage_AttackCluster.Create(m_ClusterState, false);
 				msg.m_RelatedGroupActivity = this;
 				msg.SetReceiver(agent);
@@ -156,6 +159,9 @@ class SCR_AIAttackClusterActivity : SCR_AIFireteamsClusterActivity
 			foreach (AIAgent agent : agents)
 			{
 				if (!agent)
+					continue;
+				
+				if (SCR_AICompartmentHandling.IsInCompartment(agent))
 					continue;
 				
 				SCR_AIMessage_AttackCluster msg = SCR_AIMessage_AttackCluster.Create(m_ClusterState, true); // Attacking fireteam is allowed to investigate

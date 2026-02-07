@@ -9,8 +9,12 @@ class SCR_CampaignTutorialArlandStageMedical19 : SCR_BaseCampaignTutorialArlandS
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
 	{
-		m_fDuration = 15;
+		m_fDuration = 8;
 		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
 		m_TutorialComponent.SetStagesComplete(2, true);
+		
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("FirstAid_End", true);
 	}
 };

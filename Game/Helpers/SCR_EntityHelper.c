@@ -1,5 +1,153 @@
 class SCR_EntityHelper
 {
+	/*!
+	Function to find specific component on given entity or entity parent/slottedEntities/siblings/rootparents etc
+	\param entity Entity to use to find the component on
+	\param componentType Component Class to find
+	\param queryFlags Where to find the component on. It can have multiple flags and is checked in order of lowest to highest flag value
+	\return Component is any is found
+	*/
+	static Managed FindComponent(notnull IEntity entity, typename componentType, SCR_EComponentFinderQueryFlags queryFlags = SCR_EComponentFinderQueryFlags.ENTITY | SCR_EComponentFinderQueryFlags.SLOTS)
+	{
+		Managed foundComponent;
+		
+		//~ Find on entity itself
+		if (SCR_Enum.HasFlag(queryFlags, SCR_EComponentFinderQueryFlags.ENTITY))
+		{
+			foundComponent = entity.FindComponent(componentType);
+			if (foundComponent)
+				return foundComponent;
+		}
+		
+		//~ Find on slotted entities
+		if (SCR_Enum.HasFlag(queryFlags, SCR_EComponentFinderQueryFlags.SLOTS))
+		{
+			SlotManagerComponent slotManager = SlotManagerComponent.Cast(entity.FindComponent(SlotManagerComponent));
+			if (slotManager)
+			{
+				array<EntitySlotInfo> slotInfos = {};
+				slotManager.GetSlotInfos(slotInfos);
+				IEntity slotEntity;
+				
+				foreach (EntitySlotInfo slotInfo : slotInfos)
+				{
+					slotEntity = slotInfo.GetAttachedEntity();
+					if (!slotEntity)
+						continue;
+					
+					foundComponent = slotEntity.FindComponent(componentType);
+					if (foundComponent)
+						return foundComponent;
+				}
+			}
+		}
+		
+		//~ Find on children
+		if (SCR_Enum.HasFlag(queryFlags, SCR_EComponentFinderQueryFlags.CHILDREN))
+		{
+			IEntity child = entity.GetChildren();
+		
+			while (child)
+			{
+				foundComponent = child.FindComponent(componentType);
+				if (foundComponent)
+					return foundComponent;
+				
+				child = child.GetSibling();
+			}
+		}
+		
+		IEntity parent;
+		
+		//~ Find in parent
+		if (SCR_Enum.HasFlag(queryFlags, SCR_EComponentFinderQueryFlags.PARENT))
+		{
+			parent = entity.GetParent();
+			
+			if (parent)
+			{
+				foundComponent = parent.FindComponent(componentType);
+				if (foundComponent)
+					return foundComponent;
+			}
+		}
+		
+		//~ Find on slotted entities of parent
+		if (SCR_Enum.HasFlag(queryFlags, SCR_EComponentFinderQueryFlags.PARENT_SLOTS))
+		{			
+			if (!parent)
+				parent = entity.GetParent();
+			
+			if (parent)
+			{
+				foundComponent = SCR_EntityHelper.FindComponent(parent, componentType, SCR_EComponentFinderQueryFlags.SLOTS);
+				if (foundComponent)
+					return foundComponent;
+			}
+		}
+		
+		IEntity rootParent;
+		
+		//~ Find in root parent
+		if (SCR_Enum.HasFlag(queryFlags, SCR_EComponentFinderQueryFlags.PARENT))
+		{
+			rootParent = entity.GetRootParent();
+			
+			if (rootParent)
+			{
+				foundComponent = rootParent.FindComponent(componentType);
+				if (foundComponent)
+					return foundComponent;
+			}
+		}
+		
+		//~ Find on slotted entities of root parent
+		if (SCR_Enum.HasFlag(queryFlags, SCR_EComponentFinderQueryFlags.PARENT_SLOTS))
+		{			
+			if (!rootParent)
+				rootParent = entity.GetRootParent();
+			
+			if (rootParent)
+			{
+				foundComponent = SCR_EntityHelper.FindComponent(rootParent, componentType, SCR_EComponentFinderQueryFlags.SLOTS);
+				if (foundComponent)
+					return foundComponent;
+			}
+		}
+		
+		//~ Find in siblings
+		if (SCR_Enum.HasFlag(queryFlags, SCR_EComponentFinderQueryFlags.SIBLINGS))
+		{
+			if (!parent)
+				parent = entity.GetParent();
+			
+			if (parent)
+			{
+				//~ Get siblings from parent
+				IEntity child = parent.GetChildren();
+		
+				while (child)
+				{
+					//~ Ignore self
+					if (child == entity)
+					{
+						child = child.GetSibling();
+						continue;
+					}
+					
+					foundComponent = child.FindComponent(componentType);
+					if (foundComponent)
+						return foundComponent;
+					
+					child = child.GetSibling();
+				}
+			}
+		}
+		
+		//~ Not found
+		return null;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Returns number of children the input entity has
 	//! \param parent
@@ -68,7 +216,7 @@ class SCR_EntityHelper
 	//------------------------------------------------------------------------------------------------
 	//! Returns a list of all entities in the hierarchy
 	//! \param entity
-	//! \param[inout] output
+	//! \param[in,out] output
 	static void GetHierarchyEntityList(notnull IEntity entity, notnull inout array<IEntity> output)
 	{
 		IEntity child = entity.GetChildren();
@@ -125,7 +273,7 @@ class SCR_EntityHelper
 	
 	//------------------------------------------------------------------------------------------------
 	//! \param newUp
-	//! \param[inout] mat
+	//! \param[in,out] mat
 	static void OrientUpToVector(vector newUp, inout vector mat[4])
 	{
 		vector origin = mat[3];
@@ -270,3 +418,17 @@ class SCR_EntityHelperT<Class T>
 		return null;
 	}
 }
+
+//------------------------------------------------------------------------------------------------
+//! Used for component finding to know where it can search to get the given component
+enum SCR_EComponentFinderQueryFlags
+{
+	ENTITY =        		1 << 0, ///< Find on entity itself
+	SLOTS = 				1 << 1, ///< Find in SlotManagerComponent
+	CHILDREN =      		1 << 2, ///< Find on children of entity
+	PARENT = 				1 << 3, ///< Find on parent of entity
+	PARENT_SLOTS =			1 << 4, ///< Find in SlotManagerComponent of parent
+	ROOT_PARENT = 			1 << 5, ///< Find on Root parent of entity
+	ROOT_PARENT_SLOTS =		1 << 6, ///< Find in SlotManagerComponent of root parent
+	SIBLINGS = 				1 << 7, ///< Find on Siblings in hierarchy
+};

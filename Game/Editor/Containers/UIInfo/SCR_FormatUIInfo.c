@@ -3,7 +3,8 @@ class SCR_FormatUIInfo: SCR_BlockUIInfo
 {
 	[Attribute()]
 	protected ref array<ref SCR_BaseFormatParam> m_aParams;
-	
+
+	//------------------------------------------------------------------------------------------------
 	override bool SetNameTo(TextWidget textWidget)
 	{
 		if (!textWidget)
@@ -15,6 +16,8 @@ class SCR_FormatUIInfo: SCR_BlockUIInfo
 			textWidget.SetText(GetName());
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool SetDescriptionTo(TextWidget textWidget)
 	{
 		if (!textWidget)
@@ -27,6 +30,11 @@ class SCR_FormatUIInfo: SCR_BlockUIInfo
 		
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param index
+	//! \return
 	protected string Param(int index)
 	{
 		if (index < m_aParams.Count())
@@ -34,13 +42,15 @@ class SCR_FormatUIInfo: SCR_BlockUIInfo
 		else
 			return string.Empty;
 	}
-};
+}
 
 [BaseContainerProps()]
 class SCR_BaseFormatParam
 {
+	//------------------------------------------------------------------------------------------------
 	string GetParam();
-};
+}
+
 [BaseContainerProps(), SCR_BaseContainerCustomTitleField("m_sActionName", "Action: '%1'")]
 class SCR_ActionFormatParam: SCR_BaseFormatParam
 {
@@ -49,11 +59,12 @@ class SCR_ActionFormatParam: SCR_BaseFormatParam
 	
 	//[Attribute("0.760 0.384 0.08 1")]
 	//protected ref Color m_Color;
-	
+
+	//------------------------------------------------------------------------------------------------
 	override string GetParam()
 	{
-		//--- ToDo: Turn color conversion to general function
-		Color sRGBA = new Color(UIColors.CONTRAST_COLOR.R(), UIColors.CONTRAST_COLOR.G(), UIColors.CONTRAST_COLOR.B(), UIColors.CONTRAST_COLOR.A());
+		// TODO: Turn color conversion to a general method
+		Color sRGBA = Color.FromIntSRGB(UIColors.CONTRAST_COLOR.PackToInt());
 		
 		//--- Convert to sRGBA format for rich text
 		sRGBA.LinearToSRGB();
@@ -66,18 +77,20 @@ class SCR_ActionFormatParam: SCR_BaseFormatParam
 		
 		return string.Format("<color rgba='%2,%3,%4,%5'><action name='%1' scale='1.25'/></color>", m_sActionName, colorR, colorG, colorB, colorA);
 	}
-};
+}
+
 [BaseContainerProps(), SCR_BaseContainerCustomTitleResourceName("m_ImageSet", true, "ImageSet: '%1'")]
-class SCR_ImageSetFormatParam: SCR_BaseFormatParam
+class SCR_ImageSetFormatParam : SCR_BaseFormatParam
 {
 	[Attribute(uiwidget: UIWidgets.ResourceNamePicker, params: "imageset")]
 	protected ResourceName m_ImageSet;
 	
 	[Attribute(desc: "")]
 	protected string m_sName;
-	
+
+	//------------------------------------------------------------------------------------------------
 	override string GetParam()
 	{
 		return string.Format("<image set='%1' name='%2'/>", m_ImageSet, m_sName);
 	}
-};
+}

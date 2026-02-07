@@ -99,7 +99,7 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 	{
 		
 		array<SCR_MilitaryBaseComponent> bases = {};
-		SCR_MilitaryBaseManager.GetInstance().GetBases(bases);
+		SCR_MilitaryBaseSystem.GetInstance().GetBases(bases);
 		
 		if (!bases)
 			return null;
@@ -410,12 +410,12 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 	
 	//------------------------------------------------------------------------------------------------
 	//! An event called when a base has been captured.
-	void OnBaseCaptured(SCR_CampaignMilitaryBaseComponent capturedBase)
+	void OnBaseCaptured(SCR_MilitaryBaseComponent base, Faction faction)
 	{
-		if (!capturedBase || capturedBase != m_TargetBase || !GetTaskManager())
+		if (!base || base != m_TargetBase || !GetTaskManager())
 			return;
 		
-		if (capturedBase.GetFaction() == m_TargetFaction)
+		if (base.GetFaction() == m_TargetFaction)
 			return;
 		
 		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity));
@@ -443,7 +443,7 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 		if (SCR_BaseTaskManager.s_OnPeriodicalCheck60Second)
 			SCR_BaseTaskManager.s_OnPeriodicalCheck60Second.Insert(PeriodicalCheck);
 		
-		SCR_MilitaryBaseManager.GetInstance().GetOnBaseFactionChanged().Insert(OnBaseCaptured);
+		SCR_MilitaryBaseSystem.GetInstance().GetOnBaseFactionChanged().Insert(OnBaseCaptured);
 		
 		SCR_CampaignDefendTaskSupportEntity supportClass = SCR_CampaignDefendTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_CampaignDefendTaskSupportEntity));
 		if (supportClass)
@@ -462,7 +462,7 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 		if (SCR_BaseTaskManager.s_OnPeriodicalCheck60Second)
 			SCR_BaseTaskManager.s_OnPeriodicalCheck60Second.Remove(PeriodicalCheck);
 		
-		SCR_MilitaryBaseManager baseManager = SCR_MilitaryBaseManager.GetInstance(false);
+		SCR_MilitaryBaseSystem baseManager = SCR_MilitaryBaseSystem.GetInstance();
 		
 		if (baseManager)
 			baseManager.GetOnBaseFactionChanged().Remove(OnBaseCaptured);

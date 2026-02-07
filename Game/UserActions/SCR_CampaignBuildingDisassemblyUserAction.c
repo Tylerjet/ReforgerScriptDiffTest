@@ -3,6 +3,7 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 	protected SCR_CampaignBuildingCompositionComponent m_CompositionComponent;
 	protected SCR_EditableEntityComponent m_EditableEntity;
 	protected SCR_EditorManagerEntity m_EditorManager;
+	protected FactionAffiliationComponent m_FactionComponent;
 	protected ref array<SCR_EditableVehicleComponent> m_EditableVehicle = {};
 	protected bool m_bCompositionSpawned;
 	protected bool m_bTurretCollected;
@@ -24,8 +25,21 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 		SetEditorManager();
 		
 		if (m_CompositionComponent && GetOwner() == GetOwner().GetRootParent())
+		{
 			m_CompositionComponent.GetOnCompositionSpawned().Insert(OnCompositionSpawned);
-		
+			
+			BaseGameMode gameMode = GetGame().GetGameMode();
+			if (!gameMode)
+				return;
+	
+			SCR_CampaignBuildingManagerComponent buildingManagerComponent = SCR_CampaignBuildingManagerComponent.Cast(gameMode.FindComponent(SCR_CampaignBuildingManagerComponent));
+			if (!buildingManagerComponent)
+				return;
+			
+			if (buildingManagerComponent.CanDisassembleSameFactionOnly())
+				m_CompositionComponent.GetOnBuilderSet().Insert(CacheFactionAffiliationComponent);
+		}
+			
 		// Temporary solution how to prevent disassembly of HQ in Conflict.
 		SCR_GameModeCampaign campaignGameMode = SCR_GameModeCampaign.Cast(GetGame().GetGameMode());
 		if (!campaignGameMode || !m_EditableEntity)
@@ -54,7 +68,15 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 			
 			CharacterAnimationComponent pAnimationComponent = charController.GetAnimationComponent();
 			int itemActionId = pAnimationComponent.BindCommand("CMD_Item_Action");
-			charController.TryUseItemOverrideParams(GetBuildingTool(pUserEntity), false, true, itemActionId, 2, 0, int.MAX, 0, 0, false, null);
+
+			ItemUseParameters params = new ItemUseParameters();
+			params.SetEntity(GetBuildingTool(pUserEntity));
+			params.SetAllowMovementDuringAction(false);
+			params.SetKeepInHandAfterSuccess(true);
+			params.SetCommandID(itemActionId);
+			params.SetCommandIntArg(2);
+
+			charController.TryUseItemOverrideParams(params);
 		}
 		
 		m_User = pUserEntity;
@@ -162,6 +184,9 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 		if (m_DoNotDisassemble)
 			return false;
 		
+		if (!IsPlayerFactionSame(user))
+			return false;
+				
 		if (!m_GadgetManager)
 		{
 			m_GadgetManager = SCR_GadgetManagerComponent.GetGadgetManager(user);
@@ -264,6 +289,17 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Get call once the provider is set. 
+	void CacheFactionAffiliationComponent()
+	{
+		IEntity provider = m_CompositionComponent.GetProviderEntity();
+		if (!provider)
+			return;
+		
+		m_FactionComponent = FactionAffiliationComponent.Cast(provider.FindComponent(FactionAffiliationComponent));
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Get building tool entity
 	IEntity GetBuildingTool(notnull IEntity ent)
 	{
@@ -272,6 +308,19 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 			return null;
 		
 		return gadgetManager.GetHeldGadget();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Is user faction same as the composition one.
+	bool IsPlayerFactionSame(notnull IEntity user)
+	{
+		if (!m_FactionComponent)
+			return true;
+		
+		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(user);
+		Faction playerFaction = SCR_FactionManager.SGetPlayerFaction(playerId);
+		
+		return m_FactionComponent.GetAffiliatedFaction() == playerFaction;
 	}
 	
 	//------------------------------------------------------------------------------------------------

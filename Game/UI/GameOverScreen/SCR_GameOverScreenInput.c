@@ -63,7 +63,7 @@ class GameOverScreenInput: ChimeraMenuBase
 	
 	protected void OnChatToggle()
 	{
-		if (!m_ChatPanel || (m_ChatButton && (!m_ChatButton.IsVisible() || m_ChatButton.GetOpacity() != 1)))
+		if (!m_ChatPanel || m_ChatPanel.IsOpen() || (m_ChatButton && (!m_ChatButton.IsVisible() || m_ChatButton.GetOpacity() != 1)))
 			return;
 		
 		SCR_ChatPanelManager.GetInstance().ToggleChatPanel(m_ChatPanel);

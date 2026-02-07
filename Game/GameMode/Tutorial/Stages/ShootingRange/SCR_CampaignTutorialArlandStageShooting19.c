@@ -13,6 +13,16 @@ class SCR_CampaignTutorialArlandStageShooting19 : SCR_BaseCampaignTutorialArland
 		RegisterWaypoint("WP_TARGETS_FURTHER");
 		m_TutorialComponent.SetWaypointMiscImage("ATTACK", true);
 		m_bCheckWaypoint = false;
+		
+		foreach (SCR_FiringRangeTarget target : m_TutorialComponent.GetAllTargets())
+		{
+			if (target.GetSetDistance() == 600)
+			{
+				target.Event_TargetChangeState.Remove(m_TutorialComponent.CountTargetHit);
+				target.SetState(ETargetState.TARGET_DOWN);
+			}
+		}
+		
 		foreach (SCR_FiringRangeTarget target : m_TutorialComponent.GetAllTargets())
 		{
 			if (target.GetSetDistance() == 700)
@@ -22,8 +32,10 @@ class SCR_CampaignTutorialArlandStageShooting19 : SCR_BaseCampaignTutorialArland
 				target.Event_TargetChangeState.Insert(m_TutorialComponent.CountTargetHit);
 			}
 		}
-		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("RangeLong", false);
+		HintOnVoiceOver();
 		m_TutorialComponent.SetStagesComplete(1, true);	
 	}
 	

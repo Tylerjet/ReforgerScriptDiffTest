@@ -1,4 +1,4 @@
-class SCR_ScenarioPanelEditorUIComponent: ScriptedWidgetComponent
+class SCR_ScenarioPanelEditorUIComponent : ScriptedWidgetComponent
 {
 	[Attribute("ToolbarBackgroundOverlay")]
 	protected string m_sFullWindowName;
@@ -10,7 +10,7 @@ class SCR_ScenarioPanelEditorUIComponent: ScriptedWidgetComponent
 	
 	protected bool m_bListeningToEvents;
 	
-	
+	//------------------------------------------------------------------------------------------------
 	//Show/hide full UI
 	protected void ShowButtonOrFullWindow(bool showFullWindow)
 	{
@@ -24,7 +24,7 @@ class SCR_ScenarioPanelEditorUIComponent: ScriptedWidgetComponent
 		buttonOnly.SetVisible(!showFullWindow);
 	}
 	
-	
+	//------------------------------------------------------------------------------------------------
 	//When an attribute has been changed
 	protected void OnAttributeChanges()
 	{
@@ -32,6 +32,7 @@ class SCR_ScenarioPanelEditorUIComponent: ScriptedWidgetComponent
 		ShowButtonOrFullWindow(true);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnPlayerSpawned(int playerID, SCR_EditableEntityComponent entity, SCR_EditableEntityComponent prevEntity)
 	{
 		SCR_PlayersManagerEditorComponent editorPlayerManager = SCR_PlayersManagerEditorComponent.Cast(SCR_PlayersManagerEditorComponent.GetInstance(SCR_PlayersManagerEditorComponent));
@@ -42,7 +43,7 @@ class SCR_ScenarioPanelEditorUIComponent: ScriptedWidgetComponent
 		ShowButtonOrFullWindow(true);
 	}
 	
-	
+	//------------------------------------------------------------------------------------------------
 	//When faction is set playable
 	protected void OnFactionSetPlayable(SCR_Faction faction, bool playable)
 	{
@@ -53,7 +54,7 @@ class SCR_ScenarioPanelEditorUIComponent: ScriptedWidgetComponent
 		ShowButtonOrFullWindow(true);
 	}
 	
-	
+	//------------------------------------------------------------------------------------------------
 	//Remove all event listeners
 	protected void StopListeningToEvents()
 	{
@@ -66,7 +67,7 @@ class SCR_ScenarioPanelEditorUIComponent: ScriptedWidgetComponent
 		SCR_DelegateFactionManagerComponent delegateFactionManager = SCR_DelegateFactionManagerComponent.GetInstance();
 		if (delegateFactionManager)
 		{
-			map<Faction, SCR_EditableFactionComponent> delegates = new map<Faction, SCR_EditableFactionComponent>;
+			map<Faction, SCR_EditableFactionComponent> delegates = new map<Faction, SCR_EditableFactionComponent>();
 			delegateFactionManager.GetFactionDelegates(delegates);
 			SCR_Faction scrFaction;
 			
@@ -92,6 +93,7 @@ class SCR_ScenarioPanelEditorUIComponent: ScriptedWidgetComponent
 			editorPlayerManager.GetOnSpawn().Remove(OnPlayerSpawned);
 	}	
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		//Are there any playable factions
@@ -118,7 +120,7 @@ class SCR_ScenarioPanelEditorUIComponent: ScriptedWidgetComponent
 		m_bListeningToEvents = true;
 		
 		//On faction set playable listener
-		map<Faction, SCR_EditableFactionComponent> delegates = new map<Faction, SCR_EditableFactionComponent>;
+		map<Faction, SCR_EditableFactionComponent> delegates = new map<Faction, SCR_EditableFactionComponent>();
 		delegateFactionManager.GetFactionDelegates(delegates);
 		SCR_Faction scrFaction;
 		
@@ -140,9 +142,9 @@ class SCR_ScenarioPanelEditorUIComponent: ScriptedWidgetComponent
 			editorPlayerManager.GetOnSpawn().Insert(OnPlayerSpawned);
 	}
 	
-	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		StopListeningToEvents();
 	}
-};
+}

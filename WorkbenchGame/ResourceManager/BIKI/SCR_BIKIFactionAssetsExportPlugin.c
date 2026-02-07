@@ -1,5 +1,4 @@
 #ifdef WORKBENCH
-
 //! see https://community.bistudio.com/wiki/Arma_Reforger:Assets
 [WorkbenchPluginAttribute(name: "Export Assets", description: "Exports https:/" + "/community.bistudio.com/wiki/Arma_Reforger:Assets' content", wbModules: { "ResourceManager" }, category: "BIKI", awesomeFontCode: 0xF70E)]
 class SCR_BIKIFactionAssetsExportPlugin : SCR_BIKIExportBasePlugin
@@ -48,7 +47,7 @@ class SCR_BIKIFactionAssetsExportPlugin : SCR_BIKIExportBasePlugin
 		array<string> pieces = {};
 		foreach (EEntityCatalogType catalogType : catalogTypes)
 		{
-			SCR_EntityCatalog catalog = BIKI_SCR_Faction.GetEntityCatalog(faction, catalogType);
+			SCR_EntityCatalog catalog = SCR_Faction_BIKI.GetEntityCatalog(faction, catalogType);
 			if (!catalog)
 				continue;
 
@@ -73,7 +72,7 @@ class SCR_BIKIFactionAssetsExportPlugin : SCR_BIKIExportBasePlugin
 
 	//------------------------------------------------------------------------------------------------
 	//! Turns "THIS_IS_AN_ENUM" into "This Is An Enum"
-	//! \param snakeCase any string with words separated by underscores
+	//! \param[in] snakeCase any string with words separated by underscores
 	//! \return firstchar-uppercased space-separated words
 	protected string EnumSnakeCaseToUserFriendly(string snakeCase)
 	{
@@ -94,7 +93,7 @@ class SCR_BIKIFactionAssetsExportPlugin : SCR_BIKIExportBasePlugin
 
 	//------------------------------------------------------------------------------------------------
 	//! Turns "{GUID012345678910}Prefabs/Characters/Factions/Faction/Character_FactionName_NLAW.et" into "Character FactionName NLAW"
-	//! \param resourceName
+	//! \param[in] resourceName
 	//! \return space-separated words without resourceName extension
 	protected string ResourceNameToUserFriendly(ResourceName resourceName)
 	{
@@ -104,9 +103,12 @@ class SCR_BIKIFactionAssetsExportPlugin : SCR_BIKIExportBasePlugin
 	}
 }
 
-class BIKI_SCR_Faction : SCR_Faction
+class SCR_Faction_BIKI : SCR_Faction
 {
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] faction
+	//! \param[in] catalogType
+	//! \return
 	static SCR_EntityCatalog GetEntityCatalog(notnull SCR_Faction faction, EEntityCatalogType catalogType)
 	{
 		foreach (SCR_EntityCatalog catalog : faction.m_aEntityCatalogs)
@@ -118,5 +120,4 @@ class BIKI_SCR_Faction : SCR_Faction
 		return null;
 	}
 }
-
 #endif // WORKBENCH

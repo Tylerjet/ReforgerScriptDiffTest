@@ -14,6 +14,13 @@ void SpawnPointDelegateMethod(SCR_SpawnPoint spawnPoint);
 typedef func SpawnPointDelegateMethod;
 typedef ScriptInvokerBase<SpawnPointDelegateMethod> SpawnPointInvoker;
 
+void SpawnPointFinalizeSpawnInvoker(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data, IEntity entity);
+typedef func SpawnPointFinalizeSpawnInvoker;
+typedef ScriptInvokerBase<SpawnPointFinalizeSpawnInvoker> SCR_SpawnPointFinalizeSpawn_Invoker;
+
+void SpawnPointNameChangedInvoker(RplId id, string name);
+typedef func SpawnPointNameChangedInvoker;
+typedef ScriptInvokerBase<SpawnPointNameChangedInvoker> SCR_SpawnPointNameChanged_Invoker;
 
 //------------------------------------------------------------------------------------------------
 //! Spawn point entity defines positions on which players can possibly spawn.
@@ -49,14 +56,19 @@ class SCR_SpawnPoint : SCR_Position
 	protected float m_fRespawnTime;
 
 	// List of all spawn points
-	private static ref array<SCR_SpawnPoint> m_aSpawnPoints = new ref array<SCR_SpawnPoint>();
+	private static ref array<SCR_SpawnPoint> m_aSpawnPoints = new array<SCR_SpawnPoint>();
 
 	static ref ScriptInvoker Event_OnSpawnPointCountChanged = new ScriptInvoker();
 	static ref ScriptInvoker Event_SpawnPointFactionAssigned = new ScriptInvoker();
 	static ref SpawnPointInvoker Event_SpawnPointAdded = new SpawnPointInvoker();
 	static ref SpawnPointInvoker Event_SpawnPointRemoved = new SpawnPointInvoker();
+	static ref SCR_SpawnPointFinalizeSpawn_Invoker s_OnSpawnPointFinalizeSpawn;
 
-
+	[RplProp()]
+	protected string m_sSpawnPointName;
+	
+	static ref SCR_SpawnPointNameChanged_Invoker OnSpawnPointNameChanged = new SCR_SpawnPointNameChanged_Invoker();
+	
 	// spawn point will work as a spawn point group if it has any SCR_Position as its children
 	protected ref array<SCR_Position> m_aChildren = {};
 
@@ -108,6 +120,15 @@ class SCR_SpawnPoint : SCR_Position
 			m_OnSetSpawnPointEnabled = new ScriptInvokerBool();
 		
 		return m_OnSetSpawnPointEnabled;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static SCR_SpawnPointFinalizeSpawn_Invoker GetOnSpawnPointFinalizeSpawn()
+	{
+		if (!s_OnSpawnPointFinalizeSpawn)
+			s_OnSpawnPointFinalizeSpawn = new SCR_SpawnPointFinalizeSpawn_Invoker();
+		
+		return s_OnSpawnPointFinalizeSpawn;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -207,6 +228,14 @@ class SCR_SpawnPoint : SCR_Position
 	{
 		return m_fSpawnRadius;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	void SetSpawnRadius(float radius)
+	{
+		m_fSpawnRadius = radius;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	static void ShowSpawnPointDescriptors(bool show, Faction faction)
 	{
@@ -293,6 +322,13 @@ class SCR_SpawnPoint : SCR_Position
 
 		return false;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	void SetUseNearbySpawnPositions(bool use)
+	{
+		m_bUseNearbySpawnPositions = use;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	void GetPositionAndRotation(out vector pos, out vector rot)
@@ -352,6 +388,12 @@ class SCR_SpawnPoint : SCR_Position
 	bool GetVisibleInDeployMapOnly()
 	{
 		return m_bShowInDeployMapOnly;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetVisibleInDeployMapOnly(bool visible)
+	{
+		m_bShowInDeployMapOnly = visible;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -533,18 +575,42 @@ class SCR_SpawnPoint : SCR_Position
 		else
 			return m_Info;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetInfo(SCR_UIInfo info)
+	{
+		m_Info = info;
+	}
 
+	//------------------------------------------------------------------------------------------------
 	string GetSpawnPointName()
 	{
-		if (GetInfo())
+		if (SCR_StringHelper.IsEmptyOrWhiteSpace(m_sSpawnPointName) && GetInfo())
 			return GetInfo().GetName();
+		else
+			return m_sSpawnPointName;
 
 		return string.Empty;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetSpawnPointName(string name)
+	{
+		m_sSpawnPointName = name;
+		Replication.BumpMe();
+		OnSpawnPointNameChanged.Invoke(GetRplId(), m_sSpawnPointName);
+	}
 
+	//------------------------------------------------------------------------------------------------
 	bool IsTimed()
 	{
 		return m_bTimedSpawnPoint;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetIsTimed(bool isTimed)
+	{
+		m_bTimedSpawnPoint = isTimed;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -634,6 +700,8 @@ class SCR_SpawnPoint : SCR_Position
 	*/
 	void OnFinalizeSpawnDone_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data, IEntity entity)
 	{
+		if (s_OnSpawnPointFinalizeSpawn)
+			s_OnSpawnPointFinalizeSpawn.Invoke(requestComponent, data, entity);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -675,6 +743,14 @@ class SCR_SpawnPoint : SCR_Position
 				m_sFaction = faction.GetFactionKey();
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool RplSave(ScriptBitWriter writer)
+	{
+		writer.WriteString(m_sSpawnPointName);
+		
+		return true;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	override protected bool RplLoad(ScriptBitReader reader)
@@ -685,7 +761,9 @@ class SCR_SpawnPoint : SCR_Position
 		// Update faction related stats
 		OnSetFactionKey();
 		Event_OnSpawnPointCountChanged.Invoke(m_sFaction);
-
+		
+		reader.ReadString(m_sSpawnPointName);
+		
 		return true;
 	}
 

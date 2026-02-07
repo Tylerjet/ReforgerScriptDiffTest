@@ -15,12 +15,20 @@ class SCR_InputButtonAlphaMaskAnimation : WidgetAnimationAlphaMask
 	//------------------------------------------------------------------------------------------------
 	protected void OnAnimationComplete()
 	{
-		SCR_InputButtonAnimations.ButtonColor(m_InputButtonDisplay.GetBackgroundWidget(), UIColors.CONTRAST_CLICKED, m_fAnimationRate);
-		AnimateWidget.Opacity(m_wOutline, 0, m_fAnimationRate);
-		m_InputButtonDisplay.AnimateHoldComplete();
-
-		//! Wait for the animation to complete + 1 frame before setting the color back to default
-		GetGame().GetCallqueue().CallLater(m_InputButtonDisplay.ResetColor, m_fAnimationRate * 300 + 1, false);
+		if (m_bResetOnComplete)
+		{
+			SCR_InputButtonAnimations.ButtonColor(m_InputButtonDisplay.GetBackgroundWidget(), Color.FromInt(Color.WHITE), m_fAnimationRate);
+			AnimateWidget.Opacity(m_wOutline, 0, m_fAnimationRate);
+			m_InputButtonDisplay.AnimateHoldComplete();
+			
+			//! Wait for the animation to complete + 1 frame before setting the color back to default
+			GetGame().GetCallqueue().CallLater(m_InputButtonDisplay.ResetColor, m_fAnimationRate * 300 + 1, false);
+		}
+		else
+		{
+			AnimateWidget.Color(m_InputButtonDisplay.GetBackgroundWidget(), Color.FromInt(Color.WHITE), m_fAnimationRate);
+		}
+			
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -34,9 +42,9 @@ class SCR_InputButtonAlphaMaskAnimation : WidgetAnimationAlphaMask
 			return false;
 
 		if (m_fSpeed > 0 && m_fCurrentProgress > 0)
-			m_wOutline.SetColor(UIColors.CONTRAST_COLOR);
+			m_wOutline.SetColor(Color.FromInt(GUIColors.ENABLED.PackToInt()));
 		else
-			m_wOutline.SetColor(UIColors.WARNING_FOCUSED);
+			m_wOutline.SetColor(Color.FromInt(UIColors.WARNING.PackToInt()));
 
 		if (m_fSpeed > 0 && m_fCurrentProgress < 0)
 			return false;
@@ -49,7 +57,7 @@ class SCR_InputButtonAlphaMaskAnimation : WidgetAnimationAlphaMask
 		if (m_fSpeed < 0 && m_fValue < 0.1)
 			Stop();
 
-		if (m_fValue >= m_fValueTarget && m_bResetOnComplete)
+		if (m_fValue >= m_fValueTarget)
 		{
 			Stop();
 			OnAnimationComplete();

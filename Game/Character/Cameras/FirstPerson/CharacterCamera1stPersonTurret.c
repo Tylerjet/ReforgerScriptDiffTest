@@ -58,6 +58,8 @@ class CharacterCamera1stPersonTurret extends CharacterCamera1stPerson
 		}
 		
 		m_fLRAngleAdd = 0;
+
+		m_CharacterHeadAimingComponent.SetPitchLimitReductionMultiplier(1.25); // Pitch reduction to avoid neckhole
 	}
 	//-----------------------------------------------------------------------------
 	static float UpdateAngleWithTarget(out float pAngle, out float pAngleAdd, out float addVelocity, vector limits, float pDt, float target, float change, bool freeLook)
@@ -87,33 +89,50 @@ class CharacterCamera1stPersonTurret extends CharacterCamera1stPerson
 		pOutResult.m_fUseHeading 			= 0.0;
 		pOutResult.m_iDirectBoneMode 		= EDirectBoneMode.None;
 		pOutResult.m_iDirectBone 			= -1;
-
-		// character matrix
-		vector charMat[4];
-		m_OwnerCharacter.GetWorldTransform(charMat);
-
+		
 		vector offset = m_OffsetLS;
 		if (m_pCompartment && m_pCompartment.IsDirectAimMode() && m_pTurretController.GetCanAimOnlyInADS())
 		{
 			offset = "0 0 0";
 		}
-
-		vector charAngles = Math3D.MatrixToAngles(charMat);
-		vector lookAngles = m_CharacterHeadAimingComponent.GetLookAngles();
-
-		CharacterControllerComponent charController = m_OwnerCharacter.GetCharacterController();
 		
+		CharacterControllerComponent charController = m_OwnerCharacter.GetCharacterController();
+
 		//! apply to rotation matrix
+		m_vLastCameraAngles = m_pControlledTurret.GetAimingDirectionWorld().VectorToAngles();
 		if (charController.IsFreeLookEnabled() || m_pTurretController.GetCanAimOnlyInADS())
 		{
-			m_vLastCameraAngles[0] = m_pControlledTurret.GetAimingDirectionWorld().VectorToAngles()[0];
-			Math3D.AnglesToMatrix(m_vLastCameraAngles - charAngles + lookAngles, pOutResult.m_CameraTM);
+			// Override angle limits based on turret aiming angles
+			float turretPitch = m_pControlledTurret.GetAimingRotation()[1];
+			float downLimit = -40.0;
+			if (turretPitch < 0.0)
+				downLimit -= turretPitch;
+			float upLimit = 89.9;
+			if (turretPitch > 0.0)
+				upLimit -= turretPitch;
+
+			float turretYaw = m_pControlledTurret.GetAimingRotation()[0];
+			float leftLimit = -160.0;
+			if (turretYaw < 0.0)
+				leftLimit -= turretYaw;
+			float rightLimit = 160.0;
+			if (turretYaw > 0.0)
+				rightLimit -= turretYaw;
+			
+			m_CharacterHeadAimingComponent.SetLimitAnglesOverride(downLimit, upLimit, leftLimit, rightLimit);
+			
+			vector lookAnglesOverriden = m_CharacterHeadAimingComponent.GetLookAngles();
+			m_vLastCameraAngles += lookAnglesOverriden;
+
+			m_CharacterHeadAimingComponent.ResetLimitAnglesOverride();			
 		}
-		else
-		{
-			m_vLastCameraAngles = m_pControlledTurret.GetAimingDirectionWorld().VectorToAngles();
-			Math3D.AnglesToMatrix(m_vLastCameraAngles - charAngles, pOutResult.m_CameraTM);
-		}
+		
+		// character matrix
+		vector charMat[4];
+		m_OwnerCharacter.GetWorldTransform(charMat);
+		vector charAngles = Math3D.MatrixToAngles(charMat);
+
+		Math3D.AnglesToMatrix(m_vLastCameraAngles - charAngles, pOutResult.m_CameraTM);
 		
 		//! lerp eye position to prevent nosiating shake when character walks around deployed turret
 		m_vPrevEyePosition = vector.Lerp(m_vPrevEyePosition, m_OwnerCharacter.EyePositionModel(), 0.25);

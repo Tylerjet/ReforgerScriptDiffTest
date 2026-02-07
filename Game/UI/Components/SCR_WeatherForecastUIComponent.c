@@ -34,7 +34,7 @@ class SCR_WeatherForecastUIComponent: ScriptedWidgetComponent
 	
 	protected TimeAndWeatherManagerEntity m_TimeAndWeatherEntity;
 	protected WeatherStateTransitionManager m_WeatherStateManager;
-	protected ref array<ref WeatherState> m_WeatherStates = new ref array<ref WeatherState>;
+	protected ref array<ref WeatherState> m_WeatherStates = new array<ref WeatherState>;
 	
 	protected ImageWidget m_wCurrentWeatherIcon;
 	protected TextWidget m_wCurrentWeatherText;

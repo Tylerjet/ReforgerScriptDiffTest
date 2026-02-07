@@ -1,9 +1,7 @@
-/*!
-Waits for a change in combat component's selected or expected weapon value.
-Returns Running until the change is detected.
-Returns Success on every change and outputs data to the output port.
-Also returns Success and outputs data on first run.
-*/
+//! Waits for a change in combat component's selected or expected weapon value.
+//! Returns Running until the change is detected.
+//! Returns Success on every change and outputs data to the output port.
+//! Also returns Success and outputs data on first run.
 class SCR_AIWaitForNewCombatComponentWeapon : AITaskScripted
 {
 	// Output ports
@@ -20,7 +18,6 @@ class SCR_AIWaitForNewCombatComponentWeapon : AITaskScripted
 	protected BaseMagazineComponent m_MagazineComp;
 	
 	bool m_bFirstRun = true;
-	
 	
 	//--------------------------------------------------------------------------------------------
 	override void OnInit(AIAgent owner)
@@ -51,7 +48,7 @@ class SCR_AIWaitForNewCombatComponentWeapon : AITaskScripted
 		int muzzleId;
 		
 		// Resolve in what mode we operate
-		m_CombatComponent.GetSelectedWeapon(weaponComp, muzzleId, magazineComp);
+		m_CombatComponent.GetSelectedWeaponAndMagazine(weaponComp, muzzleId, magazineComp);
 		
 		bool weaponEvent = weaponComp != m_WeaponComp || magazineComp != m_MagazineComp || muzzleId != m_MuzzleId;
 		bool weaponOrMuzzleSwitch = weaponComp != m_WeaponComp || muzzleId != m_MuzzleId;
@@ -78,7 +75,10 @@ class SCR_AIWaitForNewCombatComponentWeapon : AITaskScripted
 	}
 	
 	//--------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() { return true; }
+	override bool VisibleInPalette()
+	{
+		return true;
+	}
 	
 	protected static ref TStringArray s_aVarsOut = {
 		PORT_WEAPON_COMPONENT,
@@ -87,5 +87,10 @@ class SCR_AIWaitForNewCombatComponentWeapon : AITaskScripted
 		PORT_HANDLE_TREE,
 		PORT_WEAPON_OR_MUZZLE
 	};
-	override TStringArray GetVariablesOut() { return s_aVarsOut; }
+
+	//------------------------------------------------------------------------------------------------
+	override TStringArray GetVariablesOut()
+	{
+		return s_aVarsOut;
+	}
 }

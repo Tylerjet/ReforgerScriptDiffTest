@@ -22,15 +22,23 @@ class SCR_FieldManualPiece_ConfigEntry : SCR_FieldManualPiece
 	[Attribute(defvalue: "-1", params: "-1 5", desc: "decides a number's decimals. -1 = no decimals limit, 0 = rounded")]
 	protected int m_iFixedDecimals;
 
+	protected ref Resource m_Resource;
 	protected BaseContainer m_BaseContainer;
 
 	//------------------------------------------------------------------------------------------------
 	protected void InitContainerAndPaths()
 	{
-		if (m_BaseContainer || !m_ConfigPath || !m_sEntryPath)
+		if (m_ConfigPath.IsEmpty() || m_sEntryPath.IsEmpty())
 			return;
 
-		m_BaseContainer = SCR_ConfigHelper.GetBaseContainer(m_ConfigPath, m_sEntryPath, true);
+		m_Resource = Resource.Load(m_ConfigPath);
+		if (!m_Resource.IsValid())
+		{
+			m_Resource = null;
+			return;
+		}
+
+		m_BaseContainer = SCR_ConfigHelper.GetBaseContainerByPath(m_Resource, m_sEntryPath, true);
 
 		array<string> paths = {};
 		m_sEntryPath = SCR_ConfigHelper.SplitConfigPath(m_sEntryPath, paths, true); // note, m_sEntryPath gets recycled here
@@ -57,8 +65,10 @@ class SCR_FieldManualPiece_ConfigEntry : SCR_FieldManualPiece
 	//------------------------------------------------------------------------------------------------
 	protected void SetConfigValue(notnull TextWidget valueWidget)
 	{
-		InitContainerAndPaths();
-		if (!m_BaseContainer)
+		if (!m_Resource || !m_BaseContainer)
+			InitContainerAndPaths();
+
+		if (!m_Resource || !m_BaseContainer)
 		{
 			Print("Wrong config entry path | " + FilePath.StripPath(__FILE__) + ":" + __LINE__, LogLevel.WARNING);
 			valueWidget.SetText("-wrong config entry path provided-");
@@ -84,9 +94,8 @@ class SCR_FieldManualPiece_ConfigEntry : SCR_FieldManualPiece
 				float value;
 				m_BaseContainer.Get(m_sEntryPath, value);
 				if (m_iDecimalMove)
-				{
 					value /= Math.Pow(10, -m_iDecimalMove);
-				}
+
 				valueWidget.SetTextFormat(m_sValueFormat, value.ToString(-1, m_iFixedDecimals));
 				break;
 
@@ -103,7 +112,7 @@ class SCR_FieldManualPiece_ConfigEntry : SCR_FieldManualPiece
 				break;
 
 			default:
-				Print(string.Format("Missing DataVarType type: %1", dataVarType) + " | " + FilePath.StripPath(__FILE__) + ":" + __LINE__, LogLevel.WARNING);
+				Print("Missing DataVarType type: " + dataVarType + " | " + FilePath.StripPath(__FILE__) + ":" + __LINE__, LogLevel.WARNING);
 				valueWidget.SetTextFormat(m_sValueFormat, "-");
 				break;
 		}
@@ -111,4 +120,4 @@ class SCR_FieldManualPiece_ConfigEntry : SCR_FieldManualPiece
 		if (m_sValueFormat == "%1")
 			m_sValueFormat = string.Empty;
 	}
-};
+}

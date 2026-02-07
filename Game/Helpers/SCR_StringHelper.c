@@ -4,11 +4,18 @@ class SCR_StringHelper
 	static const string UPPERCASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	static const string LETTERS = LOWERCASE + UPPERCASE;
 	static const string DIGITS = "0123456789";
+	static const string UNDERSCORE = "_";
+	static const string DASH = "-";
 	static const string SPACE = " ";
 	static const string TAB = "\t";
-	protected static const string TRANSLATION_KEY_CHARS = "_-";
+	static const string LINE_RETURN = "\n";
+	static const string LIPSUM = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
+	protected static const string TRANSLATION_KEY_CHARS = UNDERSCORE + DASH;
 
 	//------------------------------------------------------------------------------------------------
+	//! Check if the provided input contains any digit
+	//! \param[in] input
+	//! \return true if input contains any digit, false otherwise
 	static bool ContainsDigit(string input)
 	{
 		for (int i, len = input.Length(); i < len; i++)
@@ -17,15 +24,48 @@ class SCR_StringHelper
 			if (asciiValue >= 48 && asciiValue <= 57)
 				return true;
 		}
+
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if the provided input contains any uppercase character (A-Z)
+	//! \param[in] input
+	//! \return true if input contains any uppercase character, false otherwise
+	static bool ContainsUppercase(string input)
+	{
+		for (int i, len = input.Length(); i < len; i++)
+		{
+			int asciiValue = input[i].ToAscii();
+			if (asciiValue >= 65 && asciiValue <= 90)
+				return true;
+		}
+
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if the provided input contains any lowercase character (a-z)
+	//! \param[in] input
+	//! \return true if input contains any lowercase character, false otherwise
+	static bool ContainsLowercase(string input)
+	{
+		for (int i, len = input.Length(); i < len; i++)
+		{
+			int asciiValue = input[i].ToAscii();
+			if (asciiValue >= 97 && asciiValue <= 122)
+				return true;
+		}
+
 		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Gets the amount of times a needle is found in the haystack.
 	//! e.g looking for "AA" in "AAAAA" will find it twice.
-	//! \param haystack the string in which to search
-	//! \param needle the string to find
-	//! \param caseInsensitive if set to true, the search will be case-insensitive (e.g "A" will match "a" and vice-versa)
+	//! \param[in] haystack the string in which to search
+	//! \param[in] needle the string to find
+	//! \param[in] caseInsensitive if set to true, the search will be case-insensitive (e.g "A" will match "a" and vice-versa)
 	//! \return the amount of needle occurrences in haystack, 0 if haystack or needle is empty
 	static int CountOccurrences(string haystack, string needle, bool caseInsensitive = false)
 	{
@@ -59,10 +99,24 @@ class SCR_StringHelper
 		return result;
 	}
 
+//	//------------------------------------------------------------------------------------------------
+//	//! Cut a line if bigger than the wanted length, using #AR-String_Ellipsis
+//	//! \param ellipsisTranslation translation key or ellipsis string; use %1 in it to place the cut text, if %1 is not present default value will be used
+//	static string Ellipsis(string input, int length, string ellipsisTranslation = "#AR-String_Ellipsis")
+//	{
+//		if (input.Length() < length)
+//			return input;
+//
+//		if (ellipsisTranslation != "#AR-String_Ellipsis" && !ellipsisTranslation.Contains("%1") && !Translate(ellipsisTranslation).Contains("%1"))
+//			ellipsisTranslation = "#AR-String_Ellipsis";
+//
+//		return String.Format(ellipsisTranslation, input.Substring(0, length));
+//	}
+
 	//------------------------------------------------------------------------------------------------
-	//! \param input the input string
-	//! \param characters the characters to either respect or remove depending on useCharactersAsBlacklist
-	//! \param useCharactersAsBlacklist false for characters to be a whitelist, true for a blacklist
+	//! \param[in] input the input string
+	//! \param[in] characters the characters to either respect or remove depending on useCharactersAsBlacklist
+	//! \param[in] useCharactersAsBlacklist false for characters to be a whitelist, true for a blacklist
 	//! \return the resulting string
 	static string Filter(string input, string characters, bool useCharactersAsBlacklist = false)
 	{
@@ -80,8 +134,8 @@ class SCR_StringHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param format
-	//! \param input must be ASCII
+	//! \param[in] format
+	//! \param[in] input must be ASCII
 	static bool IsFormat(SCR_EStringFormat format, string input)
 	{
 		switch (format)
@@ -99,10 +153,12 @@ class SCR_StringHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Check if the provided string respects all the limitations
-	//! \param allowLC allow LowerCase characters (abc..xyz)
-	//! \param allowUC allow UpperCase characters (ABC..XYZ)
-	//! \param allowDigits allow all numbers (012..789)
-	protected static bool CheckCharacters(string input, bool allowLC, bool allowUC, bool allowDigits)
+	//! \param[in] allowLC allow LowerCase characters (abc..xyz)
+	//! \param[in] allowUC allow UpperCase characters (ABC..XYZ)
+	//! \param[in] allowDigits allow all numbers (012..789)
+	//! \param[in] allowUnderscore allow underscore (_)
+	//! \return whether or not input respects allowed characters filters
+	static bool CheckCharacters(string input, bool allowLC, bool allowUC, bool allowDigits, bool allowUnderscore = false)
 	{
 		if (input.IsEmpty())
 			return false;
@@ -113,7 +169,8 @@ class SCR_StringHelper
 			if (!(
 				(allowLC && asciiValue >= 97 && asciiValue <= 122) ||
 				(allowUC && asciiValue >= 65 && asciiValue <= 90) ||
-				(allowDigits && asciiValue >= 48 && asciiValue <= 57)
+				(allowDigits && asciiValue >= 48 && asciiValue <= 57) ||
+				(allowUnderscore && asciiValue == 95)
 			))
 				return false;
 		}
@@ -121,35 +178,35 @@ class SCR_StringHelper
 		return true;
 	}
 
-	/*
-	//------------------------------------------------------------------------------------------------
-	//! old method, 4-5× slower but allows for non-ASCII values, not useful for now
-	protected static bool CheckCharactersOld(string input, bool allowLC, bool allowUC, bool allowDigits)
-	{
-		string filter;
-		if (allowLC)
-			filter += LOWERCASE;
-		if (allowUC)
-			filter += S_UPPERCASE;
-		if (allowDigits)
-			filter += S_DIGITS;
-
-		if (filter.IsEmpty())
-			return false;
-
-		for (int i, len = input.Length(); i < len; i++)
-		{
-			if (!filter.Contains(input[i]))
-				return false;
-		}
-
-		return true;
-	}
-	// */
+//	//------------------------------------------------------------------------------------------------
+//	//! old method, 4-5× slower but allows for non-ASCII values, not useful for now
+//	protected static bool CheckCharactersOld(string input, bool allowLC, bool allowUC, bool allowDigits, bool allowUnderscore)
+//	{
+//		string filter;
+//		if (allowLC)
+//			filter += LOWERCASE;
+//		if (allowUC)
+//			filter += UPPERCASE;
+//		if (allowDigits)
+//			filter += DIGITS;
+//		if (allowUnderscore)
+//			filter += UNDERSCORE;
+//
+//		if (filter.IsEmpty())
+//			return false;
+//
+//		for (int i, len = input.Length(); i < len; i++)
+//		{
+//			if (!filter.Contains(input[i]))
+//				return false;
+//		}
+//
+//		return true;
+//	}
 
 	//------------------------------------------------------------------------------------------------
 	//! format with string arguments in the form of an array
-	//! \param format with %1, %2 etc
+	//! \param[in] format with %1, %2 etc
 	//! \param[notnull] arguments array
 	//! \return string.Format'ted string (with max 9 arguments)
 	static string Format(string input, notnull array<string> arguments)
@@ -197,37 +254,45 @@ class SCR_StringHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Finds the first occurrence of the provided samples
-	//! see string.IndexOf
+	//! \see string.IndexOf
 	static int IndexOf(string input, notnull array<string> samples)
 	{
 		if (input.IsEmpty() || samples.IsEmpty())
 			return -1;
 
-		int result = -1;
+		int result = int.MAX;
 		foreach (string sample : samples)
 		{
 			int index = input.IndexOf(sample);
 			if (index != -1 && index < result)
 				result = index;
 		}
+
+		if (result == int.MAX)
+			return -1;
+
 		return result;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Finds the first occurrence of the provided samples from a position
-	//! see string.IndexOfFrom
+	//! \see string.IndexOfFrom
 	static int IndexOfFrom(string input, int start, notnull array<string> samples)
 	{
 		if (start < 0 || start > input.Length() || input.IsEmpty() || samples.IsEmpty())
 			return -1;
 
-		int result = -1;
+		int result = int.MAX;
 		foreach (string sample : samples)
 		{
 			int index = input.IndexOfFrom(start, sample);
 			if (index != -1 && index < result)
 				result = index;
 		}
+
+		if (result == int.MAX)
+			return -1;
+
 		return result;
 	}
 
@@ -251,8 +316,46 @@ class SCR_StringHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Obtain an array of lines from a multiline string - split is done on the \n character
+	//! \param[in] removeEmptyLines if true, remove empty lines (including trimmed ones)
+	//! \param[in] trimLines if true, trim lines
+	//! \return array of lines, with or without empty/whitespace lines - can remove an empty array if removeEmptyLines is enabled
+	static array<string> GetLines(string input, bool removeEmptyLines = false, bool trimLines = false)
+	{
+		if (!input)
+		{
+			if (removeEmptyLines)
+				return {};
+			else
+				return { string.Empty };
+		}
+
+		array<string> result = {};
+		input.Split("\n", result, removeEmptyLines);
+
+		if (trimLines)
+		{
+			string line;
+			for (int i = result.Count() - 1; i >= 0; --i)
+			{
+				line = result[i];
+				line.TrimInPlace();
+				if (removeEmptyLines && !line)
+					result.RemoveOrdered(i);
+				else
+					result[i] = line;
+			}
+		}
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Insert a string into another string
-	//! \return a new string instance with the result
+	//! \param[in] input the text in which to insert
+	//! \param[in] insertion the text to insert
+	//! \param[in] insertionIndex default 0
+	//! \return input with insertion inserted at insertionIndex
 	static string InsertAt(string input, string insertion, int insertionIndex = 0)
 	{
 		if (input.IsEmpty() || insertion.IsEmpty() || insertionIndex < 0 || insertionIndex > input.Length())
@@ -265,7 +368,7 @@ class SCR_StringHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Returns true if input is empty or only made of spaces or tabs
+	//! \return true if input is empty or only made of spaces or tabs
 	static bool IsEmptyOrWhiteSpace(string input)
 	{
 		return input.Trim().IsEmpty();
@@ -273,7 +376,7 @@ class SCR_StringHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns if the provided string is in the translation key format (e.g #AR-Translation_Value_3) - the pound sign (#) must be present!
-	//! \param input
+	//! \param[in] input
 	//! \return true if input is in the translation key format
 	static bool IsTranslationKey(string input)
 	{
@@ -292,7 +395,7 @@ class SCR_StringHelper
 				return false;
 		}
 
-		string filter = LOWERCASE + UPPERCASE;
+		string filter = LETTERS;
 		if (!filter.Contains(input[1])) // \#[a-zA-Z].*
 			return false;
 
@@ -308,40 +411,79 @@ class SCR_StringHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Joins strings together (reverse operation of string.Split)
+	//! \param[in] separator usually ", " for a string array
+	//! \param[in] pieces the pieces to be joined
+	//! \param[in] joinEmptyEntries if set to false, will ignore empty pieces (to e.g avoid ", , " occurrences)
+	//! \return the string pieces joined with separator, or empty string if pieces is empty
 	static string Join(string separator, notnull array<string> pieces, bool joinEmptyEntries = true)
 	{
 		if (pieces.IsEmpty())
 			return string.Empty;
 
-		string result = pieces[0];
-		for (int i = 1, cnt = pieces.Count(); i < cnt; i++)
+		string result;
+		foreach (int i, string piece : pieces)
 		{
-			if (joinEmptyEntries || !pieces[i].IsEmpty())
-				result += separator + pieces[i];
+			if (i == 0)
+				result = piece;
+			else
+			if (joinEmptyEntries || piece) // !piece.IsEmpty()'s fast version
+				result += separator + piece;
 		}
 		return result;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Pads the provided string's left end (start) with the provided padding
+	//! Pads the provided string's left end (start) with the provided padding (cut to the exact length)
+	//! Will not do anything if input is already longer than length or if padding is empty
+	//! If input is longer, it will not be cut
+	//! \param[in] input
+	//! \param[in] length
+	//! \param[in] padding
+	//! \result the padded string
 	static string PadLeft(string input, int length, string padding = SPACE)
 	{
-		while (input.Length() < length)
+		if (!padding)
+			return input;
+
+		if (input.Length() >= length)
+			return input;
+
+		int padW = padding.Length();
+		for (int i = length - input.Length() - 1; i >= 0; i -= padW)
 		{
 			input = padding + input;
 		}
+
+		if (input.Length() > length)
+			input = input.Substring(input.Length() - length, length);
 
 		return input;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Pads the provided string's right end (end) with the provided padding
+	//! Pads the provided string's right end (end) with the provided padding (cut to the exact length)
+	//! Will not do anything if input is already longer than length or if padding is empty
+	//! If input is longer, it will not be cut
+	//! \param[in] input
+	//! \param[in] length
+	//! \param[in] padding
+	//! \result the padded string
 	static string PadRight(string input, int length, string padding = SPACE)
 	{
-		while (input.Length() < length)
+		if (!padding)
+			return input;
+
+		if (input.Length() >= length)
+			return input;
+
+		int padW = padding.Length();
+		for (int i = length - input.Length() - 1; i >= 0; i -= padW)
 		{
 			input += padding;
 		}
+
+		if (input.Length() > length)
+			input = input.Substring(0, length);
 
 		return input;
 	}
@@ -354,9 +496,9 @@ class SCR_StringHelper
 	//! SCR_StringHelper.ReplaceRecursive("AAAAAABAAA", "AA", "A");	// returns "ABA"
 	//! SCR_StringHelper.ReplaceRecursive("AAAAAABAAA", "AA", "AAX");	// returns "AAAAAABAAA"
 	//! @endcode
-	//! \param input the input in which to search and replace
-	//! \param what to replace - an empty sample will do nothing
-	//! \param replace CANNOT contain sample for an obvious reason
+	//! \param[in] input the input in which to search and replace
+	//! \param[in] what to replace - an empty sample will do nothing
+	//! \param[in] replace CANNOT contain sample for an obvious reason
 	//! \return the modified input, or the original one on wrong arguments
 	static string ReplaceRecursive(string input, string sample, string replace)
 	{
@@ -381,11 +523,11 @@ class SCR_StringHelper
 	//! SCR_StringHelper.ReplaceTimes("A A A", "A", "BA", 2);		// returns "BA BA A"
 	//! SCR_StringHelper.ReplaceTimes("A A A", "A", "B", 1, 1);	// returns "A B A"
 	//! @endcode
-	//! \param input the input in which to search and replace
-	//! \param sample what to replace - an empty sample will do nothing
-	//! \param replace the replacement string
-	//! \param howMany times the string must be replaced
-	//! \param skip first occurrences -not- to be replaced
+	//! \param[in] input the input in which to search and replace
+	//! \param[in] sample what to replace - an empty sample will do nothing
+	//! \param[in] replace the replacement string
+	//! \param[in] howMany times the string must be replaced
+	//! \param[in] skip first occurrences -not- to be replaced
 	//! \return input with 'sample' replaced by 'replace' 'howMany' times after skipptin 'skip' occurrences
 	static string ReplaceTimes(string input, string sample, string replace, int howMany = 1, int skip = 0)
 	{
@@ -425,6 +567,10 @@ class SCR_StringHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns the provided input string reversed
+	//! \code
+	//! SCR_StringHelper.Reverse("ABC123"); // returns "321CBA"
+	//! \endcode
+	//! \return reversed input
 	static string Reverse(string input)
 	{
 		string result;
@@ -437,9 +583,9 @@ class SCR_StringHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Check if input contains any needles
-	static bool ContainsAny(string input, array<string> needles)
+	static bool ContainsAny(string input, notnull array<string> needles)
 	{
-		if (input.IsEmpty() || !needles)
+		if (input.IsEmpty())
 			return false;
 
 		foreach (string needle : needles)
@@ -453,13 +599,10 @@ class SCR_StringHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Check if input contains every needles
-	static bool ContainsEvery(string input, array<string> needles)
+	static bool ContainsEvery(string input, notnull array<string> needles)
 	{
 		if (input.IsEmpty())
 			return false;
-
-		if (!needles)
-			return true;
 
 		foreach (string needle : needles)
 		{
@@ -471,9 +614,13 @@ class SCR_StringHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
-	static bool StartsWithAny(string input, array<string> lineStarts)
+	//! Find out if a string's beginning matches one of the provided beginnings
+	//! \param[in] input the string to check
+	//! \param[in] lineEnds the beginning to parse
+	//! \return whether or not the input begins with one of the provided line beginnings
+	static bool StartsWithAny(string input, notnull array<string> lineStarts)
 	{
-		if (input.IsEmpty() || !lineStarts)
+		if (input.IsEmpty())
 			return false;
 
 		foreach (string lineStart : lineStarts)
@@ -486,7 +633,11 @@ class SCR_StringHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
-	static bool EndsWithAny(string input, array<string> lineEnds)
+	//! Find out if a string's ending matches one of the provided endings
+	//! \param[in] input the string to check
+	//! \param[in] lineEnds the endings to parse
+	//! \return whether or not the input ends with one of the provided line endings
+	static bool EndsWithAny(string input, notnull array<string> lineEnds)
 	{
 		if (input.IsEmpty())
 			return false;
@@ -551,9 +702,10 @@ class SCR_StringHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Remove spaces and tabs on the left end of the provided string
+	//! Remove spaces, tabs and line returns on the left end of the provided string
 	//! Vertical tabs and other characters are ignored and considered as normal characters (for now?)
-	//! \param
+	//! \param[in] input
+	//! \return the trimmed input
 	static string TrimLeft(string input)
 	{
 		if (input.IsEmpty())
@@ -562,7 +714,7 @@ class SCR_StringHelper
 		for (int i, count = input.Length(); i < count; i++)
 		{
 			string character = input[i];
-			if (character == SPACE || character == TAB)
+			if (character == SPACE || character == TAB || character == LINE_RETURN)
 				continue;
 
 			return input.Substring(i, count - i);
@@ -572,6 +724,10 @@ class SCR_StringHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Remove spaces, tabs and line returns on the right end of the provided string
+	//! Vertical tabs and other characters are ignored and considered as normal characters (for now?)
+	//! \param[in] input
+	//! \return the trimmed input
 	static string TrimRight(string input)
 	{
 		if (input.IsEmpty())
@@ -580,7 +736,7 @@ class SCR_StringHelper
 		for (int i = input.Length() - 1; i >= 0; i--)
 		{
 			string character = input[i];
-			if (character == SPACE || character == TAB)
+			if (character == SPACE || character == TAB || character == LINE_RETURN)
 				continue;
 
 			return input.Substring(0, i + 1);
@@ -592,121 +748,12 @@ class SCR_StringHelper
 
 enum SCR_EStringFormat
 {
-	ALPHABETICAL_UC,	//!< [A-Z]+
-	ALPHABETICAL_LC,	//!< [a-z]+
-	ALPHABETICAL_I,		//!< [a-zA-Z]+ (I = insensitive)
-	ALPHANUMERICAL_UC,	//!< [A-Z0-9]+
-	ALPHANUMERICAL_LC,	//!< [a-z0-9]+
-	ALPHANUMERICAL_I,	//!< [a-zA-Z0-9]+ (I = insensitive)
+	ALPHABETICAL_UC,	//!< [A-Z]+			(UC = UpperCase)
+	ALPHABETICAL_LC,	//!< [a-z]+			(LC = LowerCase)
+	ALPHABETICAL_I,		//!< [a-zA-Z]+		(I = Insensitive)
+	ALPHANUMERICAL_UC,	//!< [A-Z0-9]+		(UC = UpperCase)
+	ALPHANUMERICAL_LC,	//!< [a-z0-9]+		(LC = LowerCase)
+	ALPHANUMERICAL_I,	//!< [a-zA-Z0-9]+	(I = Insensitive)
 	DIGITS_ONLY,		//!< [0-9]+
 	// FLOATING_POINT,		//!< [0-9][0-9\.]+[0-9]
-}
-
-// typedef?
-class SCR_StringArray : array<string>
-{
-	//------------------------------------------------------------------------------------------------
-	int CountEmptyEntries()
-	{
-		int result;
-		for (int i = Count() - 1; i >= 0; i--)
-		{
-			if (this[i].IsEmpty())
-				result++;
-		}
-		return result;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	int CountEmptyOrWhiteSpaceEntries()
-	{
-		int result;
-		for (int i = Count() - 1; i >= 0; i--)
-		{
-			if (SCR_StringHelper.IsEmptyOrWhiteSpace(this[i]))
-				result++;
-		}
-		return result;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	string Join(string separator = string.Empty, bool joinEmptyEntries = true)
-	{
-		return SCR_StringHelper.Join(separator, this, joinEmptyEntries);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	bool HasEmptyEntry()
-	{
-		for (int i = Count() - 1; i >= 0; i--)
-		{
-			if (this[i].IsEmpty())
-				return true;
-		}
-		return false;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	bool HasEmptyOrWhiteSpaceEntry()
-	{
-		for (int i = Count() - 1; i >= 0; i--)
-		{
-			if (SCR_StringHelper.IsEmptyOrWhiteSpace(this[i]))
-				return true;
-		}
-		return false;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void RemoveEmptyEntries()
-	{
-		for (int i = Count() - 1; i >= 0; i--)
-		{
-			if (this[i].IsEmpty())
-				RemoveOrdered(i);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void RemoveEmptyOrWhiteSpaceEntries()
-	{
-		for (int i = Count() - 1; i >= 0; i--)
-		{
-			if (SCR_StringHelper.IsEmptyOrWhiteSpace(this[i]))
-				RemoveOrdered(i);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void ToLower()
-	{
-		string tmp;
-		for (int i = Count() - 1; i >= 0; i--)
-		{
-			tmp = this[i];
-			tmp.ToLower();
-			this[i] = tmp;
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void ToUpper()
-	{
-		string tmp;
-		for (int i = Count() - 1; i >= 0; i--)
-		{
-			tmp = this[i];
-			tmp.ToUpper();
-			this[i] = tmp;
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void Trim()
-	{
-		for (int i = Count(); i >= 0; i--)
-		{
-			this[i] = this[i].Trim();
-		}
-	}
 }

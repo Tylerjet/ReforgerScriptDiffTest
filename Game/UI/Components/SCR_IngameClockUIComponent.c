@@ -1,6 +1,4 @@
-/**
-Gets the Ingame time and displays it on an UI text element.
-*/
+//! Gets the Ingame time and displays it on a UI text element
 class SCR_IngameClockUIComponent : MenuRootSubComponent 
 {			
 	[Attribute("Time", desc: "Clock needs at least the Time icon, time multiplier or Time Text to function")]
@@ -33,8 +31,9 @@ class SCR_IngameClockUIComponent : MenuRootSubComponent
 	protected TextWidget m_TimeMultiplier;
 	protected TimeAndWeatherManagerEntity m_TimeAndWeatherManagerEntity;
 	
-
 	//======================== CLOCK UPDATE ========================\\
+
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateIngameClock()
 	{
 		//Get time
@@ -91,6 +90,8 @@ class SCR_IngameClockUIComponent : MenuRootSubComponent
 	}
 	
 	//======================== ATTACH/DEATTACH HANDLER ========================\\
+
+	//------------------------------------------------------------------------------------------------
 	//On Init
 	override void HandlerAttachedScripted(Widget w)
 	{
@@ -119,7 +120,7 @@ class SCR_IngameClockUIComponent : MenuRootSubComponent
 		GetGame().GetCallqueue().CallLater(UpdateIngameClock, m_fUpdateFreq * 1000, true);
 	}
 	
-	
+	//------------------------------------------------------------------------------------------------
 	//On Destroy
 	override void HandlerDeattached(Widget w)
 	{
@@ -127,4 +128,4 @@ class SCR_IngameClockUIComponent : MenuRootSubComponent
 			GetGame().GetCallqueue().Remove(UpdateIngameClock);
 		
 	}
-};
+}

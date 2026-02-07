@@ -5,4 +5,4 @@ enum ESupportStationPriority
 	MEDIUM = 10,
 	HIGH = 20,
 	VERY_HIGH = 30,
-};
+}

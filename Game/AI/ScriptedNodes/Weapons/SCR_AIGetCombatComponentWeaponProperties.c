@@ -7,8 +7,7 @@ class SCR_AIGetCombatComponentWeaponProperties : AITaskScripted
 
 	protected SCR_AICombatComponent m_CombatComponent;
 	
-	
-	//--------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	override void OnInit(AIAgent owner)
 	{
 		IEntity controlledEnt = owner.GetControlledEntity();
@@ -20,7 +19,7 @@ class SCR_AIGetCombatComponentWeaponProperties : AITaskScripted
 		}
 	}
 	
-	//--------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	/*
 	It's not very nice that we are moving weapon properties data all the way through weapon selection, combat component, and then this node.
 	Ideally we should be able to get all this from weapon, muzzle and magazine directly.
@@ -36,7 +35,7 @@ class SCR_AIGetCombatComponentWeaponProperties : AITaskScripted
 		BaseMagazineComponent magazineComp;
 		int muzzleId;
 		
-		m_CombatComponent.GetSelectedWeapon(weaponComp, muzzleId, magazineComp);
+		m_CombatComponent.GetSelectedWeaponAndMagazine(weaponComp, muzzleId, magazineComp);
 		
 		float minDistance;
 		float maxDistance;
@@ -50,13 +49,21 @@ class SCR_AIGetCombatComponentWeaponProperties : AITaskScripted
 		return ENodeResult.SUCCESS;
 	}
 	
-	//--------------------------------------------------------------------------------------------
-	override bool VisibleInPalette() { return true; }
+	//------------------------------------------------------------------------------------------------
+	override bool VisibleInPalette()
+	{
+		return true;
+	}
 	
 	protected static ref TStringArray s_aVarsOut = {
 		PORT_MIN_DISTANCE,
 		PORT_MAX_DISTANCE,
 		PORT_DIRECT_DAMAGE
 	};
-	override TStringArray GetVariablesOut() { return s_aVarsOut; }
+	
+	//------------------------------------------------------------------------------------------------
+	override TStringArray GetVariablesOut()
+	{
+		return s_aVarsOut;
+	}
 }

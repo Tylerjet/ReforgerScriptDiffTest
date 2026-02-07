@@ -1,4 +1,4 @@
-class SCR_PulsateUIComponent: ScriptedWidgetComponent
+class SCR_PulsateUIComponent : ScriptedWidgetComponent
 {
 	[Attribute("Pulse")]
 	protected string m_sPulseWidgetName;
@@ -9,6 +9,7 @@ class SCR_PulsateUIComponent: ScriptedWidgetComponent
 	[Attribute("", UIWidgets.ComboBox, "Animation curve", "", ParamEnumArray.FromEnum(EAnimationCurve))]
 	protected EAnimationCurve m_eCurve;
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		Widget pulse = w.FindAnyWidget(m_sPulseWidgetName);
@@ -19,4 +20,4 @@ class SCR_PulsateUIComponent: ScriptedWidgetComponent
 		anim.SetRepeat(true);
 		anim.SetCurve(m_eCurve);
 	}
-};
+}

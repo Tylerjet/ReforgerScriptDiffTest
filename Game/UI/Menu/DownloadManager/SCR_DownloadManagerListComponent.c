@@ -2,7 +2,6 @@
 Download manager list that can group download entries into various sections
 */
 
-//------------------------------------------------------------------------------------------------
 class SCR_DownloadManagerListComponent : SCR_SubMenuBase
 {
 	[Attribute("m_AddonsList")]
@@ -18,8 +17,6 @@ class SCR_DownloadManagerListComponent : SCR_SubMenuBase
 	protected Widget m_wList;
 	protected Widget m_wFallbackTextWrap;
 	
-	protected bool m_bInitialized = false;
-	
 	protected SCR_InputButtonComponent m_NavPauseResume;
 	protected SCR_InputButtonComponent m_NavPauseResumeAll;
 	protected SCR_InputButtonComponent m_NavCancel;
@@ -29,9 +26,10 @@ class SCR_DownloadManagerListComponent : SCR_SubMenuBase
 	
 	protected bool m_bAllPaused = false;
 	
+	protected SCR_DownloadManagerEntry m_FocusedEntry;
+	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
-	
 	{
 		super.HandlerAttached(w);
 		
@@ -41,12 +39,11 @@ class SCR_DownloadManagerListComponent : SCR_SubMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuShow(SCR_SuperMenuBase parentMenu)
+	override void OnTabShow()
 	{
-		super.OnMenuShow(parentMenu);
+		super.OnTabShow();
 		
-		if (m_bInitialized)
-			UpdateNavButtons(m_FocusedEntry);
+		UpdateNavButtons(m_FocusedEntry);
 		
 		// Show fallback if list is empty 
 		ShowFallbackText(m_wList.GetChildren() == null);
@@ -55,26 +52,21 @@ class SCR_DownloadManagerListComponent : SCR_SubMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void Init(notnull SCR_SuperMenuComponent parentMenu)
+	override void OnTabCreate(Widget menuRoot, ResourceName buttonsLayout, int index)
 	{
-		SetParentMenuComponent(parentMenu);
+		super.OnTabCreate(menuRoot, buttonsLayout, index);
 		
-		m_NavPauseResume = CreateNavigationButton("WorkshopPauseDownload", "#AR-Workshop_ButtonResume", true);
+		m_NavPauseResume = CreateNavigationButton("WorkshopPauseDownload", "#AR-Workshop_ButtonResume", true, false);
 		m_NavPauseResume.m_OnActivated.Insert(OnClickPauseResume);
 		
-		m_NavCancel = CreateNavigationButton("WorkshopCancelDownload", "#AR-Keybind_Cancel", true);
+		m_NavCancel = CreateNavigationButton("WorkshopCancelDownload", "#AR-Keybind_Cancel", true, false);
 		m_NavCancel.m_OnActivated.Insert(OnClickCancel);
 		
-		m_NavRetry = CreateNavigationButton("WorkshopPauseDownload", "#AR-Workshop_ButtonTryAgain", true);
+		m_NavRetry = CreateNavigationButton("WorkshopPauseDownload", "#AR-Workshop_ButtonTryAgain", true, false);
 		m_NavRetry.m_OnActivated.Insert(OnClickRetry);
 		
 		m_NavPauseResumeAll = CreateNavigationButton("WorkshopPauseAllDownloads", "#AR-DownloadManager_ButtonPauseAll", false);
 		m_NavPauseResumeAll.m_OnActivated.Insert(OnClickPauseResumeAll);
-		
-		ShowNavigationButtons(m_bShown);
-		UpdateNavButtons(m_FocusedEntry);
-		
-		m_bInitialized = true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -202,9 +194,10 @@ class SCR_DownloadManagerListComponent : SCR_SubMenuBase
 	void ShowPauseResumeAllButton(bool show)
 	{
 		if (m_NavPauseResumeAll)
-			m_NavPauseResumeAll.SetVisible(show, false);
+			SetNavigationButtonVisibile(m_NavPauseResumeAll, show);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	void ShowFallbackText(bool show)
 	{
 		if (m_wFallbackTextWrap)
@@ -221,9 +214,6 @@ class SCR_DownloadManagerListComponent : SCR_SubMenuBase
 	//------------------------------------------------------------------------------------------------
 	// Callbacks 
 	//------------------------------------------------------------------------------------------------
-	
-	protected SCR_DownloadManagerEntry m_FocusedEntry;
-	
 	//------------------------------------------------------------------------------------------------
 	protected void OnEntryFocus()
 	{
@@ -247,9 +237,9 @@ class SCR_DownloadManagerListComponent : SCR_SubMenuBase
 	protected void UpdateNavButtons(SCR_DownloadManagerEntry entry)
 	{
 		// Setup button visibility
-		m_NavPauseResume.SetVisible(entry != null, false);
-		m_NavCancel.SetVisible(entry != null, false);
-		m_NavRetry.SetVisible(entry != null, false);
+		SetNavigationButtonVisibile(m_NavPauseResume, entry != null);
+		SetNavigationButtonVisibile(m_NavCancel, entry != null);
+		SetNavigationButtonVisibile(m_NavRetry, entry != null);
 		
 		// Check current entry
 		if (!entry)
@@ -259,7 +249,7 @@ class SCR_DownloadManagerListComponent : SCR_SubMenuBase
 		entry.CanDoActions(pause, resume, cancel, retry);
 		
 		// Pause and resume 
-		m_NavPauseResume.SetVisible(pause || resume, false);
+		SetNavigationButtonVisibile(m_NavPauseResume, pause || resume);
 		m_NavPauseResume.SetEnabled(entry.GetPauseEnabled());
 		
 		if (resume)
@@ -268,10 +258,10 @@ class SCR_DownloadManagerListComponent : SCR_SubMenuBase
 			m_NavPauseResume.SetLabel("#AR-DownloadManager_ButtonPause");
 		
 		// Cancel
-		m_NavCancel.SetVisible(cancel, false);
+		SetNavigationButtonVisibile(m_NavCancel, cancel);
 		
 		// Retry
-		m_NavRetry.SetVisible(retry, false);
+		SetNavigationButtonVisibile(m_NavRetry, retry);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -285,7 +275,6 @@ class SCR_DownloadManagerListComponent : SCR_SubMenuBase
 			entry.OnClickResume();
 		else
 			entry.OnClickPause();
-			
 	}
 	
 	//------------------------------------------------------------------------------------------------

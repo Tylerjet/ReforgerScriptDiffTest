@@ -1,6 +1,7 @@
-class ScriptedPerceptionComponentClass: AIComponentEntityClass
+// unused?
+class ScriptedPerceptionComponentClass : AIComponentEntityClass
 {
-};
+}
 
 class ScriptedPerceptionComponent : AIComponentEntity
 {
@@ -16,4 +17,4 @@ class ScriptedPerceptionComponent : AIComponentEntity
 	//{
 		
 	//}
-};
+}

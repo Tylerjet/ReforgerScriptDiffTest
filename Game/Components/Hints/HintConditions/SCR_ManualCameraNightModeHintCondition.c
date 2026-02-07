@@ -1,5 +1,5 @@
 [BaseContainerProps(), SCR_BaseContainerHintCondition()]
-class SCR_ManualCameraNightModeHintCondition: SCR_BaseHintCondition
+class SCR_ManualCameraNightModeHintCondition : SCR_BaseHintCondition
 {		
 	//------------------------------------------------------------------------------------------------
 	protected SCR_NightModeGameModeComponent GetNightModeComponent()
@@ -46,4 +46,4 @@ class SCR_ManualCameraNightModeHintCondition: SCR_BaseHintCondition
 		
 		nightModeComponent.GetOnLocalEditorNightModeEnabledChanged().Insert(OnEditorNightModeEnabled);
 	}
-};
+}

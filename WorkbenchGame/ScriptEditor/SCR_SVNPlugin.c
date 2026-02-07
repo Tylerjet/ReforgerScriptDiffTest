@@ -1,7 +1,9 @@
+#ifdef WORKBENCH
 // ackchyually, these SVN plugins are VCS plugins (could work with e.g git)
-
 class SCR_SVNPluginBase : WorkbenchPlugin
 {
+	// m_sCommandLine is not part of this class because of [Attribute()] default value
+
 	//------------------------------------------------------------------------------------------------
 	protected override void Run()
 	{
@@ -12,7 +14,10 @@ class SCR_SVNPluginBase : WorkbenchPlugin
 		string file;
 		string absPath;
 		if (!scriptEditor.GetCurrentFile(file) || !Workbench.GetAbsolutePath(file, absPath))
+		{
+			Print("File " + file + " cannot be opened", LogLevel.WARNING);
 			return;
+		}
 
 		string command = GetCommandLine();
 		command.Replace("$path", "\"" + absPath + "\"");
@@ -20,10 +25,7 @@ class SCR_SVNPluginBase : WorkbenchPlugin
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected string GetCommandLine()
-	{
-		return string.Empty;
-	}
+	protected string GetCommandLine();
 
 }
 
@@ -116,3 +118,4 @@ class SCR_SVNBlamePlugin : SCR_SVNPluginBase
 		Workbench.ScriptDialog("Configure SVN Blame", "Usage: \n$path - will be replaced with file name\n$line - will be replaced with current line number", this);
 	}
 }
+#endif // WORKBENCH

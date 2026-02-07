@@ -1,24 +1,25 @@
-[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
-/** @ingroup ManualCamera
-*/
+//! @ingroup ManualCamera
 
-/*!
-Moving the camera to and away from the cursor position
-*/
+//! Moving the camera to and away from the cursor position
+[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
 class SCR_MoveToCursorManualCameraComponent : SCR_BaseManualCameraComponent
 {	
 	[Attribute("2", UIWidgets.Auto, "")]	
 	private float m_fSpeed;
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraFrame(SCR_ManualCameraParam param)
 	{
-		if (!param.isManualInputEnabled || param.isManualInput || !param.isCursorEnabled) return;
+		if (!param.isManualInputEnabled || param.isManualInput || !param.isCursorEnabled)
+			return;
 		
 		float inputValue = GetInputManager().GetActionValue("ManualCameraMoveToCursor");
-		if (inputValue == 0) return;
+		if (inputValue == 0)
+			return;
 		
 		WorkspaceWidget workspace = GetGame().GetWorkspace();			
-		if (!workspace) return;
+		if (!workspace)
+			return;
 		
 		// Get mouse position
 		int mouseX, mouseY;
@@ -32,8 +33,10 @@ class SCR_MoveToCursorManualCameraComponent : SCR_BaseManualCameraComponent
 		param.isDirty = true;
 		param.isManualInput = true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool EOnCameraInit()
 	{
 		return true;
 	}
-};
+}

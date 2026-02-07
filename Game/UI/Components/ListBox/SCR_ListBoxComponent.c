@@ -1,11 +1,8 @@
-/*
-Listbox component which supports multi selection, custom element layouts.
-
-!!! This is not entirely finished, use at own risk. Or ping me if you need that functionality.
-*/
+//! Listbox component which supports multi selection, custom element layouts.
+//!
+//! !!! This is not entirely finished, use at own risk.
 class SCR_ListBoxComponent : ScriptedWidgetComponent
 {
-
 	// ---- Public member variables ----
 	
 	ref ScriptInvoker m_OnChanged = new ScriptInvoker(); // (SCR_ListBoxComponent comp, int item, bool newSelected)
@@ -24,7 +21,7 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 	protected VerticalLayoutWidget m_wList;
 	
 	// Parallel arrays to manage element components, selected state, custom data
-	protected ref array<SCR_ListBoxElementComponent> m_aElementComponents = new array<SCR_ListBoxElementComponent>;
+	protected ref array<SCR_ListBoxElementComponent> m_aElementComponents = {};
 	
 	// Currently selected item -  if multi selection is disabled
 	protected int m_iCurrentItem = -1;
@@ -32,13 +29,14 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 	// Used for generation of unique names for widgets
 	protected int m_iWidgetNameNextId;
 	
-	
-	
-	
 	// ---- Public ----
 	
-	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] item
+	//! \param[in] data
+	//! \param[in] itemLayout
+	//! \return
 	int AddItem(string item, Managed data = null, ResourceName itemLayout = string.Empty)
 	{	
 		SCR_ListBoxElementComponent comp;
@@ -48,8 +46,14 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 		return id;
 	}
 	
-	
-	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] item
+	//! \param[in] imageOrImageset
+	//! \param[in] iconName
+	//! \param[in] data
+	//! \param[in] itemLayout
+	//! \return
 	// -----------------------------------------------------------------------------------------
 	int AddItemAndIcon(string item, ResourceName imageOrImageset, string iconName, Managed data = null, ResourceName itemLayout = string.Empty)
 	{
@@ -62,8 +66,9 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 		return id;
 	}
 	
-	
-	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] item
 	// -----------------------------------------------------------------------------------------
 	void RemoveItem(int item)
 	{
@@ -76,8 +81,9 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 		m_wList.RemoveChild(elementWidget);
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] item
+	//! \return
 	Managed GetItemData(int item)
 	{
 		if (item < 0 || item > m_aElementComponents.Count())
@@ -86,13 +92,12 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 		return m_aElementComponents[item].GetData();
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetItemCount()
 	{
 		return m_aElementComponents.Count();
 	}
-	
 	
 	//------------------------------------------------------------------------------------------------
 	//! Returns ID of item with same user data as propvided. Returns -1 if not found or null was passed
@@ -115,26 +120,22 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 		return ret;
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
 	//! Returns IDs of selected items.
 	array<int> GetSelectedItems(bool selected = true)
 	{
-		array<int> a = new array<int>;
+		array<int> a = {};
 		
 		int c = m_aElementComponents.Count();
 		
 		for (int i = 0; i < c; i++)
 		{
 			if (m_aElementComponents[i].GetToggled() == selected)
-			{
 				a.Insert(i);
-			}
 		}
 		
 		return a;
 	}
-	
 	
 	//------------------------------------------------------------------------------------------------
 	//! Returns ID of currently selected item, if multiselection is disabled. Otherwise returns -1.
@@ -145,7 +146,6 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 		
 		return m_iCurrentItem;
 	}
-	
 	
 	//------------------------------------------------------------------------------------------------
 	//! Returns list box element with given ID
@@ -158,7 +158,6 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 		return m_aElementComponents[item];
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
 	//! Returns true if item with given ID is selected
 	bool IsItemSelected(int item)
@@ -170,13 +169,14 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] text
 	void AddSeparator(string text)
 	{
 		// Create widget for this item
 		Widget w = GetGame().GetWorkspace().CreateWidgets(m_sSeparatorLayout, m_wList);
 		
 		TextWidget tw = TextWidget.Cast(w.FindAnyWidget("Text"));
-		
 		if (tw)
 			tw.SetText(text);
 	}
@@ -207,22 +207,24 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 		
 		return false;
 	}
-	
-		
+
 	//------------------------------------------------------------------------------------------------
 	//! Removes all items and separators from the listbox
 	void Clear()
 	{
 		while (m_wList.GetChildren())
+		{
 			m_wList.GetChildren().RemoveFromHierarchy();
+		}
 		
 		m_aElementComponents.Clear();
 		m_iCurrentItem = -1;
 	}
 	
-	
-	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] item
+	//! \param[in] selected
+	//! \param[in] invokeOnChanged
 	void SetItemSelected(int item, bool selected, bool invokeOnChanged = true)
 	{
 		if (item < 0 || item > m_aElementComponents.Count())
@@ -230,25 +232,27 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 		
 		// If multiselection is disabled, unselect current item
 		if (!m_bMultiSelection && selected && m_aElementComponents.IsIndexValid(m_iCurrentItem))
-				this.VisualizeSelection(m_iCurrentItem, false);
-		
+			VisualizeSelection(m_iCurrentItem, false);
+
 		_SetItemSelected(item, selected, invokeOnChanged);
 	}
 	
-	
-	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] selected
+	//! \param[in] invokeOnChanged
 	void SetAllItemsSelected(bool selected, bool invokeOnChanged = true)
 	{
 		int c = m_aElementComponents.Count();
 		
 		for (int i = 0; i < c; i++)
+		{
 			_SetItemSelected(i, selected, invokeOnChanged);
+		}
 	}
 	
-	
-	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] item
+	//! \param[in] text
 	void SetItemText(int item, string text)
 	{
 		if (item < 0 || item > m_aElementComponents.Count())
@@ -256,15 +260,6 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 		
 		m_aElementComponents[item].SetText(text);
 	}
-	
-	
-	
-	
-	
-	
-	
-	
-	
 	
 	//------------------------------------------------------------------------------------------------
 	// ---- Protected ----
@@ -276,7 +271,6 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 		m_aElementComponents[item].SetToggled(selected);
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
@@ -284,8 +278,6 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 		
 		m_wList = VerticalLayoutWidget.Cast(w.FindAnyWidget("List"));
 	}
-	
-	
 	
 	//------------------------------------------------------------------------------------------------
 	protected int _AddItem(string item, Managed data, out SCR_ListBoxElementComponent compOut, ResourceName itemLayout = string.Empty)
@@ -305,7 +297,6 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 		
 		// Pushback to internal arrays
 		int id = m_aElementComponents.Insert(comp);
-		
 		
 		// Setup event handlers
 		comp.m_OnClicked.Insert(OnItemClick);
@@ -327,7 +318,6 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 		return id;
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
 	protected void _SetItemSelected(int item, bool selected, bool invokeOnChanged)
 	{
@@ -335,7 +325,9 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 		if (!m_bMultiSelection)
 		{
 			if (selected)
+			{
 				m_iCurrentItem = item;
+			}
 			else
 			{
 				// Nothing will be selected
@@ -363,7 +355,6 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 	protected void OnItemClick(SCR_ListBoxElementComponent comp)
 	{
 		int id = m_aElementComponents.Find(comp);
-		
 		if (id == -1)
 			return;
 		
@@ -384,5 +375,4 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 			_SetItemSelected(id, true, true);
 		}
 	}
-	
-};
+}

@@ -5,7 +5,7 @@ class SCR_ImageGalleryButtonComponent : SCR_WLibComponentBase
 	[Attribute(defvalue: "", uiwidget: UIWidgets.ResourcePickerThumbnail, desc: "Image for the gallery", "edds imageset")]
 	private ResourceName m_Texture;
 	
-	ref ScriptInvoker m_OnClicked = new ref ScriptInvoker();
+	ref ScriptInvoker m_OnClicked = new ScriptInvoker();
 	Widget m_wSizeContent;
 	ImageWidget m_Picture;
 	ImageWidget m_SelectedBar;
@@ -50,7 +50,7 @@ class SCR_ImageGalleryButtonComponent : SCR_WLibComponentBase
 	void Select()
 	{
 		//m_SelectedBar.SetVisible(true);
-		m_wRoot.SetColor(Color.White);
+		m_wRoot.SetColor(Color.FromInt(Color.WHITE));
 		float padding[4] = {4, 4, 4, 4};
 		AnimateWidget.Padding(m_wSizeContent, padding, 10);
 		//m_wRoot.SetZOrder(1000);

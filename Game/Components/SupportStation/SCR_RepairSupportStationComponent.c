@@ -14,18 +14,14 @@ class SCR_RepairSupportStationComponentClass : SCR_BaseDamageHealSupportStationC
 	protected ref SCR_AudioSourceConfiguration m_OnExtinguishDoneAudioSourceConfiguration;
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return Notification for Heal done but not full aka: Support Station cannot heal more. This notification is send to players that are in the vehicle that is healed
-	*/
+	//! \return Notification for Heal done but not full aka: Support Station cannot heal more. This notification is send to players that are in the vehicle that is healed
 	ENotification GetHealDoneNotFullInVehicleNotification()
 	{
 		return m_eHealDoneNotFullNotificationInVehicle;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return Sound Config for heal update. Will return null if no audio is assigned
-	*/
+	//! \return Sound Config for heal update. Will return null if no audio is assigned
 	SCR_AudioSourceConfiguration GetOnExtinguishUpdateAudioConfig()
 	{		
 		//~ Create Audio source if it does not yet exist
@@ -36,9 +32,7 @@ class SCR_RepairSupportStationComponentClass : SCR_BaseDamageHealSupportStationC
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return Sound Config for heal update. Will return null if no audio is assigned
-	*/
+	//! \return Sound Config for heal update. Will return null if no audio is assigned
 	SCR_AudioSourceConfiguration GetOnExtinguishDoneAudioConfig()
 	{		
 		//~ Create Audio source if it does not yet exist
@@ -47,7 +41,7 @@ class SCR_RepairSupportStationComponentClass : SCR_BaseDamageHealSupportStationC
 
 		return m_OnExtinguishDoneAudioSourceConfiguration;
 	}	
-};
+}
 
 class SCR_RepairSupportStationComponent : SCR_BaseDamageHealSupportStationComponent
 {			
@@ -108,7 +102,7 @@ class SCR_RepairSupportStationComponent : SCR_BaseDamageHealSupportStationCompon
 	//------------------------------------------------------------------------------------------------
 	protected override int GetSupplyCostAction(IEntity actionOwner, IEntity actionUser, SCR_BaseUseSupportStationAction action)
 	{
-		if (!IsUsingSupplies())
+		if (!AreSuppliesEnabled())
 			return 0;
 		
 		if (!m_aDoTTypesHealed.Contains(EDamageType.FIRE))
@@ -137,7 +131,7 @@ class SCR_RepairSupportStationComponent : SCR_BaseDamageHealSupportStationCompon
 		if (activeDoT == EDamageType.FIRE)
 		{
 			//~ Consume supplies
-			if (IsUsingSupplies())
+			if (AreSuppliesEnabled())
 			{
 				//~ Failed to consume supplies, meaning there weren't enough supplies for the action
 				if (!OnConsumeSuppliesServer(GetSupplyCostAction(actionOwner, actionUser, action)))
@@ -213,7 +207,11 @@ class SCR_RepairSupportStationComponent : SCR_BaseDamageHealSupportStationCompon
 	protected override void OnExecuteDamageSystem(IEntity actionOwner, IEntity actionUser, SCR_EDamageSupportStationHealState healState, SCR_BaseDamageHealSupportStationAction action, float healthScaled)
 	{
 		if (!actionOwner)
+		{
+			//~ Action was still succesfully executed
+			OnSuccessfullyExecuted(actionOwner, actionUser, action);
 			return;
+		}	
 		
 		bool isFireStateHealed = false;
 		
@@ -244,6 +242,9 @@ class SCR_RepairSupportStationComponent : SCR_BaseDamageHealSupportStationCompon
 			super.OnExecuteDamageSystem(actionOwner, actionUser, healState, action, healthScaled);
 			return;
 		}
+
+		//~ On succesfully executed
+		OnSuccessfullyExecuted(actionOwner, actionUser, action);
 		
 		//~ Do not send notification
 		if (!GetSendNotificationOnUse())
@@ -356,5 +357,5 @@ class SCR_RepairSupportStationComponent : SCR_BaseDamageHealSupportStationCompon
 				flammableHitZone.SetFireState(EFireState.SMOKING_HEAVY);
 		}
 	}
-};
+}
 	

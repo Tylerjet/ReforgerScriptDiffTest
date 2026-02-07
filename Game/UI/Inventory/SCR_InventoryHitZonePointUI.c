@@ -225,9 +225,7 @@ class SCR_InventoryHitZonePointContainerUI : ScriptedWidgetComponent
 		}
 
 		bool tourniquetted = m_pCharDmgManager.GetGroupTourniquetted(m_eHitZoneGroup);
-		
-		Widget parent = m_wRoot.FindAnyWidget("Storage");
-		Widget newStorage = GetGame().GetWorkspace().CreateWidgets(m_pInventoryMenu.BACKPACK_STORAGE_LAYOUT, parent);
+		Widget newStorage = GetGame().GetWorkspace().CreateWidgets(m_pInventoryMenu.BACKPACK_STORAGE_LAYOUT, m_wRoot);
 		m_pStorageUI = new SCR_InventoryHitZoneUI(storage, null, menuManager, 0, null, this, tourniquetted);
 		newStorage.AddHandler(m_pStorageUI);
 		m_pStorageUI.GetRootWidget().SetVisible(false);
@@ -237,20 +235,20 @@ class SCR_InventoryHitZonePointContainerUI : ScriptedWidgetComponent
 	{
 		array<HitZone> hzs = {};
 		m_pCharDmgManager.GetHitZonesOfGroup(hzGroupId, hzs);
-		UpdateHitZoneState(ScriptedHitZone.Cast(hzs[0]));
+		UpdateHitZoneState(SCR_HitZone.Cast(hzs[0]));
 		
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateHitZoneDOTAdded(EDamageType dType, float dps, HitZone hz = null)
 	{
-		UpdateHitZoneState(ScriptedHitZone.Cast(hz));
+		UpdateHitZoneState(SCR_HitZone.Cast(hz));
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateHitZoneDOTRemoved(EDamageType dType, HitZone hz = null)
 	{
-		UpdateHitZoneState(ScriptedHitZone.Cast(hz));
+		UpdateHitZoneState(SCR_HitZone.Cast(hz));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -259,7 +257,7 @@ class SCR_InventoryHitZonePointContainerUI : ScriptedWidgetComponent
 		if (dType != EDamageType.BLEEDING)
 			return;
 
-		UpdateHitZoneState(ScriptedHitZone.Cast(hz));
+		UpdateHitZoneState(SCR_HitZone.Cast(hz));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -268,11 +266,11 @@ class SCR_InventoryHitZonePointContainerUI : ScriptedWidgetComponent
 		if (dType != EDamageType.BLEEDING)
 			return;
 
-		UpdateHitZoneState(ScriptedHitZone.Cast(hz));
+		UpdateHitZoneState(SCR_HitZone.Cast(hz));
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	protected void UpdateHitZoneState(ScriptedHitZone hz)
+	protected void UpdateHitZoneState(SCR_HitZone hz)
 	{
 		if (!hz || !m_aGroupHitZones.Contains(hz))
 			return;
@@ -309,12 +307,12 @@ class SCR_InventoryHitZonePointContainerUI : ScriptedWidgetComponent
 
 		SetGlowVisible(bleedingVisible);
 
-		if (m_bSelected)
-			ShowApplicableItems();
-
 		if (!m_pInventoryMenu)
 			return;
 
+		if (m_bSelected || m_pInventoryMenu.IsUsingGamepad())
+			ShowApplicableItems();
+		
 		if (bleeding > 0 || health < 1 || tourniquetted || salineBagged)
 			m_pInventoryMenu.AddItemToAttachmentSelection(GetHitZoneName(), this);
 		else

@@ -1,16 +1,10 @@
-[EntityEditorProps(category: "GameScripted/ScriptWizard", description: "ScriptWizard generated script file.")]
+[EntityEditorProps(category: "GameScripted/ScenarioFramework/Slot", description: "")]
 class SCR_ScenarioFrameworkSlotDeliveryClass : SCR_ScenarioFrameworkSlotTaskClass
 {
-	// prefab properties here
-};
+}
 
-//------------------------------------------------------------------------------------------------
-/*!
-	Class generated via ScriptWizard.
-*/
 class SCR_ScenarioFrameworkSlotDelivery : SCR_ScenarioFrameworkSlotTask
 {
-	
 	[Attribute(desc: "Name of the task layer associated with this deliver point, Doesn't need to be set if nested under task layer Deliver.", category: "Task")];
 	protected ref array<string>						m_aAssociatedTaskLayers;
 	
@@ -31,7 +25,7 @@ class SCR_ScenarioFrameworkSlotDelivery : SCR_ScenarioFrameworkSlotTask
 			if (m_TaskLayer && SCR_ScenarioFrameworkLayerTaskDeliver.Cast(m_TaskLayer))
 				SCR_ScenarioFrameworkLayerTaskDeliver.Cast(m_TaskLayer).SetDeliveryPointEntity(m_Entity);
 			else
-				PrintFormat("ScenarioFramework: ->Task->Delivery point %1 doesn't have associated layer attribute set (and is nested outside of its layer task delivery)", GetOwner().GetName(), LogLevel.ERROR);
+				Print(string.Format("ScenarioFramework: ->Task->Delivery point %1 doesn't have associated layer attribute set (and is nested outside of its layer task delivery)", GetOwner().GetName()), LogLevel.ERROR);
 		}
 		else
 		{
@@ -49,12 +43,11 @@ class SCR_ScenarioFrameworkSlotDelivery : SCR_ScenarioFrameworkSlotTask
 				}
 				else
 				{
-					PrintFormat("ScenarioFramework: ->Task->Delivery point: Task Layer %1 doesn't exist.", sLayerName, LogLevel.ERROR);
+					Print(string.Format("ScenarioFramework: ->Task->Delivery point: Task Layer %1 doesn't exist.", sLayerName), LogLevel.ERROR);
 				}
 			}
 		}
 	}
-	
 	
 	//------------------------------------------------------------------------------------------------
 	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
@@ -92,7 +85,7 @@ class SCR_ScenarioFrameworkSlotDelivery : SCR_ScenarioFrameworkSlotTask
 		{
 			if (m_aAssociatedTaskLayers.IsEmpty())
 			{
-				PrintFormat("ScenarioFramework: ->Task->Delivery point: Associated Task Layers are empty", LogLevel.ERROR);
+				Print(string.Format("ScenarioFramework: ->Task->Delivery point: Associated Task Layers are empty"), LogLevel.ERROR);
 				return;
 			}
 					
@@ -115,7 +108,7 @@ class SCR_ScenarioFrameworkSlotDelivery : SCR_ScenarioFrameworkSlotTask
 				}
 				else
 				{
-					PrintFormat("ScenarioFramework: ->Task->Delivery point: Task Delivery does not exist for Layer %1", sLayerName, LogLevel.ERROR);
+					Print(string.Format("ScenarioFramework: ->Task->Delivery point: Task Delivery does not exist for Layer %1", sLayerName), LogLevel.ERROR);
 				}
 			}
 		}
@@ -125,12 +118,13 @@ class SCR_ScenarioFrameworkSlotDelivery : SCR_ScenarioFrameworkSlotTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void AfterAllChildrenSpawned()
+	override void AfterAllChildrenSpawned(SCR_ScenarioFrameworkLayerBase layer)
 	{
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void AfterAllChildrenSpawnedDelivery()
+	//!
+	void AfterAllChildrenSpawnedDelivery(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		m_bInitiated = true;
 		
@@ -144,4 +138,4 @@ class SCR_ScenarioFrameworkSlotDelivery : SCR_ScenarioFrameworkSlotTask
 
 		GetOnAllChildrenSpawned().Remove(AfterAllChildrenSpawnedDelivery);
 	}
-};
+}

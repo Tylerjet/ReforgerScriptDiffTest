@@ -1,7 +1,6 @@
 class SCR_ParticleContactComponentClass : ScriptComponentClass
-{	
-		
-	[Attribute("", UIWidgets.Auto, "", category: "Sound")]
+{
+	[Attribute(category: "Sound")]
 	ref SCR_AudioSourceConfiguration m_AudioSourceConfiguration;
 	
 	[Attribute("true", desc: "Set surface signal", category: "Sound")]
@@ -31,9 +30,8 @@ enum EParticleEffectInfoType
 	NONE = 0,
 	VEHICLE = 1,
 	BLAST = 2,
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_ParticleContactComponent : ScriptComponent
 {
 	//------------------------------------------------------------------------------------------------
@@ -63,6 +61,7 @@ class SCR_ParticleContactComponent : ScriptComponent
 		if (SCR_Enum.HasFlag(prefabData.m_AudioSourceConfiguration.m_eFlags, EAudioSourceConfigurationFlag.Static))
 		{
 			vector mat[4];
+			Math3D.MatrixIdentity4(mat);
 			mat[3] = contact.Position;
 			
 			soundManagerEntity.PlayAudioSource(audioSource, mat);

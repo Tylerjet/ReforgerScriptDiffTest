@@ -34,7 +34,7 @@ class SCR_AIDecoTestIsInVehicleCondition : DecoratorTestScripted
 		bool noAvailableVehicles = true;
 		foreach (IEntity vehicle: vehicles)
 		{
-			if (VehicleHasEmptyCompartments(vehicle, allowance))
+			if (vehicle && VehicleHasEmptyCompartments(vehicle, allowance))
 			{
 				noAvailableVehicles = false;
 				break;

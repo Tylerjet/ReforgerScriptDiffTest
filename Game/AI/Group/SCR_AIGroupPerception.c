@@ -12,7 +12,9 @@ typedef func SCR_AIGroupPerceptionOnEnemyDetectedFiltered;
 
 class SCR_AIGroupPerception : Managed
 {
-	const float TARGET_LOST_THRESHOLD_S = 10.0;
+	// Target is considered lost if noone has seen it for this time.
+	// This value should be consistent with actual duration of AI combat behavior (see TARGET_MAX_LAST_SEEN)
+	const float TARGET_LOST_THRESHOLD_S = 45.0;
 	
 	// Time till target is totally forgotten and is removed from memory.
 	// This doesn't need to be much longer than MAX_CLUSTER_AGE_S
@@ -26,8 +28,8 @@ class SCR_AIGroupPerception : Managed
 	protected ref ScriptInvokerBase<SCR_AIGroupPerceptionOnEnemyDetectedFiltered> Event_OnEnemyDetectedFiltered;
 	protected ref ScriptInvokerBase<SCR_AIGroupPerceptionOnNoEnemy> Event_OnNoEnemy;
 	
-	ref array<IEntity> m_aTargetEntities = new ref array<IEntity>;						// Read only! Don't dare to modify it!
-	ref array<ref SCR_AITargetInfo> m_aTargets = new ref array<ref SCR_AITargetInfo>;	// Read only!
+	ref array<IEntity> m_aTargetEntities = new array<IEntity>;						// Read only! Don't dare to modify it!
+	ref array<ref SCR_AITargetInfo> m_aTargets = new array<ref SCR_AITargetInfo>;	// Read only!
 	ref array<ref SCR_AIGroupTargetCluster> m_aTargetClusters = {};						// Read only!
 	
 	
@@ -556,8 +558,6 @@ class SCR_AIGroupPerception : Managed
 		
 		foreach (int clusterId, SCR_AIGroupTargetCluster cluster : m_aTargetClusters)
 		{
-			vector clusterCenter = vector.Zero;
-			
 			foreach (SCR_AITargetInfo targetInfo : cluster.m_aTargets)
 			{
 				vector mrkPos = targetInfo.m_vWorldPos + Vector(0, 3, 0);
@@ -574,12 +574,9 @@ class SCR_AIGroupPerception : Managed
 					color: 0xFFFFFFFF, bgColor: 0xFF000000,
 					size: 10.0);
 					//float size = 20.0, int , int , int priority = 1000);
-				
-				clusterCenter = clusterCenter + targetInfo.m_vWorldPos;
 			}
 			
-			float fTgtCount = cluster.m_aTargets.Count();
-			clusterCenter = clusterCenter / fTgtCount;
+			vector clusterCenter = cluster.m_State.GetCenterPosition();
 			
 			// Mark for cluster
 			string s = string.Empty;

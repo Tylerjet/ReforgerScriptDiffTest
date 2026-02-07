@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(configRoot: true)]
 class SCR_ArsenalSaveTypeInfoHolder
 {
@@ -6,11 +5,9 @@ class SCR_ArsenalSaveTypeInfoHolder
 	protected ref array<ref SCR_ArsenalSaveTypeInfo> m_aArsenalSaveTypeUIInfoList;
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get List of all save type Info
-	\param[out] arsenalSaveTypeUIInfoList List of save types
-	\return Count of save types
-	*/
+	//! Get List of all save type Info
+	//! \param[out] arsenalSaveTypeUIInfoList List of save types
+	//! \return Count of save types
 	int GetArsenalSaveTypeInfoList(out notnull array<SCR_ArsenalSaveTypeInfo> arsenalSaveTypeUIInfoList)
 	{
 		arsenalSaveTypeUIInfoList.Clear();
@@ -27,11 +24,9 @@ class SCR_ArsenalSaveTypeInfoHolder
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get UIInfo of given Type
-	\param saveTypeToCheck Save type to get UI info of
-	\return Ui info of type
-	*/
+	//! Get UIInfo of given Type
+	//! \param[in] saveTypeToCheck Save type to get UI info of
+	//! \return type's UI info
 	SCR_ArsenalSaveTypeUIInfo GetUIInfoOfType(SCR_EArsenalSaveType saveTypeToCheck)
 	{
 		foreach (SCR_ArsenalSaveTypeInfo saveType : m_aArsenalSaveTypeUIInfoList)
@@ -47,11 +42,9 @@ class SCR_ArsenalSaveTypeInfoHolder
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check if given Save type is in the list
-	\param saveTypeToCheck Save type to check
-	\return True if save type is in the list
-	*/
+	//! Check if given Save type is in the list
+	//! \param[in] saveTypeToCheck Save type to check
+	//! \return True if save type is in the list
 	bool HasSaveType(SCR_EArsenalSaveType saveTypeToCheck)
 	{
 		foreach (SCR_ArsenalSaveTypeInfo saveType : m_aArsenalSaveTypeUIInfoList)
@@ -65,9 +58,8 @@ class SCR_ArsenalSaveTypeInfoHolder
 		
 		return false;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(SCR_EArsenalSaveType, "m_eArsenalSaveType")]
 class SCR_ArsenalSaveTypeInfo
 {
@@ -78,20 +70,16 @@ class SCR_ArsenalSaveTypeInfo
 	protected ref SCR_ArsenalSaveTypeUIInfo m_UIInfo;
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return Get Save type
-	*/
+	//! \return Get Save type
 	SCR_EArsenalSaveType GetSaveType()
 	{
 		return m_eArsenalSaveType;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return Get UIInfo
-	*/
+	//! \return Get UIInfo
 	SCR_ArsenalSaveTypeUIInfo GetUIInfo()
 	{
 		return m_UIInfo;
 	}
-};
+}

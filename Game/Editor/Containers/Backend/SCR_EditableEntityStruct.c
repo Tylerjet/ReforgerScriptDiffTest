@@ -12,6 +12,7 @@ class SCR_EditableEntityStruct: JsonApiStruct
 	//--- Serialized (names shortened to save memory)
 	protected ResourceName pf; //--- Prefab
 	protected bool hy; //--- Was hierarchy changed by user
+	protected EEditableEntityFlag ef; //--- EEditableEntityFlag
 	protected int pi = -1; //--- Parent ID
 	protected int ti = TARGET_NONE; //--- Target ID
 	protected int tv = -1; //--- Target value
@@ -57,7 +58,7 @@ class SCR_EditableEntityStruct: JsonApiStruct
 		{
 			SerializeEntity(child, -1, outEntries, attributeList, requiredFlags, entriesWithTarget, false);
 		}
-		
+
 		//--- Link attached entities together (only after all of them were registered)
 		int entriesCount = outEntries.Count();
 		SCR_EditableEntityStruct entry;
@@ -103,6 +104,7 @@ class SCR_EditableEntityStruct: JsonApiStruct
 		
 		entry.sc = entity.GetOwner().GetScale();
 		entry.hy = isParentDirty || entity.HasEntityFlag(EEditableEntityFlag.INDIVIDUAL_CHILDREN) || entity.HasEntityFlag(EEditableEntityFlag.DIRTY_HIERARCHY);
+		entry.ef = entity.GetEntityFlags();
 		
 		vector transform[4];
 		entity.GetOwner().GetWorldTransform(transform);
@@ -196,7 +198,7 @@ class SCR_EditableEntityStruct: JsonApiStruct
 			spawnParams.Transform[3] = Vector(entry.px, entry.py, entry.pz);// + Vector(10, 0, 0); //--- DEBUG OFFSET
 			spawnParams.TransformMode = ETransformMode.WORLD;
 			
-			SCR_EditorLinkComponent.IgnoreSpawning(entry.hy);
+			SCR_EditorLinkComponent.IgnoreSpawning(SCR_Enum.HasFlag(entry.ef, EEditableEntityFlag.SPAWN_UNFINISHED));
 			SCR_AIGroup.IgnoreSpawning(true);
 			
 			if (saveFlags & EEditableEntitySaveFlag.NOT_SPAWNED)
@@ -213,6 +215,8 @@ class SCR_EditableEntityStruct: JsonApiStruct
 				entry.m_Entity.SetParentEntity(parent);
 				if (entry.hy)
 					entry.m_Entity.SetHierarchyAsDirty();
+
+				entry.m_Entity.CopyEntityFlags(entry.ef);
 				
 				SCR_EditorAttributeStruct.DeserializeAttributes(entry.at, attributeList, entry.m_Entity);
 				
@@ -370,6 +374,7 @@ class SCR_EditableEntityStruct: JsonApiStruct
 	void SCR_EditableEntityStruct()
 	{
 		RegV("pf");
+		RegV("ef");
 		RegV("hy");
 		RegV("pi");
 		RegV("ti");

@@ -2,12 +2,10 @@ void ScriptInvokerServiceUnregisteredMethod(SCR_MilitaryBaseComponent militaryBa
 typedef func ScriptInvokerServiceUnregisteredMethod;
 typedef ScriptInvokerBase<ScriptInvokerServiceUnregisteredMethod> ScriptInvokerServiceUnregistered;
 
-//------------------------------------------------------------------------------------------------
 class SCR_MilitaryBaseComponentClass : ScriptComponentClass
 {
 }
 
-//------------------------------------------------------------------------------------------------
 class SCR_MilitaryBaseComponent : ScriptComponent
 {
 	[Attribute("100"), RplProp(onRplName: "OnRadiusChanged")]
@@ -61,6 +59,7 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Show default notifications upon base capture (setter)
+	//! \param[in] allow
 	void AllowNotifications(bool allow)
 	{
 		m_bShowNotifications = allow;
@@ -68,24 +67,28 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Show default notifications upon base capture (getter)
+	//! \return
 	bool NotificationsAllowed()
 	{
 		return m_bShowNotifications;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] index
 	void SetCallsignIndexAutomatic(int index)
 	{
 		m_iCallsign = index;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] index
 	void SetCallsignIndex(int index)
 	{
 		m_iCallsign = index;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnRadiusChanged()
 	{
 		if (!m_OnRadiusChanged)
@@ -95,6 +98,7 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnServiceRegistered()
 	{
 		if (!m_OnServiceRegistered)
@@ -104,6 +108,7 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvokerServiceUnregistered GetOnServiceUnregistered()
 	{
 		if (!m_OnServiceUnregistered)
@@ -113,6 +118,7 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] faction
 	void SetCallsign(notnull SCR_Faction faction)
 	{
 		if (m_iCallsign == INVALID_BASE_CALLSIGN)
@@ -130,18 +136,21 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetCallsign()
 	{
 		return m_iCallsign;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetCallsignSignal()
 	{
 		return m_iCallsignSignal;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void OnCallsignAssigned()
 	{
 		SCR_Faction faction = SCR_Faction.Cast(SCR_FactionManager.SGetLocalPlayerFaction());
@@ -185,25 +194,28 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// return callsign name only (eg. "Matros" instead of "Point Matros")
+	//! \return callsign name only (eg. "Matros" instead of "Point Matros")
 	LocalizedString GetCallsignDisplayNameOnly()
 	{
 		return m_sCallsignNameOnly;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	LocalizedString GetCallsignDisplayName()
 	{
 		return m_sCallsign;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	LocalizedString GetCallsignDisplayNameOnlyUC()
 	{
 		return m_sCallsignNameOnlyUC;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	LocalizedString GetCallsignDisplayNameUpperCase()
 	{
 		return m_sCallsignUpper;
@@ -211,6 +223,8 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Get all registered systems inherited from SCR_ServicePointComponent
+	//! \param[out] services
+	//! \return
 	int GetServices(out array<SCR_ServicePointComponent> services = null)
 	{
 		int count;
@@ -232,6 +246,9 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[out] services
+	//! \param[in] type
+	//! \return
 	int GetServicesByType(out array<SCR_ServicePointComponent> services, SCR_EServicePointType type)
 	{
 		int count;
@@ -253,6 +270,8 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] label
+	//! \return
 	SCR_ServicePointComponent GetServiceByLabel(EEditableEntityLabel label)
 	{
 		foreach (SCR_MilitaryBaseLogicComponent component : m_aSystems)
@@ -267,6 +286,8 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] type
+	//! \return
 	SCR_ServicePointComponent GetServiceByType(SCR_EServicePointType type)
 	{
 		foreach (SCR_MilitaryBaseLogicComponent component : m_aSystems)
@@ -281,6 +302,8 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[out] delegates
+	//! \return
 	int GetServiceDelegates(out array<SCR_ServicePointDelegateComponent> delegates = null)
 	{
 		int count;
@@ -300,6 +323,9 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[out] delegates
+	//! \param[in] type
+	//! \return
 	int GetServiceDelegatesByType(out array<SCR_ServicePointDelegateComponent> delegates, SCR_EServicePointType type)
 	{
 		int count;
@@ -319,6 +345,8 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] label
+	//! \return
 	SCR_ServicePointDelegateComponent GetServiceDelegateByLabel(EEditableEntityLabel label)
 	{
 		foreach (SCR_ServicePointDelegateComponent delegate : m_aServiceDelegates)
@@ -331,6 +359,8 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] type
+	//! \return
 	SCR_ServicePointDelegateComponent GetServiceDelegateByType(SCR_EServicePointType type)
 	{
 		foreach (SCR_ServicePointDelegateComponent delegate : m_aServiceDelegates)
@@ -341,9 +371,36 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 
 		return null;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get all registered systems inherited from SCR_CampaignBuildingProviderComponent
+	int GetBuildingProviders(out array<SCR_CampaignBuildingProviderComponent> providers)
+	{
+		int count;
+		SCR_CampaignBuildingProviderComponent provider;
+		
+		providers.Clear();
+		
+		foreach (SCR_MilitaryBaseLogicComponent component : m_aSystems)
+		{
+			provider = SCR_CampaignBuildingProviderComponent.Cast(component);
+
+			if (provider)
+			{
+				count++;
+
+				if (providers)
+					providers.Insert(provider);
+			}
+		}
+
+		return count;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Get all registered systems inherited from SCR_SeizingComponent
+	//! \param[out] capturePoints
+	//! \return
 	int GetCapturePoints(out array<SCR_SeizingComponent> capturePoints)
 	{
 		int count;
@@ -366,6 +423,8 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Get all registered systems inherited from SCR_FlagComponent
+	//! \param[out] flags
+	//! \return
 	int GetFlags(out array<SCR_FlagComponent> flags)
 	{
 		int count;
@@ -387,6 +446,7 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] radius
 	void SetRadius(int radius)
 	{
 		if (IsProxy())
@@ -415,12 +475,14 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetRadius()
 	{
 		return m_iRadius;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] faction
 	void SetFaction(Faction faction)
 	{
 		if (IsProxy())
@@ -433,6 +495,7 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] faction
 	void SetFaction(FactionKey faction)
 	{
 		if (IsProxy())
@@ -461,7 +524,7 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 			comp.OnBaseFactionChanged(faction);
 		}
 
-		SCR_MilitaryBaseManager.GetInstance().OnBaseFactionChanged(faction, this);
+		SCR_MilitaryBaseSystem.GetInstance().OnBaseFactionChanged(faction, this);
 
 		if (!faction)
 			return;
@@ -473,6 +536,8 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] checkDefaultFaction
+	//! \return
 	Faction GetFaction(bool checkDefaultFaction = false)
 	{
 		if (!m_FactionComponent)
@@ -487,31 +552,41 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	Faction GetCapturingFaction()
 	{
 		return GetGame().GetFactionManager().GetFactionByKey(m_sCapturingFaction);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// To be overridden in inherited classes. Called every time the status of the regiestered service has changed.
+	//! Called every time the status of the registered service has changed.
+	//! \param[in] state
+	//! \param[in] serviceComponent
+	// To be overridden in inherited classes
 	void OnServiceStateChanged(SCR_EServicePointStatus state, notnull SCR_ServicePointComponent serviceComponent)
 	{
 
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] delegate
 	void RegisterServiceDelegate(notnull SCR_ServicePointDelegateComponent delegate)
 	{
 		m_aServiceDelegates.Insert(delegate);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] delegate
 	void UnregisterServiceDelegate(notnull SCR_ServicePointDelegateComponent delegate)
 	{
 		m_aServiceDelegates.RemoveItem(delegate);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] component
 	void RegisterLogicComponent(notnull SCR_MilitaryBaseLogicComponent component)
 	{
 		if (m_aSystems.Contains(component))
@@ -527,13 +602,10 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 				m_OnServiceRegistered.Invoke(this, service);
 
 			OnServiceStateChanged(service.GetServiceState(), service);
-			SCR_MilitaryBaseManager.GetInstance().OnServiceRegisteredInBase(service, this);
 			service.GetOnServiceStateChanged().Insert(OnServiceStateChanged);
 		}
-		else
-		{
-			SCR_MilitaryBaseManager.GetInstance().OnLogicRegisteredInBase(component, this);
-		}
+
+		SCR_MilitaryBaseSystem.GetInstance().OnLogicRegisteredInBase(component, this);
 
 		SCR_FlagComponent flag = SCR_FlagComponent.Cast(component);
 
@@ -554,6 +626,8 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] component
 	void UnregisterLogicComponent(notnull SCR_MilitaryBaseLogicComponent component)
 	{
 		if (!m_aSystems.Contains(component))
@@ -562,12 +636,13 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 		m_aSystems.RemoveItem(component);
 
 		SCR_ServicePointComponent service = SCR_ServicePointComponent.Cast(component);
+		SCR_MilitaryBaseSystem baseManager = SCR_MilitaryBaseSystem.GetInstance();
 
-		SCR_MilitaryBaseManager baseManager = SCR_MilitaryBaseManager.GetInstance(false);
+		if (baseManager)
+			baseManager.OnLogicUnregisteredInBase(component, this);
 
 		if (service && baseManager)
 		{
-			baseManager.OnServiceUnregisteredInBase(service, this);
 			service.GetOnServiceStateChanged().Remove(OnServiceStateChanged);
 
 			if (m_OnServiceUnregistered)
@@ -589,6 +664,8 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Triggered when a registered SCR_SeizingComponent gets captured
+	//! \param[in] faction
+	//! \param[in] point
 	void OnPointCaptured(notnull SCR_Faction faction, notnull SCR_SeizingComponent point)
 	{
 		if (faction == GetFaction())
@@ -611,6 +688,8 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Triggered when a registered SCR_SeizingComponent starts getting captured
+	//! \param[in] faction
+	//! \param[in] point
 	void OnPointContested(notnull SCR_Faction faction, notnull SCR_SeizingComponent point)
 	{
 		if (faction == GetFaction())
@@ -636,6 +715,8 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Triggered when a registered SCR_SeizingComponent stops getting captured
+	//! \param[in] faction
+	//! \param[in] point
 	void OnPointSecured(notnull SCR_Faction faction, notnull SCR_SeizingComponent point)
 	{
 		if (faction != GetCapturingFaction())
@@ -661,12 +742,14 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Triggered when a the required amount of SCR_SeizingComponents to seize the base is captured
+	//! \param[in] faction
 	void OnRequiredPointsCaptured(notnull SCR_Faction faction)
 	{
 		SetFaction(faction);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void OnCapturingFactionChanged()
 	{
 	}
@@ -700,6 +783,8 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] entity
+	//! \return
 	bool GetIsEntityPresent(notnull IEntity entity)
 	{
 		return (vector.DistanceSqXZ(entity.GetOrigin(), GetOwner().GetOrigin()) <= (m_iRadius * m_iRadius));
@@ -731,7 +816,7 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 		if (!GetGame().InPlayMode())
 			return;
 
-		SCR_MilitaryBaseManager baseManager = SCR_MilitaryBaseManager.GetInstance();
+		SCR_MilitaryBaseSystem baseManager = SCR_MilitaryBaseSystem.GetInstance();
 
 		if (baseManager)
 			baseManager.RegisterBase(this);
@@ -768,9 +853,13 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_MilitaryBaseComponent()
 	{
-		SCR_MilitaryBaseManager.UnregisterBaseStatic(this);
+		SCR_MilitaryBaseSystem baseManager = SCR_MilitaryBaseSystem.GetInstance();
+
+		if (baseManager)
+			baseManager.UnregisterBase(this);
 
 		foreach (SCR_MilitaryBaseLogicComponent component : m_aSystems)
 		{

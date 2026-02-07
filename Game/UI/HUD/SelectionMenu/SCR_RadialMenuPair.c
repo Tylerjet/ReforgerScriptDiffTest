@@ -141,15 +141,15 @@ class SCR_RadialMenuWidgetPairList
 		if (index < 0 || index >= m_iCount)
 			return null;
 		
-		ref auto pair = new ref SCR_RadialMenuPair(m_aWidgets[index], m_aEntries[index]);
+		ref auto pair = new SCR_RadialMenuPair(m_aWidgets[index], m_aEntries[index]);
 		return pair;
 	}	
 	
 	//------------------------------------------------------------------------------------------------
 	void SCR_RadialMenuWidgetPairList()
 	{
-		m_aWidgets = new ref array<Widget>();
-		m_aEntries = new ref array<BaseSelectionMenuEntry>();
+		m_aWidgets = new array<Widget>();
+		m_aEntries = new array<BaseSelectionMenuEntry>();
 	}
 	
 	//------------------------------------------------------------------------------------------------

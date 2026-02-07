@@ -15,10 +15,13 @@ class SCR_HeliCourse_stage2 : SCR_BaseCampaignTutorialArlandStage
 		m_fWaypointHeightOffset = 5;
 		m_bCheckWaypoint = false;
 		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
 	
 		m_Helicopter = Vehicle.Cast(GetGame().GetWorld().FindEntityByName("UH1COURSE"));
 		m_TutorialComponent.SetWaypointMiscImage("GETIN", true);
+		
+		PlaySoundSystem("Heli_GetIn", true);
+		
+		HintOnVoiceOver();
 	}
 	
 	//------------------------------------------------------------------------------------------------

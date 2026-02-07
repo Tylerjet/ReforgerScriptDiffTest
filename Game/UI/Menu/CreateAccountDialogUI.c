@@ -45,7 +45,7 @@ class CreateAccountDialogUI: DialogUI
 	{
 		if (m_Password.GetValue() != m_ConfirmPassword.GetValue())
 		{
-			ShowResponse(m_sPasswordNotMatching, UIColors.WARNING);
+			ShowResponse(m_sPasswordNotMatching, Color.FromInt(UIColors.WARNING.PackToInt()));
 			return;
 		}
 		

@@ -1,7 +1,7 @@
 [EntityEditorProps(category: "GameScripted/ScriptWizard", description: "Deletes entity in certain radius.")]
 class SCR_PrefabDeleterEntityClass : GenericEntityClass
 {
-};
+}
 
 //------------------------------------------------------------------------------------------------
 class SCR_PrefabDeleterEntity : GenericEntity
@@ -32,6 +32,9 @@ class SCR_PrefabDeleterEntity : GenericEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] parent
 	void SCR_PrefabDeleterEntity(IEntitySource src, IEntity parent)
 	{
 		if (!GetGame().InPlayMode())
@@ -40,13 +43,9 @@ class SCR_PrefabDeleterEntity : GenericEntity
 		SetEventMask(EntityEvent.INIT);
 	}
 
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_PrefabDeleterEntity()
-	{
-	}
-	
 #ifdef WORKBENCH	
 	
+	//------------------------------------------------------------------------------------------------
 	override void _WB_AfterWorldUpdate(float timeSlice)
 	{
 
@@ -58,4 +57,4 @@ class SCR_PrefabDeleterEntity : GenericEntity
 	
 #endif
 
-};
+}

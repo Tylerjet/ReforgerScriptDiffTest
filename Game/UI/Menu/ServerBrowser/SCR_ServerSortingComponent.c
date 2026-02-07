@@ -6,13 +6,13 @@ class SCR_ServerSortingComponent : SCR_SelectionWidgetComponent
 	
 	protected SCR_SelectableButtonComponent m_wLastFocused;
 	
-	protected ref array<ref Widget> m_aWidgetCells = new ref array<ref Widget>();
-	protected ref array<ref SCR_SelectableButtonComponent> m_aButtons = new ref array<ref SCR_SelectableButtonComponent>();
+	protected ref array<ref Widget> m_aWidgetCells = new array<ref Widget>();
+	protected ref array<ref SCR_SelectableButtonComponent> m_aButtons = new array<ref SCR_SelectableButtonComponent>();
 	
 	protected bool m_bIsFocused = false;
 	protected bool m_bIsAscendent;
 	
-	ref ScriptInvoker m_OnFocus = new ref ScriptInvoker();
+	ref ScriptInvoker m_OnFocus = new ScriptInvoker();
 	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)

@@ -58,7 +58,7 @@ class SCR_SliderEditorAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 		super.Init(w, attribute);
 	}
 	
-	//~ Is overriden in SCR_VectorSliderEditorAttributeUIComponent
+	//~ Is overridden in SCR_VectorSliderEditorAttributeUIComponent
 	protected void SetSliderSettings(SCR_BaseEditorAttributeVar var, SCR_BaseEditorAttributeEntrySlider sliderData)
 	{
 		m_SliderData = sliderData;

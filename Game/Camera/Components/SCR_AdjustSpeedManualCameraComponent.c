@@ -1,16 +1,13 @@
-[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
-/** @ingroup ManualCamera
-*/
+//! @ingroup ManualCamera
 
-/*!
-Adjusting speed at small increments for manual camera.
-*/
+//! Adjusting speed at small increments for manual camera.
+[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
 class SCR_AdjustSpeedManualCameraComponent : SCR_BaseManualCameraComponent
 {
-	[Attribute("0.1", UIWidgets.Auto, "")]
+	[Attribute("0.1")]
 	protected float m_fMinMultiplier;	
 	
-	[Attribute("16", UIWidgets.Auto, "")]
+	[Attribute("16")]
 	protected float m_fMaxMultiplier;
 	
 	[Attribute(params: "layout")]
@@ -24,21 +21,23 @@ class SCR_AdjustSpeedManualCameraComponent : SCR_BaseManualCameraComponent
 	protected float m_fWidgetAlpha;
 	protected ref ScriptInvoker m_OnSpeedChange = new ScriptInvoker();
 	
-	/*!
-	Get event called every time the speed is adjusted.
-	\return Script invoker
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get event called every time the speed is adjusted.
+	//! \return Script invoker
 	ScriptInvoker GetOnSpeedChange()
 	{
 		return m_OnSpeedChange;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
 		m_fMultiplier = 1;
 		m_OnSpeedChange.Invoke(m_fMultiplier, false);
 		m_Widget.SetVisible(false);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void ManualCameraSpeedReset(float value, EActionTrigger trigger)
 	{
 		if (!IsEnabled() || !(GetCameraEntity().GetCameraParam().flag & EManualCameraFlag.ROTATE)) return;
@@ -47,6 +46,8 @@ class SCR_AdjustSpeedManualCameraComponent : SCR_BaseManualCameraComponent
 		m_OnSpeedChange.Invoke(m_fMultiplier, true);
 		UpdateWidget();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateWidget()
 	{
 		if (!m_Widget) return;
@@ -62,6 +63,8 @@ class SCR_AdjustSpeedManualCameraComponent : SCR_BaseManualCameraComponent
 		m_Widget.SetVisible(true);
 		m_fWidgetAlpha = 1 + m_fLayoutDuration;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void FadeOutWidget(float timeSlice)
 	{
 		if (!m_Widget || !m_Widget.IsVisible()) return;
@@ -77,10 +80,13 @@ class SCR_AdjustSpeedManualCameraComponent : SCR_BaseManualCameraComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraSave(SCR_ManualCameraComponentSave data)
 	{
 		data.m_aValues = {m_fMultiplier};
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraLoad(SCR_ManualCameraComponentSave data)
 	{
 		if (data.m_aValues && !data.m_aValues.IsEmpty())
@@ -89,6 +95,8 @@ class SCR_AdjustSpeedManualCameraComponent : SCR_BaseManualCameraComponent
 			m_OnSpeedChange.Invoke(m_fMultiplier, true);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraFrame(SCR_ManualCameraParam param)
 	{
 		if (!param.isManualInputEnabled)
@@ -118,6 +126,8 @@ class SCR_AdjustSpeedManualCameraComponent : SCR_BaseManualCameraComponent
 		//--- Visualize
 		FadeOutWidget(param.timeSlice);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool EOnCameraInit()
 	{	
 		if (m_fMinMultiplier > 1 || m_fMaxMultiplier < 1)
@@ -131,6 +141,8 @@ class SCR_AdjustSpeedManualCameraComponent : SCR_BaseManualCameraComponent
 		m_Widget = TextWidget.Cast(GetCameraEntity().CreateCameraWidget(m_Layout, false));
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraExit()
 	{
 		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
@@ -139,4 +151,4 @@ class SCR_AdjustSpeedManualCameraComponent : SCR_BaseManualCameraComponent
 		
 		if (m_Widget) m_Widget.RemoveFromHierarchy();
 	}
-};
+}

@@ -18,6 +18,9 @@ class SCR_ButtonTextComponent : SCR_ButtonBaseComponent
 	
 	protected TextWidget m_wText;
 	
+	protected ref ScriptInvokerVoid m_OnMouseEnter;
+	protected ref ScriptInvokerVoid m_OnMouseLeave;
+	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
@@ -35,6 +38,24 @@ class SCR_ButtonTextComponent : SCR_ButtonBaseComponent
 		
 		super.SetToggled(toggled, animate, invokeChange);
 		ColorizeText(animate);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool OnMouseEnter(Widget w, int x, int y)
+	{
+		if (m_OnMouseEnter)
+			m_OnMouseEnter.Invoke();
+	
+		return super.OnMouseEnter(w, x, y);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
+	{
+		if (m_OnMouseLeave)
+			m_OnMouseLeave.Invoke();
+
+		return super.OnMouseLeave(w, enterW, x, y);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -90,11 +111,35 @@ class SCR_ButtonTextComponent : SCR_ButtonBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	ScriptInvokerVoid GetOnMouseEnter()
+	{
+		if (!m_OnMouseEnter)
+			m_OnMouseEnter = new ScriptInvokerVoid();
+		
+		return m_OnMouseEnter;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerVoid GetOnMouseLeave()
+	{
+		if (!m_OnMouseLeave)
+			m_OnMouseLeave = new ScriptInvokerVoid();
+		
+		return m_OnMouseLeave;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	static SCR_ButtonTextComponent GetButtonText(string name, Widget parent, bool searchAllChildren = true)
 	{
 		auto comp = SCR_ButtonTextComponent.Cast(
 			SCR_WLibComponentBase.GetComponent(SCR_ButtonTextComponent, name, parent, searchAllChildren)
 		);
 		return comp;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static SCR_ButtonTextComponent FindButtonTextComponent(notnull Widget w)
+	{
+		return SCR_ButtonTextComponent.Cast(w.FindHandler(SCR_ButtonTextComponent));
 	}
 };

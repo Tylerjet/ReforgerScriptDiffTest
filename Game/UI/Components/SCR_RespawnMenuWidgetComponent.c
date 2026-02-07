@@ -26,10 +26,21 @@ class SCR_RespawnMenuWidgetHandler : ScriptedWidgetComponent
 	protected Widget m_wDpadActionWidgetToolMenu;
 	protected Widget m_wMapToolWidget;
 	protected Widget m_wLoadoutSelector;
+	protected SCR_ButtonBaseComponent m_LoadoutSelectorBtnLeft, m_LoadoutSelectorBtnRight;
 	protected SCR_MapToolMenuUI m_MapToolMenuUI;
 	protected SCR_DeployMenuMain m_DeployMenu;
 	
 	protected ref array<SCR_DeployRequestUIBaseComponent> m_aSelectors = {};
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnLoadoudSelectorBtnFocused(Widget w)
+	{
+		Widget focusTo = m_wOwner.FindAnyWidget("ExpandButton");
+		if (!focusTo)
+			return;
+		
+		GetGame().GetWorkspace().SetFocusedWidget(focusTo);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected SCR_DeployRequestUIBaseComponent GetOpenedSelector()
@@ -104,12 +115,18 @@ class SCR_RespawnMenuWidgetHandler : ScriptedWidgetComponent
 		if (!gallery)
 			return;
 		
+		m_LoadoutSelectorBtnLeft.m_OnFocus.Remove(OnLoadoudSelectorBtnFocused);
+		m_LoadoutSelectorBtnRight.m_OnFocus.Remove(OnLoadoudSelectorBtnFocused);
+		
 		//Disable all widgets and have them enabled through DPAD interactions, if on gamepad.
 		if (isGamepad)
 		{
 			gallery.EnablePagingInputListeners(false);
 			gallery.SetGalleryFocused(false);
 			gallery.GetOnFocusChange().Insert(gallery.EnablePagingInputListeners);
+			
+			m_LoadoutSelectorBtnLeft.m_OnFocus.Insert(OnLoadoudSelectorBtnFocused);
+			m_LoadoutSelectorBtnRight.m_OnFocus.Insert(OnLoadoudSelectorBtnFocused);
 			
 			EnableWidget(m_wMapToolWidget, !isGamepad);
 			return;
@@ -145,6 +162,14 @@ class SCR_RespawnMenuWidgetHandler : ScriptedWidgetComponent
 		
 		m_wDpadActionWidgetToolMenu = m_wMapToolWidget.FindAnyWidget("Action");
 		m_MapToolMenuUI = SCR_MapToolMenuUI.Cast(SCR_MapEntity.GetMapInstance().GetMapUIComponent(SCR_MapToolMenuUI));
+		
+		widget = m_wRoot.FindAnyWidget("PagingLeft");
+		if (widget)
+			m_LoadoutSelectorBtnLeft = SCR_ButtonBaseComponent.Cast(widget.FindHandler(SCR_PagingButtonComponent));
+		
+		widget = m_wRoot.FindAnyWidget("PagingRight");
+		if (widget)
+			m_LoadoutSelectorBtnRight = SCR_ButtonBaseComponent.Cast(widget.FindHandler(SCR_PagingButtonComponent));
 		
 		OnInputDeviceIsGamepad(!GetGame().GetInputManager().IsUsingMouseAndKeyboard());
 		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);

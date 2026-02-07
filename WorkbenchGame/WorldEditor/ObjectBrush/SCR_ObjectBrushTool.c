@@ -94,7 +94,7 @@ class SCR_ObjectBrushTool : WorldEditorTool
 
 #ifdef DEBUG
 	protected ref array<ref Shape> m_aDebugShapes = {};
-#endif
+#endif // DEBUG
 
 	protected ref SCR_ObstacleDetector m_ObstacleDetector;
 
@@ -126,9 +126,9 @@ class SCR_ObjectBrushTool : WorldEditorTool
 	//------------------------------------------------------------------------------------------------
 	//! Create objects around the provided position, otherwise x/y screen to terrain pos
 	//! World Editor must be doing an Edit action
-	//! \param mouseX
-	//! \param mouseY
-	//! \param position
+	//! \param[in] mouseX
+	//! \param[in] mouseY
+	//! \param[in] position
 	protected void CreateObjects(float mouseX, float mouseY, vector position)
 	{
 		if (!m_API)
@@ -258,7 +258,7 @@ class SCR_ObjectBrushTool : WorldEditorTool
 
 #ifdef DEBUG
 			m_aDebugShapes.Insert(CreateCircle(point, vector.Up, 0.5, ARGB(255, 0, 0, 255), 4, ShapeFlags.NOZBUFFER));
-#endif
+#endif // DEBUG
 
 			if (m_Grid.IsColliding(point, obj))
 				continue;
@@ -273,19 +273,19 @@ class SCR_ObjectBrushTool : WorldEditorTool
 
 			if (!obj.m_bOverrideRandomization)
 			{
-				entity = m_API.CreateEntityExt(obj.m_Prefab, "", m_API.GetCurrentEntityLayerId(), null, point, vector.Zero, TraceFlags.WORLD);
-				if (!entity)
+				entitySource = m_API.CreateEntityExt(obj.m_Prefab, "", m_API.GetCurrentEntityLayerId(), null, point, vector.Zero, TraceFlags.WORLD);
+				if (!entitySource)
 				{
 					Print("Could not create entity from prefab", LogLevel.WARNING);
 					continue;
 				}
 
-				scale = entity.GetScale();
+				scale = m_API.SourceToEntity(entitySource).GetScale();
 			}
 			else
 			{
-				entity = m_API.CreateEntity(obj.m_Prefab, "", m_API.GetCurrentEntityLayerId(), null, point, vector.Zero);
-				if (!entity)
+				entitySource = m_API.CreateEntity(obj.m_Prefab, "", m_API.GetCurrentEntityLayerId(), null, point, vector.Zero);
+				if (!entitySource)
 				{
 					Print("Could not create entity from prefab", LogLevel.WARNING);
 					continue;
@@ -328,8 +328,6 @@ class SCR_ObjectBrushTool : WorldEditorTool
 					scale = MAX_SCALE_THRESHOLD;
 			}
 
-			entitySource = m_API.EntityToSource(entity);
-
 			int flags;
 			if (entitySource.Get("Flags", flags))		// set point's Y value depending on entitySource's RELATIVE_Y flag
 			{										// 0 if relative, otherwise terrain surface
@@ -343,7 +341,7 @@ class SCR_ObjectBrushTool : WorldEditorTool
 			if (obj.m_fMinRandomVerticalOffset != 0 || obj.m_fMaxRandomVerticalOffset != 0)
 				point[1] = point[1] + m_RandomGenerator.RandFloatXY(obj.m_fMinRandomVerticalOffset, obj.m_fMaxRandomVerticalOffset);
 
-			m_API.ModifyEntityKey(entity, "coords", point.ToString(false));
+			m_API.SetVariableValue(entitySource, null, "coords", point.ToString(false));
 
 			angles = vector.Zero;
 
@@ -351,10 +349,10 @@ class SCR_ObjectBrushTool : WorldEditorTool
 			{
 				// allow for random Yaw
 				if (obj.m_bOverrideRandomization && obj.m_fRandomYawAngle > 0)
-					m_API.ModifyEntityKey(entity, "angleY", m_RandomGenerator.RandFloatXY(-obj.m_fRandomYawAngle, obj.m_fRandomYawAngle).ToString());
+					m_API.SetVariableValue(entitySource, null, "angleY", m_RandomGenerator.RandFloatXY(-obj.m_fRandomYawAngle, obj.m_fRandomYawAngle).ToString());
 
 				vector mat[4];
-				entity.GetWorldTransform(mat);
+				m_API.SourceToEntity(entitySource).GetWorldTransform(mat);
 				SCR_TerrainHelper.OrientToTerrain(mat, world);
 				angles = Math3D.MatrixToAngles(mat);
 			}
@@ -371,16 +369,16 @@ class SCR_ObjectBrushTool : WorldEditorTool
 			m_Grid.AddEntry(obj, point);
 
 			if (scale != 1)
-				m_API.ModifyEntityKey(entity, "scale", scale.ToString());
+				m_API.SetVariableValue(entitySource, null, "scale", scale.ToString());
 
 			if (angles != vector.Zero)
 			{
-				m_API.ModifyEntityKey(entity, "angleX", angles[1].ToString());
-				m_API.ModifyEntityKey(entity, "angleY", angles[0].ToString());
-				m_API.ModifyEntityKey(entity, "angleZ", angles[2].ToString());
+				m_API.SetVariableValue(entitySource, null, "angleX", angles[1].ToString());
+				m_API.SetVariableValue(entitySource, null, "angleY", angles[0].ToString());
+				m_API.SetVariableValue(entitySource, null, "angleZ", angles[2].ToString());
 			}
 
-			entityID = entity.GetID();
+			entityID = m_API.SourceToEntity(entitySource).GetID();
 			m_mCreatedObjects.Insert(obj, entityID);
 			m_mActiveBrushObjects.Insert(obj, entityID);
 		}
@@ -388,7 +386,7 @@ class SCR_ObjectBrushTool : WorldEditorTool
 
 	//------------------------------------------------------------------------------------------------
 	//! Delete all Brush-created entities around the provided position
-	//! \param position
+	//! \param[in] position
 	protected void DeleteObjects(vector position)
 	{
 		if (m_mCreatedObjects.IsEmpty() || position == vector.Zero)
@@ -436,7 +434,7 @@ class SCR_ObjectBrushTool : WorldEditorTool
 
 			m_Grid.RemoveEntry(obj);
 			if (entity)
-				m_API.DeleteEntity(entity);
+				m_API.DeleteEntity(m_API.EntityToSource(entity));
 
 			m_mCreatedObjects.Remove(obj);
 		}
@@ -466,7 +464,7 @@ class SCR_ObjectBrushTool : WorldEditorTool
 		{
 			entity = world.FindEntityByID(entityID);
 			if (entity)
-				m_API.DeleteEntity(entity);
+				m_API.DeleteEntity(m_API.EntityToSource(entity));
 		}
 
 		OnActivate();
@@ -475,7 +473,7 @@ class SCR_ObjectBrushTool : WorldEditorTool
 
 #ifdef DEBUG
 		m_aDebugShapes.Clear();
-#endif
+#endif // DEBUG
 
 		SCR_WorldEditorToolHelper.EndEntityAction(manageEditAction);
 	}
@@ -484,9 +482,9 @@ class SCR_ObjectBrushTool : WorldEditorTool
 	//! Event triggering on Mouse click - see WorldEditorTool.OnMousePressEvent()
 	//! Filtered to work only for left-click here
 	//! Creates/Refreshes the Obstacles Detector and deals with Click / Alt+Click
-	//! \param x
-	//! \param y
-	//! \param buttons
+	//! \param[in] x
+	//! \param[in] y
+	//! \param[in] buttons
 	override void OnMousePressEvent(float x, float y, WETMouseButtonFlag buttons)
 	{
 		if (buttons != WETMouseButtonFlag.LEFT)
@@ -577,7 +575,7 @@ class SCR_ObjectBrushTool : WorldEditorTool
 			m_aDebugShapes.Insert(Shape.CreateLines(ARGB(255, 255, 0, 0), ShapeFlags.NOZBUFFER, p, 2));
 			m_aDebugShapes.Insert(CreateCircle(m_vFirstLinePoint, vector.Up, 2, ARGB(255, 0, 255, 0), 4, ShapeFlags.NOZBUFFER));
 			m_aDebugShapes.Insert(CreateCircle(m_vSecondLinePoint, vector.Up, 2, ARGB(255, 0, 255, 0), 4, ShapeFlags.NOZBUFFER));
-#endif
+#endif // DEBUG
 
 			if (m_bDeleteMode)
 				DeleteObjects(point);
@@ -592,7 +590,7 @@ class SCR_ObjectBrushTool : WorldEditorTool
 
 #ifdef DEBUG
 				m_aDebugShapes.Insert(CreateCircle(point, vector.Up, 1, ARGB(255, 0, 255, 0), 12, ShapeFlags.NOZBUFFER));
-#endif
+#endif // DEBUG
 
 				if (m_bDeleteMode)
 					DeleteObjects(point);
@@ -604,7 +602,7 @@ class SCR_ObjectBrushTool : WorldEditorTool
 			{
 #ifdef DEBUG
 				m_aDebugShapes.Insert(CreateCircle(m_vSecondLinePoint, vector.Up, 1, ARGB(255, 0, 255, 0), 12, ShapeFlags.NOZBUFFER));
-#endif
+#endif // DEBUG
 
 				if (m_bDeleteMode)
 					DeleteObjects(m_vSecondLinePoint);
@@ -623,9 +621,9 @@ class SCR_ObjectBrushTool : WorldEditorTool
 	//! Event triggering on Mouse click release - see WorldEditorTool.OnMouseReleaseEvent()
 	//! Filtered to work only for left-click here
 	//! Clears "held mouse click" flag and stops Edit action
-	//! \param x
-	//! \param y
-	//! \param buttons
+	//! \param[in] x
+	//! \param[in] y
+	//! \param[in] buttons
 	override void OnMouseReleaseEvent(float x, float y, WETMouseButtonFlag buttons)
 	{
 		if (buttons != WETMouseButtonFlag.LEFT)
@@ -640,9 +638,9 @@ class SCR_ObjectBrushTool : WorldEditorTool
 	//------------------------------------------------------------------------------------------------
 	//! Event triggering on Mouse movement - see WorldEditorTool.OnMouseMoveEvent()
 	//! Create/Delete entities and draw Alt+Click additional shapes
-	//! \param x
-	//! \param y
-	//! \param buttons
+	//! \param[in] x
+	//! \param[in] y
+	//! \param[in] buttons
 	override void OnMouseMoveEvent(float x, float y)
 	{
 		m_aLineShapes.Clear();
@@ -700,7 +698,7 @@ class SCR_ObjectBrushTool : WorldEditorTool
 	//------------------------------------------------------------------------------------------------
 	//! Event triggering on Mouse scroll wheel - see WorldEditorTool.OnWheelEvent()
 	//! Used to set Brush's radius (Ctrl) or strength (Shift)
-	//! \param delta the scroll wheel difference value
+	//! \param[in] delta the scroll wheel difference value
 	override void OnWheelEvent(int delta)
 	{
 		// adjusts m_fRadius value using a CTRL + Scrollwheel keybind
@@ -722,8 +720,8 @@ class SCR_ObjectBrushTool : WorldEditorTool
 	//------------------------------------------------------------------------------------------------
 	//! Event triggering on keyboard (normal) key press - see WorldEditorTool.OnKeyPressEvent()
 	//! Used to switch to Delete mode (Space) or cancel Alt+Click (Esc)
-	//! \param key
-	//! \param isAutoRepeat
+	//! \param[in] key
+	//! \param[in] isAutoRepeat
 	override void OnKeyPressEvent(KeyCode key, bool isAutoRepeat)
 	{
 		if (key == KeyCode.KC_SPACE)
@@ -746,8 +744,8 @@ class SCR_ObjectBrushTool : WorldEditorTool
 	//------------------------------------------------------------------------------------------------
 	//! Event triggering on keyboard (normal) key release - see WorldEditorTool.OnKeyReleaseEvent()
 	//! Used to switch from Delete mode (Space)
-	//! \param key
-	//! \param isAutoRepeat
+	//! \param[in] key
+	//! \param[in] isAutoRepeat
 	override void OnKeyReleaseEvent(KeyCode key, bool isAutoRepeat)
 	{
 		if (key == KeyCode.KC_SPACE)
@@ -819,11 +817,11 @@ class SCR_ObjectBrushTool : WorldEditorTool
 
 	//------------------------------------------------------------------------------------------------
 	//! Helps getting proper new value for a property
-	//! \param delta the scrollwheel value (obtained in OnWheelEvent) that is a multiple of 120
-	//! \param currentValue the value from which to start
-	//! \param min the min value
-	//! \param max the max value
-	//! \param step the step by which delta's converted value will be multiplied
+	//! \param[in] delta the scrollwheel value (obtained in OnWheelEvent) that is a multiple of 120
+	//! \param[in] currentValue the value from which to start
+	//! \param[in] min the min value
+	//! \param[in] max the max value
+	//! \param[in] step the step by which delta's converted value will be multiplied
 	//! \return the min-max clamped new value
 	protected float AdjustValueUsingScrollwheel(float delta, float currentValue, float min, float max, float step)
 	{
@@ -862,4 +860,4 @@ class SCR_ObjectBrushTool : WorldEditorTool
 		m_ObstacleDetector.SetAvoidOcean(m_bAvoidOcean);
 	}
 }
-#endif
+#endif // WORKBENCH

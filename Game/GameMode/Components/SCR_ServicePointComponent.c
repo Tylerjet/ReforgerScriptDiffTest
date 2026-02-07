@@ -23,25 +23,28 @@ class SCR_ServicePointComponent : SCR_MilitaryBaseLogicComponent
 	protected SCR_ServicePointDelegateComponent m_Delegate;
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	Faction GetFaction()
 	{
 		if (!m_FactionControl)
 			return null;
-		
+
 		Faction faction = m_FactionControl.GetAffiliatedFaction();
 		if (!faction)
 			faction = m_FactionControl.GetDefaultAffiliatedFaction();
-		
+
 		return faction;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetDelegatePrefab()
 	{
 		return m_sDelegatePrefab;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnServiceStateChanged()
 	{
 		if (!m_OnServiceStateChanged)
@@ -51,18 +54,21 @@ class SCR_ServicePointComponent : SCR_MilitaryBaseLogicComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_EServicePointType GetType()
 	{
 		return m_eType;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	EEditableEntityLabel GetLabel()
 	{
 		return m_eBuildingLabel;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_EServicePointStatus GetServiceState()
 	{
 		return m_eServiceState;
@@ -88,6 +94,7 @@ class SCR_ServicePointComponent : SCR_MilitaryBaseLogicComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] delegate
 	void SetDelegate(notnull SCR_ServicePointDelegateComponent delegate)
 	{
 		m_Delegate = delegate;
@@ -101,14 +108,13 @@ class SCR_ServicePointComponent : SCR_MilitaryBaseLogicComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnFactionChanged(FactionAffiliationComponent owner, Faction previousFaction, Faction faction)
-	{
-	}
+	protected void OnFactionChanged(FactionAffiliationComponent owner, Faction previousFaction, Faction faction);
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void RegisterService()
 	{
-		SCR_MilitaryBaseManager baseManager = SCR_MilitaryBaseManager.GetInstance();
+		SCR_MilitaryBaseSystem baseManager = SCR_MilitaryBaseSystem.GetInstance();
 		if (!baseManager)
 			return;
 
@@ -151,7 +157,7 @@ class SCR_ServicePointComponent : SCR_MilitaryBaseLogicComponent
 			linkComponent.GetOnLinkedEntitiesSpawned().Insert(RegisterService);
 		else
 			RegisterService();
-		
+
 		if (s_bSpawnAsOffline && linkComponent)
 		{
 			linkComponent.GetOnLinkedEntitiesSpawned().Insert(SetServiceOnline);

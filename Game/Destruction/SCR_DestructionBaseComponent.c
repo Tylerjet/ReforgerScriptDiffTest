@@ -1,6 +1,5 @@
 #define ENABLE_BASE_DESTRUCTION
-//------------------------------------------------------------------------------------------------
-class SCR_DestructionBaseComponentClass: ScriptedDamageManagerComponentClass
+class SCR_DestructionDamageManagerComponentClass: SCR_DamageManagerComponentClass
 {
 	[Attribute("100", UIWidgets.Slider, "Base health value of the object. Damage received above this value results in destruction (overrides HPMax in hit zone)", "0.01 100000 0.01", category: "Destruction Setup")]
 	float m_fBaseHealth;
@@ -19,11 +18,10 @@ class SCR_DestructionBaseComponentClass: ScriptedDamageManagerComponentClass
 	
 	[Attribute("", UIWidgets.Object, "List of objects (particles, debris, etc) to spawn on destruction of the object", category: "Destruction FX")]
 	ref array<ref SCR_BaseSpawnable> m_DestroySpawnObjects;
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Base destruction component, destruction types extend from this
-class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
+class SCR_DestructionDamageManagerComponent : SCR_DamageManagerComponent
 {
 #ifdef ENABLE_BASE_DESTRUCTION
 	static protected ref ScriptInvoker s_OnDestructibleDestroyed = new ScriptInvoker();
@@ -41,15 +39,22 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 	private int m_iDestructionBaseDataIndex = -1;
 	
 	//------------------------------------------------------------------------------------------------
-	static ScriptInvoker GetOnDestructibleDestroyedInvoker() { return s_OnDestructibleDestroyed; }
+	//! \return
+	static ScriptInvoker GetOnDestructibleDestroyedInvoker()
+	{
+		return s_OnDestructibleDestroyed;
+	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] readingInit
+	//! \return
 	static bool GetReadingInit(bool readingInit)
 	{
 		return s_bReadingInit;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] readingInit
 	static void SetReadingInit(bool readingInit)
 	{
 		s_bReadingInit = readingInit;
@@ -68,7 +73,9 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 	private int AllocateDestructionBaseData()
 	{
 		if (s_iFirstFreeDestructionBaseData == -1)
+		{
 			return s_aDestructionBaseData.Insert(new SCR_DestructionBaseData());
+		}
 		else
 		{
 			int returnIndex = s_iFirstFreeDestructionBaseData;
@@ -95,6 +102,8 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] createNew
+	//! \return
 	SCR_DestructionHitInfo GetDestructionHitInfo(bool createNew = false)
 	{
 		if (m_iDestructionBaseDataIndex == -1 && !createNew)
@@ -104,21 +113,22 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return whether or not the parent must be destroyed when this is destroyed
 	bool ShouldDestroyParent()
 	{
-		SCR_DestructionBaseComponentClass prefabData = SCR_DestructionBaseComponentClass.Cast(GetComponentData(GetOwner()));
+		SCR_DestructionDamageManagerComponentClass prefabData = SCR_DestructionDamageManagerComponentClass.Cast(GetComponentData(GetOwner()));
 		return prefabData && prefabData.m_bDestroyParentWhenDestroyed;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Returns whether the object should disable physics on destruction (before being deleted or changed)
+	//! \return whether the object should disable physics on destruction (before being deleted or changed)
 	bool GetDisablePhysicsOnDestroy()
 	{
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Returns whether the object is undamaged
+	//! \return whether the object is undamaged
 	bool GetUndamaged()
 	{
 		if (m_iDestructionBaseDataIndex == -1)
@@ -128,7 +138,7 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Returns whether the object is destroyed
+	//! \return whether the object is destroyed
 	bool GetDestroyed()
 	{
 		if (m_iDestructionBaseDataIndex == -1)
@@ -138,7 +148,7 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// Spawns destroy objects of children as well as own
+	//! Spawns destroy objects of children as well as own
 	[RplRpc(RplChannel.Unreliable, RplRcver.Broadcast)]
 	void RPC_DoSpawnAllDestroyEffects()
 	{
@@ -147,7 +157,7 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 		IEntity child = GetOwner().GetChildren();
 		while (child)
 		{
-			SCR_DestructionBaseComponent destructible = SCR_DestructionBaseComponent.Cast(child.FindComponent(SCR_DestructionBaseComponent));
+			SCR_DestructionDamageManagerComponent destructible = SCR_DestructionDamageManagerComponent.Cast(child.FindComponent(SCR_DestructionDamageManagerComponent));
 			if (destructible)
 				destructible.SpawnDestroyObjects(new SCR_HitInfo());
 			
@@ -156,6 +166,7 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void DeleteParentWithEffects()
 	{
 		if (GetDestructionBaseData().GetDestructionQueued())
@@ -176,7 +187,7 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 			IEntity parent = GetOwner().GetParent();
 			if (parent)
 			{
-				SCR_DestructionBaseComponent destructible = SCR_DestructionBaseComponent.Cast(parent.FindComponent(SCR_DestructionBaseComponent));
+				SCR_DestructionDamageManagerComponent destructible = SCR_DestructionDamageManagerComponent.Cast(parent.FindComponent(SCR_DestructionDamageManagerComponent));
 				if (destructible)
 				{
 					destructible.DeleteParentWithEffects();
@@ -192,6 +203,8 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Sets the base health value of the hit zone (does not trigger destruction)
+	//! \param[in] baseHealth
+	//! \param[in] clearDamage
 	void SetHitZoneHealth(float baseHealth, bool clearDamage = true)
 	{
 		HitZone hitZone = GetDefaultHitZone();
@@ -203,6 +216,7 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Sets damage of the hit zone (does not trigger destruction)
+	//! \param[in] damage
 	void SetHitZoneDamage(float damage)
 	{
 		HitZone hitZone = GetDefaultHitZone();
@@ -214,6 +228,13 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Creates and fills destruction hit info for the object
+	//! \param[in] totalDestruction
+	//! \param[in] lastHealth
+	//! \param[in] hitDamage
+	//! \param[in] damageType
+	//! \param[in] hitPosition
+	//! \param[in] hitDirection
+	//! \param[in] hitNormal
 	void CreateDestructionHitInfo(bool totalDestruction, float lastHealth, float hitDamage, EDamageType damageType, vector hitPosition, vector hitDirection, vector hitNormal)
 	{
 		SCR_DestructionHitInfo hitInfo = GetDestructionBaseData().GetHitInfo();
@@ -242,11 +263,12 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Spawns objects that are meant to be created when the object is destroyed (particles, debris, etc)
+	//! \param[in] hitInfo
 	void SpawnDestroyObjects(SCR_HitInfo hitInfo)
 	{
 		Physics ownerPhysics = GetOwner().GetPhysics();
 		
-		array<ref SCR_BaseSpawnable> destroySpawnObjects = SCR_DestructionBaseComponentClass.Cast(GetComponentData(GetOwner())).m_DestroySpawnObjects;
+		array<ref SCR_BaseSpawnable> destroySpawnObjects = SCR_DestructionDamageManagerComponentClass.Cast(GetComponentData(GetOwner())).m_DestroySpawnObjects;
 		int numSpawnOnDestroy = destroySpawnObjects.Count();
 		for (int i = 0; i < numSpawnOnDestroy; i++)
 		{
@@ -259,6 +281,7 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void RegenerateNavmeshDelayed()
 	{
 		if (Replication.IsClient())
@@ -288,25 +311,32 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Initialize destruction
+	//! Initialise destruction
 	void InitDestruction()
 	{
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Receive encoded hit data from server
+	//! \param[in] hitIndex
+	//! \param[in] damageType
+	//! \param[in] damage
+	//! \param[in] hitPosition
+	//! \param[in] hitDirection
 	void NetReceiveHitData(int hitIndex, EDamageType damageType, float damage, vector hitPosition, vector hitDirection)
 	{
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Called when Item is initialized from replication stream. Carries the data from Master.
+	//! \param[in] reader
 	void NetReadInit(ScriptBitReader reader)
 	{
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Called when Item is getting replicated from Master to Slave connection.
+	//! \param[in] writer
 	void NetWriteInit(ScriptBitWriter writer)
 	{
 	}
@@ -319,20 +349,18 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Sets the model of the object
+	//! \param[in] model
 	void SetModel(ResourceName model)
 	{
 		Resource resource = Resource.Load(model);
-		VObject asset;
-		if (resource)
+		VObject asset = null;
+		if (resource.IsValid())
 		{
 			BaseResourceObject resourceObject = resource.GetResource();
 			if (resourceObject)
 				asset = resourceObject.ToVObject();
-			else
-				asset = null;
 		}
-		else
-			asset = null;
+
 		GetOwner().SetObject(asset, "");
 		GetOwner().Update();
 		
@@ -346,6 +374,8 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] forceUpdate
 	void ReplicateDestructibleState(bool forceUpdate = false)
 	{
 	}
@@ -377,12 +407,12 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void PassDamageToChildren(EDamageType type, float damage, inout vector outMat[3], IEntity damageSource, notnull Instigator damageSourceParent, float speed, int colliderID)
+	protected void PassDamageToChildren(notnull BaseDamageContext damageContext)
 	{
 		IEntity child = GetOwner().GetChildren();
 		while (child)
 		{
-			SCR_DestructionBaseComponent destructionComponent = SCR_DestructionBaseComponent.Cast(child.FindComponent(SCR_DestructionBaseComponent));
+			SCR_DestructionDamageManagerComponent destructionComponent = SCR_DestructionDamageManagerComponent.Cast(child.FindComponent(SCR_DestructionDamageManagerComponent));
 			if (!destructionComponent)
 			{
 				child = child.GetSibling();
@@ -391,7 +421,11 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 			
 			IEntity currentChild = child;
 			child = child.GetSibling();
-			destructionComponent.HandleDamage(type, damage, outMat, currentChild, null, damageSourceParent, null, colliderID, -1);
+			
+			BaseDamageContext childContext = BaseDamageContext.Cast(damageContext.Clone());
+			childContext.hitEntity = currentChild;
+
+			destructionComponent.HandleDamage(childContext);
 		}
 	}
 	
@@ -404,6 +438,7 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void UpdateResponseIndex()
 	{
 		Physics physics = GetOwner().GetPhysics();
@@ -419,7 +454,6 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Contact
 	override bool OnContact(IEntity owner, IEntity other, Contact contact)
 	{
 		if (GetDestroyed())
@@ -433,10 +467,10 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 		if (other && other.IsInherited(SCR_DebrisSmallEntity)) // Ignore impacts from debris
  			return false;
 
-		SCR_DestructionBaseComponentClass componentData = SCR_DestructionBaseComponentClass.Cast(GetComponentData(GetOwner()));
+		SCR_DestructionDamageManagerComponentClass componentData = SCR_DestructionDamageManagerComponentClass.Cast(GetComponentData(GetOwner()));
 		if (!componentData)
 			return false;
-		
+				
 		// Get the physics of the dynamic object (if owner is static, then we use the other object instead)
 		Physics physics = contact.Physics1;
 		int responseIndex = physics.GetResponseIndex();
@@ -488,7 +522,9 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 		//If vehicle response index is the same or higher -> automatically destroy
 		if (otherResponseIndex - MIN_MOMENTUM_RESPONSE_INDEX >= ownerReponseIndex - MIN_DESTRUCTION_RESPONSE_INDEX)
 		{
-			HandleDamage(EDamageType.COLLISION, GetMaxHealth(), outMat, GetOwner(), null,Instigator.CreateInstigator(other), null, -1, -1); //Immediately destroy, otherwise the other object goes right through
+			SCR_DamageContext damageContext = new SCR_DamageContext(EDamageType.COLLISION, GetMaxHealth(), outMat, GetOwner(), null,Instigator.CreateInstigator(other), null, -1, -1);
+			
+			HandleDamage(damageContext); //Immediately destroy, otherwise the other object goes right through
 		}
 		else
 		{	
@@ -496,33 +532,26 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 			//float damage = relativeForce * componentData.m_fForceToDamageScale;
 			float damage = momentum * componentData.m_fMomentumToDamageScale;
 			
+			SCR_DamageContext damageContext = new SCR_DamageContext(EDamageType.COLLISION, damage, outMat, GetOwner(), null,Instigator.CreateInstigator(other), null, -1, -1);
+			
 			// Send damage to damage handling
-			HandleDamage(EDamageType.COLLISION, damage, outMat, GetOwner(), null,Instigator.CreateInstigator(other), null, -1, -1);
+			HandleDamage(damageContext);
 		}
 
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Damage
-	override void OnDamage(
-				  EDamageType type,
-				  float damage,
-				  HitZone pHitZone,
-				  notnull Instigator instigator, 
-				  inout vector hitTransform[3], 
-				  float speed,
-				  int colliderID, 
-				  int nodeID)
+	override void OnDamage(notnull BaseDamageContext damageContext)
 	{
-		super.OnDamage(type, damage, pHitZone, instigator, hitTransform, speed, colliderID, nodeID);
+		super.OnDamage(damageContext);
 		
-		SCR_DestructionBaseComponentClass componentData = SCR_DestructionBaseComponentClass.Cast(GetComponentData(GetOwner()));
+		SCR_DestructionDamageManagerComponentClass componentData = SCR_DestructionDamageManagerComponentClass.Cast(GetComponentData(GetOwner()));
 		if (!componentData)
 			return;
 		
 		if (componentData.m_bPassDamageToChildren)
-			PassDamageToChildren(type, damage, hitTransform, null, instigator, speed, colliderID);
+			PassDamageToChildren(damageContext);
 		
 		if (m_iDestructionBaseDataIndex != -1)
 		{
@@ -556,7 +585,7 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 		if (m_iDestructionBaseDataIndex != -1)
 			previousHealth = GetDestructionBaseData().GetPreviousHealth();
 		
-		CreateDestructionHitInfo(damage >= componentData.m_fDamageThresholdMaximum, previousHealth, damage, type, hitTransform[0], hitTransform[1], hitTransform[2]);
+		CreateDestructionHitInfo(damageContext.damageValue >= componentData.m_fDamageThresholdMaximum, previousHealth, damageContext.damageValue, damageContext.damageType, damageContext.hitPosition, damageContext.hitDirection, damageContext.hitNormal);
 		
 		QueueDestroy();
 		
@@ -564,27 +593,27 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 		if (!destructionHitInfo)
 			return;
 		
-		Rpc(RPC_QueueDestroy, destructionHitInfo.m_TotalDestruction, destructionHitInfo.m_LastHealth, destructionHitInfo.m_HitDamage, destructionHitInfo.m_DamageType, destructionHitInfo.m_HitPosition, destructionHitInfo.m_HitDirection, destructionHitInfo.m_HitNormal);
-		
 		if (!IsDestructionQueued())
 		{
+			Rpc(RPC_QueueDestroy, destructionHitInfo.m_TotalDestruction, destructionHitInfo.m_LastHealth, destructionHitInfo.m_HitDamage, destructionHitInfo.m_DamageType, destructionHitInfo.m_HitPosition, destructionHitInfo.m_HitDirection, destructionHitInfo.m_HitNormal);
+			
 			GetGame().GetCallqueue().CallLater(HandleDestruction); // Replaces OnFrame call, prevents crash when damage is dealt async/from physics step
-			SCR_DestructionBaseData data = GetDestructionBaseData();
-			data.SetDestructionQueued(true);
+			GetDestructionBaseData().SetDestructionQueued(true);
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsDestructionQueued()
 	{
-		SCR_DestructionBaseData data = GetDestructionBaseData();
-		return data.GetDestructionQueued();
+		return GetDestructionBaseData().GetDestructionQueued();
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return damage threshold, or 3000 if no component has been found
 	float GetTotalDestructionThreshold()
 	{
-		SCR_DestructionBaseComponentClass componentData = SCR_DestructionBaseComponentClass.Cast(GetComponentData(GetOwner()));
+		SCR_DestructionDamageManagerComponentClass componentData = SCR_DestructionDamageManagerComponentClass.Cast(GetComponentData(GetOwner()));
 		if (!componentData)
 			return 3000;
 		
@@ -600,7 +629,7 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 		if (!GetDefaultHitZone())
 			return;
 		
-		SCR_DestructionBaseComponentClass componentData = SCR_DestructionBaseComponentClass.Cast(GetComponentData(owner));
+		SCR_DestructionDamageManagerComponentClass componentData = SCR_DestructionDamageManagerComponentClass.Cast(GetComponentData(owner));
 		if (!componentData)
 		{
 			Print("Component data is null!", LogLevel.ERROR);
@@ -612,7 +641,7 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void ~SCR_DestructionBaseComponent()
+	void ~SCR_DestructionDamageManagerComponent()
 	{
 #ifdef WORKBENCH
 		s_bPrintMissingComponent = false;
@@ -624,9 +653,8 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 			FreeDestructionBaseData(m_iDestructionBaseDataIndex);
 	}
 #endif
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Class to temporarily store information about the last hit that dealt damage
 class SCR_HitInfo
 {
@@ -636,15 +664,18 @@ class SCR_HitInfo
 	vector m_HitPosition;
 	vector m_HitDirection;
 	vector m_HitNormal;
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Class to temporarily store information about the last hit that caused destruction
 class SCR_DestructionHitInfo : SCR_HitInfo
 {
 	bool m_TotalDestruction;
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] hitInfo
+	//! \param[in] totalDestruction
+	//! \return
 	static SCR_DestructionHitInfo FromHitInfo(SCR_HitInfo hitInfo, bool totalDestruction)
 	{
 		SCR_DestructionHitInfo destHitInfo = new SCR_DestructionHitInfo;
@@ -659,6 +690,9 @@ class SCR_DestructionHitInfo : SCR_HitInfo
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] destructionData
+	//! \return
 	static SCR_DestructionHitInfo FromDestructionData(SCR_DestructionData destructionData)
 	{
 		SCR_DestructionHitInfo destructionHitInfo = new SCR_DestructionHitInfo();
@@ -670,9 +704,8 @@ class SCR_DestructionHitInfo : SCR_HitInfo
 		destructionHitInfo.m_HitNormal = destructionData.m_vHitNormal;
 		return destructionHitInfo;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_Spawnable_SmallDebrisTitle : BaseContainerCustomTitle
 {
 	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
@@ -680,9 +713,8 @@ class SCR_Spawnable_SmallDebrisTitle : BaseContainerCustomTitle
 		title = "Small Debris";
 		return true;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_Spawnable_PrefabTitle : BaseContainerCustomTitle
 {
 	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
@@ -690,9 +722,8 @@ class SCR_Spawnable_PrefabTitle : BaseContainerCustomTitle
 		title = "Prefab";
 		return true;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_Spawnable_ParticleTitle : BaseContainerCustomTitle
 {
 	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
@@ -700,9 +731,8 @@ class SCR_Spawnable_ParticleTitle : BaseContainerCustomTitle
 		title = "Particle Effect";
 		return true;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
 class SCR_BaseSpawnable
 {
@@ -713,6 +743,10 @@ class SCR_BaseSpawnable
 	
 #ifdef WORKBENCH
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] api
+	//! \param[in] source
+	//! \param[in] path
+	//! \param[in] index
 	void SetVariables(WorldEditorAPI api, IEntitySource source, array<ref ContainerIdPathEntry> path, int index)
 	{
 		if (source.GetResourceName().Contains("BrickWall_01/BrickWall_01_white_2m.et"))
@@ -724,8 +758,8 @@ class SCR_BaseSpawnable
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Returns true when attributes are the same
-	//! Returns false otherwise
+	//! \param[in] other
+	//! \return true when attributes are the same, false otherwise
 	bool CompareAttributes(SCR_BaseSpawnable other)
 	{
 		if (other.m_vOffsetPosition != m_vOffsetPosition)
@@ -738,6 +772,11 @@ class SCR_BaseSpawnable
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] api
+	//! \param[in] source
+	//! \param[in] index
+	//! \return
 	bool AlreadyExists(WorldEditorAPI api, IEntitySource source, int index)
 	{
 		array<ref BaseDestructionPhase> phases = {};
@@ -760,6 +799,12 @@ class SCR_BaseSpawnable
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] api
+	//! \param[in] source
+	//! \param[in] path
+	//! \param[in] index
+	//! \return
 	bool CreateObject(WorldEditorAPI api, IEntitySource source, array<ref ContainerIdPathEntry> path, int index)
 	{
 		if (!AlreadyExists(api, source, index))
@@ -772,6 +817,12 @@ class SCR_BaseSpawnable
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] api
+	//! \param[in] source
+	//! \param[in] path
+	//! \param[in] index
+	//! \param[in] currentObjectName
 	void CopyToSource(WorldEditorAPI api, IEntitySource source, array<ref ContainerIdPathEntry> path, int index, string currentObjectName)
 	{
 		if (!CreateObject(api, source, path, index))
@@ -788,6 +839,9 @@ class SCR_BaseSpawnable
 	
 	//------------------------------------------------------------------------------------------------
 	//! Calculates the spawn tranformation matrix for the object
+	//! \param[in] owner
+	//! \param[out] outMat
+	//! \param[in] localCoords
 	void GetSpawnTransform(IEntity owner, out vector outMat[4], bool localCoords = false)
 	{
 		if (localCoords)
@@ -812,11 +866,16 @@ class SCR_BaseSpawnable
 	
 	//------------------------------------------------------------------------------------------------
 	//! Spawns the object
+	//! \param[in] owner
+	//! \param[in] parentPhysics
+	//! \param[in] hitInfo
+	//! \param[in] snapToTerrain
+	//! \return
 	IEntity Spawn(IEntity owner, Physics parentPhysics, SCR_HitInfo hitInfo, bool snapToTerrain = false)
 	{
 		return null;
 	}
-};
+}
 
 //------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_Spawnable_SmallDebrisTitle()]
@@ -824,31 +883,39 @@ class SCR_DebrisSpawnable : SCR_BaseSpawnable
 {
 	[Attribute(ResourceName.Empty, UIWidgets.ResourcePickerThumbnail, "Debris model prefabs to spawn (spawns ALL of them)", "et xob")]
 	ref array<ResourceName> m_ModelPrefabs;
+
 	[Attribute("10", UIWidgets.Slider, "Mass of the debris", "0.01 1000 0.01")]
 	float m_fMass;
+
 	[Attribute("5", UIWidgets.Slider, "Minimum lifetime value for the debris (in s)", "0 3600 0.5")]
 	float m_fLifetimeMin;
+
 	[Attribute("10", UIWidgets.Slider, "Maximum lifetime value for the debris (in s)", "0 3600 0.5")]
 	float m_fLifetimeMax;
+
 	[Attribute("200", UIWidgets.Slider, "Maximum distance from camera above which the debris is not spawned (in m)", "0 3600 0.5")]
 	float m_fDistanceMax;
+
 	[Attribute("0", UIWidgets.Slider, "Higher priority overrides lower priority if at or over debris limit", "0 100 1")]
 	int m_fPriority;
+
 	[Attribute("0.1", UIWidgets.Slider, "Damage received to physics impulse (speed / mass) multiplier", "0 10000 0.01")]
 	float m_fDamageToImpulse;
+
 	[Attribute("2", UIWidgets.Slider, "Damage to speed multiplier, used when objects get too much damage to impulse", "0 10000 0.01")]
 	float m_fMaxDamageToSpeedMultiplier;
+
 	[Attribute("0.5", UIWidgets.Slider, "Random linear velocity multiplier (m/s)", "0 200 0.1")]
 	float m_fRandomVelocityLinear;
+
 	[Attribute("180", UIWidgets.Slider, "Random angular velocity multiplier (deg/s)", "0 3600 0.1")]
 	float m_fRandomVelocityAngular;
+
 	[Attribute("0", uiwidget: UIWidgets.ComboBox, "Type of material for debris sound", "", ParamEnumArray.FromEnum(SCR_EMaterialSoundTypeDebris))]
 	SCR_EMaterialSoundTypeDebris m_eMaterialSoundType;
 	
 #ifdef WORKBENCH
 	//------------------------------------------------------------------------------------------------
-	//! Returns true when attributes are the same
-	//! Returns false otherwise
 	override bool CompareAttributes(SCR_BaseSpawnable other)
 	{
 		SCR_DebrisSpawnable otherDebris = SCR_DebrisSpawnable.Cast(other);
@@ -932,7 +999,6 @@ class SCR_DebrisSpawnable : SCR_BaseSpawnable
 #endif
 	
 	//------------------------------------------------------------------------------------------------
-	//! Spawns the object
 	override IEntity Spawn(IEntity owner, Physics parentPhysics, SCR_HitInfo hitInfo, bool snapToTerrain = false)
 	{
 		if (!hitInfo)
@@ -956,7 +1022,7 @@ class SCR_DebrisSpawnable : SCR_BaseSpawnable
 			vector spawnMat[4];
 			GetSpawnTransform(owner, spawnMat);
 			
-			SCR_DestructionBaseComponent destructionComponent = SCR_DestructionBaseComponent.Cast(owner.FindComponent(SCR_DestructionBaseComponent));
+			SCR_DestructionDamageManagerComponent destructionComponent = SCR_DestructionDamageManagerComponent.Cast(owner.FindComponent(SCR_DestructionDamageManagerComponent));
 			
 			float dmgSpeed = Math.Clamp(hitInfo.m_HitDamage * m_fDamageToImpulse / m_fMass, 0, m_fMaxDamageToSpeedMultiplier);
 			
@@ -978,27 +1044,28 @@ class SCR_DebrisSpawnable : SCR_BaseSpawnable
 		
 		return null;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_Spawnable_PrefabTitle()]
 class SCR_PrefabSpawnable : SCR_BaseSpawnable
 {
 	[Attribute(ResourceName.Empty, UIWidgets.ResourcePickerThumbnail, "Prefabs to spawn (spawns ALL of them)", "et")]
 	ref array<ResourceName> m_Prefabs;
+
 	[Attribute("0.1", UIWidgets.Slider, "Damage received to physics impulse (speed / mass) multiplier", "0 10000 0.01")]
 	float m_fDamageToImpulse;
+
 	[Attribute("0.25", UIWidgets.Slider, "Random linear velocity multiplier (m/s)", "0 200 0.1")]
 	float m_fRandomVelocityLinear;
+
 	[Attribute("45", UIWidgets.Slider, "Random angular velocity multiplier (deg/s)", "0 3600 0.1")]
 	float m_fRandomVelocityAngular;
+
 	[Attribute("0", UIWidgets.CheckBox, "Whether the spawned prefabs should be set as children (sets auto-transform)")]
 	bool m_bSpawnAsChildren;
 	
 #ifdef WORKBENCH
 	//------------------------------------------------------------------------------------------------
-	//! Returns true when attributes are the same
-	//! Returns false otherwise
 	override bool CompareAttributes(SCR_BaseSpawnable other)
 	{
 		SCR_PrefabSpawnable otherPrefab = SCR_PrefabSpawnable.Cast(other);
@@ -1068,7 +1135,6 @@ class SCR_PrefabSpawnable : SCR_BaseSpawnable
 #endif
 	
 	//------------------------------------------------------------------------------------------------
-	//! Spawns the object
 	override IEntity Spawn(IEntity owner, Physics parentPhysics, SCR_HitInfo hitInfo, bool snapToTerrain = false)
 	{
 		if (!hitInfo)
@@ -1128,9 +1194,8 @@ class SCR_PrefabSpawnable : SCR_BaseSpawnable
 		
 		return null; // We spawned multiple entities
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_Spawnable_ParticleTitle()]
 class SCR_ParticleSpawnable : SCR_BaseSpawnable
 {
@@ -1144,8 +1209,6 @@ class SCR_ParticleSpawnable : SCR_BaseSpawnable
 	
 #ifdef WORKBENCH
 	//------------------------------------------------------------------------------------------------
-	//! Returns true when attributes are the same
-	//! Returns false otherwise
 	override bool CompareAttributes(SCR_BaseSpawnable other)
 	{
 		SCR_ParticleSpawnable otherParticle = SCR_ParticleSpawnable.Cast(other);
@@ -1189,6 +1252,11 @@ class SCR_ParticleSpawnable : SCR_BaseSpawnable
 #endif
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] owner
+	//! \param[in] hitInfo
+	//! \param[in] snapToTerrain
+	//! \return
 	ParticleEffectEntity SpawnAsChild(IEntity owner, SCR_HitInfo hitInfo, bool snapToTerrain = false)
 	{
 		if (m_Particle == ResourceName.Empty)
@@ -1229,7 +1297,6 @@ class SCR_ParticleSpawnable : SCR_BaseSpawnable
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Spawns the object
 	override IEntity Spawn(IEntity owner, Physics parentPhysics, SCR_HitInfo hitInfo, bool snapToTerrain = false)
 	{
 		if (!hitInfo || m_Particle == ResourceName.Empty)
@@ -1268,4 +1335,4 @@ class SCR_ParticleSpawnable : SCR_BaseSpawnable
 		
 		return SCR_DestructionCommon.PlayParticleEffect_Transform(m_Particle, hitInfo.m_DamageType, spawnMat);
 	}
-};
+}

@@ -1,9 +1,10 @@
 [BaseContainerProps(), SCR_BaseContainerHintCondition()]
-class SCR_EditorAttributesHintCondition: SCR_BaseEditorHintCondition
+class SCR_EditorAttributesHintCondition : SCR_BaseEditorHintCondition
 {
 	[Attribute(uiwidget: UIWidgets.ComboBox, enums: { new ParamEnum("Game Mode", "0"), new ParamEnum("Camera", "1"), new ParamEnum("Editable Entity", "2") })]
 	protected int m_iItemType;
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnAttributesStart()
 	{
 		SCR_AttributesManagerEditorComponent attributesManager = SCR_AttributesManagerEditorComponent.Cast(SCR_AttributesManagerEditorComponent.GetInstance(SCR_AttributesManagerEditorComponent));
@@ -26,6 +27,7 @@ class SCR_EditorAttributesHintCondition: SCR_BaseEditorHintCondition
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override protected void OnInitConditionEditor(SCR_EditorManagerEntity editorManager)
 	{
 		SCR_AttributesManagerEditorComponent attributesManager = SCR_AttributesManagerEditorComponent.Cast(SCR_AttributesManagerEditorComponent.GetInstance(SCR_AttributesManagerEditorComponent));
@@ -36,6 +38,8 @@ class SCR_EditorAttributesHintCondition: SCR_BaseEditorHintCondition
 			attributesManager.GetOnAttributesCancel().Insert(Deactivate);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void OnExitConditionEditor(SCR_EditorManagerEntity editorManager)
 	{
 		SCR_AttributesManagerEditorComponent attributesManager = SCR_AttributesManagerEditorComponent.Cast(SCR_AttributesManagerEditorComponent.GetInstance(SCR_AttributesManagerEditorComponent));
@@ -46,4 +50,4 @@ class SCR_EditorAttributesHintCondition: SCR_BaseEditorHintCondition
 			attributesManager.GetOnAttributesCancel().Remove(Deactivate);
 		}
 	}
-};
+}

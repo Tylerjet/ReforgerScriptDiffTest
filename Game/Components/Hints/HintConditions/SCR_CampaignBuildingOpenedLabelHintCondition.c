@@ -1,5 +1,5 @@
 [BaseContainerProps(), SCR_BaseContainerHintCondition()]
-class SCR_CampaignBuildingOpenedLabelHintCondition: SCR_BaseEditorHintCondition
+class SCR_CampaignBuildingOpenedLabelHintCondition : SCR_BaseEditorHintCondition
 {
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.ComboBox, desc: "A label provider has to have to show a hint.", enums: ParamEnumArray.FromEnum(EEditableEntityLabel))]
 	protected EEditableEntityLabel m_eLabel;
@@ -26,6 +26,7 @@ class SCR_CampaignBuildingOpenedLabelHintCondition: SCR_BaseEditorHintCondition
 	
 	//------------------------------------------------------------------------------------------------
 	//! Check if the provider has given label set. If so, the hint is shown.
+	//! \return
 	bool HasLabelSet()
 	{
 		SCR_CampaignBuildingEditorComponent CampaignBuildingEditorComponent = SCR_CampaignBuildingEditorComponent.Cast(SCR_CampaignBuildingEditorComponent.GetInstance(SCR_CampaignBuildingEditorComponent));
@@ -38,6 +39,5 @@ class SCR_CampaignBuildingOpenedLabelHintCondition: SCR_BaseEditorHintCondition
 		
 		array<EEditableEntityLabel> providerTraits = providerComponent.GetAvailableTraits();
 		return providerTraits.Contains(m_eLabel);
-
 	}
-};
+}

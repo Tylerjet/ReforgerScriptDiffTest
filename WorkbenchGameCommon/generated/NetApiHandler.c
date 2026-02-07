@@ -4,6 +4,8 @@ Do not modify, this script is generated
 ===========================================
 */
 
+#ifdef WORKBENCH
+
 /*!
 \brief Base class for NetApi handlers.
 Inherit to create custom NetApi handler. Inherited class name is than used as NetApi function name.
@@ -22,3 +24,5 @@ class NetApiHandler
 	JsonApiStruct GetResponse(JsonApiStruct request);
 
 }
+
+#endif // WORKBENCH

@@ -7,7 +7,6 @@ class SCR_EnableArsenalAttribute : SCR_BaseEditorAttribute
 		//Set sub labels
 		if (isInit)
 		{
-			manager.SetAttributeAsSubAttribute(SCR_ArsenalUseSuppliesEditorAttribute);
 			manager.SetAttributeAsSubAttribute(SCR_ArsenalAmmunitionModeAttribute);
 			manager.SetAttributeAsSubAttribute(SCR_ArsenalEquipmentEditorAttribute);
 			manager.SetAttributeAsSubAttribute(SCR_ArsenalOutfitEditorAttribute);
@@ -18,7 +17,6 @@ class SCR_EnableArsenalAttribute : SCR_BaseEditorAttribute
 		
 		bool enabled = var && var.GetBool();
 		
-		manager.SetAttributeEnabled(SCR_ArsenalUseSuppliesEditorAttribute, enabled);
 		manager.SetAttributeEnabled(SCR_ArsenalAmmunitionModeAttribute, enabled);
 		manager.SetAttributeEnabled(SCR_ArsenalEquipmentEditorAttribute, enabled);
 		manager.SetAttributeEnabled(SCR_ArsenalOutfitEditorAttribute, enabled);
@@ -34,16 +32,9 @@ class SCR_EnableArsenalAttribute : SCR_BaseEditorAttribute
 		if (!editableEntity)
 			return null;
 		
-		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.Cast(editableEntity.GetOwner().FindComponent(SCR_ArsenalComponent));
+		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.FindArsenalComponent(editableEntity.GetOwner());
 		if (!arsenalComponent)
-		{
-			//~ If vehicle check if arsenal is on children
-			if (editableEntity.GetEntityType() == EEditableEntityType.VEHICLE)
-				arsenalComponent = SCR_ArsenalComponent.GetArsenalComponentFromChildren(editableEntity.GetOwner());
-			
-			if (!arsenalComponent)
-				return null;
-		}
+			return null;
 
 		return SCR_BaseEditorAttributeVar.CreateBool(arsenalComponent.IsArsenalEnabled());
 	}
@@ -58,16 +49,9 @@ class SCR_EnableArsenalAttribute : SCR_BaseEditorAttribute
 		if (!editableEntity)
 			return;
 		
-		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.Cast(editableEntity.GetOwner().FindComponent(SCR_ArsenalComponent));
+		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.FindArsenalComponent(editableEntity.GetOwner());
 		if (!arsenalComponent)
-		{
-			//~ If vehicle check if arsenal is on children
-			if (editableEntity.GetEntityType() == EEditableEntityType.VEHICLE)
-				arsenalComponent = SCR_ArsenalComponent.GetArsenalComponentFromChildren(editableEntity.GetOwner());
-				
-			if (!arsenalComponent)
-				return;
-		}
+			return;
 		
 		arsenalComponent.SetArsenalEnabled(var.GetBool());
 	}

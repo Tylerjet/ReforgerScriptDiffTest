@@ -1,4 +1,5 @@
-[WorkbenchPluginAttribute("Create New Script", "", "CTRL+N", "", { "ScriptEditor" }, awesomeFontCode: 0xF1C9)]
+#ifdef WORKBENCH
+[WorkbenchPluginAttribute(name: "Create New Script", shortcut: "CTRL+N", wbModules: { "ScriptEditor" }, awesomeFontCode: 0xF1C9)]
 class SCR_NewScriptPlugin : WorkbenchPlugin
 {
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.ComboBox, desc: "File system where the new script file will be created", enums: ParamEnumAddons.FromEnum(titleFormat: 2, hideCoreModules: 2), category: "General")]
@@ -13,7 +14,7 @@ class SCR_NewScriptPlugin : WorkbenchPlugin
 	[Attribute(desc: "Parent class name - if left empty, the type's default value will be used, if any", category: "General")]
 	protected string m_sParentClassName;
 
-	[Attribute(defvalue: "0", uiwidget: UIWidgets.ComboBox, desc: "", enums: ParamEnumArray.FromEnum(SCR_EScriptTemplateType), category: "General")]
+	[Attribute(defvalue: SCR_EScriptTemplateType.None.ToString(), uiwidget: UIWidgets.ComboBox, desc: "Type of template to be used", enums: ParamEnumArray.FromEnum(SCR_EScriptTemplateType), category: "General")]
 	protected SCR_EScriptTemplateType m_eType;
 
 	/*
@@ -166,3 +167,4 @@ class SCR_NewScriptPlugin : WorkbenchPlugin
 		return false;
 	}
 }
+#endif // WORKBENCH

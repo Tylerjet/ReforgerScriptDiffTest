@@ -23,13 +23,9 @@ class SCR_JointBaseEntity: GenericEntity
 	
 	PhysicsJoint m_Joint = null;
 	
-	/**
-	TODO:
-	- Do stress and breakage (in engine)
-	- SNAP_CHILD_BY_JOINT does not work! After setting of the property, child is NULL!	
-	**/
-	//------------------------------------------------------------------------------------------------
-	
+	// TODO:
+	// - Do stress and breakage (in engine)
+	// - SNAP_CHILD_BY_JOINT does not work! After setting of the property, child is NULL!	
 
 	//------------------------------------------------------------------------------------------------
 	void MoveJointToParentBone()
@@ -49,14 +45,17 @@ class SCR_JointBaseEntity: GenericEntity
 		
 		// TODO: Deselect or at least reselect joint after doing following steps
 	#ifdef WORKBENCH
-		_WB_GetEditorAPI().BeginEntityAction("Move to parent bone", "");
-		_WB_GetEditorAPI().ClearEntitySelection();
-		_WB_GetEditorAPI().ModifyEntityKey(this, "coords", pos.ToString(false));
-		_WB_GetEditorAPI().ModifyEntityKey(this, "angleX", angles[1].ToString());
-		_WB_GetEditorAPI().ModifyEntityKey(this, "angleY", angles[0].ToString());
-		_WB_GetEditorAPI().ModifyEntityKey(this, "angleZ", angles[2].ToString());
-		_WB_GetEditorAPI().ModifyEntityKey(this, "SNAP_TO_PARENT_BONE", "-1");
-		_WB_GetEditorAPI().EndEntityAction("Move to parent bone");
+		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
+		worldEditorAPI.BeginEntityAction("Move to parent bone", "");
+		worldEditorAPI.ClearEntitySelection();
+		
+		IEntitySource src = _WB_GetEditorAPI().EntityToSource(this);
+		worldEditorAPI.SetVariableValue(src, null, "coords", pos.ToString(false));
+		worldEditorAPI.SetVariableValue(src, null, "angleX", angles[1].ToString());
+		worldEditorAPI.SetVariableValue(src, null, "angleY", angles[0].ToString());
+		worldEditorAPI.SetVariableValue(src, null, "angleZ", angles[2].ToString());
+		worldEditorAPI.SetVariableValue(src, null, "SNAP_TO_PARENT_BONE", "-1");
+		worldEditorAPI.EndEntityAction("Move to parent bone");
 	#endif
 	}
 	
@@ -69,19 +68,21 @@ class SCR_JointBaseEntity: GenericEntity
 		
 		if (SNAP_CHILD_BY_JOINT <= 0)
 			return;
-		
+
+		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
+
 		// Special case (origin)
 		if (SNAP_CHILD_BY_JOINT == 999999)
 		{
 			// TODO: Deselect or at least reselect joint after doing following steps
-			_WB_GetEditorAPI().BeginEntityAction("Move child to joint by bone", "");
-			_WB_GetEditorAPI().ClearEntitySelection();
-			_WB_GetEditorAPI().ModifyEntityKey(m_JointChild, "coords", "0 0 0");
-			_WB_GetEditorAPI().ModifyEntityKey(m_JointChild, "angleX", "0");
-			_WB_GetEditorAPI().ModifyEntityKey(m_JointChild, "angleY", "0");
-			_WB_GetEditorAPI().ModifyEntityKey(m_JointChild, "angleZ", "0");
-			_WB_GetEditorAPI().ModifyEntityKey(this, "SNAP_CHILD_BY_JOINT", "-1");
-			_WB_GetEditorAPI().EndEntityAction("Move child to joint by bone");
+			worldEditorAPI.BeginEntityAction("Move child to joint by bone", "");
+			worldEditorAPI.ClearEntitySelection();
+			worldEditorAPI.SetVariableValue(m_JointChild, null, "coords", "0 0 0");
+			worldEditorAPI.SetVariableValue(m_JointChild, null, "angleX", "0");
+			worldEditorAPI.SetVariableValue(m_JointChild, null, "angleY", "0");
+			worldEditorAPI.SetVariableValue(m_JointChild, null, "angleZ", "0");
+			worldEditorAPI.SetVariableValue(this, null, "SNAP_CHILD_BY_JOINT", "-1");
+			worldEditorAPI.EndEntityAction("Move child to joint by bone");
 		}
 		else
 		{
@@ -96,14 +97,14 @@ class SCR_JointBaseEntity: GenericEntity
 			vector pos = endBoneMat[3];
 			
 			// TODO: Deselect or at least reselect joint after doing following steps
-			_WB_GetEditorAPI().BeginEntityAction("Move child to joint by bone", "");
-			_WB_GetEditorAPI().ClearEntitySelection();
-			_WB_GetEditorAPI().ModifyEntityKey(m_JointChild, "coords", pos.ToString(false));
-			_WB_GetEditorAPI().ModifyEntityKey(m_JointChild, "angleX", angles[1].ToString());
-			_WB_GetEditorAPI().ModifyEntityKey(m_JointChild, "angleY", angles[0].ToString());
-			_WB_GetEditorAPI().ModifyEntityKey(m_JointChild, "angleZ", angles[2].ToString());
-			_WB_GetEditorAPI().ModifyEntityKey(this, "SNAP_CHILD_BY_JOINT", "-1");
-			_WB_GetEditorAPI().EndEntityAction("Move child to joint by bone");
+			worldEditorAPI.BeginEntityAction("Move child to joint by bone", "");
+			worldEditorAPI.ClearEntitySelection();
+			worldEditorAPI.SetVariableValue(m_JointChild, null, "coords", pos.ToString(false));
+			worldEditorAPI.SetVariableValue(m_JointChild, null, "angleX", angles[1].ToString());
+			worldEditorAPI.SetVariableValue(m_JointChild, null, "angleY", angles[0].ToString());
+			worldEditorAPI.SetVariableValue(m_JointChild, null, "angleZ", angles[2].ToString());
+			worldEditorAPI.SetVariableValue(this, null, "SNAP_CHILD_BY_JOINT", "-1");
+			worldEditorAPI.EndEntityAction("Move child to joint by bone");
 		}
 	}*/
 	

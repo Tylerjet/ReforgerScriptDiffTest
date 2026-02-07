@@ -69,7 +69,7 @@ class SCR_AIGetRandomPointInCircularSector: AITaskScripted
 			return NodeError(this, owner, "No entity for origin of vector provided!");
 		
 		sectorOrigin = controlledEntity.GetOrigin();
-				
+		
 		if (!GetVariableIn(SECTOR_AXIS_POINT_PORT, sectorAxisPoint))
 			return NodeError(this, owner, "Not provided cone axis position!");
 		
@@ -84,7 +84,7 @@ class SCR_AIGetRandomPointInCircularSector: AITaskScripted
 		{
 			wantedMaxLength = sectorAxis.Length();
 		};
-				 
+		
 		if(!GetVariableIn(RANGE_PORT, range))
 			range = m_fAngularRange;
 		range *= Math.DEG2RAD;
@@ -94,21 +94,21 @@ class SCR_AIGetRandomPointInCircularSector: AITaskScripted
 		if (!m_bReturnCircumference)
 		{
 			SCR_Math2D.GetRandomPointInSector(sectorOrigin[0],sectorOrigin[2], angle - range, angle + range, wantedMaxLength, resX, resZ);
-		}	
+		}
 		else
-		{		
+		{
 			angle += Math.RandomFloat(-range, range);
 			SCR_Math2D.PolarToCartesian(angle, wantedMaxLength, resX, resZ);
 			resX += sectorOrigin[0];
 			resZ += sectorOrigin[2];
 		}	
 		
-		result = sectorOrigin;
 		result[0] = resX;
+		result[1] = sectorAxisPoint[1];
 		result[2] = resZ;
-				
+		
 		SetVariableOut(POSITION_OUT_PORT, result);
-				
+		
 #ifdef WORKBENCH
 			if (m_bDebugMe && DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_DEBUG_SHAPES))
 			{

@@ -1,14 +1,18 @@
 [ComponentEditorProps(category: "GameScripted/Area Mesh", description: "")]
-class SCR_WaypointAreaMeshComponentClass: SCR_BaseAreaMeshComponentClass
+class SCR_WaypointAreaMeshComponentClass : SCR_BaseAreaMeshComponentClass
 {
-};
-class SCR_WaypointAreaMeshComponent: SCR_BaseAreaMeshComponent
+}
+
+class SCR_WaypointAreaMeshComponent : SCR_BaseAreaMeshComponent
 {
+	//------------------------------------------------------------------------------------------------
 	override float GetRadius()
 	{
 		AIWaypoint waypoint = AIWaypoint.Cast(GetOwner());
 		return waypoint.GetCompletionRadius();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
 		if (!owner.IsInherited(AIWaypoint))
@@ -19,4 +23,4 @@ class SCR_WaypointAreaMeshComponent: SCR_BaseAreaMeshComponent
 			
 		GenerateAreaMesh();
 	}
-};
+}

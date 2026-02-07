@@ -277,8 +277,8 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 	protected Widget m_wHoldText;
 	protected ImageWidget m_wArrowIcon;
 	
-	protected ref map<BaseUserAction,ActionMenuElement> m_mActionWidget = new ref map<BaseUserAction,ActionMenuElement>;
-	protected ref array<ref ActionMenuElement> m_aActionMenuElements = new ref array<ref ActionMenuElement>;	
+	protected ref map<BaseUserAction,ActionMenuElement> m_mActionWidget = new map<BaseUserAction,ActionMenuElement>;
+	protected ref array<ref ActionMenuElement> m_aActionMenuElements = new array<ref ActionMenuElement>;	
 	
 	protected int m_iCurrentScroll = 0;
 	protected float m_fCurrentScrollAnimation = 0.0;
@@ -453,7 +453,8 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 		
 		// Toggle selection / adjustment widgets
 		bool isInProgress = pSelectedAction && pSelectedAction.IsInProgress();
-		if (isInProgress && SCR_AdjustSignalAction.Cast(pSelectedAction))
+		SCR_AdjustSignalAction adjustAction = SCR_AdjustSignalAction.Cast(pSelectedAction);
+		if (isInProgress && adjustAction && adjustAction.IsManuallyAdjusted())
 		{
 			UpdateArrow(m_wArrowUp, EActionMenuScroll.ENABLED);
 			UpdateArrow(m_wArrowDown, EActionMenuScroll.ENABLED);

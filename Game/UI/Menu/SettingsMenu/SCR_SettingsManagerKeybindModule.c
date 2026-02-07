@@ -1,6 +1,12 @@
 //------------------------------------------------------------------------------------------------
 class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 {
+	protected const string GAMEPAD_PRESET_PREFIX = "gamepad:";
+	protected const string PRIMARY_PRESET_PREFIX = "";
+	
+	protected const string DEVICE_KEYBOARD = "keyboard";
+	protected const string DEVICE_GAMEPAD = "gamepad";
+	
 	protected ref InputBinding m_Binding;
 	
 	protected ref SCR_KeyBindingMenuConfig m_KeybindConfig;
@@ -78,7 +84,7 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 	{
 		if (!m_Binding)
 			return;
-		
+
 		m_Binding.StartCapture(actionName, device, actionPreset, append);
 	}
 	
@@ -203,8 +209,8 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 	
 	//------------------------------------------------------------------------------------------------
 	void UnbindAction(string actionName, string preset = "", EInputDeviceType device = EInputDeviceType.KEYBOARD)
-	{		
-		m_Binding.StartCapture(actionName, EInputDeviceType.KEYBOARD, preset, false);
+	{	
+		m_Binding.StartCapture(actionName, device, preset, false);
 		m_Binding.SaveCapture();
 		m_Binding.Save();
 	}
@@ -225,5 +231,99 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 		
 		m_Binding.InsertCombo(actionName, preset, combo.m_sComboString, filterName, keybindIndex, comboPosition);
 		m_Binding.Save();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ResetAction(string actionName, string preset = "", EInputDeviceType device = EInputDeviceType.KEYBOARD)
+	{
+		if (!m_Binding)
+			return;
+		
+		bool reset;
+		switch (device)
+		{
+			case EInputDeviceType.KEYBOARD:
+			case EInputDeviceType.MOUSE:
+			{
+				if (!m_Binding.IsDefault(actionName, EInputDeviceType.KEYBOARD, preset))
+				{
+					m_Binding.ResetDefault(actionName, EInputDeviceType.KEYBOARD, preset);
+					reset = true;
+				}
+
+				if (!m_Binding.IsDefault(actionName, EInputDeviceType.MOUSE, preset))
+				{
+					m_Binding.ResetDefault(actionName, EInputDeviceType.MOUSE, preset);
+					reset = true;
+				}
+
+				break;
+			}
+			case EInputDeviceType.GAMEPAD:
+			{
+				if (!m_Binding.IsDefault(actionName, EInputDeviceType.GAMEPAD, preset))
+				{
+					m_Binding.ResetDefault(actionName, EInputDeviceType.GAMEPAD, preset);
+					reset = true;
+				}
+
+				break;
+			}
+		}
+		
+		if (!reset)
+			return;
+
+		m_Binding.Save();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ResetAllActions(EInputDeviceType device = EInputDeviceType.KEYBOARD)
+	{
+		array<string> contexts = {};
+		m_Binding.GetContexts(contexts);
+		string finalPreset;
+		string devicePrefix;
+		
+		foreach (SCR_KeyBindingCategory category: m_KeybindConfig.m_KeyBindingCategories)
+		{
+			foreach (SCR_KeyBindingEntry entry: category.m_KeyBindingEntries)
+			{
+				if (device == EInputDeviceType.GAMEPAD)
+					devicePrefix = GetGamepadPresetPrefix();
+				else 
+					devicePrefix = GetPrimaryPresetPrefix();
+				
+				if (!entry.m_sPreset.IsEmpty())
+					finalPreset = devicePrefix + entry.m_sPreset;
+				
+				ResetAction(entry.m_sActionName, finalPreset, device);
+			}
+		}
+		m_Binding.Save();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetGamepadPresetPrefix()
+	{
+		return GAMEPAD_PRESET_PREFIX;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetPrimaryPresetPrefix()
+	{
+		return PRIMARY_PRESET_PREFIX;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetKeyboardDeviceString()
+	{
+		return DEVICE_KEYBOARD;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetGamepadDeviceString()
+	{
+		return DEVICE_GAMEPAD;
 	}
 }

@@ -31,7 +31,7 @@ class ScriptedSelectionMenuEntry : BaseScriptedSelectionMenuEntry
 	}
 	
 	//! If overridden and true is returned, outName is returned when BaseSelectionMenuEntry.GetEntryName is called.
-	//! If not overriden or false is returned the default value from UIInfo is taken (or empty string if no UI info exists)
+	//! If not overridden or false is returned the default value from UIInfo is taken (or empty string if no UI info exists)
 	override bool GetEntryNameScript(out string outName)
 	{
 		outName = m_sName;
@@ -52,7 +52,7 @@ class ScriptedSelectionMenuEntry : BaseScriptedSelectionMenuEntry
 		return false;
 	}
 	
-	//! Can be overriden to return desired UIInfo in GetUIInfo method
+	//! Can be overridden to return desired UIInfo in GetUIInfo method
 	override UIInfo GetUIInfoScript()
 	{
 		return null;

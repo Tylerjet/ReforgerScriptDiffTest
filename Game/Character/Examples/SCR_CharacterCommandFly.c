@@ -1,6 +1,7 @@
 class SCR_CharacterCommandFly : ScriptedCommand
 {
-	//! constructor
+	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_CharacterCommandFly(BaseAnimPhysComponent pAnimPhysComponent, SCR_CharacterCommandSwimST pTable, ChimeraCharacter pCharacter, CharacterControllerComponent pController)
 	{
 		m_pCharacter 			= pCharacter;
@@ -11,27 +12,29 @@ class SCR_CharacterCommandFly : ScriptedCommand
 		m_Table 				= pTable;
 	}
 
-	//! 
-	override void 	OnActivate()
+	//------------------------------------------------------------------------------------------------
+	override void OnActivate()
 	{
 		m_AnimationComponent.PhysicsEnableGravity(false);
 	}
 
-	override void 	OnDeactivate()
+	//------------------------------------------------------------------------------------------------
+	override void OnDeactivate()
 	{
 		Print("SCR_CharacterCommandFly::OnDeactivate");
 		m_AnimationComponent.PhysicsEnableGravity(true);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	// called to set values to animation graph processing 
-	override void 	PreAnimUpdate(float pDt)
+	override void PreAnimUpdate(float pDt)
 	{
 	}
 
-
+	//------------------------------------------------------------------------------------------------
 	//! called to change local translations / rotations
 	//! called to get events / tags from animation graph processing 
-	override void 	PrePhysUpdate(float pDt)
+	override void PrePhysUpdate(float pDt)
 	{
 		Print("SCR_CharacterCommandFly::PrePhysUpdate: " + pDt.ToString());
 		
@@ -84,8 +87,9 @@ class SCR_CharacterCommandFly : ScriptedCommand
 		PrePhys_SetTranslation(trans);
 	}
 
-	//! called when all animation / pre phys update is handled
-	override bool	PostPhysUpdate(float pDt)
+	//------------------------------------------------------------------------------------------------
+	// called when all animation / pre phys update is handled
+	override bool PostPhysUpdate(float pDt)
 	{
 		Print("SCR_CharacterCommandFly::PostPhysUpdate: " + pDt.ToString());
 
@@ -97,7 +101,6 @@ class SCR_CharacterCommandFly : ScriptedCommand
 
 		return true;	// handled with SetFlagFinished();
 	}
-
 
 	ChimeraCharacter					m_pCharacter;
 	CharacterControllerComponent		m_pController;
@@ -121,4 +124,4 @@ class SCR_CharacterCommandFly : ScriptedCommand
 	
 	//! state
 	bool moveUp = false;
-};
+}

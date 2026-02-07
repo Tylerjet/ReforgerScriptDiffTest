@@ -1,13 +1,16 @@
 [ComponentEditorProps(category: "GameScripted/Camera", description: "")]
-class SCR_BaseCameraComponentClass: ScriptComponentClass
+class SCR_BaseCameraComponentClass : ScriptComponentClass
 {
-};
+}
 
-/*!
-Base component for SCR_CameraBase.
-*/
+//! Base component for SCR_CameraBase.
 class SCR_BaseCameraComponent : ScriptComponent
 {
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_BaseCameraComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		if (SCR_CameraBase.Cast(ent) == null)
@@ -16,4 +19,4 @@ class SCR_BaseCameraComponent : ScriptComponent
 			Deactivate(ent);
 		}
 	}
-};
+}

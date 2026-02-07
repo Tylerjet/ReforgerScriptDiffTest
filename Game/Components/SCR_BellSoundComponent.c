@@ -6,15 +6,13 @@ class SCR_SoundBellTime
 	
 	[Attribute("", UIWidgets.EditBox, "")]
 	int m_iRepetitionCount;
-};
+}
 
 [ComponentEditorProps(category: "GameScripted/Sound", description: "Bell Sound Component")]
-class SCR_BellSoundComponentClass: SoundComponentClass
+class SCR_BellSoundComponentClass : SoundComponentClass
 {
-};
-SCR_BellSoundComponentClass SCR_BellSoundComponentSource;
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_BellSoundComponent : SoundComponent
 {		
 	[Attribute("", UIWidgets.Object, "Time settings")]
@@ -141,13 +139,12 @@ class SCR_BellSoundComponent : SoundComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_BellSoundComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		SetScriptedMethodsCall(true);	
 	}
-
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_BellSoundComponent()
-	{
-	}
-};
+}

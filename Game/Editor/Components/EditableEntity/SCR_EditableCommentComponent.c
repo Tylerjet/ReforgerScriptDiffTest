@@ -3,11 +3,9 @@ class SCR_EditableCommentComponentClass : SCR_EditableEntityComponentClass
 {
 }
 
-/** @ingroup Editable_Entities
-*/
+//! @ingroup Editable_Entities
 
-/*!
-*/
+//!
 class SCR_EditableCommentComponent : SCR_EditableEntityComponent
 {
 	[Attribute(category: "Comment", defvalue: "1 1 1 1")]
@@ -23,10 +21,8 @@ class SCR_EditableCommentComponent : SCR_EditableEntityComponent
 	private bool m_bItalic;
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Apply custom attributes on given text widget.
-	\param textWidget Modified text
-	*/
+	//! Apply custom attributes on given text widget.
+	//! \param textWidget Modified text
 	void ApplyTo(TextWidget textWidget)
 	{
 		textWidget.SetText(GetDisplayName());
@@ -40,10 +36,8 @@ class SCR_EditableCommentComponent : SCR_EditableEntityComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Apply custom attributes on given image widget.
-	\param iconWidget Modified image
-	*/
+	//! Apply custom attributes on given image widget.
+	//! \param iconWidget Modified image
 	void ApplyTo(ImageWidget iconWidget)
 	{
 		iconWidget.SetColor(m_sColor);
@@ -54,47 +48,37 @@ class SCR_EditableCommentComponent : SCR_EditableEntityComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get comment color
-	\return Color
-	*/
+	//! \return comment colour
 	Color GetColor()
 	{
-		return m_sColor;
+		return Color.FromInt(m_sColor.PackToInt());
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get font size coef
-	\return Coef
-	*/
+	//! \return font size coef
 	float GetSizeCoef()
 	{
 		return m_fSizeCoef;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check if the test should be bold.
-	\return True if bold
-	*/
+	//! Check if the test should be bold.
+	//! \return true if bold
 	bool IsBold()
 	{
 		return m_bBold;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check if the test should be italic.
-	\return True if italic
-	*/
+	//! Check if the test should be italic.
+	//! \return true if italic
 	bool IsItalic()
 	{
 		return m_bItalic;
 	}
 
 #ifdef WORKBENCH
-	private const float _WB_DRAW_DISTANCE = 1500 * 1500; //--- Squared value
+	private static const float _WB_DRAW_DISTANCE_SQ = 1500 * 1500; //--- Squared value
 
 	//------------------------------------------------------------------------------------------------
 	override void _WB_AfterWorldUpdate(IEntity owner, float timeSlice)
@@ -115,7 +99,7 @@ class SCR_EditableCommentComponent : SCR_EditableEntityComponent
 		if (!src)
 			return;
 
-		if (!api.IsEntityVisible(genericOwner) || !api.IsEntityLayerVisible(src.GetSubScene(), src.GetLayerID()))
+		if (!api.IsEntityVisible(src) || !api.IsEntityLayerVisible(src.GetSubScene(), src.GetLayerID()))
 			return;
 
 		vector cameraTransform[4];
@@ -126,14 +110,14 @@ class SCR_EditableCommentComponent : SCR_EditableEntityComponent
 			return;
 
 		int colorBackground = 0x00000000;
-		if (api.IsEntitySelected(genericOwner))
+		if (api.IsEntitySelected(src))
 		{
 			colorBackground = ARGBF(1, 0, 0, 0);
 		}
 		else
 		{
 			//--- Draw only if near when not selected
-			if (vector.DistanceSq(pos, cameraTransform[3]) > _WB_DRAW_DISTANCE)
+			if (vector.DistanceSq(pos, cameraTransform[3]) > _WB_DRAW_DISTANCE_SQ)
 				return;
 		}
 

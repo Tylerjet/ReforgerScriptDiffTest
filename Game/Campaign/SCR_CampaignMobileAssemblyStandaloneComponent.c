@@ -1,9 +1,7 @@
-//------------------------------------------------------------------------------------------------
 class SCR_CampaignMobileAssemblyStandaloneComponentClass : ScriptComponentClass
 {
 }
 
-//------------------------------------------------------------------------------------------------
 class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 {
 	static ref ScriptInvokerVoid s_OnSpawnPointOwnerChanged = new ScriptInvokerVoid();
@@ -35,11 +33,7 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 	protected int m_iParentFaction = SCR_CampaignMilitaryBaseComponent.INVALID_FACTION_INDEX;
 
 	[RplProp()]
-	#ifndef AR_CAMPAIGN_TIMESTAMP
-	protected float m_fRespawnAvailableSince = float.MAX;
-	#else
 	protected WorldTimestamp m_fRespawnAvailableSince;
-	#endif
 	[RplProp()]
 	protected int m_iBasesCoveredByMHQOnly;
 
@@ -71,18 +65,6 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 		else
 		{
 			// Only update respawn cooldown if a load state has not been applied
-			#ifndef AR_CAMPAIGN_TIMESTAMP
-			if (GetGame().GetWorld().GetWorldTime() > 10000)
-			{
-				m_fRespawnAvailableSince = Replication.Time() + RESPAWN_COOLDOWN;
-				m_bCooldownDone = false;
-			}
-			else
-			{
-				m_fRespawnAvailableSince = Replication.Time();
-				m_bCooldownDone = true;
-			}
-			#else
 			ChimeraWorld world = GetGame().GetWorld();
 			if (world.GetWorldTime() > 10000)
 			{
@@ -94,7 +76,6 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 				m_fRespawnAvailableSince = world.GetServerTimestamp();
 				m_bCooldownDone = true;
 			}
-			#endif
 			Replication.BumpMe();
 		}
 
@@ -129,10 +110,11 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void UpdateBasesInRadioRange()
 	{
 		array<SCR_MilitaryBaseComponent> bases = {};
-		SCR_MilitaryBaseManager.GetInstance().GetBases(bases);
+		SCR_MilitaryBaseSystem.GetInstance().GetBases(bases);
 
 		int radioRange = m_iRadioRange * m_iRadioRange;	// We're checking square distance
 		vector truckPosition = GetOwner().GetOrigin();
@@ -156,12 +138,17 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] base
+	//! \return
 	bool CanReachByRadio(notnull SCR_CampaignMilitaryBaseComponent base)
 	{
 		return m_aBasesInRadioRange.Contains(base);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] icon
+	//! \param[in] hovering
 	void OnIconHovered(SCR_CampaignMapUIBase icon, bool hovering)
 	{
 		m_bIsHovered = hovering;
@@ -176,6 +163,8 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] link
 	void ColorMapLink(notnull MapLink link)
 	{
 		if (!m_ParentFaction)
@@ -193,7 +182,7 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 
 		props.SetLineWidth(hq.GetLineWidth());
 
-		Color c = props.GetLineColor();
+		Color c = Color.FromInt(props.GetLineColor().PackToInt());
 
 		if (!c)
 			return;
@@ -247,6 +236,8 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] link
 	void AddMapLink(notnull MapLink link)
 	{
 		m_aMapLinks.Insert(link);
@@ -259,18 +250,21 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] vehicle
 	void SetVehicle(IEntity vehicle)
 	{
 		m_Vehicle = vehicle;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	IEntity GetVehicle()
 	{
 		return m_Vehicle;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] factionID
 	void SetParentFactionID(int factionID)
 	{
 		m_iParentFaction = factionID;
@@ -339,36 +333,43 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetParentFactionID()
 	{
 		return m_iParentFaction;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_CampaignFaction GetParentFaction()
 	{
 		return m_ParentFaction;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_CampaignFaction GetFaction()
 	{
 		return m_Faction;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[out] basesInRange
+	//! \return
 	int GetBasesInRange(notnull out array<SCR_CampaignMilitaryBaseComponent> basesInRange)
 	{
 		return basesInRange.Copy(m_aBasesInRadioRange);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] range
 	void SetRadioRange(int range)
 	{
 		m_iRadioRange = range;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetRadioRange()
 	{
 		return m_iRadioRange;
@@ -396,31 +397,36 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsInRadioRange()
 	{
 		return m_bIsInRadioRange;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	MapItem GetMapItem()
 	{
 		return m_MapItem;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void SetCountOfExclusivelyLinkedBases(int cnt)
+	//! \param[in] count
+	void SetCountOfExclusivelyLinkedBases(int count)
 	{
-		m_iBasesCoveredByMHQOnly = cnt;
+		m_iBasesCoveredByMHQOnly = count;
 		Replication.BumpMe();
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetCountOfExclusivelyLinkedBases()
 	{
 		return m_iBasesCoveredByMHQOnly;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void UpdateRadioCoverage()
 	{
 		if (!m_ParentFaction)
@@ -478,6 +484,8 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] w
 	void UpdateRespawnCooldown(Widget w = null)
 	{
 		if (!m_ParentFaction)
@@ -497,12 +505,8 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 			respawnImg.LoadImageFromSet(0, imageset, "RespawnBig");
 		}
 
-		#ifndef AR_CAMPAIGN_TIMESTAMP
-		if (m_fRespawnAvailableSince > Replication.Time())
-		#else
 		ChimeraWorld world = GetOwner().GetWorld();
 		if (m_fRespawnAvailableSince.Greater(world.GetServerTimestamp()))
-		#endif
 		{
 			if (m_bCooldownDone)
 				m_bCooldownDone = false;
@@ -516,11 +520,7 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 					respawn.SetVisible(true);
 					respawnImg.SetVisible(true);
 
-					#ifndef AR_CAMPAIGN_TIMESTAMP
-					float respawnCooldown = Math.Ceil((m_fRespawnAvailableSince - Replication.Time()) * 0.001);
-					#else
 					float respawnCooldown = Math.Ceil(m_fRespawnAvailableSince.DiffMilliseconds(world.GetServerTimestamp()) * 0.001);
-					#endif
 					int d, h, m, s;
 					string sStr;
 					SCR_DateTimeHelper.GetDayHourMinuteSecondFromSeconds(respawnCooldown, d, h, m, s);

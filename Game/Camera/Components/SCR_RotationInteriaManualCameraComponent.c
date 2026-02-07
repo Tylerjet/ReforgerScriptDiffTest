@@ -1,21 +1,19 @@
 //#define INERTIA_DEBUG
 
-[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
-/** @ingroup ManualCamera
-*/
+//! @ingroup ManualCamera
 
-/*!
-Inertia applied on camera rotation
-*/
+//! Inertia applied on camera rotation
+[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
 class SCR_RotationInertiaManualCameraComponent : SCR_BaseManualCameraComponent
 {
-	const float INERTIA_THRESHOLD = 0.0002; //--- Squared value
+	protected static const float INERTIA_THRESHOLD = 0.0002; //--- Squared value
 	
 	[Attribute(defvalue: "0.03", desc: "Inertia strength. Larger values mean more inertia.")]
 	private float m_fInertiaStrength;
 	
 	private vector m_vRotDelta;
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraFrame(SCR_ManualCameraParam param)
 	{
 		//--- Terminate when target rotation was achieved
@@ -39,31 +37,11 @@ class SCR_RotationInertiaManualCameraComponent : SCR_BaseManualCameraComponent
 		param.rotDelta = m_vRotDelta;
 		param.isDirty = true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool EOnCameraInit()
 	{
 		m_fInertiaStrength = 1 / Math.Max(m_fInertiaStrength, 0.001);
 		return true;
 	}
-};
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+}

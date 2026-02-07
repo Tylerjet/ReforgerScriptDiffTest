@@ -1,10 +1,8 @@
-//------------------------------------------------------------------------------------------------
 [EntityEditorProps(category: "GameScripted/DataCollection", description: "Data Collector client cheat menu")]
 class SCR_DataCollectorDiagComponentClass : ScriptComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_DataCollectorDiagComponent : ScriptComponent
 {
 #ifdef ENABLE_DIAG

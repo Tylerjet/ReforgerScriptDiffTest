@@ -23,7 +23,7 @@ class SightsComponent : BaseSightsComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Applies the given recoil angles to the camera transform according to the type of sight
-	//! By default this method is empty. It should be overriden by each sight to make the appropriate adjustments
+	//! By default this method is empty. It should be overridden by each sight to make the appropriate adjustments
 	void ApplyRecoilToCamera(inout vector pOutCameraTransform[4], vector aimModAngles)
 	{
 	}
@@ -136,7 +136,7 @@ class SightsComponent : BaseSightsComponent
 		owner.SetWorldTransform(newChildTransformWS);
 		
 		
-		ref ZeroingGeneratedData data  = new ref ZeroingGeneratedData();
+		ref ZeroingGeneratedData data  = new ZeroingGeneratedData();
 		data.m_Offset = newParentTransformWS[3];
 		data.m_Offset[2] = -data.m_Offset[2];
 		vector yawPitchRoll = Math3D.MatrixToAngles(newParentTransformWS);

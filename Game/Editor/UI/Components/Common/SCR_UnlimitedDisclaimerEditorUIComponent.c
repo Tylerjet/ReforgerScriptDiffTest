@@ -1,5 +1,6 @@
-class SCR_UnlimitedDisclaimerEditorUIComponent: ScriptedWidgetComponent
+class SCR_UnlimitedDisclaimerEditorUIComponent : ScriptedWidgetComponent
 {
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
@@ -12,4 +13,4 @@ class SCR_UnlimitedDisclaimerEditorUIComponent: ScriptedWidgetComponent
 		
 		w.SetVisible(!settingsEntity.IsUnlimitedEditorLegal());
 	}
-};
+}

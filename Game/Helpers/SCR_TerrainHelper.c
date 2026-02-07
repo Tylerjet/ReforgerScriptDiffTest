@@ -58,7 +58,7 @@ class SCR_TerrainHelper
 	//------------------------------------------------------------------------------------------------
 	/*!
 	Get terrain normal vector on given position.
-	\param[inout] pos World position, its vertical axis will be modified to be the surface height
+	\param[in,out] pos World position, its vertical axis will be modified to be the surface height
 	\param world World to be checked (default world is used when undefined)
 	\param noUnderwater When true, sea surface will be used instead of seabed
 	\trace When defined, use this trace to check surface intersection (useful for setting custom trace flags or ignored entities)

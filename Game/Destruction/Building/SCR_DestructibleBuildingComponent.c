@@ -1,5 +1,4 @@
-//------------------------------------------------------------------------------------------------
-class SCR_DestructibleBuildingComponentClass : ScriptedDamageManagerComponentClass
+class SCR_DestructibleBuildingComponentClass : SCR_DamageManagerComponentClass
 {
 	[Attribute()]
 	ref array<ref SCR_TimedEffect> m_aEffects;
@@ -36,9 +35,8 @@ class SCR_DestructibleBuildingComponentClass : ScriptedDamageManagerComponentCla
 	
 	[Attribute(uiwidget: UIWidgets.Flags, enums: ParamEnumArray.FromEnum(SCR_EDestructionRotationEnum))]
 	SCR_EDestructionRotationEnum m_eAllowedRotations;
-};
+}
 
-//------------------------------------------------------------------------------------------------
 enum SCR_EDestructionRotationEnum
 {
 	NONE = 0,
@@ -47,7 +45,6 @@ enum SCR_EDestructionRotationEnum
 	ROTATION_Z = 4
 }
 
-//------------------------------------------------------------------------------------------------
 class SCR_BuildingDestructionCameraShakeProgress : SCR_NoisyCameraShakeProgress
 {
 	protected const float MAX_MULTIPLIER = 1.5;
@@ -78,25 +75,27 @@ class SCR_BuildingDestructionCameraShakeProgress : SCR_NoisyCameraShakeProgress
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] startOrigin
 	void SetStartOrigin(vector startOrigin)
 	{
 		m_vStartOrigin = startOrigin
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] curve
 	void SetCurve(Curve curve)
 	{
 		m_CameraShakeCurve = curve;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] sizeMultiplier
 	void SetSizeMultiplier(float sizeMultiplier)
 	{
 		m_fSizeMultiplier = sizeMultiplier;
 	}
 }
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
 class SCR_TimedDebris : SCR_TimedEffect
 {
@@ -141,6 +140,9 @@ class SCR_TimedDebris : SCR_TimedEffect
 	
 	//------------------------------------------------------------------------------------------------
 	//! Calculates the spawn tranformation matrix for the object
+	//! \param[in] owner
+	//! \param[out] outMat
+	//! \param[in] localCoords
 	void GetSpawnTransform(IEntity owner, out vector outMat[4], bool localCoords = false)
 	{
 		if (localCoords)
@@ -165,12 +167,16 @@ class SCR_TimedDebris : SCR_TimedEffect
 	
 	//------------------------------------------------------------------------------------------------
 	//! Spawns the object
+	//! \param[in] owner
+	//! \param[in] hitInfo
+	//! \param[in,out] data
 	override void ExecuteEffect(IEntity owner, SCR_HitInfo hitInfo, inout notnull SCR_BuildingDestructionData data)
 	{
 		int numModelPrefabs = 0;
 		if (m_ModelPrefabs)
 			numModelPrefabs = m_ModelPrefabs.Count();
 		
+		SCR_DestructionDamageManagerComponent destructionComponent;
 		for (int i = 0; i < numModelPrefabs; i++)
 		{
 			ResourceName prefabPath = m_ModelPrefabs[i];
@@ -185,7 +191,7 @@ class SCR_TimedDebris : SCR_TimedEffect
 			vector spawnMat[4];
 			GetSpawnTransform(owner, spawnMat);
 			
-			SCR_DestructionBaseComponent destructionComponent = SCR_DestructionBaseComponent.Cast(owner.FindComponent(SCR_DestructionBaseComponent));
+			destructionComponent = SCR_DestructionDamageManagerComponent.Cast(owner.FindComponent(SCR_DestructionDamageManagerComponent));
 			
 			float dmgSpeed = Math.Clamp(hitInfo.m_HitDamage * m_fDamageToImpulse / m_fMass, 0, m_fMaxDamageToSpeedMultiplier);
 			
@@ -200,7 +206,6 @@ class SCR_TimedDebris : SCR_TimedEffect
 	}
 }
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
 class SCR_TimedEffect : Managed
 {
@@ -232,9 +237,8 @@ class SCR_TimedEffect : Managed
 	void ExecuteEffect(IEntity owner, SCR_HitInfo hitInfo, inout notnull SCR_BuildingDestructionData data)
 	{
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
 class SCR_TimedSound : SCR_TimedEffect
 {
@@ -262,9 +266,8 @@ class SCR_TimedSound : SCR_TimedEffect
 		destructibleComponent.SetAudioSource(audioSource);
 		soundManagerEntity.PlayAudioSource(audioSource, data.m_vStartMatrix);
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
 class SCR_TimedPrefab : SCR_TimedEffect
 {
@@ -307,9 +310,8 @@ class SCR_TimedPrefab : SCR_TimedEffect
 		
 		data.m_aExcludeList.Insert(spawnedEntity);
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
 class SCR_TimedParticle : SCR_TimedEffect
 {
@@ -343,6 +345,8 @@ class SCR_TimedParticle : SCR_TimedEffect
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] emitter
+	//! \param[in,out] data
 	void SetParticleParams(ParticleEffectEntity emitter, inout notnull SCR_BuildingDestructionData data)
 	{
 		Particles particles = emitter.GetParticles();
@@ -355,16 +359,15 @@ class SCR_TimedParticle : SCR_TimedEffect
 		particles.MultParam(-1, EmitterParam.VELOCITY, Math.Clamp(data.m_fSizeMultiplier, 0.5, 2) * m_fParticlesMultiplier);
 		particles.MultParam(-1, EmitterParam.VELOCITY_RND, Math.Clamp(data.m_fSizeMultiplier, 0.5, 2) * m_fParticlesMultiplier);
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
-class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
+class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 {
 	// In project settings you can see the physics response indices & their interactions matrix
-	protected const int NO_COLLISION_RESPONSE_INDEX = 11;
-	protected const int MAX_CHECKS_PER_FRAME = 20;
-	protected const float BUILDING_SIZE = 5000;
-	protected const vector TRACE_DIRECTIONS[3] = {vector.Right, vector.Up, vector.Forward};
+	protected static const int NO_COLLISION_RESPONSE_INDEX = 11;
+	protected static const int MAX_CHECKS_PER_FRAME = 20;
+	protected static const float BUILDING_SIZE = 5000;
+	protected static const vector TRACE_DIRECTIONS[3] = { vector.Right, vector.Up, vector.Forward };
 	
 	private int m_iDataIndex = -1;
 	
@@ -400,7 +403,7 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Returns prefab data stored speed gradual multiplier
+	//! \return prefab data stored speed gradual multiplier
 	protected float GetSpeedGradualMultiplier()
 	{
 		return SCR_DestructibleBuildingComponentClass.Cast(GetComponentData(GetOwner())).m_fSinkingSpeedGradualMultiplier;
@@ -431,7 +434,7 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Returns prefab data stored speed
+	//! \return prefab data stored speed
 	protected float GetSpeed()
 	{
 		return SCR_DestructibleBuildingComponentClass.Cast(GetComponentData(GetOwner())).m_fSinkingSpeed;
@@ -444,7 +447,7 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Returns prefab data stored delay
+	//! \return prefab data stored delay
 	protected float GetDelay()
 	{
 		return SCR_DestructibleBuildingComponentClass.Cast(GetComponentData(GetOwner())).m_fDelay;
@@ -475,7 +478,7 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Returns pointer to prefab data stored array of effects, do not modify the array!
+	//! \return pointer to prefab data stored array of effects, do not modify the array!
 	protected array<ref SCR_TimedEffect> GetEffects()
 	{
 		return SCR_DestructibleBuildingComponentClass.Cast(GetComponentData(GetOwner())).m_aEffects;
@@ -488,6 +491,7 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 	}
 		
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] audioSource
 	void SetAudioSource(SCR_AudioSource audioSource)
 	{
 		SCR_BuildingDestructionData data = GetData();
@@ -509,6 +513,7 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_AudioSource GetAudioSource()
 	{
 		SCR_BuildingDestructionData data = GetData();
@@ -530,6 +535,7 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Called when damage state is changed
+	//! \param[in] state
 	protected override void OnDamageStateChanged(EDamageState state)
 	{
 		super.OnDamageStateChanged(state);
@@ -554,6 +560,7 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Used to do runtime synchronization of state
+	//! \param[in] seed
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void RPC_GoToDestroyedState(int seed)
 	{
@@ -566,6 +573,7 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Handles destruction of interior by gathering objects using AABB (will probably use OBB) and deleting them according to their type
+	//! \param[in] immediate
 	protected void DestroyInteriorInit(bool immediate)
 	{
 		SCR_BuildingDestructionData data = GetData();
@@ -588,6 +596,7 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 	
 	//------------------------------------------------------------------------------------------------
 	// Uses data queried by DestroyInteriorInit method
+	// \param[in] immediate
 	protected void DestroyInterior(bool immediate)
 	{
 		SCR_BuildingDestructionData data = GetData();
@@ -597,7 +606,7 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 		int count = data.m_aQueriedEntities.Count();
 		int i = count - 1;
 		SCR_DestructibleEntity destructibleEntity;
-		SCR_DestructionBaseComponent destructionComponent;
+		SCR_DestructionDamageManagerComponent destructionComponent;
 		vector hitPosDirNorm[3];
 		RplComponent rplComponent;
 		IEntity childEntity;
@@ -661,7 +670,7 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 			}*/
 			
 			destructibleEntity = SCR_DestructibleEntity.Cast(data.m_aQueriedEntities[i]);
-			destructionComponent = SCR_DestructionBaseComponent.Cast(data.m_aQueriedEntities[i].FindComponent(SCR_DestructionBaseComponent));
+			destructionComponent = SCR_DestructionDamageManagerComponent.Cast(data.m_aQueriedEntities[i].FindComponent(SCR_DestructionDamageManagerComponent));
 			
 			// Non-destructible object, just delete it later, so destruction happens on frame
 			if (!destructibleEntity && !destructionComponent)
@@ -719,6 +728,7 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Checks whether or not an entity is inside of the building, using a trace in each world axis
+	//! \param[in] entity
 	protected bool IsInside(notnull IEntity entity)
 	{
 		IEntity owner = GetOwner();
@@ -748,6 +758,9 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Filters out unwanted entities
+	//! \param[in] e
+	//! \param[in] start
+	//! \param[in] dir
 	protected bool TraceFilter(notnull IEntity e, vector start = "0 0 0", vector dir = "0 0 0")
 	{
 		return e == GetOwner();
@@ -755,6 +768,7 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Used by Query in DestroyInterior
+	//! \param[in] e
 	protected bool AddEntityCallback(IEntity e)
 	{
 		SCR_BuildingDestructionData data = GetData();
@@ -788,7 +802,10 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 			
 			DamageManagerComponent damageManager = DamageManagerComponent.Cast(e.FindComponent(DamageManagerComponent));
 			if (damageManager)
-				damageManager.HandleDamage(EDamageType.TRUE, 100000, hitPosDirNorm, e, null, null, null, -1, -1);
+			{
+				SCR_DamageContext damageContext = new SCR_DamageContext(EDamageType.TRUE, 100000, hitPosDirNorm, e, null, null, null, -1, -1);
+				damageManager.HandleDamage(damageContext);
+			}
 			
 			return true;
 		}
@@ -806,6 +823,7 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void GoToDestroyedStateLoad()
 	{
 		StoreNavmeshData();
@@ -813,6 +831,7 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void CalculateAndStoreVolume()
 	{
 		SCR_BuildingDestructionData data = GetData();
@@ -826,10 +845,7 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 		float y = Math.AbsFloat(mins[1]) + maxs[1];
 		float z = Math.AbsFloat(mins[2]) + maxs[2];
 		
-		float buildingVolume = x * y * z;
-		
-		data.m_fBuildingVolume = buildingVolume;
-		
+		data.m_fBuildingVolume = x * y * z;
 		data.m_fSizeMultiplier = data.m_fBuildingVolume / BUILDING_SIZE; // BUILDING_SIZE constant is value for the average building size
 	}
 	
@@ -837,6 +853,7 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 	//! Destroys interior
 	//! Starts position lerping (Enables frame, activates the entity)
 	//! Or moves the building to target position immediately if it's JIP
+	//! \param[in] immediate
 	protected void GoToDestroyedState(bool immediate)
 	{
 		SCR_BuildingDestructionData data = GetData();
@@ -884,7 +901,9 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 	//------------------------------------------------------------------------------------------------
 	//! Called in Frame (while building is sinking)
 	//! Spawns effects which are supposed to spawn at this time
-	//! Immediate destruction = from JIP f. e., only spawn effects that remain after destruction - like ruins prefabs
+	//! \param[in] percentDone
+	//! \param[in] owner
+	//! \param[in] immediateDestruction from JIP, e.g only spawn effects that remain after destruction - like ruins prefabs
 	protected void SpawnEffects(float percentDone, IEntity owner, bool immediateDestruction)
 	{
 		SCR_BuildingDestructionData data = GetData();
@@ -931,6 +950,8 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 	//! Disables frame, deactivates the entity
 	//! Hides the mesh
 	//! Plays final effects
+	//! \param[in] owner
+	//! \param[in] immediate
 	protected void FinishLerp(IEntity owner, bool immediate)
 	{
 		owner.SetObject(null, ""); // Hide the building
@@ -1029,9 +1050,11 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 			bool allowRotationZ = GetAllowRotationZ();
 			
 			// Generate new random angles
-			vector newTargetAngles = Vector(data.m_RandomGenerator.RandFloatXY(5, 20) * allowRotationX * data.m_iRotationMultiplier + data.m_vStartAngles[0]
-											, data.m_RandomGenerator.RandFloatXY(5, 20) * allowRotationY * data.m_iRotationMultiplier + data.m_vStartAngles[1]
-											, data.m_RandomGenerator.RandFloatXY(5, 20) * allowRotationZ * data.m_iRotationMultiplier + data.m_vStartAngles[2]);
+			vector newTargetAngles = {
+				data.m_RandomGenerator.RandFloatXY(5, 20) * allowRotationX * data.m_iRotationMultiplier + data.m_vStartAngles[0],
+				data.m_RandomGenerator.RandFloatXY(5, 20) * allowRotationY * data.m_iRotationMultiplier + data.m_vStartAngles[1],
+				data.m_RandomGenerator.RandFloatXY(5, 20) * allowRotationZ * data.m_iRotationMultiplier + data.m_vStartAngles[2]
+			};
 			
 			// This ensures the rotation will always be going to the opposite side of the previous one
 			data.m_iRotationMultiplier *= -1;
@@ -1106,6 +1129,8 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 	//------------------------------------------------------------------------------------------------
 	//! Handles position lerping
 	//! Handles calling SpawnEffects, calculates percentDone parameter
+	//! \param[in] owner
+	//! \param[in] timeSlice
 	protected void LerpPosition(IEntity owner, float timeSlice)
 	{
 		SCR_BuildingDestructionData data = GetData();
@@ -1136,6 +1161,7 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Serializes state over network
+	//! \param[in] writer
 	protected override event bool OnRplSave(ScriptBitWriter writer)
 	{
 		super.OnRplSave(writer);
@@ -1147,6 +1173,7 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Loads serialized state on client
+	//! \param[in] reader
 	protected override event bool OnRplLoad(ScriptBitReader reader)
 	{
 		super.OnRplLoad(reader);
@@ -1165,6 +1192,9 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Contact to deal damage
+	//! \param[in] owner
+	//! \param[in] other
+	//! \param[in] contact
 	override bool OnContact(IEntity owner, IEntity other, Contact contact)
 	{
 		if (IsProxy())
@@ -1209,13 +1239,16 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 		float damage = momentum * 0.05; // Todo replace with attribute
 		
 		// Send damage to damage handling
-		HandleDamage(EDamageType.COLLISION, damage, outMat, GetOwner(), null, Instigator.CreateInstigator(other), null, -1, -1);
+		SCR_DamageContext damageContext = new SCR_DamageContext(EDamageType.COLLISION, damage, outMat, GetOwner(), null, Instigator.CreateInstigator(other), null, -1, -1);
+		HandleDamage(damageContext);
 		
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Handles per-frame operations, only enabled while the building is sinking
+	//! \param[in] owner
+	//! \param[in] timeSlice
 	protected override void OnFrame(IEntity owner, float timeSlice)
 	{
 		LerpPosition(owner, timeSlice);
@@ -1252,6 +1285,7 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 	}
 #endif
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetBuildingId()
 	{
 		SCR_DestructibleBuildingEntity ent = SCR_DestructibleBuildingEntity.Cast(GetOwner());
@@ -1262,6 +1296,10 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_DestructibleBuildingComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 #ifdef BUILDING_DESTRUCTION_SAVING
@@ -1277,6 +1315,7 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_DestructibleBuildingComponent()
 	{
 #ifdef BUILDING_DESTRUCTION_SAVING
@@ -1285,10 +1324,10 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Returns true if local instance is proxy (not the authority)
+	//! \return true if local instance is proxy (not the authority)
 	protected bool IsProxy()
 	{
 		RplComponent rplComponent = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
 		return rplComponent && rplComponent.IsProxy();
 	}
-};
+}

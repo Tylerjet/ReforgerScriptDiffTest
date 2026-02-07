@@ -21,7 +21,7 @@ class SCR_DeathScreenEffect : SCR_BaseScreenEffect
 	
 	// Character
 	protected ChimeraCharacter						m_pCharacterEntity;
-	protected ScriptedHitZone 						m_pHeadHitZone;
+	protected SCR_HitZone 						m_pHeadHitZone;
 	protected SCR_CharacterDamageManagerComponent   m_pDamageManager;
 	
 
@@ -52,7 +52,7 @@ class SCR_DeathScreenEffect : SCR_BaseScreenEffect
 			return;
 		
 		// Invoker for momentary damage events and DOT damage events
-		m_pHeadHitZone = ScriptedHitZone.Cast(m_pDamageManager.GetHeadHitZone());
+		m_pHeadHitZone = SCR_HitZone.Cast(m_pDamageManager.GetHeadHitZone());
 		
 		if (m_pHeadHitZone)
 			m_pHeadHitZone.GetOnDamageStateChanged().Insert(InstaDeathEffect);

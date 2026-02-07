@@ -13,13 +13,17 @@ class SCR_BuildingTutorialStage18 : SCR_BaseCampaignTutorialArlandStage
 		RegisterWaypoint("TeleportRadio2");
 		m_fWaypointCompletionRadius = 5;
 		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
-		
 		m_Base = GetGame().GetWorld().FindEntityByName("TownBaseFarm");
 		if (!m_Base)
 			return;
 		
 		GetGame().GetCallqueue().CallLater(CheckVicinity, 1000, true);
+		
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("Building_Congrats");
+		HintOnVoiceOver();
+		
 		m_TutorialComponent.SetStagesComplete(8, true);
 	}
 	

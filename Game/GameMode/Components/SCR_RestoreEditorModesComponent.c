@@ -8,9 +8,9 @@ class SCR_RestoreEditorModesComponent : SCR_BaseGameModeComponent
 	[Attribute(desc: "When enabled, the system will remember and restore also modes of limited editor managers (e.g., those with only PHOTO mode, not EDIT).")]
 	protected bool m_bRestoreLimitedEditors;
 	
-	protected string GAME_SESSION_STORAGE_MODES = "SCR_RestoreEditorModesComponent_ModesMap";
-	protected string DELIMITER_PLAYERS = " ";
-	protected string DELIMITER_VALUES = ":";
+	protected static const string GAME_SESSION_STORAGE_MODES = "SCR_RestoreEditorModesComponent_ModesMap";
+	protected static const string DELIMITER_PLAYERS = " ";
+	protected static const string DELIMITER_VALUES = ":";
 	
 	protected ref map<string, EEditorMode> m_mModes = new map<string, EEditorMode>();
 	
@@ -22,7 +22,7 @@ class SCR_RestoreEditorModesComponent : SCR_BaseGameModeComponent
 		EEditorMode modes;
 		if (m_mModes.Find(playerUID, modes))
 		{
-			PrintFormat("SCR_RestoreEditorModesComponent: Restoring editor modes %1 for playerId=%2 ('%3')", SCR_Enum.FlagsToString(EEditorMode, modes), playerID, GetGame().GetPlayerManager().GetPlayerName(playerID));
+			Print(string.Format("SCR_RestoreEditorModesComponent: Restoring editor modes %1 for playerId=%2 ('%3')", SCR_Enum.FlagsToString(EEditorMode, modes), playerID, GetGame().GetPlayerManager().GetPlayerName(playerID)), LogLevel.NORMAL);
 			editorManager.AddEditorModes(EEditorModeAccess.BASE, modes);
 		}
 	}

@@ -13,7 +13,7 @@ class SCR_LightManagerInfo : SCR_BaseVehicleInfo
 	protected BaseLightSlot m_LightSlot;
 	protected ref ScriptInvoker m_OnLightStateChanged;
 
-	protected bool m_bIsLit = true;		// Used for directional/hazard lights that blink
+	protected bool m_bIsLit = true;		//!< Used for directional/hazard lights that blink
 
 	//------------------------------------------------------------------------------------------------
 	//! Can be overridden to get state of actual system or linked to an event
@@ -89,6 +89,7 @@ class SCR_LightManagerInfo : SCR_BaseVehicleInfo
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param state
 	void OnLightStateChanged(bool state)
 	{
 		m_bIsLit = state;
@@ -106,4 +107,4 @@ class SCR_LightManagerInfo : SCR_BaseVehicleInfo
 
 		m_LightManager = BaseLightManagerComponent.Cast(owner.FindComponent(BaseLightManagerComponent));
 	}
-};
+}

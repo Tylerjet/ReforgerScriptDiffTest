@@ -55,6 +55,11 @@ class SCR_AIFindTagetToLookAt: AITaskScripted
 		
 		//Print(string.Format("SCR_AIFindTagetToLookAt: Returning target: %1", outTarget));
 		
+		// Temporary fix to not look at disarmed (unconscious) targets
+		// Ideally it should be handled through GetClosestTarget call
+		if (outTarget && outTarget.IsDisarmed())
+			outTarget = null;
+		
 		SetVariableOut(PORT_BASE_TARGET, outTarget);
 		
 		#ifdef WORKBENCH

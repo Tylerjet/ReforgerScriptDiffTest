@@ -407,7 +407,8 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 			IEntitySource groupMemberSource;
 			for (int i = 0; i < groupSize; i++)
 			{
-				groupMemberSource = SCR_BaseContainerTools.FindEntitySource(Resource.Load(groupPrefabs[i]));
+				Resource resource = Resource.Load(groupPrefabs[i]);
+				groupMemberSource = SCR_BaseContainerTools.FindEntitySource(resource);
 				groupMemberEntry = new SCR_BasePreviewEntry(true);
 				groupMemberEntry.m_vPosition = groupOffsets[i];
 				GetPreviewEntries(groupMemberSource, outEntries, parentID, groupMemberEntry);
@@ -429,7 +430,12 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 		if (!slotPrefab)
 			return;
 		
-		IEntitySource entitySource = SCR_BaseContainerTools.FindEntitySource(Resource.Load(slotPrefab));
+		//Don't show supply boxes at vehicle previews
+		if (slotSource.GetName().Contains("SupplyStorage"))
+			return;
+		
+		Resource resource = Resource.Load(slotPrefab);
+		IEntitySource entitySource = SCR_BaseContainerTools.FindEntitySource(resource);
 		if (!entitySource)
 			return;
 		
@@ -442,7 +448,8 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 	}
 	protected static void GetPreviewEntriesFromLink(SCR_EditorLinkEntry link, out notnull array<ref SCR_BasePreviewEntry> outEntries, int parentID = -1, float parentScale = 1)
 	{
-		IEntitySource entitySource = SCR_BaseContainerTools.FindEntitySource(Resource.Load(link.m_Prefab));
+		Resource resource = Resource.Load(link.m_Prefab);
+		IEntitySource entitySource = SCR_BaseContainerTools.FindEntitySource(resource);
 		if (!entitySource)
 			return;
 		
@@ -481,7 +488,7 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 			else
 				parent = children[entry.m_iParentID];
 			
-			child = api.EntityToSource(api.CreateEntity(className, "", 0, parent, entry.m_vPosition, entry.m_vAngles));
+			child = api.CreateEntity(className, "", 0, parent, entry.m_vPosition, entry.m_vAngles);
 			children.Insert(child);
 			
 			child.Set("scale", entry.GetScale());
@@ -507,8 +514,15 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 			{
 				component = api.CreateComponent(child, "MeshObject");
 				api.SetVariableValue(child, {ContainerIdPathEntry("MeshObject")}, "Object", entry.m_Mesh);
-				
-				VObject mesh = Resource.Load(entry.m_Mesh).GetResource().ToVObject();
+
+				Resource resource = Resource.Load(entry.m_Mesh);
+				if (!resource.IsValid())
+				{
+					Print("Cannot load " + entry.m_Mesh + " | " + FilePath.StripPath(__FILE__) + ":" + __LINE__, LogLevel.WARNING);
+					return;
+				}
+
+				VObject mesh = resource.GetResource().ToVObject();
 				string materials[256];
 				for (int m = 0, materialsCount = mesh.GetMaterials(materials); m < materialsCount; m++)
 				{
@@ -520,7 +534,7 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 		}
 		
 		IEntitySource previewSource = children[0];
-		api.SetVariableValue(previewSource, {}, "m_SourcePrefab", basePrefab);
+		api.SetVariableValue(previewSource, null, "m_SourcePrefab", basePrefab);
 		
 		//--- Save to file
 		ResourceName prefab = SCR_BaseContainerTools.GetPrefabResourceName(api.EntityToSource(this));
@@ -528,7 +542,7 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 		Workbench.GetAbsolutePath(prefab.GetPath(), absolutePath);
 		api.CreateEntityTemplate(previewSource, absolutePath);
 		
-		api.DeleteEntity(api.SourceToEntity(previewSource));
+		api.DeleteEntity(previewSource);
 	}
 	
 	override void _WB_OnContextMenu(int id)

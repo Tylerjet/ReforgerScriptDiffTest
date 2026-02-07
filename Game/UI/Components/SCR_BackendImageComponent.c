@@ -2,24 +2,24 @@
 //#define BACKEND_IMAGE_DEBUG
 
 //! This abstract component handles loading of backend images and also manages the loading overlay while image is loading.
-class SCR_BackendImageComponentBase : ScriptedWidgetComponent
+class SCR_BackendImageComponentBase : SCR_ScriptedWidgetComponent
 {	
 	// Attributes
-	// We must rely on this coefficient since Widget.GetScreenSize() is not reliable in several cases and might return 0.
-	[Attribute("1.0", UIWidgets.EditBox, "Coefficient which will be used to estimate target widget size. To calculate it, use ration of image width and screen width in Full HD resolution.")]
-	protected float m_iScreenSizeCoefficient;
-	
 	[Attribute("", UIWidgets.ResourceNamePicker, desc: "Image used as fallback for addon image", params: "edds")]
 	protected ResourceName m_sFallbackImage;
 	
 	// Other
 	protected ref BackendImage m_BackendImage;
 	protected ref SCR_WorkshopItemCallback_DownloadImage m_DownloadImageCallback;
-	protected int m_iPreferedWidth; // Used only for debugging
-	protected int m_iScreenWidth; // Used only for debugging
-	
-	protected ref ScriptInvoker<> Event_OnImageSelected;
 
+	protected bool m_bIsWaitingForWidgetInit;
+	protected int m_iPreferredWidth;	
+	
+	// Debugging
+	protected int m_iScreenWidth;
+	
+	protected ref ScriptInvokerVoid Event_OnImageSelected;
+	
 	//------------------------------------------------------------------------------------------------
 	protected void InvokeEventOnImageSelected()
 	{
@@ -28,10 +28,10 @@ class SCR_BackendImageComponentBase : ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetEventOnImageSelected()
+	ScriptInvokerVoid GetEventOnImageSelected()
 	{
 		if (!Event_OnImageSelected)
-			Event_OnImageSelected = new ScriptInvoker();
+			Event_OnImageSelected = new ScriptInvokerVoid();
 
 		return Event_OnImageSelected;
 	}
@@ -40,20 +40,6 @@ class SCR_BackendImageComponentBase : ScriptedWidgetComponent
 	//! image can be null
 	void SetImage(BackendImage image)
 	{
-		Widget wImageSize = GetImageSizeWidget();
-		if (!wImageSize) // Makes no sense
-		{
-			#ifdef BACKEND_IMAGE_DEBUG
-			ShowDebugText("Error");
-			#endif
-			return;
-		}
-			
-		// Get widget size instantly, related variables might be needed for debug text
-		float fPreferedWidth, fHeight;
-		wImageSize.GetScreenSize(fPreferedWidth, fHeight);
-		m_iScreenWidth = Math.Round(fPreferedWidth); // Store for debugging
-		
 		bool showDefaultImage = true;
 		if (image)
 		{
@@ -64,49 +50,73 @@ class SCR_BackendImageComponentBase : ScriptedWidgetComponent
 		if (showDefaultImage)
 		{
 			ShowDefaultImage();
-			m_iPreferedWidth = 0;
+			m_iPreferredWidth = 0;
 			#ifdef BACKEND_IMAGE_DEBUG
 			ShowDebugText("Image unavailable\nShowing default image");
 			#endif
 			return;
 		}
-		
-		// Ignore if called many times with same image
-		//if (image == m_BackendImage)
-		//	return;
-		
+	
 		m_BackendImage = image;
-		
-		// Sometimes widget can report its size as 0, ensure that we request non-zero size image.
-		int preferedWidth = Math.Round(fPreferedWidth);
-		if (preferedWidth == 0)
-		{			
-			int referenceScreenWidth, referenceScreenHeight;
-			WidgetManager.GetReferenceScreenSize(referenceScreenWidth, referenceScreenHeight);
-			float referenceScreenRatio = referenceScreenWidth / referenceScreenHeight;
 			
-			float fScreenWidth, fScreenHeight;
-			GetGame().GetWorkspace().GetScreenSize(fScreenWidth, fScreenHeight);
-			if (fScreenWidth == 0 || fScreenHeight == 0) // This is next to impossible, but who knows . . .
-			{  
-				fScreenWidth = referenceScreenWidth;
-				fScreenHeight = referenceScreenHeight;
+		CheckWidgetInitialized();
+	}
+	
+	//----------------------------------------------------------------------------------
+	protected void CheckWidgetInitialized()
+	{
+		Widget wImageSize = GetImageSizeWidget();
+		if (!wImageSize) // Makes no sense
+		{
+			#ifdef BACKEND_IMAGE_DEBUG
+			ShowDebugText("SCR_BackendImageComponent - IsWidgetReady() - no image size widget!");
+			#endif
+			return;
+		}
+			
+		// Get widget size instantly, related variables might be needed for debug text
+		float fWidth, fHeight;
+		wImageSize.GetScreenSize(fWidth, fHeight);
+		
+		m_iScreenWidth = Math.Round(fWidth); // Store for debugging
+		
+		// Wait untill the parent widget has been initialized
+		int preferredWidth = Math.Round(fWidth);
+		if (preferredWidth == 0)
+		{
+			#ifdef BACKEND_IMAGE_WIDGET_DEBUG
+			Debug.Error(string.Format("SCR_BackendImageComponent - IsWidgetReady() - widget has no size: %1 | %2", m_wRoot, m_wRoot.GetName()));
+			#endif
+			
+			if (!m_bIsWaitingForWidgetInit)
+			{				
+				ShowLoadingImage(string.Empty);
+				GetGame().GetCallqueue().CallLater(CheckWidgetInitialized, 0, true);
+				
+				m_bIsWaitingForWidgetInit = true;
 			}
 			
-			if (fScreenWidth/fScreenHeight > referenceScreenRatio)
-				fScreenWidth = referenceScreenRatio * fScreenHeight;
-			
-			preferedWidth = Math.Ceil(m_iScreenSizeCoefficient * fScreenWidth);
+			return;
 		}
 		
-		m_iPreferedWidth = preferedWidth; // Store for debug text
-		auto backend = GetGame().GetBackendApi();
+		GetGame().GetCallqueue().Remove(CheckWidgetInitialized);
+		
+		m_iPreferredWidth = preferredWidth;
+		
+		m_bIsWaitingForWidgetInit = false;
+		
+		SetImage_Internal();
+	}
+	
+	//----------------------------------------------------------------------------------
+	protected void SetImage_Internal()
+	{	
+		BackendApi backend = GetGame().GetBackendApi();
 		bool connected = backend.IsActive() && backend.IsAuthenticated();		
 		if (connected)
 		{
 			// We are connected, download image
-			
-			ImageScale imageScale = m_BackendImage.GetScale(preferedWidth);
+			ImageScale imageScale = m_BackendImage.GetScale(m_iPreferredWidth);
 			
 			// Discard the old callback
 			// We must unsubscribe from events of previous callback, because it still might get called
@@ -128,7 +138,7 @@ class SCR_BackendImageComponentBase : ScriptedWidgetComponent
 			if (downloadStarted)
 			{
 				// While we are downloading, try to get a smaller local scale
-				ImageScale localImageScale = m_BackendImage.GetLocalScale(preferedWidth);
+				ImageScale localImageScale = m_BackendImage.GetLocalScale(m_iPreferredWidth);
 				if (localImageScale)
 				{
 					if (!localImageScale.Path().IsEmpty())
@@ -163,7 +173,7 @@ class SCR_BackendImageComponentBase : ScriptedWidgetComponent
 		else
 		{
 			// No connection, try to use local image
-			ImageScale localImageScale = m_BackendImage.GetLocalScale(preferedWidth);
+			ImageScale localImageScale = m_BackendImage.GetLocalScale(m_iPreferredWidth);
 			if (localImageScale)
 			{
 				string imagePath = localImageScale.Path();
@@ -189,6 +199,7 @@ class SCR_BackendImageComponentBase : ScriptedWidgetComponent
 		if (callback.m_Scale)
 		{
 			string imgPath = callback.m_Scale.Path();
+
 			if (!imgPath.IsEmpty())
 			{
 				ShowImage(imgPath);
@@ -211,7 +222,7 @@ class SCR_BackendImageComponentBase : ScriptedWidgetComponent
 	protected void ShowImage(string imagePath);				// Must display provided image
 	protected Widget GetImageSizeWidget();					// Must return widget which wraps image widget. It will be used for size measurement.
 	protected void ShowDebugText(string txt);				// Should implement visualization of debug text
-};
+}
 
 //! This component implements basic image and loading overlay handling
 //! m_sImageWidgetName must be an Image Widget
@@ -237,17 +248,10 @@ class SCR_BackendImageComponent : SCR_BackendImageComponentBase
 	protected ImageWidget m_wImage;
 	protected Widget m_wImageSize;
 	protected SCR_LoadingOverlay m_LoadingOverlay;
-	protected Widget m_wRoot;
 	protected TextWidget m_wDebugText;
 	
 	//----------------------------------------------------------------------------------
-	Widget GetRootWidget() 
-	{
-		return m_wRoot; 
-	}
-	
-	//----------------------------------------------------------------------------------
-	protected override void ShowLoadingImage(string fallbackImage)
+	override void ShowLoadingImage(string fallbackImage)
 	{
 		if (!m_wImage)
 			return;
@@ -263,7 +267,7 @@ class SCR_BackendImageComponent : SCR_BackendImageComponentBase
 	
 	//----------------------------------------------------------------------------------
 	//! By default it hides image widget
-	protected override void ShowDefaultImage()
+	override void ShowDefaultImage()
 	{
 		if (!m_wImage)
 			return;
@@ -277,7 +281,7 @@ class SCR_BackendImageComponent : SCR_BackendImageComponentBase
 	}
 	
 	//----------------------------------------------------------------------------------
-	protected override void ShowImage(string imagePath)
+	override void ShowImage(string imagePath)
 	{
 		if (!m_wImage)
 			return;
@@ -303,17 +307,15 @@ class SCR_BackendImageComponent : SCR_BackendImageComponentBase
 	}
 	
 	//----------------------------------------------------------------------------------
-	protected override Widget GetImageSizeWidget()
+	override Widget GetImageSizeWidget()
 	{
 		return m_wImageSize;
 	}
 	
 	//----------------------------------------------------------------------------------
-	protected override void HandlerAttached(Widget w)
+	override void HandlerAttached(Widget w)
 	{
 		super.HandlerAttached(w);
-		
-		m_wRoot = w;
 		
 		if (!m_sImageWidgetName.IsEmpty())
 			m_wImage = ImageWidget.Cast(w.FindAnyWidget(m_sImageWidgetName));
@@ -348,16 +350,16 @@ class SCR_BackendImageComponent : SCR_BackendImageComponentBase
 	}
 	
 	//----------------------------------------------------------------------------------
-	override protected void ShowDebugText(string txt)
+	override void ShowDebugText(string txt)
 	{
 		if (!m_wDebugText)
 			return;
 		
 		string commotDebugData;
 		
-		if (m_iPreferedWidth != 0)
+		if (m_iPreferredWidth != 0)
 			commotDebugData = string.Format("Widget Screen Width: %1\nPrefered Width: %2\nScales in Backend:\n%3",
-				m_iScreenWidth, m_iPreferedWidth, FormatAvailableScales());
+				m_iScreenWidth, m_iPreferredWidth, FormatAvailableScales());
 		
 		m_wDebugText.SetText(commotDebugData + "\n" + txt);
 	}
@@ -394,4 +396,11 @@ class SCR_BackendImageComponent : SCR_BackendImageComponentBase
 		
 		return str;
 	}
-};
+	
+	//----------------------------------------------------------------------------------
+	void SetImageSaturation(float saturation)
+	{
+		if (m_wImage)
+			m_wImage.SetSaturation(saturation);
+	}
+}

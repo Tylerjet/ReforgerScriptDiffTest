@@ -5,7 +5,7 @@
 //! Inventory Storage UI Layout - Shows the storages slots on player ( backpack, ALICE, vest, etc )
 class SCR_InventoryWeaponSlotsUI : SCR_InventoryStorageBaseUI
 {	
-	protected ref array<WeaponSlotComponent> m_aWeaponSlots = new ref array<WeaponSlotComponent>(); ;
+	protected ref array<WeaponSlotComponent> m_aWeaponSlots = new array<WeaponSlotComponent>(); ;
 	protected EquipedWeaponStorageComponent m_weaponStorage;
 	
 	

@@ -1,8 +1,9 @@
 [EntityEditorProps(category: "GameScripted/GameMode", description: "")]
-class SCR_PlayerSpawnPointClass: SCR_SpawnPointClass
+class SCR_PlayerSpawnPointClass : SCR_SpawnPointClass
 {
-};
-class SCR_PlayerSpawnPoint: SCR_SpawnPoint
+}
+
+class SCR_PlayerSpawnPoint : SCR_SpawnPoint
 {
 	[Attribute("1", desc: "How often will the spawn's position be updated to match assigned player's position (in seconds).", category: "Player Spawn Point")]
 	protected float m_fUpdateInterval;
@@ -20,17 +21,16 @@ class SCR_PlayerSpawnPoint: SCR_SpawnPoint
 	protected IEntity m_TargetPlayer;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	IEntity GetTargetPlayer()
 	{
 		return m_TargetPlayer;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Assign player ID to this respawn point.
-	It will then present itself as the player, and spawning on it will actually spawn the new player on position of assignd player.
-	\param playerID Target player ID
-	*/
+	//! Assign player ID to this respawn point.
+	//! It will then present itself as the player, and spawning on it will actually spawn the new player on position of assignd player.
+	//! \param[in] playerID Target player ID
 	void SetPlayerID(int playerID)
 	{
 		if (playerID == m_iPlayerID || !Replication.IsServer())
@@ -49,10 +49,8 @@ class SCR_PlayerSpawnPoint: SCR_SpawnPoint
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get ID of the player this spawn point is assigned to.
-	\return Target player ID
-	*/
+	//! Get ID of the player this spawn point is assigned to.
+	//! \return Target player ID
 	int GetPlayerID()
 	{
 		return m_iPlayerID;
@@ -76,6 +74,9 @@ class SCR_PlayerSpawnPoint: SCR_SpawnPoint
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerId
+	//! \param[in] playerEntity
 	void EnablePoint(int playerId, IEntity playerEntity)
 	{
 		if (playerId != m_iPlayerID)
@@ -90,6 +91,8 @@ class SCR_PlayerSpawnPoint: SCR_SpawnPoint
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerId
 	void DisablePoint(int playerId)
 	{
 		if (playerId != m_iPlayerID)
@@ -218,8 +221,8 @@ class SCR_PlayerSpawnPoint: SCR_SpawnPoint
 	override bool PrepareSpawnedEntity_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data, IEntity entity)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::PrepareSpawnedEntity_S(playerId: %2, data: %3, entity: %4)", Type().ToString(),
-					requestComponent.GetPlayerId(),	data, entity);
+		Print(string.Format("%1::PrepareSpawnedEntity_S(playerId: %2, data: %3, entity: %4)", Type().ToString(),
+					requestComponent.GetPlayerId(), data, entity), LogLevel.NORMAL);
 		#endif
 		
 		//~ Check if can prepare spawn from super
@@ -244,8 +247,8 @@ class SCR_PlayerSpawnPoint: SCR_SpawnPoint
 	protected bool PrepareSpawnedEntityForVehicle_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data, IEntity entity, Vehicle vehicle)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::PrepareSpawnedEntityForVehicle_S(playerId: %2, data: %3, entity: %4, vehicle: %5)", Type().ToString(),
-					requestComponent.GetPlayerId(),	data, entity, vehicle);
+		Print(string.Format("%1::PrepareSpawnedEntityForVehicle_S(playerId: %2, data: %3, entity: %4, vehicle: %5)", Type().ToString(),
+					requestComponent.GetPlayerId(),	data, entity, vehicle), LogLevel.NORMAL);
 		#endif
 		
 		SCR_CompartmentAccessComponent accessComponent = SCR_CompartmentAccessComponent.Cast(entity.FindComponent(SCR_CompartmentAccessComponent));
@@ -283,8 +286,9 @@ class SCR_PlayerSpawnPoint: SCR_SpawnPoint
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_PlayerSpawnPoint()
 	{
 		GetGame().GetCallqueue().Remove(UpdateSpawnPos);
 	}
-};
+}

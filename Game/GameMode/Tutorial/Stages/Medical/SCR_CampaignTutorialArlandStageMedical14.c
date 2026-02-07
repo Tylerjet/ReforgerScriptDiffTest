@@ -13,9 +13,14 @@ class SCR_CampaignTutorialArlandStageMedical14: SCR_BaseCampaignTutorialArlandSt
 		m_fWaypointHeightOffset = 0.5;
 
 		RegisterWaypoint("Figurant");
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("FirstAid_BandageLeg");
+		HintOnVoiceOver();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override protected bool GetIsFinished()
 	{	
 		SCR_CharacterDamageManagerComponent damManager = m_TutorialComponent.GetVictimDamageManager();

@@ -91,7 +91,6 @@ class SCR_SettingsBindingBase
 	//------------------------------------------------------------------------------------------------
 	protected SCR_SpinBoxComponent InitSpinBox(SCR_WLibComponentBase comp, bool addEntryChangedEventHandler)
 	{
-
 		SCR_SpinBoxComponent spin = SCR_SpinBoxComponent.Cast(comp);
 		if (!spin)
 			return null;

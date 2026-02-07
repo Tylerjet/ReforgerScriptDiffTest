@@ -1,14 +1,11 @@
-//-----------------------------------------------------------------------------------------------------------
 [EntityEditorProps(category: "GameScripted/Mines", description: "Damage manager for land mines.")]
 class SCR_MineDamageManagerClass : SCR_DamageManagerComponentClass
 {
-	
-};
+}
 
-//-----------------------------------------------------------------------------------------------------------
 class SCR_MineDamageManager : SCR_DamageManagerComponent
 {
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	override event protected void OnDamageStateChanged(EDamageState state)
 	{
 		if (state != EDamageState.DESTROYED)
@@ -27,7 +24,8 @@ class SCR_MineDamageManager : SCR_DamageManagerComponent
 			ExplodeWrapper();
 	}
 	
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//!
 	void ExplodeWrapper()
 	{
 		IEntity owner = GetOwner();

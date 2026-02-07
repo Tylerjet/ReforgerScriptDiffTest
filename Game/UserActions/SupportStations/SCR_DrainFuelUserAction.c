@@ -131,8 +131,7 @@ class SCR_DrainFuelUserAction : SCR_BaseAudioScriptedUserAction
 		if (!uiInfo)
 			return false;
 		
-		float percentage = (m_FuelManager.GetTotalFuel() / m_FuelManager.GetTotalMaxFuel()) * 100;
-		string percentageString = (Math.Floor(percentage * 10) * 0.1).ToString();
+		string percentageString = SCR_FormatHelper.FloatToStringNoZeroDecimalEndings((m_FuelManager.GetTotalFuel() / m_FuelManager.GetTotalMaxFuel()) * 100, 1);
 		outName = WidgetManager.Translate(uiInfo.GetName(), percentageString);
 		return true;
 	}

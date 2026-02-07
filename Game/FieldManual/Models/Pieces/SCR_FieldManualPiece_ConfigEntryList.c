@@ -8,6 +8,7 @@ class SCR_FieldManualPiece_ConfigEntryList : SCR_FieldManualPiece
 	protected ResourceName m_Layout;
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_FieldManualPiece_ConfigEntryList()
 	{
 		if (!m_aConfigEntries) // can be config-provided
@@ -46,4 +47,4 @@ class SCR_FieldManualPiece_ConfigEntryList : SCR_FieldManualPiece
 			m_aConfigEntries[i].CreateWidget(configEntriesLayout);
 		}
 	}
-};
+}

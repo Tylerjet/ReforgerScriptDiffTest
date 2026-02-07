@@ -15,6 +15,9 @@ class InventoryStorageManagerComponent: GameComponent
 	//! Will iterate over storages and find if item can be inserted in first best match
 	proto external bool CanInsertItem(IEntity item, EStoragePurpose purpose = EStoragePurpose.PURPOSE_ANY);
 	proto external bool CanInsertItemInStorage(IEntity item, BaseInventoryStorageComponent storage, int slotID = -1);
+	//! Will iterate over storages and find if item can be inserted in first best match
+	proto external bool CanInsertResource(ResourceName resourceName, EStoragePurpose purpose = EStoragePurpose.PURPOSE_ANY);
+	proto external bool CanInsertResourceInStorage(ResourceName resourceName, BaseInventoryStorageComponent storage, int slotID = -1);
 	//! Will iterate over storages and try insert the item at first best match
 	proto external bool TryInsertItem(IEntity item, EStoragePurpose purpose = EStoragePurpose.PURPOSE_ANY, InventoryOperationCallback cb = null);
 	//! Will try to insert item at storage. If slotID -1 will try to insert in any free storage
@@ -43,8 +46,12 @@ class InventoryStorageManagerComponent: GameComponent
 	proto external bool Contains(IEntity item);
 	//! Will try to find suitable storage for item
 	proto external BaseInventoryStorageComponent FindStorageForItem(IEntity item, EStoragePurpose purpose = EStoragePurpose.PURPOSE_ANY);
+	//! Will try to find suitable storage for resource
+	proto external BaseInventoryStorageComponent FindStorageForResource(ResourceName resourceName, EStoragePurpose purpose = EStoragePurpose.PURPOSE_ANY);
 	//! returns first storage with empty space from provided storage hierarchy for provided item and provided storage purpose
 	proto external BaseInventoryStorageComponent FindStorageForInsert(IEntity item, BaseInventoryStorageComponent fromStorage, EStoragePurpose purpose = EStoragePurpose.PURPOSE_ANY);
+	//! returns first storage with empty space from provided storage hierarchy for provided resource and provided storage purpose
+	proto external BaseInventoryStorageComponent FindStorageForResourceInsert(ResourceName resourceName, BaseInventoryStorageComponent fromStorage, EStoragePurpose purpose = EStoragePurpose.PURPOSE_ANY);
 	//! Fast access to item count in inventory (returns only items that are stored in DEPOSIT storages)
 	proto external int GetDepositItemCountByEntity(IEntity entity);
 	//! Fast access to item count in inventory (returns only items that are stored in DEPOSIT storages)
@@ -95,6 +102,7 @@ class InventoryStorageManagerComponent: GameComponent
 	proto external IEntity FindItemWithComponents(array<typename> componentsQuery, EStoragePurpose purpose = EStoragePurpose.PURPOSE_DEPOSIT);
 	//! Find Items by specifying necessary component types (eg all Entities that contain all of the provided components), returns count of found items
 	proto external int FindItemsWithComponents(out notnull array<IEntity> foundItems, array<typename> componentsQuery, EStoragePurpose purpose = EStoragePurpose.PURPOSE_DEPOSIT);
+	proto external int CountItem(InventorySearchPredicate predicate, EStoragePurpose purpose = EStoragePurpose.PURPOSE_DEPOSIT);
 	//! Find Items by specifying necessary component types (eg all Entities that contain all of the provided components), returns count of found items
 	proto external int GetMagazineCountByWeapon(BaseWeaponComponent weapon);
 	//! Find Items by specifying necessary component types (eg all Entities that contain all of the provided components), returns count of found items

@@ -1,15 +1,17 @@
 class SCR_DeployInventoryItemRestrictedAction : SCR_DeployInventoryItemBaseAction
 {
 	//------------------------------------------------------------------------------------------------
-	override void OnActionStart(IEntity pUserEntity)
-	{
-		if (!m_DeployableItemComp || !m_RplComp || m_RplComp.IsProxy())
-			return;
-		
+	override bool CanBePerformedScript(IEntity user)
+ 	{
 		SCR_RestrictedDeployableSpawnPointComponent restrictedDeployableSpawnPointComp = SCR_RestrictedDeployableSpawnPointComponent.Cast(m_DeployableItemComp);
 		if (!restrictedDeployableSpawnPointComp)
-			return;
+			return false;
 		
-		restrictedDeployableSpawnPointComp.TryDeploy(pUserEntity);
-	}
+		string reason;
+		bool canBePerformed = restrictedDeployableSpawnPointComp.CanDeployBePerformed(reason);
+		if (!reason.IsEmpty())
+			SetCannotPerformReason(reason);
+		
+		return canBePerformed;
+ 	}
 }

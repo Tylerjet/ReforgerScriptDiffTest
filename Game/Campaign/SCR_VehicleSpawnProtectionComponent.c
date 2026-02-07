@@ -1,13 +1,12 @@
 [EntityEditorProps(category: "GameScripted/Campaign", description: "This allows only vehicle requester enther the vehicle as driver for defined period of time.")]
 class SCR_VehicleSpawnProtectionComponentClass : SCR_BaseLockComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_VehicleSpawnProtectionComponent : SCR_BaseLockComponent
 {
-	const int NO_OWNER = -1;
-	const int NO_TIME_LIMIT = 0;
+	protected static const int NO_OWNER = -1;
+	protected static const int NO_TIME_LIMIT = 0;
 	
 	[RplProp()]
 	private int m_iVehicleOwnerID = NO_OWNER;
@@ -32,6 +31,7 @@ class SCR_VehicleSpawnProtectionComponent : SCR_BaseLockComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void ReleaseProtection()
 	{
 		RemoveEventHandlers();
@@ -42,6 +42,7 @@ class SCR_VehicleSpawnProtectionComponent : SCR_BaseLockComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] protectionTime
 	void SetProtectionTime(int protectionTime)
 	{
 		if (protectionTime != NO_TIME_LIMIT)
@@ -52,6 +53,7 @@ class SCR_VehicleSpawnProtectionComponent : SCR_BaseLockComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] playerID
 	void SetVehicleOwner(int playerID)
 	{
 		// -2 == locked for everyone
@@ -75,7 +77,7 @@ class SCR_VehicleSpawnProtectionComponent : SCR_BaseLockComponent
 		
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (gameMode)
-			gameMode.GetOnPlayerDisconnected().Insert(OnPlayerDisconected);
+			gameMode.GetOnPlayerDisconnected().Insert(OnPlayerDisconnected);
 
 		// Set owner of this vehicle
 		m_iVehicleOwnerID = playerID;		
@@ -83,24 +85,31 @@ class SCR_VehicleSpawnProtectionComponent : SCR_BaseLockComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] onlyDriverSeat
 	void SetProtectOnlyDriverSeat(bool onlyDriverSeat)
 	{
 		m_bOnlyDriverSeat = onlyDriverSeat;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] text
 	void SetReasonText(string text)
 	{
 		m_sReasonText = text;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetVehicleOwner()
 	{
 		return m_iVehicleOwnerID;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerEntering
+	//! \param[in] compartmentSlot
+	//! \return
 	bool IsProtected(notnull IEntity playerEntering, notnull BaseCompartmentSlot compartmentSlot)
 	{
 		// Test if it is a driver seat or not.
@@ -112,23 +121,33 @@ class SCR_VehicleSpawnProtectionComponent : SCR_BaseLockComponent
 		if (m_iVehicleOwnerID == NO_OWNER || m_iVehicleOwnerID == testPlayerID /*m_Lobby.GetPlayerIdFromControlledEntity(playerEntering)*/)
 		{
 			#ifdef VEHICLE_LOCK
-			PrintFormat("Player ID is %1, vehicle owner ID is %2. Vehicle is unlocked.",testPlayerID,m_iVehicleOwnerID);
+			Print(string.Format("Player ID is %1, vehicle owner ID is %2. Vehicle is unlocked.", testPlayerID, m_iVehicleOwnerID), LogLevel.NORMAL);
 			#endif
 			return false;
 		}
 		#ifdef VEHICLE_LOCK
-		PrintFormat("Player ID is %1, vehicle owner ID is %2. Vehicle is LOCKED.",testPlayerID,m_iVehicleOwnerID);
+		Print(string.Format("Player ID is %1, vehicle owner ID is %2. Vehicle is LOCKED.", testPlayerID, m_iVehicleOwnerID), LogLevel.NORMAL);
 		#endif
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnPlayerDisconected(int playerID)
+	[Obsolete("Use OnPlayerDisconnected instead")]
+	protected void OnPlayerDisconected(int playerID)
+	{
+		OnPlayerDisconnected(playerID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnPlayerDisconnected(int playerID)
 	{
 		if (playerID == m_iVehicleOwnerID)
 			ReleaseProtection();
-	}	
+	}
+
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] user
+	//! \return
 	LocalizedString GetReasonText(IEntity user)
 	{
 		if (!user)
@@ -138,13 +157,14 @@ class SCR_VehicleSpawnProtectionComponent : SCR_BaseLockComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void RemoveEventHandlers()
 	{
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (gameMode)
-			gameMode.GetOnPlayerDisconnected().Remove(OnPlayerDisconected);
+			gameMode.GetOnPlayerDisconnected().Remove(OnPlayerDisconnected);
 		
 		if (m_CharControlComp)
 			m_CharControlComp.GetOnPlayerDeath().Remove(ReleaseProtection);
 	}
-};
+}

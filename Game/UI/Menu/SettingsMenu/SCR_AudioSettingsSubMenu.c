@@ -1,10 +1,9 @@
-//------------------------------------------------------------------------------------------------
 class SCR_AudioSettingsSubMenu: SCR_SettingsSubMenuBase
 {
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuOpen(SCR_SuperMenuBase parentMenu)
+	override void OnTabCreate(Widget menuRoot, ResourceName buttonsLayout, int index)
 	{
-		super.OnMenuOpen(parentMenu);
+		super.OnTabCreate(menuRoot, buttonsLayout, index);
 		
 		m_aSettingsBindings.Clear();
 		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("AudioSettings", "Volume", "Master"));
@@ -14,6 +13,7 @@ class SCR_AudioSettingsSubMenu: SCR_SettingsSubMenuBase
 		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("AudioSettings", "VolumeDialog", "Dialogue"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("AudioSettings", "StereoMode", "ProcessingMode"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_AudioSettings", "m_fDynamicRange", "DynamicRange"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_AudioSettings", "m_bGTinnitus", "EnableTinnitus"));
 		LoadSettings();
 	}
 };

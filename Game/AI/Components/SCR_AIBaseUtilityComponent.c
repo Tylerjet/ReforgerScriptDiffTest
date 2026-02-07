@@ -1,12 +1,11 @@
 [ComponentEditorProps(category: "GameScripted/AI", description: "Component for utility AI system calculations")]
-class SCR_AIBaseUtilityComponentClass: AIBaseUtilityComponentClass
+class SCR_AIBaseUtilityComponentClass : AIBaseUtilityComponentClass
 {
-};
+}
 
 // TODO:
 // - For handling orders, use enums
 
-//------------------------------------------------------------------------------------------------
 class SCR_AIBaseUtilityComponent : AIBaseUtilityComponent
 {
 	// This can be set externally to request a breakpoint on next EvaluateBehavior
@@ -15,7 +14,10 @@ class SCR_AIBaseUtilityComponent : AIBaseUtilityComponent
 	protected int m_iDiagCounter = 0;
 	#endif
 		
-	//--------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] msg
+	//! \param[in] receiver
 	void SendMessage(AIMessage msg, AIAgent receiver = null)
 	{
 		AICommunicationComponent commsComp = GetAIAgent().GetCommunicationComponent();
@@ -25,7 +27,9 @@ class SCR_AIBaseUtilityComponent : AIBaseUtilityComponent
 		commsComp.RequestBroadcast(msg, receiver);
 	}
 	
-	//--------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	int DiagGetCounter()
 	{
 		#ifdef AI_DEBUG
@@ -35,7 +39,8 @@ class SCR_AIBaseUtilityComponent : AIBaseUtilityComponent
 		#endif
 	}
 	
-	//--------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//!
 	void DiagIncreaseCounter()
 	{
 		#ifdef AI_DEBUG
@@ -43,7 +48,8 @@ class SCR_AIBaseUtilityComponent : AIBaseUtilityComponent
 		#endif
 	}
 	
-	//--------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//!
 	void DiagSetBreakpoint()
 	{
 		#ifdef AI_DEBUG
@@ -52,13 +58,14 @@ class SCR_AIBaseUtilityComponent : AIBaseUtilityComponent
 	}
 	
 	#ifdef AI_DEBUG
-	//--------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	protected void AddDebugMessage(string str, EAIDebugMsgType messageType = EAIDebugMsgType.UTILITY)
 	{
 		SCR_AIInfoBaseComponent infoComp = SCR_AIInfoBaseComponent.Cast(GetOwner().FindComponent(SCR_AIInfoBaseComponent));
 		infoComp.AddDebugMessage(str, msgType: messageType);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void DebugLogActionsPriority()
 	{
 		array<ref AIActionBase> actions = {};
@@ -83,6 +90,7 @@ class SCR_AIBaseUtilityComponent : AIBaseUtilityComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected string GetActionLogString(AIActionBase action)
 	{
 		SCR_AIActionBase scrActionBase = SCR_AIActionBase.Cast(action);
@@ -100,4 +108,4 @@ class SCR_AIBaseUtilityComponent : AIBaseUtilityComponent
 	}
 	
 	#endif
-};
+}

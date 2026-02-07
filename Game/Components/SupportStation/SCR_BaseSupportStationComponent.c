@@ -25,42 +25,34 @@ class SCR_BaseSupportStationComponentClass : ScriptComponentClass
 	protected ref SCR_AudioSourceConfiguration m_OnUseAudioSourceConfiguration;
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get if notification should be shown on Action executed
-	\return True if should show notification
-	*/
+	//! Get if notification should be shown on Action executed
+	//! \return True if should show notification
 	bool GetSendNotificationOnUse()
 	{
 		return m_bSendNotificationOnUse;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	If false then the object has no physics to move it self. If true it means it can be moved via physics which means it checks the rigid body if it has a velocity and does not allow to be used if it has
-	\return false if no physics can move it
-	*/
+	//! If false then the object has no physics to move it self. If true it means it can be moved via physics which means it checks the rigid body if it has a velocity and does not allow to be used if it has
+	//! \return false if no physics can move it
 	bool CanMoveWithPhysics()
 	{
 		return m_bIsVehicle;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check if prefab allows the faction affiliation component to be obtained from parent
-	Used in init
-	\return If allowed to get from parent
-	*/
+	//! Check if prefab allows the faction affiliation component to be obtained from parent
+	//! Used in init
+	//! \return If allowed to get from parent
 	bool AllowGetFactionFromParent()
 	{
 		return m_bAllowGetFactionFromParent;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get Audio config to play
-	Will create it if it not yet exists. Returns null if no SoundFile or SoundEvent is set
-	\return Sound Config
-	*/
+	//! Get Audio config to play
+	//! Will create it if it not yet exists. Returns null if no SoundFile or SoundEvent is set
+	//! \return Sound Config
 	SCR_AudioSourceConfiguration GetOnUseAudioConfig()
 	{
 		//~ Create Audio source if it does not yet exist
@@ -83,19 +75,16 @@ class SCR_BaseSupportStationComponentClass : ScriptComponentClass
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get the character voice varriables on support station use
-	\param[out] characterVoiceEventOnUse Voice event to use
-	\param[out] characterVoicePriority priority of voice event
-	*/
+	//! Get the character voice varriables on support station use
+	//! \param[out] characterVoiceEventOnUse Voice event to use
+	//! \param[out] characterVoicePriority priority of voice event
 	void GetCharacterVoiceSoundEventVariables(out string characterVoiceEventOnUse, out int characterVoicePriority)
 	{
 		characterVoiceEventOnUse = m_sCharacterVoiceEventOnUse;
 		characterVoicePriority = m_iCharacterVoicePriority;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_BaseSupportStationComponent : ScriptComponent
 {
 	[Attribute("0", desc: "Priority dictates the array order when trying to get the first availible support station. Higher priority means it is closer to the start of the array. Think of grabbing a composition refuel station before a vehicle refuel station.", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(ESupportStationPriority), category: "General Settings")]
@@ -106,9 +95,6 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 
 	[Attribute("1", desc: "Enable/disable the supply Station.", category: "General Settings")]
 	protected bool m_bIsEnabled;
-
-	[Attribute("1", desc: "If true uses supplies", category: "Supplies")]
-	protected bool m_bUseSupplies;
 
 	[Attribute("0", desc: "When executing the action and isUsingSupplies this is the base supply cost of the action regardless of any additional supply costs. 0 to have no upfront cost (note inherented classes might still have their own supply cost calculation)", params: "0 inf 1", category: "Supplies")]
 	protected int m_iBaseSupplyCostOnUse;
@@ -139,13 +125,12 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 	protected SCR_ResourceSystemSubscriptionHandleBase m_ResourceSubscriptionHandleConsumer;
 
 	//======================================== EXECUTE ========================================\\
-	/*!
-	Executed the support Station effect (Server only).
-	Here you can execute things such as removing supplies/fuel from the entity
-	\param actionOwner entity that is the owner of the ActionManager which initiated the action
-	\param actionUser Entity that started the interaction to use the support station
-	\param forceNotification If true will always try to send notification even if it is off. Inherented class does need to support notitification
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Executed the support Station effect (Server only).
+	//! Here you can execute things such as removing supplies/fuel from the entity
+	//! \param[in] actionOwner entity that is the owner of the ActionManager which initiated the action
+	//! \param[in] actionUser Entity that started the interaction to use the support station
+	//! \param[in] action
 	void OnExecutedServer(notnull IEntity actionOwner, notnull IEntity actionUser, notnull SCR_BaseUseSupportStationAction action)
 	{
 		RplId ownerId;
@@ -216,19 +201,28 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//~ Called by OnExecuteBroadcast and is executed both on server and on client
-	//~ playerId can be -1 if the user was not a player
+	//! Called by OnExecuteBroadcast and is executed both on server and on client
+	//! playerId can be -1 if the user was not a player
 	protected void OnExecute(IEntity actionOwner, IEntity actionUser, int playerId, SCR_BaseUseSupportStationAction action)
 	{
-
+		//~ On succesfully executed
+		OnSuccessfullyExecuted(actionOwner, actionUser, action);
 	}
 
-	//======================================== AUDIO ========================================\\
-	//~ Play SoundEffect
-	protected void PlaySoundEffect(SCR_AudioSourceConfiguration audioConfig, IEntity soundOwner, SCR_BaseUseSupportStationAction action)
+	//------------------------------------------------------------------------------------------------
+	//~ Support station was successfully executed. Called on server and client but only by inherited versions
+	protected void OnSuccessfullyExecuted(IEntity actionOwner, IEntity actionUser, SCR_BaseUseSupportStationAction action)
 	{
-		//~ No sound owner or no audio given so ignore function. It might be that no event name or file name are assigned
-		if (!audioConfig || !soundOwner)
+		SCR_SupportStationManagerComponent.OnSupportStationExecutedSuccessfully(this, GetSupportStationType(), actionUser, actionOwner, action);
+	}
+	
+	//======================================== AUDIO ========================================\\
+	//------------------------------------------------------------------------------------------------
+	//~ Play SoundEffect
+	protected void PlaySoundEffect(SCR_AudioSourceConfiguration audioConfig, notnull IEntity soundOwner, SCR_BaseUseSupportStationAction action)
+	{
+		//~ No audio given so ignore function. It might be that no event name or file name are assigned
+		if (!audioConfig)
 			return;
 
 		//~ Get sound component
@@ -299,14 +293,16 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 	}
 
 	//======================================== IS VALID ========================================\\
-	/*!
-	Executed when action has been executed.
-	Here you can execute things such as removing supplies/fuel from the entity
-	\param actionOwner entity on which the ActionManager is
-	\param actionUser Entity that started the interaction
-	\param[out] reasonInvalid Reason why action is invalid
-	\param[out] supply cost when using the support station
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Executed when action has been executed.
+	//! Here you can execute things such as removing supplies/fuel from the entity
+	//! \param[in] actionOwner entity on which the ActionManager is
+	//! \param[in] actionUser Entity that started the interaction
+	//! \param[in] action
+	//! \param[in] actionPosition
+	//! \param[out] reasonInvalid Reason why action is invalid
+	//! \param[out] supplyCost cost when using the support station
+	//! \return
 	bool IsValid(IEntity actionOwner, IEntity actionUser, SCR_BaseUseSupportStationAction action, vector actionPosition, out ESupportStationReasonInvalid reasonInvalid, out int supplyCost)
 	{
 		//~ Check if enabled
@@ -363,7 +359,7 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 		}
 
 		//~ Check if it uses supplies
-		if (IsUsingSupplies())
+		if (AreSuppliesEnabled())
 		{
 			//~ Set amount of supplies used on action
 			supplyCost = GetSupplyCostAction(actionOwner, actionUser, action);
@@ -393,10 +389,9 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 
 	//======================================== GETTERS / SETTERS ========================================\\
 	//---------------------------------------- Type ----------------------------------------\\
-	/*!
-	Get Support station type.
-	\return type of support station
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get Support station type.
+	//! \return type of support station
 	ESupportStationType GetSupportStationType()
 	{
 		//~  OVERWRITE IN INHERIT CLASS
@@ -404,10 +399,9 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 	}
 
 	//---------------------------------------- Priority ----------------------------------------\\
-	/*!
-	Get Support station priority.
-	\return priority of support station
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get Support station priority.
+	//! \return priority of support station
 	ESupportStationPriority GetSupportStationPriority()
 	{
 		return m_eSupportStationPriority;
@@ -415,10 +409,9 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 
 
 	//---------------------------------------- Enabled ----------------------------------------\\
-	/*!
-	Set support station enabled. If disabled it will not allow players to use it (Server only)
-	\param enable true is enabled
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Set support station enabled. If disabled it will not allow players to use it (Server only)
+	//! \param[in] enable true is enabled
 	void SetEnabled(bool enable)
 	{
 		if (m_bIsEnabled == enable)
@@ -439,43 +432,39 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 		
 		//~ Create and invoke onEnabledChanged
 		if (!Event_OnEnabledChanged)
-			Event_OnEnabledChanged = new ref ScriptInvoker;
+			Event_OnEnabledChanged = new ScriptInvoker;
 		
 		Event_OnEnabledChanged.Invoke(m_bIsEnabled);
 		
 		//~ Todo: Needs new mapmarker function and the map marker should have an inherented function that listens to the support station not the otherway around
 		//~ Set map marker active or not if any
-		/*SCR_CampaignServiceMapDescriptorComponent mapMarker = SCR_CampaignServiceMapDescriptorComponent.Cast(GetOwner().FindComponent(SCR_CampaignServiceMapDescriptorComponent));
-		if (mapMarker)
-			mapMarker.SetServiceMarkerActive(enable);*/
+//		SCR_CampaignServiceMapDescriptorComponent mapMarker = SCR_CampaignServiceMapDescriptorComponent.Cast(GetOwner().FindComponent(SCR_CampaignServiceMapDescriptorComponent));
+//		if (mapMarker)
+//			mapMarker.SetServiceMarkerActive(enable);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get if support station is enabled.
-	\return true if enabled
-	*/
+	//! Get if support station is enabled.
+	//! \return true if enabled
 	bool IsEnabled()
 	{
 		return m_bIsEnabled;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get scriptinvoker when support station is enabled changes.
-	Sends over bool with enabled state
-	\return script invoker
-	*/
+	//! Get scriptinvoker when support station is enabled changes.
+	//! Sends over bool with enabled state
+	//! \return script invoker
 	ScriptInvoker GetOnEnabledChanged()
 	{
 		if (!Event_OnEnabledChanged)
-			Event_OnEnabledChanged = new ref ScriptInvoker;
+			Event_OnEnabledChanged = new ScriptInvoker();
 		
 		return Event_OnEnabledChanged;
 	}
 
-
 	//---------------------------------------- IsMoving ----------------------------------------\\
+	//------------------------------------------------------------------------------------------------
 	protected bool IsMoving()
 	{
 		//~ If has physics assigned check if it is moving. Otherwise return false
@@ -486,6 +475,7 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 	}
 
 	//---------------------------------------- Faction Check ----------------------------------------\\
+	//------------------------------------------------------------------------------------------------
 	protected bool IsUserValidFaction(IEntity user)
 	{
 		//~ No Flags set so Ignore
@@ -553,10 +543,9 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 	}
 
 	//---------------------------------------- Faction Check ----------------------------------------\\
-	/*!
-	Get current faction of Support Station (Or if allowed get default faction)
-	\return Faction of Support Station. Returns null if no faction is assigned
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get current faction of Support Station (Or if allowed get default faction)
+	//! \return Faction of Support Station. Returns null if no faction is assigned
 	SCR_Faction GetFaction()
 	{
 		if (!m_FactionAffiliationComponent)
@@ -574,18 +563,22 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 	}
 
 	//======================================== SUPPLIES ========================================\\
-	//~ Get the minimum amount of supplies needed for the action. This is the amount of supplies needed to pass the IsValid check when using supplies and when executed
-	//~ Function is generally overwritten in inherented support stations
+
+	//------------------------------------------------------------------------------------------------
+	//! Get the minimum amount of supplies needed for the action.
+	//! This is the amount of supplies needed to pass the IsValid check when using supplies and when executed
+	//! The method is generally overwritten in inherited support stations
 	protected int GetSupplyCostAction(IEntity actionOwner, IEntity actionUser, SCR_BaseUseSupportStationAction action)
 	{
 		return m_iBaseSupplyCostOnUse;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//~ Scan for the max availible supplies that can be used for the action
+	//! Scan for the max available supplies that can be used for the action
+	//! \return
 	int GetMaxAvailableSupplies()
 	{
-		if (!m_ResourceConsumer || !IsUsingSupplies())
+		if (!m_ResourceConsumer || !AreSuppliesEnabled())
 			return int.MAX;
 		
 		//~ Make sure to create or poke the consumer handler so server sends updates for clients
@@ -609,7 +602,7 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 	//~ Check if enough supplies to execute the action
 	protected bool HasEnoughSupplies(IEntity actionOwner, IEntity actionUser, int supplyAmountToCheck)
 	{
-		if (supplyAmountToCheck <= 0 || !IsUsingSupplies())
+		if (supplyAmountToCheck <= 0 || !AreSuppliesEnabled())
 			return true;
 		
 		//~ Make sure to create or poke the consumer handler so server sends updates for clients
@@ -631,11 +624,12 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//~ Action is executed and supplies are used (Server Only)
-	//~ Returns true if there were enough supplies and they are removed
+	//! Action is executed and supplies are used (Server Only)
+	//! \param[in] amount
+	//! \return true if there were enough supplies and they are removed
 	protected bool OnConsumeSuppliesServer(int amount)
 	{
-		if (amount <= 0 || !IsUsingSupplies())
+		if (amount <= 0 || !AreSuppliesEnabled())
 			return true;
 
 		//~ Check if consumption was successful 
@@ -645,79 +639,62 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Set support station uses supplies or not. It will never look if it has enough supplies if disabled (Server only)
-	\param useSupplies true is Uses supplies
-	*/
-	void SetUseSupplies(bool useSupplies)
+	//! Get if support station should check for supplies
+	//! \return true if should check for supplies
+	bool AreSuppliesEnabled()
 	{
-		if (!m_ResourceConsumer || m_bUseSupplies == useSupplies)
-			return;
-
-		SetUseSuppliesBroadcast(useSupplies);
-		Rpc(SetUseSuppliesBroadcast, useSupplies);
+		SCR_ResourceComponent resourceComponent = GetResourceComponent();
+	
+		return resourceComponent && resourceComponent.IsResourceTypeEnabled();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	protected void SetUseSuppliesBroadcast(bool useSupplies)
-	{
-		m_bUseSupplies = useSupplies;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	/*!
-	Get if support station should check for supplies
-	\return true if should check for supplies
-	*/
-	bool IsUsingSupplies()
-	{
-		return m_bUseSupplies && m_ResourceConsumer;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	/*!
-	\return Resource Consumer if entity has any
-	*/
+	//! \return Resource Consumer if entity has any
 	SCR_ResourceConsumer GetResourceConsumer()
 	{
 		return m_ResourceConsumer;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected SCR_ResourceComponent GetResourceComponent()
+	{
+		IEntity owner = GetOwner();
+		if (!owner)
+			return null;
+		
+		return SCR_ResourceComponent.FindResourceComponent(owner);
+	}
+	
 	//---------------------------------------- Range ----------------------------------------\\
-	/*!
-	Returns range. If range is disabled it will be -1
-	\return Range power of 2 for cheap distance calc
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Returns range. If range is disabled it will be -1
+	//! \return Range power of 2 for cheap distance calc
 	float GetRange()
 	{
 		return m_fRange;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	If true than the action will use range if false it will not use range and only execute if the action and the action manager is on the entity itself
-	\return True if using range
-	*/
+	//! If true then the action will use range,
+	//! if false it will not use range and only execute if the action and the action manager is on the entity itself
+	//! \return True if using range
 	bool UsesRange()
 	{
 		return m_fRange > 0;
 	}
 
 	//---------------------------------------- Position ----------------------------------------\\
-	/*!
-	Get the center of the Support station that is used with range + offset
-	\return Returns center + offset
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get the center of the Support station that is used with range + offset
+	//! \return Returns center + offset
 	vector GetPosition()
 	{
 		return GetOwner().CoordToParent(GetOffset());
 	}
 	
 	//---------------------------------------- Position Offset ----------------------------------------\\
-	/*!
-	\return returns the offset of the position
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return returns the offset of the position
 	vector GetOffset()
 	{
 		return m_vOffset;
@@ -725,19 +702,16 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 
 
 	//---------------------------------------- Other ----------------------------------------\\
-	/*!
-	If true and the action uses range it will never check itself. If false it will check itself though use the standard priority for it
-	\return True if it ignores self if it uses range
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! If true and the action uses range it will never check itself. If false it will check itself though use the standard priority for it
+	//! \return True if it ignores self if it uses range
 	bool IgnoreSelf()
 	{
 		return m_bIgnoreSelf;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return Get Override UserAction string that is used when the action is displayed to the player
-	*/
+	//! \return Get Override UserAction string that is used when the action is displayed to the player
 	LocalizedString GetOverrideUserActionName()
 	{
 		return m_sOverrideUserActionName;
@@ -751,6 +725,8 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 	}
 
 	//---------------------------------------- Sound ----------------------------------------\\
+
+	//------------------------------------------------------------------------------------------------
 	protected SCR_AudioSourceConfiguration GetOnUseAudioConfig()
 	{
 		SCR_BaseSupportStationComponentClass classData = SCR_BaseSupportStationComponentClass.Cast(GetComponentData(GetOwner()));
@@ -761,6 +737,8 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 	}
 
 	//======================================== PLAYERS IN VEHICLE ========================================\\
+
+	//------------------------------------------------------------------------------------------------
 	//~ Get an array of all player Ids within vehicle
 	protected void GetPlayerIdsInVehicle(IEntity vehicle, out notnull array<int> playerIds)
 	{
@@ -800,13 +778,13 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 	}
 
 	//======================================== DAMAGE ========================================\\
-	/*!
-	Allows devs to functionally destroy the Support station (or other state) without the need of a DamageManager.
-	If a damage system exists on the entity then it is adviced to let it handle the logic.
-	\param damageState State to set
-	\param checkIfHasDamageSystem If true it will check if any damage system is present and if so will not over the state. If false it will simply override it
-	\return True if damage state was succesfully overridden
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Allows devs to functionally destroy the Support station (or other state) without the need of a DamageManager.
+	//! If a damage system exists on the entity then it is adviced to let it handle the logic.
+	//! \param[in] damageState State to set
+	//! \param[in] checkIfHasDamageSystem If true it will check if any damage system is present and if so will not over the state. If false it will simply override it
+	//! \return True if damage state was succesfully overridden
 	bool OverrideDamageState(EDamageState damageState, bool checkIfHasDamageSystem)
 	{
 		//~ Already the same state
@@ -817,14 +795,14 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 		if (checkIfHasDamageSystem)
 		{
 			//~ Check has damage manager
-			ScriptedDamageManagerComponent damageManager = ScriptedDamageManagerComponent.Cast(GetOwner().FindComponent(ScriptedDamageManagerComponent));
+			SCR_DamageManagerComponent damageManager = SCR_DamageManagerComponent.Cast(GetOwner().FindComponent(SCR_DamageManagerComponent));
 			if (damageManager)
 				return false;
 
 			HitZoneContainerComponent hitZoneContainer = HitZoneContainerComponent.Cast(GetOwner().FindComponent(HitZoneContainerComponent));
 			if (hitZoneContainer)
 			{
-				ScriptedHitZone defaultHitZone = ScriptedHitZone.Cast(hitZoneContainer.GetDefaultHitZone());
+				SCR_HitZone defaultHitZone = SCR_HitZone.Cast(hitZoneContainer.GetDefaultHitZone());
 				if (defaultHitZone)
 					return false;
 			}
@@ -835,14 +813,16 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 	}
 
 	//---------------------------------------- On HitZone damage state changed ----------------------------------------\\
-	//~ Called when default hitZone damage state changed. Not called if entity has a damage manager
-	protected void OnHitZoneDamageStateChanged(ScriptedHitZone defaultHitZone)
+	//------------------------------------------------------------------------------------------------
+	//! Called when default hitZone damage state changed. Not called if entity has a damage manager
+	protected void OnHitZoneDamageStateChanged(SCR_HitZone defaultHitZone)
 	{
 		OnDamageStateChanged(defaultHitZone.GetDamageState());
 	}
 
 	//---------------------------------------- On damage state changed ----------------------------------------\\
-	//~ Called when damage manager (or default hitZone) damage state changes
+	//------------------------------------------------------------------------------------------------
+	//! Called when damage manager (or default hitZone) damage state changes
 	protected void OnDamageStateChanged(EDamageState damageState)
 	{
 		//~ Same state so ignore
@@ -877,10 +857,11 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 	}
 
 	//---------------------------------------- Subscribe/Unsubscribe On damage state changed ----------------------------------------\\
-	//~ Grabs either damage manager or HitZoneContainer to subscribe to OnDamageState Changed
+	//------------------------------------------------------------------------------------------------
+	//! Grabs either damage manager or HitZoneContainer to subscribe to OnDamageStateChanged
 	protected void AddRemoveOnDamageStateChanged(IEntity owner, bool subscribe)
 	{
-		ScriptedDamageManagerComponent damageManager = ScriptedDamageManagerComponent.Cast(owner.FindComponent(ScriptedDamageManagerComponent));
+		SCR_DamageManagerComponent damageManager = SCR_DamageManagerComponent.Cast(owner.FindComponent(SCR_DamageManagerComponent));
 		if (damageManager)
 		{
 			//~ Subscribe to on damage state changed
@@ -901,7 +882,7 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 		HitZoneContainerComponent hitZoneContainer = HitZoneContainerComponent.Cast(owner.FindComponent(HitZoneContainerComponent));
 		if (hitZoneContainer)
 		{
-			ScriptedHitZone defaultHitZone = ScriptedHitZone.Cast(hitZoneContainer.GetDefaultHitZone());
+			SCR_HitZone defaultHitZone = SCR_HitZone.Cast(hitZoneContainer.GetDefaultHitZone());
 
 			if (defaultHitZone)
 			{
@@ -922,10 +903,11 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 	}
 
 	//======================================== RPL ========================================\\
+
+	//------------------------------------------------------------------------------------------------
 	override bool RplSave(ScriptBitWriter writer)
 	{
 		writer.WriteBool(m_bIsEnabled);
-		writer.WriteBool(m_bUseSupplies);
 
 		return true;
 	}
@@ -933,18 +915,18 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	override bool RplLoad(ScriptBitReader reader)
 	{
-		int enabled, usesSupplies;
+		int enabled;
 
 		reader.ReadBool(enabled);
-		reader.ReadBool(usesSupplies);
 
 		SetEnabledBroadcast(enabled);
-		SetUseSuppliesBroadcast(usesSupplies);
 
 		return true;
 	}
 
 	//======================================== INIT ========================================\\
+
+	//------------------------------------------------------------------------------------------------
 	protected bool InitValidSetup()
 	{
 		if (GetSupportStationType() == ESupportStationType.NONE)
@@ -978,12 +960,9 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 		if (!InitValidSetup() || !owner)
 			return;
 		
-		if (m_bUseSupplies)
+		if (AreSuppliesEnabled())
 		{
-			SCR_ResourceComponent resourceComponent = SCR_ResourceComponent.FindResourceComponent(owner);
-			if (!resourceComponent && owner.GetParent())
-				resourceComponent = SCR_ResourceComponent.FindResourceComponent(owner.GetParent());
-
+			SCR_ResourceComponent resourceComponent = GetResourceComponent();
 			if (resourceComponent)
 			{
 				m_ResourceConsumer = resourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
@@ -1076,6 +1055,8 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 	}
 
 	//======================================== DESTROY ========================================\\
+
+	//------------------------------------------------------------------------------------------------
 	override void OnDelete(IEntity owner)
 	{
 		if (SCR_Global.IsEditMode() || !InitValidSetup())
@@ -1097,7 +1078,7 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 
 		supportStationManager.RemoveSupportStation(this);
 		
-		if (m_bUseSupplies && m_ResourceConsumer)
+		if (m_ResourceConsumer && AreSuppliesEnabled())
 		{
 			SCR_ResourceComponent resourceComponent = SCR_ResourceComponent.FindResourceComponent(owner);
 			if (!resourceComponent && owner.GetParent())
@@ -1107,13 +1088,210 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 				resourceComponent.TEMP_GetOnInteractorReplicated().Remove(TEMP_OnInteractorReplicated);
 		}
 	}
-};
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get support station from entity
+	//! \param[in] entity Entity to get support station from
+	//! \param[in] type Support station type to find. Leave NONE if any is valid
+	//! \return Support Station if any is found
+	static SCR_BaseSupportStationComponent FindSupportStation(notnull IEntity entity, SCR_ESupportStationResupplyType type = SCR_ESupportStationResupplyType.NONE, SCR_EComponentFinderQueryFlags queryFlags = SCR_EComponentFinderQueryFlags.ENTITY | SCR_EComponentFinderQueryFlags.SLOTS)
+	{
+		SCR_BaseSupportStationComponent foundSupportStation;
+		array<Managed> supportStations = {};
+		
+		if (SCR_Enum.HasFlag(queryFlags, SCR_EComponentFinderQueryFlags.ENTITY))
+		{
+			entity.FindComponents(SCR_BaseSupportStationComponent, supportStations);
+			
+			//~ Get correct support station
+			foreach (Managed supportStation : supportStations)
+			{
+				foundSupportStation = SCR_BaseSupportStationComponent.Cast(supportStation);
+				if (!foundSupportStation)
+					continue;
+				
+				if (type == SCR_ESupportStationResupplyType.NONE || foundSupportStation.GetSupportStationType() == type)
+					return foundSupportStation;
+			}
+		}
+		
+		//~ If vehicle loop through slotted entities
+		if (SCR_Enum.HasFlag(queryFlags, SCR_EComponentFinderQueryFlags.SLOTS))
+		{
+			SlotManagerComponent slotManager = SlotManagerComponent.Cast(entity.FindComponent(SlotManagerComponent));
+			if (slotManager)
+			{
+				array<EntitySlotInfo> slotInfos = {};
+				slotManager.GetSlotInfos(slotInfos);
+				IEntity slotEntity;
+				
+				foreach (EntitySlotInfo slotInfo : slotInfos)
+				{
+					slotEntity = slotInfo.GetAttachedEntity();
+					if (!slotEntity)
+						continue;
+					
+					slotEntity.FindComponents(SCR_BaseSupportStationComponent, supportStations);
+					
+					foreach (Managed supportStation : supportStations)
+					{
+						foundSupportStation = SCR_BaseSupportStationComponent.Cast(supportStation);
+						if (!foundSupportStation)
+							continue;
+						
+						if (type == SCR_ESupportStationResupplyType.NONE || foundSupportStation.GetSupportStationType() == type)
+							return foundSupportStation;
+					}
+				}
+			}
+		}
+		
+		//~ Find support station in children
+		if (SCR_Enum.HasFlag(queryFlags, SCR_EComponentFinderQueryFlags.CHILDREN))
+		{
+			IEntity child = entity.GetChildren();
+		
+			while (child)
+			{
+				child.FindComponents(SCR_BaseSupportStationComponent, supportStations);
+				
+				//~ Get correct support station
+				foreach (Managed supportStation : supportStations)
+				{
+					foundSupportStation = SCR_BaseSupportStationComponent.Cast(supportStation);
+					if (!foundSupportStation)
+						continue;
+					
+					if (type == SCR_ESupportStationResupplyType.NONE || foundSupportStation.GetSupportStationType() == type)
+						return foundSupportStation;
+				}
+				
+				child = child.GetSibling();
+			}
+		}
+		
+		IEntity parent;
+		
+		//~ Find in parent
+		if (SCR_Enum.HasFlag(queryFlags, SCR_EComponentFinderQueryFlags.PARENT))
+		{
+			parent = entity.GetParent();
+			
+			if (parent)
+			{
+				parent.FindComponents(SCR_BaseSupportStationComponent, supportStations);
+			
+				//~ Get correct support station
+				foreach (Managed supportStation : supportStations)
+				{
+					foundSupportStation = SCR_BaseSupportStationComponent.Cast(supportStation);
+					if (!foundSupportStation)
+						continue;
+					
+					if (type == SCR_ESupportStationResupplyType.NONE || foundSupportStation.GetSupportStationType() == type)
+						return foundSupportStation;
+				}
+			}
+		}
+		
+		//~ Find in vehicle slots of parent
+		if (SCR_Enum.HasFlag(queryFlags, SCR_EComponentFinderQueryFlags.PARENT_SLOTS))
+		{
+			if (!parent)
+				parent = entity.GetParent();
+			
+			if (parent)
+				foundSupportStation = SCR_BaseSupportStationComponent.FindSupportStation(parent, type, SCR_EComponentFinderQueryFlags.SLOTS);
+			
+			if (foundSupportStation)
+				return foundSupportStation;
+		}
+		
+		IEntity rootParent;
+		
+		//~ Find in root parent
+		if (SCR_Enum.HasFlag(queryFlags, SCR_EComponentFinderQueryFlags.ROOT_PARENT))
+		{
+			rootParent = entity.GetRootParent();
+			
+			if (rootParent)
+			{
+				rootParent.FindComponents(SCR_BaseSupportStationComponent, supportStations);
+			
+				//~ Get correct support station
+				foreach (Managed supportStation : supportStations)
+				{
+					foundSupportStation = SCR_BaseSupportStationComponent.Cast(supportStation);
+					if (!foundSupportStation)
+						continue;
+					
+					if (type == SCR_ESupportStationResupplyType.NONE || foundSupportStation.GetSupportStationType() == type)
+						return foundSupportStation;
+				}
+			}
+		}
+		
+		//~ Find in vehicle slots of root parent
+		if (SCR_Enum.HasFlag(queryFlags, SCR_EComponentFinderQueryFlags.PARENT_SLOTS))
+		{
+			if (!rootParent)
+				rootParent = entity.GetRootParent();
+			
+			if (rootParent)
+				foundSupportStation = SCR_BaseSupportStationComponent.FindSupportStation(rootParent, type, SCR_EComponentFinderQueryFlags.SLOTS);
+			
+			if (foundSupportStation)
+				return foundSupportStation;
+		}
+		
+		//~ Find in siblings
+		if (SCR_Enum.HasFlag(queryFlags, SCR_EComponentFinderQueryFlags.SIBLINGS))
+		{
+			if (!parent)
+				parent = entity.GetParent();
+			
+			if (parent)
+			{
+				//~ Get siblings from parent
+				IEntity child = parent.GetChildren();
+		
+				while (child)
+				{
+					//~ Ignore self
+					if (child == entity)
+					{
+						child = child.GetSibling();
+						continue;
+					}
+					
+					child.FindComponents(SCR_BaseSupportStationComponent, supportStations);
+					
+					//~ Get correct support station
+					foreach (Managed supportStation : supportStations)
+					{
+						foundSupportStation = SCR_BaseSupportStationComponent.Cast(supportStation);
+						if (!foundSupportStation)
+							continue;
+						
+						if (type == SCR_ESupportStationResupplyType.NONE || foundSupportStation.GetSupportStationType() == type)
+							return foundSupportStation;
+					}
+					
+					child = child.GetSibling();
+				}
+			}
+		}
+		
+		//~ Not found
+		return null;
+	}
+}
 
 enum ESupportStationFactionUsage
 {
-	SAME_CURRENT_FACTION = 1, ///< The user with the same faction as the current faction can interact with the support station
-	FRIENDLY_CURRENT_FACTION = 2, ///< The user with a faction that is a friendly faction as the current faction can interact with the support GetSupportStationType
-	SAME_DEFAULT_FACTION = 4, ///< The user with the same faction as the default faction of the support station can interact with the support station
-	FRIENDLY_DEFAULT_FACTION = 8, ///< he user with a faction that is a friendly faction to the default faction of the support station can interact with the support station
-	DISALLOW_USE_ON_CURRENT_FACTION_NULL = 16, ///< If set it disallows the support station to be used if the faction of the Support station is not set. Only valid if Default faction is not checked
-};
+	SAME_CURRENT_FACTION = 1 << 0,					//!< The user with the same faction as the current faction can interact with the support station
+	FRIENDLY_CURRENT_FACTION = 1 << 1,				//!< The user with a faction that is a friendly faction as the current faction can interact with the support GetSupportStationType
+	SAME_DEFAULT_FACTION = 1 << 2,					//!< The user with the same faction as the default faction of the support station can interact with the support station
+	FRIENDLY_DEFAULT_FACTION = 1 << 3,				//!< he user with a faction that is a friendly faction to the default faction of the support station can interact with the support station
+	DISALLOW_USE_ON_CURRENT_FACTION_NULL = 1 << 4,	//!< If set it disallows the support station to be used if the faction of the Support station is not set. Only valid if Default faction is not checked
+}

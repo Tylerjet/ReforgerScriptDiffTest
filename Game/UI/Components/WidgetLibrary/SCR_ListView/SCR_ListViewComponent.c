@@ -40,7 +40,7 @@ class SCR_ListViewComponent : ScriptedWidgetComponent
 	protected Widget m_wFocusRest;
 	
 	// Server entries data 
-	protected ref array<Widget> m_aEntryWidgets = new ref array<Widget>;
+	protected ref array<Widget> m_aEntryWidgets = new array<Widget>;
 	
 	// Hadling conponents 
 	protected SCR_ScrollBarComponent m_Scrollbar;

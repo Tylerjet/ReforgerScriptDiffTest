@@ -208,8 +208,12 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		}
 		
 		//--- If the entity can be spawned as player, get player ID
-		int playerID = 0;
-		if (canBePlayer || HasPlacingFlag(EEditorPlacingFlags.CHARACTER_PLAYER))
+		int playerID = GetManager().GetPlayerID();
+
+		if (!canBePlayer)
+			canBePlayer = HasPlacingFlag(EEditorPlacingFlags.CHARACTER_PLAYER);
+
+		if (canBePlayer)
 		{
 			Resource prefabResource = Resource.Load(m_SelectedPrefab);
 			IEntityComponentSource component = SCR_BaseContainerTools.FindComponentSource(prefabResource, SCR_EditableEntityComponent);
@@ -219,14 +223,20 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 				SetSelectedPrefab(ResourceName.Empty, true);
 				return false;
 			}
-			playerID = GetManager().GetPlayerID();
 		}
 		
 		//~ If placing with crew or passengers. Send notification if not enough budget
 		if (SCR_Enum.HasFlag(m_PlacingFlags, EEditorPlacingFlags.VEHICLE_CREWED) ||SCR_Enum.HasFlag(m_PlacingFlags, EEditorPlacingFlags.VEHICLE_PASSENGER))
 		{
 			array<ref SCR_EntityBudgetValue> budgetCosts = {};
-			IEntityComponentSource source = SCR_EditableEntityComponentClass.GetEditableEntitySource(Resource.Load(m_SelectedPrefab).GetResource().ToEntitySource());
+			Resource resource = Resource.Load(m_SelectedPrefab);
+			if (!resource.IsValid())
+			{
+				Print("Cannot load prefab " + m_SelectedPrefab + " | " + FilePath.StripPath(__FILE__) + ":" + __LINE__, LogLevel.WARNING);
+				return false;
+			}
+
+			IEntityComponentSource source = SCR_EditableEntityComponentClass.GetEditableEntitySource(resource.GetResource().ToEntitySource());
 			m_BudgetManager.GetVehicleOccupiedBudgetCosts(source, m_PlacingFlags, budgetCosts, false);
 			EEditableEntityBudget blockingBudget;
 			
@@ -279,9 +289,9 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		Event_OnRequestEntity.Invoke(prefabID, params.m_vTransform, null);
 		
 		if (simulatedDelay > 0 && !Replication.IsRunning())
-			GetGame().GetCallqueue().CallLater(CreateEntityServer, simulatedDelay, false, params, prefabID, playerID, m_iEntityIndex, !unselectPrefab, recipientIds);
+			GetGame().GetCallqueue().CallLater(CreateEntityServer, simulatedDelay, false, params, prefabID, playerID, m_iEntityIndex, !unselectPrefab, recipientIds, canBePlayer);
 		else
-			Rpc(CreateEntityServer, params, prefabID, playerID, m_iEntityIndex, !unselectPrefab, recipientIds);
+			Rpc(CreateEntityServer, params, prefabID, playerID, m_iEntityIndex, !unselectPrefab, recipientIds, canBePlayer);
 		
 		//--- ToDo: Fail the request if server didn't respond in given time
 		//GetGame().GetCallqueue().CallLater(CreateEntityOwner, 10000, false, prefabID, -1);
@@ -316,7 +326,7 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	}
 	
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void CreateEntityServer(SCR_EditorPreviewParams params, RplId prefabID, int playerID, int entityIndex, bool isQueue, array<RplId> recipientIds)
+	protected void CreateEntityServer(SCR_EditorPreviewParams params, RplId prefabID, int playerID, int entityIndex, bool isQueue, array<RplId> recipientIds, bool canBePlayer)
 	{
 		if (m_bBlockPlacing)
 			return;
@@ -403,7 +413,7 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 			foreach (int i, SCR_EditableEntityComponent recipient: recipients)
 			{
 				params.m_Offset = offsets[permutation[i]];
-				entity = SpawnEntityResource(params, prefabResource, playerID, isQueue, recipient);
+				entity = SpawnEntityResource(params, prefabResource, playerID, isQueue, recipient, canBePlayer);
 				entities.Insert(entity);
 				entityIds.Insert(Replication.FindId(entity));
 			}
@@ -413,7 +423,7 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		else
 		{
 			//--- Spawn stand-alone entity
-			entity = SpawnEntityResource(params, prefabResource, playerID, isQueue);
+			entity = SpawnEntityResource(params, prefabResource, playerID, isQueue, null, canBePlayer);
 			entities.Insert(entity);
 			entityIds.Insert(Replication.FindId(entity));
 			currentLayerID = Replication.FindId(params.m_CurrentLayer);
@@ -423,7 +433,7 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		OnEntityCreatedServer(entities);
 		
 		Rpc(CreateEntityOwner, prefabID, entityIds, entityIndex, isQueue, hasRecipients, currentLayerID, 0);
-		Event_OnPlaceEntityServer.Invoke(prefabID, entity);
+		Event_OnPlaceEntityServer.Invoke(prefabID, entity, playerID);
 	}
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void CreateEntityOwner(int prefabID, array<RplId> entityIds, int entityIndex, int isQueue, bool hasRecipients, RplId currentLayerID, int attempt)
@@ -515,7 +525,7 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	/*!
 	Check if the entity can be created.
 	Evaluated both on client an on server (notification is used only on client though)
-	To be overriden by inherited classes.
+	To be overridden by inherited classes.
 	\param[out] outNotification Notification to be sent when attempting to place the entity
 	\return True to allow placing, false to prevent it
 	*/
@@ -566,11 +576,12 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	Create entity with given params.
 	\param params Spawning params
 	\prefabResource Prefab which will be spawned
-	\playerID When valid ID, spawned entity will become the player
+	\playerID Id of entity requested spawning.
 	\recipient Currently selected entity for whom the new entity is added (e.g., new waypoint for a group)
+	\canBePlayer When true, spawned entity will become the player
 	\return Editable entity
 	*/
-	static SCR_EditableEntityComponent SpawnEntityResource(SCR_EditorPreviewParams params, Resource prefabResource, int playerID = 0, bool isQueue = false, SCR_EditableEntityComponent recipient = null)
+	static SCR_EditableEntityComponent SpawnEntityResource(SCR_EditorPreviewParams params, Resource prefabResource, int playerID = 0, bool isQueue = false, SCR_EditableEntityComponent recipient = null, bool canBePlayer = false)
 	{		
 		if (Replication.IsClient() || !prefabResource|| !prefabResource.IsValid())
 			return null;
@@ -578,7 +589,7 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		//--- When spawning a player, get their respawn component first
 		EEditorPlacingFlags compatiblePlacingFlags = GetCompatiblePlacingFlags(prefabResource);
 		SCR_RespawnComponent respawnComponent;
-		if (playerID > 0)
+		if (canBePlayer)
 		{
 			respawnComponent = SCR_RespawnComponent.Cast(GetGame().GetPlayerManager().GetPlayerRespawnComponent(playerID));
 			if (!respawnComponent)
@@ -637,7 +648,7 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 			SCR_FactionAffiliationComponent.SetFaction(entity.GetOwner(), recipient.GetFaction());
 		
 		//--- Call custom event
-		SCR_EditableEntityComponent childEntity = entity.EOnEditorPlace(params.m_Parent, recipient, params.m_PlacingFlags, isQueue);
+		SCR_EditableEntityComponent childEntity = entity.EOnEditorPlace(params.m_Parent, recipient, params.m_PlacingFlags, isQueue, playerID);
 		
 		//--- Set parent to current layer
 		if (params.m_Parent)
@@ -1006,13 +1017,27 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		{
 			bool isPlacingPlayer = SCR_Enum.HasFlag(currentPlacingFlag, EEditorPlacingFlags.CHARACTER_PLAYER);
 			EEditableEntityBudget blockingBudget;
-			m_BudgetManager.CanPlaceEntitySource(SCR_EditableEntityComponentClass.GetEditableEntitySource(Resource.Load(selectedPrefab).GetResource().ToEntitySource()), blockingBudget, isPlacingPlayer);
+			Resource resource = Resource.Load(selectedPrefab);
+			if (!resource.IsValid())
+			{
+				Print("Cannot load " + selectedPrefab + " | " + FilePath.StripPath(__FILE__) + ":" + __LINE__, LogLevel.WARNING);
+				return;
+			}
+
+			m_BudgetManager.CanPlaceEntitySource(SCR_EditableEntityComponentClass.GetEditableEntitySource(resource.GetResource().ToEntitySource()), blockingBudget, isPlacingPlayer);
 		}
 		
 		if ((currentPlacingFlag & EEditorPlacingFlags.VEHICLE_CREWED || currentPlacingFlag & EEditorPlacingFlags.VEHICLE_PASSENGER) || (prevPlacingFlag & EEditorPlacingFlags.VEHICLE_CREWED || prevPlacingFlag & EEditorPlacingFlags.VEHICLE_PASSENGER))
 		{
 			array<ref SCR_EntityBudgetValue> budgetCosts = {};
-			IEntityComponentSource source = SCR_EditableEntityComponentClass.GetEditableEntitySource(Resource.Load(selectedPrefab).GetResource().ToEntitySource());
+			Resource resource = Resource.Load(selectedPrefab);
+			if ( !resource.IsValid())
+			{
+				Print("Cannot load " + selectedPrefab + " | " + FilePath.StripPath(__FILE__) + ":" + __LINE__, LogLevel.WARNING);
+				return;
+			}
+
+			IEntityComponentSource source = SCR_EditableEntityComponentClass.GetEditableEntitySource(resource.GetResource().ToEntitySource());
 			m_BudgetManager.GetVehicleOccupiedBudgetCosts(source, currentPlacingFlag, budgetCosts);
 			m_BudgetManager.UpdatePreviewCost(budgetCosts);		
 		}
@@ -1094,7 +1119,7 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	{
 		return Event_OnPlaceEntityServer;
 	}
-	
+		
 	override void EOnEditorDebug(array<string> debugTexts)
 	{
 		if (!IsActive()) return;

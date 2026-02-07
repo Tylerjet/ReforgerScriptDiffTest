@@ -1,21 +1,18 @@
 [ComponentEditorProps(category: "GameScripted/Physics", description: "Component that automatically handles switching of between static and dynamic physics of the object")]
-class SCR_HybridPhysicsComponentClass: ScriptComponentClass
+class SCR_HybridPhysicsComponentClass : ScriptComponentClass
 {
-};
+}
 
-/**
-	TODO:
-	- Consider implementing the functionality as an extended version of RigidBody component
-	- Also need API to get damping, sleep thresholds etc
-**/
+//	TODO:
+//	- Consider implementing the functionality as an extended version of RigidBody component
+//	- Also need API to get damping, sleep thresholds etc
 
-//------------------------------------------------------------------------------------------------
 //! Class for storing physics setup info for SCR_HybridPhysicsComponent
 class SCR_HybridPhysicsInfo
 {
 	float m_fMass;
 	ref array<int> m_aLayerMasks = new array<int>;
-};
+}
 
 //------------------------------------------------------------------------------------------------
 //! Component that automatically handles switching of between static and dynamic physics of the object
@@ -39,6 +36,7 @@ class SCR_HybridPhysicsComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Create and store dynamic physics info
+	//! \param[in] owner
 	private void StorePhysicsInfo(IEntity owner)
 	{
 		auto physics = owner.GetPhysics();
@@ -72,6 +70,7 @@ class SCR_HybridPhysicsComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Apply stored physics info to dynamic physics object
+	//! \param[in] owner
 	private void ApplyPhysicsInfo(IEntity owner)
 	{
 		auto physics = owner.GetPhysics();
@@ -131,6 +130,7 @@ class SCR_HybridPhysicsComponent : ScriptComponent
 			ApplyPhysicsInfo(owner);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		super.OnPostInit(owner);
@@ -157,14 +157,18 @@ class SCR_HybridPhysicsComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_HybridPhysicsComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_HybridPhysicsComponent()
 	{
 		ClearPhysicsInfo();
 	}
-
-};
+}

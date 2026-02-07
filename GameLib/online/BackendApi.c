@@ -900,6 +900,11 @@ class BackendApi
 	proto native void VerifyCredentials(BackendCallback callback, bool storeCredentials);
 	
 	/**
+	\brief The bi-account remains locked for X seconds
+	*/
+	proto native int RemainingAccountLockedTime();
+	
+	/**
 	\brief Return true if BI Account is linked to local Identity
 	*/
 	proto native bool IsBIAccountLinked();
@@ -920,16 +925,6 @@ class BackendApi
 
 	//! Get Ban Service API
 	proto native BanServiceApi GetBanServiceApi();
-	
-	[Obsolete()]
-	void PlayerBanEvent( string sKey, string sReason, int iPenalty, int iPlayerId ) { Print("PlayerBanEvent() is obsolete", LogLevel.WARNING); }
-	[Obsolete("Use proper alternative in BanServiceApi")]
-	void PlayerBanCreate( string sReason, int iBanDuration, int iPlayerId ) { Print("PlayerBanCreate() is obsolete", LogLevel.WARNING); }
-	[Obsolete("Use proper alternative in BanServiceApi")]
-	void PlayerBansRemove( BackendCallback cb, notnull array<string> identityIds) { Print("PlayerBansRemove() is obsolete", LogLevel.WARNING); }
-	[Obsolete("Use proper alternative in BanServiceApi")]
-	void PlayerBanList(BackendCallback cb, ActiveBansObject dataObject) { Print("PlayerBanList() is obsolete", LogLevel.WARNING); }
-	
 	
 	/**
 	\brief Check if player is in list of admins defined in server config

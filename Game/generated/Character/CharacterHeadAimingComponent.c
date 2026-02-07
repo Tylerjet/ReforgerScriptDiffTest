@@ -16,6 +16,10 @@ class CharacterHeadAimingComponentClass: AimingComponentClass
 class CharacterHeadAimingComponent: AimingComponent
 {
 	proto external CharacterAimingComponent GetCharacterAimingComponent();
+	//! Set limit angles overrides in degrees
+	proto external void SetLimitAnglesOverride(float fDown, float fUp, float fLeft, float fRight);
+	//! Reset limit angles overrides to default values
+	proto external void ResetLimitAnglesOverride();
 	proto external void SetPitchLimitReductionMultiplier(float value);
 	proto external vector GetLookAngles();
 	//! computes look transformation in model space relative to Pivot if set in properties

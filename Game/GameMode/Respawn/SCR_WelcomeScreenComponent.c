@@ -1,16 +1,13 @@
-//------------------------------------------------------------------------------------------------
 [ComponentEditorProps(category: "GameScripted/GameMode/Components", description: "Welcome screen shown in respawn menu.")]
 class SCR_WelcomeScreenComponentClass : SCR_DeployMenuBaseScreenComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Welcome screen component intended to be added to the GameMode.
 class SCR_WelcomeScreenComponent : SCR_DeployMenuBaseScreenComponent
 {
 };
 
-//------------------------------------------------------------------------------------------------
 //! Class handling layout for ThreeHorizontalColumns.
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_WelcomeScreenThreeHorizontalColumns : SCR_DeployMenuBaseScreenLayout
@@ -38,7 +35,6 @@ class SCR_WelcomeScreenThreeHorizontalColumns : SCR_DeployMenuBaseScreenLayout
 	protected const string RIGHT_COLUMN_BUTTON = "RightColumnButton";
 
 	//------------------------------------------------------------------------------------------------
-	//! Initializes content for given menu.
 	override void InitContent(SCR_WelcomeScreenMenu menu)
 	{
 		Widget targetColumn = menu.GetRootWidget().FindAnyWidget(WELCOME_CONTENT);
@@ -65,9 +61,8 @@ class SCR_WelcomeScreenThreeHorizontalColumns : SCR_DeployMenuBaseScreenLayout
 			m_RightColumn.InitContent(menu, RIGHT_COLUMN, RIGHT_COLUMN_BUTTON);
 		}
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Base class for screen contents.
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_WelcomeScreenBaseContent : ScriptAndConfig
@@ -78,40 +73,36 @@ class SCR_WelcomeScreenBaseContent : ScriptAndConfig
 	protected string m_sContentName;
 	
 	//------------------------------------------------------------------------------------------------
-	//! Initializes content for given column
+	//! Initialises content for given column
+	//! \param[in] menu
+	//! \param[in] column
+	//! \param[in] columnButton
 	void InitContent(SCR_WelcomeScreenMenu menu, string column, string columnButton)
 	{
 		m_sContentName = column;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Toggles whether or not this content is interactible
-	void ToggleInteractions(bool enabled)
-	{
-	}
+	//! Toggles whether or not this content is interactive
+	//! \param[in] enabled
+	void ToggleInteractions(bool enabled);
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get content name
-	\return content name
-	*/
+	//! \return content name
 	string GetContentName()
 	{
 		return m_sContentName;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get if it is interactible
-	\return if it is interactible or not
-	*/
+	//! Get if it is interactible
+	//! \return if it is interactive or not
 	bool GetIsInteractible()
 	{
 		return m_bIsInteractible;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Class handling mission objectives content.
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_WelcomeScreenMissionObjectivesContent : SCR_WelcomeScreenBaseContent
@@ -135,7 +126,6 @@ class SCR_WelcomeScreenMissionObjectivesContent : SCR_WelcomeScreenBaseContent
 	protected ResourceName m_sMissionObjectiveLayout;
 
 	//------------------------------------------------------------------------------------------------
-	//! Initializes content for given column
 	override void InitContent(SCR_WelcomeScreenMenu menu, string column, string columnButton)
 	{
 		m_sContentName = column;
@@ -161,6 +151,7 @@ class SCR_WelcomeScreenMissionObjectivesContent : SCR_WelcomeScreenBaseContent
 
 	//------------------------------------------------------------------------------------------------
 	//! Fills content widget with mission objectives
+	//! \param[in] content
 	protected void FillMissionObjectivesWidget(Widget content)
 	{
 		RichTextWidget titleText = RichTextWidget.Cast(m_wMissionObjectivesWidget.FindAnyWidget("TitleText"));
@@ -207,11 +198,9 @@ class SCR_WelcomeScreenMissionObjectivesContent : SCR_WelcomeScreenBaseContent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get mission objectives
-	\param[out] missionObjectives array of mission objectives
-	\return number of mission objectives
-	*/
+	//! Get mission objectives
+	//! \param[out] missionObjectives array of mission objectives
+	//! \return number of mission objectives
 	int GetMissionObjectives(out array<ref SCR_WelcomeScreenMissionObjectives> missionObjectives)
 	{
 		missionObjectives = m_aMissionObjectives;
@@ -220,27 +209,20 @@ class SCR_WelcomeScreenMissionObjectivesContent : SCR_WelcomeScreenBaseContent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get title
-	\return title
-	*/
+	//! \return title
 	string GetTitleText()
 	{
 		return m_sTitleText;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get bottom title
-	\return bottom title
-	*/
+	//! \return bottom title
 	string GetBottomTitleText()
 	{
 		return m_sBottomTitleText;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Class that holds information about mission objective
 [BaseContainerProps()]
 class SCR_WelcomeScreenMissionObjectives
@@ -255,41 +237,29 @@ class SCR_WelcomeScreenMissionObjectives
 	protected string m_sDescription;
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get image set
-	\return image set
-	*/
+	//! \return image set
 	ResourceName GetImageSet()
 	{
 		return m_sObjectiveImageSet;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get objective quad name
-	\return objective quad name
-	*/
+	//! \return objective quad name
 	string GetObjectiveQuadName()
 	{
 		return m_sObjectiveQuadName;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get description
-	\return description
-	*/
+	//! \return description
 	string GetDescription()
 	{
 		return m_sDescription;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
-/*!
-Class handling mission objectives that are dynamically created during the mission.
-Currently not enabled for WB usage due to GM tasks not properly working in MP.
-*/
+//! Class handling mission objectives that are dynamically created during the mission.
+//! Currently not enabled for WB usage due to GM tasks not properly working in MP.
 //[BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_WelcomeScreenDynamicObjectivesContent : SCR_WelcomeScreenBaseContent
 {
@@ -315,7 +285,6 @@ class SCR_WelcomeScreenDynamicObjectivesContent : SCR_WelcomeScreenBaseContent
 	protected SCR_FactionManager m_FactionManager;
 	
 	//------------------------------------------------------------------------------------------------
-	//! Initializes content for given column
 	override void InitContent(SCR_WelcomeScreenMenu menu, string column, string columnButton)
 	{
 		m_sContentName = column;
@@ -342,7 +311,6 @@ class SCR_WelcomeScreenDynamicObjectivesContent : SCR_WelcomeScreenBaseContent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Toggles interactions for this content
 	override void ToggleInteractions(bool enabled)
 	{
 		HandlePagination(enabled);
@@ -350,6 +318,7 @@ class SCR_WelcomeScreenDynamicObjectivesContent : SCR_WelcomeScreenBaseContent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Fills content widget with dynamic mission objectives
+	//! \param[in] content
 	void FillDynamicObjectivesWidget(Widget content)
 	{
 		RichTextWidget titleText = RichTextWidget.Cast(m_wFinishedObjectivesWidget.FindAnyWidget("TitleText"));
@@ -418,6 +387,7 @@ class SCR_WelcomeScreenDynamicObjectivesContent : SCR_WelcomeScreenBaseContent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Calls method with delay to add a task to the array of objectives to be displayed.
+	//! \param[in] task
 	protected void AddTask(SCR_BaseTask task)
 	{
 		//Since this is called right after task creation, the task itself might not have the 
@@ -427,6 +397,7 @@ class SCR_WelcomeScreenDynamicObjectivesContent : SCR_WelcomeScreenBaseContent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Adds task to the array of objectives to be displayed.
+	//! \param[in] task
 	protected void AddTaskCalledLater(SCR_BaseTask task)
 	{
 		foreach (SCR_WelcomeScreenDynamicTaskFaction faction : m_aFactions)
@@ -451,6 +422,7 @@ class SCR_WelcomeScreenDynamicObjectivesContent : SCR_WelcomeScreenBaseContent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Removes task from the array of objectives to be displayed.
+	//! \param[in] task
 	protected void RemoveTask(SCR_BaseTask task)
 	{
 		foreach (SCR_WelcomeScreenDynamicTaskFaction faction : m_aFactions)
@@ -474,7 +446,7 @@ class SCR_WelcomeScreenDynamicObjectivesContent : SCR_WelcomeScreenBaseContent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Initializes pagination by registering button actions
+	//! Initialises pagination by registering button actions
 	protected void InitPagination()
 	{
 		Widget previousButtonWidget = m_wFinishedObjectivesWidget.FindAnyWidget("PrevButton");
@@ -503,6 +475,7 @@ class SCR_WelcomeScreenDynamicObjectivesContent : SCR_WelcomeScreenBaseContent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Handles inputs of buttons
+	//! \param[in] enabled
 	protected void HandlePagination(bool enabled = false)
 	{
 		Widget previousButtonWidget = m_wFinishedObjectivesWidget.FindAnyWidget("PrevButton");
@@ -558,6 +531,7 @@ class SCR_WelcomeScreenDynamicObjectivesContent : SCR_WelcomeScreenBaseContent
 
 	//------------------------------------------------------------------------------------------------
 	//! Changes the content of current page based on the provided number
+	//! \param[in] currentPage
 	protected void FlipPage(int currentPage)
 	{
 		for (int i = 0; i < 10; ++i)
@@ -635,10 +609,7 @@ class SCR_WelcomeScreenDynamicObjectivesContent : SCR_WelcomeScreenBaseContent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get current page
-	\return current page
-	*/
+	//! \return current page
 	int GetCurrentPage()
 	{
 		return m_iCurrentPage;
@@ -647,23 +618,20 @@ class SCR_WelcomeScreenDynamicObjectivesContent : SCR_WelcomeScreenBaseContent
 	//------------------------------------------------------------------------------------------------
 	//! Sets current page number which just changes the member variable and nothing more. 
 	//! Method FlipPage actually performs UI Changes based on this member variable.
+	//! \param[in] page
 	void SetCurrentPage(int page)
 	{
 		m_iCurrentPage = page;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get title
-	\return title
-	*/
+	//! \return title
 	string GetTitleText()
 	{
 		return m_sTitleText;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Class that holds information about dynamic tasks assigned to faction
 [BaseContainerProps()]
 class SCR_WelcomeScreenDynamicTaskFaction
@@ -675,20 +643,14 @@ class SCR_WelcomeScreenDynamicTaskFaction
 	protected ref array<SCR_BaseTask> m_aFactionTasks = {};
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get faction tasks
-	\return array of action tasks
-	*/
+	//! \return array of faction tasks
 	array<SCR_BaseTask> GetFactionTasks()
 	{
 		return m_aFactionTasks;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get faction key
-	\return faction key
-	*/
+	//! \return faction key
 	string GetFactionKey()
 	{
 		return m_sFactionKey;
@@ -696,6 +658,7 @@ class SCR_WelcomeScreenDynamicTaskFaction
 	
 	//------------------------------------------------------------------------------------------------
 	//! Adds task to this faction class
+	//! \param[in] task
 	void AddFactionTask(SCR_BaseTask task)
 	{
 		if (!m_aFactionTasks.Contains(task))
@@ -704,13 +667,13 @@ class SCR_WelcomeScreenDynamicTaskFaction
 	
 	//------------------------------------------------------------------------------------------------
 	//! Adds task from this faction class
+	//! \param[in] task
 	void RemoveFactionTask(SCR_BaseTask task)
 	{
 		m_aFactionTasks.RemoveItem(task);
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Class handling introduction content.
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_WelcomeScreenIntroductionContent : SCR_WelcomeScreenBaseContent
@@ -731,7 +694,6 @@ class SCR_WelcomeScreenIntroductionContent : SCR_WelcomeScreenBaseContent
 	protected ButtonWidget m_wColumnButton;
 
 	//------------------------------------------------------------------------------------------------
-	//! Initializes content for given column
 	override void InitContent(SCR_WelcomeScreenMenu menu, string column, string columnButton)
 	{
 		m_sContentName = column;
@@ -756,7 +718,6 @@ class SCR_WelcomeScreenIntroductionContent : SCR_WelcomeScreenBaseContent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Toggles interactions for this content
 	override void ToggleInteractions(bool enabled)
 	{
 		HandlePagination(enabled);
@@ -764,6 +725,7 @@ class SCR_WelcomeScreenIntroductionContent : SCR_WelcomeScreenBaseContent
 
 	//------------------------------------------------------------------------------------------------
 	//! Fills content widget with dynamic introductions
+	//! \param[in] column
 	protected void FillIntroductionWidget(Widget column)
 	{
 		RichTextWidget titleTextContent = RichTextWidget.Cast(column.FindAnyWidget("TitleText"));
@@ -816,7 +778,7 @@ class SCR_WelcomeScreenIntroductionContent : SCR_WelcomeScreenBaseContent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Initializes pagination by registering button actions
+	//! Initialises pagination by registering button actions
 	protected void InitPagination()
 	{
 		Widget previousButtonWidget = m_wIntroductionContentWidget.FindAnyWidget("PrevButton");
@@ -845,6 +807,7 @@ class SCR_WelcomeScreenIntroductionContent : SCR_WelcomeScreenBaseContent
 
 	//------------------------------------------------------------------------------------------------
 	//! Handles inputs of buttons
+	//! \param[in] enabled
 	protected void HandlePagination(bool enabled = false)
 	{
 		Widget previousButtonWidget = m_wIntroductionContentWidget.FindAnyWidget("PrevButton");
@@ -900,6 +863,7 @@ class SCR_WelcomeScreenIntroductionContent : SCR_WelcomeScreenBaseContent
 
 	//------------------------------------------------------------------------------------------------
 	//! Changes the content of current page based on the provided number
+	//! \param[in] currentPage
 	protected void FlipPage(int currentPage)
 	{
 		Widget contentVertical = m_wIntroductionContentWidget.FindAnyWidget("ContentVertical");
@@ -935,11 +899,9 @@ class SCR_WelcomeScreenIntroductionContent : SCR_WelcomeScreenBaseContent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get Introduction which can be separated into several pages
-	\param[out] introduction array of introductions
-	\return number of introductions
-	*/
+	//! Get Introduction which can be separated into several pages
+	//! \param[out] introduction array of introductions
+	//! \return number of introductions
 	int GetIntroduction(out array<ref SCR_WelcomeScreenIntroduction> introduction)
 	{
 		introduction = m_aIntroduction;
@@ -948,35 +910,29 @@ class SCR_WelcomeScreenIntroductionContent : SCR_WelcomeScreenBaseContent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get title
-	\return title
-	*/
+	//! \return title
 	string GetTitleText()
 	{
 		return m_sTitleText;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get current page
-	\return current page
-	*/
+	//! \return current page
 	int GetCurrentPage()
 	{
 		return m_iCurrentPage;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Sets current page number which just changes the member variable and nothing more. 
+	//! Sets current page number which just changes the member variable and nothing more.
 	//! Method FlipPage actually performs UI Changes based on this member variable.
+	//! \param[in] page
 	void SetCurrentPage(int page)
 	{
 		m_iCurrentPage = page;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Class that holds information about Introduction
 [BaseContainerProps()]
 class SCR_WelcomeScreenIntroduction
@@ -991,37 +947,27 @@ class SCR_WelcomeScreenIntroduction
 	protected string m_sContentDescriptionText;
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get image
-	\return image
-	*/
+	//! \return image
 	ResourceName GetImage()
 	{
 		return m_sContentImage;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get title
-	\return title
-	*/
+	//! \return title
 	string GetTitleText()
 	{
 		return m_sContentTitleText;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get description
-	\return description
-	*/
+	//! \return description
 	string GetDescriptionText()
 	{
 		return m_sContentDescriptionText;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Class handling Factions that are present in the game.
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_WelcomeScreenFactionContent : SCR_WelcomeScreenBaseContent
@@ -1043,7 +989,6 @@ class SCR_WelcomeScreenFactionContent : SCR_WelcomeScreenBaseContent
 	protected ref SCR_SortedArray<SCR_Faction> m_SortedFactions = new SCR_SortedArray<SCR_Faction>();
 
 	//------------------------------------------------------------------------------------------------
-	//! Initializes content for given column
 	override void InitContent(SCR_WelcomeScreenMenu menu, string column, string columnButton)
 	{
 		m_sContentName = column;
@@ -1116,6 +1061,9 @@ class SCR_WelcomeScreenFactionContent : SCR_WelcomeScreenBaseContent
 
 	//------------------------------------------------------------------------------------------------
 	//! Fills content widget with factions
+	//! \param[in] faction
+	//! \param[in] content
+	//! \param[in] color
 	protected void FillFactionWidget(notnull SCR_Faction faction, notnull Widget content, Color color)
 	{
 		Widget factionWidget = GetGame().GetWorkspace().CreateWidgets(m_sFactionLayout, content);
@@ -1160,6 +1108,8 @@ class SCR_WelcomeScreenFactionContent : SCR_WelcomeScreenBaseContent
 
 	//------------------------------------------------------------------------------------------------
 	//! Updates faction player count when player count of said faction changes
+	//! \param[in] faction
+	//! \param[in] playerCountParam
 	protected void UpdateFactionPlayerCount(Faction faction, int playerCountParam)
 	{
 		SCR_Faction factionScripted = SCR_Faction.Cast(faction);
@@ -1179,6 +1129,8 @@ class SCR_WelcomeScreenFactionContent : SCR_WelcomeScreenBaseContent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Updates faction playability when playability of said faction changes
+	//! \param[in] faction
+	//! \param[in] playable
 	protected void UpdateFactionPlayability(Faction faction, bool playable)
 	{
 		SCR_Faction factionScripted = SCR_Faction.Cast(faction);
@@ -1211,22 +1163,16 @@ class SCR_WelcomeScreenFactionContent : SCR_WelcomeScreenBaseContent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get title
-	\return title
-	*/
+	//! \return title
 	string GetTitleText()
 	{
 		return m_sTitleText;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get bottom title
-	\return bottom title
-	*/
+	//! \return bottom title
 	string GetBottomTitleText()
 	{
 		return m_sBottomTitleText;
 	}
-};
+}

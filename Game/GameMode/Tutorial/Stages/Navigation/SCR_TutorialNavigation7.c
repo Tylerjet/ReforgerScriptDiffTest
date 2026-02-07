@@ -9,8 +9,6 @@ class SCR_TutorialNavigation7 : SCR_BaseCampaignTutorialArlandStage
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
 	{
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
-		
 		SCR_MapEntity.GetOnMapClose().Remove(m_TutorialComponent.OnMapClose);
 		SCR_MapEntity.GetOnMapClose().Insert(m_TutorialComponent.OnMapClose);
 		
@@ -38,6 +36,8 @@ class SCR_TutorialNavigation7 : SCR_BaseCampaignTutorialArlandStage
 		if (!rulerTool.IsEntryActive())
 			rulerTool.m_OnClick.Invoke();
 		
+		PlaySoundSystem("Navigation_ProtractorSelected");
+		HintOnVoiceOver();
 	}
 	
 	//------------------------------------------------------------------------------------------------

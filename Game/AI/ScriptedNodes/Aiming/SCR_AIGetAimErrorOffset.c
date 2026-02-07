@@ -12,6 +12,8 @@ class SCR_AIGetAimErrorOffset: AITaskScripted
 	static const string PORT_BASE_TARGET = "BaseTargetIn";
 	static const string PORT_AIM_POINT = "AimPoint";
 	static const string PORT_TOLERANCE = "AimingTolerance";
+	static const string PORT_AIMPOINT_TYPE_0 = "AimpointType0";	// Primary aimpoint type
+	static const string PORT_AIMPOINT_TYPE_1 = "AimpointType1";	// Secondary aimpoint type
 	static const float CLOSE_RANGE_THRESHOLD = 15.0;
 	static const float LONG_RANGE_THRESHOLD = 200.0;
 	static const float AIMING_ERROR_SCALE = 1.0; // TODO: game master and server option
@@ -36,8 +38,6 @@ class SCR_AIGetAimErrorOffset: AITaskScripted
 	[Attribute("0.03", UIWidgets.EditBox, "Default PrecisionXY")]
 	protected float m_fDefaultPrecisionXY;
 
-	private EAimPointType m_eCurrentAimPointType;
-
 	private int m_iTorsoCount = 0;	
 	
 	//------------------------------------------------------------------------------------------------
@@ -47,7 +47,6 @@ class SCR_AIGetAimErrorOffset: AITaskScripted
 		if (ent)
 			m_CombatComponent = SCR_AICombatComponent.Cast(ent.FindComponent(SCR_AICombatComponent));		
 		//m_InfoComponent = SCR_AIInfoComponent.Cast(owner.FindComponent(SCR_AIInfoComponent));
-		m_eCurrentAimPointType = m_eAimPointType;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -63,7 +62,9 @@ class SCR_AIGetAimErrorOffset: AITaskScripted
 	
 	//------------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsIn = {
-		PORT_BASE_TARGET
+		PORT_BASE_TARGET,
+		PORT_AIMPOINT_TYPE_0,
+		PORT_AIMPOINT_TYPE_1
 	};
     override array<string> GetVariablesIn()
     {
@@ -81,67 +82,88 @@ class SCR_AIGetAimErrorOffset: AITaskScripted
 		if (!entity)
 			return ENodeResult.FAIL;
 		
-		BaseTarget target;
-		AimPoint aimPoint;
-		
 #ifdef AI_DEBUG
 		m_aDebugShapes.Clear();
 		
 #endif
-		if (GetVariableIn(PORT_BASE_TARGET, target))
+		
+		BaseTarget target;
+		GetVariableIn(PORT_BASE_TARGET, target);
+		
+		// Bail if target is invalid
+		if (!target)
 		{
-			// get skill based on threat level
-			// EAISkill currentSkill= GetSkillFromThreat(m_CombatComponent.GetAISkill(),m_InfoComponent.GetThreatState());
-			
-			EAISkill currentSkill = m_CombatComponent.GetAISkill();
-			// choose a hitzone
-			//m_eCurrentAimPointType = SelectAimPointType(m_eAimingPreference, m_eCurrentAimPointType);
-			
-			// Aim only at character head if enemy is in vehicle
-			// Later this should be moved to SelectAimPointType when it is used again.
-			IEntity targetEntity = target.GetTargetEntity();
-			if (!targetEntity)
-				return ENodeResult.FAIL;
-			CompartmentAccessComponent compartmentAccess = CompartmentAccessComponent.Cast(targetEntity.FindComponent(CompartmentAccessComponent));
-			if (compartmentAccess && compartmentAccess.GetCompartment())
-				m_eCurrentAimPointType = EAimPointType.WEAK;
-			
-			aimPoint = GetAimPoint(target, m_eCurrentAimPointType);
-			if (aimPoint)
-			{
-#ifdef AI_DEBUG
-				if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_TARGET_AIMPOINT))
-					m_aDebugShapes.Insert(Shape.CreateSphere(COLOR_YELLOW_A, ShapeFlags.NOZBUFFER | ShapeFlags.TRANSP, aimPoint.GetPosition(),aimPoint.GetDimension()));
-#endif
-				vector offsetX, offsetY;
-				float angularSize, distance, distanceFactor, tolerance;
-				
-				GetTargetAngularBounds(entity, aimPoint, offsetX, offsetY, angularSize, distance);
-
-				// correct aim point size based on distance to target
-				distanceFactor = GetDistanceFactor(distance);
-				
-				offsetX = GetRandomFactor(currentSkill, 0) * offsetX * AIMING_ERROR_SCALE * distanceFactor;
-				offsetY = GetRandomFactor(currentSkill, 0) * offsetY * AIMING_ERROR_SCALE * distanceFactor;
-				
-				tolerance = GetTolerance(entity, targetEntity, angularSize, distance);
-				
-				SetVariableOut(PORT_ERROR_OFFSET, offsetX + offsetY);
-				SetVariableOut(PORT_AIM_POINT, aimPoint);
-				SetVariableOut(PORT_TOLERANCE, tolerance);
-#ifdef WORKBENCH
-				// PrintFormat("Target size - used in tolerance: %1 target aimpointPosition: %2", distance * Math.Tan(tolerance * Math.DEG2RAD), aimPoint.GetPosition());
-#endif
-				return ENodeResult.SUCCESS;
-			}
-			else
-			{
-				ClearVariable(PORT_ERROR_OFFSET);
-				ClearVariable(PORT_AIM_POINT);
-				ClearVariable(PORT_TOLERANCE);
-			}
+			ClearPorts();
+			return ENodeResult.FAIL;
 		}
-		return ENodeResult.FAIL;
+		
+		// Bail if target is invalid
+		IEntity targetEntity = target.GetTargetEntity();
+		if (!targetEntity)
+		{
+			ClearPorts();
+			return ENodeResult.FAIL;
+		}
+		
+		// Resolve which aimpoint types to use
+		EAimPointType aimpointTypes[3];
+		EAimPointType aimpointType0, aimpointType1;
+		if (!GetVariableIn(PORT_AIMPOINT_TYPE_0, aimpointType0))
+			aimpointType0 = -1;
+		if (!GetVariableIn(PORT_AIMPOINT_TYPE_1, aimpointType1))
+			aimpointType1 = -1;
+		aimpointTypes[0] = aimpointType0;
+		aimpointTypes[1] = aimpointType1;
+		aimpointTypes[2] = m_eAimPointType;
+		
+		// Try to find aimpoint
+		AimPoint aimPoint = GetAimPoint(target, aimpointTypes);
+		
+		// Bail if aimpoint was not found
+		if (!aimPoint)
+		{
+			ClearPorts();
+			return ENodeResult.FAIL;
+		}
+		
+		EWeaponType weaponType = m_CombatComponent.GetCurrentWeaponType();
+
+#ifdef AI_DEBUG
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_TARGET_AIMPOINT))
+			m_aDebugShapes.Insert(Shape.CreateSphere(COLOR_YELLOW_A, ShapeFlags.NOZBUFFER | ShapeFlags.TRANSP, aimPoint.GetPosition(),aimPoint.GetDimension()));
+#endif
+		
+		// Calculate angular bounds
+		vector offsetX, offsetY;
+		float angularSize, distance, tolerance;		
+		GetTargetAngularBounds(entity, aimPoint, offsetX, offsetY, angularSize, distance);
+
+		// Correct aim point size based on factors
+		float distanceFactor = GetDistanceFactor(distance);
+		float offsetWeaponFactor = GetOffsetWeaponTypeFactor(weaponType);				
+		
+		EAISkill currentSkill = m_CombatComponent.GetAISkill();
+		offsetX = GetRandomFactor(currentSkill, 0) * offsetX * AIMING_ERROR_SCALE * distanceFactor * offsetWeaponFactor;
+		offsetY = GetRandomFactor(currentSkill, 0) * offsetY * AIMING_ERROR_SCALE * distanceFactor * offsetWeaponFactor;
+		
+		tolerance = GetTolerance(entity, targetEntity, angularSize, distance, weaponType);
+		
+		SetVariableOut(PORT_ERROR_OFFSET, offsetX + offsetY);
+		SetVariableOut(PORT_AIM_POINT, aimPoint);
+		SetVariableOut(PORT_TOLERANCE, tolerance);
+		
+#ifdef WORKBENCH
+		// PrintFormat("Target size - used in tolerance: %1 target aimpointPosition: %2", distance * Math.Tan(tolerance * Math.DEG2RAD), aimPoint.GetPosition());
+#endif
+		
+		return ENodeResult.SUCCESS;
+	}
+	
+	void ClearPorts()
+	{
+		ClearVariable(PORT_ERROR_OFFSET);
+		ClearVariable(PORT_AIM_POINT);
+		ClearVariable(PORT_TOLERANCE);
 	}
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------------
@@ -339,7 +361,7 @@ class SCR_AIGetAimErrorOffset: AITaskScripted
 	
 	//------------------------------------------------------------------------------------------------
 	//! basic tolerance based on angular size of target in degrees
-	float GetTolerance(IEntity observer, IEntity target, float angularSize, float distance)
+	float GetTolerance(IEntity observer, IEntity target, float angularSize, float distance, EWeaponType weaponType)
 	{
 		float tolerance;
 		bool setMaxTolerance;
@@ -357,7 +379,7 @@ class SCR_AIGetAimErrorOffset: AITaskScripted
 		else 
 		{
 			// weapon type tolerance modifier
-			tolerance *= GetWeaponTypeFactor(m_CombatComponent.GetCurrentWeaponType());
+			tolerance *= GetWeaponTypeFactor(weaponType);
 		};
 		return Math.Clamp(tolerance, MINIMAL_TOLERANCE, MAXIMAL_TOLERANCE);
 	}	
@@ -450,18 +472,41 @@ class SCR_AIGetAimErrorOffset: AITaskScripted
 		}
 		return 1.0;
 	}
+	
+	//------------------------------------------------------------------------------------------------		
+	//! Scales offset depending on weapon type
+	float GetOffsetWeaponTypeFactor(EWeaponType weaponType)
+	{
+		if (weaponType == EWeaponType.WT_ROCKETLAUNCHER)
+			return 0;
+		else
+			return 1.0;
+	}
 		
 	//------------------------------------------------------------------------------------------------
-	AimPoint GetAimPoint(BaseTarget target, EAimPointType aimPointType)
+	AimPoint GetAimPoint(BaseTarget target, EAimPointType aimpointTypes[3])
 	{
 		PerceivableComponent targetPerceivable = target.GetPerceivableComponent();
 		if (!targetPerceivable)
 			return null;
 		
 		array<ref AimPoint> aimPoints = {};
-		targetPerceivable.GetAimpointsOfType(aimPoints, aimPointType);
+		
+		// Try to find an aimpoint
+		for (int i = 0; i < 3; i++)
+		{
+			EAimPointType aimpointType = aimpointTypes[i];
+			if (aimpointType == -1)
+				continue;
+				
+			targetPerceivable.GetAimpointsOfType(aimPoints, aimpointType);
+			if (!aimPoints.IsEmpty())
+				break;
+		}
+		
 		int index = aimPoints.GetRandomIndex(); // more aimpoints of same type -> pick one at random
-		if (index > -1)
+		
+		if (index != -1)
 			return aimPoints[index];
 		else
 			return null;

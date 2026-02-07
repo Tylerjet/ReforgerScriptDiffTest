@@ -12,9 +12,9 @@ class SCR_VONEntryComponent : SCR_SelectionMenuEntryComponent
 	void SetPowerIcon(bool state)
 	{
 		if (state)
-			m_wPowerIcon.SetColor(Color.Green);
+			m_wPowerIcon.SetColor(Color.FromInt(Color.GREEN));
 		else 
-			m_wPowerIcon.SetColor(Color.Gray);
+			m_wPowerIcon.SetColor(Color.FromInt(Color.GRAY));
 	}
 	
 	//------------------------------------------------------------------------------------------------

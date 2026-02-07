@@ -10,8 +10,6 @@ class SCR_BuildingTutorialStage8 : SCR_BaseCampaignTutorialArlandStage
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
 	{		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
-		
 		m_SupplyTruck = Vehicle.Cast(GetGame().GetWorld().FindEntityByName("BuildingSupplyTruck"));
 		if (!m_SupplyTruck)
 			return;
@@ -19,6 +17,10 @@ class SCR_BuildingTutorialStage8 : SCR_BaseCampaignTutorialArlandStage
 		m_bCheckWaypoint = false;
 		RegisterWaypoint(m_SupplyTruck);
 		m_TutorialComponent.SetWaypointMiscImage("GETIN", true);
+		
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("Building_Truck");
 	}
 	
 	//------------------------------------------------------------------------------------------------

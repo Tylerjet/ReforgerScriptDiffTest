@@ -1,10 +1,8 @@
 [EntityEditorProps(category: "GameScripted/DataCollection/", description: "Main component used for collecting player data.")]
 class SCR_DataCollectorComponentClass : SCR_BaseGameModeComponentClass
 {
-	// prefab properties here
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 {
 	[Attribute()]
@@ -60,9 +58,7 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 		PlayerController playerController;
 		SCR_DataCollectorCommunicationComponent communicationComponent;
 
-		/*
-		Here we add to the faction the scores of all the players who haven't disconnected yet
-		*/
+		// Here we add to the faction the scores of all the players who haven't disconnected yet
 		SCR_ChimeraCharacter playerChimera;
 		Faction faction;
 
@@ -70,7 +66,7 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 		{
 			playerID = m_mPlayerData.GetKey(i);
 
-			//We update the duration of the session here because it should not be connected to any module
+			// We update the duration of the session here because it should not be connected to any module
 			m_mPlayerData.Get(playerID).CalculateSessionDuration();
 
 			playerChimera = SCR_ChimeraCharacter.Cast(playerManager.GetPlayerControlledEntity(playerID));
@@ -85,7 +81,7 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 			AddStatsToFaction(faction.GetFactionKey(), m_mPlayerData.Get(playerID).CalculateStatsDifference());
 		}
 
-		/* We replicate the faction stats now, so they can be found in the client's machine*/
+		// We replicate the faction stats now, so they can be found in the client's machine
 		array<FactionKey> factionKeys = {};
 		array<float> factionValues = {};
 		int valuesSize = 0;
@@ -117,6 +113,8 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 	//! SCR_EDataStats of all players belonging to a faction added
 	//! Some of those stats don't make sense as they are (ie. Rank, LevelOfExperience)
 	//! Bear that in mind when using these
+	//! \param[in] key
+	//! \return
 	array<float> GetFactionStats(FactionKey key)
 	{
 		return m_mFactionScore.Get(key);
@@ -127,12 +125,16 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 	//! Most of the time GetFactionStats should be enough
 	//! Also, I am returning the pointer to the original attribute, so technically, this is unsafe. May make safer (or remove) in the future.
 	//! Use responsibly!
+	//! \return
 	map<FactionKey, ref array<float>> GetAllFactionStats()
 	{
 		return m_mFactionScore;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] key
+	//! \param[in] stats
 	void AddStatsToFaction(FactionKey key, notnull array<float> stats)
 	{
 		array<float> factionStats = m_mFactionScore.Get(key);
@@ -171,6 +173,9 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] type
+	//! \return found module or null if not found
 	SCR_DataCollectorModule FindModule(typename type)
 	{
 		for (int i = m_aModules.Count() - 1; i >= 0; i--)
@@ -189,7 +194,9 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	ref Managed GetPlayerDataStats(int playerID)
+	//! \param[in] playerID
+	//! \return
+	Managed GetPlayerDataStats(int playerID)
 	{
 		SCR_PlayerData playerData = GetPlayerData(playerID);
 		//Now this instance of playerData can be deleted from the array
@@ -206,6 +213,10 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] playerID
+	//! \param[in] createNew
+	//! \param[in] requestFromBackend
+	//! \return
 	SCR_PlayerData GetPlayerData(int playerID, bool createNew = true, bool requestFromBackend = true)
 	{
 		SCR_PlayerData playerData = m_mPlayerData.Get(playerID);
@@ -233,7 +244,7 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//OnAuditSuccess is the moment when the player has not only connected, but also been authenticated
+	// OnAuditSuccess is the moment when the player has not only connected, but also been authenticated
 	protected override void OnPlayerAuditSuccess(int playerId)
 	{
 		Print("Player with id " + playerId + " was auditted succesfully and admitted on the Data Collector", LogLevel.DEBUG);
@@ -265,7 +276,7 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 
 		playerDisconnectedData.StoreProfile();
 
-		/* ! Add stats to faction */
+		// ADD STATS TO FACTION
 		// Here we add the stats of the individual player who desconnected to the faction
 		// We only do that if the game is not in POSTGAME state, because if it is we already added this player's stats to the faction in the OnGameModeEnd method
 
@@ -277,12 +288,12 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 			if (playerChimera)
 			{
 				Faction faction = playerChimera.GetFaction();
-
 				if (faction)
 					AddStatsToFaction(faction.GetFactionKey(), playerDisconnectedData.CalculateStatsDifference());
 			}
 		}
-		/* ! DONE ADDING STATS TO THE FACTION */
+
+		// DONE ADDING STATS TO THE FACTION
 		//We cannot remove this instance of data from the player collector because the event has not been sent yet to the Database for tracking purposes
 		//m_mPlayerData.Remove(playerId);
 
@@ -323,10 +334,8 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*
-	This method is a hack to process killings when the dead entity is an AI
-	Because there's no "OnAiKilled" method
-	*/
+	// This method is a hack to process killings when the dead entity is an AI
+	// Because there is no "OnAiKilled" method
 	protected override void OnControllableDestroyed(IEntity entity, IEntity killerEntity, notnull Instigator killer)
 	{
 		if (!SCR_ChimeraCharacter.Cast(entity))
@@ -351,6 +360,8 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 
 #ifdef ENABLE_DIAG
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] from
+	//! \param[in] to
 	void OnPlayerEntityChanged(IEntity from, IEntity to)
 	{
 		foreach (SCR_DataCollectorModule module : m_aModules)
@@ -373,7 +384,7 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//Prototyping method. ENABLE_DIAG CLI or #define required
+	// Prototyping method. ENABLE_DIAG CLI or #define required
 	protected void CreateStatVisualizations()
 	{
 		if (!m_UiHandler)
@@ -386,6 +397,7 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_DataCollectorUI GetUIHandler()
 	{
 		return m_UiHandler;
@@ -434,30 +446,19 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 		{
 			SessionStorage baStorage = ba.GetStorage();
 			if (baStorage)
-			{
 				writingRights = baStorage.GetOnlineWritePrivilege();
-			}
 		}
 		
 		//Local storage or online backend storage?
 		if (!writingRights)
-		{
 			Print("DataCollectorComponent: StartDataCollectorSession: This server has no writing privileges. Will use local storage instead.", LogLevel.DEBUG);
-		}
 		else
-		{
 			Print("DataCollectorComponent: StartDataCollectorSession: Using online backend storage.", LogLevel.DEBUG);
-		}
 		
 		if (!m_Owner)
-		{
 			Print("DataCollectorComponent: StartDataCollectorSession: m_Owner is null. Can't add the EntityEvent.FRAME flag thus data collector will not work properly.", LogLevel.ERROR);
-		}
 		else
-		{
-			//Activate the FRAME flag
-			SetEventMask(m_Owner, EntityEvent.FRAME);
-		}
+			SetEventMask(m_Owner, EntityEvent.FRAME); //Activate the FRAME flag
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -485,9 +486,7 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 		if (m_bVisualDisplay != DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_DATA_COLLECTION_ENABLE_DIAG))
 		{
 			if (!m_UiHandler)
-			{
 				CreateStatVisualizations();
-			}
 
 			m_bVisualDisplay = DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_DATA_COLLECTION_ENABLE_DIAG);
 			m_UiHandler.SetVisible(m_bVisualDisplay);
@@ -514,8 +513,4 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 
 		m_Owner = owner;
 	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void ~SCR_DataCollectorComponent()
-	{}
-};
+}

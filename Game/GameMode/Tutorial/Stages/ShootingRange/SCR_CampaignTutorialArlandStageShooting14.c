@@ -26,7 +26,10 @@ class SCR_CampaignTutorialArlandStageShooting14 : SCR_BaseCampaignTutorialArland
 			}
 		}
 		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("BipodRest", false);
+		HintOnVoiceOver();
 	}
 	
 	//------------------------------------------------------------------------------------------------

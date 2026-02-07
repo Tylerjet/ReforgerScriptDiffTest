@@ -2,12 +2,15 @@ class WorldSaveManifest
 {
 	ref array<string> m_aFileNames;	//list of files to upload
 	ref array<ref JsonApiStruct> m_aFiles;	//list of files to upload - WIP
+	ref array<string> m_aDependencyNames;
+	bool m_bUnlisted = false;
 	string m_sName;				
 	string m_sSummary;
 	string m_sPreview;			//name of the file with preview image - its full path has to be among other files in m_aFiles
+	string m_sScenarioId;
 }
 
-class WorldSaveItem extends DownloadableItem
+class WorldSaveItem extends WorkshopItem
 {
 	/**
 	\brief Request delete of this item from the backend storage
@@ -24,6 +27,8 @@ class WorldSaveItem extends DownloadableItem
 class WorldSaveApi extends DownloadableCatalogue
 {
 	proto native WorldSaveItem GetCurrentSave();
+	
+	proto native void SetCurrentSave(WorldSaveItem item);
 	
 	proto native WorldSaveItem UploadWorldSave(notnull WorldSaveManifest manifest, BackendCallback callback, WorldSaveItem itemToUpdate);
 

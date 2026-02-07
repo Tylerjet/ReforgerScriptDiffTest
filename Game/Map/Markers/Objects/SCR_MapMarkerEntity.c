@@ -117,6 +117,13 @@ class SCR_MapMarkerEntity : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Get world position coordinates
+	vector GetWorldPos()
+	{
+		return m_vPos;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	// API SERVER
 	//------------------------------------------------------------------------------------------------
 	void SetType(SCR_EMapMarkerType type, int configID = -1)
@@ -233,9 +240,18 @@ class SCR_MapMarkerEntity : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	protected void OnMapLayerChanged(int layerID)
 	{
+		if (m_MarkerWidgetComp)
+			m_MarkerWidgetComp.SetLayerID(layerID);
+		
+		 LayerChangeLogic(layerID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void LayerChangeLogic(int layerID)
+	{
 		if (m_ConfigEntry && m_MarkerWidgetComp)
 			m_ConfigEntry.OnMapLayerChangedDynamic(m_MarkerWidgetComp, layerID);
-	}
+	} 
 	
 	//------------------------------------------------------------------------------------------------
 	//! Called from SCR_MapMarkerManagerComponent

@@ -71,7 +71,8 @@ class SCR_GenericBoxEntity : GenericEntity
 		int numIndices[] = {36};
 		string materials[1] = {material};
 		
-		MeshObject meshObject = MeshObject.Create(1, numVertices, numIndices, materials, 0);
+		Resource res = MeshObject.Create(1, numVertices, numIndices, materials, 0);
+		MeshObject meshObject = res.GetResource().ToMeshObject();
 		meshObject.UpdateVerts(0, verts, uvs);
 		meshObject.UpdateIndices(0, indices);
 		if (meshObject) SetObject(meshObject,"");

@@ -1,15 +1,12 @@
 //#define DEBUG_ORBIT
 
-[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
-/** @ingroup ManualCamera
-*/
+//! @ingroup ManualCamera
 
-/*!
-Camera orbitting around a target
-*/
+//! Camera orbitting around a target
+[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
 class SCR_OrbitingManualCameraComponent : SCR_BaseManualCameraComponent
 {
-	const float INERTIA_THRESHOLD = 0.001;
+	protected static const float INERTIA_THRESHOLD = 0.001;
 	
 	[Attribute("0.01", UIWidgets.Auto, "")]	
 	private float m_fSpeed;		
@@ -33,13 +30,17 @@ class SCR_OrbitingManualCameraComponent : SCR_BaseManualCameraComponent
 	private float m_fPitch;
 	private vector m_vPivotOffset;
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetCenterPos()
 	{
 		WorkspaceWidget workspace = GetGame().GetWorkspace();
-		if (!workspace) return false;
+		if (!workspace)
+			return false;
 		
 	 	m_World = GetGame().GetWorld();
-		if (!m_World) return false;
+		if (!m_World)
+			return false;
 		
 		int screenW;
 		int screenH;
@@ -47,27 +48,30 @@ class SCR_OrbitingManualCameraComponent : SCR_BaseManualCameraComponent
 		screenH = workspace.GetHeight();
 		
 		vector outDir;
-		vector startPos = workspace.ProjScreenToWorld(workspace.DPIUnscale(screenW / 2), workspace.DPIUnscale(screenH / 2), outDir, m_World, -1);
+		vector startPos = workspace.ProjScreenToWorld(workspace.DPIUnscale(screenW * 0.5), workspace.DPIUnscale(screenH * 0.5), outDir, m_World, -1);
 		outDir *= 10000;
 	
 		// Set initial position by tracing from the camera
-		autoptr TraceParam trace = new TraceParam();
+		TraceParam trace = new TraceParam();
 		trace.Start = startPos - m_vPivotOffset;
 		trace.End = startPos + outDir - m_vPivotOffset;
 		trace.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
 		trace.LayerMask = TRACE_LAYER_CAMERA;
 		
 		float traceDis = m_World.TraceMove(trace, null);
-		if (traceDis == 1) return false;
+		if (traceDis == 1)
+			return false;
 		
 		m_vTarget = startPos + outDir * traceDis;
 		//m_vTarget[1] = Math.Max(m_vTarget[1], 0); // Dissalow moving below sea level
 		return true;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraFrame(SCR_ManualCameraParam param)
 	{
-		if (!param.isManualInputEnabled) return;
+		if (!param.isManualInputEnabled)
+			return;
 		
 		//--- ToDo: Better flag handling in his component
 		if (
@@ -88,11 +92,13 @@ class SCR_OrbitingManualCameraComponent : SCR_BaseManualCameraComponent
 				//--- Update orbit target (on orbiting start or upon input from other components)
 				if (GetInputManager().IsUsingMouseAndKeyboard())
 				{
-					if (!GetCenterPos()) return;
+					if (!GetCenterPos())
+						return;
 				}
 				else
 				{
-					if (!param.GetCursorWorldPos(m_vTarget)) return;
+					if (!param.GetCursorWorldPos(m_vTarget))
+						return;
 				}
 				m_vTargetHeightATL = m_vTarget[1] - m_World.GetSurfaceY(m_vTarget[0], m_vTarget[2]);
 				m_vTarget = CoordToCamera(m_vTarget);
@@ -117,7 +123,8 @@ class SCR_OrbitingManualCameraComponent : SCR_BaseManualCameraComponent
 		{		
 			//--- Inertia movement	
 			m_vAngleVelocity = vector.Lerp(m_vAngleVelocity, vector.Zero, Math.Min(param.timeSlice / m_fInertiaStrength, 1));
-			if (m_vAngleVelocity.Length() < INERTIA_THRESHOLD) m_bIsInertia = false;
+			if (m_vAngleVelocity.Length() < INERTIA_THRESHOLD)
+				m_bIsInertia = false;
 		}
 		else
 		{
@@ -131,7 +138,8 @@ class SCR_OrbitingManualCameraComponent : SCR_BaseManualCameraComponent
 		param.flag = param.flag &~ EManualCameraFlag.MOVE;
 		
 		//--- No change, terminate
-		if (!m_bIsInertia && m_vAngleVelocity == vector.Zero) return;
+		if (!m_bIsInertia && m_vAngleVelocity == vector.Zero)
+			return;
 		
 		//--- Add rotation
 		vector angles = m_vDirection.VectorToAngles().MapAngles();
@@ -158,7 +166,7 @@ class SCR_OrbitingManualCameraComponent : SCR_BaseManualCameraComponent
 			if (posWorld[1] < m_World.GetSurfaceY(posWorld[0], posWorld[2]))
 			{
 				//--- Move camera to terrain intersection leading from target to expected camera position
-				autoptr TraceParam trace = new TraceParam();
+				TraceParam trace = new TraceParam();
 				trace.Start = CoordFromCamera(target);
 				trace.End = CoordFromCamera(target + m_vDirection * m_vDistance - m_vPivotOffset);
 				trace.Flags = TraceFlags.WORLD;
@@ -181,12 +189,16 @@ class SCR_OrbitingManualCameraComponent : SCR_BaseManualCameraComponent
 		Shape.CreateSphere(ARGBF(1, 1, 0, 1), ShapeFlags.ONCE, CoordFromCamera(m_vTarget), 0.5);
 #endif
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool EOnCameraInit()
 	{
 		m_World = GetCameraEntity().GetWorld();
 		m_vPivotOffset = Vector(0, m_fMinPivotHeight, 0);
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraParentChange(bool attached, IEntity parent)
 	{
 		if (attached)
@@ -194,4 +206,4 @@ class SCR_OrbitingManualCameraComponent : SCR_BaseManualCameraComponent
 		else
 			m_vTarget = parent.CoordToParent(m_vTarget);
 	}
-};
+}

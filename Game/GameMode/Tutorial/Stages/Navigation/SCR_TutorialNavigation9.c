@@ -10,12 +10,16 @@ class SCR_TutorialNavigation9 : SCR_BaseCampaignTutorialArlandStage
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
 	{	
-		m_PlayerInventory = SCR_CharacterInventoryStorageComponent.Cast(m_Player.FindComponent(SCR_CharacterInventoryStorageComponent));
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
 		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		m_PlayerInventory = SCR_CharacterInventoryStorageComponent.Cast(m_Player.FindComponent(SCR_CharacterInventoryStorageComponent));
 
 		SCR_MapEntity.GetOnMapClose().Remove(m_TutorialComponent.OnMapClose);
 		SCR_MapEntity.GetOnMapClose().Insert(m_TutorialComponent.OnMapClose);
+		
+		PlaySoundSystem("Navigation_CompassInGameGadget");
+		HintOnVoiceOver();
 	}
 	
 	//------------------------------------------------------------------------------------------------

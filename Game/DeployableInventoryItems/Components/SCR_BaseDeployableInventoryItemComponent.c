@@ -1,9 +1,8 @@
 [EntityEditorProps(category: "GameScripted/DeployableItems", description: "")]
 class SCR_BaseDeployableInventoryItemComponentClass : ScriptComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Base class which all deployable inventory items inherit from
 class SCR_BaseDeployableInventoryItemComponent : ScriptComponent
 {
@@ -12,12 +11,14 @@ class SCR_BaseDeployableInventoryItemComponent : ScriptComponent
 	
 	protected int m_iItemOwnerID = -1;
 	
+	protected RplComponent m_RplComponent;
+	
 	//------------------------------------------------------------------------------------------------
 	//! Gets called when deploy action is executed by player
+	//! \param[in] userEntity
 	void Deploy(IEntity userEntity = null)
 	{						
-		RplComponent rplComp = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
-		if (!rplComp || rplComp.IsProxy())
+		if (!m_RplComponent || m_RplComponent.IsProxy())
 			return;
 		
 		PlayerManager playerManager = GetGame().GetPlayerManager();
@@ -35,10 +36,10 @@ class SCR_BaseDeployableInventoryItemComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Gets called when dismantle action is executed by player
+	//! \param[in] userEntity
 	void Dismantle(IEntity userEntity = null)
 	{
-		RplComponent rplComp = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
-		if (!rplComp || rplComp.IsProxy())
+		if (!m_RplComponent || m_RplComponent.IsProxy())
 			return;
 		
 		m_iItemOwnerID = -1; // Reset owner ID
@@ -50,29 +51,47 @@ class SCR_BaseDeployableInventoryItemComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	protected void OnRplDeployed();
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] userEntity
+	//! \return
 	bool CanDeployBeShown(notnull IEntity userEntity)
 	{
 		return !m_bIsDeployed;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] userEntity
+	//! \return
 	bool CanDismantleBeShown(notnull IEntity userEntity)
 	{
 		return m_bIsDeployed;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	bool IsDeployed()
 	{
 		return m_bIsDeployed;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetItemOwnerID()
 	{
 		return m_iItemOwnerID;
 	}
-};
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnPostInit(IEntity owner)
+	{
+		super.OnPostInit(owner);
+		SetEventMask(GetOwner(), EntityEvent.INIT);
+		m_RplComponent = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
+	}
+}

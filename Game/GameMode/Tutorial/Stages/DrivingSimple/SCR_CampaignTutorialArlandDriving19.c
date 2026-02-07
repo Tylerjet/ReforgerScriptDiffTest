@@ -12,7 +12,10 @@ class SCR_CampaignTutorialArlandDriving19 : SCR_BaseCampaignTutorialArlandStage
 		RegisterWaypoint("WP_DRIVING_46");
 		m_fWaypointCompletionRadius = 10;
 		m_fWaypointHeightOffset = 0;
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("Reverse", true);
+		HintOnVoiceOver();
 	}
 	
 	//------------------------------------------------------------------------------------------------

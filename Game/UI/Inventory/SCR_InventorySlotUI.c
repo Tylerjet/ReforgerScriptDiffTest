@@ -18,6 +18,7 @@ enum ESlotFunction
 	TYPE_HEALTH,
 	TYPE_CONSUMABLE,
 	TYPE_STORAGE,
+	TYPE_CLOTHES
 };
 
 //------------------------------------------------------------------------------------------------

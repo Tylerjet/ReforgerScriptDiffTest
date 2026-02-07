@@ -22,7 +22,7 @@ class SCR_MapMarkerEntryDynamic: SCR_MapMarkerEntryConfig
 	}
 		
 	//------------------------------------------------------------------------------------------------
-	override void InitClientSettingsDynamic(SCR_MapMarkerEntity marker, SCR_MapMarkerDynamicWComponent widgetComp)
+	override void InitClientSettingsDynamic(notnull SCR_MapMarkerEntity marker, notnull SCR_MapMarkerDynamicWComponent widgetComp)
 	{
 		super.InitClientSettingsDynamic(marker, widgetComp);
 		

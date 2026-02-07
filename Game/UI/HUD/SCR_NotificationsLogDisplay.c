@@ -8,6 +8,7 @@ class SCR_NotificationsLogDisplay : SCR_InfoDisplayExtended
 
 	protected SCR_NotificationsLogComponent m_NotificationsHud;
 	protected SCR_InfoDisplaySlotHandler m_slotHandler;
+	protected SCR_HUDSlotUIComponent m_HUDSlotComponent;
 	/*
 	Sets the height of 1 notification to the available spac in the slot can be set correctly. 
 	!CANNOT BE 0!
@@ -25,22 +26,51 @@ class SCR_NotificationsLogDisplay : SCR_InfoDisplayExtended
 		m_slotHandler = SCR_InfoDisplaySlotHandler.Cast(GetHandler(SCR_InfoDisplaySlotHandler));
 		if (!m_slotHandler)
 			return;
+		
+		m_HUDSlotComponent = m_slotHandler.GetSlotUIComponent();
+		if (!m_HUDSlotComponent)
+			return;
 
-		m_slotHandler.GetSlotUIComponent().GetOnResize().Insert(OnSlotUIResize);
+		m_HUDSlotComponent.GetOnResize().Insert(OnSlotUIResize);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override void DisplayStopDraw(IEntity owner)
 	{
-		if (m_slotHandler)
-			m_slotHandler.GetSlotUIComponent().GetOnResize().Remove(OnSlotUIResize);
+		// Assign it again in case the SlotUIComponent has changed
+		m_HUDSlotComponent = m_slotHandler.GetSlotUIComponent();
+		if (!m_HUDSlotComponent)
+			return;
+		
+		m_HUDSlotComponent.GetOnResize().Remove(OnSlotUIResize);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void DisplayUpdate(IEntity owner, float timeSlice)
+	{		
+		if (m_HUDSlotComponent != m_slotHandler.GetSlotUIComponent())
+		{
+			if (m_HUDSlotComponent)
+				m_HUDSlotComponent.GetOnResize().Remove(OnSlotUIResize);
+			
+			m_HUDSlotComponent = m_slotHandler.GetSlotUIComponent();
+			if (!m_HUDSlotComponent)
+				return;
+			
+			m_HUDSlotComponent.GetOnResize().Insert(OnSlotUIResize);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Calculate the amount of lines that can be displayed dependent on how much space the Layout has
 	void OnSlotUIResize()
 	{
-		int maxNotifications = (int)m_slotHandler.GetSlotUIComponent().GetHeight() / HEIGHT_DIVIDER;
+		// Assign it again in case the SlotUIComponent has changed
+		m_HUDSlotComponent = m_slotHandler.GetSlotUIComponent();
+		if (!m_HUDSlotComponent)
+			return;
+		
+		int maxNotifications = (int)m_HUDSlotComponent.GetHeight() / HEIGHT_DIVIDER;
 		if (maxNotifications < 1)
 			maxNotifications = 1;
 

@@ -1,14 +1,11 @@
 [ComponentEditorProps(category: "GameScripted/Editor (Editables)", description: "", icon: "WBData/ComponentEditorProps/componentEditor.png")]
-class SCR_EditableWaypointComponentClass: SCR_EditableEntityComponentClass
+class SCR_EditableWaypointComponentClass : SCR_EditableEntityComponentClass
 {
-};
+}
 
-/** @ingroup Editable_Entities
-*/
+//! @ingroup Editable_Entities
 
-/*!
-Special configuration for editable waypoint.
-*/
+//! Special configuration for editable waypoint.
 class SCR_EditableWaypointComponent : SCR_EditableEntityComponent
 {	
 	[RplProp(onRplName: "OnPreWaypointIdRpl")]
@@ -23,11 +20,11 @@ class SCR_EditableWaypointComponent : SCR_EditableEntityComponent
 	protected SCR_EditableEntityComponent m_Group;
 	protected SCR_EditableEntityComponent m_PrevWaypoint;
 
-	/*!
-	Assign order index of the waypoint and whether it's current or not.
-	\param index Order in group's waypoints, starting with 0
-	\param isCurrent True if the waypoint is current
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Assign order index of the waypoint and whether it's current or not.
+	//! \param[in] index Order in group's waypoints, starting with 0
+	//! \param[in] isCurrent True if the waypoint is current
+	//! \param[in] prevWaypoint
 	void SetWaypointIndex(int index, bool isCurrent, SCR_EditableEntityComponent prevWaypoint)
 	{
 		m_iIndex = index;
@@ -36,26 +33,26 @@ class SCR_EditableWaypointComponent : SCR_EditableEntityComponent
 		m_PrevWaypointId = Replication.FindId(prevWaypoint);
 		Replication.BumpMe();
 	}
-	/*!
-	Get order index of the waypoint.
-	\return Index starting with 0
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get order index of the waypoint.
+	//! \return Index starting with 0
 	int GetWaypointIndex()
 	{
 		return m_iIndex;
 	}
-	/*!
-	Check if the waypoint is group's current waypoint.
-	\return True when current
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if the waypoint is group's current waypoint.
+	//! \return True when current
 	bool IsCurrent()
 	{
 		return m_bIsCurrent;
 	}
-	/*!
-	Get previous waypoint.
-	\return Waypoint or group (when there is no previous waypoint)
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get previous waypoint.
+	//! \return Waypoint or group (when there is no previous waypoint)
 	SCR_EditableEntityComponent GetPrevWaypoint()
 	{
 		if (m_PrevWaypoint)
@@ -64,21 +61,23 @@ class SCR_EditableWaypointComponent : SCR_EditableEntityComponent
 			return m_Group;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnPreWaypointIdRpl()
 	{
 		m_PrevWaypoint = SCR_EditableEntityComponent.Cast(Replication.FindItem(m_PrevWaypointId));
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override bool CanDuplicate(out notnull set<SCR_EditableEntityComponent> outRecipients)
 	{
 		SCR_EditableEntityComponent groupComponent = GetAIGroup();
 		if (groupComponent)
-		{
 			outRecipients.Insert(groupComponent);
-		}
+
 		return true;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override Faction GetFaction()
 	{
 		if (!m_Group)
@@ -87,11 +86,14 @@ class SCR_EditableWaypointComponent : SCR_EditableEntityComponent
 		Faction faction = m_Group.GetFaction();
 		return faction;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override SCR_EditableEntityComponent GetAIGroup()
 	{
 		return m_Group;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void OnParentEntityChanged(SCR_EditableEntityComponent parentEntity, SCR_EditableEntityComponent parentEntityPrev, bool changedByUser)
 	{
 		if (!parentEntity)
@@ -112,6 +114,8 @@ class SCR_EditableWaypointComponent : SCR_EditableEntityComponent
 			}
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool GetPos(out vector pos)
 	{
 		if (m_Group)
@@ -119,7 +123,9 @@ class SCR_EditableWaypointComponent : SCR_EditableEntityComponent
 		else
 			return false;
 	}
-	override SCR_EditableEntityComponent EOnEditorPlace(out SCR_EditableEntityComponent parent, SCR_EditableEntityComponent recipient, EEditorPlacingFlags flags, bool isQueue)
+
+	//------------------------------------------------------------------------------------------------
+	override SCR_EditableEntityComponent EOnEditorPlace(out SCR_EditableEntityComponent parent, SCR_EditableEntityComponent recipient, EEditorPlacingFlags flags, bool isQueue, int playerID = 0)
 	{
 		if (recipient)
 		{
@@ -138,6 +144,8 @@ class SCR_EditableWaypointComponent : SCR_EditableEntityComponent
 		}
 		return this;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnDelete(IEntity owner)
 	{
 		super.OnDelete(owner);
@@ -150,4 +158,4 @@ class SCR_EditableWaypointComponent : SCR_EditableEntityComponent
 				aiGroup.RemoveWaypoint(AIWaypoint.Cast(owner));
 		}
 	}
-};
+}

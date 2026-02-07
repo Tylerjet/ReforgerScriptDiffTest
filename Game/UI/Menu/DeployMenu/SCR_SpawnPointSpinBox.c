@@ -30,9 +30,9 @@ class SCR_SpawnPointSpinBox : SCR_SpinBoxComponent
 		return i;
 	}
 
-	override void RemoveItem(int item)
+	override void RemoveItem(int item, bool last = false)
 	{
-		super.RemoveItem(item);
+		super.RemoveItem(item, last);
 		
 		if (m_aSpawnPointIds.IsIndexValid(item))
 			m_aSpawnPointIds.Remove(item);
@@ -59,6 +59,15 @@ class SCR_SpawnPointSpinBox : SCR_SpinBoxComponent
 	bool IsEmpty()
 	{
 		return m_aSpawnPointIds.IsEmpty();
+	}
+
+	void SetItemName(int id, string name)
+	{
+		if (m_aElementNames.IsIndexValid(id))
+		{
+			m_aElementNames[id] = name;
+			SetInitialState(false);
+		}
 	}
 
 	array<SCR_SpawnPoint> GetSpawnPointsInList()

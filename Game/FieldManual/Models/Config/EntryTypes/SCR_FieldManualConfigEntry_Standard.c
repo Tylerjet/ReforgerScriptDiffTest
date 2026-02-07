@@ -10,6 +10,7 @@ class SCR_FieldManualConfigEntry_Standard : SCR_FieldManualConfigEntry
 
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_FieldManualConfigEntry_Standard()
 	{
 		if (m_Layout.Trim().IsEmpty())

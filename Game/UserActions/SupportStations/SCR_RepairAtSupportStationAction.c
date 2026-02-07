@@ -9,6 +9,9 @@ class SCR_RepairAtSupportStationAction : SCR_BaseDamageHealSupportStationAction
 	[Attribute("#AR-SupportStation_Repair_ActionInvalid_Needs_SupportStation_Emergency", desc: "Vehicle cannot be repaired any more as max healing is reached", uiwidget: UIWidgets.LocaleEditBox)]
 	protected LocalizedString m_sInvalidMaxHealingReached_Emergency;
 	
+	[Attribute("#AR-ActionInvalid_OnFire", desc: "Text shown on action if entity is on fire", uiwidget: UIWidgets.LocaleEditBox)]
+	protected LocalizedString m_sInvalidOnFire;
+	
 	[Attribute("#AR-Editor_ContextAction_Extinguish_Name", desc: "Action name when entity is on fire. Only when hitzones are FlammableHitZones", uiwidget: UIWidgets.LocaleEditBox, category: "Heal/Repair Support Station")]
 	protected LocalizedString m_sOnFireOverrideActionName;
 	
@@ -24,6 +27,11 @@ class SCR_RepairAtSupportStationAction : SCR_BaseDamageHealSupportStationAction
 	[Attribute("0", desc: "For some repair actions you want the system to know what it will be repairing, eg: Wheels, but the wheels have no hitzones with wheel hitzone group so just get all the hitzones on the entity. But the action and notifications still know they system is repairing the wheels")]
 	protected bool m_bAlwaysRepairAllHitZones;
 	
+	[Attribute("1", desc: "if true then the action will not be shown if the entity (or root parent entity) is on fire")]
+	protected bool m_bHideIfEntityOnFire;
+	
+	protected SCR_DamageManagerComponent m_OnFireCheckDamageManager;
+	
 	//------------------------------------------------------------------------------------------------
 	protected override ESupportStationType GetSupportStationType()
 	{
@@ -36,6 +44,8 @@ class SCR_RepairAtSupportStationAction : SCR_BaseDamageHealSupportStationAction
 		//~ Entity is undamaged
 		if (reasonInvalid == ESupportStationReasonInvalid.HEAL_ENTITY_UNDAMAGED)
 			return m_sInvalidDamaged;
+		else if (reasonInvalid == ESupportStationReasonInvalid.HEAL_ENTITY_ONFIRE)
+			return m_sInvalidOnFire;
 		else if (reasonInvalid == ESupportStationReasonInvalid.HEAL_MAX_HEALABLE_HEALTH_REACHED_FIELD)
 			return m_sInvalidMaxHealingReached_Field;
 		else if (reasonInvalid == ESupportStationReasonInvalid.HEAL_MAX_HEALABLE_HEALTH_REACHED_EMERGENCY)
@@ -80,6 +90,16 @@ class SCR_RepairAtSupportStationAction : SCR_BaseDamageHealSupportStationAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
  	{		
+		//~ If hitzones to heal are not on fire but the entity is then hide make the action invalid
+		if (m_OnFireCheckDamageManager && !IsHitZoneOnFire() && m_OnFireCheckDamageManager.IsDamagedOverTime(EDamageType.FIRE))
+		{
+			SetCanPerform(false, ESupportStationReasonInvalid.HEAL_ENTITY_ONFIRE);
+			
+			//~ Resets the support station so override action name is removed
+			m_SupportStationComponent = null;
+			return false;
+		}
+		
 		if (!m_DamageManagerComponent.CanBeHealed())
 		{
 			SetCanPerform(false, ESupportStationReasonInvalid.HEAL_ENTITY_UNDAMAGED);
@@ -108,7 +128,7 @@ class SCR_RepairAtSupportStationAction : SCR_BaseDamageHealSupportStationAction
 		if (!m_aHitZoneAdditionalIDs.IsEmpty() && m_aHitZoneGroups.Contains(EVehicleHitZoneGroup.FUEL_TANKS))
 		{
 			SCR_FuelHitZone fuelHitZone;
-			ScriptedHitZone scrHitZone;
+			SCR_HitZone scrHitZone;
 			
 			array<HitZone> allHitZones = {};
 			
@@ -116,7 +136,7 @@ class SCR_RepairAtSupportStationAction : SCR_BaseDamageHealSupportStationAction
 			
 			foreach (HitZone hitZone : allHitZones)
 			{
-				scrHitZone =  ScriptedHitZone.Cast(hitZone);
+				scrHitZone =  SCR_HitZone.Cast(hitZone);
 				
 				if (scrHitZone.GetHitZoneGroup() != EVehicleHitZoneGroup.FUEL_TANKS)
 					continue;
@@ -201,4 +221,25 @@ class SCR_RepairAtSupportStationAction : SCR_BaseDamageHealSupportStationAction
 		outName = WidgetManager.Translate(outName, m_HitZoneGroupNames.GetHitZoneGroupName(m_aHitZoneGroups[0]));
 		return super.GetActionNameScript(outName);
 	}
-};
+	
+	//------------------------------------------------------------------------------------------------
+	protected override void DelayedInit(IEntity owner)
+	{
+		if (!owner)
+			return;
+		
+		super.DelayedInit(owner);
+		
+		//~ Make sure to check if the action is hidden if the entity is on fire
+		if (m_bHideIfEntityOnFire)
+		{
+			IEntity root = owner.GetRootParent();	
+			
+			//~ If has root and root is vehicle get that damage manager else use defualt damage manager	
+			if (root && Vehicle.Cast(root))
+				m_OnFireCheckDamageManager = SCR_DamageManagerComponent.GetDamageManager(root);
+			else 
+				m_OnFireCheckDamageManager = m_DamageManagerComponent;
+		}
+	}
+}

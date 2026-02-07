@@ -33,7 +33,7 @@ class SCR_InventoryUIInfo : UIInfo
 	//------------------------------------------------------------------------------------------------
 	Color GetIconColor()
 	{
-		return m_IconColor;
+		return Color.FromInt(m_IconColor.PackToInt());
 	}	
 
 	//------------------------------------------------------------------------------------------------

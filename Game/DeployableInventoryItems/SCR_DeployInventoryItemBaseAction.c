@@ -13,12 +13,6 @@ class SCR_DeployInventoryItemBaseAction : ScriptedUserAction
 		return m_DeployableItemComp.CanDeployBeShown(user);
 	}
 	
-	//------------------------------------------------------------------------------------------------
-	override bool CanBePerformedScript(IEntity user)
- 	{
-		return true;
- 	}
-	
  	//------------------------------------------------------------------------------------------------
  	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity) 
  	{

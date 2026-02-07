@@ -43,16 +43,24 @@ class SCR_AISetStance : SCR_AICharacterStats
 	}
 
 	//------------------------------------------------------------------------------------------------
-    override bool VisibleInPalette() {return true;}
+	override bool VisibleInPalette() {return true;}
 
 	//------------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsIn = {
 		STANCE_PORT
 	};
-    override array<string> GetVariablesIn()
-    {
-        return s_aVarsIn;
-    }
+	override array<string> GetVariablesIn()
+	{
+		return s_aVarsIn;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override string GetNodeMiddleText()
+	{
+		string s;
+		s = s + string.Format("m_eStance: %1\n", typename.EnumToString(ECharacterStance, m_eStance));
+		return s;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(AIAgent owner)
@@ -67,6 +75,7 @@ class SCR_AISetStance : SCR_AICharacterStats
 		}	
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnAbort(AIAgent owner, Node nodeCausingAbort)
 	{
 		if (!m_bStandupOnAbort)

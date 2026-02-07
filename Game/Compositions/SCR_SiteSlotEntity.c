@@ -176,13 +176,18 @@ class SCR_SiteSlotEntity : GenericEntity
 		pos[1] = GetWorld().GetSurfaceY(pos[0], pos[2]);
 		if (entitySource.GetParent())
 			pos = SCR_BaseContainerTools.GetLocalCoords(entitySource.GetParent(), pos);
-		_WB_GetEditorAPI().ModifyEntityKey(this, "coords", pos.ToString(false));
+		
+		WorldEditorAPI api = _WB_GetEditorAPI();
+		IEntitySource src = api.EntityToSource(this);
+		api.SetVariableValue(src, null, "coords", pos.ToString(false));
 	}
 	void _WB_OrientToTerrain(IEntitySource entitySource)
 	{
 		WorldEditorAPI api = _WB_GetEditorAPI();
-		api.ModifyEntityKey(this, "angleX", "0");
-		api.ModifyEntityKey(this, "angleZ", "0");
+		IEntitySource src = api.EntityToSource(this);
+		
+		api.SetVariableValue(src, null, "angleX", "0");
+		api.SetVariableValue(src, null, "angleZ", "0");
 		
 		vector transform[4];
 		GetWorldTransform(transform);
@@ -197,7 +202,8 @@ class SCR_SiteSlotEntity : GenericEntity
 		
 		for (int i = 0, count = entitySource.GetNumChildren(); i < count; i++)
 		{
-			child = api.SourceToEntity(entitySource.GetChild(i));
+			IEntitySource childSrc = entitySource.GetChild(i);
+			child = api.SourceToEntity(childSrc);
 			child.GetBounds(min, max);
 			
 			float posY = -float.MAX;
@@ -208,9 +214,9 @@ class SCR_SiteSlotEntity : GenericEntity
 			posChild[1] = posY;
 			posChild = CoordToLocal(posChild);
 			
-			api.ModifyEntityKey(child, "coords", posChild.ToString(false));
-			api.ModifyEntityKey(child, "angleX", angleX.ToString());
-			api.ModifyEntityKey(child, "angleZ", (-angleZ).ToString());
+			api.SetVariableValue(childSrc, null, "coords", posChild.ToString(false));
+			api.SetVariableValue(childSrc, null, "angleX", angleX.ToString());
+			api.SetVariableValue(childSrc, null, "angleZ", (-angleZ).ToString());
 		}
 	}
 	float _WB_GetAngle(WorldEditorAPI api, vector posA, vector posB, out float posY)

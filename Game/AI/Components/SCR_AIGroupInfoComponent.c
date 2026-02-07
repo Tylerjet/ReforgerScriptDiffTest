@@ -1,7 +1,7 @@
 [ComponentEditorProps(category: "GameScripted/AI", description: "Component for AI checking state of group")]
-class SCR_AIGroupInfoComponentClass: SCR_AIInfoBaseComponentClass
+class SCR_AIGroupInfoComponentClass : SCR_AIInfoBaseComponentClass
 {
-};
+}
 
 enum EGroupControlMode
 {
@@ -10,19 +10,21 @@ enum EGroupControlMode
 	AUTONOMOUS, 			///< Group behaves autonomously, e.g. engaging an enemy
 	FOLLOWING_WAYPOINT,		///< Group is following a waypoint
 	LAST,
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_AIGroupInfoComponent : SCR_AIInfoBaseComponent
 {
 	private EGroupControlMode m_eGroupControlMode;
 	
-	protected ref ScriptInvoker Event_OnControlModeChanged = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnControlModeChanged = new ScriptInvoker();
 	
 	protected float m_fTimeGrenadeThrowAllowed_ms;
 	protected AIAgent m_GrenadeThrowAgent;
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] soldierAgent
+	//! \return
 	bool IsGrenadeThrowAllowed(AIAgent soldierAgent)
 	{
 		if (soldierAgent == m_GrenadeThrowAgent)
@@ -32,6 +34,7 @@ class SCR_AIGroupInfoComponent : SCR_AIInfoBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] soldierAgent
 	void OnAgentSelectedGrenade(AIAgent soldierAgent)
 	{
 		float time_ms = GetGame().GetWorld().GetWorldTime();
@@ -47,6 +50,7 @@ class SCR_AIGroupInfoComponent : SCR_AIInfoBaseComponent
 	}	
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] currControlMode
 	void SetGroupControlMode(EGroupControlMode currControlMode) ///< This is informative property, does not set the behavior of group to the respective state!
 	{
 		#ifdef AI_DEBUG
@@ -64,6 +68,7 @@ class SCR_AIGroupInfoComponent : SCR_AIInfoBaseComponent
 		Rpc(RplSetGroupControlMode, currControlMode);	
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void RplSetGroupControlMode(EGroupControlMode currControlMode)
 	{
@@ -76,12 +81,14 @@ class SCR_AIGroupInfoComponent : SCR_AIInfoBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	EGroupControlMode GetGroupControlMode()
 	{
 		return m_eGroupControlMode; 
 	}	
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnControlModeChanged()
 	{
 		return Event_OnControlModeChanged;
@@ -93,8 +100,9 @@ class SCR_AIGroupInfoComponent : SCR_AIInfoBaseComponent
         writer.WriteIntRange(m_eGroupControlMode, 0, EGroupControlMode.LAST-1);
 		
         return true;
-    }
-     
+	}
+
+	//------------------------------------------------------------------------------------------------
     override bool RplLoad(ScriptBitReader reader)
     {
 		EGroupControlMode groupControlMode;
@@ -105,4 +113,4 @@ class SCR_AIGroupInfoComponent : SCR_AIInfoBaseComponent
 		
         return true;
     }
-};
+}

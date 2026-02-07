@@ -1,9 +1,9 @@
 [ComponentEditorProps(category: "GameScripted/Area Mesh", description: "")]
-class SCR_CampaignBuildingAreaMeshComponentClass: SCR_TriggerAreaMeshComponentClass
+class SCR_CampaignBuildingAreaMeshComponentClass : SCR_TriggerAreaMeshComponentClass
 {
-};
+}
 
-class SCR_CampaignBuildingAreaMeshComponent: SCR_TriggerAreaMeshComponent
+class SCR_CampaignBuildingAreaMeshComponent : SCR_TriggerAreaMeshComponent
 {
 	[Attribute("10")]
 	protected float m_fBufferZone;
@@ -28,14 +28,18 @@ class SCR_CampaignBuildingAreaMeshComponent: SCR_TriggerAreaMeshComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] val
 	void EnableFrameUpdateDuringEditor(bool val)
 	{
 		m_bShouldEnableFrameUpdateDuringEditor = val;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	bool ShouldEnableFrameUpdateDuringEditor()
 	{
 		return m_bShouldEnableFrameUpdateDuringEditor;
 	}
-};
+}

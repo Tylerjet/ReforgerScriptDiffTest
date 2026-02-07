@@ -22,6 +22,7 @@ class SCR_ButtonCloseEditorUIComponent: ScriptedWidgetComponent
 	protected const int BUTTON_RESPAWN_MENU = 2;
 	protected const int BUTTON_RESPAWN_MENU_DISABLED = 3;
 	
+	//------------------------------------------------------------------------------------------------
 	protected int GetButtonIndex()
 	{
 		//--- Player avatar exists - 'Play' button
@@ -65,6 +66,7 @@ class SCR_ButtonCloseEditorUIComponent: ScriptedWidgetComponent
 		return BUTTON_CLOSE;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void Refresh()
 	{
 		int showButton = GetButtonIndex();
@@ -81,11 +83,13 @@ class SCR_ButtonCloseEditorUIComponent: ScriptedWidgetComponent
 		Refresh();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnPlayerSpawnedOrDeleted(int playerId, IEntity player)
 	{
 		Refresh();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override bool OnClick(Widget w, int x, int y, int button)
 	{
 		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
@@ -94,6 +98,8 @@ class SCR_ButtonCloseEditorUIComponent: ScriptedWidgetComponent
 		
 		return false;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		if (SCR_Global.IsEditMode())
@@ -116,6 +122,8 @@ class SCR_ButtonCloseEditorUIComponent: ScriptedWidgetComponent
 		
 		Refresh();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
@@ -128,4 +136,4 @@ class SCR_ButtonCloseEditorUIComponent: ScriptedWidgetComponent
 		
 		SCR_SpawnPoint.Event_OnSpawnPointCountChanged.Remove(Refresh);
 	}
-};
+}

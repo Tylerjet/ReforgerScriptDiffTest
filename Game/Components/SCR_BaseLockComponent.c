@@ -1,9 +1,8 @@
 [EntityEditorProps(category: "GameScripted/Components", description: "Base lock component.")]
 class SCR_BaseLockComponentClass : ScriptComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_BaseLockComponent : ScriptComponent
 {
 	private SCR_VehicleSpawnProtectionComponent m_pVehicleSpawnProtection 
@@ -22,6 +21,8 @@ class SCR_BaseLockComponent : ScriptComponent
 	}
 		
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] user
+	//! \return
 	LocalizedString GetCannotPerformReason(IEntity user)
 	{
 		if (user && m_pVehicleSpawnProtection)
@@ -31,15 +32,18 @@ class SCR_BaseLockComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] user
+	//! \param[in] compartmentSlot
+	//! \return
 	bool IsLocked(IEntity user, BaseCompartmentSlot compartmentSlot)
 	{
 		if (!user || !compartmentSlot)
 			return false;
-				
+		
 		if (m_pVehicleSpawnProtection)	
 			return m_pVehicleSpawnProtection.IsProtected(user, compartmentSlot);
 		
 		return false;
 	}
-
-};
+}

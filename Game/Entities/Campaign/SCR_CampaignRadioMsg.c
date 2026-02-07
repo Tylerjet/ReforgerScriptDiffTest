@@ -1,4 +1,3 @@
-#include "scripts/Game/config.c"
 //------------------------------------------------------------------------------------------------
 class SCR_CampaignRadioMsg : ScriptedRadioMessage
 {
@@ -128,14 +127,10 @@ class SCR_CampaignRadioMsg : ScriptedRadioMessage
 			SCR_CampaignNetworkComponent comp = SCR_CampaignNetworkComponent.Cast(controller.FindComponent(SCR_CampaignNetworkComponent));
 			
 			if (comp)
-			#ifndef AR_CAMPAIGN_TIMESTAMP
-				comp.SetLastHQRadioMessageTimestamp(Replication.Time());
-			#else
 			{
 				ChimeraWorld world = GetGame().GetWorld();
 				comp.SetLastHQRadioMessageTimestamp(world.GetServerTimestamp());
 			}
-			#endif
 		}
 	}
 };
@@ -176,15 +171,15 @@ enum SCR_ERadioMsg
 	RELAY_LOST,
 	BASE_UNDER_ATTACK,
 	BUILT_ARMORY,
-	BUILT_FUEL,
-	BUILT_REPAIR,
-	BUILT_SUPPLY,
 	BUILT_VEHICLES_LIGHT,
 	BUILT_VEHICLES_HEAVY,
 	BUILT_BARRACKS,
 	BUILT_ANTENNA,
 	BUILT_FIELD_HOSPITAL,
 	BUILT_HELIPAD,
+	BUILT_SUPPLY,
+	BUILT_REPAIR,
+	BUILT_FUEL,
 	DESTROYED_ARMORY,
 	DESTROYED_FUEL,
 	DESTROYED_REPAIR,

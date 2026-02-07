@@ -8,6 +8,8 @@ class SCR_NetworkedStatsComponentClass : ScriptComponentClass
 	protected ref SCR_OnStatChangedInvoker m_OnStatsChanged;
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] createIfNull
+	//! \return
 	SCR_OnStatChangedInvoker GetOnStatsChanged(bool createIfNull = true)
 	{
 		if (!m_OnStatsChanged && createIfNull)
@@ -27,6 +29,8 @@ class SCR_NetworkedStatsComponent : ScriptComponent
 	protected int m_iUpdateTimer;
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] statType
+	//! \return
 	SCR_BaseNetworkedStat GetNetworkedStat(SCR_ENetworkedStatType statType)
 	{
 		foreach (SCR_BaseNetworkedStat stat : m_aStats)
@@ -39,18 +43,22 @@ class SCR_NetworkedStatsComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_NetworkedStatsComponentClass GetNetworkedStatPrefabData()
 	{
 		return SCR_NetworkedStatsComponentClass.Cast(GetOwner().FindComponentData(SCR_NetworkedStatsComponentClass));
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	RplComponent GetRplComponent()
 	{
 		return m_RplComponent;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] statType
+	//! \param[in] valueInt
 	void SetAuthorityStatValue(SCR_ENetworkedStatType statType, int valueInt)
 	{
 		if (m_RplComponent.IsProxy())
@@ -60,6 +68,8 @@ class SCR_NetworkedStatsComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] statType
+	//! \param[in] value
 	[RplRpc(RplChannel.Unreliable, RplRcver.Broadcast)]
 	void SetStatValueOfAuthority(SCR_ENetworkedStatType statType, int value)
 	{
@@ -71,6 +81,7 @@ class SCR_NetworkedStatsComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void UpdateStats()
 	{
 		foreach (SCR_BaseNetworkedStat stat : m_aStats)

@@ -9,7 +9,7 @@ enum ETerrainType
 	OCEAN,
 	POND,
 	POND_SMALL
-};
+}
 
 [BaseContainerProps()]
 class SCR_TerrainDef
@@ -22,4 +22,4 @@ class SCR_TerrainDef
 	
 	[Attribute("0", uiwidget: UIWidgets.ComboBox, "", "", ParamEnumArray.FromEnum(ETerrainType))]
 	ETerrainType m_eTerrainType;	
-};
+}

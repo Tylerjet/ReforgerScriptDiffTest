@@ -52,18 +52,77 @@ class SCR_RestrictedDeployableSpawnPointComponent : SCR_BaseDeployableSpawnPoint
 	[Attribute(defvalue: "0")]
 	protected bool m_bUnlockActionsForAllGroups;
 
+	[Attribute(defvalue: "1", desc: "Play audio cue once spawn point can/cannot be deployed")]
+	protected bool m_bPlaySoundOnZoneEntered;
+
+	[Attribute(defvalue: "1", desc: "Show notification once spawn point can/cannot be deployed")]
+	protected bool m_bShowNotificationOnZoneEntered;
+
+	[Attribute(defvalue: "1.0", desc: "Rate at which spawn point will check if it can be deployed or not")]
+	protected float m_fUpdateRate;
+	
+	[Attribute(defvalue: "#AR-DeployableSpawnPoints_UserAction_OutsideDeployArea")]
+	protected string m_sOutsideDeployAreaMessage;
+	
+	[Attribute(defvalue: "#AR-DeployableSpawnPoints_UserAction_DeployLimitReached")]
+	protected string m_sDeployLimitReachedMessage;
+	
+	[Attribute(defvalue: "#AR-DeployableSpawnPoints_UserAction_NoGroupJoined")]
+	protected string m_sNoGroupJoinedMessage;
+
 	[RplProp()]
 	protected int m_iGroupID = -1;
-
-	protected bool m_bSpawnLimitReached;
+	
+	[RplProp()]
+	protected bool m_bIsOutsideExclusionZone;
+	
+	protected bool m_bIsGroupLimitReached;
+	protected bool m_bNoGroupJoined;
+	
+	protected static ref array<int> s_aActiveDeployedSpawnPointGroupIDs = {};
 
 	protected int m_iRespawnCount;
 
-	protected bool m_bCanBeDeployed;
+	protected bool m_bSpawnLimitReached;
+	protected bool m_bIsWornByPlayer;
+
+	protected float m_fTimeSinceUpdate;
+
+#ifdef ENABLE_DIAG
+	protected static ref array<ref Shape> s_aDebugShapes = {};
+#endif
+
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void RPC_AddSpawnPointGroupBroadcast(int groupID)
+	{
+		s_aActiveDeployedSpawnPointGroupIDs.Insert(groupID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void RPC_RemoveSpawnPointGroupBroadcast(int groupID)
+	{
+		s_aActiveDeployedSpawnPointGroupIDs.RemoveItem(groupID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Unreliable, RplRcver.Broadcast)]
+	protected void RPC_PlaySoundOnZoneEnteredBroadcast(bool entered)
+	{
+		SoundComponent soundComp = SoundComponent.Cast(GetOwner().FindComponent(SoundComponent));
+		if (!soundComp)
+			return;
+
+		if (entered)
+			soundComp.SoundEvent(SCR_SoundEvent.SOUND_DEPLOYED_RADIO_ENTER_ZONE);
+		else
+			soundComp.SoundEvent(SCR_SoundEvent.SOUND_DEPLOYED_RADIO_EXIT_ZONE);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns true when there are no entities in the specified area that could prevent deploying
-	protected bool CanDeploy(notnull array<IEntity> entities, notnull Faction spawnPointFaction, vector spawnPointOrigin)
+	protected bool EntityQuery(notnull array<IEntity> entities, notnull Faction spawnPointFaction, vector spawnPointOrigin)
 	{
 		if (entities.IsEmpty())
 			return true;
@@ -91,7 +150,14 @@ class SCR_RestrictedDeployableSpawnPointComponent : SCR_BaseDeployableSpawnPoint
 
 		foreach (IEntity e : entities)
 		{
-			float distanceToItemSq = (spawnPointOrigin - e.GetOrigin()).LengthSq();
+			vector origin = e.GetOrigin();	
+					
+#ifdef ENABLE_DIAG
+			if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_DEPLOYABLE_SPAWNPOINTS_ENABLE_DIAG))
+				s_aDebugShapes.Insert(Shape.CreateSphere(Color.RED, ShapeFlags.WIREFRAME, origin, queryRadius));
+#endif			
+			
+			float distanceToItemSq = vector.DistanceSq(spawnPointOrigin, origin);
 			bool isWithinRadius = distanceToItemSq < radiusSq;
 
 			if (!isWithinRadius)
@@ -104,7 +170,7 @@ class SCR_RestrictedDeployableSpawnPointComponent : SCR_BaseDeployableSpawnPoint
 			bool isFriendlyFaction = faction.DoCheckIfFactionFriendly(spawnPointFaction);
 
 			if (isBase)
-			{
+			{					
 				if (isFriendlyFaction)
 					return false;
 
@@ -112,7 +178,7 @@ class SCR_RestrictedDeployableSpawnPointComponent : SCR_BaseDeployableSpawnPoint
 					return false;
 			}
 			else if (isSpawnPoint)
-			{
+			{			
 				if (isFriendlyFaction)
 					return false;
 
@@ -120,7 +186,7 @@ class SCR_RestrictedDeployableSpawnPointComponent : SCR_BaseDeployableSpawnPoint
 					return false;
 			}
 			else if (isCharacter)
-			{
+			{			
 				if (!isFriendlyFaction && !m_bIgnoreEnemyCharacters)
 					return false;
 			}
@@ -132,7 +198,7 @@ class SCR_RestrictedDeployableSpawnPointComponent : SCR_BaseDeployableSpawnPoint
 	//------------------------------------------------------------------------------------------------
 	protected bool CanActionBeShown(notnull IEntity userEntity, bool checkCanDeploy, bool checkFaction = true, bool checkGroupID = true)
 	{
-		if (checkCanDeploy && !m_bDeployableSpawnPointsEnabled)
+		if (!s_bDeployableSpawnPointsEnabled)
 			return false;
 
 		FactionAffiliationComponent factionAffiliation = FactionAffiliationComponent.Cast(userEntity.FindComponent(FactionAffiliationComponent));
@@ -169,66 +235,22 @@ class SCR_RestrictedDeployableSpawnPointComponent : SCR_BaseDeployableSpawnPoint
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Check if deploying is possible first, then deploy at the end of the timed action
-	void TryDeploy(IEntity userEntity)
+	protected bool CanBeDeployedAtPosition(vector position, IEntity userEntity, out int notification = -1)
 	{
-		RplComponent rplComp = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
-		if (!rplComp || rplComp.IsProxy())
-			return;
-
-		SCR_PossessingManagerComponent possessingManagerComp = SCR_PossessingManagerComponent.GetInstance();
-		if (!possessingManagerComp)
-			return;
-
-		if (!userEntity)
-			return;
-
-		int userID = possessingManagerComp.GetIdFromControlledEntity(userEntity);
-
-		SCR_PlayerControllerGroupComponent playerControllerGroupComp = SCR_PlayerControllerGroupComponent.GetPlayerControllerComponent(userID);
-		if (!playerControllerGroupComp)
-			return;
-
-		m_iGroupID = playerControllerGroupComp.GetGroupID();
-		if (m_iGroupID < 0)
-			m_iGroupID = 0;
-
-		Replication.BumpMe();
-
-		// Check if deployed item limit for user group has been reached
-		array<SCR_RestrictedDeployableSpawnPointComponent> deployedSpawnPointsInGroup = {};
-
-		foreach (SCR_BaseDeployableSpawnPointComponent spawnPointComp : s_aActiveDeployedSpawnPoints)
-		{
-			SCR_RestrictedDeployableSpawnPointComponent restrictedSpawnPointComp = SCR_RestrictedDeployableSpawnPointComponent.Cast(spawnPointComp);
-
-			if (!restrictedSpawnPointComp)
-				continue;
-
-			if (restrictedSpawnPointComp.GetGroupID() == m_iGroupID)
-				deployedSpawnPointsInGroup.Insert(restrictedSpawnPointComp);
-		}
-
-		if (deployedSpawnPointsInGroup.Count() >= m_iMaxSpawnPointsPerGroup)
-		{
-			SCR_NotificationsComponent.SendToPlayer(userID, ENotification.DEPLOYABLE_SPAWNPOINTS_DEPLOYED_SPAWNPOINT_LIMIT, deployedSpawnPointsInGroup.Count(), m_iMaxSpawnPointsPerGroup);
-			return;
-		}
-
 		array<IEntity> entities = {};
-		
+
 		FactionManager factionManager = GetGame().GetFactionManager();
 		if (!factionManager)
-			return;
+			return false;
 
 		SCR_Faction faction = SCR_Faction.Cast(factionManager.GetFactionByKey(m_FactionKey));
 
 		// Check for nearby bases and prevent deploy if there are any
 		if (m_bQueryBases)
 		{
-			SCR_MilitaryBaseManager baseManager = SCR_MilitaryBaseManager.GetInstance();
+			SCR_MilitaryBaseSystem baseManager = SCR_MilitaryBaseSystem.GetInstance();
 			if (!baseManager)
-				return;
+				return false;
 
 			array<SCR_MilitaryBaseComponent> baseComponents = {};
 
@@ -249,14 +271,10 @@ class SCR_RestrictedDeployableSpawnPointComponent : SCR_BaseDeployableSpawnPoint
 				entities.Insert(baseComponent.GetOwner());
 			}
 
-			if (!CanDeploy(entities, faction, GetOwner().GetOrigin()))
+			if (!EntityQuery(entities, faction, position))
 			{
-				if (m_bQueryAllBases)
-					SCR_NotificationsComponent.SendToPlayer(userID, ENotification.DEPLOYABLE_SPAWNPOINTS_NEARBY_BASE);
-				else
-					SCR_NotificationsComponent.SendToPlayer(userID, ENotification.DEPLOYABLE_SPAWNPOINTS_NEARBY_HQ);
-
-				return;
+				notification = ENotification.DEPLOYABLE_SPAWNPOINTS_ZONE_EXITED;
+				return false;
 			}
 		}
 
@@ -273,10 +291,10 @@ class SCR_RestrictedDeployableSpawnPointComponent : SCR_BaseDeployableSpawnPoint
 					entities.Insert(spawnPoint);
 			}
 
-			if (!CanDeploy(entities, faction, GetOwner().GetOrigin()))
+			if (!EntityQuery(entities, faction, position))
 			{
-				SCR_NotificationsComponent.SendToPlayer(userID, ENotification.DEPLOYABLE_SPAWNPOINTS_NEARBY_SPAWNPOINT);
-				return;
+				notification = ENotification.DEPLOYABLE_SPAWNPOINTS_ZONE_EXITED;
+				return false;
 			}
 		}
 
@@ -287,7 +305,7 @@ class SCR_RestrictedDeployableSpawnPointComponent : SCR_BaseDeployableSpawnPoint
 
 			array<SCR_ChimeraCharacter> characters = SCR_CharacterRegistrationComponent.GetChimeraCharacters();
 			if (!characters)
-				return;
+				return false;
 
 			foreach (SCR_ChimeraCharacter character : characters)
 			{
@@ -297,22 +315,60 @@ class SCR_RestrictedDeployableSpawnPointComponent : SCR_BaseDeployableSpawnPoint
 				entities.Insert(character);
 			}
 
-			if (!CanDeploy(entities, faction, GetOwner().GetOrigin()))
+			if (!EntityQuery(entities, faction, position))
 			{
-				SCR_NotificationsComponent.SendToPlayer(userID, ENotification.DEPLOYABLE_SPAWNPOINTS_NEARBY_PLAYERS);
-				return;
+				notification = ENotification.DEPLOYABLE_SPAWNPOINTS_ZONE_EXITED;
+				return false;
 			}
 		}
 
-		m_bCanBeDeployed = true;
+		notification = ENotification.DEPLOYABLE_SPAWNPOINTS_ZONE_ENTERED;
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected bool IsDeployLimitReachedLocal()
+	{
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupsManager)
+			return false;
+		
+		SCR_AIGroup group = groupsManager.GetPlayerGroup(SCR_PlayerController.GetLocalPlayerId());
+		if (!group)
+		{
+			m_bNoGroupJoined = true;
+			return false;
+		}
+		
+		m_bNoGroupJoined = false;
+		return group.GetDeployedRadioCount() >= m_iMaxSpawnPointsPerGroup;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Check if deploy is possible, then call super.Deploy()
 	override void Deploy(IEntity userEntity)
 	{
-		if (!m_bCanBeDeployed)
+		if (!m_RplComponent || m_RplComponent.IsProxy())
 			return;
+		
+		int userID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(userEntity);
+		
+		SCR_PlayerControllerGroupComponent playerControllerGroupComp = SCR_PlayerControllerGroupComponent.GetPlayerControllerComponent(userID);
+		if (!playerControllerGroupComp)
+			return;
+
+		m_iGroupID = playerControllerGroupComp.GetGroupID();		
+		Replication.BumpMe();
+				
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupsManager)
+			return;
+		
+		SCR_AIGroup playerGroup = groupsManager.FindGroup(m_iGroupID);
+		if (!playerGroup)
+			return;
+		
+		playerGroup.IncreaseDeployedRadioCount();
 
 		super.Deploy(userEntity);
 
@@ -334,9 +390,8 @@ class SCR_RestrictedDeployableSpawnPointComponent : SCR_BaseDeployableSpawnPoint
 	//! Cache respawn count; then call super.Dismantle()
 	override void Dismantle(IEntity userEntity = null)
 	{
-		RplComponent rplComp = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
-			if (!rplComp || rplComp.IsProxy())
-				return;
+		if (!m_RplComponent || m_RplComponent.IsProxy())
+			return;
 
 		SCR_RestrictedDeployableSpawnPoint restrictedSpawnPoint = SCR_RestrictedDeployableSpawnPoint.Cast(m_SpawnPoint);
 		if (!restrictedSpawnPoint)
@@ -344,10 +399,18 @@ class SCR_RestrictedDeployableSpawnPointComponent : SCR_BaseDeployableSpawnPoint
 
 		m_iRespawnCount = restrictedSpawnPoint.GetRespawnCount();
 
-		m_iGroupID = -1; // reset groupID
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupsManager)
+			return;
+		
+		SCR_AIGroup playerGroup = groupsManager.FindGroup(m_iGroupID);
+		if (!playerGroup)
+			return;
+		
+		playerGroup.DecreaseDeployedRadioCount();
+		
+		m_iGroupID = -1; // reset groupID		
 		Replication.BumpMe();
-
-		m_bCanBeDeployed = false;
 
 		super.Dismantle(userEntity);
 	}
@@ -385,6 +448,21 @@ class SCR_RestrictedDeployableSpawnPointComponent : SCR_BaseDeployableSpawnPoint
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[out] reason
+	//! \return
+	bool CanDeployBePerformed(out string reason)
+	{
+		if (m_bNoGroupJoined)
+			reason = m_sNoGroupJoinedMessage;
+		else if (m_bIsGroupLimitReached)
+			reason = m_sDeployLimitReachedMessage;
+		else if (!m_bIsOutsideExclusionZone)
+			reason = m_sOutsideDeployAreaMessage;
+		
+		return m_bIsOutsideExclusionZone && !m_bIsGroupLimitReached && !m_bNoGroupJoined;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool CanDeployBeShown(notnull IEntity userEntity)
 	{
 		if (!CanActionBeShown(userEntity, true, checkGroupID : false))
@@ -396,43 +474,50 @@ class SCR_RestrictedDeployableSpawnPointComponent : SCR_BaseDeployableSpawnPoint
 	//------------------------------------------------------------------------------------------------
 	override bool CanDismantleBeShown(notnull IEntity userEntity)
 	{
-		if (!CanActionBeShown(userEntity, false))
+		if (!CanActionBeShown(userEntity, false, checkFaction : false))
 			return false;
 
 		return m_bIsDeployed;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] userEntity
+	//! \return
 	bool CanInfoBeShown(notnull IEntity userEntity)
 	{
 		return CanActionBeShown(userEntity, !m_bIsDeployed, checkGroupID : false);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetAllowAllGroupsToSpawn()
 	{
 		return m_bAllowAllGroupsToSpawn;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetIgnoreEnemyCharacters()
 	{
 		return m_bIgnoreEnemyCharacters;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetGroupID()
 	{
 		return m_iGroupID;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetQueryRadiusCharacters()
 	{
 		return m_fQueryRadiusCharacters;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] respawnCount
 	void SetRespawnCount(int respawnCount)
 	{
 		m_iRespawnCount = respawnCount;
@@ -452,24 +537,152 @@ class SCR_RestrictedDeployableSpawnPointComponent : SCR_BaseDeployableSpawnPoint
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override void Update(float timeSlice)
+	{
+		super.Update(owner, timeSlice);	
+
+		if (m_fTimeSinceUpdate < m_fUpdateRate)
+		{
+			m_fTimeSinceUpdate += timeSlice;
+			return;
+		}
+		
+		m_fTimeSinceUpdate = 0;
+
+		//timed execution
+		
+#ifdef ENABLE_DIAG
+		if (m_bIsWornByPlayer)
+			s_aDebugShapes.Clear();
+#endif
+		
+		if (!s_bDeployableSpawnPointsEnabled)
+			return;
+		
+		m_bIsGroupLimitReached = IsDeployLimitReachedLocal();
+		
+		if (!m_RplComponent || m_RplComponent.IsProxy())
+			return;
+		
+		//server code
+
+		InventoryItemComponent item = InventoryItemComponent.Cast(GetOwner().FindComponent(InventoryItemComponent));
+		if (!item)
+			return;
+		
+		InventoryStorageSlot parentSlot = item.GetParentSlot();
+		if (!parentSlot)
+		{
+			m_bIsWornByPlayer = false;
+			return;
+		}
+		
+		IEntity parentEntity;
+		while (parentSlot)
+		{
+			parentEntity = parentSlot.GetStorage().GetOwner();
+			parentSlot = parentSlot.GetStorage().GetParentSlot();
+		}
+
+		if (!parentEntity || !SCR_ChimeraCharacter.Cast(parentEntity))
+		{
+			m_bIsWornByPlayer = false;
+			return;
+		}
+
+		int userID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(parentEntity);
+		if (userID <= 0)
+		{
+			m_bIsWornByPlayer = false;
+			return;
+		}
+		
+		FactionAffiliationComponent factionAffiliation = FactionAffiliationComponent.Cast(parentEntity.FindComponent(FactionAffiliationComponent));
+		if (!factionAffiliation)
+			return;
+
+		Faction affiliatedFaction = factionAffiliation.GetAffiliatedFaction();
+		if (!affiliatedFaction)
+			return;
+
+		FactionKey userFactionKey = affiliatedFaction.GetFactionKey();
+		if (!userFactionKey)
+			return;
+
+		if (userFactionKey != m_FactionKey)
+		{
+			m_bIsWornByPlayer = false;
+			return;
+		}
+
+		m_bIsWornByPlayer = true;
+
+		int notification;
+		bool canBeDeployedAtPos = CanBeDeployedAtPosition(GetOwner().GetOrigin(), parentEntity, notification);
+
+		if (m_bIsOutsideExclusionZone == canBeDeployedAtPos)
+			return;
+		
+		m_bIsOutsideExclusionZone = canBeDeployedAtPos;
+		Replication.BumpMe();
+
+		if (m_bShowNotificationOnZoneEntered && notification > -1)
+			SCR_NotificationsComponent.SendToPlayer(userID, notification);
+
+		if (m_bEnableSounds && m_bPlaySoundOnZoneEntered)
+		{
+			RPC_PlaySoundOnZoneEnteredBroadcast(canBeDeployedAtPos);
+			Rpc(RPC_PlaySoundOnZoneEnteredBroadcast, canBeDeployedAtPos);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
 		super.EOnInit(owner);
+		
+		ConnectToDeployableSpawnPointSystem();
+
+		if (!m_RplComponent || m_RplComponent.IsProxy())
+			return;
 
 		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
 		if (!groupsManager)
 			return;
+		
+		//first position check for items that are pre-placed in editor
+		int dummyNotification;
+		m_bIsOutsideExclusionZone = CanBeDeployedAtPosition(GetOwner().GetOrigin(), null, dummyNotification);
+		Replication.BumpMe();
 
 		groupsManager.GetOnPlayableGroupRemoved().Insert(OnGroupRemoved);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	void ~SCR_RestrictedDeployableSpawnPointComponent()
+	override void OnDelete(IEntity owner)
 	{
+		DisconnectFromDeployableSpawnPointSystem();
+		
 		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
 		if (!groupsManager)
 			return;
 
 		groupsManager.GetOnPlayableGroupRemoved().Remove(OnGroupRemoved);
+		
+		if (m_bIsDeployed && Replication.IsServer())
+		{			
+			SCR_AIGroup playerGroup = groupsManager.FindGroup(m_iGroupID);
+			if (!playerGroup)
+				return;
+			
+			playerGroup.DecreaseDeployedRadioCount();
+		}
+		
+#ifdef ENABLE_DIAG
+		if (m_bIsWornByPlayer)
+			s_aDebugShapes.Clear();
+#endif
+		
+		super.OnDelete(owner);
 	}
 }

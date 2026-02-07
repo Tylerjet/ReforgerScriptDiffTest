@@ -56,7 +56,8 @@ class SCR_AddonUpdateConfirmationDialog : SCR_DownloadConfirmationDialog
 				// Create woidgets 
 				foreach (SCR_WorkshopItem addon : versionDifferences)
 				{
-					CreateAddonWidget(addon, m_Widgets.m_UpdateAddonsList);
+					if (!addon.IsDownloadRunning())
+						CreateAddonWidget(addon, m_Widgets.m_UpdateAddonsList);
 				}
 				
 				// Version change text
@@ -78,4 +79,4 @@ class SCR_AddonUpdateConfirmationDialog : SCR_DownloadConfirmationDialog
 		//Revision revision = dep.GetDependency().GetRevision();
 		comp.InitForWorkshopItem(dep, revision);
 	}
-};
+}

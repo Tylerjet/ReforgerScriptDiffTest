@@ -11,6 +11,7 @@ class PointInfo: ScriptAndConfig
 
 	proto external void Init(IEntity owner);
 	proto external IEntity GetOwner();
+	proto external void Set(IEntity owner, string boneName, vector matInOwnerSpace[4]);
 	proto external void GetTransform(out vector outMat[4]);
 	proto external void GetModelTransform(out vector outMat[4]);
 	//! If the owner is not specified, the local transform will be equal to the world transform
@@ -23,5 +24,4 @@ class PointInfo: ScriptAndConfig
 	proto external void GetTransformNode(out vector outMat[4]);
 	proto external string GetBoneName();
 	proto external int GetNodeId();
-	proto external void Set(IEntity owner, string boneName, vector matInOwnerSpace[4]);
 }

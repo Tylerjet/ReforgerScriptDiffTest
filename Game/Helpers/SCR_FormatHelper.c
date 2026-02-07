@@ -2,36 +2,30 @@ class SCR_FormatHelper
 {
 	//------------------------------------------------------------------------------------------------
 	/*!
-	Get percentage string with which is formated with 0, 1 or 2 decimals depended on the given float
-	\param percentage Percentage in (0% to 100%)
-	\return Either Percentage int, Percentage with one decimal or with two decimals
+		Returns a float with set decimal lenght that will remove any ending zeroes in the decimal values
+		\param value The float value to get the string from
+		\param lenDec Lenght of decimals to show. Zeroes of course are not counted
+		return Converted float into a string with decimals without ending zeroes
+		
+		@code
+			float value = "1337.2305";
+			Print(SCR_FormatHelper.FloatToStringNoZeroDecimalEndings(value, 0));
+			Print(SCR_FormatHelper.FloatToStringNoZeroDecimalEndings(value, 1));
+			Print(SCR_FormatHelper.FloatToStringNoZeroDecimalEndings(value, 2));
+			Print(SCR_FormatHelper.FloatToStringNoZeroDecimalEndings(value, 3));
+			Print(SCR_FormatHelper.FloatToStringNoZeroDecimalEndings(value, 4));
+			
+			>> 1337
+			>> 1337.2
+			>> 1337.23
+			>> 1337.23
+			>> 1337.2305
+		@endcode
+	
 	*/
-	static string GetPercentageString(float percentage)
+	static string FloatToStringNoZeroDecimalEndings(float value, int lenDec)
 	{
-		if (percentage == 0)
-			return percentage.ToString();
-		
-		string percentageString;
-		
-		float leftOver;
-		
-		//~ Has no deci
-		if (percentage > 0)
-			leftOver = percentage - (int)percentage;
-		else 
-			leftOver = percentage + (int)percentage;
-		
-		if (leftOver == 0)
-			percentageString = percentage.ToString(lenDec: 0);
-		//~ Remove a deci if it is 0
-		else 
-		{
-			percentageString = percentage.ToString(lenDec: 2);
-			if (percentageString.Get(percentageString.Length() -1) == "0")
-				percentageString = percentageString.Substring(0, percentageString.Length() -1);
-		}
-		
-		return percentageString;
+		return value.ToString(lenDec: lenDec).ToFloat().ToString();
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -6,6 +6,9 @@ class SCR_CampaignBuildingNetworkComponentClass : ScriptComponentClass
 class SCR_CampaignBuildingNetworkComponent : ScriptComponent
 {
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] buildingValue
+	//! \param[in] compositionOutline
 	void AddBuildingValue(int buildingValue, notnull IEntity compositionOutline)
 	{
 		RplComponent comp = RplComponent.Cast(compositionOutline.FindComponent(RplComponent));
@@ -16,6 +19,9 @@ class SCR_CampaignBuildingNetworkComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerID
+	//! \param[in] provider
 	void RemoveEditorMode(int playerID, IEntity provider)
 	{
 		RplComponent comp = RplComponent.Cast(provider.FindComponent(RplComponent));
@@ -26,6 +32,11 @@ class SCR_CampaignBuildingNetworkComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] provider
+	//! \param[in] playerID
+	//! \param[in] UserActionActivationOnly
+	//! \param[in] UserActionUsed
 	void RequestEnterBuildingMode(IEntity provider, int playerID, bool UserActionActivationOnly, bool UserActionUsed)
 	{
 		RplComponent providerRplComp = RplComponent.Cast(provider.FindComponent(RplComponent));
@@ -37,6 +48,7 @@ class SCR_CampaignBuildingNetworkComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Delete composition by a tool
+	//! \param[in] composition
 	void DeleteCompositionByUserAction(notnull IEntity composition)
 	{
 		RplComponent comp = RplComponent.Cast(composition.FindComponent(RplComponent));
@@ -48,6 +60,9 @@ class SCR_CampaignBuildingNetworkComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Send a notification about deleted composition
+	//! \param[in] composition
+	//! \param[in] playerId
+	//! \param[in] callsign
 	void SendDeleteNotification(notnull IEntity composition, int playerId, int callsign)
 	{
 		RplComponent comp = RplComponent.Cast(composition.FindComponent(RplComponent));
@@ -56,9 +71,39 @@ class SCR_CampaignBuildingNetworkComponent : ScriptComponent
 
 		Rpc(RpcAsk_SendDeleteNotification, comp.Id(), playerId, callsign);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetClientLock(bool lock, IEntity provider)
+	{
+		RplComponent comp = RplComponent.Cast(provider.FindComponent(RplComponent));
+		if (!comp)
+			return;
+		
+		Rpc(RpcDo_SetClientLock, lock, comp.Id());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set a cooldown lock on client.
+	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
+	protected void RpcDo_SetClientLock(bool lock, RplId compId)
+	{
+		RplComponent rplComp = RplComponent.Cast(Replication.FindItem(compId));
+		if (!rplComp)
+			return;
+
+		IEntity provider = rplComp.GetEntity();
+		if (!provider)
+			return;
+		
+		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(provider.FindComponent(SCR_CampaignBuildingProviderComponent));
+		if (providerComponent)
+			providerComponent.SetCooldownClientLock(lock);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Add a building value to a composition outline. Once the define value is reach, composition will be spawned.
+	//! \param[in] buildingValue
+	//! \param[in] compId
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void RpcAsk_AddBuildingValue(int buildingValue, RplId compId)
 	{
@@ -75,6 +120,8 @@ class SCR_CampaignBuildingNetworkComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Delete given player building mode.
+	//! \param[in] playerID
+	//! \param[in] compId
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void RpcAsk_RemoveEditorMode(int playerID, RplId compId)
 	{
@@ -98,6 +145,10 @@ class SCR_CampaignBuildingNetworkComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Spawn a trigger as a child of the provider entity.
+	//! \param[in] rplProviderId
+	//! \param[in] playerID
+	//! \param[in] UserActionActivationOnly
+	//! \param[in] UserActionUse
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void RpcAsk_RequestEnterBuildingMode(RplId rplProviderId, int playerID, bool UserActionActivationOnly, bool UserActionUsed)
 	{
@@ -115,6 +166,7 @@ class SCR_CampaignBuildingNetworkComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Delete composition, executed from user action
+	//! \param[in] rplCompositionId
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void RpcAsk_DeleteCompositionByUserAction(RplId rplCompositionId)
 	{
@@ -130,7 +182,10 @@ class SCR_CampaignBuildingNetworkComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Sent delete notification.
+	//! Send delete notification.
+	//! \param[in] rplCompositionId
+	//! \param[in] playerId
+	//! \param[in] callsign
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void RpcAsk_SendDeleteNotification(RplId rplCompositionId, int playerId, int callsign)
 	{
@@ -147,6 +202,7 @@ class SCR_CampaignBuildingNetworkComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Increase XP
+	//! \param[in] playerId
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void RpcAsk_AddXPReward(int playerId)
 	{
@@ -162,12 +218,16 @@ class SCR_CampaignBuildingNetworkComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerId
 	void AddXPReward(int playerId)
 	{
 		Rpc(RpcAsk_AddXPReward, playerId);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] rplProviderId
+	//! \return
 	IEntity GetProviderFormRplId(RplId rplProviderId)
 	{
 		RplComponent rplComp = RplComponent.Cast(Replication.FindItem(rplProviderId));

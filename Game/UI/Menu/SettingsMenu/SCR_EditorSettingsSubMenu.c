@@ -1,4 +1,4 @@
-//------------------------------------------------------------------------------------------------
+
 class SCR_EditorSettingsSubMenu: SCR_SettingsSubMenuBase
 {
 	SCR_SelectionWidgetComponent m_wHorizontalCameraSpeedCheckbox;
@@ -6,12 +6,12 @@ class SCR_EditorSettingsSubMenu: SCR_SettingsSubMenuBase
 	SCR_SliderComponent m_wSpeedCoefSlider;
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuOpen(SCR_SuperMenuBase parentMenu)
+	override void OnTabCreate(Widget menuRoot, ResourceName buttonsLayout, int index)
 	{
 		BaseContainer editorCameraSettings = GetGame().GetGameUserSettings().GetModule("SCR_ManualCameraSettings");
 		BaseContainer editorSettings = GetGame().GetGameUserSettings().GetModule("SCR_EditorSettings");
 		
-		super.OnMenuOpen(parentMenu);
+		super.OnTabCreate(menuRoot, buttonsLayout, index);
 		
 		if (!editorCameraSettings) 
 			return;

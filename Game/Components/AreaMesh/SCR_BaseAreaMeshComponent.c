@@ -1,8 +1,9 @@
 [ComponentEditorProps(category: "GameScripted/Area Mesh", description: "")]
-class SCR_BaseAreaMeshComponentClass: ScriptComponentClass
+class SCR_BaseAreaMeshComponentClass : ScriptComponentClass
 {
-};
-class SCR_BaseAreaMeshComponent: ScriptComponent
+}
+
+class SCR_BaseAreaMeshComponent : ScriptComponent
 {
 	//~ Resolution of Ellipse mesh in preview (Rectangle by definition has a resolution of 4)
 	static const int PREVIEW_RESOLUTION = 48;
@@ -34,50 +35,46 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 	protected vector m_vLastPos;
 	protected vector m_vLastDir;
 	
+	//------------------------------------------------------------------------------------------------
 	//! Activate the area so it could be updated every frame
 	void ActivateEveryFrame()
 	{
 		SetEventMask(GetOwner(), EntityEvent.FRAME);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//! Deactivate the area
 	void DeactivateEveryFrame()
 	{
 		ClearEventMask(GetOwner(), EntityEvent.FRAME);
 	}
 	
-	/*!
-	Get radius of the area.
-	To be overloaded by inherited classes.
-	\return Radius
-	*/
-	float GetRadius()
-	{
-	}
+	//------------------------------------------------------------------------------------------------
+	//! Get radius of the area.
+	//! To be overloaded by inherited classes.
+	//! \return Radius
+	float GetRadius();
 	
-	/*!
-	Get height of the area.
-	\return Height
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get height of the area.
+	//! \return Height
 	float GetHeight()
 	{
 		return m_fHeight;
 	}
 	
-	/*!
-	Return shape if areaMesh
-	\return Shape Enum
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Return shape if areaMesh
+	//! \return Shape Enum
 	EAreaMeshShape GetShape()
 	{
 		return m_eShape;
 	}
 	
-	/*!
-	Get Resolution of the area.
-	Always 4 if Rectangle
-	\return Resolution
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get Resolution of the area.
+	//! Always 4 if Rectangle
+	//! \return Resolution
 	int GetResolution()
 	{
 		if (GetShape() == EAreaMeshShape.RECTANGLE)
@@ -86,23 +83,21 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 			return m_vResolution;
 	}
 	
-	/*!
-	Returns width and length
-	To be overloaded by inherited classes.
-	By default uses radius as width and length unless function is overwritten
-	\param[out] width Width of Zone (x)
-	\param[out] length length of Zone (z)
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Returns width and length
+	//! To be overloaded by inherited classes.
+	//! By default uses radius as width and length unless function is overwritten
+	//! \param[out] width Width of Zone (x)
+	//! \param[out] length length of Zone (z)
 	void GetDimensions2D(out float width, out float length)
 	{
 		width = GetRadius();
 		length =  width;
 	}
 	
-	/*!
-	Returns dimensions in vector
-	\return dimensions Width, height, length
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Returns dimensions in vector
+	//! \param[out] dimensions width, height, length
 	void GetDimensions3D(out vector dimensions)
 	{
 		float width, length;
@@ -112,21 +107,24 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 		dimensions[2] = length;
 	}
 	
-	//~ Get the offset of the AreaMesh. Can be overwritten to set custom position. Only x and z are used. Height is ignored
+	//------------------------------------------------------------------------------------------------
+	//! Get the offset of the AreaMesh. Can be overwritten to set custom position. Only x and z are used. Height is ignored
+	//! \param[in] owner
+	//! \return
 	protected vector GetMeshOffset(IEntity owner)
 	{
 		return vector.Zero;
 	}
 	
-	//~ Get material used for area mesh
+	//------------------------------------------------------------------------------------------------
+	//! Get material used for area mesh
 	protected ResourceName GetMaterial()
 	{
 		return m_Material;
 	}
 	
-	/*!
-	Generate area mesh based on its settings.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Generate area mesh based on its settings.
 	void GenerateAreaMesh()
 	{
 		IEntity owner = GetOwner();
@@ -152,7 +150,7 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 		{
 			int resolution = GetResolution();
 			float dirStep = Math.PI2 / resolution;
-		
+
 			//--- Get positions
 			for (int v = 0; v < resolution; v++)
 			{
@@ -164,15 +162,15 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 		else if (m_eShape == EAreaMeshShape.RECTANGLE)
 		{
 			//~ Make sure it uses half of the width and length
-			float width = dimensions[0] / 2;
-			float length = dimensions[2] / 2;
+			float width = dimensions[0] * 0.5;
+			float length = dimensions[2] * 0.5;
 			
 			array<vector> corners = 
 			{
-				Vector(-width + offset[0], -dimensions[1], -length + offset[2]),
-				Vector(width + offset[0], -dimensions[1], -length + offset[2]),
-				Vector(width + offset[0], -dimensions[1], length + offset[2]),
-				Vector(-width + offset[0], -dimensions[1], length + offset[2])
+				{ -width + offset[0], -dimensions[1], -length + offset[2] },
+				{ width + offset[0], -dimensions[1], -length + offset[2] },
+				{ width + offset[0], -dimensions[1], length + offset[2] },
+				{ -width + offset[0], -dimensions[1], length + offset[2] }
 			};
 			
 			//~ Set positions
@@ -183,7 +181,7 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 				
 				for (float s = 0; s < 4; s++)
 				{
-					vector pos = vector.Lerp(start, end, s / 4);
+					vector pos = vector.Lerp(start, end, s * 0.25);
 					positions.Insert(pos);
 				}
 			}
@@ -217,7 +215,8 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 			}
 		}
 		
-		MeshObject meshObject = SCR_Shape.CreateAreaMesh(positions, dimensions[1] * 2, GetMaterial(), m_bStretchMaterial);
+		Resource res = SCR_Shape.CreateAreaMesh(positions, dimensions[1] * 2, GetMaterial(), m_bStretchMaterial);
+		MeshObject meshObject = res.GetResource().ToMeshObject();
 		if (meshObject)
 		{
 			owner.SetObject(meshObject, "");
@@ -225,36 +224,36 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 			m_vLastPos = owner.GetOrigin();
 			m_vLastDir = owner.GetAngles();
 		}
-		
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
 		if (vector.DistanceSq(m_vLastPos, owner.GetOrigin()) > 0.1 || vector.DistanceSq(m_vLastDir, owner.GetAngles()) > 0.1)
 			GenerateAreaMesh();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		SetEventMask(owner, EntityEvent.INIT);
 		
 		if (m_bActiveEveryFrameOnInit)
-		{
 			ActivateEveryFrame();
-		}
 	}
 	
 	#ifdef WORKBENCH
+	//------------------------------------------------------------------------------------------------
 	//~ Makes sure mesh area is generated at the correct position in workbench
 	override void _WB_SetTransform(IEntity owner, inout vector mat[4], IEntitySource src)
 	{
 		GenerateAreaMesh();
 	}
 	#endif
-};
+}
 
 enum EAreaMeshShape
 {
 	ELLIPSE 		= 10,  ///< Ellipse using Radius and Resolution. 
 	RECTANGLE 		= 20, ///< Rectangle shape that has a width and length.
-};
+}

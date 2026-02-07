@@ -1,14 +1,15 @@
-//------------------------------------------------------------------------------------------------
 class SCR_HelicopterDamageManagerComponentClass : SCR_VehicleDamageManagerComponentClass
 {
 }
 
 class SCR_HelicopterDamageManagerComponent : SCR_VehicleDamageManagerComponent
 {
-	protected ref array<SCR_RotorHitZone> m_aRotorHitZones = {};
-	
+	protected ref array<SCR_RotorHitZone>	m_aRotorHitZones = {};
+	protected float							m_fRotorsEfficiency = 1;
+
 	//------------------------------------------------------------------------------------------------
-	// Disable contact mask, typically used for when vehicle becomes destroyed
+	//! Disable contact mask, typically used for when vehicle becomes destroyed
+	//! \param[in] enabled
 	// TODO: Consider for all vehicles. Note destructible response indexes may still need it until wreck is stopped.
 	void EnableContactMaskOnHost(bool enabled)
 	{
@@ -95,16 +96,39 @@ class SCR_HelicopterDamageManagerComponent : SCR_VehicleDamageManagerComponent
 		}
 
 		// Set rotor efficiency on simulation
+		m_fRotorsEfficiency = 1;
 		foreach (int i, float rotorEfficiency : rotorEfficiencies)
 		{
 			simulation.RotorSetForceScaleState(i, rotorEfficiency);
 			simulation.RotorSetTorqueScaleState(i, rotorEfficiency);
+			m_fRotorsEfficiency *= rotorEfficiency;
 		}
+
+		// Account for rotor damage
+		UpdateMovementDamage();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override void SetEngineFunctional(bool functional)
 	{
 		super.SetEngineFunctional(functional && m_bGearboxFunctional);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void UpdateMovementDamage()
+	{
+		float movementDamage;
+
+		if (!m_bEngineFunctional)
+			movementDamage = 1;
+		else
+			movementDamage = 1 - (m_fGearboxEfficiency * m_fEngineEfficiency * m_fRotorsEfficiency);
+
+		if (!float.AlmostEqual(movementDamage, GetMovementDamage()))
+			SetMovementDamage(movementDamage);
+		
+		VehicleControllerComponent controller = VehicleControllerComponent.Cast(m_Controller);
+		if (controller)
+			controller.SetCanMove(movementDamage < 1);
 	}
 }

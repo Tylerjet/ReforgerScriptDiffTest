@@ -4,14 +4,17 @@ class SCR_TourniquetStorageSlot : SCR_EquipmentStorageSlot
 	protected ECharacterHitZoneGroup m_eHitZoneGroup;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ECharacterHitZoneGroup GetAssociatedHZGroup()
 	{
 		return m_eHitZoneGroup;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] ID
+	//! \return
 	IEntity GetItem(int ID)
 	{
 		return GetStorage().Get(ID);
 	}
-};
+}

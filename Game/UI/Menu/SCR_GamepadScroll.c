@@ -53,7 +53,11 @@ class SCR_GamepadScrollComponent : SCR_ScriptedWidgetComponent
 	override void HandlerDeattached(Widget w)
 	{
 		if (!SCR_Global.IsEditMode())
-			GetGame().GetCallqueue().Remove(OnEachFrame);
+		{
+			ArmaReforgerScripted game = GetGame();
+			if (game && game.GetCallqueue())
+				game.GetCallqueue().Remove(OnEachFrame);
+		}
 
 		SCR_MenuHelper.GetOnMenuFocusGained().Remove(OnMenuFocusGained);
 		SCR_MenuHelper.GetOnMenuFocusLost().Remove(OnMenuFocusLost);

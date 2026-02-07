@@ -2,11 +2,6 @@ class VehiclesDustSystem: GameSystem
 {
 	protected ref array<SCR_VehicleDustPerWheel> m_Components = {};
 	
-	override protected ESystemPoint GetSystemPoint()
-	{
-		return ESystemPoint.Frame;
-	}
-	
 	override protected void OnUpdate(ESystemPoint point)
 	{
 		float timeSlice = GetWorld().GetTimeSlice();

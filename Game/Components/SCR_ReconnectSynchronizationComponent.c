@@ -1,10 +1,8 @@
-//------------------------------------------------------------------------------------------------
 class SCR_ReconnectSynchronizationComponentClass : ScriptComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
-//! Synchronizes reconnect state in order to create a client side informational dialog
+//! Synchronises reconnect state in order to create a client side informational dialog
 //! Attached to SCR_PlayerController prefab
 class SCR_ReconnectSynchronizationComponent : ScriptComponent
 {
@@ -15,6 +13,7 @@ class SCR_ReconnectSynchronizationComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Triggers for this SCR_PlayerController's client only
+	//! \return
 	ScriptInvokerInt GetOnPlayerReconnect()
 	{
 		return m_OnPlayerReconnect;
@@ -22,6 +21,7 @@ class SCR_ReconnectSynchronizationComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Call RPC with reconnect state to controller owner
+	//! \param[in] reconState
 	void CreateReconnectDialog(SCR_EReconnectState reconState)
 	{
 		Rpc(RPC_DoSendReconnectState, reconState);
@@ -29,7 +29,7 @@ class SCR_ReconnectSynchronizationComponent : ScriptComponent
 			
 	//------------------------------------------------------------------------------------------------
 	//! Do RPC from server with reconnect state
-	//! \param state is subject SCR_EReconnectState
+	//! \param[in] state is subject SCR_EReconnectState
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
     protected void RPC_DoSendReconnectState(int state)
     {		
@@ -40,4 +40,4 @@ class SCR_ReconnectSynchronizationComponent : ScriptComponent
 		else if (state == SCR_EReconnectState.ENTITY_DISCARDED)
 			SCR_CommonDialogs.CreateDialog(DIALOG_RECON_DISCARD);
     }	
-};
+}

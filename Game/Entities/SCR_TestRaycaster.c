@@ -126,7 +126,7 @@ class SCR_TestRaycaster : GenericEntity
 		m_vRCStart = worldMat[3];
 		m_vRCEnd = m_vRCStart + vector.Forward * RAY_LENGTH;
 		
-		m_aDbgShapes = new ref array<ref Shape>;
+		m_aDbgShapes = new array<ref Shape>;
 	}
 
 	//------------------------------------------------------------------------------------------------

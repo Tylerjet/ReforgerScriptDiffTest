@@ -204,7 +204,7 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void PreprocessAllTrees()
+	protected void PreprocessAllTrees()
 	{
 		int debugGroupIdx = 0;
 		foreach (ForestGeneratorLevel level : m_aLevels)
@@ -450,7 +450,7 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override bool _WB_OnKeyChanged(BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent)
+	protected override bool _WB_OnKeyChanged(BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent)
 	{
 		bool parentResult = super._WB_OnKeyChanged(src, key, ownerContainers, parent);
 
@@ -474,7 +474,7 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 
 	//------------------------------------------------------------------------------------------------
 	// triggers when a point is created/moved/deleted (or when a point data is edited!)
-	override void OnShapeChangedInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity, array<vector> mins, array<vector> maxes)
+	protected override void OnShapeChangedInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity, array<vector> mins, array<vector> maxes)
 	{
 		super.OnShapeChangedInternal(shapeEntitySrc, shapeEntity, mins, maxes);
 		RegenerateForest();
@@ -482,7 +482,7 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 
 	//------------------------------------------------------------------------------------------------
 	// triggers when the generator is inserted in shape
-	override void OnShapeInitInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity)
+	protected override void OnShapeInitInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity)
 	{
 		super.OnShapeInitInternal(shapeEntitySrc, shapeEntity);
 		RegenerateForest(true);
@@ -561,7 +561,7 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 			if (difference != 0)
 			{
 				localPos[1] = localPos[1] + difference;
-				worldEditorAPI.SetVariableValue(childSource, {}, "coords", localPos.ToString(false));
+				worldEditorAPI.SetVariableValue(childSource, null, "coords", localPos.ToString(false));
 			}
 		}
 
@@ -570,7 +570,7 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 
 	//------------------------------------------------------------------------------------------------
 	// hack!!1!one waiting for BeforeShapeChangedInternal introduction
-	override protected void OnPointChangedInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity, PointChangedSituation situation, int pointIndex, vector position)
+	protected override void OnPointChangedInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity, PointChangedSituation situation, int pointIndex, vector position)
 	{
 		if (s_aPreviousPoints2D)
 			return;
@@ -773,14 +773,15 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 		vector worldPos;
 		for (int i = m_Source.GetNumChildren() - 1; i >= 0; --i)
 		{
-			entity = worldEditorAPI.SourceToEntity(m_Source.GetChild(i));
+			IEntitySource src = m_Source.GetChild(i);
+			entity = worldEditorAPI.SourceToEntity(src);
 			worldPos = entity.GetOrigin();
 			entityPos = CoordToLocal(worldPos); // relative pos
 
 			// remove everything not in the new shape
 			if (!Math2D.IsPointInPolygon(currentPoints2D, entityPos[0], entityPos[2]))
 			{
-				worldEditorAPI.DeleteEntity(entity);
+				worldEditorAPI.DeleteEntity(src);
 				continue;
 			}
 
@@ -790,7 +791,7 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 				if (m_bDrawDebugShapesRegeneration)
 					s_DebugShapeManager.AddLine(worldPos, worldPos + DEBUG_VERTICAL_LINE, REGENERATION_DELETION_COLOUR);
 
-				worldEditorAPI.DeleteEntity(entity);
+				worldEditorAPI.DeleteEntity(src);
 				result++;
 			}
 		}
@@ -820,7 +821,6 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 		FallenTree fallenTree;
 		WideForestGeneratorClusterObject wideObject;
 
-		IEntity tree;
 		IEntitySource treeSrc;
 
 		BaseContainerList baseContainerList;
@@ -935,14 +935,13 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 					s_DebugShapeManager.AddLine(worldPos, worldPos + DEBUG_VERTICAL_LINE, REGENERATION_CREATION_COLOUR);
 			}
 
-			tree = worldEditorAPI.CreateEntity(baseEntry.m_Prefab, "", worldEditorAPI.GetCurrentEntityLayerId(), m_Source, localPos, vector.Zero);
-			treeSrc = worldEditorAPI.EntityToSource(tree);
+			treeSrc = worldEditorAPI.CreateEntity(baseEntry.m_Prefab, "", worldEditorAPI.GetCurrentEntityLayerId(), m_Source, localPos, vector.Zero);
 			worldEditorAPI.BeginEditSequence(treeSrc);
 
 			generatedEntitiesCount++;
 
 			if (scale != 1)
-				worldEditorAPI.ModifyEntityKey(tree, "scale", scale.ToString());
+				worldEditorAPI.SetVariableValue(treeSrc, null, "scale", scale.ToString());
 
 			randomVerticalOffset = vector.Zero;
 			bool alignToNormal = false;
@@ -960,7 +959,7 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 			if (randomVerticalOffset != vector.Zero)
 			{
 				localPos[1] = localPos[1] + SafeRandomFloatInclusive(randomVerticalOffset[0], randomVerticalOffset[1]);
-				worldEditorAPI.ModifyEntityKey(tree, "coords", localPos.ToString(false));
+				worldEditorAPI.SetVariableValue(treeSrc, null, "coords", localPos.ToString(false));
 			}
 
 			fallenTree = FallenTree.Cast(baseEntry);
@@ -983,7 +982,7 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 					yaw = m_RandomGenerator.RandFloatXY(0, 360);
 
 				if (yaw != 0)
-					worldEditorAPI.ModifyEntityKey(tree, "angleY", yaw.ToString());
+					worldEditorAPI.SetVariableValue(treeSrc, null, "angleY", yaw.ToString());
 			}
 
 			float pitch = 0;
@@ -995,17 +994,17 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 				roll = m_RandomGenerator.RandFloatXY(-baseEntry.m_fRandomRollAngle, baseEntry.m_fRandomRollAngle);
 
 			if (pitch != 0)
-				worldEditorAPI.ModifyEntityKey(tree, "angleX", pitch.ToString());
+				worldEditorAPI.SetVariableValue(treeSrc, null, "angleX", pitch.ToString());
 
 			if (roll != 0)
-				worldEditorAPI.ModifyEntityKey(tree, "angleZ", roll.ToString());
+				worldEditorAPI.SetVariableValue(treeSrc, null, "angleZ", roll.ToString());
 
 			if (alignToNormal)
 			{
 				traceParam.Start = worldPos + vector.Up;
 				traceParam.End = worldPos - vector.Up;
 				world.TraceMove(traceParam, null);
-				tree.GetTransform(mat);
+				worldEditorAPI.SourceToEntity(treeSrc).GetTransform(mat);
 
 				newUp = traceParam.TraceNorm;
 				newUp.Normalize();
@@ -1027,9 +1026,9 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 
 				angles = Math3D.MatrixToAngles(mat);
 
-				worldEditorAPI.ModifyEntityKey(tree, "angleX", angles[1].ToString());
-				worldEditorAPI.ModifyEntityKey(tree, "angleY", angles[0].ToString());
-				worldEditorAPI.ModifyEntityKey(tree, "angleZ", angles[2].ToString());
+				worldEditorAPI.SetVariableValue(treeSrc, null, "angleX", angles[1].ToString());
+				worldEditorAPI.SetVariableValue(treeSrc, null, "angleY", angles[0].ToString());
+				worldEditorAPI.SetVariableValue(treeSrc, null, "angleZ", angles[2].ToString());
 			}
 
 			worldEditorAPI.EndEditSequence(treeSrc);
@@ -1067,7 +1066,7 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void PopulateGrid(array<float> polygon2D, array<vector> polygon3D)
+	protected void PopulateGrid(array<float> polygon2D, array<vector> polygon3D)
 	{
 		m_Grid.Clear();
 		m_aGridEntries.Clear();
@@ -1093,7 +1092,7 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void Rectangulate(SCR_AABB bbox, array<float> polygon2D)
+	protected void Rectangulate(SCR_AABB bbox, array<float> polygon2D)
 	{
 		vector direction = bbox.m_vMax - bbox.m_vMin;
 		float targetRectangleWidth = RECTANGULATION_SIZE;
@@ -1204,7 +1203,7 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	bool NeedsCheck(SCR_ForestGeneratorLine line, SCR_ForestGeneratorRectangle rectangle)
+	protected bool NeedsCheck(SCR_ForestGeneratorLine line, SCR_ForestGeneratorRectangle rectangle)
 	{
 		vector linePoint1 = line.p1.m_vPos;
 		vector linePoint2 = line.p2.m_vPos;

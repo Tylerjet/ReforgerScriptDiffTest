@@ -284,9 +284,9 @@ class SCR_DeployButtonBase : SCR_ButtonImageComponent
 	//! Visually set the button as selected.
 	void SetSelected(bool selected)
 	{
-		Color color = Color.White;
+		Color color = Color.FromInt(Color.WHITE);
 		if (selected)
-			color = m_ColorSelected;
+			color = Color.FromInt(m_ColorSelected.PackToInt());
 		if (m_wElements)
 			m_wElements.SetColor(color);
 		if (m_wBackgroundHighlight)

@@ -2,7 +2,7 @@
 //! Voice over network entry data class, used for management of communication methods
 class SCR_VONEntry : SCR_SelectionMenuEntry
 {
-	bool m_bIsEnabled; 				// this entry is disabled (f.e. radio turned off)	TODO protect
+	protected bool m_bIsUsable = true; 	// whether this entry is allowed to be used (f.e. radio turned off)
 	protected bool m_bIsActive;		// this entry will be used in case of outgoing transmission
 	protected bool m_bIsSelected; 	// this entry is currently selected/hovered in a menu
 	protected string m_sText;  	 	// current display text
@@ -13,10 +13,31 @@ class SCR_VONEntry : SCR_SelectionMenuEntry
 	{}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Usable entry 
+	void SetUsable(bool state)
+	{
+		m_bIsUsable = state;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Is usable entry 
+	bool IsUsable()
+	{
+		return m_bIsUsable;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Activate entry 
 	void SetActive(bool state)
 	{
 		m_bIsActive = state;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Is active entry 
+	bool IsActive()
+	{
+		return m_bIsActive;
 	}
 	
 	//------------------------------------------------------------------------------------------------

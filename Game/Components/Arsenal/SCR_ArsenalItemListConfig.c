@@ -6,12 +6,20 @@ class SCR_ArsenalItemListConfig
 	
 	protected ref map<SCR_EArsenalItemType, ref array<SCR_ArsenalItem>> m_mArsenalItemsByType = new map<SCR_EArsenalItemType, ref array<SCR_ArsenalItem>>();
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[out] arsenalItems
+	//! \return
 	bool GetArsenalItems(out array<ref SCR_ArsenalItemStandalone> arsenalItems)
 	{
 		arsenalItems = m_aArsenalItems;
 		return arsenalItems != null && !arsenalItems.IsEmpty();
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] prefab
+	//! \param[out] itemType
+	//! \param[out] itemMode
+	//! \return
 	bool GetItemTypeAndModeForPrefab(ResourceName prefab, out SCR_EArsenalItemType itemType, out SCR_EArsenalItemMode itemMode)
 	{
 		if (SCR_StringHelper.IsEmptyOrWhiteSpace(prefab))
@@ -30,13 +38,13 @@ class SCR_ArsenalItemListConfig
 		return false;
 	}
 	
-	//----------------------------------------------------------------------------
-	/*!
-	Get arsenal items filtered by SCR_EArsenalItemType filter, caches values
-	\param filter Combined flags for available items for this faction (RIFLE, MAGAZINE, EQUIPMENT, RADIOBACKPACK etc.)
-	\param requiresDisplayType Requires the Arsenal data to have display data type (-1 is ignore)
-	\return array with availabe arsenal items of give filter types
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get arsenal items filtered by SCR_EArsenalItemType filter, caches values
+	// \param filter Combined flags for available items for this faction (RIFLE, MAGAZINE, EQUIPMENT, RADIOBACKPACK etc.)
+	//! \param typeFilter
+	//! \param modeFilter
+	//! \param requiresDisplayType Requires the Arsenal data to have display data type (-1 is ignore)
+	//! \return array with availabe arsenal items of give filter types
 	array<SCR_ArsenalItem> GetFilteredArsenalItems(SCR_EArsenalItemType typeFilter, SCR_EArsenalItemMode modeFilter, EArsenalItemDisplayType requiresDisplayType = -1)
 	{
 		array<SCR_ArsenalItem> filteredItems = new array<SCR_ArsenalItem>();
@@ -44,7 +52,7 @@ class SCR_ArsenalItemListConfig
 		array<SCR_ArsenalItem> itemsByType = m_mArsenalItemsByType.Get(typeFilter);
 		if (!itemsByType)
 		{
-			itemsByType = new ref array<SCR_ArsenalItem>();
+			itemsByType = new array<SCR_ArsenalItem>();
 			array<ref SCR_ArsenalItemStandalone> availableArsenalItems;
 			if (GetArsenalItems(availableArsenalItems))
 			{				
@@ -67,13 +75,16 @@ class SCR_ArsenalItemListConfig
 		foreach	(SCR_ArsenalItem item : itemsByType)
 		{
 			if (item.GetItemMode() & modeFilter)
-			{
 				filteredItems.Insert(item);
-			}
 		}
+
 		return filteredItems;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] prefab
+	//! \param[out] itemMode
+	//! \return
 	bool GetItemModeForPrefab(ResourceName prefab, out SCR_EArsenalItemType itemMode)
 	{
 		for (int i = 0, count = m_aArsenalItems.Count(); i < count; i++)
@@ -87,4 +98,4 @@ class SCR_ArsenalItemListConfig
 		}
 		return false;
 	}
-};
+}

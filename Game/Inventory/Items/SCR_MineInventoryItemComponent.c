@@ -1,13 +1,10 @@
 [EntityEditorProps(category: "GameScripted/Components", description: "Mine inventory item component.")]
 class SCR_MineInventoryItemComponentClass : SCR_PlaceableInventoryItemComponentClass
 {
-	
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_MineInventoryItemComponent : SCR_PlaceableInventoryItemComponent
 {
-	
 	protected static ref ScriptInvokerInt s_onMinePlaced;
 	
 	//------------------------------------------------------------------------------------------------
@@ -36,6 +33,7 @@ class SCR_MineInventoryItemComponent : SCR_PlaceableInventoryItemComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	static ScriptInvokerInt GetOnMinePlaced()
 	{
 		if (!s_onMinePlaced)
@@ -43,4 +41,4 @@ class SCR_MineInventoryItemComponent : SCR_PlaceableInventoryItemComponent
 		
 		return s_onMinePlaced;
 	}
-};
+}

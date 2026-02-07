@@ -22,12 +22,12 @@ class CareerMenuUI: ChimeraMenuBase
 	
 	//private EditBoxWidget m_ProfileEditbox;
 	//private Widget m_ProfileData;
-	protected ref array<string> m_aBackendValues = new ref array<string>(); 
+	protected ref array<string> m_aBackendValues = new array<string>(); 
 	
 	// Values
 	static CareerMenuUI m_sInstance;
 	ref CareerBackendData m_BackendData;
-	protected ref CareerCallback m_Callback = new ref CareerCallback();
+	protected ref CareerCallback m_Callback = new CareerCallback();
 
 	[MenuBindAttribute()]
 	ButtonWidget Back;

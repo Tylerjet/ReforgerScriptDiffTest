@@ -1,10 +1,10 @@
 //#define TOOLBAR_DEBUG
 
-/** @ingroup Editor_UI Editor_UI_Components
-*/
-class SCR_BaseToolbarEditorUIComponent: SCR_DialogEditorUIComponent
+//! @ingroup Editor_UI Editor_UI_Components
+
+class SCR_BaseToolbarEditorUIComponent : SCR_DialogEditorUIComponent
 {
-	const int EMPTY_Z_ORDER = int.MAX;
+	protected static const int EMPTY_Z_ORDER = int.MAX;
 	
 	[Attribute(params: "layout")]
 	protected ResourceName m_ItemLayout;
@@ -27,10 +27,15 @@ class SCR_BaseToolbarEditorUIComponent: SCR_DialogEditorUIComponent
 	protected int m_iPage;
 	protected bool m_bIsUnderCursor;
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	bool IsUnderCursor()
 	{
 		return m_bIsUnderCursor || !GetGame().GetInputManager().IsUsingMouseAndKeyboard();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected bool CreateItem(out Widget itemWidget, out SCR_BaseToolbarItemEditorUIComponent toolbarItem)
 	{
 		if (m_ItemsWidget)
@@ -68,6 +73,8 @@ class SCR_BaseToolbarEditorUIComponent: SCR_DialogEditorUIComponent
 			return false;
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void DeleteAllItems()
 	{
 		Widget deletedChild, child = m_ItemsWidget.GetChildren();
@@ -79,6 +86,8 @@ class SCR_BaseToolbarEditorUIComponent: SCR_DialogEditorUIComponent
 		}
 		m_iItemsCount = 0;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void SetToolbarVisible(bool show)
 	{
 		if (!m_HideWidget && m_iHideParentIndexWhenEmpty >= 0)
@@ -92,6 +101,7 @@ class SCR_BaseToolbarEditorUIComponent: SCR_DialogEditorUIComponent
 					break;
 			}
 		}
+
 		if (m_HideWidget)
 		{
 			m_HideWidget.SetVisible(show);
@@ -104,9 +114,13 @@ class SCR_BaseToolbarEditorUIComponent: SCR_DialogEditorUIComponent
 			}
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void ShowEntries(Widget contentWidget, int indexStart, int indexEnd)
 	{
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void Refresh()
 	{
 		bool hasContent;
@@ -123,15 +137,22 @@ class SCR_BaseToolbarEditorUIComponent: SCR_DialogEditorUIComponent
 		
 		SetToolbarVisible(hasContent);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
 	void MarkForRefresh()
 	{
 		GetGame().GetCallqueue().Remove(Refresh); //--- Remove the previous queued call, to guarantee there will be the only one
 		GetGame().GetCallqueue().CallLater(Refresh, 1); //--- Call with a delay, in case whatever called this is not ready yet and the toolbar would reflect incorrect state
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnPageChanged(int page)
 	{
 		m_iPage = page;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void CopyPage(SCR_DialogEditorUIComponent linkedComponent)
 	{
 		if (m_Pagination)
@@ -142,6 +163,7 @@ class SCR_BaseToolbarEditorUIComponent: SCR_DialogEditorUIComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override protected bool CanOpenDialog()
 	{
 		if (m_HideWidget)
@@ -149,36 +171,46 @@ class SCR_BaseToolbarEditorUIComponent: SCR_DialogEditorUIComponent
 		else
 			return super.CanOpenDialog();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void OnDialogOpened(SCR_DialogEditorUIComponent linkedComponent)
 	{
 		CopyPage(linkedComponent);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void OnDialogClosed(SCR_DialogEditorUIComponent linkedComponent)
 	{
 		CopyPage(linkedComponent);
 	}
-	/*
-	override void OnInputDeviceUserChanged(EInputDeviceType oldDevice, EInputDeviceType newDevice)
-	{
-		if (SCR_Global.IsChangedMouseAndKeyboard(oldDevice, newDevice))
-			return;
-		
-		super.OnInputDeviceUserChanged(oldDevice, newDevice);
-		//if (!m_bIsInDialog) Refresh();
-	}
-	*/
+
+//	//------------------------------------------------------------------------------------------------
+//	override void OnInputDeviceUserChanged(EInputDeviceType oldDevice, EInputDeviceType newDevice)
+//	{
+//		if (SCR_Global.IsChangedMouseAndKeyboard(oldDevice, newDevice))
+//			return;
+//
+//		super.OnInputDeviceUserChanged(oldDevice, newDevice);
+//		//if (!m_bIsInDialog) Refresh();
+//	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool OnMouseEnter(Widget w, int x, int y)
 	{
 		m_bIsUnderCursor = true;
 		super.OnMouseEnter(w, x, y);
 		return false;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
 	{
 		m_bIsUnderCursor = false;
 		super.OnMouseLeave(w, enterW, x, y);
 		return false;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttachedScripted(Widget w)
 	{
 		super.HandlerAttachedScripted(w);
@@ -192,6 +224,8 @@ class SCR_BaseToolbarEditorUIComponent: SCR_DialogEditorUIComponent
 		
 		Refresh();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		super.HandlerAttached(w);
@@ -207,4 +241,4 @@ class SCR_BaseToolbarEditorUIComponent: SCR_DialogEditorUIComponent
 		
 		DiagMenu.RegisterRange(SCR_DebugMenuID.DEBUGUI_EDITOR_GUI_TOOLBAR_FILL, "", "Duplicate Toolbar Items", "Editor GUI", "0, 24, 0, 1");		
 	}
-};
+}

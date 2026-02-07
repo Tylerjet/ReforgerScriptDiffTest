@@ -29,11 +29,11 @@ class SCR_FieldManualConfigEntry
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! To be overridden by child classes
+	//! To be overridden by child classes to call CreateWidgetFromLayout
 	Widget CreateWidget(notnull Widget parent);
 
 	//------------------------------------------------------------------------------------------------
-	Widget CreateWidgetFromLayout(ResourceName layout, notnull Widget parent)
+	protected Widget CreateWidgetFromLayout(ResourceName layout, notnull Widget parent)
 	{
 		Widget createdWidget = GetGame().GetWorkspace().CreateWidgets(layout, parent);
 		if (!createdWidget)

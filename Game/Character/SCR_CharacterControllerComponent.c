@@ -1,14 +1,7 @@
-enum ECharacterLifeState
-{
-	ALIVE = 0,
-	INCAPACITATED = 1,
-	DEAD = 10
-}
-
 [ComponentEditorProps(category: "GameScripted/Character", description: "Scripted character controller", icon: HYBRID_COMPONENT_ICON)]
 class SCR_CharacterControllerComponentClass : CharacterControllerComponentClass
 {
-};
+}
 
 //------------------------------------------------------------------------------------------------
 void OnPlayerDeathWithParam(SCR_CharacterControllerComponent characterController, IEntity killerEntity, notnull Instigator killer);
@@ -21,26 +14,24 @@ typedef func OnControlledByPlayer;
 typedef ScriptInvokerBase<OnControlledByPlayer> OnControlledByPlayerInvoker;
 
 //------------------------------------------------------------------------------------------------
-void OnLifeStateChanged(ECharacterLifeState lifeState);
 typedef func OnLifeStateChanged;
 typedef ScriptInvokerBase<OnLifeStateChanged> OnLifeStateChangedInvoker;
 
 //------------------------------------------------------------------------------------------------
-void OnItemUseBegan(IEntity item, SCR_ConsumableEffectAnimationParameters animParams);
+void OnItemUseBegan(IEntity item, ItemUseParameters animParams);
 typedef func OnItemUseBegan;
 typedef ScriptInvokerBase<OnItemUseBegan> OnItemUseBeganInvoker;
 
 //------------------------------------------------------------------------------------------------
-void OnItemUseEnded(IEntity item, bool successful, SCR_ConsumableEffectAnimationParameters animParams);
+void OnItemUseEnded(IEntity item, bool successful, ItemUseParameters animParams);
 typedef func OnItemUseEnded;
 typedef ScriptInvokerBase<OnItemUseEnded> OnItemUseEndedInvoker;
 
 //------------------------------------------------------------------------------------------------
-void OnItemUseFinished(IEntity item, bool successful, SCR_ConsumableEffectAnimationParameters animParams);
+void OnItemUseFinished(IEntity item, bool successful, ItemUseParameters animParams);
 typedef func OnItemUseFinished;
 typedef ScriptInvokerBase<OnItemUseFinished> OnItemUseFinishedInvoker;
 
-//------------------------------------------------------------------------------------------------
 class SCR_CharacterControllerComponent : CharacterControllerComponent
 {
 	[Attribute(defvalue: "10", uiwidget: UIWidgets.EditBox, params:"1 inf 0.1", desc: "Maximum duration it takes for character to drown\n[s]")]
@@ -57,21 +48,21 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 
 	// Character event invokers
 	ref ScriptInvokerVoid m_OnPlayerDeath = new ScriptInvokerVoid();
-	ref OnPlayerDeathWithParamInvoker m_OnPlayerDeathWithParam = new OnPlayerDeathWithParamInvoker();
+	ref OnPlayerDeathWithParamInvoker m_OnPlayerDeathWithParam = new OnPlayerDeathWithParamInvoker(); // has a getter!
 	ref OnLifeStateChangedInvoker m_OnLifeStateChanged = new OnLifeStateChangedInvoker();
 	ref OnControlledByPlayerInvoker m_OnControlledByPlayer = new OnControlledByPlayerInvoker();
 	ref ScriptInvokerFloat2<float> m_OnPlayerDrowning = new ScriptInvokerFloat2();
 	ref ScriptInvokerVoid m_OnPlayerStopDrowning = new ScriptInvokerVoid();
 	
 	// Gadget event invokers
-	ref ScriptInvoker<IEntity, bool, bool> m_OnGadgetStateChangedInvoker = new ref ScriptInvoker<IEntity, bool, bool>();
-	ref ScriptInvoker<IEntity, bool> m_OnGadgetFocusStateChangedInvoker = new ref ScriptInvoker<IEntity, bool>();
+	ref ScriptInvoker<IEntity, bool, bool> m_OnGadgetStateChangedInvoker = new ScriptInvoker<IEntity, bool, bool>();
+	ref ScriptInvoker<IEntity, bool> m_OnGadgetFocusStateChangedInvoker = new ScriptInvoker<IEntity, bool>();
 
 	// Item event invokers
-	ref OnItemUseBeganInvoker m_OnItemUseBeganInvoker = new ref OnItemUseBeganInvoker();
-	ref OnItemUseEndedInvoker m_OnItemUseEndedInvoker = new ref OnItemUseEndedInvoker();
+	ref OnItemUseBeganInvoker m_OnItemUseBeganInvoker = new OnItemUseBeganInvoker();
+	ref OnItemUseEndedInvoker m_OnItemUseEndedInvoker = new OnItemUseEndedInvoker();
 	// called when all listeners reacted on ItemUseEnded invoker - may delete the item now thus listerners to ItemUseFinished may get first parameter null! 
-	ref OnItemUseFinishedInvoker m_OnItemUseFinishedInvoker = new ref OnItemUseFinishedInvoker(); 
+	ref OnItemUseFinishedInvoker m_OnItemUseFinishedInvoker = new OnItemUseFinishedInvoker();
 	protected ref ScriptInvoker<AnimationEventID, AnimationEventID, int, float, float> m_OnAnimationEvent;
 
 	// Diagnostics, debugging
@@ -80,25 +71,30 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	private static bool m_bEnableDebugUI;
 	private CharacterAnimationComponent m_AnimComponent;
 	private Widget m_wDebugRootWidget;
-	private int m_bDebugLastStance = ECharacterStance.STAND;
+	private ECharacterStance m_bDebugLastStance = ECharacterStance.STAND;
 	#endif
 
 	//------------------------------------------------------------------------------------------------
+	//! Get the interaction status of the character
+	//! \return true if the character is alive ad not using items or vehicles
+	//! not on a ladder, not aiming down sights, not in 3rd person in a vehicle, not already using an item nor weapon-deployed
 	bool CanInteract()
 	{
-		if (IsDead() || IsUnconscious() || IsClimbing())
+		if (GetLifeState() != ECharacterLifeState.ALIVE)
 			return false;
 		
-		// No interactions when character is dead or in ADS
+		if (IsUsingItem())
+			return false;
+		
+		if (IsClimbing())
+			return false;
+
 		ChimeraCharacter character = GetCharacter();
-		if (character && character.IsInVehicleADS())
+		if (!character || character.IsInVehicleADS())
 			return false;
 		
 		// Disable in vehicle 3pp
 		if (character.IsInVehicle() && IsInThirdPersonView())
-			return false;
-		
-		if (IsUsingItem())
 			return false;
 		
 		if (GetIsWeaponDeployed())
@@ -107,14 +103,10 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		return true;
 	}
 	
-	protected void OnConsciousnessChanged(bool conscious)
+	//------------------------------------------------------------------------------------------------
+	override void OnConsciousnessChanged(bool conscious)
 	{
-		OnLifeStateChanged(GetLifeState());
-		
-		if (conscious)
-			return;
-
-		if (IsDead())
+		if (GetLifeState() != ECharacterLifeState.INCAPACITATED)
 			return;
 
 		AIControlComponent aiControl = AIControlComponent.Cast(GetOwner().FindComponent(AIControlComponent));
@@ -125,50 +117,72 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		BaseWeaponManagerComponent wpnMan = GetWeaponManagerComponent();
 		if (wpnMan && wpnMan.GetCurrentWeapon())
 			currentWeapon = wpnMan.GetCurrentWeapon().GetOwner();
-
+				
 		if (currentWeapon)
-			TryEquipRightHandItem(null, EEquipItemType.EEquipTypeUnarmedContextual, true);
+		{
+			bool dropGrenade = false;
+			
+			SCR_CharacterCommandHandlerComponent handler = SCR_CharacterCommandHandlerComponent.Cast(GetAnimationComponent().GetCommandHandler());
+			
+			EWeaponType wt = wpnMan.GetCurrentWeapon().GetWeaponType();
+			if (currentWeapon.FindComponent(GrenadeMoveComponent))
+			{
+				BaseTriggerComponent triggerComp = BaseTriggerComponent.Cast(currentWeapon.FindComponent(BaseTriggerComponent));
+				
+				if ((triggerComp && triggerComp.WasTriggered()) || (handler && handler.IsThrowingAction()))
+				{
+					dropGrenade = true;
+				}
+			}
+			
+			if (dropGrenade)
+				handler.DropLiveGrenadeFromHand(false); 
+			else 
+				TryEquipRightHandItem(null, EEquipItemType.EEquipTypeUnarmedContextual, true);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return a script invoker with method signature (AnimationEventID animEventType, AnimationEventID animUserString, int intParam, float timeFromStart, float timeToEnd)
 	ScriptInvoker GetOnAnimationEvent()
 	{
 		if (!m_OnAnimationEvent)
 			m_OnAnimationEvent = new ScriptInvoker();
+
 		return m_OnAnimationEvent;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Will be called when gadget taken/removed from hand
-	override void OnGadgetStateChanged(IEntity gadget, bool isInHand, bool isOnGround) { m_OnGadgetStateChangedInvoker.Invoke(gadget, isInHand, isOnGround); };
-	//! Will be called when gadget fully transitioned to or canceled focus mode
-	override void OnGadgetFocusStateChanged(IEntity gadget, bool isFocused) { m_OnGadgetFocusStateChangedInvoker.Invoke(gadget, isFocused); };
+	override void OnGadgetStateChanged(IEntity gadget, bool isInHand, bool isOnGround)
+	{
+		m_OnGadgetStateChangedInvoker.Invoke(gadget, isInHand, isOnGround);
+	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Will be called when item use action is started
-	override void OnItemUseBegan(IEntity item, int cmdID, int cmdIntArg, float cmdFloatArg, int intParam, float floatParam, bool boolParam) 
+	override void OnGadgetFocusStateChanged(IEntity gadget, bool isFocused)
 	{
-		// Animation duration is not returned.
-		SCR_ConsumableEffectAnimationParameters animParams = new SCR_ConsumableEffectAnimationParameters(cmdID, cmdIntArg, cmdFloatArg, -1.0, intParam, floatParam, boolParam);
-		m_OnItemUseBeganInvoker.Invoke(item, animParams);
-	};
-	//! Will be called when item use action is complete
-	override void OnItemUseEnded(IEntity item, bool successful, int cmdID, int cmdIntArg, float cmdFloatArg, int intParam, float floatParam, bool boolParam)
+		m_OnGadgetFocusStateChangedInvoker.Invoke(gadget, isFocused);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnItemUseBegan(ItemUseParameters itemUseParams) 
 	{
-		// Animation duration is not returned.
-		SCR_ConsumableEffectAnimationParameters animParams = new SCR_ConsumableEffectAnimationParameters(cmdID, cmdIntArg, cmdFloatArg, -1.0, intParam, floatParam, boolParam);
-		m_OnItemUseEndedInvoker.Invoke(item, successful, animParams);
+		m_OnItemUseBeganInvoker.Invoke(itemUseParams.GetEntity(), itemUseParams);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnItemUseEnded(ItemUseParameters itemUseParams, bool successful)
+	{
+		m_OnItemUseEndedInvoker.Invoke(itemUseParams.GetEntity(), successful, itemUseParams);
 		// now all interested in non-null item have listened, we can call Finished to delete the item
-		m_OnItemUseFinishedInvoker.Invoke(item, successful, animParams);
-	};
+		m_OnItemUseFinishedInvoker.Invoke(itemUseParams.GetEntity(), successful, itemUseParams);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	protected override void OnAnimationEvent(AnimationEventID animEventType, AnimationEventID animUserString, int intParam, float timeFromStart, float timeToEnd)
 	{
-		if (!m_OnAnimationEvent)
-			return;
-
-		m_OnAnimationEvent.Invoke(animEventType, animUserString, intParam, timeFromStart, timeToEnd);
+		if (m_OnAnimationEvent)
+			m_OnAnimationEvent.Invoke(animEventType, animUserString, intParam, timeFromStart, timeToEnd);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -179,29 +193,14 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Get life state of character, including scripted states
-	ECharacterLifeState GetLifeState()
-	{
-		ChimeraCharacter char = ChimeraCharacter.Cast(GetOwner());
-		if (char)
-		{
-			if (char.GetDamageManager().GetState() == EDamageState.DESTROYED)
-				return ECharacterLifeState.DEAD;
-		}
-
-		if (char.GetCharacterController().GetInputContext().IsUnconscious())
-			return ECharacterLifeState.INCAPACITATED;
-
-		return ECharacterLifeState.ALIVE;
-	}
-	
-	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvokerVoid GetOnPlayerDeath()
 	{
 		return m_OnPlayerDeath;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	OnPlayerDeathWithParamInvoker GetOnPlayerDeathWithParam()
 	{
 		return m_OnPlayerDeathWithParam;
@@ -213,49 +212,20 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		m_OnPlayerDeath.Invoke();
 		m_OnPlayerDeathWithParam.Invoke(this, instigatorEntity, instigator);
 
-		OnLifeStateChanged(GetLifeState());
-		
 		SCR_PlayerController pc = SCR_PlayerController.Cast(GetGame().GetPlayerController());
 		if (pc && m_CameraHandler && m_CameraHandler.IsInThirdPerson())
 			pc.m_bRetain3PV = true;
 
-		// Insert the character and see if it held a weapon, if so, try adding that as well
-		ChimeraWorld world = ChimeraWorld.CastFrom(GetOwner().GetWorld());
-		if (!world)
-			return;
-		
-		GarbageManager garbageManager = world.GetGarbageManager();
-		if (garbageManager)
-		{
-			garbageManager.Insert(GetCharacter());
-
-			BaseWeaponManagerComponent weaponManager = GetWeaponManagerComponent();
-			if (!weaponManager)
-				return;
-
-			BaseWeaponComponent weaponOrSlot = weaponManager.GetCurrentWeapon();
-			if (!weaponOrSlot)
-				return;
-
-			IEntity weaponEntity;
-			WeaponSlotComponent slot = WeaponSlotComponent.Cast(weaponOrSlot);
-			if (slot)
-				weaponEntity = slot.GetWeaponEntity();
-			else
-				weaponEntity = weaponOrSlot.GetOwner();
-
-			if (!weaponEntity)
-				return;
-
-			garbageManager.Insert(weaponEntity);
-		}
+		IEntity character = GetCharacter();
+		auto garbageSystem = SCR_GarbageSystem.GetByEntityWorld(character);
+		if (garbageSystem)
+			garbageSystem.Insert(character);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnLifeStateChanged(ECharacterLifeState lifeState)
+	override void OnLifeStateChanged(ECharacterLifeState previousLifeState, ECharacterLifeState newLifeState)
 	{
-		if (m_OnLifeStateChanged)
-			m_OnLifeStateChanged.Invoke(lifeState);
+		m_OnLifeStateChanged.Invoke(previousLifeState, newLifeState);
 		
 		ChimeraCharacter char = GetCharacter();
 		if (!char)
@@ -269,7 +239,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		if (!vehicleFactionAff)
 			return;
 		
-		vehicleFactionAff.OnOccupantLifeStateChanged(lifeState);	
+		vehicleFactionAff.UpdateOccupantsCount();	
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -295,10 +265,19 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 
 		return true;
 	}
+	
+	override bool GetCanEquipGadget(IEntity gadget)
+	{
+		SCR_CharacterCommandHandlerComponent handler = SCR_CharacterCommandHandlerComponent.Cast(GetAnimationComponent().GetCommandHandler());
+		if (handler.IsLoitering() || GetScrInputContext().m_iLoiteringType != -1)
+			return false;
+
+		return true;		
+	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Return true to override default behaviour.
-	//! Returns false to use default behaviour - Perform Action key will immediately perform the action
+	//! Override to handle what happens after pressing F button
+	//! \return true to override default behaviour, false to use default behaviour - Perform Action key will immediately perform the action
 	override bool OnPerformAction()
 	{
 		return m_bOverrideActions;
@@ -322,15 +301,9 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		#endif
 		
 		m_pScrInputContext = new SCR_ScriptedCharacterInputContext();
-
-		EventHandlerManagerComponent eventHandlerManager = EventHandlerManagerComponent.Cast(owner.FindComponent(EventHandlerManagerComponent));
-		if (eventHandlerManager)
-		{
-			eventHandlerManager.RegisterScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged);
-		}
 	}
 	
-	//------------------------------------------------------------------------------------------------ 
+	//------------------------------------------------------------------------------------------------
 	protected override void OnApplyControls(IEntity owner, float timeSlice)
 	{
 		if (GetScrInputContext().m_iLoiteringType >= 0)
@@ -344,7 +317,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		}
 	}
 
-	//------------------------------------------------------------------------------------------------ 
+	//------------------------------------------------------------------------------------------------
 	protected override void UpdateDrowning(float timeSlice, vector waterLevel)
 	{
 		ChimeraCharacter char = GetCharacter();
@@ -357,7 +330,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		float drowningTimeStartFX = 4;
 		if (waterLevel[2] > 0 && !isInWatertightCompartment)
 		{
-			if (m_fDrowningTime < drowningTimeStartFX && (m_fDrowningTime + timeSlice) > drowningTimeStartFX && m_OnPlayerDrowning)
+			if (m_fDrowningTime < drowningTimeStartFX && (m_fDrowningTime + timeSlice) > drowningTimeStartFX)
 			{
 				m_OnPlayerDrowning.Invoke(m_fDrowningDuration, drowningTimeStartFX);
 				m_bCharacterIsDrowning = true;
@@ -367,11 +340,12 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		}
 		else
 		{
-			if (m_fDrowningTime && m_OnPlayerStopDrowning)
+			if (m_fDrowningTime != 0)
 			{
 				m_OnPlayerStopDrowning.Invoke();
 				m_bCharacterIsDrowning = false;
 			}
+
 			m_fDrowningTime = 0;
 			return;
 		}
@@ -388,30 +362,34 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetDrowningTime()
 	{
 		return m_fDrowningTime;
 	}	
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsCharacterDrowning()
 	{
 		return m_bCharacterIsDrowning;
 	}
 
-	//------------------------------------------------------------------------------------------------ 
+	//------------------------------------------------------------------------------------------------
 	override bool ShouldAligningAdjustAimingAngles()
 	{
 		return IsAligningBeforeLoiter();
 	}
 	
-	//------------------------------------------------------------------------------------------------ 
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsAligningBeforeLoiter()
 	{
 		return GetScrInputContext().m_iLoiteringType != -1 && GetScrInputContext().m_bLoiteringShouldAlignCharacter && GetAnimationComponent().GetHeadingComponent().IsAligning();
 	}
 	
-	//------------------------------------------------------------------------------------------------ 
+	//------------------------------------------------------------------------------------------------
+	// why the SCR_ prefix?
 	override bool SCR_GetDisableMovementControls()
 	{
 		SCR_CharacterCommandHandlerComponent handler = SCR_CharacterCommandHandlerComponent.Cast(GetAnimationComponent().GetCommandHandler());
@@ -430,7 +408,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		return handler.IsLoitering();
 	}
 
-	//------------------------------------------------------------------------------------------------ 
+	//------------------------------------------------------------------------------------------------
 	override void SCR_OnDisabledJumpAction()
 	{
 		SCR_CharacterCommandHandlerComponent handler = SCR_CharacterCommandHandlerComponent.Cast(GetAnimationComponent().GetCommandHandler());
@@ -455,17 +433,13 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	// #ifdef ENABLE_DIAG
 	//------------------------------------------------------------------------------------------------
 	#ifdef ENABLE_DIAG
-	//------------------------------------------------------------------------------------------------
 		//------------------------------------------------------------------------------------------------
 		override void OnDiag(IEntity owner, float timeslice)
 		{
 			ChimeraCharacter character = GetCharacter();
-			if (!character)
+			if (!character || IsDead())
 				return;
-
-			if (IsDead())
-				return;
-
+			
 			if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_CHARACTER_NOBANKING))
 				SetBanking(0);
 
@@ -494,7 +468,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 				DbgUI.Text("AIMING ANGLES:\n" + strAiming);
 
 				if (DbgUI.Button("Print plaintext to console"))
-					Print("TransformInfo:\nPOSITION:\n"+strPosition + "\nROTATION:\n"+strRotation + "\nSCALE:"+strScale + "\nAIMING ANGLES:\n"+strAiming);
+					Print("TransformInfo:\nPOSITION:\n" + strPosition + "\nROTATION:\n" + strRotation + "\nSCALE:" + strScale + "\nAIMING ANGLES:\n" + strAiming, LogLevel.NORMAL);
 
 				DbgUI.End();
 			}
@@ -553,14 +527,25 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			for (int spd = 0; spd < 3; spd++)
 			{
 				int spdType;
-				if (spd == 0) spdType = EMovementType.WALK;
-				if (spd == 1) spdType = EMovementType.RUN;
-				if (spd == 2) spdType = EMovementType.SPRINT;
+				if (spd == 0)
+					spdType = EMovementType.WALK;
+				else
+				if (spd == 1)
+					spdType = EMovementType.RUN;
+				else
+				if (spd == 2)
+					spdType = EMovementType.SPRINT;
 
 				int color;
-				if (spd == 0) color = ARGB(255, 150, 255, 150);
-				if (spd == 1) color = ARGB(255, 200, 200, 150);
-				if (spd == 2) color = ARGB(255, 255, 150, 150);
+				if (spd == 0)
+					color = ARGB(255, 150, 255, 150);
+				else
+				if (spd == 1)
+					color = ARGB(255, 200, 200, 150);
+				else
+				if (spd == 2)
+					color = ARGB(255, 255, 150, 150);
+
 				for (int deg = 0; deg < 360; deg++)
 				{
 					vector velInput = GetMovementVelocity();
@@ -583,6 +568,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 						wImg.SetRotation(deg);
 						wImg.SetName(iRingname);
 					}
+
 					FrameSlot.SetAnchorMax(wImg, 0, 0);
 					FrameSlot.SetAnchorMin(wImg, 0, 0);
 					FrameSlot.SetSize(wImg, degSize, degSize);
@@ -695,7 +681,6 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			if (wAdjustedStance)
 				wAdjustedStance.SetText(GetDynamicStance().ToString());
 
-
 			UpdateDebugBoolWidget("ToggleSprint", GetIsSprintingToggle());
 			UpdateDebugBoolWidget("IsInADS", IsWeaponADS());
 			UpdateDebugBoolWidget("IsWeaponHolstered", !IsWeaponRaised());
@@ -707,6 +692,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			CharacterCommandHandlerComponent handler = m_AnimComponent.GetCommandHandler();
 			if (!wMovementAngle || !handler)
 				return;
+
 			CharacterCommandMove moveCmd = handler.GetCommandMove();
 			if (moveCmd)
 			{
@@ -720,6 +706,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	//------------------------------------------------------------------------------------------------
 	#endif
 
+	//------------------------------------------------------------------------------------------------
 	override void OnPrepareControls(IEntity owner, ActionManager am, float dt, bool player)
 	{
 		if (am.GetActionTriggered("JumpOut") && CanJumpOutVehicleScript())
@@ -785,6 +772,10 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_CharacterControllerComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		#ifdef ENABLE_DIAG
@@ -807,6 +798,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_CharacterControllerComponent()
 	{
 		#ifdef ENABLE_DIAG
@@ -816,11 +808,9 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		If a weapon with sights is equipped, advances to desired sights FOV info.
-		\param allowCycling If enabled, selection will cycle from end to start and from start to end, otherwise it will be clamped.
-		\param direction If above zero, advances to next info. If below zero, advances to previous info.
-	*/
+	//! If a weapon with sights is equipped, advances to desired sights FOV info.
+	//! \param[in] direction If above zero, advances to next info. If equal to or below zero, advances to previous info.
+	//! \param[in] allowCycling If enabled, selection will cycle from end to start and from start to end, otherwise it will be clamped.
 	void SetNextSightsFOVInfo(int direction = 1, bool allowCycling = false)
 	{
 		if (direction == 0)
@@ -841,12 +831,24 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		If a weapon with multiple sights is equipped, switch the next or previous sights on the weapon (if any)
-		\param direction If above zero, advances to next sights. If below zero, advances to previous sights.
-	*/
+	//! If a weapon with multiple sights is equipped, switch the next or previous sights on the weapon (if any)
+	//! \param[in] direction If above zero, advances to next sights. If equal to or below zero, advances to previous sights.
 	void SetNextSights(int direction = 1)
 	{
+		// Check if we are in a turret and switch the turret's optics instead
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(GetOwner());
+		Turret turret = Turret.Cast(character.GetParent());
+		if (turret)
+		{
+			TurretComponent turretComponent = TurretComponent.Cast(turret.FindComponent(TurretComponent));
+			if (direction > 0)
+				turretComponent.SwitchNextSights();
+			else 
+				turretComponent.SwitchPrevSights();
+			
+			return;
+		}
+		
 		BaseWeaponManagerComponent weaponManager = GetWeaponManagerComponent();
 		if (!weaponManager)
 			return;
@@ -861,11 +863,8 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			weaponComponent.SwitchPrevSights();
 	}
 
-
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Returns currently used SightsFOVInfo if any, null otherwise.
-	*/
+	//! \return currently used SightsFOVInfo if any, null otherwise.
 	SightsFOVInfo GetSightsFOVInfo()
 	{
 		BaseWeaponManagerComponent weaponManager = GetWeaponManagerComponent();
@@ -880,16 +879,13 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		if (!sightsComponent)
 			return null;
 
-		SightsFOVInfo fovInfo = sightsComponent.GetFOVInfo();
-		if (!fovInfo)
-			return null;
-
-		return fovInfo;
+		return sightsComponent.GetFOVInfo();
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected override void OnControlledByPlayer(IEntity owner, bool controlled)
 	{
-		// Do initialization/deinitialization of character that was given/lost control by plyer here
+		// Do initialisation/deinitialisation of character that was given/lost control by plyer here
 		if (controlled && owner == SCR_PlayerController.GetLocalControlledEntity())
 		{
 			GetGame().GetInputManager().AddActionListener("CharacterUnequipItem", EActionTrigger.DOWN, ActionUnequipItem);
@@ -918,12 +914,15 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		m_OnControlledByPlayer.Invoke(owner, controlled);
 
 		// diiferentiate the inventory setup for player and AI
-		auto pCharInvComponent = SCR_CharacterInventoryStorageComponent.Cast( owner.FindComponent( SCR_CharacterInventoryStorageComponent ) );
+		SCR_CharacterInventoryStorageComponent pCharInvComponent = SCR_CharacterInventoryStorageComponent.Cast(owner.FindComponent(SCR_CharacterInventoryStorageComponent));
 		if (pCharInvComponent)
 			pCharInvComponent.InitAsPlayer(owner, controlled);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] value
+	//! \param[in] trigger
 	void ActionUnequipItem(float value = 0.0, EActionTrigger trigger = 0)
 	{
 		SCR_InventoryStorageManagerComponent storageManager = SCR_InventoryStorageManagerComponent.Cast(GetInventoryStorageManager());
@@ -936,6 +935,9 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] value
+	//! \param[in] trigger
 	void ActionDropItem(float value = 0.0, EActionTrigger trigger = 0)
 	{
 		SCR_InventoryStorageManagerComponent storageManager = SCR_InventoryStorageManagerComponent.Cast(GetInventoryStorageManager());
@@ -948,6 +950,9 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] value
+	//! \param[in] trigger
 	void ActionWeaponLowReady(float value = 0.0, EActionTrigger trigger = 0)
 	{
 		if (GetIsWeaponDeployed())
@@ -961,6 +966,9 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] value
+	//! \param[in] trigger
 	void ActionWeaponRaised(float value = 0.0, EActionTrigger trigger = 0)
 	{
 		if (!IsWeaponRaised())
@@ -971,6 +979,9 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] value
+	//! \param[in] trigger
 	void ActionWeaponBipod(float value = 0.0, EActionTrigger trigger = 0)
 	{
 		BaseWeaponManagerComponent weaponManager = GetWeaponManagerComponent();
@@ -990,10 +1001,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	//------------------------------------------------------------------------------------------------
 	protected override void OnInspectionModeChanged(bool newState)
 	{
-		if (newState)
-			m_bInspectionFocus = true;
-		else
-			m_bInspectionFocus = false;
+		m_bInspectionFocus = newState;
 	}
 
 	protected int m_iTargetContext;
@@ -1015,6 +1023,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			Debug.ClearKey(KeyCode.KC_ADD);
 			m_bInspectionFocus = true;
 		}
+
 		if (Debug.KeyState(KeyCode.KC_SUBTRACT))
 		{
 			--m_iTargetContext;
@@ -1037,28 +1046,33 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		if (!ent)
 			return 0;
 
-
 		SCR_InteractionHandlerComponent handler = SCR_InteractionHandlerComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_InteractionHandlerComponent));
+		if (!handler)
+			return 0;
 
 		// Update target
 		array<UserActionContext> contexts = {};
-		vector _;
-		array<IEntity> ents = handler.GetManualOverrideList(null, _);
+		vector tmp;
+		array<IEntity> ents = handler.GetManualOverrideList(null, tmp);
+		ActionsManagerComponent ac;
+		array<UserActionContext> buff;
+		UserActionContext ctx;
+		array<BaseUserAction> actions;
 		foreach (IEntity e : ents)
 		{
-			ActionsManagerComponent ac = ActionsManagerComponent.Cast(e.FindComponent(ActionsManagerComponent));
+			ac = ActionsManagerComponent.Cast(e.FindComponent(ActionsManagerComponent));
 			if (!ac)
 				continue;
 
-			array<UserActionContext> buff = {};
+			buff = {};
 			int bc = ac.GetContextList(buff);
 			for (int i = 0; i < bc; ++i)
 			{
-				UserActionContext ctx = buff[i];
+				ctx = buff[i];
 				if (ctx.GetActionsCount() == 0)
 					continue;
 
-				array<BaseUserAction> actions = {};
+				actions = {};
 				int actionsCount = ctx.GetActionsList(actions);
 				foreach (BaseUserAction action : actions)
 				{
@@ -1074,11 +1088,10 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		int nonEmptyCount = contexts.Count();
 		m_iTargetContext = Math.Repeat(m_iTargetContext, nonEmptyCount);
 
-
 		if (nonEmptyCount == 0)
 			return 0.0;
 
-		UserActionContext ctx = contexts[m_iTargetContext];
+		ctx = contexts[m_iTargetContext];
 		vector contextPos = ctx.GetOrigin();
 
 		vector localAimDirection = GetHeadAimingComponent().GetAimingDirection();
@@ -1086,10 +1099,8 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		vector localTargetDirection = GetCharacter().VectorToLocal( targetDirection );
 		localTargetDirection.Normalize();
 
-
 		float lookYaw = Math.Sin(localTargetDirection[0]) * Math.RAD2DEG;
 		float lookPitch = Math.Sin(localTargetDirection[1]) * Math.RAD2DEG;
-
 
 		//Shape shape = Shape.CreateSphere(COLOR_RED, ShapeFlags.ONCE | ShapeFlags.NOZBUFFER, contextPos, 0.01);
 
@@ -1099,13 +1110,21 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		return 4.30 * Math.RAD2DEG ; // speed, approx deg/s
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_ScriptedCharacterInputContext GetScrInputContext()
 	{
 		return m_pScrInputContext;
 	}
 	
-	//------------------------------------------------------------------------------------------------ 
-	void StartLoitering(int loiteringType, bool holsterWeapon, bool allowRootMotion, bool alignToPosition, vector targetPosition[4] = {"1 0 0", "0 1 0", "0 0 1", "0 0 0"})
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] loiteringType
+	//! \param[in] holsterWeapon
+	//! \param[in] allowRootMotion
+	//! \param[in] alignToPosition
+	//! \param[in] targetPosition
+	void StartLoitering(int loiteringType, bool holsterWeapon, bool allowRootMotion, bool alignToPosition, vector targetPosition[4] = { "1 0 0", "0 1 0", "0 0 1", "0 0 0" })
 	{
 		if (GetCharacter().GetRplComponent() && !GetCharacter().GetRplComponent().IsOwner())
 			return;
@@ -1113,6 +1132,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(GetCharacter().GetAnimationComponent().GetCommandHandler());
 		if (!scrCmdHandler)
 			return;
+
 		if (scrCmdHandler.IsLoitering())
 			return;
 		
@@ -1131,7 +1151,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		TryStartLoiteringInternal();
 	}
 	
-	//------------------------------------------------------------------------------------------------ 
+	//------------------------------------------------------------------------------------------------
 	protected bool AlignToPositionFromCurrentPosition(vector targetPosition[4], float toleranceXZ = 0.01, float toleranceY = 0.01)
 	{
 		if (GetCharacter().GetRplComponent() && !GetCharacter().GetRplComponent().IsOwner())
@@ -1147,7 +1167,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			&& Math.AbsFloat(currentTransform[3][2] - targetPosition[3][2]) < toleranceY;
 	}
 	
-	//------------------------------------------------------------------------------------------------ 
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void Rpc_StartLoitering_S(int loiteringType, bool holsterWeapon, bool allowRootMotion, bool alignToPosition, vector targetPosition[4])
 	{
@@ -1161,7 +1181,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		scrCmdHandler.StartCommandLoitering();
 	}
 	
-	//------------------------------------------------------------------------------------------------ 
+	//------------------------------------------------------------------------------------------------
 	protected bool TryStartLoiteringInternal()
 	{
 		CharacterHeadingAnimComponent headingComponent = GetAnimationComponent().GetHeadingComponent();
@@ -1194,8 +1214,9 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		return true;
 	}
 	
-	//------------------------------------------------------------------------------------------------ 
-	//terminateFast should be true when we are going into alerted or combat state.
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] terminateFast should be true when going into alerted or combat state.
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RPC_StopLoitering_S(bool terminateFast)
 	{
@@ -1206,7 +1227,9 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		scrCmdHandler.StopLoitering(terminateFast);
 	}
 	
-	//------------------------------------------------------------------------------------------------ 
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] terminateFast
 	//terminateFast should be true when we are going into alerted or combat state.
 	void StopLoitering(bool terminateFast)
 	{
@@ -1219,10 +1242,20 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		if (GetCharacter().GetRplComponent() && GetCharacter().GetRplComponent().IsProxy())
 			Rpc(RPC_StopLoitering_S, terminateFast);
 	}
-};
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsLoitering()
+	{
+		SCR_CharacterCommandHandlerComponent handler = SCR_CharacterCommandHandlerComponent.Cast(GetAnimationComponent().GetCommandHandler());
+		if (!handler)
+			return false;
+		else
+			return handler.IsLoitering();		
+	}
+}
 
-enum ECharacterGestures
+enum ECharacterGestures // TODO: SCR_
 {
 	NONE = 0,
 	POINT_WITH_FINGER = 1
-};
+}

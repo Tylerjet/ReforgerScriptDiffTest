@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 class SCR_GMMenuTileComponent : SCR_TileBaseComponent
 {
 	MissionWorkshopItem m_Item;
@@ -82,6 +81,11 @@ class SCR_GMMenuTileComponent : SCR_TileBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] item
+	//! \param[in] isFeatured
+	//! \param[in] isRecent
+	//! \param[in] isRecommended
 	void ShowMission(notnull MissionWorkshopItem item, bool isFeatured = false, bool isRecent = false, bool isRecommended = false)
 	{
 		m_Item = item;
@@ -119,12 +123,15 @@ class SCR_GMMenuTileComponent : SCR_TileBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetTexture()
 	{
 		if (!m_Header)
 			return m_Item.Thumbnail().GetLocalScale(1920).Path();
+
 		if (!m_Header.m_sPreviewImage.IsEmpty())
 			return m_Header.m_sPreviewImage;
+
 		if (!m_Header.m_sIcon.IsEmpty())
 			return m_Header.m_sIcon;
 
@@ -154,4 +161,4 @@ class SCR_GMMenuTileComponent : SCR_TileBaseComponent
 	{
 		m_OnFindServer.Invoke(this);
 	}
-};
+}

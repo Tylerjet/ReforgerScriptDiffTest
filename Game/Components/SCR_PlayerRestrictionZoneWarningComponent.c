@@ -1,14 +1,23 @@
 [ComponentEditorProps(category: "GameScripted/Misc", description: "")]
-class SCR_PlayerRestrictionZoneWarningComponentClass: ScriptComponentClass
+class SCR_PlayerRestrictionZoneWarningComponentClass : ScriptComponentClass
 {
-};
-class SCR_PlayerRestrictionZoneWarningComponent: ScriptComponent
+}
+
+class SCR_PlayerRestrictionZoneWarningComponent : ScriptComponent
 {
 	protected SCR_RestrictionZoneWarningHUDComponent m_WarningHUD;
 	protected bool m_bShowingWarning;
 	protected float m_fWarningEffectStrenghtPerc;
 	protected float m_fWarningEffectStrenghtLookAtPerc;
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] showWarning
+	//! \param[in] warningType
+	//! \param[in] centerChanged
+	//! \param[in] zoneCenter
+	//! \param[in] warningRadiusSq
+	//! \param[in] zoneRadiusSq
 	void ShowWarningServer(bool showWarning, ERestrictionZoneWarningType warningType, bool centerChanged, vector zoneCenter, float warningRadiusSq, float zoneRadiusSq)
 	{
 		if ((m_bShowingWarning == showWarning && !centerChanged) || !Replication.IsServer())
@@ -22,6 +31,7 @@ class SCR_PlayerRestrictionZoneWarningComponent: ScriptComponent
 			Rpc(HideWarningOwner);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void HideWarningOwner()
 	{
@@ -29,6 +39,7 @@ class SCR_PlayerRestrictionZoneWarningComponent: ScriptComponent
 			m_WarningHUD.ShowZoneWarning(false, -1, vector.Zero, -1, -1);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void ShowWarningOwner(bool showWarning, ERestrictionZoneWarningType warningType, vector zoneCenter, float warningRadiusSq, float zoneRadiusSq)
 	{		
@@ -36,6 +47,7 @@ class SCR_PlayerRestrictionZoneWarningComponent: ScriptComponent
 			m_WarningHUD.ShowZoneWarning(showWarning, warningType, zoneCenter, warningRadiusSq, zoneRadiusSq);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
 		SCR_HUDManagerComponent hudManager = SCR_HUDManagerComponent.Cast(owner.FindComponent(SCR_HUDManagerComponent));
@@ -55,8 +67,10 @@ class SCR_PlayerRestrictionZoneWarningComponent: ScriptComponent
        	 	}
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		SetEventMask(owner, EntityEvent.INIT);
 	}
-};
+}

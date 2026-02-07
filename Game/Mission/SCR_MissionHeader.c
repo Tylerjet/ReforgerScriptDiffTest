@@ -72,6 +72,12 @@ class SCR_MissionHeader : MissionHeader
 	[Attribute("1", UIWidgets.EditBox, "Player XP multiplier (when enabled in gamemode; 1 for default)")]
 	float m_fXpMultiplier;
 	
+	[Attribute("", desc: "Determines whether map markers can be deleted only by player who placed them or by anyone within faction")]
+	bool m_bMapMarkerEnableDeleteByAnyone;
+	
+	[Attribute("10", desc: "How many map markers per player can exist at a time")];
+	int m_iMapMarkerLimitPerPlayer;
+	
 	bool m_bLoadOnStart;
 	string m_sOwner;
 

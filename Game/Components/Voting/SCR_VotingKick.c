@@ -1,11 +1,11 @@
 [BaseContainerProps(configRoot:true), SCR_BaseContainerCustomTitleEnum(EVotingType, "m_Type")]
-class SCR_VotingKick: SCR_VotingReferendum
+class SCR_VotingKick : SCR_VotingReferendum
 {	
 	[Attribute(desc: "When true, only players on the same faction as target of the vote can vote.")]
 	protected bool m_bFactionSpecific;
 	
 	//~ Used in voting to make sure there is a min kick duration (in seconds)
-	static const int PLAYER_VOTE_KICK_DURATION = 1200;
+	protected static const int PLAYER_VOTE_KICK_DURATION = 300;
 	
 	//------------------------------------------------------------------------------------------------
 	override void InitFromTemplate(SCR_VotingBase template, int value, float remainingDuration)
@@ -17,6 +17,9 @@ class SCR_VotingKick: SCR_VotingReferendum
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
+	// TODO: fix casing
 	bool isFactionSpecific()
 	{
 		return m_bFactionSpecific;
@@ -142,4 +145,4 @@ class SCR_VotingKick: SCR_VotingReferendum
 			}
 		}
 	}
-};
+}

@@ -1,8 +1,5 @@
 /*
 Base class for Scenario and Server list menu entries
-Child classes:
-- SCR_ContentBrowser_ScenarioLineComponent
-- SCR_ServerBrowserEntryComponent
 */
 void ScriptInvokerListMenuEntryMethod(SCR_ListMenuEntryComponent entry, bool favorite);
 typedef func ScriptInvokerListMenuEntryMethod;
@@ -11,21 +8,23 @@ typedef ScriptInvokerBase<ScriptInvokerListMenuEntryMethod> ScriptInvokerListMen
 //------------------------------------------------------------------------------------------------
 class SCR_ListMenuEntryComponent : SCR_ScriptedWidgetComponent
 {
-	protected Widget m_wVersionWarningIcon;
 	protected ref SCR_ModularButtonComponent m_FavComponent;
 
+	protected bool m_bIsInErrorState; //Entry is enabled, but some of it's buttons are unavailable. Useful for disabling multiple mouse buttons based on one condition. TODO: make it a state of modular buttons 
+	
 	// Text scrolling anims
 	protected ref array<ref SCR_HorizontalScrollAnimationComponent> m_aScrollAnimations = {};
 
 	// Mouse buttons
+	// These arrays need to be filled by child classes with the specific buttons
 	protected bool m_bInnerButtonInteraction;
-	protected ref array<ref SCR_ModularButtonComponent> m_aMouseButtons = {};
-	protected ref array<ref SCR_ButtonEffectColor> m_aMouseButtonsColorEffects = {};
+	protected ref array<SCR_ModularButtonComponent> m_aMouseButtons = {};
+	protected ref array<SCR_ModularButtonComponent> m_aMouseButtonsError = {};
 
 	// Main
 	protected SCR_ModularButtonComponent m_MainModularButton;
 	protected bool m_bFavorite;
-	protected bool m_bDisabled;
+	protected bool m_bDisabled;	//Entry is unavailable but the widget still needs to be interactable. TODO: clean up confusing naming
 	protected bool m_bFocused;
 	protected bool m_bMouseButtonsEnabled = true;
 
@@ -53,10 +52,6 @@ class SCR_ListMenuEntryComponent : SCR_ScriptedWidgetComponent
 		{
 			button.m_OnMouseEnter.Insert(OnInnerButtonHover);
 			button.m_OnMouseLeave.Insert(OnInnerButtonLeave);
-
-			colorEffect = SCR_ButtonEffectColor.Cast(button.FindEffect("IconColor"));
-			if (colorEffect)
-				m_aMouseButtonsColorEffects.Insert(colorEffect);
 		}
 
 		// Favorite button
@@ -199,46 +194,46 @@ class SCR_ListMenuEntryComponent : SCR_ScriptedWidgetComponent
 		anim.AnimationStop();
 		anim.ResetPosition();
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateModularButtons()
 	{
-		// Mouse butons Color
-		Color color = UIColors.IDLE_DISABLED;
-		if (m_bFocused)
-			color = UIColors.NEUTRAL_ACTIVE_STANDBY;
-
-		int index;
-		foreach (SCR_ButtonEffectColor effect : m_aMouseButtonsColorEffects)
-		{
-			if (m_aMouseButtons.IsIndexValid(index) && m_aMouseButtons[index].GetEnabled())
-			{
-				effect.m_cDefault = color;
-				effect.m_cToggledOff = color;
-				m_aMouseButtons[index].InvokeAllEnabledEffects(false);
-			}
-
-			index++;
-		}
-
-		// Main elements color
-		// Toggling the line's main modular button component is used as a quck way to change the line's elements while mantaining it active
+		SCR_ListEntryHelper.UpdateMouseButtons(m_aMouseButtons, m_aMouseButtonsError, m_bIsInErrorState, m_bFocused);
+		
+		// --- Main elements color ---
+		// Toggling the line's main modular button component is used as a quck way to change the line's elements while mantaining it active (they inherit color)
 		if (!m_MainModularButton)
 			m_MainModularButton = SCR_ModularButtonComponent.FindComponent(m_wRoot);
-		if (m_MainModularButton)
+		if (!m_MainModularButton)
+			return;
+
+		m_MainModularButton.SetToggled(m_bDisabled, false);
+		
+		// Name
+		Color color = Color.FromInt(UIColors.NEUTRAL_INFORMATION.PackToInt());
+		if (m_bDisabled)
+			color = Color.FromInt(UIColors.IDLE_DISABLED.PackToInt());
+		
+		SCR_ButtonEffectColor nameEffect = SCR_ButtonEffectColor.Cast(m_MainModularButton.FindEffect(SCR_ListEntryHelper.EFFECT_NAME_COLOR));
+		if (nameEffect)
+			nameEffect.m_cFocusLost = color;
+
+		// Elements
+		if (!m_bDisabled)
+			color = Color.FromInt(UIColors.NEUTRAL_ACTIVE_STANDBY.PackToInt());
+		
+		array<SCR_ButtonEffectBase> effects = m_MainModularButton.FindAllEffects(SCR_ListEntryHelper.EFFECT_WRAPPER_COLOR);
+		if (effects.IsEmpty())
+			return;
+		
+		foreach (SCR_ButtonEffectBase effect : effects)
 		{
-			m_MainModularButton.SetToggled(m_bDisabled, false);
-
-			color = UIColors.NEUTRAL_INFORMATION;
-			if (m_bDisabled)
-				color = UIColors.IDLE_DISABLED;
-
-			SCR_ButtonEffectColor effect = SCR_ButtonEffectColor.Cast(m_MainModularButton.FindEffect("NameColor"));
-			if (effect)
-				effect.m_cFocusLost = color;
-
-			m_MainModularButton.InvokeAllEnabledEffects(false);
+			SCR_ButtonEffectColor colorEffect = SCR_ButtonEffectColor.Cast(effect);
+			if (colorEffect)
+				colorEffect.m_cFocusLost = color;
 		}
+		
+		m_MainModularButton.InvokeAllEnabledEffects(false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -296,7 +291,13 @@ class SCR_ListMenuEntryComponent : SCR_ScriptedWidgetComponent
 	{
 		return m_bFavorite;
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsInErrorState()
+	{
+		return m_bIsInErrorState;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	ScriptInvokerString GetOnMouseInteractionButtonClicked()
 	{

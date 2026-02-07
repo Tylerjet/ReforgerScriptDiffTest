@@ -1,14 +1,15 @@
-//------------------------------------------------------------------------------------------------
 class SCR_MapMarkerSquadLeaderComponent : SCR_MapMarkerDynamicWComponent
 {
 	bool m_bIsHovered;
 	protected bool m_bIsInit;
-	protected Widget m_wMarkerVLayout;
+	protected Widget m_wOwnSquadBackground;
+	protected Widget m_wOwnSquadIcon;
+	protected Widget m_wOwnSquadIconGlow;
 	protected Widget m_wGroupInfo;
 	protected Widget m_wGroupInfoList;
 	protected TextWidget m_wGroupFrequency;
 	
-	protected ref array<Widget> m_aGroupMemberEntries = new array<Widget>;
+	protected ref array<Widget> m_aGroupMemberEntries = {};
 	
 	[Attribute("{CCD81F58E9D6EEA6}UI/layouts/Map/MapMarkerGroupInfo.layout", desc: "group info layout")]
 	protected ResourceName m_sGroupInfoLayout;
@@ -27,15 +28,38 @@ class SCR_MapMarkerSquadLeaderComponent : SCR_MapMarkerDynamicWComponent
 		
 	//------------------------------------------------------------------------------------------------
 	//! Differentiates visuals between our group and the others
-	void SetGroupActive(bool state)
+	//! \param[in] state
+	void SetGroupActive(bool state, string factionName = string.Empty)
 	{
+		Color iconColor = Color.FromInt(Color.BLACK);
+		
 		if (state)
-			m_wMarkerVLayout.SetOpacity(1);
+		{
+			/*m_wOwnSquadBackground.SetVisible(true);
+			m_wOwnSquadIcon.SetVisible(true);
+			m_wOwnSquadIconGlow.SetVisible(true);
+			
+			// TODO temp set until these are added to configs
+			if (factionName == "US")
+				iconColor = new Color(0.0, 0.18, 0.61, 1.0);
+			else if (factionName == "USSR")
+				iconColor = new Color(0.51, 0.02, 0.02, 1.0);*/
+		}
 		else 
-			m_wMarkerVLayout.SetOpacity(0.75);
+		{
+			m_wOwnSquadBackground.SetVisible(false);
+			m_wOwnSquadIcon.SetVisible(false);
+			m_wOwnSquadIconGlow.SetVisible(false);
+		}
+		
+		//m_wOwnSquadIcon.SetColor(iconColor);
+		//m_wOwnSquadIconGlow.SetColor(iconColor);
 	}
 			
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] screenX
+	//! \param[in] screenY
 	void UpdateGroupInfoPosition(int screenX, int screenY)
 	{
 		if (m_wGroupInfo)
@@ -55,8 +79,8 @@ class SCR_MapMarkerSquadLeaderComponent : SCR_MapMarkerDynamicWComponent
 
 	//------------------------------------------------------------------------------------------------
 	override bool OnMouseEnter(Widget w, int x, int y)
-	{
-		m_wMarkerText.SetColor(GUIColors.ORANGE);
+	{		
+		m_MarkerEnt.LayerChangeLogic(0);
 		
 		SCR_AIGroup group = SCR_MapMarkerSquadLeader.Cast(m_MarkerEnt).GetGroup();
 		if (group)
@@ -84,7 +108,7 @@ class SCR_MapMarkerSquadLeaderComponent : SCR_MapMarkerDynamicWComponent
 			m_wGroupFrequency.SetText(fFrequency.ToString(3, 1));
 			
 			int playerCount = group.GetPlayerCount();
-			array<int> membersCopy = new array<int>;
+			array<int> membersCopy = {};
 			membersCopy.Copy(group.GetPlayerIDs());
 			
 			PlayerManager pManager = GetGame().GetPlayerManager();
@@ -147,13 +171,13 @@ class SCR_MapMarkerSquadLeaderComponent : SCR_MapMarkerDynamicWComponent
 		return true;
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
 	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
 	{
-		m_wMarkerText.SetColor(m_TextColor);
 		m_wGroupInfo.SetVisible(false);
 		m_bIsHovered = false;
+		
+		m_MarkerEnt.LayerChangeLogic(m_iLayerID);
 		
 		return true;
 	}
@@ -163,6 +187,8 @@ class SCR_MapMarkerSquadLeaderComponent : SCR_MapMarkerDynamicWComponent
 	{
 		super.HandlerAttached(w);
 		
-		m_wMarkerVLayout = m_wRoot.FindWidget("markerVLayout");
+		m_wOwnSquadBackground = m_wRoot.FindAnyWidget("OwnSquadBackground");
+		m_wOwnSquadIcon = m_wRoot.FindAnyWidget("OwnSquadIcon");
+		m_wOwnSquadIconGlow = m_wRoot.FindAnyWidget("OwnSquadIconGlow");
 	}
 }

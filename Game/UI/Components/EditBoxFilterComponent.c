@@ -34,9 +34,9 @@ class EditBoxFilterComponent : ScriptedWidgetComponent
 	
 	protected bool m_bLastInputValid = true;
 	
-	ref ScriptInvoker m_OnInvalidInput = new ref ScriptInvoker();
-	ref ScriptInvoker m_OnTextTooLong = new ref ScriptInvoker();
-	ref ScriptInvoker m_OnValidInput = new ref ScriptInvoker();
+	ref ScriptInvoker m_OnInvalidInput = new ScriptInvoker();
+	ref ScriptInvoker m_OnTextTooLong = new ScriptInvoker();
+	ref ScriptInvoker m_OnValidInput = new ScriptInvoker();
 	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)

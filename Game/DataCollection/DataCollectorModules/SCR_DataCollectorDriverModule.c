@@ -70,7 +70,7 @@ class SCR_DataCollectorDriverModule : SCR_DataCollectorModule
 		if (playerID == 0) // Non-player character
 			return;
 
-		m_mTrackedPlayersInVehicles.Insert(playerID, new SCR_DataCollectorDriverModuleContext(playerEntity, targetEntity, SCR_CompartmentAccessComponent.GetCompartmentType(compartment) == ECompartmentType.Pilot));
+		m_mTrackedPlayersInVehicles.Insert(playerID, new SCR_DataCollectorDriverModuleContext(playerEntity, targetEntity, compartment.GetType() == ECompartmentType.Pilot));
 	}
 
 	//------------------------------------------------------------------------------------------------

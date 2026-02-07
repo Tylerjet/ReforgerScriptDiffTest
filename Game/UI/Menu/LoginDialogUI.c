@@ -33,31 +33,37 @@ class SCR_LoginDialogUI : SCR_LoginProcessDialogUI
 	//------------------------------------------------------------------------------------------------
 	override void OnConfirm()
 	{	
-		if (m_bIsLoading)
+		if (m_bIsLoading || !m_UserName || !m_Password)
 			return;
 		
-		// Store credentials
-		if (m_UserName)
-			GetGame().GetBackendApi().SetCredentialsItem(EBackendCredentials.EBCRED_NAME, m_UserName.GetValue());
-
-		if (m_Password)
-			GetGame().GetBackendApi().SetCredentialsItem(EBackendCredentials.EBCRED_PWD, m_Password.GetValue());
+		string user = m_UserName.GetValue().Trim();
 		
+		if (!VerifyFormatting(user))
+		{
+			ShowWarningMessage(true);
+			return;
+		}
+		
+		// Verify credentials
+		GetGame().GetBackendApi().SetCredentialsItem(EBackendCredentials.EBCRED_NAME, user);
+		GetGame().GetBackendApi().SetCredentialsItem(EBackendCredentials.EBCRED_PWD, m_Password.GetValue());
 		GetGame().GetBackendApi().VerifyCredentials(m_Callback, true);
 		
 		super.OnConfirm();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnFail(SCR_BackendCallback callback, int code, int restCode, int apiCode)
+	override void OnFailDelayed(SCR_BackendCallback callback, int code, int restCode, int apiCode)
 	{
-		if (restCode == CODE_TWO_FA)
+		if (restCode == SCR_ELoginFailReason.TWO_FACTOR_AUTHENTICATION)
 		{
-			SCR_LoginProcessDialogUI.Create2FADialog(m_UserName.GetValue(), m_Password.GetValue());
+			SCR_LoginProcessDialogUI.Create2FADialog(m_UserName.GetValue().Trim(), m_Password.GetValue());
 			Close();
 		}
 		else
-			super.OnFail(callback, code, restCode, apiCode);
+		{
+			super.OnFailDelayed(callback, code, restCode, apiCode);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -76,7 +82,48 @@ class SCR_LoginDialogUI : SCR_LoginProcessDialogUI
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void CheckFilledEditBoxes()
+	// Username must be name@domain.x format
+	override bool VerifyFormatting(string text)
+	{
+		// check for spaces and @
+		if (text.IsEmpty() || text.Contains(" ") || !text.Contains("@") || text.LastIndexOf("@") == text.Length() - 1)
+			return false;
+		
+		array<string> substrings = {};
+		text.Split("@", substrings, true);
+		
+		// make sure there's only one @
+		if (substrings.IsEmpty() || substrings.Count() != 2)
+			return false;
+
+		// check if the domain contains . and it's not the last symbol
+		string domain = substrings[1];
+		if (domain.IsEmpty() || !domain.Contains(".") || domain[0] == "." || domain.LastIndexOf(".") == domain.Length() - 1)
+			return false;
+		
+		// make sure there's no symbols except . in the domain string
+		for (int i = 0; i < domain.Length(); i++)
+		{
+			string char = domain[i];
+			
+			if (char == ".")
+				continue;
+			
+			int ascii = char.ToAscii();
+			
+			bool number = ascii >= 48 && ascii <= 57;
+			bool capLetter = ascii >= 65 && ascii <= 90;
+			bool letter = ascii >= 97 && ascii <= 122;
+			
+			if (!number && !capLetter && !letter)
+				return false;
+		}
+
+		return super.VerifyFormatting(text);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void CheckFilledEditBoxes()
 	{
 		m_bForceConfirmButtonDisabled = m_UserName.GetValue().IsEmpty() || m_Password.GetValue().IsEmpty();
 		if (m_ConfirmButton)
@@ -100,6 +147,7 @@ class SCR_LoginDialogConsoleUI : SCR_LoginDialogUI
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// The dialog has a unique structure so we need to attach the loading overlay to a different Widget than other dialogs
 	override OverlayWidget GetDialogBaseOverlay()
 	{
 		return m_wOverlayMain;

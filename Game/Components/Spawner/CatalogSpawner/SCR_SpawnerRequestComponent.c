@@ -1,9 +1,7 @@
-//------------------------------------------------------------------------------------------------
 class SCR_SpawnerRequestComponentClass : ScriptGameComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Used for handling entity spawning requests for SCR_CatalogEntitySpawnerComponent and inherited classes, attached to SCR_PlayerController
 class SCR_SpawnerRequestComponent : ScriptComponent
 {
@@ -13,6 +11,8 @@ class SCR_SpawnerRequestComponent : ScriptComponent
 	static const float NOTIFICATION_DURATION = 2;
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] position
 	void RequestPlayerTeleport(vector position)
 	{
 		Rpc(RPC_DoTeleportPlayer, position); 
@@ -37,7 +37,7 @@ class SCR_SpawnerRequestComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Returns quenued ai count. Those are requested AI units, that are currently on way to rally point and not yet in players group
+	//! \return queued requested AI units count that are currently on the way to rally point and not yet in player's group
 	int GetQueuedAIs()
 	{
 		return m_iQueuedAIs;
@@ -45,9 +45,9 @@ class SCR_SpawnerRequestComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Defender spawner request from SCR_EnableDefendersAction
-	//! \param defenderSpawnerComp DefenderSpawner component to be handled
-	//! \param enable bool to enable or disable unit spawning
-	//! \param playerID id of player requesting the spawn
+	//! \param[in] defenderSpawnerComp DefenderSpawner component to be handled
+	//! \param[in] enable to enable or disable unit spawning
+	//! \param[in] playerID id of player requesting the spawn
 	void EnableSpawning(notnull SCR_DefenderSpawnerComponent defenderSpawnerComp, bool enable, int playerID)
 	{
 		IEntity spawnerOwnerEntity = defenderSpawnerComp.GetOwner();
@@ -63,9 +63,9 @@ class SCR_SpawnerRequestComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Performs request on server
-	//! \param rplCompId RplComp id of entity with SCR_DefenderSpawnerComponent
-	//! \param index item index in User Faction
-	//! \param playerID id of player requesting the spawn
+	//! \param[in] rplCompId RplComp id of entity with SCR_DefenderSpawnerComponent
+	//! \param[in] index item index in User Faction
+	//! \param[in] playerID id of player requesting the spawn
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void RPC_DoEnableSpawning(RplId defenderSpawnerID, bool enable, int playerID)
 	{
@@ -82,10 +82,10 @@ class SCR_SpawnerRequestComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Entity spawn request from SCR_SpawnEntityUserAction
-	//! \param index item index in User Action
-	//! \param spawnerComponent SpawnerComponent on which should be entity spawned
-	//! \param User requesting spawn
-	//! \param slot on which should be entity spawned
+	//! \param[in] index item index in User Action
+	//! \param[in] spawnerComponent SpawnerComponent on which should be entity spawned
+	//! \param[in] user the user requesting spawn
+	//! \param[in] slot on which should be entity spawned
 	void RequestCatalogEntitySpawn(int index, notnull SCR_CatalogEntitySpawnerComponent spawnerComponent, IEntity user, SCR_EntitySpawnerSlotComponent slot)
 	{
 		int userId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(user);
@@ -109,10 +109,10 @@ class SCR_SpawnerRequestComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Performs request on server
-	//! \param rplCompId RplComp id of entity with spawner component
-	//! \param index item index in User Action
-	//! \param userId id of user requesting spawn
-	//! \param slotRplId slot RplID OPTIONAL
+	//! \param[in] rplCompId RplComp id of entity with spawner component
+	//! \param[in] index item index in User Action
+	//! \param[in] userId id of user requesting spawn
+	//! \param[in] slotRplId slot RplID OPTIONAL
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void RPC_DoRequestCatalogSpawn(RplId rplCompId, int index, int userId, RplId slotRplId)
 	{
@@ -141,6 +141,9 @@ class SCR_SpawnerRequestComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Send notification to player
+	//! \param[in] msgID
+	//! \param[in] assetIndex
+	//! \param[in] catalogType
 	void SendPlayerFeedback(int msgID, int assetIndex, int catalogType = -1)
 	{
 		Rpc(RPC_DoPlayerFeedbackImpl, msgID, assetIndex, catalogType);
@@ -188,8 +191,8 @@ class SCR_SpawnerRequestComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Return string ID to be used in succesfull request feedbacks.
-	//! \param catalogType catalog type from enum.
+	//! \param[in] catalogType catalog type from enum.
+	//! \return string ID to be used in succesful request feedbacks.
 	string GetMessageStringForCatalogType(EEntityCatalogType catalogType)
 	{
 		switch (catalogType)
@@ -218,4 +221,4 @@ class SCR_SpawnerRequestComponent : ScriptComponent
 		if (!GetGame().InPlayMode())
 			return;
 	}
-};
+}

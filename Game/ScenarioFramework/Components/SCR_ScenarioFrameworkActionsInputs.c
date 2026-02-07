@@ -1,18 +1,18 @@
-//------------------------------------------------------------------------------------------------
-//TODO: make this a generic action which can be used anywhere anytime (i.e. on task finished, etc)
+// TODO: make this a generic action which can be used anywhere anytime (i.e. on task finished, etc)
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ScenarioFrameworkActionInputBase
 {
 	protected SCR_ScenarioFrameworkLogicInput		m_Input;
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] input
 	void Init(SCR_ScenarioFrameworkLogicInput input)
 	{
 		m_Input = input;
 	}
-};	
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ScenarioFrameworkActionInputOnTaskEventIncreaseCounter : SCR_ScenarioFrameworkActionInputBase
 {
@@ -24,6 +24,7 @@ class SCR_ScenarioFrameworkActionInputOnTaskEventIncreaseCounter : SCR_ScenarioF
 	
 	protected int 					m_iActionsInput;
 	
+	//------------------------------------------------------------------------------------------------
 	override void Init(SCR_ScenarioFrameworkLogicInput input)
 	{	
 		super.Init(input);
@@ -35,6 +36,8 @@ class SCR_ScenarioFrameworkActionInputOnTaskEventIncreaseCounter : SCR_ScenarioF
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] task
+	//! \param[in] mask
 	void OnActivate(SCR_BaseTask task, SCR_ETaskEventMask mask)
 	{
 		if (task.GetTaskState() != m_eEventName || !m_Input)
@@ -78,9 +81,8 @@ enum SCR_EScenarioFrameworkComparisonOperator
 	GREATER_THEN,
 	GREATER_OR_EQUAL,
 	EQUAL
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ScenarioFrameworkActionInputCheckEntitiesInTrigger : SCR_ScenarioFrameworkActionInputBase
 {
@@ -130,6 +132,7 @@ class SCR_ScenarioFrameworkActionInputCheckEntitiesInTrigger : SCR_ScenarioFrame
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void RegisterOnChange()
 	{
 		if (m_Trigger)
@@ -137,6 +140,7 @@ class SCR_ScenarioFrameworkActionInputCheckEntitiesInTrigger : SCR_ScenarioFrame
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] param
 	void OnActivate(SCR_ScenarioFrameworkParam<IEntity> param)
 	{
 		if (!m_Trigger)
@@ -159,7 +163,6 @@ class SCR_ScenarioFrameworkActionInputCheckEntitiesInTrigger : SCR_ScenarioFrame
 	
 }
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ScenarioFrameworkActionInputCheckEntitiesInAreaTrigger : SCR_ScenarioFrameworkActionInputCheckEntitiesInTrigger
 {
@@ -199,6 +202,5 @@ class SCR_ScenarioFrameworkActionInputCheckEntitiesInAreaTrigger : SCR_ScenarioF
 		m_Trigger = trigger;
 		//We want to give trigger enough time to be properly set up and not to get OnChange called prematurely
 		GetGame().GetCallqueue().CallLater(RegisterOnChange, 5000);
-	}
-	
-}	
+	}	
+}

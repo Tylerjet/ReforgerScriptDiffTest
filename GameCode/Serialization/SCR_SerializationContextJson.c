@@ -17,7 +17,17 @@ class SCR_JsonSaveContext : ContainerSerializationSaveContext
 	void ~SCR_JsonSaveContext()
 	{
 	}
+	
+	void SetMaxDecimalPlaces(int maxDecimalPlaces)
+	{
+		container.SetMaxDecimalPlaces(maxDecimalPlaces);
+	}
 
+	int GetMaxDecimalPlaces()
+	{
+		return container.GetMaxDecimalPlaces();
+	}
+	
 	bool SaveToFile(string filePath)
 	{
 		return container.SaveToFile(filePath);

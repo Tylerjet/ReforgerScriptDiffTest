@@ -200,7 +200,10 @@ class SCR_ArsenalInventorySlotUI : SCR_InventorySlotUI
 		if (!data)
 			return 0;
 		
-		m_fSupplyCost = data.GetSupplyCost();
+		if (arsenalComponent)
+			m_fSupplyCost = data.GetSupplyCost(arsenalComponent.GetSupplyCostType());
+		else 
+			m_fSupplyCost = data.GetSupplyCost(SCR_EArsenalSupplyCostType.DEFAULT);
 		
 		if (!m_ArsenalResourceComponent)
 			return m_fSupplyCost;

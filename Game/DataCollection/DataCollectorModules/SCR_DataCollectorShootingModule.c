@@ -82,7 +82,7 @@ class SCR_DataCollectorShootingModule : SCR_DataCollectorModule
 		BaseCompartmentSlot compartment = manager.FindCompartment(slotID, mgrID);
 
 		//Turrets can shoot
-		if (!compartment || !compartment.GetOccupant() || SCR_CompartmentAccessComponent.GetCompartmentType(compartment) == ECompartmentType.Turret)
+		if (!compartment || !compartment.GetOccupant() || compartment.GetType() == ECompartmentType.Turret)
 			return;
 
 		PlayerManager playerManager = GetGame().GetPlayerManager();

@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 class SCR_SpawnRequestComponentClass : ScriptComponentClass
 {
 	static override bool DependsOn(string className)
@@ -8,19 +7,16 @@ class SCR_SpawnRequestComponentClass : ScriptComponentClass
 		
 		return false;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
-/*!
-	SCR_SpawnRequestComponent <-> SCR_SpawnHandlerComponent
-
-	SCR_SpawnRequestComponent allows communication between client and the authority,
-	SCR_SpawnHandlerComponent handles the requests on authority as desired.
-
-	The respawn request component is the client (but can be issued by authority) component of the respawn process which
-	sends respawn requests to be process by the authority.
-	The process is further streamlined via the usage of a unified parent manager, the SCR_RespawnComponent.
-*/
+//! SCR_SpawnRequestComponent <-> SCR_SpawnHandlerComponent
+//!
+//! SCR_SpawnRequestComponent allows communication between client and the authority,
+//! SCR_SpawnHandlerComponent handles the requests on authority as desired.
+//!
+//! The respawn request component is the client (but can be issued by authority) component of the respawn process which
+//! sends respawn requests to be process by the authority.
+//! The process is further streamlined via the usage of a unified parent manager, the SCR_RespawnComponent.
 class SCR_SpawnRequestComponent : ScriptComponent
 {
 	private SCR_PlayerController m_PlayerController;
@@ -31,57 +27,56 @@ class SCR_SpawnRequestComponent : ScriptComponent
 	private SCR_SpawnHandlerComponent m_HandlerComponent;
 	private bool m_bIsPreloading;
 
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	PlayerController GetPlayerController()
 	{
 		return m_PlayerController;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetPlayerId()
 	{
 		return m_PlayerController.GetPlayerId();
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected SCR_RespawnComponent GetRespawnComponent()
 	{
 		return m_RespawnComponent;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_SpawnHandlerComponent GetHandlerComponent()
 	{
 		return m_HandlerComponent;
 	}
 
-	/*!
-		Returns the lock component on owner PlayerController (if any) that is used to lock
-		requests until they are resolved.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return the lock component on owner PlayerController (if any) that is used to lock requests until they are resolved.
 	protected SCR_SpawnLockComponent GetLock()
 	{
 		return m_LockComponent;
 	}
 
-	/*!
-		When we ask the server for spawning eligibility, to prevent uneccessary transfers and unnecessary boilerplate,
-		we store the current pending data until a response is received. The data is validated when sent during actual
-		respawn request anyway, so in worst case scenario, we receive a response that spawn data is invalid.
-	*/
+	//! When we ask the server for spawning eligibility, to prevent uneccessary transfers and unnecessary boilerplate,
+	//! we store the current pending data until a response is received. The data is validated when sent during actual
+	//! respawn request anyway, so in worst case scenario, we receive a response that spawn data is invalid.
 	private ref SCR_SpawnData m_ConfirmationPendingData;
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Returns the type of THandlerComponent component this TRequestComponent is linked to.
-		Each request sent through a TRequestComponent is always processed via a THandlerComponent.
-	*/
+	//! \return the type of THandlerComponent component this TRequestComponent is linked to.
+	//! Each request sent through a TRequestComponent is always processed via a THandlerComponent.
 	typename GetHandlerType()
 	{
 		return SCR_SpawnHandlerComponent;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Returns the type of TData this TRequestComponent is linked to.
-		Each request sent through a TRequestComponent accepts and handles a TData payload.
-	*/
+	//! \return the type of TData this TRequestComponent is linked to.
+	//! Each request sent through a TRequestComponent accepts and handles a TData payload.
 	typename GetDataType()
 	{
 		return SCR_SpawnData;
@@ -100,9 +95,8 @@ class SCR_SpawnRequestComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*
-		Initializes the component by finding necessary dependencies.
-	*/
+	//! Initialises the component by finding necessary dependencies.
+	//! \param[in] owner
 	protected override void OnPostInit(IEntity owner)
 	{
 		super.OnPostInit(owner);
@@ -160,15 +154,13 @@ class SCR_SpawnRequestComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Sends an ask request to the authority to find out whether spawn with provided data is valid.
-		Returned value does NOT correspond to the actual response. For reponse see available events.
-		\return Returns true if the request was sent from this client properly, false otherwise.
-	*/
+	//! Sends an ask request to the authority to find out whether spawn with provided data is valid.
+	//! Returned value does NOT correspond to the actual response. For reponse see available events.
+	//! \return true if the request was sent from this client properly, false otherwise.
 	sealed bool CanRequestRespawn(SCR_SpawnData data)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::CanRequestRespawn(data: %2)", Type().ToString(), data);
+		Print(string.Format("%1::CanRequestRespawn(data: %2)", Type().ToString(), data), LogLevel.NORMAL);
 		#endif
 
 		SCR_SpawnLockComponent lock = GetLock();
@@ -181,6 +173,7 @@ class SCR_SpawnRequestComponent : ScriptComponent
 		// Notify that request began
 		if (IsOwner())
 			m_RespawnComponent.GetOnCanRespawnRequestInvoker_O().Invoke(this, data);
+
 		if (!IsProxy())
 			m_RespawnComponent.GetOnCanRespawnRequestInvoker_S().Invoke(this, data);
 
@@ -199,11 +192,9 @@ class SCR_SpawnRequestComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Request is first handled on the sending side (player or authority depending on context).
-		This method can return false and will immediately raise a SCR_ESpawnResult.BAD_REQUEST response.
-		\return True in case request was sucessfully dispatched, false otherwise.
-	*/
+	//! Request is first handled on the sending side (player or authority depending on context).
+	//! This method can return false and will immediately raise a SCR_ESpawnResult.BAD_REQUEST response.
+	//! \return true in case request was sucessfully dispatched, false otherwise.
 	protected bool DoCanRequestRespawn(SCR_SpawnData data)
 	{
 		Debug.Error("Not implemented!");
@@ -211,14 +202,13 @@ class SCR_SpawnRequestComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Authority call to dispatch provided data to corresponding SCR_SpawnHandlerComponent.
-		Handles responses when handler is not found or on request success internally.
-	*/
+	//! Authority call to dispatch provided data to corresponding SCR_SpawnHandlerComponent.
+	//! Handles responses when handler is not found or on request success internally.
+	//! \param[in] data
 	protected void ProcessCanRequest_S(SCR_SpawnData data)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::ProcessCanRequest_S(data: %2)", Type().ToString(), data);
+		Print(string.Format("%1::ProcessCanRequest_S(data: %2)", Type().ToString(), data), LogLevel.NORMAL);
 		#endif
 
 		// Server lock
@@ -247,16 +237,14 @@ class SCR_SpawnRequestComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Authority:
-			Sends a response from the server to the owner about current can-respawn request.
-			\param response The result of the request.
-			\param data The data the request was instigated with.
-	*/
+	//! Authority:
+	//! 	Sends a response from the server to the owner about current can-respawn request.
+	//! \param[in] response The result of the request.
+	//! \param[in] data The data the request was instigated with.
 	protected void SendCanResponse_S(SCR_ESpawnResult response, SCR_SpawnData data)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::SendCanResponse_S(resp: %2, data: %3)", Type().ToString(), typename.EnumToString(SCR_ESpawnResult, response), data);
+		Print(string.Format("%1::SendCanResponse_S(resp: %2, data: %3)", Type().ToString(), typename.EnumToString(SCR_ESpawnResult, response), data), LogLevel.NORMAL);
 		#endif
 
 		// End server request
@@ -276,24 +264,20 @@ class SCR_SpawnRequestComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Owner:
-			Processes received response about current spawn process from the authority, dispatches events.
-		\param response The result of the respawning action.
-	*/
+	//! Owner:
+	//! 	Processes received response about current spawn process from the authority, dispatches events.
+	//! \param[in] response The result of the respawning action.
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void Rpc_SendCanResponse_O(SCR_ESpawnResult response)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::Rpc_SendCanResponse_O(resp: %2)", Type().ToString(), typename.EnumToString(SCR_ESpawnResult, response));
+		Print(string.Format("%1::Rpc_SendCanResponse_O(resp: %2)", Type().ToString(), typename.EnumToString(SCR_ESpawnResult, response)), LogLevel.NORMAL);
 		#endif
 		
 		// End client request
 		SCR_SpawnLockComponent lock = GetLock();
 		if (lock)
-		{
 			lock.Unlock(this, false);
-		}
 		
 		// Notify
 		SCR_RespawnComponent respawnComponent = GetRespawnComponent();		
@@ -304,15 +288,14 @@ class SCR_SpawnRequestComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Requests respawn with provided data.
-		! Note that even successful request can still be denied by the authority!
-		\return True in case success was sent from the client, false otherwise (early reject).
-	*/
+	//! Requests respawn with provided data.
+	//! ! Note that even successful request can still be denied by the authority!
+	//! \param[in] data
+	//! \return true in case success was sent from the client, false otherwise (early reject).
 	sealed bool RequestRespawn(SCR_SpawnData data)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::RequestRespawn(data: %2)", Type().ToString(), data);
+		Print(string.Format("%1::RequestRespawn(data: %2)", Type().ToString(), data), LogLevel.NORMAL);
 		#endif
 
 		// Lock client
@@ -326,6 +309,7 @@ class SCR_SpawnRequestComponent : ScriptComponent
 		// Notify that request began
 		if (IsOwner())
 			m_RespawnComponent.GetOnRespawnRequestInvoker_O().Invoke(this);
+
 		if (!IsProxy())
 			m_RespawnComponent.GetOnRespawnRequestInvoker_S().Invoke(this);
 
@@ -340,11 +324,10 @@ class SCR_SpawnRequestComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Request is first handled on the sending side (player or authority depending on context).
-		This method can return false and will immediately raise a SCR_ESpawnResult.BAD_REQUEST response.
-		\return True in case request was sucessfully dispatched, false otherwise.
-	*/
+	//! Request is first handled on the sending side (player or authority depending on context).
+	//! This method can return false and will immediately raise a SCR_ESpawnResult.BAD_REQUEST response.
+	//! \param[in] data
+	//! \return true in case request was sucessfully dispatched, false otherwise.
 	protected bool DoRequestRespawn(SCR_SpawnData data)
 	{
 		Debug.Error("Not implemented!");
@@ -352,14 +335,13 @@ class SCR_SpawnRequestComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Authority call to dispatch provided data to corresponding SCR_SpawnHandlerComponent.
-		Handles responses when handler is not found or on request success internally.
-	*/
+	//! Authority call to dispatch provided data to corresponding SCR_SpawnHandlerComponent.
+	//! Handles responses when handler is not found or on request success internally.
+	//! \param[in] data
 	protected void ProcessRequest_S(SCR_SpawnData data)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::ProcessRequest_S(data: %2)", Type().ToString(), data);
+		Print(string.Format("%1::ProcessRequest_S(data: %2)", Type().ToString(), data), LogLevel.NORMAL);
 		#endif
 
 		// Server lock
@@ -383,7 +365,7 @@ class SCR_SpawnRequestComponent : ScriptComponent
 		IEntity spawnedEntity;
 		SCR_ESpawnResult response = handler.HandleRequest_S(this, data, spawnedEntity);
 
-		// Entity was not spawned correctly, notify the requester and no finalization
+		// Entity was not spawned correctly, notify the requester and no finalisation
 		if (response != SCR_ESpawnResult.OK)
 		{
 			SendResponse_S(response, data);
@@ -402,34 +384,36 @@ class SCR_SpawnRequestComponent : ScriptComponent
 		if (editorCharacter)
 			editorCharacter.SetIsPlayerPending(m_PlayerController.GetPlayerId());
 
-		// Entity was spawned, so we can await finalization.
+		// Entity was spawned, so we can await finalisation.
 		SendFinalizationBegin_S();
 		OnFinalizeBegin_S(handler, data, spawnedEntity);
 		GetGame().GetCallqueue().CallLater(AwaitFinalization_S, 0, true, handler, data, spawnedEntity);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*
-		Authority callback when finalization of spawn has began.
-	*/
+	//! Authority callback when finalisation of spawn has began.
+	//! \param[in] handler
+	//! \param[in] data
+	//! \param[in] spawnedEntity
 	protected void OnFinalizeBegin_S(SCR_SpawnHandlerComponent handler, SCR_SpawnData data, IEntity spawnedEntity)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::OnFinalizeBegin_S(handler: %1, data: %2, entity: %3)", Type().ToString(),
-					handler, data, spawnedEntity);
+		Print(string.Format("%1::OnFinalizeBegin_S(handler: %1, data: %2, entity: %3)", Type().ToString(),
+					handler, data, spawnedEntity), LogLevel.NORMAL);
 		#endif
 		handler.OnFinalizeBegin_S(this, data, spawnedEntity);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Authority callback to await finalization.
-	*/
+	//! Authority callback to await finalisation.
+	//! \param[in] handler
+	//! \param[in] data
+	//! \param[in] spawnedEntity
 	protected void AwaitFinalization_S(SCR_SpawnHandlerComponent handler, SCR_SpawnData data, IEntity spawnedEntity)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::AwaitFinalization_S(handler: %2, data: %3, entity: %4)", Type().ToString(),
-					handler, data, spawnedEntity);
+		Print(string.Format("%1::AwaitFinalization_S(handler: %2, data: %3, entity: %4)", Type().ToString(),
+					handler, data, spawnedEntity), LogLevel.NORMAL);
 		#endif
 
 		if (CanFinalize_S(handler, data, spawnedEntity))
@@ -446,28 +430,31 @@ class SCR_SpawnRequestComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Returns whether finalization can occur.
-	*/
+	//!
+	//! \param[in] handler
+	//! \param[in] data
+	//! \param[in] spawnedEntity
+	//! \return true if the finalisation can occur, false if not
 	protected bool CanFinalize_S(SCR_SpawnHandlerComponent handler, SCR_SpawnData data, IEntity spawnedEntity)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::CanFinalize_S(handler: %2, data: %3, entity: %4)", Type().ToString(),
-					handler, data, spawnedEntity);
+		Print(string.Format("%1::CanFinalize_S(handler: %2, data: %3, entity: %4)", Type().ToString(),
+					handler, data, spawnedEntity), LogLevel.NORMAL);
 		#endif
 		return handler.CanFinalize_S(this, data, spawnedEntity);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Authority call to finalize respawn, after ProcessRequest_S (AwaitFinalization_S respectrively) has finished.
-		It is delayed to allow certain jobs (end of frame) to finish, before passing the ownership to the client.
-	*/
+	//! Authority call to finalise respawn, after ProcessRequest_S (AwaitFinalization_S respectively) has finished.
+	//! It is delayed to allow certain jobs (end of frame) to finish, before passing the ownership to the client.
+	//! \param[in] handler
+	//! \param[in] data
+	//! \param[in] spawnedEntity
 	protected void FinalizeRequest_S(SCR_SpawnHandlerComponent handler, SCR_SpawnData data, IEntity spawnedEntity)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::FinalizeRequest_S(handler: %1, data: %2, entity: %3)", Type().ToString(),
-					handler, data, spawnedEntity);
+		Print(string.Format("%1::FinalizeRequest_S(handler: %1, data: %2, entity: %3)", Type().ToString(),
+					handler, data, spawnedEntity), LogLevel.NORMAL);
 		#endif
 		SCR_ESpawnResult response = handler.FinalizeRequest_S(this, data, spawnedEntity);
 		SendResponse_S(response, data);
@@ -480,16 +467,14 @@ class SCR_SpawnRequestComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Authority:
-			Sends a response from the server to the owner about current respawn request.
-		\param response The result of the respawning action.
-		\param data The data the request was instigated with.
-	*/
+	//! Authority:
+	//! 	Sends a response from the server to the owner about current respawn request.
+	//! \param[in] response The result of the respawning action.
+	//! \param[in] data The data the request was instigated with.
 	protected void SendResponse_S(SCR_ESpawnResult response, SCR_SpawnData data)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::SendResponse_S(resp: %2, data: %3)", Type().ToString(), typename.EnumToString(SCR_ESpawnResult, response), data);
+		Print(string.Format("%1::SendResponse_S(resp: %2, data: %3)", Type().ToString(), typename.EnumToString(SCR_ESpawnResult, response), data), LogLevel.NORMAL);
 		#endif
 
 		// End server request
@@ -508,13 +493,12 @@ class SCR_SpawnRequestComponent : ScriptComponent
 		Rpc(Rpc_SendResponse_O, response);
 	}
 	
-	/*!
-		Send a notification from the authority that the finalization has started.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Send a notification from the authority that the finalisation has started.
 	protected void SendFinalizationBegin_S()
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::SendFinalizationBegin_S()", Type().ToString());
+		Print(string.Format("%1::SendFinalizationBegin_S()", Type().ToString()), LogLevel.NORMAL);
 		#endif
 		
 		Rpc(Rpc_OnFinalizationBegin_O);
@@ -527,14 +511,20 @@ class SCR_SpawnRequestComponent : ScriptComponent
 		respawnComponent.GetOnRespawnFinalizeBeginInvoker_O().Invoke(this);
 	}
 
-	/*
-		Preload handling
-	*/
+	//
+	//	Preload handling
+	//
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsPreloading()
 	{
 		return m_bIsPreloading;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] position
 	void StartSpawnPreload(vector position)
 	{
 		NotifyPreloadStarted_S();
@@ -543,24 +533,28 @@ class SCR_SpawnRequestComponent : ScriptComponent
 		Rpc(Rpc_StartPreload_O, position);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void NotifyPreloadStarted_S()
 	{
 		m_bIsPreloading = true;
 		Rpc(Rpc_NotifyPreloadStarted_S);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void Rpc_NotifyPreloadStarted_S()
 	{
 		m_bIsPreloading = true;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void NotifyPreloadFinished_S()
 	{
 		m_bIsPreloading = false;
 		Rpc(Rpc_NotifyPreloadFinished_S);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void Rpc_NotifyPreloadFinished_S()
 	{
@@ -569,6 +563,7 @@ class SCR_SpawnRequestComponent : ScriptComponent
 			RplComponent.RemoveMPObserver(m_PlayerController.GetRplIdentity());
 	}
 
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void Rpc_StartPreload_O(vector position)
 	{
@@ -578,16 +573,14 @@ class SCR_SpawnRequestComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Owner:
-			Processes received response about current spawn process from the authority, dispatches events.
-		\param response The result of the respawning action.
-	*/
+	//! Owner:
+	//! 	Processes received response about current spawn process from the authority, dispatches events.
+	//! \param[in] response The result of the respawning action.
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void Rpc_SendResponse_O(SCR_ESpawnResult response)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::Rpc_SendResponse_O(resp: %2)", Type().ToString(), typename.EnumToString(SCR_ESpawnResult, response));
+		Print(string.Format("%1::Rpc_SendResponse_O(resp: %2)", Type().ToString(), typename.EnumToString(SCR_ESpawnResult, response)), LogLevel.NORMAL);
 		#endif
 
 		// End client request
@@ -602,9 +595,8 @@ class SCR_SpawnRequestComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Tries to find AI agent for provided entity.
-	*/
+	//! Tries to find AI agent for provided entity.
+	//! \param[in] entity
 	protected SCR_ChimeraAIAgent FindAIAgent(IEntity entity)
 	{
 		if (entity)
@@ -621,9 +613,7 @@ class SCR_SpawnRequestComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Destructor.
-	*/
+	// destructor
 	void ~SCR_SpawnRequestComponent()
 	{
 		if(m_PlayerController)
@@ -631,9 +621,8 @@ class SCR_SpawnRequestComponent : ScriptComponent
 	}
 
 	#ifdef ENABLE_DIAG
-	/*!
-		Draws diagnostics for this respawn component.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Draws diagnostics for this respawn component.
 	void DrawDiag()
 	{
 		if (!m_Diag)
@@ -641,30 +630,33 @@ class SCR_SpawnRequestComponent : ScriptComponent
 		if (m_Diag)
 			m_Diag.DrawDbgUI(GetPlayerController());
 	}
+
 	protected ref SCR_BaseRespawnDiag m_Diag;
+
+	//------------------------------------------------------------------------------------------------
 	protected ref SCR_BaseRespawnDiag CreateDiag()
 	{
 		return null;
 	}
 	#endif
-};
+}
 
 #ifdef ENABLE_DIAG
-/*!
-	Base diagnostic utilities for respawn components.
-*/
+//! Base diagnostic utilities for respawn components.
 class SCR_BaseRespawnDiag
 {
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerController
 	void DrawDbgUI(PlayerController playerController);
-};
+}
 
-/*!
-	Diagnostic utility class for provided request component type.
-*/
+//! Diagnostic utility class for provided request component type.
 class SCR_RespawnDiag<Class TReqComponent> : SCR_BaseRespawnDiag
 {
 	protected TReqComponent m_RequestComponent;
 
+	//------------------------------------------------------------------------------------------------
 	override void DrawDbgUI(PlayerController playerController)
 	{
 		if (m_RequestComponent == null)
@@ -687,6 +679,7 @@ class SCR_RespawnDiag<Class TReqComponent> : SCR_BaseRespawnDiag
 		DbgUI.End();
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void DrawContent()
 	{
 		SCR_SpawnHandlerComponent handlerComponent = m_RequestComponent.GetHandlerComponent();
@@ -704,22 +697,25 @@ class SCR_RespawnDiag<Class TReqComponent> : SCR_BaseRespawnDiag
 			OnRequestPressed();
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void OnAskPressed()
 	{
 		SCR_SpawnData data = CreateData();
 		m_RequestComponent.CanRequestRespawn(data);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void OnRequestPressed()
 	{
 		SCR_SpawnData data = CreateData();
 		m_RequestComponent.RequestRespawn(data);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected SCR_SpawnData CreateData()
 	{
 		Debug.Error("Not implemented");
 		return null;
 	}
-};
+}
 #endif

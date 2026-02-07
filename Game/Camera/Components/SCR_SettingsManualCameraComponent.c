@@ -1,10 +1,7 @@
-[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
-/** @ingroup ManualCamera
-*/
+//! @ingroup ManualCamera
 
-/*!
-Load global settings
-*/
+//! Load global settings
+[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
 class SCR_SettingsManualCameraComponent : SCR_BaseManualCameraComponent
 {
 	[Attribute("", UIWidgets.Flags, enums: ParamEnumArray.FromEnum(EManualCameraFlag), category: "Manual Camera")]
@@ -15,6 +12,7 @@ class SCR_SettingsManualCameraComponent : SCR_BaseManualCameraComponent
 	
 	protected float m_Multiplier = 1;
 	
+	//------------------------------------------------------------------------------------------------
 	protected void LoadSettings()
 	{
 		SCR_ManualCameraSettings settings = new SCR_ManualCameraSettings();
@@ -50,25 +48,28 @@ class SCR_SettingsManualCameraComponent : SCR_BaseManualCameraComponent
 			m_Flags = m_Flags & ~EManualCameraFlag.ABOVE_TERRAIN;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraFrame(SCR_ManualCameraParam param)
 	{
 		param.multiplier *= m_Multiplier;
 		param.flag = param.flag | m_Flags;
 		
-		/*
-		// use InputManager! instead of ShowCursor
-		if (m_bCanHideCursor)
-			ShowCursor(!param.isManualInputEnabled || (param.flag & EManualCameraFlag.ROTATE_MODIFIER));
-		*/
+//		// use InputManager! instead of ShowCursor
+//		if (m_bCanHideCursor)
+//			ShowCursor(!param.isManualInputEnabled || (param.flag & EManualCameraFlag.ROTATE_MODIFIER));
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool EOnCameraInit()
 	{
 		LoadSettings();		
 		GetGame().OnUserSettingsChangedInvoker().Insert(LoadSettings);
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraExit()
 	{
 		GetGame().OnUserSettingsChangedInvoker().Remove(LoadSettings);
 	}
-};
+}

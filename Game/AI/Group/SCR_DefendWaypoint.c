@@ -102,12 +102,6 @@ class SCR_AIDefendWaypointState : SCR_AIWaypointState
 				SCR_AIInfoComponent aiInfo = chimeraAgent.m_InfoComponent;
 				if (!aiInfo || !aiInfo.HasUnitState(EUnitState.IN_TURRET))
 					continue;
-				
-				SCR_AIMessage_AttackStaticDone msg1 = new SCR_AIMessage_AttackStaticDone();
-				
-				msg1.SetText("Waypoint was deselected");
-				msg1.SetReceiver(receiver);
-				mailbox.RequestBroadcast(msg1, receiver);
 			
 				ChimeraCharacter character = ChimeraCharacter.Cast(receiver.GetControlledEntity());
 				if (character && character.IsInVehicle())

@@ -1,11 +1,9 @@
 [ComponentEditorProps(category: "GameScripted/Callsign", description: "")]
-class SCR_CallsignGroupComponentClass: SCR_CallsignBaseComponentClass
+class SCR_CallsignGroupComponentClass : SCR_CallsignBaseComponentClass
 {
-};
+}
 
-/*!
-Component of assigning and storing squad names
-*/
+//! Component of assigning and storing squad names
 class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 {
 	protected bool m_bGroupInitCalled;
@@ -14,23 +12,23 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 	//~ TODO: Investigate why AI leaders need to be group character nr 1 if they become leader
 	protected const int iLEADER_ROLE_CHARACTER_CALLSIGN = 1;
 	
-	//~ Keeps track of AI callsigns in group
-	protected ref map<int, AIAgent> m_mAICallsigns = new map<int, AIAgent>;
+	//! Keeps track of AI callsigns in group
+	protected ref map<int, AIAgent> m_mAICallsigns = new map<int, AIAgent>();
 	
-	//~ Keeps track of specific AI role callsigns in group. 
-	protected ref map<int, AIAgent> m_mAIRoleCallsigns = new map<int, AIAgent>;
+	//! Keeps track of specific AI role callsigns in group.
+	protected ref map<int, AIAgent> m_mAIRoleCallsigns = new map<int, AIAgent>();
 	
-	//Keeps track of player callsigns in group <Callsign, PlayerID>. Player callsigns never change
-	protected ref map<int, int> m_mPlayerCallsigns = new map<int, int>;
+	//! Keeps track of player callsigns in group <Callsign, PlayerID>. Player callsigns never change
+	protected ref map<int, int> m_mPlayerCallsigns = new map<int, int>();
 	
-	//~ Keeps track of specific AI role callsigns in group. map<RoleID, PlayerID>
-	protected ref map<int, int> m_mPlayerRoleCallsigns = new map<int, int>;
+	//! Keeps track of specific AI role callsigns in group. map<RoleID, PlayerID>
+	protected ref map<int, int> m_mPlayerRoleCallsigns = new map<int, int>();
 	
 	//~ If the group is a slave than all logic will be handled by the master rather than the slave
 	protected SCR_AIGroup m_MasterGroup;
 	protected SCR_CallsignGroupComponent m_MasterGroupCallsignComponent;
 	
-	//---------------------------------------- Server Init ----------------------------------------\\
+	//------------------------------------------------------------------------------------------------
 	//If server assign callsign
 	override void InitOnServer(IEntity owner)
 	{
@@ -78,7 +76,6 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 		m_Group.GetOnFactionChanged().Insert(OnFactionChanged);
 	}
 	
-	//======================================== PLAYER CALLSIGN LOGIC ========================================\\
 	//------------------------------------------------------------------------------------------------
 	protected void OnPlayerAddedToGroup(SCR_AIGroup aiGroup, int playerID)
 	{			
@@ -146,7 +143,7 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
    		}
 	}	
 		
-	//---------------------------------------- Assign Player Callsign ----------------------------------------\\
+	//------------------------------------------------------------------------------------------------
 	protected void AssignPlayerCallsign(int playerID, int characterCallsign = -1)
 	{
 		if (!m_CallsignInfo)
@@ -205,13 +202,11 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 	}
 		
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check if unique role is in use by Players or AI in group
-	None Unique roles are not checked
-	Will always check Master if group is slave
-	\param roleToCheck Role to check if it is in use
-	\return true if the role is in use
-	*/
+	//! Check if unique role is in use by Players or AI in group
+	//! None Unique roles are not checked
+	//! Will always check Master if group is slave
+	//! \param roleToCheck Role to check if it is in use
+	//! \return true if the role is in use
 	bool IsUniqueRoleInUse(int roleToCheck)
 	{
 		if (m_Group.IsSlave())
@@ -231,7 +226,7 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 		return m_mAIRoleCallsigns.Contains(roleToCheck) || m_mPlayerRoleCallsigns.Contains(roleToCheck);
 	}
 	
-	//======================================== ON LEADER ASSIGNER ========================================\\
+	//------------------------------------------------------------------------------------------------
 	//Called if group is created by editor to get correct faction
 	protected void OnAILeaderAssigned(AIAgent currentLeader, AIAgent prevLeader)
 	{	
@@ -248,12 +243,13 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 			IEntity leader = currentLeader.GetControlledEntity();
 			FactionInit(SCR_EditableEntityComponent.GetEditableEntity(leader).GetFaction());
 		}
-		else {
+		else
+		{
 			ReplaceAILeaderRole(currentLeader, prevLeader);
 		}
 	}
 
-	//---------------------------------------- Replace leader Callsign ----------------------------------------\\
+	//------------------------------------------------------------------------------------------------
 	//If leader was replaced and both characters are still alive and in the same group
 	//Note this only works if the actual leader is replaced in the SCR_AIGroup component, it will not override the callsign if it is not a leader
 	protected void ReplaceAILeaderRole(AIAgent currentLeader, AIAgent prevLeader)
@@ -281,10 +277,9 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 		//~ Make leader role availible so it is auto assigned to the new leader
 		MakeAIRoleAvailable(ERoleCallsign.SQUAD_LEADER);
 	}
-		
-	//======================================== CHARACTERS ADDED/REMOVED FROM GROUP ========================================\\
-	//---------------------------------------- On character added to group ----------------------------------------\\
-	protected void OnAIAddedToGroup(AIAgent character)
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnAIAddedToGroup(notnull AIAgent character)
 	{
 		//~ Player was added to group not AI
 		if (SCR_PossessingManagerComponent.GetPlayerIdFromMainEntity(character.GetControlledEntity()) > 0)
@@ -303,7 +298,7 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 			UpdateAllCharacterRoleCallsigns();
 	}
 	
-	//---------------------------------------- On character removed from group ----------------------------------------\\
+	//------------------------------------------------------------------------------------------------
 	protected void OnAIRemovedFromGroup(SCR_AIGroup group, AIAgent character)
 	{				
 		//~ Player was added to group not AI
@@ -332,8 +327,7 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 			UpdateAllCharacterRoleCallsigns();
 	}
 	
-	//======================================== ASSIGN CHARACTER CALLSIGN  ========================================\\
-	//---------------------------------------- Assign character Callsign ----------------------------------------\\
+	//------------------------------------------------------------------------------------------------
 	protected void AssignAICallsign(AIAgent character, SCR_CallsignCharacterComponent characterCallsignComponent, int characterCallsign = -1)
 	{
 		if (!m_CallsignInfo)
@@ -365,8 +359,7 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 			m_mAICallsigns.Set(characterCallsign, character);
 	}
 	
-	//======================================== AI ROLE CALLSIGNS  ========================================\\
-	//---------------------------------------- Make character roll callsign availible ----------------------------------------\\
+	//------------------------------------------------------------------------------------------------
 	protected void MakeAIRoleAvailable(int roleIndex)
 	{
 		if (roleIndex < 0)
@@ -376,7 +369,7 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 		if (m_mAIRoleCallsigns.Contains(roleIndex))
 			m_mAIRoleCallsigns.Remove(roleIndex);
 		
-		array<AIAgent> agents = new array<AIAgent>;
+		array<AIAgent> agents = {};
 		SCR_CallsignCharacterComponent characterCallsignComponent;
 		
 		int characterCallsign, currentRoleCallsign;
@@ -433,7 +426,7 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 			MakeAIRoleAvailable(currentRoleCallsign);
 	}
 	
-	//======================================== GET CALLSIGN NAMES ========================================\\
+	//------------------------------------------------------------------------------------------------
 	override bool GetCallsignNames(out string company, out string platoon, out string squad, out string character, out string format)
 	{	
 		int companyCallsignIndex, platoonCallsignIndex, squadCallsignIndex, emptyCharacter;
@@ -458,12 +451,11 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 		platoon = m_CallsignInfo.GetPlatoonCallsignName(platoonCallsignIndex);
 		squad = m_CallsignInfo.GetSquadCallsignName(squadCallsignIndex);
 		
-		
 		format = m_CallsignInfo.GetCallsignFormat(false);		
 		return true;
 	}
 	
-	//======================================== GET CALLSIGN INDEXES ========================================\\
+	//------------------------------------------------------------------------------------------------
 	override bool GetCallsignIndexes(out int companyIndex, out int platoonIndex, out int squadIndex, out int characterNumber = -1, out ERoleCallsign characterRole = ERoleCallsign.NONE)
 	{
 		characterNumber = -1;
@@ -483,8 +475,8 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 		return true;
 	}
 	
-	//======================================== ASSIGN GROUP CALLSIGN ========================================\\
-	//TODO: Callsigns should have logic as to how they are assigned as now there can be duplicants and there is no structure (eg Alpha-Red-1 should be followed by Alpha-Red-2) 
+	//------------------------------------------------------------------------------------------------
+	// TODO: Callsigns should have logic as to how they are assigned as now there can be duplicants and there is no structure (eg Alpha-Red-1 should be followed by Alpha-Red-2)
 	protected void AssignGroupCallsign()
 	{		
 		if (!m_CallsignManager)
@@ -497,7 +489,6 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 		Rpc(AssignCallsignBroadcast, company, platoon, squad);
 	}
 
-	//======================================== BROAD CAST ========================================\\
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void AssignCallsignBroadcast(int company, int platoon, int squad)
@@ -512,9 +503,10 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 		Event_OnCallsignChanged.Invoke(m_iCompanyCallsign, m_iPlatoonCallsign, m_iSquadCallsign, -1, -1);
 	}
 	
-	//======================================== INIT ========================================\\
-	//---------------------------------------- Group Init/ Faction changed ----------------------------------------\\
-	//On Group init and faction change
+	//------------------------------------------------------------------------------------------------
+	//! On Group init and faction change
+	//! \param[in] faction
+	//! \param[in] isFactionChange
 	void FactionInit(Faction faction, bool isFactionChange = false)
 	{
 		//~ Faction is changed but is the same as before
@@ -557,13 +549,13 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 		//Assign group callsign
 		AssignGroupCallsign();
 
-		array<AIAgent> agents = new array<AIAgent>;
+		array<AIAgent> agents = {};
 		SCR_CallsignCharacterComponent characterCallsignComponent;
 		
 		m_Group.GetAgents(agents);
 		
 		//If callsigns are assigned at random randomize group as well on init
-		array<int> availibleRandomCallsigns = new array<int>;
+		array<int> availibleRandomCallsigns = {};
 		if (m_CallsignInfo.GetIsAssignedRandomly())
 		{
 			int count = agents.Count();
@@ -585,21 +577,21 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 				AssignAICallsign(agent, characterCallsignComponent);
 			
 			//~ Replace line above if you want character callsigns to also be randomized
-			/*{
-				if (m_CallsignInfo.GetIsAssignedRandomly())
-				{
-					Math.Randomize(-1);
-					int randomIndex = Math.RandomInt(0, availibleRandomCallsigns.Count());
-					int randomCharacterCallsign = availibleRandomCallsigns[randomIndex];
-					availibleRandomCallsigns.Remove(randomIndex);
-					
-					AssignCharacterCallsign(agent, characterCallsignComponent, randomCharacterCallsign);
-				}
-				else 
-				{
-					AssignCharacterCallsign(agent, characterCallsignComponent);
-				}
-			}*/
+//			{
+//				if (m_CallsignInfo.GetIsAssignedRandomly())
+//				{
+//					Math.Randomize(-1);
+//					int randomIndex = Math.RandomInt(0, availibleRandomCallsigns.Count());
+//					int randomCharacterCallsign = availibleRandomCallsigns[randomIndex];
+//					availibleRandomCallsigns.Remove(randomIndex);
+//
+//					AssignCharacterCallsign(agent, characterCallsignComponent, randomCharacterCallsign);
+//				}
+//				else
+//				{
+//					AssignCharacterCallsign(agent, characterCallsignComponent);
+//				}
+//			}
 		}
 	}
 	
@@ -609,7 +601,6 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 		FactionInit(faction, m_Faction && m_Faction != faction);
 	}
 
-	//======================================== RPL ========================================\\
 	//------------------------------------------------------------------------------------------------
 	override bool RplSave(ScriptBitWriter writer)
     {	
@@ -634,7 +625,8 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
         return true;
     }
 	
-	//======================================== ON DESTROY ========================================\\
+	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_CallsignGroupComponent()
 	{
 		if (!m_bIsServer || m_iCompanyCallsign < 0 || !m_Faction || !m_CallsignManager)
@@ -642,4 +634,4 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 		
 		m_CallsignManager.MakeGroupCallsignAvailible(m_Faction, m_iCompanyCallsign, m_iPlatoonCallsign, m_iSquadCallsign);
 	}
-};
+}

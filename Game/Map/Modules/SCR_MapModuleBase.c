@@ -3,6 +3,9 @@
 [BaseContainerProps()]
 class SCR_MapModuleBase : Managed
 {
+	[Attribute("0", UIWidgets.Auto, "Disable this module, useful for example when we want to inherit config without a specific module" )]
+	protected bool m_bDisableModule;
+	
 	protected Widget m_wRootWidget;	
 	protected SCR_MapEntity m_MapEntity;
 	
@@ -15,6 +18,13 @@ class SCR_MapModuleBase : Managed
 	//! SCR_MapEntity event
 	protected void OnMapClose(MapConfiguration config)
 	{}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Whether this module is disabled in config
+	bool IsConfigDisabled()
+	{
+		return m_bDisableModule;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Enable open/close events

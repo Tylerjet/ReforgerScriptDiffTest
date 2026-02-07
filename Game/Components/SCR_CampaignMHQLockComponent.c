@@ -1,13 +1,13 @@
 class SCR_CampaignMHQLockComponentClass : SCR_BaseLockComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_CampaignMHQLockComponent : SCR_BaseLockComponent
 {
 	protected SCR_CampaignMobileAssemblyComponent m_MHQComponent;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_CampaignMobileAssemblyComponent GetMHQComponent()
 	{
 		if (m_MHQComponent)
@@ -64,4 +64,4 @@ class SCR_CampaignMHQLockComponent : SCR_BaseLockComponent
 		
 		return false;
 	}
-};
+}

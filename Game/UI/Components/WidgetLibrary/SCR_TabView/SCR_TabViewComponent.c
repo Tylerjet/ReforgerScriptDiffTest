@@ -1,14 +1,16 @@
-void SCR_TabViewComponent_TabviewUpdate(SCR_TabViewComponent tabView, Widget widget);
-typedef func SCR_TabViewComponent_TabviewUpdate;
+void ScriptInvokerTabViewMethod(SCR_TabViewComponent tabView, Widget widget);
+typedef func ScriptInvokerTabViewMethod;
+typedef ScriptInvokerBase<ScriptInvokerTabViewMethod> ScriptInvokerTabView;
 
-void SCR_TabViewComponent_TabviewUpdateAndTabIndex(SCR_TabViewComponent tabView, Widget widget, int index);
-typedef func SCR_TabViewComponent_TabviewUpdateAndTabIndex;
+void ScriptInvokerTabViewIndexMethod(SCR_TabViewComponent tabView, Widget widget, int index);
+typedef func ScriptInvokerTabViewIndexMethod;
+typedef ScriptInvokerBase<ScriptInvokerTabViewIndexMethod> ScriptInvokerTabViewIndex;
 
-void SCR_TabViewComponent_TabviewUpdateAndTabIndex(SCR_TabViewComponent tabView, SCR_TabViewContent tabContent, int index);
-typedef func SCR_TabViewComponent_TabviewUpdateAndTabContent;
+void ScriptInvokerTabViewContentIndexMethod(SCR_TabViewComponent tabView, SCR_TabViewContent tabContent, int index);
+typedef func ScriptInvokerTabViewContentIndexMethod;
+typedef ScriptInvokerBase<ScriptInvokerTabViewContentIndexMethod> ScriptInvokerTabViewContentIndex;
 
-//------------------------------------------------------------------------------------------------
-class SCR_TabViewComponent : ScriptedWidgetComponent
+class SCR_TabViewComponent : SCR_ScriptedWidgetComponent
 {
 	[Attribute("", UIWidgets.Object, "")]
 	protected ref array<ref SCR_TabViewContent> m_aElements;
@@ -55,28 +57,29 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 	[Attribute("0", desc: "If true it will hide the text of the tab and only show it when the tab is selected. Tabs should have images otherwise it might look weird")]
 	protected bool m_bShowTextOnlyWhenSelectedTab;
 
-	Widget m_wRoot;
 	protected Widget m_wButtons;
 	protected Widget m_wButtonBar;
 	protected Widget m_wContentOverlay;
 	protected SCR_PagingButtonComponent m_PagingLeft;
 	protected SCR_PagingButtonComponent m_PagingRight;
 
-	// Arguments passed: SCR_TabViewComponent, Widget (contentRoot), int currentIndex
-	ref ScriptInvokerBase<SCR_TabViewComponent_TabviewUpdateAndTabIndex> m_OnChanged = new ScriptInvokerBase<SCR_TabViewComponent_TabviewUpdateAndTabIndex>();
+	// Invokers
+	protected ref ScriptInvokerTabViewIndex m_OnChanged;
+	protected ref ScriptInvokerTabViewIndex m_OnContentCreate;
+	
+	protected ref ScriptInvokerTabView m_OnContentShow;
+	protected ref ScriptInvokerTabView m_OnContentHide;
+	protected ref ScriptInvokerTabView m_OnContentRemove;
+	protected ref ScriptInvokerTabView m_OnTabChange;
 
-	// Arguments passed for all invokers below: SCR_TabViewComponent, Widget (contentRoot)
-	ref ScriptInvokerBase<SCR_TabViewComponent_TabviewUpdate> m_OnContentCreate = new ScriptInvokerBase<SCR_TabViewComponent_TabviewUpdate>();
-	ref ScriptInvokerBase<SCR_TabViewComponent_TabviewUpdateAndTabContent> m_OnContentSelect = new ScriptInvokerBase<SCR_TabViewComponent_TabviewUpdateAndTabContent>(); //--- Called when a tab is selected, no matter if any content widget is tied to it
-	ref ScriptInvokerBase<SCR_TabViewComponent_TabviewUpdate> m_OnContentShow = new ScriptInvokerBase<SCR_TabViewComponent_TabviewUpdate>();
-	ref ScriptInvokerBase<SCR_TabViewComponent_TabviewUpdate> m_OnContentHide = new ScriptInvokerBase<SCR_TabViewComponent_TabviewUpdate>();
-	ref ScriptInvokerBase<SCR_TabViewComponent_TabviewUpdate> m_OnContentRemove = new ScriptInvokerBase<SCR_TabViewComponent_TabviewUpdate>();
-	ref ScriptInvokerBase<SCR_TabViewComponent_TabviewUpdate> m_OnTabChange = new ScriptInvokerBase<SCR_TabViewComponent_TabviewUpdate>();
-
+	//--- Called when a tab is selected, no matter if any content widget is tied to it
+	protected ref ScriptInvokerTabViewContentIndex m_OnContentSelect;
+	
+	protected const float BUTTON_PADDING_RIGHT = 4;
+	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
-		m_wRoot = w;
 		super.HandlerAttached(w);
 		if (!m_bManualInit)
 			Init();
@@ -106,7 +109,7 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 		{
 			CreateTab(content);
 			if (m_bCreateAllTabsAtStart)
-				CreateTabContent(content);
+				CreateTabContent(content, i);
 		}
 
 		int realSelected = m_iSelectedTab;
@@ -141,7 +144,7 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 		if (!button)
 			return;
 
-		HorizontalLayoutSlot.SetPadding(button, 0, 0, 4, 0); // Add padding
+		HorizontalLayoutSlot.SetPadding(button, 0, 0, BUTTON_PADDING_RIGHT, 0); // Add padding
 
 		SCR_ButtonTextComponent comp = SCR_ButtonTextComponent.Cast(button.FindHandler(SCR_ButtonTextComponent));
 		if (!comp)
@@ -194,7 +197,7 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 		if (!overlay)
 			return;
 
-		SizeLayoutWidget size = SizeLayoutWidget.Cast(GetGame().GetWorkspace().CreateWidget(WidgetType.SizeLayoutWidgetTypeID, WidgetFlags.VISIBLE, Color.White, 0, overlay));
+		SizeLayoutWidget size = SizeLayoutWidget.Cast(GetGame().GetWorkspace().CreateWidget(WidgetType.SizeLayoutWidgetTypeID, WidgetFlags.VISIBLE, Color.FromInt(Color.WHITE), 0, overlay));
 		if (!size)
 			return;
 
@@ -208,13 +211,13 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 
 		OverlaySlot.SetVerticalAlign(size, LayoutVerticalAlign.Top);
 		OverlaySlot.SetHorizontalAlign(size, LayoutHorizontalAlign.Right);
-		OverlaySlot.SetPadding(size, 0, -height * 0.5, 4, 0); // Set some reasonable offset for the icon
+		OverlaySlot.SetPadding(size, 0, -height * 0.5, BUTTON_PADDING_RIGHT, 0); // Set some reasonable offset for the icon
 
 		content.m_wIcon = GetGame().GetWorkspace().CreateWidgets(content.m_IconLayout, size);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void CreateTabContent(SCR_TabViewContent content)
+	protected void CreateTabContent(SCR_TabViewContent content, int index)
 	{
 		ResourceName path = content.m_ElementLayout;
 		if (path == string.Empty)
@@ -226,7 +229,10 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 
 		OverlaySlot.SetVerticalAlign(w, LayoutVerticalAlign.Stretch);
 		OverlaySlot.SetHorizontalAlign(w, LayoutHorizontalAlign.Stretch);
-		m_OnContentCreate.Invoke(this, w);
+		
+		if (m_OnContentCreate)
+			m_OnContentCreate.Invoke(this, w, index);
+		
 		content.m_wTab = w;
 
 		int i = m_aElements.Find(content);
@@ -237,11 +243,15 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 		else
 		{
 			FocusFirstWidget(w);
-			m_OnContentShow.Invoke(this, w);
+			
+			if (m_OnContentShow)
+				m_OnContentShow.Invoke(this, w);
 		}
 
 		SCR_MenuHelper.OnTabChange(ChimeraMenuBase.GetOwnerMenu(m_wRoot));
-		m_OnTabChange.Invoke(this, w);
+		
+		if (m_OnTabChange)
+			m_OnTabChange.Invoke(this, w);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -296,6 +306,7 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 		return m_aElements[entry].m_wIcon;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	SCR_TabViewContent GetEntryContent(int index)
 	{
 		if (index < 0 || index >= m_aElements.Count())
@@ -304,6 +315,12 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 		return m_aElements[index];
 	}
 
+	//------------------------------------------------------------------------------------------------
+	array<ref SCR_TabViewContent> GetContents()
+	{
+		return m_aElements;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	protected void SelectIndex(bool select, int i)
 	{
@@ -324,15 +341,19 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 		{
 			if (m_bKeepHiddenTabs && tab)
 			{
-				m_OnContentShow.Invoke(this, tab);
+				if (m_OnContentShow)
+					m_OnContentShow.Invoke(this, tab);
+				
 				tab.SetVisible(true);
 				FocusFirstWidget(tab);
 			}
 			else
 			{
-				CreateTabContent(content);
+				CreateTabContent(content, i);
 			}
-			m_OnContentSelect.Invoke(this, content, i);
+			
+			if (m_OnContentSelect)
+				m_OnContentSelect.Invoke(this, content, i);
 		}
 		else
 		{
@@ -341,18 +362,24 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 
 			if (m_bKeepHiddenTabs)
 			{
-				m_OnContentHide.Invoke(this, tab);
+				if (m_OnContentHide)
+					m_OnContentHide.Invoke(this, tab);
+				
 				tab.SetVisible(false);
 			}
 			else
 			{
-				m_OnContentRemove.Invoke(this, tab);
+				if (m_OnContentRemove)
+					m_OnContentRemove.Invoke(this, tab);
+				
 				tab.RemoveFromHierarchy();
 			}
 		}
 
 		SCR_MenuHelper.OnTabChange(ChimeraMenuBase.GetOwnerMenu(m_wRoot));
-		m_OnTabChange.Invoke(this, tab);
+		
+		if (m_OnTabChange)
+			m_OnTabChange.Invoke(this, tab);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -379,7 +406,7 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 		if (playSound)
 			SCR_UISoundEntity.SoundEvent(m_sSwitchSound);
 
-		if (callAction)
+		if (callAction && m_OnChanged)
 			m_OnChanged.Invoke(this, m_wRoot, m_iSelectedTab);
 
 		UpdatePagingButtons();
@@ -445,7 +472,7 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 		CreateTab(tabContent);
 
 		if (m_bCreateAllTabsAtStart)
-			CreateTabContent(tabContent);
+			CreateTabContent(tabContent, m_aElements.Count() - 1);
 
 		UpdatePagingButtons();
 	}
@@ -468,8 +495,12 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 		Widget tab = content.m_wTab;
 		if (tab)
 		{
-			m_OnContentHide.Invoke(this, tab);
-			m_OnContentRemove.Invoke(this, tab);
+			if (m_OnContentHide)
+				m_OnContentHide.Invoke(this, tab);
+			
+			if (m_OnContentRemove)
+				m_OnContentRemove.Invoke(this, tab);
+			
 			content.m_wTab.RemoveFromHierarchy();
 		}
 
@@ -859,6 +890,72 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 			m_PagingLeft.SetVisible(visible, animate);
 		if (m_PagingRight)
 			m_PagingRight.SetVisible(visible, animate);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//  --- Invokers ---
+	//------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerTabViewIndex GetOnChanged()
+	{
+		if (!m_OnChanged)
+			m_OnChanged = new ScriptInvokerTabViewIndex();
+		
+		return m_OnChanged;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerTabViewIndex GetOnContentCreate()
+	{
+		if (!m_OnContentCreate)
+			m_OnContentCreate = new ScriptInvokerTabViewIndex();
+		
+		return m_OnContentCreate;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerTabView GetOnContentShow()
+	{
+		if (!m_OnContentShow)
+			m_OnContentShow = new ScriptInvokerTabView();
+		
+		return m_OnContentShow;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerTabView GetOnContentHide()
+	{
+		if (!m_OnContentHide)
+			m_OnContentHide = new ScriptInvokerTabView();
+		
+		return m_OnContentHide;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerTabView GetOnContentRemove()
+	{
+		if (!m_OnContentRemove)
+			m_OnContentRemove = new ScriptInvokerTabView();
+		
+		return m_OnContentRemove;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerTabView GetOnTabChange()
+	{
+		if (!m_OnTabChange)
+			m_OnTabChange = new ScriptInvokerTabView();
+		
+		return m_OnTabChange;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerTabViewContentIndex GetOnContentSelect()
+	{
+		if (!m_OnContentSelect)
+			m_OnContentSelect = new ScriptInvokerTabViewContentIndex();
+		
+		return m_OnContentSelect;
 	}
 }
 

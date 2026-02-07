@@ -9,7 +9,15 @@ class SCR_TutorialNavigation3 : SCR_BaseCampaignTutorialArlandStage
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
 	{	
-		m_fDuration = 20;
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		
+		PlaySoundSystem("Navigation_MapContext");
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool GetIsFinished()
+	{
+		return !m_TutorialComponent.GetVoiceSystem().IsPlaying();
 	}
 };

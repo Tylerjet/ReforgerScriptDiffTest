@@ -1,40 +1,38 @@
-/** @ingroup ManualCamera
-*/
-/*!
-Parameter for carrying information between individual camera components.
-*/
+//! @ingroup ManualCamera
+
+//! Parameter for carrying information between individual camera components.
+
 class SCR_ManualCameraParam
 {
 	protected const float TRACE_DIS = 250;
 	
-	float timeSlice; ///< Frame time slice.
-	BaseWorld world; ///< World in which the camera exists.
-	IEntity target; ///< Entity under cursor
+	float timeSlice; //!< Frame time slice.
+	BaseWorld world; //!< World in which the camera exists.
+	IEntity target; //!< Entity under cursor
 	private vector cursorWorldPos;
 	
-	EManualCameraFlag flag; ///< Camera flag
+	EManualCameraFlag flag; //!< Camera flag
 	
-	vector transformOriginal[4]; ///< Camera transform before components evalulation. DO NOT MODIFY!
-	vector transform[4]; ///< Camera transform applied after components evaluation.
-	vector rotOriginal; ///< Camera rotation in euler angles before components evaluation. DO NOT MODIFY!
-	vector rotDelta; ///< Camera rotation in euler angles applied after components evaluation.
-	vector velocityOriginal; ///< Velocity from the previous frame. DO NOT MODIFY!
+	vector transformOriginal[4]; //!< Camera transform before components evalulation. DO NOT MODIFY!
+	vector transform[4]; //!< Camera transform applied after components evaluation.
+	vector rotOriginal; //!< Camera rotation in euler angles before components evaluation. DO NOT MODIFY!
+	vector rotDelta; //!< Camera rotation in euler angles applied after components evaluation.
+	vector velocityOriginal; //!< Velocity from the previous frame. DO NOT MODIFY!
 	
-	vector multiplier; ///< Speed multiplier horizontal[0] and vertical[1]
+	vector multiplier; //!< Speed multiplier horizontal[0] and vertical[1]
 	
-	float fovOriginal; ///< Field of view before components evaluation. DO NOT MODIFY!
-	float fov; ///< Field of view applied after components evaluation.
+	float fovOriginal; //!< Field of view before components evaluation. DO NOT MODIFY!
+	float fov; //!< Field of view applied after components evaluation.
 	
-	bool isManualInputEnabled; ///< Is manual input enabled by the camera entity?
-	bool isManualInput; ///< Did manual input modify the camera?
-	bool isCursorEnabled = true; ///< Is cursor on empty space and not on some active element, e.g., button?
-	bool isDirty; ///< Did camera settings change?
-	bool isDirtyExternal; ///< Did some external settings change the camera? DO NOT MODIFY!
+	bool isManualInputEnabled; //!< Is manual input enabled by the camera entity?
+	bool isManualInput; //!< Did manual input modify the camera?
+	bool isCursorEnabled = true; //!< Is cursor on empty space and not on some active element, e.g., button?
+	bool isDirty; //!< Did camera settings change?
+	bool isDirtyExternal; //!< Did some external settings change the camera? DO NOT MODIFY!
 	
-	/*!
-	Set position as delta change from the current position.
-	\param deltaPos Delta vector
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Set position as delta change from the current position.
+	//! \param deltaPos Delta vector
 	void SetDeltaPos(vector deltaPos)
 	{
 		transform[3] = transform[3]
@@ -42,10 +40,11 @@ class SCR_ManualCameraParam
 			+ (transform[1] * deltaPos[1]) //--- Vertical
 			+ (transform[2] * deltaPos[2]); //--- Longitudinal
 	}
-	/*!
-	Get position under cursor.
-	\return World position under cursor
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get position under cursor.
+	//! \param[out] outPos world position under cursor
+	//! \return true on success, false otherwise
 	bool GetCursorWorldPos(out vector outPos = vector.Zero)
 	{
 		//--- Return cached position
@@ -90,11 +89,17 @@ class SCR_ManualCameraParam
 		outPos = cursorWorldPos;
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param pos
 	void SetCursorWorldPos(vector pos)
 	{
 		cursorWorldPos = pos;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param camera
 	void ShowDebug(SCR_ManualCamera camera)
 	{
 		DbgUI.Begin("SCR_ManualCameraParam", 0, 0);
@@ -155,6 +160,8 @@ class SCR_ManualCameraParam
 		DbgUI.End();
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
 	void ProcessTransform()
 	{
 		//--- Rotation (prevent from looking straigh up or down)
@@ -163,6 +170,16 @@ class SCR_ManualCameraParam
 		angles[1] = Math.Clamp(angles[1], -89, 89);
 		Math3D.AnglesToMatrix(angles, transform);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param transformOriginalIn
+	//! \param timeSliceIn
+	//! \param worldIn
+	//! \param fovIn
+	//! \param isManualInputEnabledIn
+	//! \param velocityOriginalIn
+	//! \param flagIn
 	void SCR_ManualCameraParam(vector transformOriginalIn[4], float timeSliceIn, BaseWorld worldIn, float fovIn, bool isManualInputEnabledIn, vector velocityOriginalIn, EManualCameraFlag flagIn)
 	{
 		timeSlice = timeSliceIn;
@@ -179,4 +196,4 @@ class SCR_ManualCameraParam
 		Math3D.MatrixCopy(transformOriginal, transform);
 		rotOriginal = Math3D.MatrixToAngles(transformOriginal);
 	}
-};
+}

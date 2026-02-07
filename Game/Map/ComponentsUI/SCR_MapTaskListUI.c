@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 class SCR_MapTaskListUI : SCR_MapUIBaseComponent
 {
 	const string TASK_LIST_FRAME = "MapTaskList";
@@ -9,6 +8,7 @@ class SCR_MapTaskListUI : SCR_MapUIBaseComponent
 	protected SCR_UITaskManagerComponent m_UITaskManager;
 	protected SCR_MapToolMenuUI m_ToolMenu;
 	protected SCR_MapToolEntry m_ToolMenuEntry;
+	protected SCR_BaseTask m_LastSelectedTask;
 	
 	protected bool m_bTaskListInvoked;
 	protected bool m_bOpened;
@@ -61,7 +61,7 @@ class SCR_MapTaskListUI : SCR_MapUIBaseComponent
 		if (m_ToolMenu)
 		{
 			m_ToolMenuEntry = m_ToolMenu.RegisterToolMenuEntry(SCR_MapToolMenuUI.s_sToolMenuIcons, ICON_NAME, 2);
-			m_ToolMenuEntry.m_OnClick.Insert(HandleTaskList);
+			m_ToolMenuEntry.m_OnClick.Insert(OnMapTaskListClicked);
 			m_ToolMenuEntry.SetButtonSoundsDisabled(true);
 		}
 
@@ -76,20 +76,15 @@ class SCR_MapTaskListUI : SCR_MapUIBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void Update(float timeSlice)
-	{
-		if (m_bOpened && !m_bMapContextAllowed && m_MapEntity && m_MapEntity.IsOpen())
-			GetGame().GetInputManager().ActivateContext("TaskListMapContext");
-	}
-	
-	//------------------------------------------------------------------------------------------------
+	//! \param[in] val
 	void SetMapContextAllowed(bool val)
 	{
 		m_bMapContextAllowed = val;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void ToggleTaskList()
+	//!
+	void ToggleTaskList(SCR_BaseTask taskToFocus = null)
 	{
 		if (!m_bOpened)
 		{
@@ -102,9 +97,15 @@ class SCR_MapTaskListUI : SCR_MapUIBaseComponent
 			{
 				m_bOpened = true;
 				m_bTaskListInvoked = true;
-				m_UITaskManager.Action_ShowTasks(m_wUI);
+				m_UITaskManager.Action_ShowTasks(m_wUI, taskToFocus);
 				m_ToolMenuEntry.SetActive(true);
+				m_LastSelectedTask = taskToFocus;
 			}
+		}
+		else if (taskToFocus && taskToFocus != m_LastSelectedTask)
+		{
+			m_UITaskManager.Action_ShowTasks(m_wUI, taskToFocus);
+			m_LastSelectedTask = taskToFocus;
 		}
 		else
 		{
@@ -117,6 +118,8 @@ class SCR_MapTaskListUI : SCR_MapUIBaseComponent
 		m_bTaskListInvoked = false;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
 	void RefreshTaskList()
 	{
 		if (!m_bOpened)
@@ -137,7 +140,15 @@ class SCR_MapTaskListUI : SCR_MapUIBaseComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void HandleTaskList(bool isVisible = true)
+	protected void OnMapTaskListClicked(SCR_ButtonBaseComponent comp)
+	{
+		HandleTaskList();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] isVisible
+	void HandleTaskList(bool isVisible = true, SCR_BaseTask taskToFocus = null)
 	{
 		if (!m_RootWidget)
 			return;
@@ -150,7 +161,7 @@ class SCR_MapTaskListUI : SCR_MapUIBaseComponent
 		Widget taskListRootFrame = m_RootWidget.FindAnyWidget(m_sMapTaskListRootFrameName);
 		if (!taskListRootFrame)
 		{
-			ToggleTaskList();
+			ToggleTaskList(taskToFocus);
 			return;
 		}
 		
@@ -168,7 +179,7 @@ class SCR_MapTaskListUI : SCR_MapUIBaseComponent
 			}
 		}
 
-		ToggleTaskList();
+		ToggleTaskList(taskToFocus);
 	}
 	
 	//------------------------------------------------------------------------------------------------

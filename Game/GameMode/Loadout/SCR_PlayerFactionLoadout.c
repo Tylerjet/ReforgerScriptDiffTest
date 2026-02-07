@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(configRoot: true), BaseContainerCustomTitleField("m_sLoadoutName")]
 class SCR_FactionPlayerLoadout : SCR_PlayerLoadout
 {
@@ -6,7 +5,7 @@ class SCR_FactionPlayerLoadout : SCR_PlayerLoadout
 	string m_sAffiliatedFaction;
 	
 	//------------------------------------------------------------------------------------------------
-	//! Returns FactionKey for the faction affiliated to this loadout.
+	//! \return FactionKey for the faction affiliated to this loadout.
 	FactionKey GetFactionKey()
 	{
 		return m_sAffiliatedFaction;
@@ -19,9 +18,7 @@ class SCR_FactionPlayerLoadout : SCR_PlayerLoadout
 		{
 			FactionAffiliationComponent comp = FactionAffiliationComponent.Cast(pOwner.FindComponent(FactionAffiliationComponent));
 			if (comp)
-			{
 				comp.SetAffiliatedFactionByKey(m_sAffiliatedFaction);
-			}
 		}
 	}
-};
+}

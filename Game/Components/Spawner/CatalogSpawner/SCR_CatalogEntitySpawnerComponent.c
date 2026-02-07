@@ -1,4 +1,3 @@
-#include "scripts/Game/config.c"
 [EntityEditorProps(category: "GameScripted/Components", description: "Allows player to spawn entities configured in EntityCatalogs, usually found on factions. Requires SCR_EntitySpawnerSlotComponent in vicinity.", color: "0 0 255 255")]
 class SCR_CatalogEntitySpawnerComponentClass : SCR_SlotServiceComponentClass
 {
@@ -24,41 +23,48 @@ class SCR_CatalogEntitySpawnerComponentClass : SCR_SlotServiceComponentClass
 	protected int m_iVehicleLockedDuration;
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetDefaultWaypointPrefab()
 	{
 		return m_sDefaultWaypointPrefab;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetDefaultGroupPrefab()
 	{
 		return m_sDefaultGroupPrefab;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetSupplySearchRadius()
 	{
 		return m_fSupplyComponentSearchRadius;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetMoveWaypointCompletionRadius()
 	{
 		return m_fMoveWaypointCompletionRadius;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetVehicleLockedDuration()
 	{
 		return m_iVehicleLockedDuration;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Component allowing user to request spawning entities using asset catalogs
 //! Requires ActionManager with enough SCR_CatalogSpawnerUserAction attached to it (they cannot be generated through script) and SCR_EntitySlotComponents in hiearchy or vicinity of owner
 class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 {
+	//! static variable used to store all the instances created of this component.
+	static const ref array<SCR_CatalogEntitySpawnerComponent> INSTANCES = {};
+	
 	protected const float UPDATE_PERIOD = 10.0 / 60.0;
 	
 	[Attribute(category: "Catalog Parameters", desc: "Type of entity catalogs that will be allowed on this spawner.", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(EEntityCatalogType))]
@@ -72,8 +78,10 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 
 	[RplProp()]
 	protected ref array<RplId> m_aGracePeriodEntries = {};
+
 	[RplProp()]
 	protected ref array<RplId> m_aGracePeriodRequesters = {};
+
 	protected ref array<float> m_aGracePeriodStartingTimes = {};
 	protected float m_fLastUpdateElapsedTime;
 	
@@ -88,13 +96,15 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	
 	[Attribute(desc: "Enables the refund grace period.", category: "Supplies")]
 	protected bool m_bEnableGracePeriod;
+
 	[Attribute(params: "0 inf", desc: "Time in seconds for the duration of the grace period for refunding.", category: "Supplies")]
 	protected float m_fGracePeriodTime;
+
 	[Attribute(params: "0 inf", desc: "Range in meters for the area of the grace period for refunding.", category: "Supplies")]
 	protected float m_fGracePeriodAreaRange;
+
 	[Attribute(params: "0 inf", desc: "Multiplier used to affect the resource usage of the refund actions after the grace period has expired.", category: "Supplies")]
 	protected float m_fPostGracePeriodRefundMultiplier;
-	
 	
 	protected ActionsManagerComponent m_ActionManager;
 	protected IEntity m_SpawnedEntity;
@@ -113,33 +123,33 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	protected ref map<AIWaypoint, SCR_AIGroup> m_mGroupWaypoints;
 
 	//arrays used for UI Slot checks
-	#ifndef AR_CATALOG_SPAWN_TIMESTAMP
-	protected ref map<SCR_EntitySpawnerSlotComponent, float> m_mKnownFreeSlots;
-	protected ref map<SCR_EntitySpawnerSlotComponent, float> m_mKnownOccupiedSlots;
-	#else
 	protected ref map<SCR_EntitySpawnerSlotComponent, WorldTimestamp> m_mKnownFreeSlots;
 	protected ref map<SCR_EntitySpawnerSlotComponent, WorldTimestamp> m_mKnownOccupiedSlots;
-	#endif
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsProxy()
 	{
 		return (m_RplComponent && m_RplComponent.IsProxy());
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsSuppliesConsumptionEnabled()
 	{
 		return m_bSuppliesConsumptionEnabled;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetPostGracePeriodRefundMultiplier()
 	{
 		return m_fPostGracePeriodRefundMultiplier;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] entity
+	//! \return
 	bool IsInGracePeriod(IEntity entity)
 	{
 		RplId entityId = Replication.FindId(entity);
@@ -151,6 +161,8 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] entityId
+	//! \return
 	bool IsInGracePeriod(RplId entityId)
 	{
 		if (entityId.IsValid())
@@ -160,6 +172,9 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] entityId
+	//! \param[in] userId
+	//! \return
 	bool CanRefund(RplId entityId, RplId userId)
 	{
 		if (!entityId.IsValid() || !userId.IsValid())
@@ -173,6 +188,9 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] entity
+	//! \param[in] user
+	//! \return
 	bool CanRefund(notnull IEntity entity, notnull IEntity user)
 	{
 		RplId entityId = Replication.FindId(entity);
@@ -189,6 +207,8 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] entity
 	void UnregisterGracePeriod(notnull IEntity entity)
 	{
 		RplId entityId = Replication.FindId(entity);
@@ -209,6 +229,8 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] entityId
 	void UnregisterGracePeriod(RplId entityId)
 	{
 		if (!entityId.IsValid())
@@ -227,6 +249,10 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] entity
+	//! \param[in] user
+	//! \param[in] startingTime
 	void RegisterGracePeriod(notnull IEntity entity, notnull IEntity user, float startingTime = FLT_INF)
 	{
 		RplId entityId = Replication.FindId(entity);
@@ -251,6 +277,10 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] entityId
+	//! \param[in] userId
+	//! \param[in] startingTime
 	void RegisterGracePeriod(RplId entityId, RplId userId, float startingTime = FLT_INF)
 	{
 		if (startingTime == FLT_INF)
@@ -267,8 +297,8 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Check if user is elibigle for requesting specified entity
-	//! \param entityEntry - entity entry of item to be checked
-	//! \param user - controlled entity of requester
+	//! \param[in] entityEntry entity entry of item to be checked
+	//! \param[in] user controlled entity of requester
 	bool RankCheck(notnull SCR_EntityCatalogEntry entityEntry, notnull IEntity user)
 	{
 		if (!entityEntry)
@@ -325,8 +355,8 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Add Assets from entityCatalog.
-	//! \param entityCatalog Entity catalog which should be added
-	//! \param overwriteOld IF true, old entities are overwriten by new ones, thus removing their availability
+	//! \param[in] entityCatalog Entity catalog which should be added
+	//! \param[in] overwriteOld IF true, old entities are overwriten by new ones, thus removing their availability
 	protected void AddAssetsFromCatalog(notnull SCR_EntityCatalog entityCatalog, bool overwriteOld = false)
 	{
 		array<SCR_EntityCatalogEntry> newAssets = {};
@@ -352,7 +382,8 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Fills SCR_CatalogSpawnerUserAction actions on ActionManager. Function should be called always, when Asset list is changed.
+	//! Fills SCR_CatalogSpawnerUserAction actions on ActionManager.
+	//! The method should always be called when the Asset list is changed.
 	protected void AssignUserActions()
 	{
 		if (!m_ActionManager)
@@ -391,6 +422,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Assign supply component to handle supplies of spawner. Currently uses Campaign specific supplies (temporarily)
+	//! \param supplyComp
 	[Obsolete("SCR_CatalogEntitySpawnerComponent.AssignSupplyComponent() should be used instead.")]
 	void AssignSupplyComponent(notnull SCR_CampaignSuppliesComponent supplyComp)
 	{
@@ -398,7 +430,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Manualy clears known slots, thus forcing Spawner to do otherwise ignored checks
+	//! Manually clears known slots, thus forcing Spawner to do otherwise ignored checks
 	void ClearKnownSlots()
 	{
 		if (m_mKnownFreeSlots)
@@ -409,21 +441,14 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 	//------------------------------------------------------------------------------------------------
 	//! Set slot as occupied
+	//! \param[in] slot
 	void AddKnownOccupiedSlot(notnull SCR_EntitySpawnerSlotComponent slot)
 	{
 		if (!m_mKnownOccupiedSlots)
-			#ifndef AR_CATALOG_SPAWN_TIMESTAMP
-			m_mKnownOccupiedSlots = new map<SCR_EntitySpawnerSlotComponent, float>();
-			#else
 			m_mKnownOccupiedSlots = new map<SCR_EntitySpawnerSlotComponent, WorldTimestamp>();
-			#endif
 
-		#ifndef AR_CATALOG_SPAWN_TIMESTAMP
-		m_mKnownOccupiedSlots.Set(slot, Replication.Time());
-		#else
 		ChimeraWorld world = GetOwner().GetWorld();
 		m_mKnownOccupiedSlots.Set(slot, world.GetServerTimestamp());
-		#endif
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -436,19 +461,11 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 
 		occupiedSlots = {};
 
-		#ifndef AR_CATALOG_SPAWN_TIMESTAMP
-		foreach (SCR_EntitySpawnerSlotComponent slot, float timestamp : m_mKnownOccupiedSlots)
-		#else
 		ChimeraWorld world = GetOwner().GetWorld();
 		WorldTimestamp currentTime = world.GetServerTimestamp();
 		foreach (SCR_EntitySpawnerSlotComponent slot, WorldTimestamp timestamp : m_mKnownOccupiedSlots)
-		#endif
 		{
-			#ifndef AR_CATALOG_SPAWN_TIMESTAMP
-			if (Replication.Time() - timestamp > (SLOT_CHECK_INTERVAL * 100))
-			#else
 			if (currentTime.DiffMilliseconds(timestamp) > (SLOT_CHECK_INTERVAL * 100))
-			#endif
 				m_mKnownOccupiedSlots.Remove(slot);
 			else
 				occupiedSlots.Insert(slot);
@@ -462,19 +479,11 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 		if (!m_mKnownFreeSlots)
 			return null;
 
-		#ifndef AR_CATALOG_SPAWN_TIMESTAMP
-		foreach (SCR_EntitySpawnerSlotComponent slot, float timestamp : m_mKnownFreeSlots)
-		#else
 		ChimeraWorld world = GetOwner().GetWorld();
 		WorldTimestamp currentTime = world.GetServerTimestamp();
 		foreach (SCR_EntitySpawnerSlotComponent slot, WorldTimestamp timestamp : m_mKnownFreeSlots)
-		#endif
 		{
-			#ifndef AR_CATALOG_SPAWN_TIMESTAMP
-			if (Replication.Time() - timestamp > (SLOT_CHECK_INTERVAL * 100))
-			#else
 			if (currentTime.DiffMilliseconds(timestamp) > (SLOT_CHECK_INTERVAL * 100))
-			#endif
 				m_mKnownFreeSlots.Remove(slot);
 			else if (spawnerData.CanSpawnInSlot(slot.GetSlotType()))
 				return slot;
@@ -485,8 +494,9 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Used in GetFreeSlot to obtain free slot from inserted array.
-	//! \param slots Array containing slots that will be checked
-	//! \param spawnerData Data containing parameters needed for free slot (slotType, for example)
+	//! \param[in] slots Array containing slots that will be checked
+	//! \param[in] spawnerData Data containing parameters needed for free slot (slotType, for example)
+	//! \param[in] occupiedSlots
 	protected SCR_EntitySpawnerSlotComponent GetFreeSlotFromArray(notnull array<SCR_EntitySpawnerSlotComponent> slots, notnull SCR_EntityCatalogSpawnerData spawnerData, notnull array<SCR_EntitySpawnerSlotComponent> occupiedSlots)
 	{
 		foreach (SCR_EntitySpawnerSlotComponent slot : slots)
@@ -496,18 +506,11 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 
 			if (!slot.IsOccupied())
 			{
-				#ifndef AR_CATALOG_SPAWN_TIMESTAMP
-				if (!m_mKnownFreeSlots)
-					m_mKnownFreeSlots = new map<SCR_EntitySpawnerSlotComponent, float>();
-
-				m_mKnownFreeSlots.Insert(slot, Replication.Time());
-				#else
 				if (!m_mKnownFreeSlots)
 					m_mKnownFreeSlots = new map<SCR_EntitySpawnerSlotComponent, WorldTimestamp>();
 
 				ChimeraWorld world = GetOwner().GetWorld();
 				m_mKnownFreeSlots.Insert(slot, world.GetServerTimestamp());
-				#endif
 
 				return slot;
 			}
@@ -521,7 +524,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 
 	//------------------------------------------------------------------------------------------------
 	//!Returns free slot suitable for requested Entity
-	//! \param spawnerData SCR_EntityCatalogSpawnerData found on Catalog Entry
+	//! \param[in] spawnerData SCR_EntityCatalogSpawnerData found on Catalog Entry
 	SCR_EntitySpawnerSlotComponent GetFreeSlot(notnull SCR_EntityCatalogSpawnerData spawnerData)
 	{
 		// First go through recently checked slots to prevent redundant checks. Should be used only for Interaction visualisation.
@@ -541,12 +544,10 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Initiate spawn. Called through RPC from SCR_SpawnerRequestComponent on CharacterComponent
-	\param entityEntry entity entry to be spawned
-	\param userId Id of user requesting spawn
-	\param slot Slot on which user requests spawn. As last check for empty position is done by PerformSpawn itselt, this might be ignored, should slot be already occupied.
-	*/
+	//! Initiate spawn. Called through RPC from SCR_SpawnerRequestComponent on CharacterComponent
+	//! \param[in] entityEntry entity entry to be spawned
+	//! \param[in] userId Id of user requesting spawn
+	//! \param[in] slot Slot on which user requests spawn. As last check for empty position is done by PerformSpawn itselt, this might be ignored, should slot be already occupied.
 	void InitiateSpawn(notnull SCR_EntityCatalogEntry entityEntry, int userId, SCR_EntitySpawnerSlotComponent slot)
 	{
 		IEntity user = GetGame().GetPlayerManager().GetPlayerControlledEntity(userId);
@@ -566,11 +567,9 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Returns SCR_EEntityRequestStatus for request of selected entity with optional parameter of user requesting it.
-	\param entityEntry entityEntry in catalog to be spawned
-	\param user User requesting spawn
-	*/
+	//! Returns SCR_EEntityRequestStatus for request of selected entity with optional parameter of user requesting it.
+	//! \param[in] entityEntry entityEntry in catalog to be spawned
+	//! \param[in] user User requesting spawn
 	SCR_EEntityRequestStatus GetRequestState(notnull SCR_EntityCatalogEntry entityEntry, IEntity user = null)
 	{
 		if (!m_aAssetList || !m_aAssetList.Contains(entityEntry))
@@ -611,6 +610,14 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 		// Additional states to be returned if entity Entry is of Character or Group type
 		if (catalogType == EEntityCatalogType.CHARACTER || catalogType == EEntityCatalogType.GROUP)
 		{
+			BaseGameMode gameMode = GetGame().GetGameMode();
+			if (!gameMode)
+				return SCR_EEntityRequestStatus.NOT_AVAILABLE;
+			
+			SCR_SpawnerAIGroupManagerComponent groupSpawningManager = SCR_SpawnerAIGroupManagerComponent.Cast(gameMode.FindComponent(SCR_SpawnerAIGroupManagerComponent));
+			if (!groupSpawningManager || groupSpawningManager.IsAtAILimit())
+				return SCR_EEntityRequestStatus.AI_LIMIT_REACHED;
+			
 			SCR_PlayerController controller = GetPlayerControllerFromEntity(user);
 			if (!controller)
 				return SCR_EEntityRequestStatus.NOT_AVAILABLE;
@@ -638,10 +645,9 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*! returns true, if player can request another AI into group
-	\param user Entity of user requesting AI
-	\param aiCount Amount of AI's to be added
-	*/
+	//! \param[in] user Entity of user requesting AI
+	//! \param[in] aiCount Amount of AI's to be added
+	//! \return true if player can request another AI into group, false otherwise
 	bool CanRequestAI(notnull IEntity user, int aiCount = 1)
 	{
 		SCR_CommandingManagerComponent commandingManager = SCR_CommandingManagerComponent.GetInstance();
@@ -675,6 +681,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Called when AI finishes initial WP (making it move away from spawning position, before joining player squad)
+	//! \param[in] wp
 	protected void OnGroupWaypointFinished(notnull AIWaypoint wp)
 	{
 		if (!m_mGroupWaypoints || !m_aGroupsToAssign)
@@ -748,6 +755,8 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] user
+	//! \return
 	Faction GetRequesterFaction(notnull IEntity user)
 	{
 		SCR_ChimeraCharacter player = SCR_ChimeraCharacter.Cast(user);
@@ -758,11 +767,9 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Gets script invoker on entity spawns.
-	Invoker will send over spawned IEntity
-	\return ScriptInvoker Event when entity is spawned
-	*/
+	//! Gets script invoker on entity spawns.
+	//! Invoker will send over spawned IEntity
+	//! \return ScriptInvoker Event when entity is spawned
 	ScriptInvoker GetOnEntitySpawned()
 	{
 		if (!m_OnEntitySpawned)
@@ -772,11 +779,9 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Gets script invoker on supplies changes.
-	Invoker will send over previous supply amount and changed one
-	\return ScriptInvoker Event when entity is spawned
-	*/
+	//! Gets script invoker on supplies changes.
+	//! Invoker will send over previous supply amount and changed one
+	//! \return ScriptInvoker Event when entity is spawned
 	ScriptInvoker GetOnSpawnerSuppliesChanged()
 	{
 		if (!m_OnSpawnerSuppliesChanged)
@@ -786,6 +791,8 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] userEntity
+	//! \return
 	SCR_PlayerController GetPlayerControllerFromEntity(notnull IEntity userEntity)
 	{
 		PlayerManager playerManager = GetGame().GetPlayerManager();
@@ -796,6 +803,8 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] playerEntity
+	//! \return
 	SCR_SpawnerRequestComponent GetRequestComponentFromPlayerEntity(notnull IEntity playerEntity)
 	{
 		SCR_PlayerController playerController = GetPlayerControllerFromEntity(playerEntity);
@@ -818,8 +827,9 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Used to create local "preview" model on specified slot. Used to visualise what entity is player requesting and position where it will appear
-	//! \param spawnData - SCR_EntityCatalogEntry containing information about entity (prefab data is required)
-	//! \param slot - Slot on which preview should appear
+	//! \param[in] spawnData SCR_EntityCatalogEntry containing information about entity (prefab data is required)
+	//! \param[in] slot Slot on which preview should appear
+	//! \param[in] reqStatus
 	void CreatePreviewEntity(notnull SCR_EntityCatalogEntry spawnData, notnull SCR_EntitySpawnerSlotComponent slot, SCR_EEntityRequestStatus reqStatus = SCR_EEntityRequestStatus.CAN_SPAWN)
 	{
 		SCR_CatalogEntitySpawnerComponentClass prefabData = SCR_CatalogEntitySpawnerComponentClass.Cast(GetComponentData(GetOwner()));
@@ -863,7 +873,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Deletes existing Preview entity at spawner
+	//! Delete existing Preview entity at spawner
 	void DeletePreviewEntity()
 	{
 		if (m_PreviewEntity)
@@ -871,19 +881,17 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Returns existing preview entity
+	//! \return existing preview entity
 	SCR_PrefabPreviewEntity GetPreviewEntity()
 	{
 		return m_PreviewEntity;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Spawn the actual entity
-	\param index of entity
-	\param entity initiating the spawn
-	\param slot optional slot to be used for spawning
-	*/
+	//! Spawn the actual entity
+	//! \param[in] entityEntry
+	//! \param[in] user
+	//! \param[in] preferredSlot optional slot to be used for spawning
 	protected void PerformSpawn(notnull SCR_EntityCatalogEntry entityEntry, IEntity user = null, SCR_EntitySpawnerSlotComponent preferredSlot = null)
 	{
 		if (IsProxy())
@@ -930,7 +938,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 			AddSpawnerSupplies(-spawnerData.GetSupplyCost());
 
 		if (m_OnEntitySpawned)
-			m_OnEntitySpawned.Invoke(m_SpawnedEntity, user, SCR_Faction.Cast(GetFaction()));
+			m_OnEntitySpawned.Invoke(m_SpawnedEntity, user, SCR_Faction.Cast(GetFaction()), this);
 
 		//Send notification to player, whom requested entity
 		SCR_EntityCatalog parentCatalog = entityEntry.GetCatalogParent();
@@ -1032,20 +1040,16 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get the resource component that is assigned to the spawner.
-	\return SCR_ResourceComponent resource component.
-	*/
+	//! Get the resource component that is assigned to the spawner.
+	//! \return SCR_ResourceComponent resource component.
 	SCR_ResourceComponent GetSpawnerResourceComponent()
 	{
 		return m_ResourceComponent;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get supply component assigned to spawner
-	\return SCR_CampaignSuppliesComponent spawn supplies
-	*/
+	//! Get supply component assigned to spawner
+	//! \return SCR_CampaignSuppliesComponent spawn supplies
 	[Obsolete("SCR_CatalogEntitySpawnerComponent.GetSpawnerResourceComponent() should be used instead.")]
 	SCR_CampaignSuppliesComponent GetSpawnerSupplyComponent()
 	{
@@ -1053,10 +1057,8 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get resources left for spawner
-	\return float spawn supplies
-	*/
+	//! Get resources left for spawner
+	//! \return float spawn supplies
 	float GetSpawnerResourceValue()
 	{
 		if (!m_ResourceComponent)
@@ -1071,10 +1073,8 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get supplies left for spawner
-	\return float spawn supplies
-	*/
+	//! Get supplies left for spawner
+	//! \return spawn supplies
 	[Obsolete("SCR_CatalogEntitySpawnerComponent.GetSpawnerResourceValue() should be used instead.")]
 	float GetSpawnerSupplies()
 	{
@@ -1085,10 +1085,8 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Add or reduce (by entering negative value) supplies available to spawner
-	\param value amount of supplies to be added/reduced
-	*/
+	//! Add or reduce (by entering negative value) supplies available to spawner
+	//! \param[in] supplies amount of supplies to be added/reduced
 	void AddSpawnerSupplies(float supplies)
 	{
 		if (m_ResourceComponent)
@@ -1130,7 +1128,8 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Returns false if player spawned too recently
+	//! \param[in] user
+	//! \return false if player spawned too recently
 	protected bool CooldownCheck(notnull IEntity user)
 	{
 		int userId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(user);
@@ -1150,16 +1149,10 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 			return false;
 
 		SCR_ECharacterRank rank = SCR_CharacterRankComponent.GetCharacterRank(user);
-		#ifndef AR_CAMPAIGN_TIMESTAMP
-		float timeout = networkComponent.GetLastRequestTimestamp() + (float)factionManager.GetRankRequestCooldown(rank);
-
-		return timeout < Replication.Time();
-		#else
 		WorldTimestamp lastTimestamp = networkComponent.GetLastRequestTimestamp();
 		WorldTimestamp timeout = lastTimestamp.PlusMilliseconds(factionManager.GetRankRequestCooldown(rank));
 		ChimeraWorld world = GetOwner().GetWorld();
 		return (lastTimestamp == 0 || timeout.Less(world.GetServerTimestamp()));
-		#endif
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1185,12 +1178,19 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 			return;
 
 		foreach (int i, ResourceName resName : group.m_aUnitPrefabSlots)
+		{
 			groupSpawningManager.QueueSpawn(this, resName, user, slotEntity, rallyPoint);
+		}
 
 		requestComponent.AddQueuedAI(group.m_aUnitPrefabSlots.Count());
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] resName
+	//! \param[in] user
+	//! \param[in] slotEntity
+	//! \param[in] rallyPoint
 	//protected void SpawnAIGroupMember(ResourceName resName, notnull IEntity user, IEntity slotEntity, SCR_EntityLabelPointComponent rallyPoint = null)
 	void SpawnAIGroupMember(ResourceName resName, notnull IEntity user, IEntity slotEntity, SCR_EntityLabelPointComponent rallyPoint = null)
 	{
@@ -1323,6 +1323,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 		return true;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
 		if (!m_bEnableGracePeriod)
@@ -1368,7 +1369,6 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 			m_fLastUpdateElapsedTime = 0.0;
 		}
 	}
-		
 
 	//------------------------------------------------------------------------------------------------
 	protected override void EOnInit(IEntity owner)
@@ -1394,8 +1394,18 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 		}
 		
 		m_ResourceComponent = SCR_ResourceComponent.FindResourceComponent(owner);
+		
+		SCR_CatalogEntitySpawnerComponent.INSTANCES.Insert(this);
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	override protected void OnDelete(IEntity owner)
+	{
+		super.OnDelete(owner);
+		
+		SCR_CatalogEntitySpawnerComponent.INSTANCES.RemoveItem(this);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	protected override void OnPostInit(IEntity owner)
 	{
@@ -1408,13 +1418,13 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_CatalogEntitySpawnerComponent()
 	{
 		SCR_EntityHelper.DeleteEntityAndChildren(m_PreviewEntity);
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 enum SCR_EEntityRequestStatus
 {
 	NOT_ENOUGH_SUPPLIES = 1,
@@ -1425,5 +1435,6 @@ enum SCR_EEntityRequestStatus
 	GROUP_FULL = 6,
 	NOT_AVAILABLE = 7,
 	CAN_SPAWN = 8,
-	CAN_SPAWN_TRIGGER = 9
-};
+	CAN_SPAWN_TRIGGER = 9,
+	AI_LIMIT_REACHED = 10
+}

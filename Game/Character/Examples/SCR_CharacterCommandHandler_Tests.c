@@ -1,10 +1,11 @@
 [ComponentEditorProps(category: "GameScripted/Character", description: "Scripted character command handler FOR TESTING", icon: HYBRID_COMPONENT_ICON)]
 class SCR_CharacterCommandHandlerComponent_TestsClass : SCR_CharacterCommandHandlerComponentClass
 {
-};
+}
 
 class SCR_CharacterCommandHandlerComponent_Tests : SCR_CharacterCommandHandlerComponent
 {
+	//------------------------------------------------------------------------------------------------
 	override bool HandleDeath(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID, bool pCurrentCommandFinished)
 	{
 		if ( pCurrentCommandID == ECharacterCommandIDs.DEATH )
@@ -26,6 +27,7 @@ class SCR_CharacterCommandHandlerComponent_Tests : SCR_CharacterCommandHandlerCo
 		return false;
 	}
 
+	//------------------------------------------------------------------------------------------------
  	override bool HandleFinishedCommands(bool pCurrentCommandFinished)
 	{
 		if( pCurrentCommandFinished )
@@ -50,6 +52,7 @@ class SCR_CharacterCommandHandlerComponent_Tests : SCR_CharacterCommandHandlerCo
 		return false;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override bool HandleVehicle(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID)
 	{
 		if( pCurrentCommandID == ECharacterCommandIDs.VEHICLE )
@@ -74,17 +77,19 @@ class SCR_CharacterCommandHandlerComponent_Tests : SCR_CharacterCommandHandlerCo
 		return false;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override bool HandleSwimming(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID)
 	{
 		//! get water level 
 		vector charTM[4];
 		m_OwnerEntity.GetTransform(charTM);
 		vector pp = charTM[3];
-		vector wl = pInputCtx.GetWaterLevel();
+		float waterDepth = pInputCtx.GetWaterBodyApproxDepth();
+		float waterCharSubmersion = pInputCtx.GetWaterCharacterSubmersion();
 
 		if( pCurrentCommandID == ECharacterCommandIDs.SWIM )
 		{
-			if( wl[0] < m_SwimSettings.m_fWaterLevelOut )
+			if( waterDepth < m_SwimSettings.m_fWaterLevelOut )
 			{
 				CharacterCommandSwim sc = GetCommandSwim();
 				sc.StopSwimming();
@@ -95,7 +100,7 @@ class SCR_CharacterCommandHandlerComponent_Tests : SCR_CharacterCommandHandlerCo
 		}
 
 		//! if total water depth >= 1.5m && character is 1.5m in water 
-		if( wl[0] >= m_SwimSettings.m_fWaterLevelIn && wl[1] >= m_SwimSettings.m_fWaterLevelIn )
+		if( waterDepth >= m_SwimSettings.m_fWaterLevelIn && waterCharSubmersion >= m_SwimSettings.m_fWaterLevelIn )
 		{
 			m_WeaponManager.SetVisibleCurrentWeapon(false);
 			StartCommand_Swim();
@@ -107,11 +112,11 @@ class SCR_CharacterCommandHandlerComponent_Tests : SCR_CharacterCommandHandlerCo
 		{
 			CharacterCommandMove mc = GetCommandMove();
 
-			if( wl[1] > m_SwimSettings.m_fToErectLevel )
+			if( waterCharSubmersion > m_SwimSettings.m_fToErectLevel )
 			{
 				m_CharacterControllerComp.ForceStanceUp(0);
 			}
-			else if( wl[1] > m_SwimSettings.m_fToCrouchLevel )
+			else if( waterCharSubmersion > m_SwimSettings.m_fToCrouchLevel )
 			{
 				m_CharacterControllerComp.ForceStanceUp(1);
 			}
@@ -120,6 +125,7 @@ class SCR_CharacterCommandHandlerComponent_Tests : SCR_CharacterCommandHandlerCo
 		return false;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override bool HandleLadders(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID)
 	{
 		//! ERC stance only
@@ -190,6 +196,7 @@ class SCR_CharacterCommandHandlerComponent_Tests : SCR_CharacterCommandHandlerCo
 		return false;		
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override bool HandleClimbing(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID)
 	{
 		if( pCurrentCommandID == ECharacterCommandIDs.CLIMB )
@@ -198,6 +205,7 @@ class SCR_CharacterCommandHandlerComponent_Tests : SCR_CharacterCommandHandlerCo
 		return false;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override bool HandleFalling(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID)
 	{
 		if ( pCurrentCommandID == ECharacterCommandIDs.FALL )
@@ -243,6 +251,7 @@ class SCR_CharacterCommandHandlerComponent_Tests : SCR_CharacterCommandHandlerCo
 	}
 	
 	/*
+	//------------------------------------------------------------------------------------------------
 	override bool HandleDamageHit(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID)
 	{
 		if( m_iDamageHitAnimType != -1 )
@@ -258,6 +267,7 @@ class SCR_CharacterCommandHandlerComponent_Tests : SCR_CharacterCommandHandlerCo
 	*/
 	
 	/*
+	//------------------------------------------------------------------------------------------------
 	override bool HandleWeapons(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID)
 	{
 		if( !m_CommandWeapons )
@@ -272,6 +282,7 @@ class SCR_CharacterCommandHandlerComponent_Tests : SCR_CharacterCommandHandlerCo
 		return false;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override bool HandleWeaponChange(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID)
 	{
 		switch( m_CommandWeapons.GetWeaponChangeState() )
@@ -359,6 +370,7 @@ class SCR_CharacterCommandHandlerComponent_Tests : SCR_CharacterCommandHandlerCo
 		return false;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override bool HandleThrowing(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID)
 	{
 		// canceling action
@@ -452,6 +464,7 @@ class SCR_CharacterCommandHandlerComponent_Tests : SCR_CharacterCommandHandlerCo
 	}
 	*/
 	
+	//------------------------------------------------------------------------------------------------
 	override bool TransitionMove_JumpClimb(CharacterInputContext pInputCtx)
 	{
 		if ( pInputCtx.GetJump() > 0.0 )
@@ -490,6 +503,7 @@ class SCR_CharacterCommandHandlerComponent_Tests : SCR_CharacterCommandHandlerCo
 		return false;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override bool TransitionMove_Vehicle(CharacterInputContext pInputCtx)
 	{
 		if( pInputCtx.GetVehicleAction() == 1 )
@@ -505,6 +519,7 @@ class SCR_CharacterCommandHandlerComponent_Tests : SCR_CharacterCommandHandlerCo
 		return false;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override protected void OnInit(IEntity owner)
 	{
 		super.OnInit(owner);
@@ -523,27 +538,28 @@ class SCR_CharacterCommandHandlerComponent_Tests : SCR_CharacterCommandHandlerCo
 		m_SwimCommand = new SCR_CharacterCommandSwim(m_CharacterAnimComp, m_SwimST, m_OwnerEntity, GetControllerComponent());
 		m_FlyCommand = new SCR_CharacterCommandFly(m_CharacterAnimComp, m_SwimST, m_OwnerEntity, GetControllerComponent());
 				
-		//! Command's settings examples
-		//! ---------------------------
+		// Command's settings examples
+		// ---------------------------
 
-		//! movement setting change		
+		// movement setting change
 		//m_OwnMoveSettings.m_fLeaningSpeed = 1;
 		//SetCurrentCommandMoveSettings(m_OwnMoveSettings);
 		
-		//! try to change default climb settings
+		// try to change default climb settings
 		//CharacterCommandClimbSettings defaultClimb = GetDefaultCommandClimbSettings();
 		//defaultClimb.m_fFwMaxDistance = 3;
 		
-		//! setup own climb settings and make it current
+		// setup own climb settings and make it current
 		//m_OwnClimbSettings.m_fFwMaxDistance = 3;
 		//SetCurrentCommandClimbSettings(m_OwnClimbSettings);
 
-		//! swim settings overrides
+		// swim settings overrides
 		m_SwimSettings.m_fMovementSpeed = 1.5;
 		SetCurrentCommandSwimSettings(m_SwimSettings);
 	}
 	
 	/*
+	//------------------------------------------------------------------------------------------------
 	override bool SubhandlerStatesBegin(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID)
 	{
 		if( pCurrentCommandID == ECommandIDs.SCRIPTED )
@@ -576,4 +592,4 @@ class SCR_CharacterCommandHandlerComponent_Tests : SCR_CharacterCommandHandlerCo
 
 	//protected CharacterCommandWeapon m_CommandWeapons;
 	//protected EThrowingState m_ThrowingState;
-};
+}

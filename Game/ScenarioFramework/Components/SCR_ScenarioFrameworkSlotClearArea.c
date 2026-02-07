@@ -1,13 +1,8 @@
-[EntityEditorProps(category: "GameScripted/ScriptWizard", description: "ScriptWizard generated script file.")]
+[EntityEditorProps(category: "GameScripted/ScenarioFramework/Slot", description: "")]
 class SCR_ScenarioFrameworkSlotClearAreaClass : SCR_ScenarioFrameworkSlotTaskClass
 {
-	// prefab properties here
 }
 
-//------------------------------------------------------------------------------------------------
-/*!
-	Class generated via ScriptWizard.
-*/
 class SCR_ScenarioFrameworkSlotClearArea : SCR_ScenarioFrameworkSlotTask
 {
 	//------------------------------------------------------------------------------------------------
@@ -54,13 +49,9 @@ class SCR_ScenarioFrameworkSlotClearArea : SCR_ScenarioFrameworkSlotTask
 			SetFactionKey(m_ParentLayer.GetFactionKey());
 		
 		if (!m_bUseExistingWorldAsset)
-		{
 			m_Entity = SpawnAsset();
-		}
 		else
-		{
 			QueryObjectsInRange();	//sets the m_Entity in subsequent callback
-		}
 		
 		GetOnAllChildrenSpawned().Insert(AfterAllChildrenSpawned);
 		
@@ -79,7 +70,7 @@ class SCR_ScenarioFrameworkSlotClearArea : SCR_ScenarioFrameworkSlotTask
 		if (!m_sID.IsEmpty())
 			m_Entity.SetName(m_sID);	
 		
-		ScriptedDamageManagerComponent objectDmgManager = ScriptedDamageManagerComponent.Cast(m_Entity.FindComponent(ScriptedDamageManagerComponent));
+		SCR_DamageManagerComponent objectDmgManager = SCR_DamageManagerComponent.GetDamageManager(m_Entity);
 		if (objectDmgManager)
 			objectDmgManager.GetOnDamageStateChanged().Insert(OnObjectDamage);
 		
@@ -97,7 +88,7 @@ class SCR_ScenarioFrameworkSlotClearArea : SCR_ScenarioFrameworkSlotTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void AfterAllChildrenSpawned()
+	override void AfterAllChildrenSpawned(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		m_bInitiated = true;
 		
@@ -117,7 +108,7 @@ class SCR_ScenarioFrameworkSlotClearArea : SCR_ScenarioFrameworkSlotTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void AfterParentAreaChildrenSpawned()
+	protected void AfterParentAreaChildrenSpawned(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		foreach (SCR_ScenarioFrameworkPlugin plugin : m_aPlugins)
 		{

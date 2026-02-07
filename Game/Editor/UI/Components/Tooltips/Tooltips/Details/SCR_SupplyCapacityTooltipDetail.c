@@ -1,5 +1,5 @@
 [BaseContainerProps(), BaseContainerCustomTitleField("m_sDisplayName")]
-class SCR_SupplyCapacityTooltipDetail: SCR_EntityTooltipDetail
+class SCR_SupplyCapacityTooltipDetail : SCR_EntityTooltipDetail
 {	
 	[Attribute("#AR-ValueUnit_Short_Plus", desc: "Formatting of adding supplies. %1 being amount")]
 	protected LocalizedString m_SupplyFormattingPositive;
@@ -7,6 +7,7 @@ class SCR_SupplyCapacityTooltipDetail: SCR_EntityTooltipDetail
 	[Attribute("#AR-ValueUnit_Short_Minus", desc: "Formatting of removing supplies. %1 being amount")]
 	protected LocalizedString m_SupplyFormattingNegative;
 	
+	//------------------------------------------------------------------------------------------------
 	override bool InitDetail(SCR_EditableEntityComponent entity, Widget widget)
 	{
 		TextWidget text = TextWidget.Cast(widget);
@@ -27,5 +28,4 @@ class SCR_SupplyCapacityTooltipDetail: SCR_EntityTooltipDetail
 		
 		return true;
 	}
-	
 }

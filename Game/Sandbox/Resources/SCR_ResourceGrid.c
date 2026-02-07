@@ -616,7 +616,6 @@ class SCR_ResourceGrid
 	{	
 		int gridUpdateId = interactor.GetGridUpdateId();
 		vector interactorOrigin	= interactor.GetOwnerOrigin();
-		SCR_ResourceComponent interactorItem = interactor.GetComponent();
 		bool hasInteractorMoved = vector.DistanceSq(interactorOrigin, interactor.GetLastPosition()) > SCR_ResourceComponent.UPDATE_DISTANCE_TRESHOLD_SQUARE;
 		
 		if (!hasInteractorMoved && gridUpdateId == m_iGridUpdateId || interactor.IsIsolated())
@@ -681,7 +680,7 @@ class SCR_ResourceGrid
 		interactor.SetGridUpdateId(m_iGridUpdateId);
 		interactor.UpdateLastPosition();
 		m_aQueriedContainers.Clear();
-		interactorItem.Replicate();
+		interactor.Replicate();
 	}
 	
 	//------------------------------------------------------------------------------------------------

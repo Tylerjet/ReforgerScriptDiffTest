@@ -1,14 +1,11 @@
 [ComponentEditorProps(category: "GameScripted/Editor (Editables)", description: "")]
 class SCR_EditableEntityMaterialChildComponentClass: SCR_EditableEntityBaseChildComponentClass
 {
-};
+}
 
-/** @ingroup Editable_Entities
-*/
+//! @ingroup Editable_Entities
 
-/*!
-Change material based on specific states
-*/
+//! Change material based on specific states
 class SCR_EditableEntityMaterialChildComponent : SCR_EditableEntityBaseChildComponent
 {
 	//[Attribute()]
@@ -20,9 +17,11 @@ class SCR_EditableEntityMaterialChildComponent : SCR_EditableEntityBaseChildComp
 	[Attribute("", UIWidgets.ResourcePickerThumbnail, "", "emat")]
 	private ResourceName m_StateMaterial;
 	
+	//------------------------------------------------------------------------------------------------
 	protected void SetMaterial(ResourceName material)
 	{
-		if (!m_Owner) return;
+		if (!m_Owner)
+			return;
 		
 		SCR_VirtualAreaEntity area = SCR_VirtualAreaEntity.Cast(m_Owner);
 		if (area)
@@ -40,6 +39,8 @@ class SCR_EditableEntityMaterialChildComponent : SCR_EditableEntityBaseChildComp
 		}
 		m_Owner.SetObject(obj, remap);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnStateChanged(EEditableEntityState states, EEditableEntityState changedState, bool toSet)
 	{
 		if ((states & m_State) > 0)
@@ -47,10 +48,14 @@ class SCR_EditableEntityMaterialChildComponent : SCR_EditableEntityBaseChildComp
 		else
 			SetMaterial(m_DefaultMaterial);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
-		if (SCR_Global.IsEditMode(owner)) return; //--- Run-time only
+		if (SCR_Global.IsEditMode(owner))
+			return; //--- Run-time only
+
 		//SetMaterial(m_DefaultMaterial);
 		UpdateFromCurrentState();
 	}
-};
+}

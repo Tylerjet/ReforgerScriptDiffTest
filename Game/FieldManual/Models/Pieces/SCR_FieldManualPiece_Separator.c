@@ -52,4 +52,4 @@ class SCR_FieldManualPiece_Separator : SCR_FieldManualPiece
 			LayoutSlot.SetFillWeight(spaceRight, remainder);
 		}
 	}
-};
+}

@@ -27,6 +27,8 @@ class SCR_DownloadManagerEntryWidgets
 	ImageWidget m_DownloadIcon;
 
 	ImageWidget m_DownloadIconShadow;
+	
+	ImageWidget m_ProcessingSpinner;
 
 	TextWidget m_DownloadStateText;
 
@@ -61,6 +63,8 @@ class SCR_DownloadManagerEntryWidgets
 
 		m_DownloadIconShadow = ImageWidget.Cast(root.FindWidget("SizeLayout.Overlay.HorizontalLayout.VerticalLayout.HorizontalDownload.DownloadIconOverlay.m_DownloadIconShadow"));
 
+		m_ProcessingSpinner = ImageWidget.Cast(root.FindWidget("SizeLayout.Overlay.HorizontalLayout.VerticalLayout.HorizontalDownload.DownloadIconOverlay.m_ProcessingSpinner"));
+		
 		m_DownloadStateText = TextWidget.Cast(root.FindWidget("SizeLayout.Overlay.HorizontalLayout.VerticalLayout.HorizontalDownload.m_DownloadStateText"));
 
 		m_DownloadedText = TextWidget.Cast(root.FindWidget("SizeLayout.Overlay.HorizontalLayout.VerticalLayout.HorizontalDownload.m_DownloadedText"));

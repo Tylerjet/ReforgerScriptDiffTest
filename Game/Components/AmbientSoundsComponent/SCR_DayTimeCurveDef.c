@@ -1,6 +1,6 @@
 const int DAY_TIME_CURVE_COUNT = 7;
 
-enum EDayTimeCurve
+enum EDayTimeCurve // TODO: SCR_EDayTimeCurve
 {
 	ALWAYS,
 	DAY,
@@ -9,11 +9,9 @@ enum EDayTimeCurve
 	NOON,
 	AFTERNOON,
 	NOTAFTERNOON,
-};
+}
 
-/*
-Used for defining random positional sound behaviour base on time of the day
-*/
+//! Used to define a random positional sound behaviour base on time of the day
 [BaseContainerProps()]
 class SCR_DayTimeCurveDef
 {

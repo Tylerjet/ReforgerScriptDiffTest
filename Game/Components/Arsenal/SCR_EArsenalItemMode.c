@@ -7,4 +7,4 @@ enum SCR_EArsenalItemMode
 	CONSUMABLE = 32,
 	ATTACHMENT = 64,
 	SUPPORT_STATION = 128,
-};
+}

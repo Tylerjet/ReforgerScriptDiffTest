@@ -5,7 +5,6 @@ enum SCR_EInventoryHintInputDevice
 	GAMEPAD_ONLY,
 }
 
-
 [BaseContainerProps()]
 class SCR_InventoryItemHintUIInfo : SCR_ColorUIInfo
 {
@@ -16,6 +15,10 @@ class SCR_InventoryItemHintUIInfo : SCR_ColorUIInfo
 	protected bool m_bHideInArsenal;
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param item
+	//! \param focusedSlot
+	//! \return
 	bool CanBeShown(InventoryItemComponent item, SCR_InventorySlotUI focusedSlot)
 	{
 		//~ Make sure it is not shown if stored in arsenal
@@ -52,6 +55,10 @@ class SCR_InventoryItemHintUIInfo : SCR_ColorUIInfo
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param item
+	//! \param textWidget
+	//! \return
 	bool SetItemHintNameTo(InventoryItemComponent item, TextWidget textWidget)
 	{
 		if (!textWidget)

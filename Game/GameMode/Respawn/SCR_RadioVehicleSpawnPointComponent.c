@@ -58,7 +58,7 @@ class SCR_RadioVehicleSpawnPoint : SCR_SpawnPoint
 			}
 		}
 		
-	
+
 		//~ Check if occupied
 		if (m_FactionAffiliationComponent)
 		{

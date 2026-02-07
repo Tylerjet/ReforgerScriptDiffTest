@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(configRoot: true)]
 class SCR_LoadoutSaveBlackListHolder
 {
@@ -6,9 +5,7 @@ class SCR_LoadoutSaveBlackListHolder
 	protected ref array<ref SCR_LoadoutSaveBlackList> m_LoadoutSaveBlackLists;
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Init black lists, this will make sure each blacklist has a list to items that are blacklisted
-	*/
+	//! Init black lists, this will make sure each blacklist has a list to items that are blacklisted
 	void Init()
 	{
 		for (int i = m_LoadoutSaveBlackLists.Count() - 1; i >= 0; i--)
@@ -23,11 +20,9 @@ class SCR_LoadoutSaveBlackListHolder
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get List of all black lists
-	\param[out] loadoutSaveBlackLists List of black lists which contain lists of prefabs that can never be saved if the blacklist is enabled
-	\return Count of blacklist lists
-	*/
+	//! Get List of all black lists
+	//! \param[out] loadoutSaveBlackLists List of black lists which contain lists of prefabs that can never be saved if the blacklist is enabled
+	//! \return Count of blacklist lists
 	int GetLoadoutSaveBlackLists(out notnull array<SCR_LoadoutSaveBlackList> loadoutSaveBlackLists)
 	{
 		loadoutSaveBlackLists.Clear();
@@ -41,20 +36,16 @@ class SCR_LoadoutSaveBlackListHolder
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return Count of blacklist lists
-	*/
+	//! \return Count of blacklist lists
 	int GetBlackListsCount()
 	{
 		return m_LoadoutSaveBlackLists.Count();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check if given prefab is in an enabled blacklist.
-	\param prefab Prefab to check
-	\return True if prefab is blacklisted
-	*/
+	//! Check if given prefab is in an enabled blacklist.
+	//! \param[in] prefab Prefab to check
+	//! \return True if prefab is blacklisted
 	bool IsPrefabBlacklisted(ResourceName prefab)
 	{
 		if (SCR_StringHelper.IsEmptyOrWhiteSpace(prefab))
@@ -75,11 +66,9 @@ class SCR_LoadoutSaveBlackListHolder
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get if black list is active
-	\param index Index of black list
-	\return True if active
-	*/
+	//! Get if black list is active
+	//! \param[in] index Index of black list
+	//! \return True if active
 	bool IsBlackListActive(int index)
 	{
 		if (!m_LoadoutSaveBlackLists.IsIndexValid(index))
@@ -92,11 +81,9 @@ class SCR_LoadoutSaveBlackListHolder
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Set black list active
-	\param index Index of black list
-	\param active True if setting blacklist active
-	*/
+	//! Set black list active
+	//! \param[in] index Index of black list
+	//! \param[in] active True if setting blacklist active
 	void SetBlackListActive(int index, bool active)
 	{
 		if (!m_LoadoutSaveBlackLists.IsIndexValid(index))
@@ -109,11 +96,9 @@ class SCR_LoadoutSaveBlackListHolder
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get black lists active returning an ordered active array
-	\param orderedBlackListActive Ordered active array
-	\return Count of ordered active array
-	*/
+	//! Get black lists active returning an ordered active array
+	//! \param[in] orderedBlackListActive Ordered active array
+	//! \return Count of ordered active array
 	int GetOrderedBlackListsActive(out notnull array<bool> orderedBlackListActive)
 	{
 		orderedBlackListActive.Clear();
@@ -130,10 +115,8 @@ class SCR_LoadoutSaveBlackListHolder
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Set black lists active using ordered active array
-	\param orderedBlackListActive Ordered active array
-	*/
+	//! Set black lists active using ordered active array
+	//! \param[in] orderedBlackListActive Ordered active array
 	void SetOrderedBlackListsActive(notnull array<bool> orderedBlackListActive)
 	{
 		for (int i = 0, count = orderedBlackListActive.Count(); i < count; i++)
@@ -166,10 +149,8 @@ class SCR_LoadoutSaveBlackList
 	protected ref set<ResourceName> m_BlackListedPrefabs = new set<ResourceName>();
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Init black list, this will get all items that should be blacklisted and adds it to one unified set (Server only)
-	\return Returns true if init is successfull, returns false if not
-	*/
+	//! Init black list, this will get all items that should be blacklisted and adds it to one unified set (Server only)
+	//! \return Returns true if init is successfull, returns false if not
 	bool Init()
 	{
 		foreach (ResourceName prefab : m_aBlackListedPrefabs)
@@ -221,47 +202,38 @@ class SCR_LoadoutSaveBlackList
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return Get if black list is enabled. Disabled blacklists are removed on init
-	*/
+	//! \return Get if black list is enabled. Disabled blacklists are removed on init
 	bool IsEnabled()
 	{
 		return m_bEnabled;
 	}
 	
-	/*!
-	\return Get if black list is active
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return Get if black list is active
 	bool IsActive()
 	{
 		return m_bBlackListActive;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Set black list enabled
-	\param enabled True if setting blacklist enabled
-	*/
+	//! Set black list enabled
+	//! \param[in] enabled True if setting blacklist enabled
 	void SetActive(bool active)
 	{
 		m_bBlackListActive = active
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Does black list contain prefab
-	\param prefab Prefab to check
-	\return True if it contains, false if it does not
-	*/
+	//! Does black list contain prefab
+	//! \param[in] prefab Prefab to check
+	//! \return True if it contains, false if it does not
 	bool DoesBlackListContaintPrefab(ResourceName prefab)
 	{
 		return m_BlackListedPrefabs.Contains(prefab);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return Get UIInfo
-	*/
+	//! \return Get UIInfo
 	SCR_UIInfo GetUIInfo()
 	{
 		if (!m_UIInfo)
@@ -269,9 +241,8 @@ class SCR_LoadoutSaveBlackList
 		
 		return m_UIInfo;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(SCR_EArsenalItemType, "m_eItemType")]
 class SCR_LoadoutSaveBlackListItemType
 {
@@ -283,4 +254,4 @@ class SCR_LoadoutSaveBlackListItemType
 	
 	[Attribute("1", desc: "If true than the ItemMode will be ignored and any items that have the type regardless of the mode will be blacklisted", UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(SCR_EArsenalItemMode))]
 	bool m_bIgnoreItemMode;
-};
+}

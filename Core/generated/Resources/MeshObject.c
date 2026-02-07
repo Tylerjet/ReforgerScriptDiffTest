@@ -21,7 +21,8 @@ void GenerateModel(IEntity obj)
 	int numIndices[] = {3};
 	string materials[] = {"{726C1969B0B78245}defMat.emat"};
 
-	MeshObject meshObject = MeshObject.Create(1, numVertices, numIndices, materials, 0);
+	Resource res = MeshObject.Create(1, numVertices, numIndices, materials, 0);
+	MeshObject meshObject = res.GetResource().ToMeshObject();
 	meshObject.UpdateVerts(0, verts, uvs);
 	meshObject.UpdateIndices(0, indices);
 
@@ -31,7 +32,7 @@ void GenerateModel(IEntity obj)
 */
 sealed class MeshObject: VObject
 {
-	static proto MeshObject Create(int numMeshes, int numVerts[], int numIndices[], string materials[], MeshObjectFlags flags);
+	static proto ref Resource Create(int numMeshes, int numVerts[], int numIndices[], string materials[], MeshObjectFlags flags);
 	proto external void UpdateVerts(int meshIdx, vector verts[], float uv[]);
 	proto external void UpdateIndices(int meshIdx, int indices[]);
 	proto external int GetNumGeoms();

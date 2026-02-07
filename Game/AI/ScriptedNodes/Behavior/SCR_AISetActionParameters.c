@@ -39,7 +39,7 @@ class SCR_AISetGetInActivityParameters : SCR_AISetActionParameters
 
 class SCR_AISetAttackBehaviorParameters : SCR_AISetActionParameters
 {
-	protected static ref TStringArray s_aVarsIn = (new SCR_AIAttackBehavior(null, null, null, vector.Zero)).GetPortNames();
+	protected static ref TStringArray s_aVarsIn = (new SCR_AIAttackBehavior(null, null, null, null)).GetPortNames();
 	override TStringArray GetVariablesIn() { return s_aVarsIn; }
 	override bool VisibleInPalette() { return true; }
 };

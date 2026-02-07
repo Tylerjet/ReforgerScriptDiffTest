@@ -1,12 +1,10 @@
-/*!
-	Handels the showing of end screen and has a config with gameover screens
-*/
+//! Handles the showing of end screen and has a config with gameover screens
 [ComponentEditorProps(category: "GameScripted/GameOver", description: "")]
-class SCR_GameOverScreenManagerComponentClass: SCR_BaseGameModeComponentClass
+class SCR_GameOverScreenManagerComponentClass : SCR_BaseGameModeComponentClass
 {
-};
+}
 
-class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
+class SCR_GameOverScreenManagerComponent : SCR_BaseGameModeComponent
 {
 	[Attribute()]
 	protected ref SCR_GameOverScreenConfig m_GameOverScreenConfig;
@@ -20,7 +18,7 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 	//Editor only
 	protected bool m_bListeningToEditorCalledEndGame = false;
 	protected EGameOverTypes m_iEditorSetGameOverType;
-	protected ref array<int> m_aEditorSetFactions = new ref array<int>;
+	protected ref array<int> m_aEditorSetFactions = {};
 	
 	//End game vars saved so it can be usesed in multiple function
 	protected EGameOverTypes m_iEndGameType = EGameOverTypes.UNKNOWN;
@@ -28,26 +26,25 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 	protected Faction m_FactionPlayer = null;
 	protected int m_iPlayerId = -1;
 	protected int m_iEndReason = 0;
-	protected ref array<Faction> m_aWinningFactions = new ref array<Faction>;
-	protected ref array<int> m_aWinningPlayers = new ref array<int>;
+	protected ref array<Faction> m_aWinningFactions = {};
+	protected ref array<int> m_aWinningPlayers = {};
 	protected bool m_bIsPlayingGameOverAudio = false;
 	
-	static ref ScriptInvoker s_OnEndGame = new ScriptInvoker();
+	static const ref ScriptInvoker s_OnEndGame = new ScriptInvoker();
 	
 	protected Widget m_EndScreenFade;
 	
-	/*!
-	Get GameoverScreen Config
-	\return m_GameOverScreenConfig
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return GameoverScreen Config
 	SCR_GameOverScreenConfig GetGameOverConfig()
 	{
 		return m_GameOverScreenConfig;
 	}
 	
-	//Called when end game is called on GameMode
-	//Fade the endgame screen but retain control
-	//Once the fade in is done the end screen will be shown
+	//------------------------------------------------------------------------------------------------
+	//! Called when end game is called on GameMode
+	//! Fade the endgame screen but retain control
+	//! Once the fade in is done the end screen will be shown
 	protected void StartEndGameFade()
 	{	
 		SetGameOverVarriables(GetGameMode().GetEndGameData());
@@ -63,6 +60,7 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 			Debug.Error2("SCR_GameOverScreenManagerComponent", "StartEndGameFade, could not find FadeUIComponent!");
 			return;
 		}
+
 		fadeComponent.GetOnFadeDone().Insert(OnEndScreenFadeDone);
 		fadeComponent.FadeIn();
 		
@@ -91,7 +89,10 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 		m_bIsPlayingGameOverAudio = true;
 	}
 	
-	//End screen fade is done show gameover dialog when delay is done
+	//------------------------------------------------------------------------------------------------
+	//! End screen fade is done show gameover dialog when delay is done
+	//! \param[in] fadeComponent
+	//! \param[in] isFadeIn
 	protected void OnEndScreenFadeDone(SCR_FadeUIComponent fadeComponent, bool isFadeIn)
 	{
 		//Close all dialogs
@@ -99,11 +100,10 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 		GetGame().GetCallqueue().CallLater(ShowGameOverScreen, m_fShowEndscreenDelay * 1000, false, null);
 	}
 	
-	/*!
-	Call end screen using SCR_GameModeEndData. This is generally called after fade but can also be called instantly if desired
-	\param SCR_GameModeEndData end game data. Will get endgame date from gamemode if non given
-	\return SCR_GameOverScreenUIComponent game over screen widget
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Call end screen using SCR_GameModeEndData. This is generally called after fade but can also be called instantly if desired
+	//! \param[in] endData end game data. Will get endgame date from gamemode if non given
+	//! \return SCR_GameOverScreenUIComponent game over screen widget
 	SCR_GameOverScreenUIComponent ShowGameOverScreen(SCR_GameModeEndData endData = null)
 	{		
 		//Remove the fade UI
@@ -128,7 +128,7 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 		//Get game over type
 		if (!m_GameOverScreenConfig.GetGameOverScreenInfo(m_iEndGameType, gameOverScreenInfo))
 		{
-			Print(string.Format("'SCR_GameOverScreenConfig': Could not find '%1' endscreen in array!", typename.EnumToString(EGameOverTypes, m_iEndGameType)));
+			Print(string.Format("'SCR_GameOverScreenConfig': Could not find '%1' endscreen in array!", typename.EnumToString(EGameOverTypes, m_iEndGameType)), LogLevel.NORMAL);
 			return null;
 		}
 		
@@ -174,7 +174,9 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 		m_iEndGameType = EGameOverTypes.UNKNOWN;
 	}
 	
-	//Set all variables needed to set the correct game over screen
+	//------------------------------------------------------------------------------------------------
+	//! Set all variables needed to set the correct game over screen
+	//! \param[in] endData
 	protected void SetGameOverVarriables(SCR_GameModeEndData endData = null)
 	{
 		m_iEndGameType = EGameOverTypes.UNKNOWN;
@@ -195,11 +197,10 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 		if (endData != null) 
 		{		
 			m_iEndReason = endData.GetEndReason();
-				
-			
+
 			if (factionManager)
 			{
-				array<int> winningFactionIds = new array<int>;
+				array<int> winningFactionIds = {};
 				endData.GetFactionWinnerIds(winningFactionIds);
 				
 				if (winningFactionIds)
@@ -239,7 +240,15 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 		m_iEndGameType = GetGameOverType(m_iEndReason, m_iPlayerId, m_aWinningPlayers, m_FactionPlayer, m_aWinningFactions, m_bIsFactionVictory);
 	}
 	
-	//This function checks if the player is part of the winning faction (if any), if it is the winning player (if any) and return the correct GameOverType (Eg: Won, lost ect)
+	//------------------------------------------------------------------------------------------------
+	//! This method checks if the player is part of the winning faction (if any), if it is the winning player (if any) and return the correct GameOverType (Eg: Won, lost ect)
+	//! \param[in] endReason
+	//! \param[in] playerId
+	//! \param[in] winningPlayers
+	//! \param[in] factionPlayer
+	//! \param[in] factionsVictor
+	//! \param[in] isFactionVictory
+	//! \return
 	protected EGameOverTypes GetGameOverType(int endReason, int playerId, array<int> winningPlayers, Faction factionPlayer, array<Faction> factionsVictor, bool isFactionVictory)
 	{
 		//// ==== Default end reasons ==== \\\\
@@ -305,13 +314,11 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 				return EGameOverTypes.DEATHMATCH_DRAW;
 			}
 		}
-		
 		//// ==== Shared End Reasons ==== \\\\
 		else if (endReason == EGameOverTypes.SERVER_RESTART)
 		{
 			return EGameOverTypes.SERVER_RESTART;
 		}
-		
 		//// ==== Editor End Reasons ==== \\\\
 		//Editor Victory
 		else if (endReason == EGameOverTypes.EDITOR_FACTION_VICTORY)
@@ -331,7 +338,6 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 			else 
 				return EGameOverTypes.EDITOR_FACTION_DRAW;
 		}
-		
 		//// ==== Specific end reasons ==== \\\\
 		else 
 		{
@@ -340,28 +346,27 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get the current gameover type. 
-	This will only return the valid gameover type once game over is called!
-	\return GameOver Type
-	*/
+	//! This will only return the valid gameover type once game over is called!
+	//! \return GameOver Type
 	EGameOverTypes GetCurrentGameOverType()
 	{
 		return m_iEndGameType;
 	}
 	
-	/*!
-	Open end screen
-	\param title title of game over screen
-	\param subtitle subtitle of game over screen
-	\param debriefing debriefing text of game over screen
-	\param imageTexture Image shown in game over screen
-	\param vignetteColor will set the color of the gameover screen background overlay
-	\param titleParam title param %1
-	\param subtitleParam subtitle param %1
-	\param debriefingParam debriefing param %1
-	\return Widget endscreen widget
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Open end screen
+	//! \param[in] contentLayout
+	//! \param[in] endData
+	//! \param[in] title title of game over screen
+	//! \param[in] subtitle subtitle of game over screen
+	//! \param[in] debriefing debriefing text of game over screen
+	//! \param[in] imageTexture Image shown in game over screen
+	//! \param[in] icon
+	//! \param[in] vignetteColor will set the color of the gameover screen background overlay
+	//! \param[in] titleParam title param %1
+	//! \param[in] subtitleParam subtitle param %1
+	//! \param[in] debriefingParam debriefing param %1
+	//! \return Widget endscreen widget
 	SCR_GameOverScreenUIComponent OpenGameOverScreen(ResourceName contentLayout, SCR_GameModeEndData endData, LocalizedString title = string.Empty, LocalizedString subtitle = string.Empty, LocalizedString debriefing = string.Empty, ResourceName imageTexture = ResourceName.Empty, ResourceName icon = ResourceName.Empty, Color vignetteColor = null, string titleParam = string.Empty, string subtitleParam = string.Empty, string debriefingParam = string.Empty)
 	{
 		SCR_HUDManagerComponent hudManager = GetGame().GetHUDManager();
@@ -380,13 +385,13 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 			SCR_GameOverScreenUIContentData content = new SCR_GameOverScreenUIContentData(contentLayout, endData, title, subtitle, debriefing, imageTexture, icon, vignetteColor, titleParam, subtitleParam, debriefingParam);
 			screenUIComponent.InitGameOverScreen(content);
 		}
-			
-		
+
 		return screenUIComponent;
 	}
 	
-	
 	//// ==== Editor Attribute Game over logic ==== \\\
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnEditorEndGameApplyDelayDone()
 	{
 		m_bListeningToEditorCalledEndGame = false;
@@ -424,7 +429,6 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 			}
 		}
 		
-		
 		SCR_BaseGameOverScreenInfoEditor optionalEditorParam = gameOverInfo.GetEditorOptionalParams();
 		
 		if (!optionalEditorParam || !optionalEditorParam.m_bNeedsPlayableFactions)
@@ -437,11 +441,9 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 		m_iEditorSetGameOverType = EGameOverTypes.EDITOR_NEUTRAL;
 	}
 	
-	
-	/*!
-	Set the gameover type for editor gameover used in the gameover screen
-	\param gameOverType EGameOverTypes gameover type
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Set the gameover type for editor gameover used in the gameover screen
+	//! \param[in] gameOverType EGameOverTypes gameover type
 	void SetEditorGameOverType(EGameOverTypes gameOverType)
 	{
 		m_iEditorSetGameOverType = gameOverType;
@@ -453,10 +455,9 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 		}
 	}
 	
-	/*!
-	Set the factions for editor gameover used in the gameover screen (Generally winning factions)
-	\param factions array of factions 
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Set the factions for editor gameover used in the gameover screen (Generally winning factions)
+	//! \param[in] factions array of factions
 	void SetEditorGameOverFactions(notnull array<int> factions)
 	{
 		m_aEditorSetFactions = factions;
@@ -468,7 +469,8 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 		}
 	}
 	
-	//When game ends
+	//------------------------------------------------------------------------------------------------
+	// When game ends
 	override void OnGameModeEnd(SCR_GameModeEndData data)
 	{
 		//If called on init HUD Manager might not exist so call it with a delay
@@ -480,17 +482,17 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 		StartEndGameFade();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnInitDelayedEndGame()
 	{
 		StartEndGameFade();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
-	{	
-		
-		
+	{
 	}
-};
+}
 
 class SCR_GameOverScreenUIContentData
 {
@@ -506,6 +508,19 @@ class SCR_GameOverScreenUIContentData
 	string m_sSubtitleParam; 
 	string m_sDebriefingParam;
 	
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] gameOverLayout
+	//! \param[in] endGameData
+	//! \param[in] title
+	//! \param[in] subtitle
+	//! \param[in] debriefing
+	//! \param[in] imageTexture
+	//! \param[in] icon
+	//! \param[in] vignetteColor
+	//! \param[in] titleParam
+	//! \param[in] subtitleParam
+	//! \param[in] debriefingParam
 	void SCR_GameOverScreenUIContentData(ResourceName gameOverLayout, SCR_GameModeEndData endGameData, LocalizedString title = string.Empty, LocalizedString subtitle = string.Empty, LocalizedString debriefing = string.Empty, ResourceName imageTexture = ResourceName.Empty, ResourceName icon = ResourceName.Empty, Color vignetteColor = null, string titleParam = string.Empty, string subtitleParam = string.Empty, string debriefingParam = string.Empty)
 	{
 		m_sGameOverLayout = gameOverLayout;
@@ -520,5 +535,4 @@ class SCR_GameOverScreenUIContentData
 		m_sSubtitleParam = subtitleParam;
 		m_sDebriefingParam = debriefingParam;
 	}
-};
-
+}

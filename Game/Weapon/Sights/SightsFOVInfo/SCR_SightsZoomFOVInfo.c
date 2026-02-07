@@ -17,7 +17,7 @@ class SCR_SightsZoomFOVInfo : SCR_BaseVariableSightsFOVInfo
 	[Attribute("6.0", UIWidgets.Slider, desc: "Interpolation speed.", params: "0 100 0.1")]
 	protected float m_fInterpolationSpeed;
 
-	protected ref array<float> m_aFOVs = new ref array<float>;
+	protected ref array<float> m_aFOVs = new array<float>;
 	protected int m_iStepsCount = 1;
 
 	//! Immediate field of view value.
@@ -75,7 +75,14 @@ class SCR_SightsZoomFOVInfo : SCR_BaseVariableSightsFOVInfo
 			return;
 
 		float target = m_aFOVs[m_iCurrentIndex];
-		m_fCurrentFOV = Math.Lerp(m_fCurrentFOV, target, timeSlice * m_fInterpolationSpeed);
+		
+		float t = timeSlice * m_fInterpolationSpeed;
+		if (t > 1.0) 
+			t = 1.0;
+		if (t < 0.0)
+			t = 0.0;
+		
+		m_fCurrentFOV = Math.Lerp(m_fCurrentFOV, target, t);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -192,6 +199,10 @@ class SCR_SightsZoomFOVInfo : SCR_BaseVariableSightsFOVInfo
 		return !float.AlmostEqual(m_fCurrentFOV, m_aFOVs[m_iCurrentIndex]);
 	}
 
+	void ForceUpdate(IEntity owner, BaseSightsComponent sights, float timeSlice)
+	{
+		OnUpdate(owner, sights, timeSlice);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	// Invoker API

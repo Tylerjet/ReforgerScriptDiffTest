@@ -1,6 +1,7 @@
 [BaseContainerProps(), SCR_BaseContainerHintCondition()]
-class SCR_MapHintCondition: SCR_BaseEditorHintCondition
+class SCR_MapHintCondition : SCR_BaseEditorHintCondition
 {
+	//------------------------------------------------------------------------------------------------
 	override protected void OnInitCondition(Managed owner)
 	{
 		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
@@ -10,6 +11,8 @@ class SCR_MapHintCondition: SCR_BaseEditorHintCondition
 			mapEntity.GetOnMapClose().Insert(OnMapClosed);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void OnExitCondition(Managed owner)
 	{
 		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
@@ -21,14 +24,16 @@ class SCR_MapHintCondition: SCR_BaseEditorHintCondition
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] config
 	void OnMapOpen(MapConfiguration config)
 	{
 		Activate();
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] config
 	void OnMapClosed(MapConfiguration config)
 	{
 		Deactivate();
 	}
-};
+}

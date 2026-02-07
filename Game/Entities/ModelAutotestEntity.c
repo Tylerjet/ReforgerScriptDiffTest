@@ -62,7 +62,7 @@ class SCR_ModelAutotestCamera
 	void LogFramesPerSecond(float timeSlice)
 	{
 		if (!m_aFramesPerSecond)
-			m_aFramesPerSecond = new ref array<float>();
+			m_aFramesPerSecond = new array<float>();
 		
 		m_aFramesPerSecond.Insert((float)System.GetFPS());
 	}

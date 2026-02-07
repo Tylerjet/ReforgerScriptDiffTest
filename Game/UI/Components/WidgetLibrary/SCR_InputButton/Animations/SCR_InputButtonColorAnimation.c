@@ -17,7 +17,7 @@ class SCR_InputButtonColorAnimation : WidgetAnimationColor
 		if (m_fValue >= 0.9)
 		{
 			Stop();
-			AnimateWidget.Color(m_wBackground, UIColors.CONTRAST_COLOR, 2);
+			AnimateWidget.Color(m_wBackground, Color.FromInt(UIColors.CONTRAST_COLOR.PackToInt()), 2);
 		}
 
 		// Perform widget animation

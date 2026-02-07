@@ -83,7 +83,7 @@ class SCR_AIGetFireTimes: AITaskScripted
 				SetVariableOut(PORT_FIRE_BURST, random * distBurstTimeFactor);
 				SetVariableOut(PORT_STABILIZATION, 0.5 * distStabilizationTimeFactor);
 				SetVariableOut(PORT_SUPPRESSION, 0.5 + random);
-				SetVariableOut(PORT_REJECT_TIME, 1.0);
+				SetVariableOut(PORT_REJECT_TIME, 0.5);
 				break;
 			}
 			case EWeaponType.WT_MACHINEGUN:
@@ -91,7 +91,7 @@ class SCR_AIGetFireTimes: AITaskScripted
 				SetVariableOut(PORT_FIRE_BURST, random * 2 * distBurstTimeFactor);
 				SetVariableOut(PORT_STABILIZATION, 0.3 * distStabilizationTimeFactor);
 				SetVariableOut(PORT_SUPPRESSION, 0.3 + random*2);
-				SetVariableOut(PORT_REJECT_TIME, 1.0);
+				SetVariableOut(PORT_REJECT_TIME, 0.5);
 				break;
 			}
 			case EWeaponType.WT_SMOKEGRENADE:
@@ -115,7 +115,7 @@ class SCR_AIGetFireTimes: AITaskScripted
 				ClearVariable(PORT_FIRE_BURST);
 				SetVariableOut(PORT_STABILIZATION, 1.0 * distStabilizationTimeFactor);
 				ClearVariable(PORT_SUPPRESSION);
-				SetVariableOut(PORT_REJECT_TIME, 5.0);
+				SetVariableOut(PORT_REJECT_TIME, 1.0);
 				break;
 			}
 			case EWeaponType.WT_ROCKETLAUNCHER:
@@ -139,7 +139,7 @@ class SCR_AIGetFireTimes: AITaskScripted
 				SetVariableOut(PORT_FIRE_BURST, random * 3 * distBurstTimeFactor);
 				ClearVariable(PORT_STABILIZATION);
 				SetVariableOut(PORT_SUPPRESSION, random * 3);
-				SetVariableOut(PORT_REJECT_TIME, 1.0);
+				SetVariableOut(PORT_REJECT_TIME, 0.5);
 				break;
 			}
 		}

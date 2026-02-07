@@ -99,7 +99,8 @@ class SCR_AvailableActionsConditionData
 	protected bool m_bCharacterIsUsingRadio;
 	//! Count of available radios
 	protected bool m_bCharacterRadiosCount;
-
+	bool m_bIsRadioLongRange;
+	bool m_bOwnsLongRangeRadio;
 
 	//! Inventory fetching limitation
 	protected bool m_bCanFetchInventory = true;
@@ -632,6 +633,10 @@ class SCR_AvailableActionsConditionData
 			{
 				// Vehicle
 				IEntity vehicle = slot.GetOwner();
+				
+				// In case the slot is actually in the injected compartment, like the backseats of Jeep
+				vehicle = GetVehicle(vehicle);	
+				
 				if (vehicle != m_CurrentVehicle)
 				{
 					m_CurrentVehicle = vehicle;
@@ -644,7 +649,7 @@ class SCR_AvailableActionsConditionData
 
 				// Temporary turbo time tracking
 				// TODO: Condition activation time
-				m_eCompartmentType = SCR_CompartmentAccessComponent.GetCompartmentType(slot);
+				m_eCompartmentType = slot.GetType();
 				if (m_eCompartmentType == ECompartmentType.Pilot && GetGame().GetInputManager().GetActionTriggered("CarTurbo"))
 					m_fTurboTime += timeSlice;
 				else
@@ -738,11 +743,17 @@ class SCR_AvailableActionsConditionData
 
 		// VON status
 		if (m_VONController)
-			m_bCharacterRadiosCount = m_VONController.GetVONEntries().Count();
+			m_bCharacterRadiosCount = m_VONController.GetVONEntryCount();
 
 		// VON usage
 		if (m_VON)
+		{
 			m_bCharacterIsUsingRadio = m_VON.IsTransmitingRadio();
+			if (m_bCharacterIsUsingRadio)
+				m_bIsRadioLongRange = m_VONController.IsUsingLRR();
+			
+			m_bOwnsLongRangeRadio = m_VONController.IsLRRAvailable();
+		}
 		
 		// Addition data
 		FetchHealthData(timeSlice);
@@ -751,7 +762,22 @@ class SCR_AvailableActionsConditionData
 		if (m_MapEntity && m_MapEntity.IsOpen())
 			FetchMapData(timeSlice);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Gets vehicle entity from potentially attached entity
+	protected IEntity GetVehicle(IEntity vehicle)	
+	{
+		IEntity parent;
+		
+		if (vehicle.Type() != Vehicle)
+			parent = vehicle.GetParent();	
 	
+		if (parent)
+			vehicle = GetVehicle(parent);
+		
+		return vehicle;
+	}
+		
 	//------------------------------------------------------------------------------------------------
 	//! Fetch data related to character health state, bleeding, used medicals, etc.
 	protected void FetchHealthData(float timeSlice)
@@ -772,9 +798,9 @@ class SCR_AvailableActionsConditionData
 			m_fBleedingTime += timeSlice;
 		else
 			m_fBleedingTime = 0;
-		
-		// Concious 
-		m_bIsCharacterConscious = !m_CharacterDamageComponent.GetIsUnconscious();
+
+		if (m_CharacterController)
+			m_bIsCharacterConscious = !m_CharacterController.IsUnconscious();
 		
 		// Has tourniquet on any limb 
 		array<ECharacterHitZoneGroup> limbs = {};
@@ -801,6 +827,9 @@ class SCR_AvailableActionsConditionData
 		SCR_MapElementMoveComponent moveComp;
 		foreach (Widget widget : mapWidgetsUnderCursor)
 		{
+			if (!widget)
+				continue;
+			
 			moveComp = SCR_MapElementMoveComponent.Cast(widget.FindHandler(SCR_MapElementMoveComponent));	
 			if (!moveComp)
 				continue;

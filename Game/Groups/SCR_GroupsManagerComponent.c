@@ -1,11 +1,10 @@
+typedef set<Faction> FactionHolder;
+
 [EntityEditorProps(category: "GameScripted/Groups", description: "Player groups manager, attach to game mode entity!.")]
 class SCR_GroupsManagerComponentClass : SCR_BaseGameModeComponentClass
 {
-};
+}
 
-typedef set<Faction> FactionHolder;
-
-//------------------------------------------------------------------------------------------------
 class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 {
 	[Attribute()]
@@ -31,7 +30,6 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	
 	protected static SCR_GroupsManagerComponent s_Instance;
 	
-	
 #ifdef DEBUG_GROUPS
 	static Widget s_wDebugLayout;
 #endif
@@ -47,26 +45,27 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	protected ref array<SCR_AIGroup> m_aDeletionQueue = {};
 	protected int m_iMovingPlayerToGroupID = -1;
 	
-	
-	
-	//------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	static SCR_GroupsManagerComponent GetInstance()
 	{
 		return s_Instance;
 	}
 	
-	//------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] targetArray
 	void GetGroupFlags(notnull array<ResourceName> targetArray)
 	{
 		targetArray.Copy(m_aGroupFlags);
 	}
-	//------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnPlayableGroupCreated()
 	{
 		return m_OnPlayableGroupCreated;
 	}
 	
-	//------------------------------------------------------------------------
 	protected bool IsProxy()
 	{
 		RplComponent rplComponent = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
@@ -76,7 +75,12 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		return rplComponent.IsProxy();
 	}
 	
-	//------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerID
+	//! \param[in] previousGroupID
+	//! \param[in] newGroupID
+	//! \return
 	int MovePlayerToGroup(int playerID, int previousGroupID, int newGroupID)
 	{
 		m_iMovingPlayerToGroupID = newGroupID;
@@ -105,13 +109,19 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] groupID
+	//! \param[in] playerID
 	void ClearRequests(int groupID, int playerID)
 	{
 		SCR_PlayerControllerGroupComponent playerGroupController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
 		if (!playerGroupController)
-			return;				
+			return;
 		
-		SCR_AIGroup group = FindGroup(groupID);		
+		SCR_AIGroup group = FindGroup(groupID);	
+		if (!group)
+			return;
+		
 		RplId groupRplID = Replication.FindId(group);
 		
 		array<int> requesterIDs = {};
@@ -126,7 +136,11 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		playerGroupController.ClearAllRequesters(groupRplID);
 	}	
 	
-	//------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] groupID
+	//! \param[in] playerID
+	//! \return
 	int AddPlayerToGroup(int groupID, int playerID)
 	{
 		SCR_AIGroup group = FindGroup(groupID);
@@ -140,7 +154,8 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		return groupID;
 	}
 	
-	//------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//!
 	void CreatePredefinedGroups()
 	{			
 		//if(IsProxy()) // TO DO: Commented out coz of initial replication 
@@ -154,7 +169,7 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		if (!groupManager)
 			return;
 		
-		array<Faction> factions = new array<Faction>;
+		array<Faction> factions = {};
 		
 		factionManager.GetFactionsList(factions);	
 		
@@ -179,14 +194,14 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 				gr.SetupGroup(newGroup);
 				
 				if (newGroup.GetGroupFlag().IsEmpty())
-				{			
 					newGroup.SetGroupFlag(0, !scrFaction.GetGroupFlagImageSet().IsEmpty());
-				}				
 			}
-		
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] groupID
+	//! \param[in] playerID
 	//------------------------------------------------------------------------
 	void SetGroupLeader(int groupID, int playerID)
 	{
@@ -208,6 +223,8 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] isAllowed
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	void RPC_DoSetNewGroupsAllowed(bool isAllowed)
 	{
@@ -230,6 +247,8 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] isAllowed
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	void RPC_SetCanPlayersChangeAttributes(bool isAllowed)
 	{
@@ -240,6 +259,9 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		m_OnCanPlayersChangeAttributeChanged.Invoke();
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] groupID
+	//! \param[in] isPrivate
 	//------------------------------------------------------------------------
 	void SetPrivateGroup(int groupID, bool isPrivate)
 	{
@@ -249,6 +271,10 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		group.SetPrivate(isPrivate);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] groupID
+	//! \return
 	//------------------------------------------------------------------------
 	SCR_AIGroup FindGroup(int groupID)
 	{
@@ -264,24 +290,33 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		return null;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	//------------------------------------------------------------------------
 	ScriptInvoker GetOnPlayableGroupRemoved()
 	{
 		return m_OnPlayableGroupRemoved;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	//------------------------------------------------------------------------
 	ScriptInvoker GetOnNewGroupsAllowedChanged()
 	{
 		return m_OnNewGroupsAllowedChanged;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	//------------------------------------------------------------------------
 	ScriptInvoker GetOnCanPlayersChangeAttributeChanged()
 	{
 		return m_OnCanPlayersChangeAttributeChanged;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] playerID
+	//! \return
 	//------------------------------------------------------------------------
 	// Returns group by player id
 	SCR_AIGroup GetPlayerGroup(int playerID)
@@ -307,6 +342,10 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		return null;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerID
+	//! \return
 	//------------------------------------------------------------------------
 	bool IsPlayerInAnyGroup(int playerID)
 	{
@@ -322,6 +361,9 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 #ifdef DEBUG_GROUPS
+
+	//------------------------------------------------------------------------------------------------
+	//!
 	//------------------------------------------------------------------------
 	void UpdateDebugUI()
 	{
@@ -334,7 +376,9 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		
 		//Clear entries
 		while (groupsLayout.GetChildren())
+		{
 			groupsLayout.GetChildren().RemoveFromHierarchy();
+		}
 		
 		array<SCR_AIGroup> playableGroups = GetAllPlayableGroups();
 		for (int i = playableGroups.Count() - 1; i >= 0; i--)
@@ -361,16 +405,19 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 #endif
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] faction
+	//! \return
 	array<SCR_AIGroup> GetPlayableGroupsByFaction(Faction faction)
 	{
 		return m_mPlayableGroups.Get(faction);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void GetAllPlayableGroups(out array <SCR_AIGroup> outAllGroups)
+	//! \param[out] outAllGroups
+	void GetAllPlayableGroups(out array<SCR_AIGroup> outAllGroups)
 	{
-		array<SCR_AIGroup> allGroups = new array<SCR_AIGroup>();
-		array<SCR_AIGroup> currentGroups = new array<SCR_AIGroup>();
+		array<SCR_AIGroup> allGroups = {};
+		array<SCR_AIGroup> currentGroups = {};
 		for (int i = m_mPlayableGroups.Count() - 1; i >= 0; i--)
 		{
 			currentGroups = m_mPlayableGroups.GetElement(i);
@@ -400,6 +447,8 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] group
 	void DeleteGroupDelayed(SCR_AIGroup group)
 	{
 		m_aDeletionQueue.Insert(group);
@@ -407,6 +456,8 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] group
+	//! \param[in] playerID
 	void OnGroupPlayerRemoved(SCR_AIGroup group, int playerID)
 	{
 		// This script should only run on the server
@@ -435,6 +486,8 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] group
+	//! \param[in] playerID
 	void OnGroupPlayerAdded(SCR_AIGroup group, int playerID)
 	{
 		if (IsProxy())
@@ -516,12 +569,15 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] child
 	void OnGroupAgentAdded(AIAgent child)
 	{
 		GetGame().GetCallqueue().CallLater(TuneAgentsRadio, 1, false, child);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] group
+	//! \param[in] child
 	void OnGroupAgentRemoved(SCR_AIGroup group, AIAgent child)
 	{
 		return; //For now we don't delete empty groups
@@ -562,6 +618,8 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] group
 	void DeleteAndUnregisterGroup(notnull SCR_AIGroup group)
 	{
 		m_OnPlayableGroupRemoved.Invoke(group);
@@ -570,6 +628,8 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] group
 	void UnregisterGroup(notnull SCR_AIGroup group)
 	{
 		Faction faction = group.GetFaction();
@@ -610,13 +670,15 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] group
 	void RegisterGroup(SCR_AIGroup group)
 	{
 		array<SCR_AIGroup> groups;
 		if (!m_mPlayableGroups.Find(group.GetFaction(), groups))
 		{
 			// No array found, let's make one
-			groups = new array<SCR_AIGroup>();
+			groups = {};
 			m_mPlayableGroups.Insert(group.GetFaction(), groups);
 		}
 		
@@ -628,6 +690,9 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] groupID
+	//! \param[in] factionIndex
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	void RPC_DoSetGroupFaction(RplId groupID, int factionIndex)
 	{
@@ -695,6 +760,9 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] faction
+	//! \return
 	SCR_AIGroup TryFindEmptyGroup(notnull Faction faction)
 	{
 		array<SCR_AIGroup> factionGroups = GetPlayableGroupsByFaction(faction);
@@ -714,6 +782,9 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] faction
+	//! \return
 	SCR_AIGroup CreateNewPlayableGroup(Faction faction)
 	{
 		RplComponent rplComp = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
@@ -733,11 +804,12 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		if (!group)
 			return null;
 		
+		group.DeactivateAI();
+		
 		group.SetFaction(faction);
 		RegisterGroup(group);
 		AssignGroupFrequency(group);
 		AssignGroupID(group);
-		
 		
 		//if there is commanding present, we create the slave group for AIs at the creation of the group
 		SCR_CommandingManagerComponent commandingManager = SCR_CommandingManagerComponent.GetInstance();
@@ -751,7 +823,7 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 			if (!slaveGroup)
 				return null;
 			
-			slaveGroup.Deactivate();
+			slaveGroup.DeactivateAI();
 			
 			RplComponent RplComp = RplComponent.Cast(slaveGroup.FindComponent(RplComponent));
 			if (!RplComp)
@@ -776,6 +848,10 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] faction
+	//! \param[in] ownGroup
+	//! \param[in] respectPrivate
+	//! \return
 	SCR_AIGroup GetFirstNotFullForFaction(notnull Faction faction, SCR_AIGroup ownGroup = null, bool respectPrivate = false)
 	{
 		SCR_AIGroup group;
@@ -796,6 +872,9 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] newGroupFaction
+	//! \return
 	bool CanCreateNewGroup(notnull Faction newGroupFaction)
 	{
 		SCR_Faction scrFaction = SCR_Faction.Cast(newGroupFaction);
@@ -822,12 +901,16 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	bool CanPlayersChangeAttributes()
 	{
 		return m_bCanPlayersChangeAttributes;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] frequencyFaction
+	//! \return
 	int GetFreeFrequency(Faction frequencyFaction)
 	{
 		FactionHolder usedForFactions = new FactionHolder();
@@ -865,6 +948,9 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] frequency
+	//! \param[in] faction
 	void ClaimFrequency(int frequency, Faction faction)
 	{
 		FactionHolder usedForFactions = new FactionHolder();
@@ -883,6 +969,10 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] frequency
+	//! \param[in] faction
+	//! \return
 	bool IsFrequencyClaimed(int frequency, Faction faction)
 	{
 		FactionHolder usedForFactions = new FactionHolder();
@@ -896,6 +986,9 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] frequency
+	//! \param[in] faction
 	void ReleaseFrequency(int frequency, Faction faction)
 	{
 		if (!faction || !frequency)
@@ -916,6 +1009,9 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] compID
+	//! \param[in] slaveID
 	void RequestSetGroupSlave(RplId compID, RplId slaveID)
 	{
 		RPC_DoSetGroupSlave(compID, slaveID);
@@ -924,12 +1020,18 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] compID
+	//! \param[in] slaveID
 	void RpcWrapper(RplId compID, RplId slaveID)
 	{
 		Rpc(RPC_DoSetGroupSlave, compID, slaveID);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] masterGroupID
+	//! \param[in] slaveGroupID
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	void RPC_DoSetGroupSlave(RplId masterGroupID, RplId slaveGroupID)
 	{
@@ -955,6 +1057,9 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] groupRplCompID
+	//! \param[in] aiCharacterComponentID
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	void RPC_DoRemoveAIMemberFromGroup(RplId groupRplCompID, RplId aiCharacterComponentID)
 	{		
@@ -968,6 +1073,10 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] groupRplCompID
+	//! \param[in] aiCharacterComponentID
+	//! \param[out] members
+	//! \param[out] AIMember
 	void GetAIMembers(RplId groupRplCompID, RplId aiCharacterComponentID, out array<SCR_ChimeraCharacter> members, out SCR_ChimeraCharacter AIMember)
 	{
 		RplComponent rplComp = RplComponent.Cast(Replication.FindItem(aiCharacterComponentID));
@@ -990,6 +1099,9 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] groupRplCompID
+	//! \param[in] aiCharacterComponentID
 	void AskRemoveAiMemberFromGroup(RplId groupRplCompID, RplId aiCharacterComponentID)
 	{
 		RPC_DoRemoveAIMemberFromGroup(groupRplCompID, aiCharacterComponentID);
@@ -997,6 +1109,9 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] groupRplCompID
+	//! \param[in] aiCharacterComponentID
 	void AskAddAiMemberToGroup(RplId groupRplCompID, RplId aiCharacterComponentID)
 	{
 		RPC_DoAddAIMemberToGroup(groupRplCompID, aiCharacterComponentID);
@@ -1004,6 +1119,9 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] groupRplCompID
+	//! \param[in] aiCharacterComponentID
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	void RPC_DoAddAIMemberToGroup(RplId groupRplCompID, RplId aiCharacterComponentID)
 	{
@@ -1017,6 +1135,8 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] group
+	//! \param[in] agent
 	void OnAIMemberRemoved(SCR_AIGroup group, AIAgent agent)
 	{
 		if (!group || !agent)
@@ -1042,18 +1162,21 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetConfirmedByPlayer()
 	{
 		return m_bConfirmedByPlayer;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetNewGroupsAllowed()
 	{
 		return m_bNewGroupsAllowed;
 	} 
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] isConfirmed
 	void SetConfirmedByPlayer(bool isConfirmed)
 	{
 		m_bConfirmedByPlayer = isConfirmed;
@@ -1066,6 +1189,7 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void DeleteGroups()
 	{
 		for (int i = m_aDeletionQueue.Count() - 1; i >= 0; i--)
@@ -1074,11 +1198,13 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 			m_aDeletionQueue.Remove(i);
 		}
 		
-		
 		ClearEventMask(GetOwner(), EntityEvent.FRAME);
 	}
 	
-		//------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerId
+	//! \param[in] player
 	void TunePlayersFrequency(int playerId, IEntity player)
 	{
 		PlayerController controller = GetGame().GetPlayerManager().GetPlayerController(playerId);
@@ -1098,7 +1224,7 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 			return;
 
 		SCR_PlayerControllerGroupComponent groupComponent = SCR_PlayerControllerGroupComponent.Cast(controller.FindComponent(SCR_PlayerControllerGroupComponent));
-		if (!groupComponent)
+		if (!groupComponent || groupComponent.GetActualGroupFrequency() == 0)
 			return;
 		
 		BaseTransceiver transceiver = radioComponent.GetTransceiver(0);
@@ -1134,6 +1260,7 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] reconnectData
 	void OnPlayerReconnected(SCR_ReconnectData reconnectData)
 	{
 		int playerID = reconnectData.m_iPlayerId;
@@ -1186,6 +1313,10 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_GroupsManagerComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		if (!s_Instance)
@@ -1193,6 +1324,7 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_GroupsManagerComponent()
 	{
 #ifdef DEBUG_GROUPS
@@ -1200,5 +1332,4 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 			s_wDebugLayout.RemoveFromHierarchy();
 #endif
 	}
-
-};
+}

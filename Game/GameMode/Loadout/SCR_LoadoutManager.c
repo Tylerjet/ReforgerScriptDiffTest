@@ -1,47 +1,37 @@
 [EntityEditorProps(category: "GameScripted/GameMode", description: "temp loadout selection.", color: "0 0 255 255")]
-class SCR_LoadoutManagerClass: GenericEntityClass
+class SCR_LoadoutManagerClass : GenericEntityClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_LoadoutManager : GenericEntity
 {
-	static const int INVALID_LOADOUT_INDEX = -1;
+	protected static const int INVALID_LOADOUT_INDEX = -1;
 	
 	[Attribute("", UIWidgets.Object, category: "Loadout Manager")]
-	ref array<ref SCR_BasePlayerLoadout> m_aPlayerLoadouts;
+	protected ref array<ref SCR_BasePlayerLoadout> m_aPlayerLoadouts;
 	
-	/*
-		List of all player loadout infos in no particular order. Maintained by the authority.
-	*/
+	//! List of all player loadout infos in no particular order. Maintained by the authority.
 	[RplProp(onRplName: "OnPlayerLoadoutInfoChanged")]
-	protected ref array<ref SCR_PlayerLoadoutInfo> m_aPlayerLoadoutInfo = new array<ref SCR_PlayerLoadoutInfo>();
-	/*!
-		Map of previous player <playerId : loadoutIndex>.
-	*/
+	protected ref array<ref SCR_PlayerLoadoutInfo> m_aPlayerLoadoutInfo = {};
+
+	//! Map of previous player <playerId : loadoutIndex>.
 	protected ref map<int, int> m_PreviousPlayerLoadouts = new map<int, int>();
-	/*!
-		List of indices of loadouts whose count has changed since last update.
-	*/
+
+	//! List of indices of loadouts whose count has changed since last update.
 	protected ref set<int> m_ChangedLoadouts = new set<int>();
-	/*!
-		Local mapping of playerId to player loadout info.
-	*/
+
+	//! Local mapping of playerId to player loadout info.
 	protected ref map<int, ref SCR_PlayerLoadoutInfo> m_MappedPlayerLoadoutInfo = new map<int, ref SCR_PlayerLoadoutInfo>();
-	/*
-		Mapping of loadout id : player count
-	*/
+
+	//! Mapping of loadout id:player count
 	protected ref map<int, int> m_PlayerCount = new map<int, int>();
 
-	protected ref ScriptInvoker<SCR_BasePlayerLoadout, int> m_OnMappedPlayerLoadoutInfoChanged = new ScriptInvoker();
-	
+	protected ref ScriptInvoker<SCR_BasePlayerLoadout, int> m_OnMappedPlayerLoadoutInfoChanged;
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Return assigned loadout of provided player by their id.
-		\param playerId Id of target player corresponding to PlayerController/PlayerManager player id.		
-		\return loadout instance if loadout is assigned, null otherwise.
-	*/
+	//! Return assigned loadout of provided player by their id.
+	//! \param[in] playerId Id of target player corresponding to PlayerController/PlayerManager player id.
+	//! \return loadout instance if loadout is assigned, null otherwise.
 	SCR_BasePlayerLoadout GetPlayerLoadout(int playerId)
 	{
 		SCR_PlayerLoadoutInfo info;
@@ -55,14 +45,12 @@ class SCR_LoadoutManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Return loadout of provided player by their id.
-		Static variant of SCR_LoadoutManager.GetPlayerLoadout that uses
-		registered SCR_LoadoutManager from the ArmaReforgerScripted game instance.
-		\param playerId Id of target player corresponding to PlayerController/PlayerManager player id.
-		\throws Exception if no SCR_LoadoutManager is present in the world.
-		\return SCR_BasePlayerLoadout instance if loadout is assigned, null otherwise.
-	*/
+	//! Return loadout of provided player by their id.
+	//! Static variant of SCR_LoadoutManager.GetPlayerLoadout that uses
+	//! registered SCR_LoadoutManager from the ArmaReforgerScripted game instance.
+	//! \param[in] playerId Id of target player corresponding to PlayerController/PlayerManager player id.
+	//! \throws Exception if no SCR_LoadoutManager is present in the world.
+	//! \return SCR_BasePlayerLoadout instance if loadout is assigned, null otherwise.
 	static SCR_BasePlayerLoadout SGetPlayerLoadout(int playerId)
 	{
 		SCR_LoadoutManager loadoutManager = GetGame().GetLoadoutManager();
@@ -70,11 +58,9 @@ class SCR_LoadoutManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Return loadout of of local player.
-		\throws Exception if no SCR_LoadoutManager is present in the world.
-		\return SCR_BasePlayerLoadout instance if loadout is assigned, null otherwise.
-	*/
+	//! Return loadout of of local player.
+	//! \throws Exception if no SCR_LoadoutManager is present in the world.
+	//! \return SCR_BasePlayerLoadout instance if loadout is assigned, null otherwise.
 	SCR_BasePlayerLoadout GetLocalPlayerLoadout()
 	{
 		int localPlayerId = SCR_PlayerController.GetLocalPlayerId();
@@ -82,13 +68,11 @@ class SCR_LoadoutManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Return loadout of local player.
-		Static variant of SCR_LoadoutManager.GetLocalPlayerLoadout that uses
-		registered SCR_LoadoutManager from the ArmaReforgerScripted game instance.
-		\throws Exception if no SCR_LoadoutManager is present in the world.
-		\return SCR_BasePlayerLoadout instance if loadout is assigned, null otherwise.
-	*/
+	//! Return loadout of local player.
+	//! Static variant of SCR_LoadoutManager.GetLocalPlayerLoadout that uses
+	//! registered SCR_LoadoutManager from the ArmaReforgerScripted game instance.
+	//! \throws Exception if no SCR_LoadoutManager is present in the world.
+	//! \return SCR_BasePlayerLoadout instance if loadout is assigned, null otherwise.
 	static SCR_BasePlayerLoadout SGetLocalPlayerLoadout()
 	{
 		SCR_LoadoutManager loadoutManager = GetGame().GetLoadoutManager();
@@ -96,10 +80,9 @@ class SCR_LoadoutManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Returns current count of players assigned to the provided loadout.
-		\return Number of players or always 0 if no loadout is provided.
-	*/
+	//! Returns current count of players assigned to the provided loadout.
+	//! \param[in] loadout
+	//! \return Number of players or always 0 if no loadout is provided.
 	int GetLoadoutPlayerCount(SCR_BasePlayerLoadout loadout)
 	{
 		if (!loadout)
@@ -111,13 +94,12 @@ class SCR_LoadoutManager : GenericEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Return count of players assigned to the provided loadout.
-		Static variant of SCR_LoadoutManager.GetLoadoutPlayerCount that uses
-		registered FactionManager from the ArmaReforgerScripted game instance.
-		\throws Exception if no FactionManager is present in the world.
-		\return Player count for provided loadout or 0 if no loadout is provided.
-	*/
+	//! Return count of players assigned to the provided loadout.
+	//! Static variant of SCR_LoadoutManager.GetLoadoutPlayerCount that uses
+	//! registered FactionManager from the ArmaReforgerScripted game instance.
+	//! \throws Exception if no FactionManager is present in the world.
+	//! \param[in] loadout
+	//! \return Player count for provided loadout or 0 if no loadout is provided.
 	static int SGetLoadoutPlayerCount(SCR_BasePlayerLoadout loadout)
 	{
 		SCR_LoadoutManager loadoutManager = GetGame().GetLoadoutManager();
@@ -125,9 +107,7 @@ class SCR_LoadoutManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Update local player loadout mapping.
-	*/
+	//! Update local player loadout mapping.
 	protected void OnPlayerLoadoutInfoChanged()
 	{
 		// Store previous loadouts, so we can raise events
@@ -186,19 +166,17 @@ class SCR_LoadoutManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Anyone:
-			Event raised when provided faction's player count changes.
-
-		Note: Order of changes is not fully deterministic, e.g. when changing faction from A to B,
-			this method might be invoked in the order B, A instead.
-
-		\param loadout The loadout for which affiliated player count changed.
-		\param newCount The new number of players that are using this loadout.
-	*/
+	//! Anyone:
+	//! 	Event raised when provided faction's player count changes.
+	//!
+	//! Note: Order of changes is not fully deterministic, e.g. when changing faction from A to B,
+	//! this method might be invoked in the order B, A instead.
+	//! \param[in] loadout The loadout for which affiliated player count changed.
+	//! \param[in] newCount The new number of players that are using this loadout.
 	protected void OnPlayerLoadoutCountChanged(SCR_BasePlayerLoadout loadout, int newCount)
 	{
-		m_OnMappedPlayerLoadoutInfoChanged.Invoke(loadout, newCount);
+		if (m_OnMappedPlayerLoadoutInfoChanged)
+			m_OnMappedPlayerLoadoutInfoChanged.Invoke(loadout, newCount);
 		
 		#ifdef _ENABLE_RESPAWN_LOGS
 		ResourceName res;
@@ -208,10 +186,8 @@ class SCR_LoadoutManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Authority:
-			Event raised when provided player component has a loadout set.
-	*/
+	//! Authority:
+	//! 	Event raised when provided player component has a loadout set.
 	protected void OnPlayerLoadoutSet_S(SCR_PlayerLoadoutComponent playerComponent, SCR_BasePlayerLoadout loadout)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
@@ -220,10 +196,9 @@ class SCR_LoadoutManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Authority:
-			Update player loadout info for target player with their up-to-date state.
-	*/
+	//! Authority:
+	//! 	Update player loadout info for target player with their up-to-date state.
+	//! \param[in] playerLoadoutComponent
 	void UpdatePlayerLoadout_S(SCR_PlayerLoadoutComponent playerLoadoutComponent)
 	{
 		int targetPlayerId = playerLoadoutComponent.GetPlayerController().GetPlayerId();
@@ -270,7 +245,6 @@ class SCR_LoadoutManager : GenericEntity
 			return;
 		}
 
-
 		// Insert new record
 		SCR_PlayerLoadoutInfo newInfo = SCR_PlayerLoadoutInfo.Create(targetPlayerId);
 		newInfo.SetLoadoutIndex(targetLoadoutIndex);
@@ -294,26 +268,27 @@ class SCR_LoadoutManager : GenericEntity
 		Replication.BumpMe();
 	}
 	
-	/*!
-		Authority:
-			Return whether provided loadout can be set for the requesting player.
-			Game logic can be implemented here, e.g. maximum slots.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Authority:
+	//! Return whether provided loadout can be set for the requesting player.
+	//! Game logic can be implemented here, e.g. maximum slots.
+	//! \param[in] playerLoadoutComponent
+	//! \param[in] loadout
+	//! \return
 	bool CanAssignLoadout_S(SCR_PlayerLoadoutComponent playerLoadoutComponent, SCR_BasePlayerLoadout loadout)
 	{
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	array<ref SCR_BasePlayerLoadout> GetPlayerLoadouts()
 	{ 
 		return m_aPlayerLoadouts;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Returns the number of loadouts provided by this manager or 0 if none.
-	*/
+	//! Returns the number of loadouts provided by this manager or 0 if none.
 	int GetLoadoutCount()
 	{
 		if (!m_aPlayerLoadouts)
@@ -323,26 +298,23 @@ class SCR_LoadoutManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Returns index of provided loadout or -1 if none.
-	*/
+	//! Returns index of provided loadout or -1 if none.
+	//! \param[in] loadout
 	int GetLoadoutIndex(SCR_BasePlayerLoadout loadout)
 	{
-		int i = 0;
-		foreach (auto inst : m_aPlayerLoadouts)
+		foreach (int i, SCR_BasePlayerLoadout inst : m_aPlayerLoadouts)
 		{
 			if (inst == loadout)
 				return i;
-			
-			i++;
-		}		
+		}
+
 		return -1;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Returns loadout at provided index or null if none.
-	*/
+	//! Returns loadout at provided index or null if none.
+	//! \param[in] index
+	//! \return
 	SCR_BasePlayerLoadout GetLoadoutByIndex(int index)
 	{
 		if (index < 0 || index >= m_aPlayerLoadouts.Count())
@@ -352,9 +324,9 @@ class SCR_LoadoutManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Returns the first loadout with the provided name, or null if none were found.
-	*/
+	//! Returns the first loadout with the provided name, or null if none were found.
+	//! \param[in] name
+	//! \return
 	SCR_BasePlayerLoadout GetLoadoutByName(string name)
 	{
 		int count = m_aPlayerLoadouts.Count();
@@ -371,18 +343,20 @@ class SCR_LoadoutManager : GenericEntity
 	
 	//------------------------------------------------------------------------------------------------
 	//! Returns random loadout that belongs to provided faction or null if none.
+	//! \param[in] faction
 	SCR_BasePlayerLoadout GetRandomFactionLoadout(Faction faction)
 	{
 		array<ref SCR_BasePlayerLoadout> loadouts = {};
-		int count = GetPlayerLoadoutsByFaction(faction, loadouts);
-		if (count == 0)
+		if (GetPlayerLoadoutsByFaction(faction, loadouts) == 0)
 			return null;
 		
-		int randomIndex = Math.RandomInt(0, count);
-		return loadouts[randomIndex];
+		return loadouts.GetRandomElement();
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] faction
+	//! \param[out] outLoadouts
+	//! \return
 	int GetPlayerLoadoutsByFaction(Faction faction, out notnull array<ref SCR_BasePlayerLoadout> outLoadouts)
 	{
 		outLoadouts.Clear();
@@ -423,6 +397,8 @@ class SCR_LoadoutManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[out] outLoadouts
+	//! \return
 	int GetPlayerLoadouts(out notnull array<SCR_BasePlayerLoadout> outLoadouts)
 	{
 		int outCount = 0;
@@ -442,22 +418,24 @@ class SCR_LoadoutManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] faction
+	//! \return
 	int GetRandomLoadoutIndex(Faction faction)
 	{
 		if (!m_aPlayerLoadouts)
 			return -1;	
 			
-		array<ref SCR_BasePlayerLoadout> loadouts = new array<ref SCR_BasePlayerLoadout>();
+		array<ref SCR_BasePlayerLoadout> loadouts = {};
 		int count = GetPlayerLoadoutsByFaction(faction, loadouts);
 		if (count <= 0)
 			return -1;
 		
-		int randomIndex = Math.RandomInt(0, count);
-		return randomIndex;
+		return Math.RandomInt(0, count);
 	}
 
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetRandomLoadoutIndex()
 	{
 		if (!m_aPlayerLoadouts)
@@ -467,25 +445,35 @@ class SCR_LoadoutManager : GenericEntity
 		if (count <= 0)
 			return -1;
 		
-		int randomIndex = Math.RandomInt(0, count);
-		return randomIndex;
+		return Math.RandomInt(0, count);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_BasePlayerLoadout GetRandomLoadout()
 	{
 		int randomIndex = GetRandomLoadoutIndex();
 		if (randomIndex < 0)
 			return null;
+
 		return m_aPlayerLoadouts[randomIndex];
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnMappedPlayerLoadoutInfoChanged()
 	{
+		if (!m_OnMappedPlayerLoadoutInfoChanged)
+			m_OnMappedPlayerLoadoutInfoChanged = new ScriptInvoker();
+
 		return m_OnMappedPlayerLoadoutInfoChanged;
 	}
 	
 	#ifdef ENABLE_DIAG
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] owner
+	//! \param[in] timeSlice
 	protected override void EOnDiag(IEntity owner, float timeSlice)
 	{
 		super.EOnDiag(owner, timeSlice);
@@ -506,6 +494,9 @@ class SCR_LoadoutManager : GenericEntity
 	#endif
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] parent
 	void SCR_LoadoutManager(IEntitySource src, IEntity parent)
 	{
 		GetGame().RegisterLoadoutManager(this);
@@ -516,9 +507,12 @@ class SCR_LoadoutManager : GenericEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! destructor
 	void ~SCR_LoadoutManager()
 	{
+		#ifdef ENABLE_DIAG
 		DisconnectFromDiagSystem();
+		#endif
 		GetGame().UnregisterLoadoutManager(this);
 	}
-};
+}

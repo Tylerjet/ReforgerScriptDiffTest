@@ -1,7 +1,6 @@
 class SCR_ArsenalComponentClass : ScriptComponentClass
 {
-
-};
+}
 
 void ScriptInvokerArsenalUpdatedMethod(array<ResourceName> arsenalItems);
 typedef func ScriptInvokerArsenalUpdatedMethod;
@@ -9,6 +8,9 @@ typedef ScriptInvokerBase<ScriptInvokerArsenalUpdatedMethod> ScriptInvokerArsena
 
 class SCR_ArsenalComponent : ScriptComponent
 {
+	[Attribute(SCR_EArsenalSupplyCostType.DEFAULT.ToString(), desc: "Cost type of items. If it is not DEFAULT than it will try to get the diffrent supply cost if the item has it assigned" , uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(SCR_EArsenalSupplyCostType), category: "Settings")]
+	protected SCR_EArsenalSupplyCostType m_eSupplyCostType;
+	
 	[Attribute("", desc: "Toggle supported SCR_EArsenalItemType by this arsenal, items are gathered from SCR_Faction or from the overwrite config", uiwidget: UIWidgets.Flags, enums: ParamEnumArray.FromEnum(SCR_EArsenalItemType), category: "Settings")]
 	protected SCR_EArsenalItemType m_eSupportedArsenalItemTypes;
 
@@ -33,14 +35,11 @@ class SCR_ArsenalComponent : ScriptComponent
 	[Attribute("0", desc: "If false it will get the arsenals current faction and change when the faction is updated. If true it will never check the on faction and use the default faction assigned. Use this if you want the content to never change or if there is never a current faction", category: "Settings")]
 	protected bool m_bAlwaysUseDefaultFaction;
 	
-	[Attribute("1", desc: "If true items within the arsenal use supplies if false than it will only use supplies if the global supply system is enabled", category: "Settings")]
-	protected bool m_bUseSupplies;
-	
 	protected bool m_bArsenalEnabled = true;
 	protected SCR_EArsenalItemMode m_eOnDisableArsenalModes; //~ Saves the arsenal item mode when the arsenal is disabled and the mode is set to 0
 	
-	protected bool m_bArsenalSavingDisplayedIfDisabled = true; ///< This is auto set on init and when arsenal save type is changed. If the prefab has saving disabled than the arsenal save action will never show unless saving has been changed in runtime
-	protected bool m_bHasSaveArsenalAction = false; ///< Set by action in action manager for the editor to know if the Arsenal save action exists on this arsenal
+	protected bool m_bArsenalSavingDisplayedIfDisabled = true;	//!< This is auto set on init and when arsenal save type is changed. If the prefab has saving disabled than the arsenal save action will never show unless saving has been changed in runtime
+	protected bool m_bHasSaveArsenalAction = false;				//!< Set by action in action manager for the editor to know if the Arsenal save action exists on this arsenal
 	
 	protected SCR_ArsenalInventoryStorageManagerComponent m_InventoryComponent;
 	protected UniversalInventoryStorageComponent m_StorageComponent;
@@ -53,12 +52,14 @@ class SCR_ArsenalComponent : ScriptComponent
 	protected bool m_bIsClearingInventory;
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsArsenalEnabled()
 	{
 		return m_bArsenalEnabled;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] enable
 	void SetArsenalEnabled(bool enable)
 	{
 		if (m_bArsenalEnabled == enable)
@@ -90,76 +91,59 @@ class SCR_ArsenalComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return Supply cost type which will be used to get the cost of items in the arsenal. Default is used if the item does not have the specific supply cost type
+	SCR_EArsenalSupplyCostType GetSupplyCostType()
+	{
+		return m_eSupplyCostType;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsArsenalUsingSupplies()
 	{
-		return m_bUseSupplies;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void SetArsenalUseSupplies(bool useSupplies)
-	{
-		if (m_bUseSupplies == useSupplies)
-			return;
+		IEntity owner = GetOwner();
+		if (!owner)
+			return null;
 		
-		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-		if ((gameMode && !gameMode.IsMaster()) || (!gameMode && Replication.IsClient()))
-			return;
-			
-		SetUseSuppliesBroadcast(useSupplies);
-		Rpc(SetUseSuppliesBroadcast, useSupplies);	
+		SCR_ResourceComponent resourceComponent = SCR_ResourceComponent.FindResourceComponent(owner);
+		
+		return resourceComponent && resourceComponent.IsResourceTypeEnabled();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	protected void SetUseSuppliesBroadcast(bool useSupplies)
-	{
-		m_bUseSupplies = useSupplies;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	/*!
-	\return Get Current Arsenal save type
-	*/
+	//! \return Get Current Arsenal save type
 	SCR_EArsenalSaveType GetArsenalSaveType()
 	{
 		return m_eArsenalSaveType;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return If arsenal action can be displayed if disabled. This is auto set on init and when arsenal save type is changed. If the prefab has saving disabled than the arsenal save action will never show unless saving has been changed in runtime
-	*/
+	//! \return If arsenal action can be displayed if disabled. This is auto set on init and when arsenal save type is changed. If the prefab has saving disabled than the arsenal save action will never show unless saving has been changed in runtime
 	bool IsArsenalSavingDisplayedIfDisabled()
 	{
 		return m_bArsenalSavingDisplayedIfDisabled;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Set if arsenal save action is on the action manager.
-	Set by the save action on init
-	\param Set true if action is availible
-	*/
+	//! Set if arsenal save action is on the action manager.
+	//! Set by the save action on init
+	//! \param[in] Set true if action is available
 	void SetHasSaveArsenalAction(bool hasSaveArsenalAction)
 	{
 		m_bHasSaveArsenalAction = hasSaveArsenalAction;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check if Arsenal has an arsenal action attached to it. If true it will allow the editor to set if saving is allowed
-	\return True if Arsenal action is availible
-	*/
+	//! Check if Arsenal has an arsenal action attached to it. If true it will allow the editor to set if saving is allowed
+	//! \return True if Arsenal action is available
 	bool HasSaveArsenalAction()
 	{
 		return m_bHasSaveArsenalAction;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Set Arsenal Save type (Server Only)
-	\param saveType New Save type to set
-	*/
+	//! Set Arsenal Save type (Server Only)
+	//! \param[in] saveType New Save type to set
 	void SetArsenalSaveType(SCR_EArsenalSaveType saveType)
 	{		
 		if (m_eArsenalSaveType == saveType)
@@ -170,6 +154,8 @@ class SCR_ArsenalComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] saveType
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	void RPL_SetArsenalSaveType(SCR_EArsenalSaveType saveType)
 	{
@@ -184,63 +170,30 @@ class SCR_ArsenalComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_EArsenalItemType GetSupportedArsenalItemTypes()
 	{
 		return m_eSupportedArsenalItemTypes;
 	}
 	
-		
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Returns the first arsenal component found on the children of the given parent
-	\param parent To check children for arsenal component
-	\return Arsenal Component if any is found
-	*/
-	static SCR_ArsenalComponent GetArsenalComponentFromChildren(notnull IEntity parent)
+	//! Returns the first arsenal component found on the children of the given parent
+	//! \param[in] parent To check children for arsenal component
+	//! \return Arsenal Component if any is found, null otherwise
+	static SCR_ArsenalComponent FindArsenalComponent(notnull IEntity entity, bool getFromSlotted = true)
 	{
 		SCR_ArsenalComponent arsenalComponent;
-
-		//~ Get arsenal component from slotted entities (if vehicle)
-		if (Vehicle.Cast(parent))
-		{
-			SlotManagerComponent slotManager = SlotManagerComponent.Cast(parent.FindComponent(SlotManagerComponent));
-			if (!slotManager)
-				return null;
-			
-			array<EntitySlotInfo> slotInfos = {};
-			slotManager.GetSlotInfos(slotInfos);
-			IEntity slotEntity;
-			
-			foreach (EntitySlotInfo slotInfo : slotInfos)
-			{
-				slotEntity = slotInfo.GetAttachedEntity();
-				if (!slotEntity)
-					continue;
-				
-				arsenalComponent = SCR_ArsenalComponent.Cast(slotEntity.FindComponent(SCR_ArsenalComponent));
-				if (arsenalComponent)
-					return arsenalComponent;
-			}
-			
-			return arsenalComponent;
-		}
 		
-		//~ Get arsenal component from children
-		IEntity child = parent.GetChildren();
-		while (child)
-		{
-			arsenalComponent = SCR_ArsenalComponent.Cast(child.FindComponent(SCR_ArsenalComponent));
-			if (arsenalComponent)
-				return arsenalComponent;
-			
-			child = child.GetSibling();
-		}
+		if (getFromSlotted)
+			arsenalComponent = SCR_ArsenalComponent.Cast(SCR_EntityHelper.FindComponent(entity, SCR_ArsenalComponent));
+		else
+			arsenalComponent = SCR_ArsenalComponent.Cast(entity.FindComponent(SCR_ArsenalComponent));
 		
-		//~ Not found
-		return null;
+		return arsenalComponent;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] types
 	void SetSupportedArsenalItemTypes(SCR_EArsenalItemType types)
 	{
 		m_eSupportedArsenalItemTypes = types;
@@ -248,12 +201,14 @@ class SCR_ArsenalComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_EArsenalItemMode GetSupportedArsenalItemModes()
 	{
 		return m_eSupportedArsenalItemModes;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] modes
 	void SetSupportedArsenalItemModes(SCR_EArsenalItemMode modes)
 	{
 		m_eSupportedArsenalItemModes = modes;
@@ -261,28 +216,30 @@ class SCR_ArsenalComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_EArsenalAttributeGroup GetEditableAttributeGroups()
 	{
 		return m_eEditableAttributeGroups;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_ArsenalInventoryStorageManagerComponent GetArsenalInventoryComponent()
 	{
 		return m_InventoryComponent;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get overwrite Arsenal config
-	\return Config of overwrite arsenal. Can be null if not overwritten
-	*/
+	//! Get overwrite Arsenal config
+	//! \return Config of overwrite arsenal. Can be null if not overwritten
 	SCR_ArsenalItemListConfig GetOverwriteArsenalConfig()
 	{
 		return m_OverwriteArsenalConfig;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[out] availablePrefabs
+	//! \return
 	bool GetAvailablePrefabs(out notnull array<ResourceName> availablePrefabs)
 	{
 		array<SCR_ArsenalItem> arsenalItems = {};
@@ -303,6 +260,7 @@ class SCR_ArsenalComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_Faction GetAssignedFaction()
 	{
 		//~ Safty if get assigned faction is called before the init
@@ -328,6 +286,9 @@ class SCR_ArsenalComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[out] filteredArsenalItems
+	//! \param[in] requiresDisplayType
+	//! \return
 	bool GetFilteredArsenalItems(out notnull array<SCR_ArsenalItem> filteredArsenalItems, EArsenalItemDisplayType requiresDisplayType = -1)
 	{
 		//~ Is overwritting Arsenal
@@ -348,11 +309,9 @@ class SCR_ArsenalComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get filtered overwrite Arsenal EWorkshopItemState
-	\param[out] List of all filtered arsenal items
-	\return true if any filtered items were found
-	*/
+	//! Get filtered overwrite Arsenal EWorkshopItemState
+	//! \param[out] List of all filtered arsenal items
+	//! \return true if any filtered items were found
 	bool GetFilteredOverwriteArsenalItems(out notnull array<SCR_ArsenalItem> filteredArsenalItems, EArsenalItemDisplayType requiresDisplayType = -1)
 	{
 		filteredArsenalItems = m_OverwriteArsenalConfig.GetFilteredArsenalItems(m_eSupportedArsenalItemTypes, m_eSupportedArsenalItemModes, requiresDisplayType);
@@ -360,12 +319,15 @@ class SCR_ArsenalComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	//~ Used by SCR_ArsenalDisplayComponent
 	void ClearArsenal()
 	{
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] faction unused parameter
 	void RefreshArsenal(SCR_Faction faction = null)
 	{
 		ClearArsenal();
@@ -395,6 +357,7 @@ class SCR_ArsenalComponent : ScriptComponent
 			Rpc(RPC_OnArsenalUpdated, m_eSupportedArsenalItemTypes, m_eSupportedArsenalItemModes);	
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void RPC_OnArsenalUpdated(SCR_EArsenalItemType itemTypes, SCR_EArsenalItemMode itemModes)
 	{
@@ -434,9 +397,7 @@ class SCR_ArsenalComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return Get scriptinvoker called when arsenal is updated
-	*/
+	//! \return Get scriptinvoker called when arsenal is updated
 	ScriptInvokerArsenalUpdated GetOnArsenalUpdated()
 	{
 		if (!m_OnArsenalUpdated)
@@ -531,7 +492,6 @@ class SCR_ArsenalComponent : ScriptComponent
 		writer.WriteInt(m_eSupportedArsenalItemModes);
         writer.WriteInt(GetArsenalSaveType()); 
         writer.WriteBool(m_bArsenalEnabled); 
-        writer.WriteBool(m_bUseSupplies); 
         return true;
     }
 	
@@ -539,28 +499,34 @@ class SCR_ArsenalComponent : ScriptComponent
     override bool RplLoad(ScriptBitReader reader)
     {
 		int itemTypes, itemModes, saveType;
-		bool isArsenalEnabled, useSupplies;
+		bool isArsenalEnabled;
 		
 		reader.ReadInt(itemTypes);
 		reader.ReadInt(itemModes);
         reader.ReadInt(saveType);
         reader.ReadBool(isArsenalEnabled);
-        reader.ReadBool(useSupplies);
 		
 		RPC_OnArsenalUpdated(itemTypes, itemModes);
 		RPL_SetArsenalSaveType(saveType);
 		SetArsenalEnabledBroadcast(isArsenalEnabled);
-		SetUseSuppliesBroadcast(useSupplies);
 		
         return true;
 	}
-};
+}
 
 //------------------------------------------------------------------------------------------------
 enum SCR_EArsenalSaveType
 {
-	SAVING_DISABLED = 0, ///< Saving is disabled
-	IN_ARSENAL_ITEMS_ONLY = 10, ///< Only allows arsenal saving if all the items the player has are in the arsenal
-	FACTION_ITEMS_ONLY = 20, ///< Only allow saving if items the player has are items of the player faction
-	NO_RESTRICTIONS = 30, ///< Always allow saving of arsenal
-};
+	SAVING_DISABLED = 0,		//!< Saving is disabled
+	IN_ARSENAL_ITEMS_ONLY = 10,	//!< Only allows arsenal saving if all the items the player has are in the arsenal
+	FACTION_ITEMS_ONLY = 20,	//!< Only allow saving if items the player has are items of the player faction
+	NO_RESTRICTIONS = 30,		//!< Always allow saving of arsenal
+}
+
+//------------------------------------------------------------------------------------------------
+enum SCR_EArsenalSupplyCostType
+{
+	DEFAULT,		//!< Default cost will be used
+	GADGET_ARSENAL,	//!< If the arsenal is on a gadget it will try to take this cost if any is assigned in the catalog
+	RESPAWN_COST,	//!< Cost of item when the player spawns with the item
+}

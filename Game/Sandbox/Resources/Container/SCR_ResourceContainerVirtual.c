@@ -70,8 +70,8 @@ class SCR_ResourceContainerVirtual : SCR_ResourceContainer
 		if (!m_Owner)
 			return;
 		
-		Color color1 = Color.FromInt(GetDebugColor().PackToInt());
-		Color color2 = Color.FromInt(GetDebugColor().PackToInt());
+		Color color1 = GetDebugColor();
+		Color color2 = GetDebugColor();
 		vector containerMat[4];
 		
 		m_Owner.GetWorldTransform(containerMat);

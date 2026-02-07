@@ -4,13 +4,14 @@ enum EPreviewEntityEditorOperation
 	MOVE_HORIZONTAL,
 	MOVE_VERTICAL,
 	ROTATE,
-};
-/** @ingroup Editor_UI Editor_UI_Components
-*/
-class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
+}
+
+//! @ingroup Editor_UI Editor_UI_Components
+
+class SCR_PreviewEntityEditorUIComponent : SCR_BaseEditorUIComponent
 {
-	const int MIN_CURSOR_DIS_TO_TRANSFORM = 10; //--- Upon clicking, how far must cursor move to initiate
-	const float TRACE_DIS = 2000;
+	protected static const int MIN_CURSOR_DIS_TO_TRANSFORM = 10; //--- Upon clicking, how far must cursor move to initiate
+	protected static const float TRACE_DIS = 2000;
 	
 	[Attribute(defvalue: "30")]
 	protected float m_fMoveVerticalCoef;
@@ -62,24 +63,28 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 	protected float m_fDirIndicatorScale;
 	protected ref TraceParam m_RotationTrace;
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnHoverChange(EEditableEntityState state, set<SCR_EditableEntityComponent> entitiesInsert, set<SCR_EditableEntityComponent> entitiesRemove)
 	{
-		if (!m_PreviewEntityManager || !m_PreviewEntityManager.IsEditing() || m_PreviewEntityManager.IsFixedPosition() || m_bIsRotatingTowardsCursor) return;
+		if (!m_PreviewEntityManager || !m_PreviewEntityManager.IsEditing() || m_PreviewEntityManager.IsFixedPosition() || m_bIsRotatingTowardsCursor)
+			return;
 		
 		if (entitiesRemove && entitiesRemove.Count() == 1)
 		{
 			if (m_Target && !m_bIsRotatingTowardsCursor)
-			{
 				m_bIsAnimated = m_PreviewEntityManager.SetTarget(null);
-			}
+
 			m_Target = null;
 			m_PreviewEntityManager.GetPreviewTransform(m_vAnimatedTransform);
 		}
+
 		if (entitiesInsert && entitiesInsert.Count() == 1)
 		{
 			SCR_EditableEntityComponent entity = entitiesInsert[0];
 			bool isDelegate = true;
-			if (m_HoverFilter) isDelegate = m_HoverFilter.IsDelegate();
+			if (m_HoverFilter)
+				isDelegate = m_HoverFilter.IsDelegate();
+
 			if (m_PreviewEntityManager.SetTarget(entity, isDelegate))
 			{
 				m_Target = entity;
@@ -87,6 +92,8 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 			}
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnPreviewCreate()
 	{
 		m_PreviewEntityManager.GetPreviewTransformOrigin(m_vTransformOrigin);
@@ -104,26 +111,35 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		m_HoverFilter.GetEntities(hoverEntities);
 		OnHoverChange(EEditableEntityState.HOVER, hoverEntities, null);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnPreviewDelete()
 	{
 		m_bIsRotatingTowardsCursor = false;
 		delete m_DirIndicator;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnEditorTransformSnapToSurface()
 	{
 		m_PreviewEntityManager.ResetPreviewHeight();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnEditorTransformRotationModifierDown(float value, EActionTrigger reason)
 	{
-		if (!m_CursorComponentBase) return;
+		if (!m_CursorComponentBase)
+			return;
 		
 		SetRotationPivot();
 		SetClickPos(m_CursorComponentBase.GetCursorPos());		
 		m_bIsRotatingTowardsCursor = true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnEditorTransformRotationModifierUp(float value, EActionTrigger reason)
 	{
-		if (!m_PreviewEntityManager.IsEditing() || !m_bIsRotatingTowardsCursor)
+		if (!m_bIsRotatingTowardsCursor || !m_PreviewEntityManager.IsEditing())
 			return;
 		
 		//m_PreviewEntityManager.SetTarget(null); //--- Don't reset, messes up restoring pre-snap transformation
@@ -137,11 +153,15 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 			m_vClickPosCancel = m_vClickPosBase;
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnEditorTransformMoveVerticalModifierDown(float value, EActionTrigger reason)
 	{
 		if (!m_PreviewEntityManager.IsRotating())
 			SetClickPos(m_CursorComponentBase.GetCursorPos());	
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnEditorTransformMoveVerticalModifierUp(float value, EActionTrigger reason)
 	{
 		if (!m_PreviewEntityManager.IsEditing())// || !m_bIsRotatingTowardsCursor)
@@ -154,6 +174,8 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 			m_vClickPosCancel = m_vClickPosBase;
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void SetRotationPivot()
 	{
 		vector previewTransform[4];
@@ -164,7 +186,9 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		else
 		{
 			vector worldPos;
-			if (!m_CursorComponentBase.GetCursorWorldPos(worldPos)) return;
+			if (!m_CursorComponentBase.GetCursorWorldPos(worldPos))
+				return;
+
 			m_vClickTransformBase[3] = worldPos;
 		}
 		
@@ -178,30 +202,39 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		vector pos = m_vClickTransformBase[3];
 		m_vTerrainNormal = SCR_TerrainHelper.GetTerrainNormal(pos, m_World, !m_PreviewEntityManager.IsUnderwater(), m_RotationTrace);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void SetClickPos(vector clickPos)
 	{
 		m_vClickPosBase = clickPos;
 		m_bMouseMoved = false;
 		
 		ArmaReforgerScripted game = GetGame();
-		if (!game || !m_World) return;
+		if (!game || !m_World)
+			return;
 		
 		WorkspaceWidget workspace = game.GetWorkspace();
-		if (!workspace) return;
+		if (!workspace)
+			return;
 		
 		vector clickDir;
 		vector cameraPos = workspace.ProjScreenToWorld(clickPos[0], clickPos[1], clickDir, m_World, -1);
 		m_vClickPosWorldBase = cameraPos + clickDir * 10;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected bool HasMouseMoved()
 	{
-		if (m_bMouseMoved || !m_InputManagerBase.IsUsingMouseAndKeyboard()) return true;
+		if (m_bMouseMoved || !m_InputManagerBase.IsUsingMouseAndKeyboard())
+			return true;
 		
 		ArmaReforgerScripted game = GetGame();
-		if (!game || !m_World) return false;
+		if (!game || !m_World)
+			return false;
 		
 		WorkspaceWidget workspace = game.GetWorkspace();
-		if (!workspace) return false;
+		if (!workspace)
+			return false;
 		
 		//--- Check not only if cursor moved, but also if camera moved, resulting in cursor movement in the world
 		vector clickPos = workspace.ProjWorldToScreen(m_vClickPosWorldBase, m_World);
@@ -209,30 +242,38 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		m_bMouseMoved = vector.Distance(m_CursorComponentBase.GetCursorPos(), clickPos/*m_vClickPosBase*/) > MIN_CURSOR_DIS_TO_TRANSFORM;
 		return m_bMouseMoved;
 	}
+
 	protected void GetCursorPos(out vector cameraPos, out vector cursorDir)
 	{
 		ArmaReforgerScripted game = GetGame();
-		if (!game || !m_World) return;
+		if (!game || !m_World)
+			return;
 		
 		WorkspaceWidget workspace = game.GetWorkspace();
-		if (!workspace) return;
+		if (!workspace)
+			return;
 		
 		vector cursorPos = m_CursorComponentBase.GetCursorPos();
 		cameraPos = workspace.ProjScreenToWorld(cursorPos[0], cursorPos[1], cursorDir, m_World, -1);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected float GetTraceDis(vector pos, vector dir, float cameraHeight)
 	{
-		autoptr TraceParam trace = new TraceParam();
+		TraceParam trace = new TraceParam();
 		trace.Start = pos;
 		trace.End = trace.Start + dir;
 		if (cameraHeight >= m_World.GetOceanBaseHeight())
 			trace.Flags = TraceFlags.WORLD | TraceFlags.OCEAN;
 		else
 			trace.Flags = TraceFlags.WORLD; //--- Don't check for water intersection when under water
+
 		trace.LayerMask = TRACE_LAYER_CAMERA;
 		
 		return m_World.TraceMove(trace, null);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateDirIndicator(vector previewTransform[4])
 	{
 		if (m_Operation == EPreviewEntityEditorOperation.ROTATE)
@@ -251,8 +292,9 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 				float previewSize = vector.DistanceXZ(previewBoundMin, previewBoundMax);
 				float offsetSize = vector.DistanceXZ(vector.Zero, previewBoundMin + previewBoundMax);
 				float localOffsetSize = vector.DistanceXZ(vector.Zero, m_PreviewEntityManager.GetLocalOffset());
-				m_fDirIndicatorScale = (previewSize + offsetSize + localOffsetSize) / 2;
+				m_fDirIndicatorScale = (previewSize + offsetSize + localOffsetSize) * 0.5;
 			}
+
 			if (m_DirIndicator)
 			{
 				//--- Align the indicator to surface
@@ -276,13 +318,16 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 			delete m_DirIndicator;
 		}
 	}
-	/*!
-	\return SCR_EPreviewState of the preview according to which the preview color is set. To be overriden by inherited classes.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \return SCR_EPreviewState of the preview according to which the preview color is set. To be overridden by inherited classes.
 	protected SCR_EPreviewState GetPreviewStateToShow();
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//--- Transformation functions
+	//--- Transformation methods
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	protected void MoveHorizontalTowardsCursor(float tDelta, out vector transform[4], out bool canTransform, out EEditorTransformVertical verticalMode)
 	{
 		vector cameraPos, cursorDir;
@@ -308,17 +353,21 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 				break;
 			}
 		}
+
 		transform[3] = pos;
 		m_fUnsnapProgress = 0;
 		m_PreviewEntityManager.SetIsMovingVertically(false);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected bool MoveVertical(float tDelta, out vector transform[4], float moveVertical, EEditorTransformVertical verticalMode)
 	{		
 		//--- Gamepad move vertical
 		if (m_PreviewEntityManager.CanUnsnap(moveVertical))
 		{
 			m_fUnsnapProgress += tDelta;
-			if (m_fUnsnapProgress < m_fUnsnapDuration) return false;
+			if (m_fUnsnapProgress < m_fUnsnapDuration)
+				return false;
 		}
 		else
 		{
@@ -355,11 +404,15 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 				Math3D.DirectionAndUpMatrix(transform[3] - cameraTransform[3], vector.Up, cameraTransform);
 				camera.SetTransform(cameraTransform);
 			}
+
 			camera.SetDirty(true);
 		}
+
 		m_PreviewEntityManager.SetIsMovingVertically(true);
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void MoveVerticalTowardsCursor(float tDelta, out vector transform[4])
 	{
 		vector cameraPos, cursorDir;
@@ -381,6 +434,8 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		}
 #endif
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void Rotate(float tDelta, out vector transform[4], float rotationValue)
 	{		
 		vector angles = transform[2].VectorToAngles();
@@ -388,8 +443,10 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		SCR_EditableEntityComponent target = m_PreviewEntityManager.GetTarget();
 		if (target)
 		{
-			if (!RotateInSlot(target, rotationValue, angles, freeRotation)) return;
+			if (!RotateInSlot(target, rotationValue, angles, freeRotation))
+				return;
 		}
+
 		if (freeRotation)
 		{
 			angles -= m_vAnglesOrigin;
@@ -401,6 +458,8 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		Math3D.MatrixMultiply3(basis, m_vTransformOrigin, transform);
 		m_vRotationPivot = transform[3];
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected bool RotateInSlot(SCR_EditableEntityComponent slot, float rotationValue, out vector angles, out bool freeRotation)
 	{
 		if (m_fTargetYaw)
@@ -410,16 +469,22 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		}
 		
 		SCR_SiteSlotEntity slotEntity = SCR_SiteSlotEntity.Cast(slot.GetOwner());
-		if (!slotEntity) return false;
+		if (!slotEntity)
+			return false;
 		
 		float step = slotEntity.GetRotationStep();
-		if (step == -1) return false;
-		if (step == 0) return true;
+		if (step == -1)
+			return false;
+
+		if (step == 0)
+			return true;
 		
 		angles[0] = angles[0] + step * rotationValue.Sign();
 		m_fTargetYaw = angles[0];
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void RotateTowardsCursor(float tDelta, out vector transform[4])
 	{
 		//--- Reset when camera starts moving
@@ -465,6 +530,9 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Intersections
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	protected bool GetPreviewPosAboveGeometry(vector cameraPos, vector cursorDir, out vector worldPos, out EEditorTransformVertical verticalMode)
 	{
 		//--- Trace entity under cursor
@@ -475,6 +543,7 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		trace.Flags = TraceFlags.ENTS | TraceFlags.WORLD;
 		if (cameraPos[1] >= m_World.GetOceanBaseHeight())
 			trace.Flags |= TraceFlags.OCEAN;
+
 		trace.ExcludeArray = m_PreviewEntityManager.GetExcludeArray();
 		float traceCursor = m_World.TraceMove(trace, null);
 		
@@ -503,40 +572,42 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		if (slope > m_fMinAngleWall)
 		{
 			return false;
-			/*
-			//--- Rotate trace normal vector to point down
-			vector matrixNorm[3];
-			Math3D.MatrixFromForwardVec(trace.TraceNorm, matrixNorm);
-			
-			vector matrixConvert[3];
-			matrixConvert[0] = vector.Up;
-			matrixConvert[1] = vector.Right;
-			matrixConvert[2] = vector.Forward;
-			
-			Math3D.MatrixMultiply3(matrixNorm, matrixConvert, matrixNorm);
-			vector vectorNorm = matrixNorm[0] * 100;
-			if (vectorNorm[1] > 0)
-				vectorNorm = -vectorNorm;
-			
-			//--- Trace down along the wall
-			vector offsetNorm = trace.TraceNorm * 0.01;
-			TraceParam traceBase = new TraceParam();
-			traceBase.Start = worldPos + offsetNorm;
-			traceBase.End = trace.Start + vectorNorm;
-			traceBase.Flags = TraceFlags.ENTS | TraceFlags.WORLD;
-			traceBase.ExcludeArray = m_PreviewEntityManager.GetSourceEntities();
-			float traceBaseDis = m_World.TraceMove(traceBase, null);
-			
-			basePos = traceBase.Start + vectorNorm * traceBaseDis - offsetNorm;
-			*/
+
+//			//--- Rotate trace normal vector to point down
+//			vector matrixNorm[3];
+//			Math3D.MatrixFromForwardVec(trace.TraceNorm, matrixNorm);
+//
+//			vector matrixConvert[3];
+//			matrixConvert[0] = vector.Up;
+//			matrixConvert[1] = vector.Right;
+//			matrixConvert[2] = vector.Forward;
+//
+//			Math3D.MatrixMultiply3(matrixNorm, matrixConvert, matrixNorm);
+//			vector vectorNorm = matrixNorm[0] * 100;
+//			if (vectorNorm[1] > 0)
+//				vectorNorm = -vectorNorm;
+//
+//			//--- Trace down along the wall
+//			vector offsetNorm = trace.TraceNorm * 0.01;
+//			TraceParam traceBase = new TraceParam();
+//			traceBase.Start = worldPos + offsetNorm;
+//			traceBase.End = trace.Start + vectorNorm;
+//			traceBase.Flags = TraceFlags.ENTS | TraceFlags.WORLD;
+//			traceBase.ExcludeArray = m_PreviewEntityManager.GetSourceEntities();
+//			float traceBaseDis = m_World.TraceMove(traceBase, null);
+//
+//			basePos = traceBase.Start + vectorNorm * traceBaseDis - offsetNorm;
 		}
-		//worldPos = basePos;
+
+//		worldPos = basePos;
 		
 		//--- Add entity height
 		worldPos[1] = worldPos[1] + m_PreviewEntityManager.GetPreviewHeightAboveTerrain();
 		
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected bool GetPreviewPosAboveTerrain(vector cameraPos, vector cursorDir, out vector worldPos, out EEditorTransformVertical verticalMode)
 	{
 		//float heightASL = m_PreviewEntityManager.GetPreviewHeightAboveSea();
@@ -566,6 +637,8 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 			return GetPreviewPosAboveSea(cameraPos, cursorDir, worldPos, verticalMode);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected bool GetPreviewPosAboveSea(vector cameraPos, vector cursorDir, out vector worldPos, out EEditorTransformVertical verticalMode)
 	{
 		float heightASL = m_PreviewEntityManager.GetPreviewHeightAboveSea();
@@ -575,7 +648,8 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		{
 			//--- Cursor points below the camera: Use ground intersection
 			traceDis = GetTraceDis(cameraPos, cursorDir, cameraPos[1]);
-			if (traceDis == 1) return false;
+			if (traceDis == 1)
+				return false;
 		}
 		
 		//--- Force ASL mode to prevent snapping to terrain
@@ -586,7 +660,8 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 			traceDis = Math3D.IntersectionRayBox(cameraPos, cameraPos + cursorDir, Vector(-float.MAX, heightASL, -float.MAX), Vector(float.MAX, heightASL, float.MAX));
 		
 		//--- No plane intersection: Ignore (e.g., when camera is above the entity and cursor points at the sky)
-		if (traceDis == -1) return false;
+		if (traceDis == -1)
+			return false;
 		
 		worldPos = cameraPos + cursorDir * traceDis;
 		worldPos[1] = heightASL; //--- Make sure ASL height is maintained
@@ -596,6 +671,9 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Main Loop
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	protected void ProcessInput(float tDelta)
 	{
 		if (!m_InputManagerBase || !m_PlacingManager || !m_PreviewEntityManager || m_PreviewEntityManager.IsFixedPosition() || !m_PreviewEntityManager.GetPreviewEntity())
@@ -673,24 +751,32 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		else
 			m_PreviewEntityManager.ResetPreviewTransform();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void ActivatePreviewContext()
 	{
 		m_InputManagerBase.ActivateContext(m_PreviewEntityManager.GetActionContext());
 	}
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//--- Default functions
+	//--- Default methods
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttachedScripted(Widget w)
 	{
 		MenuRootComponent root = GetRootComponent();
-		if (root)
-		{
-			m_CursorComponentBase = SCR_CursorEditorUIComponent.Cast(root.FindComponent(SCR_CursorEditorUIComponent, true));
-		}
-		if (!m_CursorComponentBase) return;
+		if (!root)
+			return;
+
+		m_CursorComponentBase = SCR_CursorEditorUIComponent.Cast(root.FindComponent(SCR_CursorEditorUIComponent, true));
+
+		if (!m_CursorComponentBase)
+			return;
 		
 		m_PreviewEntityManager = SCR_PreviewEntityEditorComponent.Cast(SCR_PreviewEntityEditorComponent.GetInstance(SCR_PreviewEntityEditorComponent, true));
-		if (!m_PreviewEntityManager) return;
+		if (!m_PreviewEntityManager)
+			return;
 		
 		m_PlacingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent, true, true));
 		
@@ -698,7 +784,8 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		m_PreviewEntityManager.GetOnPreviewDelete().Insert(OnPreviewDelete);
 		
 		m_CameraManagerBase = SCR_CameraEditorComponent.Cast(SCR_CameraEditorComponent.GetInstance(SCR_CameraEditorComponent, true));
-		if (!m_CameraManagerBase) return;
+		if (!m_CameraManagerBase)
+			return;
 		
 		m_HoverFilter = SCR_HoverEditableEntityFilter.Cast(SCR_BaseEditableEntityFilter.GetInstance(EEditableEntityState.HOVER));
 		if (m_HoverFilter)
@@ -724,6 +811,8 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 				
 		m_fRotationInertia = 1 / Math.Max(m_fRotationInertia, 0.001);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
@@ -748,4 +837,4 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 			m_InputManagerBase.RemoveActionListener("EditorTransformRotateYawModifier", EActionTrigger.UP, OnEditorTransformRotationModifierUp);
 		}
 	}
-};
+}

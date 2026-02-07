@@ -140,7 +140,7 @@ class SCR_AIPerformSmartHealing : AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnItemUseBegan(IEntity item, SCR_ConsumableEffectAnimationParameters animParams)
+	void OnItemUseBegan(IEntity item, ItemUseParameters animParams)
 	{
 		if (item != m_item)
 			return;
@@ -148,7 +148,7 @@ class SCR_AIPerformSmartHealing : AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnItemUseEnded(IEntity item, bool actionCompleted, SCR_ConsumableEffectAnimationParameters animParams)
+	void OnItemUseEnded(IEntity item, bool actionCompleted, ItemUseParameters animParams)
 	{
 		if (item != m_item)
 			return;

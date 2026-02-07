@@ -1,8 +1,7 @@
 class SCR_EntitySpawnerCharacterSlotComponentClass : SCR_EntitySpawnerSlotComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Specifies slot to be used with nearby Entity Spawner Components
 class SCR_EntitySpawnerCharacterSlotComponent : SCR_EntitySpawnerSlotComponent
 {
@@ -13,14 +12,16 @@ class SCR_EntitySpawnerCharacterSlotComponent : SCR_EntitySpawnerSlotComponent
 	protected vector m_vDefaultWaypointPosition;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetDefaultWaypointPrefab()
 	{
 		return m_sDefaultWaypointPrefab;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	vector GetDefaultWaypointPosition()
 	{
 		return m_vDefaultWaypointPosition;
 	}
-};
+}

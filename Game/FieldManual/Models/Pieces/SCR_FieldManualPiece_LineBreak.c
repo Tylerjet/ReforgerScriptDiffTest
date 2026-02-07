@@ -2,7 +2,7 @@
 class SCR_FieldManualPiece_LineBreak : SCR_FieldManualPiece
 {
 	protected const ResourceName LAYOUT = "{D06D740EB045FC14}UI/layouts/Menus/FieldManual/Pieces/FieldManual_Piece_Text.layout";
-	
+
 	override void CreateWidget(notnull Widget parent)
 	{
 		Widget createdWidget = GetGame().GetWorkspace().CreateWidgets(LAYOUT, parent);
@@ -26,4 +26,4 @@ class SCR_FieldManualPiece_LineBreak : SCR_FieldManualPiece
 
 		textWidget.SetText("");
 	}
-};
+}

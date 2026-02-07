@@ -11,7 +11,6 @@ enum ChimeraMenuPreset : ScriptMenuPresetEnum
 	LoginDialog,
 	LoginDialogConsole,
 	ServerBrowserMenu,
-	ServerHostingDialog,
 	ProfileDialog,
 	ErrorDialog,
 	MapMenu,
@@ -31,9 +30,7 @@ enum ChimeraMenuPreset : ScriptMenuPresetEnum
 	Inventory20Menu,
 	ReportItemDialog,
 	ContentBrowser,
-	PauseSuperMenu,
 	ContentBrowserDetailsMenu,
-	AddonsToolsMenu,
 	RespawnSuperMenu,
 	WelcomeScreenMenu,
 	DebriefingScreenMenu,
@@ -43,7 +40,6 @@ enum ChimeraMenuPreset : ScriptMenuPresetEnum
 	WidgetLibraryMenu,
 	PickAssignee,
 	TaskDetail,
-	DownloadManagerDialog,
 	EndgameScreen,
 	StartScenarioDialog,
 	ScenarioMenu,
@@ -51,19 +47,17 @@ enum ChimeraMenuPreset : ScriptMenuPresetEnum
 	NewsDialog,
 	GalleryDialog,
 	ConfigurableDialog,
-	KeybindChangeDialog,
 	ScrollTest,
 	LoadingOverlay,
 	CreateAccountDialog,
 	CreditsMenu,
+	CreditsLicensesMenu,
 	WelcomeDialog,
-	AddonPresetDialog,
 	GroupSettingsDialog,
 	CareerProfileMenu,
 	CampaignBuildingPlacingMenuDialog,
 	GroupMenu,
 	GroupFlagDialog,
-	AdvancedKeybindDialog,
 	RoleSelectionDialog,
 	GamepadRemovalDialog
 };
@@ -115,6 +109,13 @@ class ChimeraMenuBase : MenuBase
 		SCR_MenuHelper.OnMenuOpen(this);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuOpened()
+	{
+		super.OnMenuOpened();
+		SCR_MenuHelper.OnMenuOpened(this);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuClose()
 	{

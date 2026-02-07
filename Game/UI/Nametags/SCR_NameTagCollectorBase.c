@@ -10,7 +10,7 @@ class SCR_NameTagCollectorBase : Managed
 	protected SCR_NameTagConfig m_Config;
 	protected SCR_NameTagData m_ControlledTag;
 	protected SCR_NameTagDisplay m_Display;
-	protected TagManager m_TagManager;
+	protected TagSystem m_TagSystem;
 	
 	protected ref array<IEntity> m_aEntities = {};
 	
@@ -48,8 +48,8 @@ class SCR_NameTagCollectorBase : Managed
 	//! Refresh entity list 
 	protected void RefreshEntities()
 	{
-		if (m_TagManager)
-			m_TagManager.GetTagsInRange(m_aEntities, m_ControlledTag.m_Entity.GetOrigin(), m_Config.m_fFarthestZoneRange, ETagCategory.NameTag);
+		if (m_TagSystem)
+			m_TagSystem.GetTagsInRange(m_aEntities, m_ControlledTag.m_Entity.GetOrigin(), m_Config.m_fFarthestZoneRange, ETagCategory.NameTag);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -60,10 +60,8 @@ class SCR_NameTagCollectorBase : Managed
 		m_Config = cfg;
 		m_Display = display;
 		
-		ChimeraWorld world = GetGame().GetWorld();
-		if (!world)
-			m_TagManager = null;
-		else
-			m_TagManager = world.GetTagManager();
+		ChimeraWorld world = ChimeraWorld.CastFrom(GetGame().GetWorld());
+		if (world)
+			m_TagSystem = TagSystem.Cast(world.FindSystem(TagSystem));
 	}
 };

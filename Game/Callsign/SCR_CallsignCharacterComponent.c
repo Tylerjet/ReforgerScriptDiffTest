@@ -1,13 +1,11 @@
 [ComponentEditorProps(category: "GameScripted/Callsign", description: "")]
-class SCR_CallsignCharacterComponentClass: SCR_CallsignBaseComponentClass
+class SCR_CallsignCharacterComponentClass : SCR_CallsignBaseComponentClass
 {
-};
+}
 
-/*!
-Component of assigning and storing squad names
-*/
+//! Component of assigning and storing squad names
 class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
-{	
+{
 	//Broadcast
 	protected int m_iCharacterCallsign = -1;
 	protected ERoleCallsign m_iRoleCallsign = ERoleCallsign.NONE;
@@ -15,7 +13,7 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 	protected int m_iFactioniD = -1;
 	protected int m_iPlayerId = 0; //~ Set on server only
 
-	//======================================== GET CALLSIGN NAMES ========================================\\
+	//------------------------------------------------------------------------------------------------
 	override bool GetCallsignNames(out string company, out string platoon, out string squad, out string character, out string format)
 	{				
 		int companyCallsignIndex, platoonCallsignIndex, squadCallsignIndex, characterCallsignNumber, characterRoleCallsignIndex;
@@ -56,7 +54,7 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 		return true;
 	}
 	
-	//======================================== GET CALLSIGN INDEXES ========================================\\
+	//------------------------------------------------------------------------------------------------
 	override bool GetCallsignIndexes(out int companyIndex, out int platoonIndex, out int squadIndex, out int characterNumber = -1, out ERoleCallsign characterRole = ERoleCallsign.NONE)
 	{		
 		if (m_iCompanyCallsign < 0 || m_iPlatoonCallsign < 0 || m_iSquadCallsign < 0)
@@ -76,18 +74,15 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 	}
 	
 	
-	//======================================== GROUP CALLSIGNS ========================================\\
-	//---------------------------------------- Assign Character Group Callsign ----------------------------------------\\
-	/*!
-	Called by group, assigns a specific character group index and role (if any assigned) to character within specific group
-	\param faction Faction of group
-	\param companyIndex Company Index
-	\param platoonIndex Platoon Index
-	\param squadIndex Squad Index
-	\param characterNumber Character number in squad (starts with 1)
-	\param role Character role (If any assigned)
-	\param aloneInGroup If character is alone in the group
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Called by group, assigns a specific character group index and role (if any assigned) to character within specific group
+	//! \param[in] faction Faction of group
+	//! \param[in] companyIndex Company Index
+	//! \param[in] platoonIndex Platoon Index
+	//! \param[in] squadIndex Squad Index
+	//! \param[in] characterNumber Character number in squad (starts with 1)
+	//! \param[in] role Character role (If any assigned)
+	//! \param[in] aloneInGroup If character is alone in the group
 	void AssignCharacterCallsign(Faction faction, int companyIndex, int platoonIndex, int squadIndex, int characterNumber, ERoleCallsign role, bool aloneInGroup)
 	{
 		if (!m_bIsServer)
@@ -138,11 +133,9 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 		}
 	}
 	
-	//---------------------------------------- Update role Callsign ----------------------------------------\\
-	/*!
-	Updates the assigned role
-	\param roleCallsignIndex role index
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Updates the assigned role
+	//! \param[in] roleCallsignIndex role index
 	void UpdateCharacterRoleCallsign(ERoleCallsign roleCallsignIndex)
 	{
 		if (!m_bIsServer)
@@ -156,11 +149,10 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 		Rpc(AssignRoleCallsignBroadcast, roleCallsignIndex);
 	}	
 	
-	/*!
-	Updates the assigned callsign and role. Called when leader role is assigned as leader is always 1
-	\param characterCallsign character callsign
-	\param roleCallsignIndex role index
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Updates the assigned callsign and role. Called when leader role is assigned as leader is always 1
+	//! \param[in] characterCallsign character callsign
+	//! \param[in] roleCallsignIndex role index
 	void UpdateCharacterCallsignAndRole(int characterCallsign, ERoleCallsign roleCallsignIndex)
 	{
 		if (!m_bIsServer)
@@ -174,10 +166,8 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 		Rpc(AssignCharacterAndRoleCallsignBroadcast, characterCallsign, roleCallsignIndex);
 	}
 	
-	//---------------------------------------- Clear character and role Callsign ----------------------------------------\\
-	/*!
-	Called on server only before assigning new callsign to make sure everything is clear. Does not broadcast cleared values to players!
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Called on server only before assigning new callsign to make sure everything is clear. Does not broadcast cleared values to players!
 	override void ClearCallsigns()
 	{
 		super.ClearCallsigns();
@@ -185,9 +175,8 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 		m_iRoleCallsign = -1;
 	}
 	
-	/*!
-	Called on server only before assigning new role callsign to make sure everything is clear. Is not broadcast!
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Called on server only before assigning new role callsign to make sure everything is clear. It is not broadcast!
 	void ClearCharacterRoleCallsign()
 	{
 		if (!m_bIsServer)
@@ -196,7 +185,7 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 		m_iRoleCallsign = -1;
 	}
 	
-	//======================================== BROAD CASTS ========================================\\
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void AssignCallsignBroadcast(int company, int platoon, int squad, int character, int role, bool aloneInGroup)
 	{	
@@ -210,6 +199,7 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 		Event_OnCallsignChanged.Invoke(m_iCompanyCallsign, m_iPlatoonCallsign, m_iSquadCallsign, m_iCharacterCallsign, m_iRoleCallsign);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void AssignCallsignNoRoleBroadcast(int company, int platoon, int squad, int character, bool aloneInGroup)
 	{	
@@ -222,7 +212,7 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 		Event_OnCallsignChanged.Invoke(m_iCompanyCallsign, m_iPlatoonCallsign, m_iSquadCallsign, m_iCharacterCallsign, m_iRoleCallsign);
 	}
 	
-	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void AssignCharacterAndRoleCallsignBroadcast(int character, int role)
 	{	
@@ -232,6 +222,7 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 		Event_OnCallsignChanged.Invoke(m_iCompanyCallsign, m_iPlatoonCallsign, m_iSquadCallsign, m_iCharacterCallsign, m_iRoleCallsign);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void AssignCharacterCallsignBroadcast(int character)
 	{	
@@ -239,7 +230,8 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 		
 		Event_OnCallsignChanged.Invoke(m_iCompanyCallsign, m_iPlatoonCallsign, m_iSquadCallsign, m_iCharacterCallsign, m_iRoleCallsign);
 	}
-		
+
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void AssignRoleCallsignBroadcast(int role)
 	{	
@@ -248,12 +240,14 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 		Event_OnCallsignChanged.Invoke(m_iCompanyCallsign, m_iPlatoonCallsign, m_iSquadCallsign, m_iCharacterCallsign, m_iRoleCallsign);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void SetAloneInGroupBroadcast(bool isAloneInGroup)
 	{	
 		m_bAloneInGroup = isAloneInGroup;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void SetFactionBroadCast(int factionID)
 	{	
@@ -272,32 +266,24 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 		}	
 	}
 	
-	//======================================== GETTERS ========================================\\
-	/*!
-	Returns if character is alone in group. ALso returns true if not in a group at all
-	\return bool m_bAloneInGroup
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return is character alone in group. ALso returns true if not in a group at all
 	bool GetIsCharacterAloneInGroup()
 	{
 		return m_bAloneInGroup;	
 	}
 	
-	//======================================== CHARACTER SPECIFIC CALLSIGN INDEXES ========================================\\
-	//---------------------------------------- Get Character callsign ----------------------------------------\\
-	/*
-	Returns the character index (ignoring the role)
-	\return int character group index
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Returns the character index (ignoring the role)
+	//! \return character group index
 	int GetCharacterCallsignIndex()
 	{
 		return m_iCharacterCallsign;
 	}
 	
-	//---------------------------------------- Get Character or role callsign ----------------------------------------\\
-	/*
-	Returns either the character index or, if a role is assigned, it will return the character role index instead
-	\return int character group index or role index
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Returns either the character index or, if a role is assigned, it will return the character role index instead
+	//! \return int character group index or role index
 	int GetCharacterOrRoleCallsignIndex()
 	{
 		if (m_iRoleCallsign >= 0)
@@ -306,24 +292,20 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 			return m_iCharacterCallsign;
 	}
 
-	//---------------------------------------- Get Character and role callsigns ----------------------------------------\\
-	/*
-	Returns both character index and character role index
-	\param[out] character group index
-	\param[out] role index
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Returns both character index and character role index
+	//! \param[out] character group index
+	//! \param[out] role index
 	void GetCharacterAndRoleCallsign(out int character, out int role)
 	{
 		character = m_iCharacterCallsign;
 		role = m_iRoleCallsign;
 	}
 	
-	//======================================== GET CHARACTER CALLSIGN NAME ========================================\\
-	/*
-	Returns the character callsign name, this either the character group index or the specific role name
-	\param[out] characterCallsignName the character Callsign name in string
-	\return bool if name was succesfully found
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Returns the character callsign name, this either the character group index or the specific role name
+	//! \param[out] characterCallsignName the character Callsign name in string
+	//! \return if name was succesfully found
 	bool GetCharacterCallsignName(out string characterCallsignName)
 	{
 		if(m_iCharacterCallsign == -1)
@@ -364,9 +346,8 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*
-	Called by Callsign Manager. Makes sure that player characters listen to On Callsign Changed (Server Only)
-	*/
+	//! Called by Callsign Manager. Makes sure that player characters listen to On Callsign Changed (Server Only)
+	//! \param[in] playerId
 	void InitPlayerOnServer(int playerId)
 	{
 		if (playerId <= 0 || m_iPlayerId > 0)
@@ -378,29 +359,30 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 		m_CallsignManager.GetOnPlayerCallsignChanged().Insert(OnPlayerCallsignChanged);
 	}
 	
-	//======================================== RPL ========================================\\
+	//------------------------------------------------------------------------------------------------
 	override bool RplSave(ScriptBitWriter writer)
-    {	
-        writer.WriteInt(m_iCompanyCallsign); 
-        writer.WriteInt(m_iPlatoonCallsign);
+	{
+		writer.WriteInt(m_iCompanyCallsign);
+		writer.WriteInt(m_iPlatoonCallsign);
 		writer.WriteInt(m_iSquadCallsign);
 		writer.WriteInt(m_iCharacterCallsign);
 		writer.WriteInt(m_iRoleCallsign);
 		writer.WriteBool(m_bAloneInGroup);
 		writer.WriteInt(m_iFactioniD);
 		
-        return true;
-    }
-     
-    override bool RplLoad(ScriptBitReader reader)
-    {		
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override bool RplLoad(ScriptBitReader reader)
+	{
 		int company, platoon, squad, character, role, factionID;
 		bool aloneInGroup;
 		
-        reader.ReadInt(company);
-        reader.ReadInt(platoon);
+		reader.ReadInt(company);
+		reader.ReadInt(platoon);
 		reader.ReadInt(squad);
-        reader.ReadInt(character);
+		reader.ReadInt(character);
 		reader.ReadInt(role);
 		reader.ReadBool(aloneInGroup);
 		reader.ReadInt(factionID);
@@ -408,10 +390,11 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 		AssignCallsignBroadcast(company, platoon, squad, character, role, aloneInGroup);
 		SetFactionBroadCast(factionID);
 		
-        return true;
-    }
-	
-	//======================================== ON DESTROY ========================================\\
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_CallsignCharacterComponent()
 	{
 		if (!m_bIsServer || m_iPlayerId <= 0 || !m_CallsignManager)
@@ -420,5 +403,4 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 		//~ Remove Player CallsignChanged
 		m_CallsignManager.GetOnPlayerCallsignChanged().Remove(OnPlayerCallsignChanged);
 	}
-};
-
+}

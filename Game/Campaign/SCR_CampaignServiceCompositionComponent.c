@@ -1,7 +1,7 @@
 [EntityEditorProps(category: "GameScripted/Campaign", description: "This component handles service (composition) operability")]
 class SCR_CampaignServiceCompositionComponentClass : ScriptComponentClass
 {
-};
+}
 
 class SCR_CampaignServiceCompositionComponent : ScriptComponent
 {
@@ -20,8 +20,8 @@ class SCR_CampaignServiceCompositionComponent : ScriptComponent
 	protected EEditableEntityLabel m_CompositionType;
 	protected SCR_ServicePointComponent m_Service;
 	
-	ref ScriptInvoker Event_EOnServiceDisabled = new ref ScriptInvoker();	
-	ref ScriptInvoker Event_EOnServiceRepaired = new ref ScriptInvoker();
+	ref ScriptInvoker Event_EOnServiceDisabled = new ScriptInvoker();
+	ref ScriptInvoker Event_EOnServiceRepaired = new ScriptInvoker();
 	
 	protected static const bool AVAILABLE = true;
 	protected static const bool UNAVAILABLE = false;
@@ -33,11 +33,12 @@ class SCR_CampaignServiceCompositionComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] operability
 	void ChangeOperability(int operability)
 	{
 		// First check whether the Service is operable now or not.
-		bool isOperableBeforeChange;	
-		isOperableBeforeChange = IsServiceOperable();
+		bool isOperableBeforeChange = IsServiceOperable();
 		
 		// Reduce operability
 	 	m_iServiceOperability -= operability;
@@ -45,7 +46,7 @@ class SCR_CampaignServiceCompositionComponent : ScriptComponent
 		SCR_ServicePointMapDescriptorComponent desc = SCR_ServicePointMapDescriptorComponent.Cast(m_Owner.FindComponent(SCR_ServicePointMapDescriptorComponent));
 		
 		// Check if the Service was disabled.
-		if (!IsServiceOperable() && isOperableBeforeChange)
+		if (isOperableBeforeChange && !IsServiceOperable())
 		{
 			if (desc)
 				desc.SetServiceMarkerActive(UNAVAILABLE);
@@ -54,7 +55,7 @@ class SCR_CampaignServiceCompositionComponent : ScriptComponent
 		}
 		
 		// Check if the Service was recovered from disabled state.
-		if (IsServiceOperable() && !isOperableBeforeChange)
+		if (!isOperableBeforeChange && IsServiceOperable())
 		{
 			if (desc)
 				desc.SetServiceMarkerActive(AVAILABLE);
@@ -64,24 +65,28 @@ class SCR_CampaignServiceCompositionComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] type
 	void SetCompositionType(EEditableEntityLabel type)
 	{
 		m_CompositionType = type;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] service
 	void SetService(SCR_ServicePointComponent service)
 	{
 		m_Service = service;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	EEditableEntityLabel GetCompositionType()
 	{
 		return m_CompositionType;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_ServicePointComponent GetService()
 	{
 		return m_Service;
@@ -100,10 +105,9 @@ class SCR_CampaignServiceCompositionComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsServiceOperable()
 	{
-		if (m_iServiceOperability > m_iServiceUnavailable)
-			return true;
-		return false;
+		return m_iServiceOperability > m_iServiceUnavailable;
 	}
-};
+}

@@ -3,18 +3,18 @@ class SCR_AISelectFireMode: AITaskScripted
 	[Attribute("0", UIWidgets.ComboBox, "Try set Firemode", "", ParamEnumArray.FromEnum(EWeaponFiremodeType) )]
 	protected EWeaponFiremodeType m_FiremodeType;
 	
-    override bool VisibleInPalette() {return true;}
+	//-----------------------------------------------------------------------------------------------------------------------------
     override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
     {
 		GenericEntity controlledEntity = GenericEntity.Cast(owner.GetControlledEntity());
 		if (!controlledEntity)
 			return ENodeResult.FAIL;
 		
+		//--------------------------------------------------------------------------
 		// Resolve which weapon manager to use
 		
 		BaseWeaponManagerComponent wpnManagerComponent;
 		CharacterControllerComponent controller;
-		
 		
 		CompartmentAccessComponent compAccess = CompartmentAccessComponent.Cast(controlledEntity.FindComponent(CompartmentAccessComponent));
 		if (!compAccess)
@@ -44,6 +44,7 @@ class SCR_AISelectFireMode: AITaskScripted
 		if (!wpnComponent)
 			return ENodeResult.FAIL;
 		
+		// Bail if we already have the desired fire mode
 		if (wpnComponent.GetCurrentFireModeType() == m_FiremodeType)
 			return ENodeResult.SUCCESS;
 		
@@ -51,66 +52,146 @@ class SCR_AISelectFireMode: AITaskScripted
 		
 		// Fail if there is no muzzle, it is probably a grenade
 		if (!muzzle)
-			return ENodeResult.FAIL;
+			return ENodeResult.FAIL;		
+		
+		//--------------------------------------------------------------------------
+		// Find available firemodes
 		
 		array<BaseFireMode> fireModes = {};
 		muzzle.GetFireModesList(fireModes);
 		
 		int fireModesCount = fireModes.Count();
-		int semiAytoIndex = -1, autoIndex = -1, burstIndex = -1, safetyIndex = -1;
+		int semiAutoId = -1, autoId = -1, burstId = -1, manualId = -1, safetyId = -1;
 		for (int i = 0; i<fireModesCount; i++)
 		{
 			switch (fireModes[i].GetFiremodeType())
 			{
 				case EWeaponFiremodeType.Semiauto : 
 				{		 
-					semiAytoIndex = i;
+					semiAutoId = i;
 					break;
 				}
 				case EWeaponFiremodeType.Auto :
 				{
-					autoIndex = i;
+					autoId = i;
 					break;
 				}
 				case EWeaponFiremodeType.Burst :
 				{
-					burstIndex = i;
+					burstId = i;
 					break;
 				}
 				case EWeaponFiremodeType.Safety :
 				{
-					safetyIndex = i;
+					safetyId = i;
+					break;
+				}
+				case EWeaponFiremodeType.Manual:
+				{
+					manualId = i;
 					break;
 				}
 			}
 		}
 		
-		if (m_FiremodeType == EWeaponFiremodeType.Auto && autoIndex != -1)
+		//--------------------------------------------------------------------------
+		// Try to best suitable firemode
+		// If a non-safety firemode is requested, we will still try to find any non-safety firemode,
+		// to ensure weapon is not stuck in safety
+		
+		int bestFm = -1;
+		switch (m_FiremodeType)
 		{
-			controller.SetFireMode(autoIndex);
-			return ENodeResult.SUCCESS;
-		}
-		else if (m_FiremodeType == EWeaponFiremodeType.Burst || m_FiremodeType == EWeaponFiremodeType.Auto && burstIndex != -1)
-		{
-			controller.SetFireMode(burstIndex);
-			return ENodeResult.SUCCESS;
-		}
-		else if (semiAytoIndex != -1)
-		{
-			controller.SetFireMode(semiAytoIndex);
-			return ENodeResult.SUCCESS;
-		}
-		else if (safetyIndex != -1)
-		{
-			controller.SetFireMode(safetyIndex);
-			return ENodeResult.SUCCESS;
+			case EWeaponFiremodeType.Auto:
+			{
+				// auto > burst > semi > manual
+				if (autoId != -1)
+					bestFm = autoId;
+				else if (burstId != -1)
+					bestFm = burstId;
+				else if (semiAutoId != -1)
+					bestFm = semiAutoId;
+				else if (manualId != -1)
+					bestFm = manualId;
+				
+				break;
+			}
+			
+			case  EWeaponFiremodeType.Burst:
+			{
+				// burst > auto > semi > manual
+				if (burstId != -1)
+					bestFm = burstId;
+				else if (autoId != -1)
+					bestFm = autoId;
+				else if (semiAutoId != -1)
+					bestFm = semiAutoId;
+				else if (manualId != -1)
+					bestFm = manualId;
+				
+				break;
+			}
+			
+			case EWeaponFiremodeType.Semiauto:
+			{
+				// semi > manual > burst > auto
+				if (semiAutoId != -1)
+					bestFm = semiAutoId;
+				else if (manualId != -1)
+					bestFm = manualId;
+				else if (burstId != -1)
+					bestFm = burstId;
+				else if (autoId != -1)
+					bestFm = autoId;
+				
+				break;
+			}
+			
+			case EWeaponFiremodeType.Safety:
+			{
+				// safety
+				if (safetyId != -1)
+					bestFm = safetyId;
+				
+				break;
+			}
 		}
 		
-		return ENodeResult.FAIL;
+		//--------------------------------------------------------------------------
+		// Set found firemode or report error
+		
+		if (bestFm == -1)
+		{
+			// We couldn't find desired firemode or adequate replacement, log a warning
+			
+			WeaponSlotComponent weaponSlotComp = WeaponSlotComponent.Cast(wpnComponent);			
+			IEntity weaponEntity;
+			if (weaponSlotComp)
+				weaponEntity = weaponSlotComp.GetWeaponEntity();
+			else
+				weaponEntity = wpnComponent.GetOwner();
+			
+			string prefabName;
+			if (weaponEntity)
+				prefabName = weaponEntity.GetPrefabData().GetPrefabName();
+			
+			string str = string.Format("SCR_AISelectFireMode: proper fire mode was not found: %1. Weapon prefab: %2",
+				typename.EnumToString(EWeaponFiremodeType, m_FiremodeType),
+				prefabName);
+			
+			Print(str, LogLevel.WARNING);
+			
+			return ENodeResult.FAIL;
+		}
+		
+		controller.SetFireMode(bestFm);
+		return ENodeResult.SUCCESS;
     }
 		
 	override protected string GetNodeMiddleText()
 	{
-		return "Automatically select the fire rate. Auto > burst > single";
+		return "Selects a firemode closest to provided one.";
 	}
+	
+    override bool VisibleInPalette() {return true;}
 };

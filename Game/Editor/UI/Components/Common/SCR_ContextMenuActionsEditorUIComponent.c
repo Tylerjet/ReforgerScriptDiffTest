@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 class SCR_ContextMenuActionsEditorUIComponent : SCR_BaseContextMenuEditorUIComponent
 {
 	[Attribute(SCR_SoundEvent.FOCUS, UIWidgets.EditBox)]
@@ -12,6 +11,7 @@ class SCR_ContextMenuActionsEditorUIComponent : SCR_BaseContextMenuEditorUICompo
 	
 	protected SCR_EditableEntityComponent m_HoveredEntityReference;
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnHoveredEntityCheck(float tDelta)
 	{
 		if (!m_HoveredEntityReference)
@@ -21,6 +21,7 @@ class SCR_ContextMenuActionsEditorUIComponent : SCR_BaseContextMenuEditorUICompo
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override protected void PopulateContextMenu(vector cursorWorldPosition)
 	{
 		super.PopulateContextMenu(cursorWorldPosition);
@@ -35,11 +36,13 @@ class SCR_ContextMenuActionsEditorUIComponent : SCR_BaseContextMenuEditorUICompo
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override protected void OnEditorModeChanged()
 	{
 		m_EditorActionsComponent = SCR_ContextActionsEditorComponent.Cast(SCR_ContextActionsEditorComponent.GetInstance(SCR_ContextActionsEditorComponent));
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected override void OpenContextMenu()
 	{
 		super.OpenContextMenu();
@@ -48,6 +51,7 @@ class SCR_ContextMenuActionsEditorUIComponent : SCR_BaseContextMenuEditorUICompo
 			SCR_UISoundEntity.SoundEvent(m_sSoundOnOpen);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void CloseContextMenu()
 	{
 		if (m_ContextMenu && m_ContextMenu.IsVisible())
@@ -62,12 +66,14 @@ class SCR_ContextMenuActionsEditorUIComponent : SCR_BaseContextMenuEditorUICompo
 		super.CloseContextMenu();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void DelayedCloseSound()
 	{
 		if (!IsContextMenuOpen())
 			SCR_UISoundEntity.SoundEvent(m_sSoundOnCancelClose);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnOpenActionsMenuUp()
 	{
 		//~ Check if can open
@@ -81,9 +87,8 @@ class SCR_ContextMenuActionsEditorUIComponent : SCR_BaseContextMenuEditorUICompo
 		//~ Open
 		OpenContextMenu();
 	}
-	
 
-	
+	//------------------------------------------------------------------------------------------------
 	protected override void OnOpenActionsMenuDown()
 	{		
 		super.OnOpenActionsMenuDown();
@@ -94,6 +99,7 @@ class SCR_ContextMenuActionsEditorUIComponent : SCR_BaseContextMenuEditorUICompo
 			m_bEditorIsSelectingState = false;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttachedScripted(Widget w)
 	{
 		super.HandlerAttachedScripted(w);
@@ -107,6 +113,7 @@ class SCR_ContextMenuActionsEditorUIComponent : SCR_BaseContextMenuEditorUICompo
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_EDITOR_ACTIONS_MENU_SHOWDISABLED, string.Empty, "Show disabled actions", "Actions Menu");
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
@@ -116,6 +123,7 @@ class SCR_ContextMenuActionsEditorUIComponent : SCR_BaseContextMenuEditorUICompo
 			m_InputManager.RemoveActionListener("EditorActionsMenu", EActionTrigger.DOWN, OnOpenActionsMenuDown);
 			m_InputManager.RemoveActionListener("EditorActionsMenu", EActionTrigger.UP, OnOpenActionsMenuUp);
 		}
+
 		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_EDITOR_ACTIONS_MENU_SHOWDISABLED);
 	}
-};
+}

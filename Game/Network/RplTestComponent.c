@@ -1,12 +1,11 @@
 [ComponentEditorProps(category: "GameScripted/Test", description: "Test component showcasing doing the replication from script the RIGHT way")]
-class SCR_RplTestComponentClass: ScriptComponentClass
+class SCR_RplTestComponentClass : ScriptComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_RplTestComponent : ScriptComponent
 {
-	ChimeraCharacter m_CharacterOwner = null;
+	protected ChimeraCharacter m_CharacterOwner = null;
 	private RplComponent m_RplComponent = null;
 	
 	// NoOwner - executed everywhere but on the owner. Note both client and server can be owners.
@@ -19,12 +18,16 @@ class SCR_RplTestComponent : ScriptComponent
 	float m_fdelay = 0;
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] testNum
 	void Do_TestRpc(int testNum)
 	{
-		Print("RPC TestRpc EXECUTED: " + testNum.ToString());
+		Print("RPC TestRpc EXECUTED: " + testNum, LogLevel.NORMAL);
 	}
 	
-	// Send request to the server to print a message everywhere
+	//------------------------------------------------------------------------------------------------
+	//! Send request to the server to print a message everywhere
+	//! \param[in] testNum
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RpcAsk_TestRpc(int testNum)
 	{
@@ -32,21 +35,25 @@ class SCR_RplTestComponent : ScriptComponent
 		Rpc(RpcDo_TestRpc, testNum);
 	}
 	
-	// Broadcast.
-	// When called from server this is executed everywhere but on the server.
-	// When called on client, this is executed only on the client.
-	// NOTE:
-	// The caller of the RPC needs to provide exectly one integral argument "testNum".
-	// Note, max. 16 args are possible in script. This restriction applies universally not just
-	// to RPCs but for all script methods in general
+	//------------------------------------------------------------------------------------------------
+	//! Broadcast.
+	//! When called from server this is executed everywhere but on the server.
+	//! When called on client, this is executed only on the client.
+	//!
+	//! NOTE:
+	//! The caller of the RPC needs to provide exectly one integral argument "testNum".
+	//! Note, max. 16 args are possible in script. This restriction applies universally not just
+	//! to RPCs but for all script methods in general
+	//! \param[in] testNum
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]	
 	void RpcDo_TestRpc(int testNum)
 	{
-		Print("RPC NetTestRpc EXECUTED: " + testNum.ToString());
+		Print("RPC NetTestRpc EXECUTED: " + testNum, LogLevel.NORMAL);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Server-only execution
+	//! Server-only execution
+	//! \param[in] timeSlice
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RpcAsk_ChangePropValue(float timeSlice)
 	{
@@ -60,7 +67,7 @@ class SCR_RplTestComponent : ScriptComponent
 		// This will trigger OnTestChanged on clients
 		m_iTest = Math.RandomIntInclusive(0, 100);
 		Replication.BumpMe();
-		Print("RPLPROP m_iTest CHANGED on SERVER: " + m_iTest);
+		Print("RPLPROP m_iTest CHANGED on SERVER: " + m_iTest, LogLevel.NORMAL);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -68,21 +75,25 @@ class SCR_RplTestComponent : ScriptComponent
 	// unless you really need to know the previous value
 	void OnTestChanged()
 	{
-		Print("RPLPROP m_iTest CHANGED on CLIENT: " + m_iTest);
+		Print("RPLPROP m_iTest CHANGED on CLIENT: " + m_iTest, LogLevel.NORMAL);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void Do_TestFire()
 	{
-		Print("RPC TestFire EXECUTED");
+		Print("RPC TestFire EXECUTED", LogLevel.NORMAL);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RpcAsk_TestFire()
 	{
 		// You might want to do some security checks here.
 		// E.g., could the shot have been fired?
-		// if (!...) return;
+		// if (!...)
+		// 	return;
 		
 		// Assuming the server is the authority here, we perform the action
 		// right away.
@@ -98,7 +109,9 @@ class SCR_RplTestComponent : ScriptComponent
 		Rpc(RpcDo_TestFire);
 	}
 	
-	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast, RplCondition.NoOwner)]	
+	//------------------------------------------------------------------------------------------------
+	//!
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast, RplCondition.NoOwner)]
 	void RpcDo_TestFire()
 	{
 		Do_TestFire();
@@ -120,6 +133,7 @@ class SCR_RplTestComponent : ScriptComponent
 			m_RplComponent = RplComponent.Cast(m_CharacterOwner.FindComponent(RplComponent));
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
 		if (Debug.KeyState(KeyCode.KC_P))
@@ -127,7 +141,7 @@ class SCR_RplTestComponent : ScriptComponent
 			Debug.ClearKey(KeyCode.KC_P);
 			int rndRPCNum = Math.RandomIntInclusive(0, 100);
 			// Print first
-			Print("Requesting TestRpc: " + rndRPCNum.ToString());
+			Print("Requesting TestRpc: " + rndRPCNum, LogLevel.NORMAL);
 			// Execute second! Otherwise, when calling this on server,
 			// you'd first print you changed the value and only then
 			// you'd print your requested a change.
@@ -155,11 +169,11 @@ class SCR_RplTestComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_RplTestComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{			
 	}
-	
-	void ~SCR_RplTestComponent()
-	{
-	}
-};
+}

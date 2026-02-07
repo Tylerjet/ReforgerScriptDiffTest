@@ -7,11 +7,11 @@ class SCR_ActionsToolbarItemEditorUIComponent
 	
 	[Attribute(params: "layout")]
 	ResourceName m_Layout;
-};
+}
 
-/** @ingroup Editor_UI Editor_UI_Components
-*/
-class SCR_ActionsToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
+//! @ingroup Editor_UI Editor_UI_Components
+
+class SCR_ActionsToolbarEditorUIComponent : SCR_BaseToolbarEditorUIComponent
 {
 	[Attribute()]
 	protected ref array<ref SCR_ActionsToolbarItemEditorUIComponent> m_aItemLayouts;
@@ -23,8 +23,9 @@ class SCR_ActionsToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 	protected ref array<ref SCR_EditorActionData> m_aActionData = {};
 	protected SCR_BaseEditorAction m_RepeatAction;
 	protected int m_iActionFlags;
-	protected ref map<Widget, SCR_BaseEditorAction> m_Actions = new map<Widget, SCR_BaseEditorAction>;
+	protected ref map<Widget, SCR_BaseEditorAction> m_Actions = new map<Widget, SCR_BaseEditorAction>();
 	
+	//------------------------------------------------------------------------------------------------
 	protected Widget CreateItem(SCR_EditorActionData actionData)
 	{
 		SCR_BaseEditorAction action = actionData.GetAction();
@@ -62,6 +63,8 @@ class SCR_ActionsToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		m_Actions.Insert(itemWidget, action);
 		return itemWidget;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void ShowEntries(Widget contentWidget, int indexStart, int indexEnd)
 	{
 		indexEnd = Math.Min(indexEnd, m_aActionData.Count());
@@ -84,6 +87,8 @@ class SCR_ActionsToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 			}
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void Refresh()
 	{
 		int count = m_EditorActionsComponent.GetAndEvaluateActions(vector.Zero, m_aActionData, m_iActionFlags);
@@ -133,6 +138,8 @@ class SCR_ActionsToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		if (m_RepeatAction)
 			m_EditorActionsComponent.ActionPerformInstantly(m_RepeatAction);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool OnClick(Widget w, int x, int y, int button)
 	{
 		super.OnClick(w, x, y, button);
@@ -153,11 +160,14 @@ class SCR_ActionsToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		if (m_bIsInDialog)
 		{
 			EditorMenuBase menu = EditorMenuBase.Cast(GetMenu());
-			if (menu) menu.CloseSelf();
+			if (menu)
+				menu.CloseSelf();
 		}
 		
 		return false;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttachedScripted(Widget w)
 	{
 		m_EditorActionsComponent = SCR_ToolbarActionsEditorComponent.Cast(SCR_ToolbarActionsEditorComponent.GetInstance(SCR_ToolbarActionsEditorComponent, true));
@@ -185,7 +195,6 @@ class SCR_ActionsToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 			editorManager.GetOnCanEndGameChanged().Insert(Refresh);
 			editorManager.GetOnLimitedChange().Insert(Refresh);
 		}
-			
 		
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (gameMode)
@@ -199,6 +208,8 @@ class SCR_ActionsToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 			
 		super.HandlerAttachedScripted(w);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
@@ -237,4 +248,4 @@ class SCR_ActionsToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 				nightModeComponent.GetOnGlobalNightModeEnabledChanged().Remove(OnGlobalNightModeEnabledChanged);
 		}
 	}
-};
+}

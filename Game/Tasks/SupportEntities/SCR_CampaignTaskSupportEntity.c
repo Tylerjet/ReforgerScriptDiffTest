@@ -159,7 +159,7 @@ class SCR_CampaignTaskSupportEntity : SCR_CampaignBaseTaskSupportEntity
 			return;
 		
 		//Get bases manager
-		SCR_MilitaryBaseManager manager = SCR_MilitaryBaseManager.GetInstance();
+		SCR_MilitaryBaseSystem manager = SCR_MilitaryBaseSystem.GetInstance();
 		
 		//Get all bases
 		array<SCR_MilitaryBaseComponent> bases = {};
@@ -299,7 +299,10 @@ class SCR_CampaignTaskSupportEntity : SCR_CampaignBaseTaskSupportEntity
 	void SCR_CampaignTaskSupportEntity(IEntitySource src, IEntity parent)
 	{
 		//Register to script invokers
-		SCR_MilitaryBaseManager.GetInstance().GetOnBaseFactionChanged().Insert(OnBaseCaptured);
+		SCR_MilitaryBaseSystem baseManager = SCR_MilitaryBaseSystem.GetInstance();
+		
+		if (baseManager)
+			baseManager.GetOnBaseFactionChanged().Insert(OnBaseCaptured);
 		
 		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		
@@ -313,7 +316,7 @@ class SCR_CampaignTaskSupportEntity : SCR_CampaignBaseTaskSupportEntity
 	void ~SCR_CampaignTaskSupportEntity()
 	{
 		//Unregister from script invokers
-		SCR_MilitaryBaseManager baseManager = SCR_MilitaryBaseManager.GetInstance(false);
+		SCR_MilitaryBaseSystem baseManager = SCR_MilitaryBaseSystem.GetInstance();
 		
 		if (baseManager)
 			baseManager.GetOnBaseFactionChanged().Remove(OnBaseCaptured);

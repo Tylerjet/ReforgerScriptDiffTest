@@ -1,4 +1,4 @@
-class SCR_CustomArrayEditableEntityUIComponent: SCR_BaseEditableEntityUIComponent
+class SCR_CustomArrayEditableEntityUIComponent : SCR_BaseEditableEntityUIComponent
 {
 	[Attribute(desc: "Image widget to set icon same as EditableEntity UI info icon")]
 	protected ref array<string> m_sIconWidgetNames;
@@ -6,6 +6,7 @@ class SCR_CustomArrayEditableEntityUIComponent: SCR_BaseEditableEntityUIComponen
 	[Attribute("0", desc: "If true will attempt to color the widget this script is attached to if the EditableEntity uses SCR_ColorUIInfo")]
 	protected bool m_bColorWidget;
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnInit(SCR_EditableEntityComponent entity, SCR_UIInfo info, SCR_EditableEntityBaseSlotUIComponent slot)
 	{
 		//~ Set custom textures
@@ -35,4 +36,4 @@ class SCR_CustomArrayEditableEntityUIComponent: SCR_BaseEditableEntityUIComponen
 			}
 		}
 	}
-};
+}

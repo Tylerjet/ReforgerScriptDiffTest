@@ -1,6 +1,9 @@
 //------------------------------------------------------------------------------------------------
 class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 {
+	[Attribute(desc: "Action name if supplies are disabled")]
+	protected LocalizedString m_sActionNameNoSupplies;
+	
 	protected SCR_ResourceSystemSubscriptionHandleBase m_ResourceSubscriptionHandleConsumer;
 	protected RplId m_ResourceInventoryPlayerComponentRplId;
 	protected SCR_ResourceComponent m_ResourceComponent;
@@ -10,8 +13,12 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 	protected RplComponent m_RplComponent;
 	protected DamageManagerComponent m_DamageManager;
 	protected SCR_CompartmentAccessComponent m_CompartmentAccess;
-	
-	protected const int PROVIDER_SPEED_TO_REMOVE_BUILDING_SQ = 0;
+	protected bool m_bUseRankLimitedAccess;
+	protected bool m_bTemporarilyBlockedAccess;
+	protected bool m_bAccessCanBeBlocked;
+
+	protected const int PROVIDER_SPEED_TO_REMOVE_BUILDING_SQ = 1;
+	protected const int TEMPORARY_BLOCKED_ACCESS_RESET_TIME = 1000;
 	
 	//------------------------------------------------------------------------------------------------
 	protected override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
@@ -23,6 +30,9 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 		
 		if (GetGame().GetPlayerController())
 			m_ResourceInventoryPlayerComponentRplId = Replication.FindId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent)));
+		
+		if (m_ProviderComponent && m_ProviderComponent.ObstrucViewWhenEnemyInRange())
+			m_bAccessCanBeBlocked = true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -30,16 +40,12 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 	{
 		IEntity mainParent = SCR_EntityHelper.GetMainParent(GetOwner(), true);
 		m_ProviderPhysics = mainParent.GetPhysics();
-		
-		// Check if the supplies component is at the owner (supply truck)
 		m_ProviderComponent = SCR_CampaignBuildingProviderComponent.Cast(GetOwner().FindComponent(SCR_CampaignBuildingProviderComponent));
-		if (m_ProviderComponent)
-			return;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity) 
-	{		
+	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity)
+	{
 		int playerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(pUserEntity);
 		m_ProviderComponent.RequestBuildingMode(playerID, true);
 	}
@@ -47,25 +53,44 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
 	{
-		if (!m_ProviderComponent || GetUserRank(user) >= m_ProviderComponent.GetAccessRank())
-			return true;
-		
-		FactionAffiliationComponent factionAffiliationComp = FactionAffiliationComponent.Cast(user.FindComponent(FactionAffiliationComponent));
-		if (!factionAffiliationComp)
+		if (!m_ProviderComponent || m_bTemporarilyBlockedAccess)
 			return false;
 		
-		string rankName;
-		SCR_Faction faction = SCR_Faction.Cast(factionAffiliationComp.GetAffiliatedFaction());
-		if (faction)
-			rankName = faction.GetRankName(m_ProviderComponent.GetAccessRank());
+		if (m_ProviderComponent.GetAccessRank() > GetUserRank(user))
+		{
+			FactionAffiliationComponent factionAffiliationComp = FactionAffiliationComponent.Cast(user.FindComponent(FactionAffiliationComponent));
+			if (!factionAffiliationComp)
+				return false;
 			
-		SetCannotPerformReason(rankName);
-		return false;
+			string rankName;
+			SCR_Faction faction = SCR_Faction.Cast(factionAffiliationComp.GetAffiliatedFaction());
+			if (faction)
+				rankName = faction.GetRankName(m_ProviderComponent.GetAccessRank());
+				
+			SetCannotPerformReason(rankName);
+			return false;
+		}
+		
+		if (m_bAccessCanBeBlocked)
+		{
+			SetTemporaryBlockedAccess();
+		
+			if (m_bTemporarilyBlockedAccess)
+			{
+				SetCannotPerformReason("#AR-Campaign_Action_ShowBuildPreviewEnemyPresence");
+				return false;
+			}
+		}
+
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] user
+	//! \return
 	SCR_ECharacterRank GetUserRank(notnull IEntity user)
-	{		
+	{
 		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(user);
 		PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(playerId);
 		if (!playerController)
@@ -79,14 +104,14 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 	{
 		if (!m_ProviderComponent)
 			return false;
-		
+
 		if (!m_CompartmentAccess)
 		{
 			m_CompartmentAccess = SCR_CompartmentAccessComponent.Cast(user.FindComponent(SCR_CompartmentAccessComponent));
 			
 			SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
 			if (playerController)
-				playerController.m_OnControlledEntityChanged.Insert(SetNewComparmentComponent);
+				playerController.m_OnControlledEntityChanged.Insert(SetNewCompartmentComponent);
 			
 			return false;
 		}
@@ -95,14 +120,14 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 			return false;
 		
 		// Don't quit if the providerPhysics doesn't exist. The provider might not have one.
-		if (m_ProviderPhysics)	
+		if (m_ProviderPhysics)
 		{
 			vector velocity = m_ProviderPhysics.GetVelocity();
 			if ((velocity.LengthSq()) > PROVIDER_SPEED_TO_REMOVE_BUILDING_SQ)
 				return false;
 		}
 		
-		// Don't show the action if player is within any vehicle.		
+		// Don't show the action if player is within any vehicle.
 		ChimeraCharacter char = ChimeraCharacter.Cast(user);
 		if (!char || char.IsInVehicle())
 			return false;
@@ -114,16 +139,22 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 				return false;
 		}
 				
-		return m_ProviderComponent.IsPlayerFactionSame(user);
+		return m_ProviderComponent.IsCharacterFactionSame(user);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override bool GetActionNameScript(out string outName)
-	{	
+	{			
 		if (!m_ResourceComponent)
 			m_ResourceComponent = m_ProviderComponent.GetResourceComponent();
 		
-		if (!m_ResourceComponent 
+		if (!m_ResourceComponent.IsResourceTypeEnabled() && !m_sActionNameNoSupplies.IsEmpty())
+		{
+			outName = m_sActionNameNoSupplies;
+			return true;
+		}
+			
+		if (!m_ResourceComponent
 		||	!m_ResourceConsumer && !m_ResourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES, m_ResourceConsumer))
 			return false;
 		
@@ -136,9 +167,8 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 			m_ResourceSubscriptionHandleConsumer = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandleGraceful(m_ResourceConsumer, m_ResourceInventoryPlayerComponentRplId);
 		
 		ActionNameParams[0] = string.ToString(m_ResourceConsumer.GetAggregatedResourceValue());
-		outName = ("#AR-Campaign_Action_ShowBuildPreview-UC");
 		
-		return true;
+		return false;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -149,9 +179,79 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 			
 	//------------------------------------------------------------------------------------------------
 	//! Sets a new compartment component. Controlled by an event when the controlled entity has changed.
-	void SetNewComparmentComponent(IEntity from, IEntity to)
+	//\param[in] from Entity from which the ownership is being pased
+	//\param[in] to Entity to which the ownership is passed
+	void SetNewCompartmentComponent(IEntity from, IEntity to)
 	{
-		m_CompartmentAccess = SCR_CompartmentAccessComponent.Cast(to.FindComponent(SCR_CompartmentAccessComponent));
+		if (to)
+			m_CompartmentAccess = SCR_CompartmentAccessComponent.Cast(to.FindComponent(SCR_CompartmentAccessComponent));
 	}
 	
-};
+	//------------------------------------------------------------------------------------------------
+	//! Set temporary blocked access.
+	void SetTemporaryBlockedAccess()
+	{
+		IEntity masterProvider = m_ProviderComponent.GetMasterProviderEntity();
+		if (!masterProvider)
+			return;
+		
+		SCR_CampaignBuildingProviderComponent masterProviderComponent = SCR_CampaignBuildingProviderComponent.Cast(masterProvider.FindComponent(SCR_CampaignBuildingProviderComponent));
+		if (!masterProviderComponent)
+			return;
+		
+		GetGame().GetWorld().QueryEntitiesBySphere(GetOwner().GetOrigin(), masterProviderComponent.GetBuildingRadius(), EvaluateEntity, null, EQueryEntitiesFlags.DYNAMIC);
+		GetGame().GetCallqueue().CallLater(ResetTemporaryBlockedAccess, TEMPORARY_BLOCKED_ACCESS_RESET_TIME, false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set temporary blocked access back to default false value.
+	void ResetTemporaryBlockedAccess()
+	{
+		m_bTemporarilyBlockedAccess = false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Check if this entity can block player to enter a building mode. If such anentity is found, return false to stop evaluating next enttiy found by query.
+	//\param[in] ent Entity to evaluate by this filter.
+	bool EvaluateEntity(IEntity ent)
+	{
+		if (!ent)
+			return true;
+		
+		SCR_ChimeraCharacter char = SCR_ChimeraCharacter.Cast(ent);
+		if (!char)
+			return true;
+		
+		SCR_CharacterDamageManagerComponent charDamageManager = SCR_CharacterDamageManagerComponent.Cast(char.FindComponent(SCR_CharacterDamageManagerComponent));
+		if (!charDamageManager || charDamageManager.GetState() == EDamageState.DESTROYED)
+			return true;
+		
+		if (!m_ProviderComponent.IsEnemyFaction(char))
+			return true;
+		
+		CharacterControllerComponent charControl = char.GetCharacterController();
+		if (!charControl)
+			return true;
+		
+		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(ent);
+		if (playerId == 0)
+		{
+			AIControlComponent ctrComp = charControl.GetAIControlComponent();
+			if (!ctrComp)
+				return true;
+			
+			if (ctrComp.IsAIActivated())
+			{
+				m_bTemporarilyBlockedAccess = true;
+				return false;
+			}
+		}
+		else
+		{
+			m_bTemporarilyBlockedAccess = true;
+			return false;
+		}
+		
+		return true;
+	}
+}

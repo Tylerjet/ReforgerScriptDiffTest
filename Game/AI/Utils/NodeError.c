@@ -26,3 +26,11 @@ ENodeResult SCR_AgentMustChimera(Node node, AIAgent owner)
 	Debug.Error(sOwner + " : " + nodeStack + "\n" + "must be run on ChimeraAIAgent!");
 	return ENodeResult.FAIL;
 };
+
+class SCR_AIErrorMessages
+{
+	static ENodeResult NodeErrorCombatMoveRequest(Node node, AIAgent owner, SCR_AICombatMoveRequestBase rq)
+	{
+		return NodeError(node, owner, string.Format("Combat Move Request is null or of wring type: %1", rq));
+	}
+}

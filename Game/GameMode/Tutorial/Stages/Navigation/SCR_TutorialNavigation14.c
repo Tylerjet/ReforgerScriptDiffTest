@@ -15,18 +15,10 @@ class SCR_TutorialNavigation14 : SCR_BaseCampaignTutorialArlandStage
 		IEntity lighthousePos = GetGame().GetWorld().FindEntityByName("TowerPos");
 		m_fAngle = m_TutorialComponent.GetEntityCompassAngle(lighthousePos);
 		
-		SCR_HintUIInfo info = m_TutorialHintList.GetHint(m_TutorialComponent.GetStage());
-		
-		LocalizedString description = info.GetUnformattedDescription();
-		
-		if (m_fAngle < 0)
-			description = string.Format(WidgetManager.Translate(description), m_fAngle + 360);
-		else
-			description = string.Format(WidgetManager.Translate(description), m_fAngle);
-		
-		info.SetDescription(description);
-		
-		SCR_HintManagerComponent.ShowHint(info);
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("Navigation_Compass_Village");
+		HintOnVoiceOver();
 	}
 	
 	//------------------------------------------------------------------------------------------------

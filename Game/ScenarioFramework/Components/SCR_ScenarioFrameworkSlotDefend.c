@@ -1,4 +1,4 @@
-[EntityEditorProps(category: "GameScripted/ScriptWizard", description: "ScriptWizard generated script file.")]
+[EntityEditorProps(category: "GameScripted/ScenarioFramework/Slot", description: "")]
 class SCR_ScenarioFrameworkSlotDefendClass : SCR_ScenarioFrameworkSlotTaskAIClass
 {
 }
@@ -6,7 +6,7 @@ class SCR_ScenarioFrameworkSlotDefendClass : SCR_ScenarioFrameworkSlotTaskAIClas
 class SCR_ScenarioFrameworkSlotDefend : SCR_ScenarioFrameworkSlotTaskAI
 {
 	//------------------------------------------------------------------------------------------------
-	override void DynamicDespawn()
+	override void DynamicDespawn(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		GetOnAllChildrenSpawned().Remove(DynamicDespawn);
 		if (!m_Entity && !SCR_StringHelper.IsEmptyOrWhiteSpace(m_sObjectToSpawn))
@@ -36,10 +36,14 @@ class SCR_ScenarioFrameworkSlotDefend : SCR_ScenarioFrameworkSlotTaskAI
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_ScenarioFrameworkSlotDefend(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 #ifdef WORKBENCH		
 		m_iDebugShapeColor = ARGB(100, 0x00, 0x10, 0xFF);
 #endif		
 	}
-};
+}

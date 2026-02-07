@@ -7,9 +7,9 @@ class SCR_VideoSettingsConsoleSubMenu : SCR_SettingsSubMenuBase
 	SCR_SettingsManagerVideoModule m_SettingsVideoModule;
 		
 	//------------------------------------------------------------------------------------------------
-	protected override void OnMenuOpen(SCR_SuperMenuBase parentMenu)
+	override void OnTabCreate(Widget menuRoot, ResourceName buttonsLayout, int index)
 	{
-		super.OnMenuOpen(parentMenu);
+		super.OnTabCreate(menuRoot, buttonsLayout, index);
 		
 		SCR_SettingsManager settingsManager = GetGame().GetSettingsManager();
 

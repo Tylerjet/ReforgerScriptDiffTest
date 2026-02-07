@@ -200,6 +200,7 @@ class SCR_InvCallBack : ScriptedInventoryOperationCallback
 			}
 
 			m_pMenu.NavigationBarUpdate();
+			m_pMenu.RefreshPlayerWidget();
 		}
 
 		if (m_pStorageToFocus)
@@ -280,7 +281,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	protected SCR_InventoryStorageBaseUI					m_pActiveStorageUI				= null;
 	protected SCR_InventoryStorageBaseUI					m_pActiveHoveredStorageUI		= null;
 	protected SCR_InventoryStorageBaseUI					m_pPrevActiveStorageUI			= null;
-	protected ref array<SCR_InventorySlotUI>				m_aShownStorages				= new ref array<SCR_InventorySlotUI>();	//used for storing pointers on storages which are displayed on screen ( for the refreshing purposes )
+	protected ref array<SCR_InventorySlotUI>				m_aShownStorages				= new array<SCR_InventorySlotUI>();	//used for storing pointers on storages which are displayed on screen ( for the refreshing purposes )
 	protected GridLayoutWidget								m_wStoragesContainer;
 	protected const int										STORAGE_AREA_COLUMNS			= 2;
 	protected int											m_iStorageListCounter			= 0;
@@ -294,7 +295,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	protected ProgressBarWidget							m_wProgressBarWeight;
 	protected ProgressBarWidget							m_wProgressBarWeightItem;
 
-	const string											SUPPLY_STORAGE_LAYOUT	= "{1DA3820E61D50EA1}UI/layouts/Menus/Inventory/SupplyInventoryContainerGrid.layout";
+	const string											ARSENAL_STORAGE_LAYOUT	= "{1DA3820E61D50EA1}UI/layouts/Menus/Inventory/ArsenalInventoryContainerGrid.layout";
 	const string 											BACKPACK_STORAGE_LAYOUT	= "{06E9285D68D190EF}UI/layouts/Menus/Inventory/InventoryContainerGrid.layout";
 	const string											WEAPON_STORAGE_LAYOUT	= "{7B28D87B8A1ADD41}UI/layouts/Menus/Inventory/InventoryWeaponSlots.layout";
 	const string 											GADGETS_STORAGE_LAYOUT 	= "{265189B87ED5CD10}UI/layouts/Menus/Inventory/InventoryGadgetsPanel.layout";
@@ -470,7 +471,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (item.IsEmpty())
 			return;
 		if (m_AttachmentSpinBox.FindItem(item) < 0)
-			m_AttachmentSpinBox.AddItem(item, data);
+			m_AttachmentSpinBox.AddItem(item, false, data);
 
 		SetAttachmentSpinBoxActive(m_bIsUsingGamepad);
 	}
@@ -480,8 +481,11 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	{
 		int index = m_AttachmentSpinBox.FindItem(item);
 		if (index > -1)
-			m_AttachmentSpinBox.RemoveItem(index);
+			m_AttachmentSpinBox.RemoveItem(index, false);
 		
+		if (m_pDamageInfo && m_pDamageInfo.GetName() == item)
+			m_pDamageInfo.Destroy();
+
 		SetAttachmentSpinBoxActive(m_bIsUsingGamepad);
 	}
 
@@ -515,7 +519,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		
 		if (m_morphineTimerHandlerGlobal)
 		{
-			ScriptedHitZone headHZ = ScriptedHitZone.Cast(m_CharDamageManager.GetHeadHitZone());
+			SCR_HitZone headHZ = SCR_HitZone.Cast(m_CharDamageManager.GetHeadHitZone());
 			if (headHZ)
 				m_morphineTimerHandlerGlobal.GetRootWidget().SetVisible(headHZ.GetDamageOverTime(EDamageType.HEALING) < 0);		
 		}
@@ -587,12 +591,12 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void RefreshPlayerWidget()
+	void RefreshPlayerWidget()
 	{
-		if (!m_pPreviewManager)
+		if (!m_pPreviewManager || m_pInspectedSlot)
 			return;
 		if (m_wPlayerRender)
-			m_pPreviewManager.SetPreviewItem(m_wPlayerRender, m_Player, m_PlayerRenderAttributes);
+			m_pPreviewManager.SetPreviewItem(m_wPlayerRender, m_Player, m_PlayerRenderAttributes, true);
 		if (m_wPlayerRenderSmall)
 			m_pPreviewManager.SetPreviewItem(m_wPlayerRenderSmall, m_Player, m_PlayerRenderAttributes);
 	}
@@ -882,20 +886,19 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		m_AttachmentSpinBox.SetEnabled(shouldBeActive);
 		m_AttachmentSpinBox.GetRootWidget().SetVisible(shouldBeActive);
 
-		Widget leftArea = m_widget.FindAnyWidget("StorageLootSlot");
+		Widget leftArea = m_widget.FindAnyWidget("LeftArea");
 		Widget rightArea = m_widget.FindAnyWidget("StoragesListSlot");
-		Widget openStorages = m_widget.FindAnyWidget("OpenedStorages");
 
+		// Switches navigation targets based on the presence of the spinbox in the center
 		if (shouldBeActive)
 		{
-			openStorages.SetNavigation(WidgetNavigationDirection.RIGHT, WidgetNavigationRuleType.EXPLICIT, "AttachmentSpinBox");
 			leftArea.SetNavigation(WidgetNavigationDirection.RIGHT, WidgetNavigationRuleType.EXPLICIT, "AttachmentSpinBox");
 			rightArea.SetNavigation(WidgetNavigationDirection.LEFT, WidgetNavigationRuleType.EXPLICIT, "AttachmentSpinBox");
 			m_AttachmentSpinBox.GetRootWidget().SetNavigation(WidgetNavigationDirection.RIGHT, WidgetNavigationRuleType.EXPLICIT, "StoragesListSlot");
+			m_AttachmentSpinBox.GetRootWidget().SetNavigation(WidgetNavigationDirection.LEFT, WidgetNavigationRuleType.EXPLICIT, "StorageLootSlot");
 		}
 		else
 		{
-			openStorages.SetNavigation(WidgetNavigationDirection.RIGHT, WidgetNavigationRuleType.EXPLICIT, "StoragesListSlot");
 			leftArea.SetNavigation(WidgetNavigationDirection.RIGHT, WidgetNavigationRuleType.EXPLICIT, "StoragesListSlot");
 			rightArea.SetNavigation(WidgetNavigationDirection.LEFT, WidgetNavigationRuleType.EXPLICIT, "StorageLootSlot");
 		}
@@ -929,7 +932,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 				while (slots.IsIndexValid(++slotIndex) && !slotToFocus)
 				{
 					slotToFocus = slots[slotIndex].GetButtonWidget();
-				}
+		}
 			}
 
 			GetGame().GetWorkspace().SetFocusedWidget(slotToFocus);
@@ -1038,7 +1041,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 						SCR_CharacterControllerComponent charCtrl = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
 						if (charCtrl)
 							charCtrl.m_OnLifeStateChanged.Insert(OnLootedCharacterLifeStateChanged);
-					}
+				}
 				}
 
 				m_wStoragesContainer = GridLayoutWidget.Cast( m_widget.FindAnyWidget( "StorageGrid" ) );
@@ -1067,9 +1070,9 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		return true;
 	}
 
-	protected void OnLootedCharacterLifeStateChanged(ECharacterLifeState lifeState)
+	protected void OnLootedCharacterLifeStateChanged(ECharacterLifeState previousLifeState, ECharacterLifeState newLifeState)
 	{
-		if (lifeState == ECharacterLifeState.ALIVE)
+		if (newLifeState == ECharacterLifeState.ALIVE)
 		{
 			IEntity itemOfInterest = m_pVicinity.GetItemOfInterest();
 			if (itemOfInterest && itemOfInterest.IsInherited(SCR_ChimeraCharacter))
@@ -1433,8 +1436,9 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		Widget parent = m_widget.FindAnyWidget("OpenedStorages");
 		Widget newStorage;
 
-		if (SCR_InventoryStorageContainerUI.Cast(handler) || SCR_InventoryOpenedStorageArsenalUI.Cast(handler))
-			newStorage = GetGame().GetWorkspace().CreateWidgets(SUPPLY_STORAGE_LAYOUT, parent);
+		//if (SCR_InventoryStorageContainerUI.Cast(handler) || SCR_InventoryOpenedStorageArsenalUI.Cast(handler))
+		if (SCR_InventoryOpenedStorageArsenalUI.Cast(handler))
+			newStorage = GetGame().GetWorkspace().CreateWidgets(ARSENAL_STORAGE_LAYOUT, parent);
 		else
 			newStorage = GetGame().GetWorkspace().CreateWidgets(BACKPACK_STORAGE_LAYOUT, parent);
 
@@ -1874,6 +1878,12 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		return m_pDamageInfo;
 	}
 
+	void DestroyDamageInfo()
+	{
+		if (m_pItemInfo)
+			m_pItemInfo.Destroy();
+	}
+
 	//------------------------------------------------------------------------------------------------
 	void HideItemInfo()
 	{
@@ -2043,26 +2053,32 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 
 		if ( !m_pFocusedSlotUI )
 			return;
+
+		InventoryItemComponent itemComp = m_pFocusedSlotUI.GetInventoryItemComponent();
+		if (itemComp && itemComp.GetOwner()
+			&& m_pActiveHoveredStorageUI != m_pStorageListUI
+			&& m_pActiveHoveredStorageUI != m_pStorageLootUI)
+		{
+			bool canUse = m_StorageManager.CanUseItem_Inventory(itemComp.GetOwner());
+			bool canEquip = m_StorageManager.CanEquipItem_Inventory(itemComp.GetOwner());
+
+			m_pNavigationBar.SetButtonEnabled("ButtonUse", canUse);
+			m_pNavigationBar.SetButtonEnabled("ButtonEquip", canEquip);
+		}
+
 		if ( m_pFocusedSlotUI.GetStorageUI() == m_pQuickSlotStorage )
 		{
 			if (m_pFocusedSlotUI.GetInventoryItemComponent())
 				m_pNavigationBar.SetButtonEnabled("ButtonQuickSlotUnassign", true);
 			return;
 		}
-		InventoryItemComponent itemComp = m_pFocusedSlotUI.GetInventoryItemComponent();
+
 		bool arsenalItem = IsStorageArsenal(m_pFocusedSlotUI.GetStorageUI().GetCurrentNavigationStorage());
 		if (itemComp && itemComp.GetOwner() && !arsenalItem)
 			m_pNavigationBar.SetButtonEnabled("ButtonInspect", (itemComp.GetOwner().FindComponent(SCR_WeaponAttachmentsStorageComponent) != null));
 		
 		m_pNavigationBar.SetButtonEnabled( "ButtonSelect", true );
 		m_pNavigationBar.SetButtonEnabled( "ButtonDrop", m_pFocusedSlotUI.IsDraggable() );
-
-		if (itemComp)
-		{	
-			SCR_ConsumableItemComponent consumableComp = SCR_ConsumableItemComponent.Cast(itemComp.GetOwner().FindComponent(SCR_ConsumableItemComponent));
-			if (consumableComp && consumableComp.GetConsumableEffect() && consumableComp.GetConsumableEffect().CanApplyEffect(m_Player, m_Player))
-				m_pNavigationBar.SetButtonEnabled("ButtonUse");
-		}
 
 		bool flag = m_pFocusedSlotUI.GetStorageUI() == m_pStorageLootUI;
 		bool isArsenal = IsStorageArsenal(m_pStorageLootUI.GetCurrentNavigationStorage());
@@ -2105,7 +2121,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 				// m_pNavigationBar.SetButtonEnabled( "ButtonEquip", true );
 				break;
 			case ESlotFunction.TYPE_WEAPON:
-				m_pNavigationBar.SetButtonEnabled( "ButtonEquip", true );
+				//m_pNavigationBar.SetButtonEnabled( "ButtonEquip", true );
 
 				InventoryItemComponent itemComp = m_pFocusedSlotUI.GetInventoryItemComponent();
 
@@ -2306,7 +2322,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (!m_bStorageSwitchMode &&
 			m_pActiveStorageUI != m_pStorageLootUI &&
 			m_pActiveStorageUI != m_pStorageListUI &&
-			!m_pActiveStorageUI.IsInherited(SCR_InventoryOpenedStorageUI))
+			m_pActiveStorageUI && !m_pActiveStorageUI.IsInherited(SCR_InventoryOpenedStorageUI))
 		{
 			m_pNavigationBar.SetButtonEnabled("ButtonQuickSlotAssign", true);
 		}
@@ -2336,8 +2352,19 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (itemComp && itemComp.GetOwner() && !arsenalItem)
 			m_pNavigationBar.SetButtonEnabled("ButtonInspect", (itemComp.GetOwner().FindComponent(SCR_WeaponAttachmentsStorageComponent) != null));
 
+		if (itemComp 
+			&& m_pActiveStorageUI != m_pStorageListUI
+			&& m_pActiveStorageUI != m_pStorageLootUI)
+		{
+			bool canUse = m_StorageManager.CanUseItem_Inventory(itemComp.GetOwner());
+			bool canEquip = m_StorageManager.CanEquipItem_Inventory(itemComp.GetOwner());
+
+			m_pNavigationBar.SetButtonEnabled("ButtonUse", canUse);
+			m_pNavigationBar.SetButtonEnabled("ButtonEquip", canEquip);
+		}
+
 		if (!m_pSelectedSlotUI)
-			m_pNavigationBar.SetButtonActionName("ButtonBack", "#AR-Menu_Back");
+		m_pNavigationBar.SetButtonActionName("ButtonBack", "#AR-Menu_Back");
 
 		m_pNavigationBar.SetButtonEnabled("ButtonDrop",
 			(m_pFocusedSlotUI != null) &&
@@ -2690,9 +2717,9 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	//! Method inserted on LifeStateChanged invoker on the character controller
 	//! When LifeState changes, we may want to close the inventory
-	void LifeStateChanged(ECharacterLifeState lifeState)
+	void LifeStateChanged(ECharacterLifeState previousLifeState, ECharacterLifeState newLifeState)
 	{
-		if (lifeState != ECharacterLifeState.ALIVE)
+		if (newLifeState != ECharacterLifeState.ALIVE)
 			Action_CloseInventory();
 	}
 
@@ -3525,6 +3552,9 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		
 		if (!arsenalInventorySlotUI)
 		{
+			if (m_pActiveHoveredStorageUI)
+				return false;
+			
 			//! Perform refund logic.
 			BaseInventoryStorageComponent storageComponent = m_pStorageLootUI.GetCurrentNavigationStorage();
 
@@ -3606,6 +3636,10 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!	Attempts to process MoveItemToStorageSlot logic specific for virtual arsenal and returns 
+	//!		whenever it was successful or not.
+	//!	
+	//!	\return true if the operation was indeed for virtual arsenal, false otherwise.
 	protected bool MoveItemToStorageSlot_VirtualArsenal()
 	{
 		SCR_ArsenalInventorySlotUI arsenalInventorySlotUI;
@@ -3617,6 +3651,10 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		
 		if (!arsenalInventorySlotUI)
 		{
+			// If the slot was dragged onto a non arsenal slot then do not process virtual arsenal.
+			if (!SCR_ArsenalInventorySlotUI.Cast(m_pFocusedSlotUI))	
+				return false;
+			
 			//! Perform refund logic.
 			BaseInventoryStorageComponent storageComponent = m_pStorageLootUI.GetCurrentNavigationStorage();
 			
@@ -3636,6 +3674,10 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			return true;
 		}
 		
+		/*
+		Do nothing but exit as successful because of dragging arsenal virtual item into another
+			arsenal virtual item.
+		*/
 		if (SCR_ArsenalInventorySlotUI.Cast(m_pFocusedSlotUI))
 			return true;
 		
@@ -3718,6 +3760,11 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (!resourceComponentFrom)
 			return false;
 		
+		//~ TODO: Hotfix until proper solution, block moving supplies if occupied by character
+		SCR_BaseCompartmentManagerComponent compartmentManager = SCR_BaseCompartmentManagerComponent.Cast(resourceComponentFrom.GetOwner().FindComponent(SCR_BaseCompartmentManagerComponent));
+		if (compartmentManager && compartmentManager.BlockSuppliesIfOccupied() && compartmentManager.GetOccupantCount() > 0)
+			return false;
+		
 		if (!m_pActiveHoveredStorageUI)
 			return false;
 		
@@ -3779,23 +3826,15 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		
 		resourceContainerCatalog.GetEntityListWithData(SCR_ResourceContainerItemData, entries, data);
 		
-		IEntity localEntity;
-		
 		foreach (int idx, SCR_EntityCatalogEntry entry: entries)
 		{
 			SCR_ResourceContainerItemData datum = SCR_ResourceContainerItemData.Cast(data[idx]);
-			localEntity = GetGame().SpawnEntityPrefabLocal(Resource.Load(entry.GetPrefab()));
 			
-			if (invManagerTo.CanInsertItemInStorage(localEntity, storageTo))
+			if (invManagerTo.CanInsertResourceInStorage(entry.GetPrefab(), storageTo))
 			{
 				maxResourceValueTo = datum.GetMaxResourceValue();
-				
-				delete localEntity;
-				
 				break;
 			}
-			
-			delete localEntity;
 		}
 		
 		float maxStoredResources = Math.Min(interactorFrom.GetAggregatedResourceValue(), maxResourceValueTo);
@@ -3838,6 +3877,11 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		
 		if (!resourceComponentTo)
 			return false;
+		
+		//~ TODO: Hotfix until proper solution, block moving supplies if occupied by character
+		SCR_BaseCompartmentManagerComponent compartmentManager = SCR_BaseCompartmentManagerComponent.Cast(resourceComponentTo.GetOwner().FindComponent(SCR_BaseCompartmentManagerComponent));
+		if (compartmentManager && compartmentManager.BlockSuppliesIfOccupied() && compartmentManager.GetOccupantCount() > 0)
+				return false;
 		
 		SCR_ResourceInteractor interactorFrom = resourceComponentFrom.GetConsumer(EResourceGeneratorID.DEFAULT_STORAGE, EResourceType.SUPPLIES);
 		
@@ -3950,8 +3994,9 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		auto storage = m_pFocusedSlotUI.GetAsStorage();
 		if (storage)
 		{
-			auto parentUIContainer = m_pFocusedSlotUI.GetStorageUI();
-			if (parentUIContainer.IsTraversalAllowed())
+			SCR_InventoryStorageBaseUI parentUIContainer = m_pFocusedSlotUI.GetStorageUI();
+			
+			if (parentUIContainer.IsTraversalAllowed() && ShouldAllowTraverseActualSlot())
 				parentUIContainer.Traverse(storage);
 			
 			ButtonWidget lastCloseTraverseButton = parentUIContainer.GetLastCloseTraverseButton();
@@ -3961,6 +4006,20 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			else
 				FocusOnSlotInStorage(parentUIContainer);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Method that returns if traverse on selected slot should be performed.
+	//! \return true if traverse on the selected slot should be performed, false otherwise.
+	protected bool ShouldAllowTraverseActualSlot()
+	{
+		InventoryItemComponent inventoryItemComponent = m_pSelectedSlotUI.GetInventoryItemComponent();
+		
+		// Check if the selected slot is an arsenal, and if it's in some inventory item then disallow traverse.
+		if (inventoryItemComponent && inventoryItemComponent.GetParentSlot() && inventoryItemComponent.GetOwner().FindComponent(SCR_ArsenalInventoryStorageManagerComponent))
+			return false;
+		
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -4104,36 +4163,9 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void Action_EquipItem()
 	{
-		// Ignore if we cannot interact
-		if (!GetCanInteract())
-			return;
-		if( !m_pFocusedSlotUI )
-			return;
-
-		// TODO: rather check the m_eSlotFunction. The functionality of the item is recognized already in the constructor of the SlotUI
-		InventoryItemComponent pInvComponent = m_pFocusedSlotUI.GetInventoryItemComponent();
-		if( !pInvComponent )
-			return;
-		m_pItem = pInvComponent.GetOwner();
-		if(!m_InventoryManager.CanMoveItem(m_pItem))
-			return;
-
-		SCR_GadgetComponent gadgetComp =  SCR_GadgetComponent.Cast( m_pItem.FindComponent( SCR_GadgetComponent ));
-		if( gadgetComp )
-		{
-			//m_InventoryManager.EquipGadget( m_pItem );
+		if (m_pFocusedSlotUI)
+			m_pFocusedSlotUI.UseItem(m_Player);
 		}
-		else
-		{
-			auto weaponComp =  WeaponComponent.Cast(m_pItem.FindComponent( WeaponComponent ));
-			if ( weaponComp )
-				MoveWeapon();
-		}
-
-		FilterOutStorages( false );
-		ResetHighlightsOnAvailableStorages();
-		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_VICINITY_EQUIP_CLICK);
-	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void Action_MoveBetween()
@@ -4333,9 +4365,9 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	{
 		GetGame().GetInputManager().RemoveActionListener( "Inventory_Drag", EActionTrigger.PRESSED, Action_OnDrag );
 		GetGame().GetInputManager().RemoveActionListener( "Inventory_Drag", EActionTrigger.UP, Action_DragUp );
-		GetGame().GetCallqueue().CallLater(m_wDragDropContainer.SetVisible, 0, false, false);
 		if (m_pPreviewManager)
 			m_pPreviewManager.SetPreviewItem(m_pDragDropPreviewImage, null);
+		GetGame().GetCallqueue().CallLater(m_wDragDropContainer.SetVisible, 0, false, false);
 		SimpleFSM( EMenuAction.ACTION_DROPPED );
 		m_bDraggingEnabled = false;
 		ResetHighlightsOnAvailableStorages();
@@ -4555,40 +4587,44 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (!invManagerTo)
 			return;
 		
-		SCR_EntityCatalog resourceContainerCatalog = SCR_EntityCatalogManagerComponent.GetInstance().GetEntityCatalogOfType(EEntityCatalogType.SUPPLY_CONTAINER_ITEM); 
-		array<SCR_EntityCatalogEntry> entries = {};
-		array<SCR_BaseEntityCatalogData> data = {};
+		SCR_EntityCatalogManagerComponent entityCatalogManager = SCR_EntityCatalogManagerComponent.GetInstance();
+		string smallestContainerPrefab = "";
 		
-		resourceContainerCatalog.GetEntityListWithData(SCR_ResourceContainerItemData, entries, data);
-		
-		string smallestContainerPrefab = "";	
-		
-		if (!entries.IsEmpty())
+		if (entityCatalogManager)
 		{
-			int minResourceValue;
-			int currentEntryValue;
+			SCR_EntityCatalog resourceContainerCatalog = entityCatalogManager.GetEntityCatalogOfType(EEntityCatalogType.SUPPLY_CONTAINER_ITEM); 
+			array<SCR_EntityCatalogEntry> entries = {};
+			array<SCR_BaseEntityCatalogData> data = {};
 			
-			SCR_ResourceContainerItemData datum = SCR_ResourceContainerItemData.Cast(data[0]);
+			resourceContainerCatalog.GetEntityListWithData(SCR_ResourceContainerItemData, entries, data);
 			
-			minResourceValue = datum.GetMaxResourceValue();
-			
-			if (!minResourceValue)
-				return;
-
-			foreach (int idx, SCR_EntityCatalogEntry entry: entries)
+			if (!entries.IsEmpty())
 			{
-				datum = SCR_ResourceContainerItemData.Cast(data[idx]);
-				currentEntryValue = datum.GetMaxResourceValue();
+				int minResourceValue;
+				int currentEntryValue;
+				
+				SCR_ResourceContainerItemData datum = SCR_ResourceContainerItemData.Cast(data[0]);
+				
+				minResourceValue = datum.GetMaxResourceValue();
+				
+				if (!minResourceValue)
+					minResourceValue = 0;
+	
+				foreach (int idx, SCR_EntityCatalogEntry entry: entries)
+				{
+					datum = SCR_ResourceContainerItemData.Cast(data[idx]);
+					currentEntryValue = datum.GetMaxResourceValue();
+						
+					if (currentEntryValue > minResourceValue)
+						break;
 					
-				if (currentEntryValue > minResourceValue)
-					break;
-				
-				minResourceValue = currentEntryValue;
-				
-				if (!entry)
-					continue;
-				
-				smallestContainerPrefab = entry.GetPrefab();
+					minResourceValue = currentEntryValue;
+					
+					if (!entry)
+						continue;
+					
+					smallestContainerPrefab = entry.GetPrefab();
+				}
 			}
 		}
 		
@@ -4655,7 +4691,12 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			if (shouldUpdateVolumePercentage)
 				storageBaseUI.UpdateVolumePercentage(storageBaseUI.GetOccupiedVolumePercentage(contStorage, totalOccupiedVolumeWithInsertedItem));
 			
-			if (m_InventoryManager.CanInsertItemInActualStorage(itemEntity, contStorage) || m_InventoryManager.CanInsertItemInActualStorage(smallestContainerEntity, contStorage))
+			bool canInsert = m_InventoryManager.CanInsertItemInActualStorage(itemEntity, contStorage);
+			
+			if (!canInsert && SCR_ResourceComponent.FindResourceComponent(itemEntity))
+				canInsert = m_InventoryManager.CanInsertItemInActualStorage(smallestContainerEntity, contStorage);
+			
+			if (canInsert)
 				storageBaseUI.SetStorageAsHighlighted(true);
 			else
 				storageBaseUI.SetStorageAsHighlighted(false);
@@ -4841,7 +4882,8 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 
 		SCR_InventoryStorageBaseUI storageUI = slot.GetStorageUI();
 		if (storageUI 
-		&& (storageUI.IsInherited(SCR_InventoryStorageLootUI) || storageUI.IsInherited(SCR_InventoryOpenedStorageUI)))
+		&& (storageUI.IsInherited(SCR_InventoryStorageLootUI) || storageUI.IsInherited(SCR_InventoryOpenedStorageUI))
+		|| IsStorageArsenal(storageUI.GetCurrentNavigationStorage()))
 			return;	//we don't want to take anything from vicinity to the quickslot
 
 		if ( slot.Type() == SCR_InventorySlotQuickSlotUI )
@@ -4870,8 +4912,14 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			return;
 		if ( !m_pSelectedSlotUI )
 			return;
-		if ( m_pSelectedSlotUI.GetStorageUI() && m_pSelectedSlotUI.GetStorageUI().Type() == SCR_InventoryStorageLootUI )
+
+		SCR_InventoryStorageBaseUI selectedSlotStorage = m_pSelectedSlotUI.GetStorageUI();
+		if (selectedSlotStorage && 
+			(selectedSlotStorage.IsInherited(SCR_InventoryStorageLootUI) || selectedSlotStorage.IsInherited(SCR_InventoryOpenedStorageUI)) ||
+			IsStorageArsenal(selectedSlotStorage.GetCurrentNavigationStorage()))
+		{
 			return;	//we don't want to take anything from vicinity to the quickslot
+		}
 
 		IEntity pOriginalEntity;
 		if ( ( SCR_InventorySlotQuickSlotUI.Cast( m_pSelectedSlotUI ) ) && ( SCR_InventorySlotQuickSlotUI.Cast( m_pFocusedSlotUI ) ) ) // swapping
@@ -4968,6 +5016,11 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		NavigationBarUpdate();
 	}
 
+	static SCR_InventoryMenuUI GetInventoryMenu()
+	{
+		return SCR_InventoryMenuUI.Cast(GetGame().GetMenuManager().FindMenuByPreset(ChimeraMenuPreset.Inventory20Menu));
+	}
+
 	//------------------------------------------------------------------------------------------------
 	void SCR_InventoryMenuUI()
 	{
@@ -5012,9 +5065,9 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	protected void OnItemAddedListener( IEntity item, BaseInventoryStorageComponent storage );
 	protected void OnItemRemovedListener( IEntity item, BaseInventoryStorageComponent storage );
 	override bool OnClick( Widget w, int x, int y, int button );
-	void FilterOutStorages( false ););
+	void FilterOutStorages( false );
 	void MoveItem();
 	void MoveWeapon();
 	void SCR_InventoryMenuUI();
 	#endif
-};
+}

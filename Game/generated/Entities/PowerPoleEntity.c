@@ -9,11 +9,11 @@ Do not modify, this script is generated
 \{
 */
 
-class PowerPoleEntityClass: DestructibleEntityClass
+class PowerPoleEntityClass: SCR_DestructibleEntityClass
 {
 }
 
-class PowerPoleEntity: DestructibleEntity
+class PowerPoleEntity: SCR_DestructibleEntity
 {
 }
 

@@ -5,6 +5,7 @@ class SCR_AIBehaviorBase : SCR_AIActionBase
 	float m_fThreat = 0.0; // This threat value will be added to the calculated threat level in threat system
 	bool m_bAllowLook = true;
 	bool m_bResetLook = false;
+	bool m_bUseCombatMove = false;
 	
 	//---------------------------------------------------------------------------------------------------------------------------------
 	void SCR_AIBehaviorBase(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity)

@@ -1,4 +1,4 @@
-class SCR_ActionToolbarItemEditorUIComponent: SCR_BaseToolbarItemEditorUIComponent
+class SCR_ActionToolbarItemEditorUIComponent : SCR_BaseToolbarItemEditorUIComponent
 {
 	[Attribute()]
 	protected string m_sIconWidgetName;
@@ -11,6 +11,7 @@ class SCR_ActionToolbarItemEditorUIComponent: SCR_BaseToolbarItemEditorUICompone
 	protected ImageWidget m_ToggleWidget;
 	protected SCR_LinkTooltipTargetEditorUIComponent m_TooltipTarget;
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnToggleChange(int value, bool highlight = false)
 	{
 		m_IconWidget.SetVisible(!highlight);
@@ -25,6 +26,9 @@ class SCR_ActionToolbarItemEditorUIComponent: SCR_BaseToolbarItemEditorUICompone
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] action
+	//! \param[in] widget
 	void SetAction(SCR_BaseEditorAction action, Widget widget)
 	{
 		SCR_UIInfo info = action.GetInfo();
@@ -35,7 +39,7 @@ class SCR_ActionToolbarItemEditorUIComponent: SCR_BaseToolbarItemEditorUICompone
 		m_TooltipTarget = SCR_LinkTooltipTargetEditorUIComponent.Cast(widget.FindHandler(SCR_LinkTooltipTargetEditorUIComponent));
 		if (m_TooltipTarget)
 			m_TooltipTarget.SetInfo(info, action);
-		
+
 		//---Assign icon (or exit if it's not available)
 		m_IconWidget = ImageWidget.Cast(widget.FindAnyWidget(m_sIconWidgetName));
 		if (!m_IconWidget)
@@ -47,7 +51,7 @@ class SCR_ActionToolbarItemEditorUIComponent: SCR_BaseToolbarItemEditorUICompone
 		SCR_ColorUIInfo colorInfo = SCR_ColorUIInfo.Cast(info);
 		if (colorInfo)
 			m_IconWidget.SetColor(colorInfo.GetColor());
-		
+
 		//--- Initialize toggling if available
 		m_ToggleWidget = ImageWidget.Cast(widget.FindAnyWidget(m_sToggleWidgetName));
 		if (m_ToggleWidget)
@@ -67,6 +71,8 @@ class SCR_ActionToolbarItemEditorUIComponent: SCR_BaseToolbarItemEditorUICompone
 			}
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
@@ -77,4 +83,4 @@ class SCR_ActionToolbarItemEditorUIComponent: SCR_BaseToolbarItemEditorUICompone
 			m_ToggleAction.Untrack();
 		}
 	}
-};
+}

@@ -1,4 +1,3 @@
-#include "scripts/Game/config.c"
 [EntityEditorProps(category: "GameScripted/ScriptWizard", description: "Component to be used with barrack compositions, handing unit spawning.", color: "0 0 255 255")]
 class SCR_DefenderSpawnerComponentClass : SCR_SlotServiceComponentClass
 {
@@ -12,29 +11,31 @@ class SCR_DefenderSpawnerComponentClass : SCR_SlotServiceComponentClass
 	protected string m_sExitFormation;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetDefaultWaypointPrefab()
 	{
 		return m_sDefaultWaypointPrefab;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetDefaultWaypointCompletionRadius()
 	{
 		return m_fDefaultWaypointCompletionRadius;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetExitFormation()
 	{
 		return m_sExitFormation;
 	}
-};
+}
 
 void OnDefenderGroupSpawnedDelegate(SCR_DefenderSpawnerComponent spawner, SCR_AIGroup group);
 typedef func OnDefenderGroupSpawnedDelegate;
 typedef ScriptInvokerBase<OnDefenderGroupSpawnedDelegate> OnDefenderGroupSpawnedInvoker;
 
-//------------------------------------------------------------------------------------------------
 //! Service providing group of defenders defined in faction. Requires SCR_EnableDefenderAction on ActionManager for players to manage its functionality.
 class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 {
@@ -59,15 +60,14 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 	[Attribute(params: "0 inf", desc: "Custom supplies value.", category: "Supplies")]
 	protected int m_iCustomSupplies;
 	
+	[Attribute(SCR_ECharacterRank.CORPORAL.ToString(), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_ECharacterRank))]
+	protected SCR_ECharacterRank m_eMinimumRankForEnabling;
+	
 	protected RplComponent m_RplComponent;
 	protected SCR_CampaignSuppliesComponent m_SupplyComponent; //TODO: Temporary until supply sandbox rework
 	protected SCR_ResourceComponent m_ResourceComponent;
 	protected SCR_SpawnerAIGroupManagerComponent m_GroupSpawningManager;
-	#ifndef AR_DEFENDER_SPAWN_TIMESTAMP
-	protected float m_fNextRespawnTime;
-	#else
 	protected WorldTimestamp m_fNextRespawnTime;
-	#endif
 	protected SCR_EntityCatalogEntry m_GroupEntry;
 	protected SCR_AIGroup m_AIgroup;
 	protected AIWaypoint m_Waypoint;
@@ -85,6 +85,29 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 	protected static const int SPAWN_RADIUS_MAX = Math.Pow(1000, 2);
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
+	SCR_ECharacterRank GetMinimumRank()
+	{
+		return m_eMinimumRankForEnabling;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] user
+	//! \return
+	bool UserRankCheck(IEntity user)
+	{
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+		if (!campaign)
+			return true;
+		
+		SCR_ECharacterRank rank = SCR_CharacterRankComponent.GetCharacterRank(user);
+		
+		return rank >= m_eMinimumRankForEnabling;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	OnDefenderGroupSpawnedInvoker GetOnDefenderGroupSpawned()
 	{
 		if (!m_OnDefenderGroupSpawned)
@@ -95,6 +118,7 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Assign custom waypoint to be used by defender group
+	//! \param[in] wp
 	void SetWaypoint(SCR_AIWaypoint wp)
 	{
 		if (wp)
@@ -129,21 +153,17 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Assign supply component to handle supplies of spawner. Currently uses Campaign specific supplies (temporarily)
+	//! \param[in] supplyComp
 	void AssignSupplyComponent(notnull SCR_CampaignSuppliesComponent supplyComp)
 	{
 		m_SupplyComponent = supplyComp;
 		
 		//Resets timer, so new soldiers are spawned, if spawning is enabled.
-		#ifndef AR_DEFENDER_SPAWN_TIMESTAMP
-		m_fNextRespawnTime = 0;
-		#else
 		m_fNextRespawnTime = null;
-		#endif
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Get supply component assigned to spawner, temporary
-
+	//! \return supply component assigned to spawner, temporary
 	SCR_CampaignSuppliesComponent GetSpawnerSupplyComponent()
 	{
 		return m_SupplyComponent;
@@ -169,6 +189,7 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Set the spawner supplies value
+	//! \param[in] value
 	void AddSupplies(float value)
 	{
 		if (m_ResourceComponent)
@@ -215,8 +236,8 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Enable spawning of defender groups
-	//! \param enable bool to enable or disable spawning
-	//! \param playerID id of player using this action
+	//! \param[in] enable bool to enable or disable spawning
+	//! \param[in] playerID id of player using this action
 	void EnableSpawning(bool enable, int playerID)
 	{
 		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(playerID));
@@ -227,11 +248,15 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 		if (!chimeraCharacter || chimeraCharacter.GetFaction() != GetFaction())
 			return;
 
+		if (!UserRankCheck(chimeraCharacter))
+			return;
+		
 		m_bEnableSpawning = enable;
 		Replication.BumpMe();
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsProxy()
 	{
 		return (m_RplComponent && m_RplComponent.IsProxy());
@@ -239,8 +264,8 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Spawn Units with given ResourceName and assign it to group
-	//! \param unitResource resource name of unit to be spawned
-	//! \param consumeSupplies if false, spawning this unit won't consume supplies. Is used for respawning units, which were previously despawned to save performance
+	//! \param[in] unitResource resource name of unit to be spawned
+	//! \param[in] consumeSupplies if false, spawning this unit won't consume supplies. Is used for respawning units, which were previously despawned to save performance
 	protected void SpawnUnit(ResourceName unitResource, bool consumeSupplies = true)
 	{
 		if (IsProxy())
@@ -421,7 +446,7 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!Returns free slot
+	//! \return free slot or null if not found
 	SCR_EntitySpawnerSlotComponent GetFreeSlot()
 	{
 		foreach (SCR_EntitySpawnerSlotComponent slot : m_aChildSlots)
@@ -571,7 +596,7 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Returns state according to current players vicinities to DefenderSpawner
+	//! \return state according to current players vicinities to DefenderSpawner
 	protected SCR_EDefenderSpawnerState GetPlayerDistanceState()
 	{
 		array<int> players = {};
@@ -622,12 +647,8 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 	//! Manages automatic group spawning
 	protected void HandleGroup()
 	{
-		#ifndef AR_DEFENDER_SPAWN_TIMESTAMP
-		float replicationTime = Replication.Time();
-		#else
 		ChimeraWorld world = GetOwner().GetWorld();
 		WorldTimestamp replicationTime = world.GetServerTimestamp();
-		#endif
 		
 		AIWorld aiWorld = GetGame().GetAIWorld();
 		if (!aiWorld)
@@ -669,15 +690,9 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 			}
 			
 			// Reinforce existing or create new defender group. Also handles respawning of despawned defenders
-			#ifndef AR_DEFENDER_SPAWN_TIMESTAMP
-			if (m_iDespawnedGroupMembers > 0 || (replicationTime > m_fNextRespawnTime))
-			{
-				m_fNextRespawnTime = replicationTime + (m_fRespawnDelay * 1000);
-			#else
 			if (m_iDespawnedGroupMembers > 0 || replicationTime.Greater(m_fNextRespawnTime))
 			{
 				m_fNextRespawnTime = replicationTime.PlusSeconds(m_fRespawnDelay);
-			#endif
 				if (m_AIgroup && (m_AIgroup.m_aUnitPrefabSlots.Count() != m_AIgroup.GetAgentsCount()))
 					ReinforceGroup();
 
@@ -753,7 +768,7 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 		if (m_AIgroup)
 		{
 			if (!m_aPreviousGroups)
-				m_aPreviousGroups = new array<SCR_AIGroup>;
+				m_aPreviousGroups = {};
 			
 			m_aPreviousGroups.Insert(m_AIgroup);
 			m_AIgroup = null;
@@ -806,6 +821,7 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_DefenderSpawnerComponent()
 	{
 		if (m_AIgroup)
@@ -845,7 +861,7 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 		
 		GetGame().GetCallqueue().Remove(HandleGroup);
 	}
-};
+}
 
 enum SCR_EDefenderSpawnerState
 {

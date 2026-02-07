@@ -1,6 +1,6 @@
-/** @ingroup Editor_UI Editor_UI_Components
-*/
-class SCR_DialogEditorUIComponent: SCR_BaseEditorUIComponent
+//! @ingroup Editor_UI Editor_UI_Components
+
+class SCR_DialogEditorUIComponent : SCR_BaseEditorUIComponent
 {
 	[Attribute(desc: "Pressing this action toggles the dialog.")]
 	protected string m_sToggleActionName;
@@ -19,6 +19,7 @@ class SCR_DialogEditorUIComponent: SCR_BaseEditorUIComponent
 	protected EditorMenuBase m_EditorMenu;
 	protected SCR_DialogEditorUIComponent m_LinkedComponent;
 	
+	//------------------------------------------------------------------------------------------------
 	protected void AllowFocus(Widget w)
 	{
 		if (m_bIsInDialog)
@@ -26,11 +27,14 @@ class SCR_DialogEditorUIComponent: SCR_BaseEditorUIComponent
 		else
 			w.SetFlags(WidgetFlags.NOFOCUS);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void FocusWidget(Widget w)
 	{
 		GetGame().GetWorkspace().SetFocusedWidget(w);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void SetLinkedWidgetVisibility(bool show)
 	{
 		Widget parent = GetWidget();
@@ -40,10 +44,13 @@ class SCR_DialogEditorUIComponent: SCR_BaseEditorUIComponent
 		}
 		parent.SetVisible(show);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnInput(float value, EActionTrigger reason)
 	{
 		MenuManager menuManager = GetGame().GetMenuManager();
-		if (!menuManager) return;
+		if (!menuManager)
+			return;
 		
 		if (m_bIsInDialog)
 		{
@@ -60,37 +67,48 @@ class SCR_DialogEditorUIComponent: SCR_BaseEditorUIComponent
 			SetLinkedWidgetVisibility(false);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnRepeat()
 	{
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected bool CanOpenDialog()
 	{
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void CloseDialog()
 	{
 		if (m_bIsInDialog)
 		{
 			EditorMenuBase menu = EditorMenuBase.Cast(GetMenu());
-			if (menu) menu.CloseSelf();
+			if (menu)
+				menu.CloseSelf();
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
 		CloseDialog();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnMenuUpdate(float timeSlice)
 	{
 		m_EditorMenu.GetOnMenuUpdate().Invoke(timeSlice); //--- ToDo: Better solution to update entity icons?
 	}
 	
-	protected void OnDialogOpened(SCR_DialogEditorUIComponent linkedComponent)
-	{
-	}
-	protected void OnDialogClosed(SCR_DialogEditorUIComponent linkedComponent)
-	{
-	}
+	//------------------------------------------------------------------------------------------------
+	protected void OnDialogOpened(SCR_DialogEditorUIComponent linkedComponent);
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnDialogClosed(SCR_DialogEditorUIComponent linkedComponent);
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttachedScripted(Widget w)
 	{
 		super.HandlerAttachedScripted(w);
@@ -102,7 +120,8 @@ class SCR_DialogEditorUIComponent: SCR_BaseEditorUIComponent
 		{
 			m_EditorMenu = EditorMenuBase.Cast(GetGame().GetMenuManager().FindMenuByPreset(ChimeraMenuPreset.EditorMenu));
 			m_LinkedComponent = SCR_DialogEditorUIComponent.Cast(m_EditorMenu.GetRootComponent().FindComponent(Type(), true));
-			if (m_LinkedComponent) GetGame().GetCallqueue().Call(OnDialogOpened, m_LinkedComponent); //--- Call later to make sure it's executed after HandlerAttachedScripted of inherited classes
+			if (m_LinkedComponent)
+				GetGame().GetCallqueue().Call(OnDialogOpened, m_LinkedComponent); //--- Call later to make sure it's executed after HandlerAttachedScripted of inherited classes
 			
 			SCR_MenuEditorComponent menuComponent = SCR_MenuEditorComponent.Cast(SCR_MenuEditorComponent.GetInstance(SCR_MenuEditorComponent));
 			if (menuComponent)
@@ -131,6 +150,8 @@ class SCR_DialogEditorUIComponent: SCR_BaseEditorUIComponent
 		if (m_bIsInDialog && m_EditorMenu)
 			menu.GetOnMenuUpdate().Insert(OnMenuUpdate);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
@@ -169,9 +190,7 @@ class SCR_DialogEditorUIComponent: SCR_BaseEditorUIComponent
 		}
 		
 		MenuRootBase menu = GetMenu();
-		if (menu)
-		{
-			if (m_bIsInDialog) menu.GetOnMenuUpdate().Remove(OnMenuUpdate);
-		}
+		if (menu && m_bIsInDialog)
+			menu.GetOnMenuUpdate().Remove(OnMenuUpdate);
 	}
-};
+}

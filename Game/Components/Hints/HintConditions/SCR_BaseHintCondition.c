@@ -7,6 +7,7 @@ class SCR_BaseHintCondition
 	protected bool m_bInit;
 	protected Managed m_Owner;
 	
+	//------------------------------------------------------------------------------------------------
 	protected void Activate()
 	{
 		SCR_HintManagerComponent hintManager = SCR_HintManagerComponent.GetInstance();
@@ -23,6 +24,8 @@ class SCR_BaseHintCondition
 			ExitCondition(m_Owner, hintManager);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void Deactivate()
 	{
 		SCR_HintManagerComponent hintManager = SCR_HintManagerComponent.GetInstance();
@@ -35,6 +38,11 @@ class SCR_BaseHintCondition
 		if (hintManager.WasShown(m_Info))
 			ExitCondition(m_Owner, hintManager);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] owner
+	//! \param[in] hintManager
 	void InitCondition(Managed owner, SCR_HintManagerComponent hintManager)
 	{
 		if (!hintManager.WasShown(m_Info))
@@ -44,6 +52,11 @@ class SCR_BaseHintCondition
 			OnInitCondition(owner);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] owner
+	//! \param[in] hintManager
 	void ExitCondition(Managed owner, SCR_HintManagerComponent hintManager)
 	{
 		if (m_bInit)
@@ -53,9 +66,14 @@ class SCR_BaseHintCondition
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnInitCondition(Managed owner);
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnExitCondition(Managed owner);
 	
+	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_BaseHintCondition()
 	{
 		if (m_Info && m_Info.GetType() == -1)
@@ -63,10 +81,11 @@ class SCR_BaseHintCondition
 			m_Info.Log("Cannot initialize hint condition, hint type is undefined! ", LogLevel.WARNING);	
 		}
 	}
-};
+}
 
-class SCR_BaseContainerHintCondition: BaseContainerCustomTitle
+class SCR_BaseContainerHintCondition : BaseContainerCustomTitle
 {
+	//------------------------------------------------------------------------------------------------
 	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
 	{
 		BaseContainer info = source.GetObject("m_Info");
@@ -83,6 +102,7 @@ class SCR_BaseContainerHintCondition: BaseContainerCustomTitle
 			info.Get("Name", name);
 			title += string.Format(" (\"%1\")", name);
 		}
+
 		return true;
 	}
-};
+}

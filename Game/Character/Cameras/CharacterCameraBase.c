@@ -1,3 +1,5 @@
+// TODO: remove these global methods!!
+
 float fixAngle_PI_PI(float pAngle)
 {
 	while (pAngle > Math.PI)
@@ -7,7 +9,7 @@ float fixAngle_PI_PI(float pAngle)
 		pAngle += Math.PI2;
 
 	return pAngle;
-};
+}
 
 float fixAngle_180_180(float pAngle)
 {
@@ -18,11 +20,12 @@ float fixAngle_180_180(float pAngle)
 		pAngle += 360;
 
 	return pAngle;
-};
+}
 
-class CharacterCameraBase extends ScriptedCameraItem
+class CharacterCameraBase : ScriptedCameraItem
 {
-	//! constructor must be same 
+	//------------------------------------------------------------------------------------------------
+	//! constructor
 	void CharacterCameraBase(CameraHandlerComponent pCameraHandler)
 	{
 		m_fLRAngleVel = 0;
@@ -67,6 +70,7 @@ class CharacterCameraBase extends ScriptedCameraItem
 		m_CmdHandler = cmdHandler;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	float UpdateUDAngle(out float pAngle, float pMin, float pMax, float pDt)
 	{
 		pAngle = Math.Clamp(m_CharacterHeadAimingComponent.GetAimingRotation()[1], pMin, pMax);
@@ -78,10 +82,15 @@ class CharacterCameraBase extends ScriptedCameraItem
 		return pAngle;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	float UpdateLRAngle(float pAngle, float pMin, float pMax, float pDt)
 	{
+		bool bCompartmentForcesFreeLook = false;
+		if (m_CompartmentAccessComponent && m_CompartmentAccessComponent.IsInCompartment())
+			bCompartmentForcesFreeLook = m_CompartmentAccessComponent.GetCompartment().GetForceFreeLook();
+		
 		//! lr angle
-		if (m_ControllerComponent.IsFreeLookEnabled() || m_ControllerComponent.IsTrackIREnabled() || m_bForceFreeLook)	
+		if (m_ControllerComponent.IsFreeLookEnabled() || m_ControllerComponent.IsTrackIREnabled() || m_bForceFreeLook || bCompartmentForcesFreeLook)	
 		{
 			pAngle = m_CharacterHeadAimingComponent.GetAimingRotation()[0];
 			
@@ -104,8 +113,10 @@ class CharacterCameraBase extends ScriptedCameraItem
 		return pAngle;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void OnUpdate(float pDt, out ScriptedCameraItemResult pOutResult);
 
+	//------------------------------------------------------------------------------------------------
 	override void OnActivate(ScriptedCameraItem pPrevCamera, ScriptedCameraItemResult pPrevCameraResult)
 	{
 		// Save shoulder state if camera was 3rd person or pass on last state
@@ -139,8 +150,10 @@ class CharacterCameraBase extends ScriptedCameraItem
 		}
 		
 		m_CharacterHeadAimingComponent.SetPitchLimitReductionMultiplier(1.0);
+		m_CharacterHeadAimingComponent.ResetLimitAnglesOverride();
 	}
-							
+
+	//------------------------------------------------------------------------------------------------
 	void ForceFreelook(bool state)
 	{
 		m_bForceFreeLook = state;
@@ -148,16 +161,23 @@ class CharacterCameraBase extends ScriptedCameraItem
 	
 	//-----------------------------------------------------------------------------
 	//! Get last 3rd person shoulder state
+	//! \return 3rd person shoulder state: -1 = left, 1 = right
 	int GetShoulderLastActive()
 	{
 		return m_fShoulderLastActive;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	float GetShoulderDistance()
 	{
 		return 0.0;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	float GetInterpolatedUDTransformAngle(float pDt)
 	{
 		vector physTransform[4];
@@ -166,7 +186,12 @@ class CharacterCameraBase extends ScriptedCameraItem
 		return m_fTransformUDAngle * Math.RAD2DEG;
 	}
 	
-	//-----------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param yawPitchRoll
+	//! \param pitchFactor
+	//! \param rollFactor
+	//! \param transformMS
 	void AddPitchRoll(vector yawPitchRoll, float pitchFactor, float rollFactor, inout vector transformMS[4])
 	{
 		// Get camera forward, without height
@@ -198,6 +223,7 @@ class CharacterCameraBase extends ScriptedCameraItem
 		Math3D.MatrixMultiply3(transformMS, rotMat, transformMS);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void AddVehiclePitchRoll(IEntity vehicle, float pDt, inout vector transformMS[4])
 	{
 		if (!vehicle)
@@ -235,8 +261,11 @@ class CharacterCameraBase extends ScriptedCameraItem
 	{
 		return m_CharacterHeadAimingComponent.GetLookAngles();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Since camera bone is animated only in certain situations we want to provide camera bone whenever it is requested by animation
 	//! otherwise we provide head bone to reduce amount of work animators need to do in order to make camera bone following head bone
+	//! \return
 	protected TNodeId GetCameraBoneIndex()
 	{
 		if (m_CharacterAnimationComponent.IsPrimaryTag(sm_TagFPCamera))
@@ -246,7 +275,6 @@ class CharacterCameraBase extends ScriptedCameraItem
 		return sm_iHeadBoneIndex;
 	}
 	
-	//-----------------------------------------------------------------------------
 	protected float					m_fFOV;
 
 	protected float 				m_fLRAngleVel;
@@ -256,10 +284,12 @@ class CharacterCameraBase extends ScriptedCameraItem
 	protected bool					m_bForceFreeLook;
 	protected bool					m_bLRAngleNoLimit;
 	
+	protected bool m_bIgnoreCharacterPitch;
+	
 	protected float					m_fFOVFilter;
 	protected float					m_fFOVFilterVel;
 	
-	protected int 					m_fShoulderLastActive = 1;	// saved active shoulder for 3rd person cam (1 - right, -1 left)
+	protected int 					m_fShoulderLastActive = 1;	//!< saved active shoulder for 3rd person cam (1 - right, -1 left)
 	
 	protected float 				m_fRollFactor;
 	protected float 				m_fRollSmooth;
@@ -286,4 +316,4 @@ class CharacterCameraBase extends ScriptedCameraItem
 	protected static AnimationTagID sm_TagItemUpdateCols = -1; // beware: very deceitful!
 	protected static AnimationTagID sm_TagADSTransitionOut = -1;
 	protected static AnimationTagID sm_TagADSTransitionIn = -1;
-};
+}

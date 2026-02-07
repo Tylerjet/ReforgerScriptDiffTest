@@ -55,13 +55,23 @@ class SCR_SliderComponent : SCR_ChangeableComponentBase
 
 		m_Handler.GetOnFocus().Insert(OnSliderFocus);
 		m_Handler.GetOnFocusLost().Insert(OnSliderFocusLost);
-		AddListeners();
+		
+		m_Handler.GetOnChange().Insert(OnValueChanged);
+		m_Handler.GetOnChangeFinal().Insert(OnValueFinal);
 
 		if (m_wText)
 			m_wText.SetTextFormat(m_sFormatText, RoundValue(m_wSlider.GetCurrent() * m_fShownValueMultiplier, m_iDecimalPrecision));
-		RemoveListeners();
 	}
 
+	//------------------------------------------------------------------------------------------------
+	override void HandlerDeattached(Widget w)
+	{
+		super.HandlerDeattached(w);
+		
+		m_Handler.GetOnChange().Remove(OnValueChanged);
+		m_Handler.GetOnChangeFinal().Remove(OnValueFinal);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override bool OnFocus(Widget w, int x, int y)
 	{
@@ -71,16 +81,9 @@ class SCR_SliderComponent : SCR_ChangeableComponentBase
 		GetGame().GetWorkspace().SetFocusedWidget(m_wSlider);
 		return false;
 	}
-
-	//------------------------------------------------------------------------------------------------
-	override bool OnFocusLost(Widget w, int x, int y)
-	{
-		// Do not call super.OnFocusLost, it will be called by OnSliderFocusLost
-		return false;
-	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnValueChanged(Widget w)
+	protected void OnValueChanged(Widget w)
 	{
 		float value;
 		if (m_wSlider)
@@ -121,42 +124,19 @@ class SCR_SliderComponent : SCR_ChangeableComponentBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnSliderFocus()
+	protected void OnSliderFocus()
 	{
-		AddListeners();
 		m_wRoot.SetFlags(WidgetFlags.NOFOCUS);
 
 		super.OnFocus(m_wRoot, 0, 0); // Emulate focus on a parent class
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnSliderFocusLost()
+	protected void OnSliderFocusLost()
 	{
-		RemoveListeners();
 		m_wRoot.ClearFlags(WidgetFlags.NOFOCUS);
 
 		super.OnFocusLost(m_wRoot, 0, 0); // Emulate focus on a parent class
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Add listeners for handler invokers
-	protected void AddListeners()
-	{
-		if (!m_Handler)
-			return;
-
-		m_Handler.GetOnChange().Insert(OnValueChanged);
-		m_Handler.GetOnChangeFinal().Insert(OnValueFinal);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Remove listeners for handler invokers
-	protected void RemoveListeners()
-	{
-		if (!m_Handler)
-			return;
-
-		m_Handler.GetOnChange().Remove(OnValueChanged);
 	}
 
 	// User API

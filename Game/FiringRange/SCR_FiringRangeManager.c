@@ -13,16 +13,16 @@ class SCR_FiringRangeManager : ScriptedGameTriggerEntity
 	protected Widget m_wRoot;
 	protected Widget m_wTable
 	private SCR_FiringRangeScoringComponent m_ScoringSystem;
-	private ref array<int> m_aPlayerScores = new ref array<int>;
-	private ref array<int> m_aPlayerScoresMax = new ref array<int>;
-	private ref array<string> m_aPlayerNames = new ref array<string>;
-	private ref array<SCR_PlayerScoreInfoFiringRange> m_aAllPlayersInfo = new ref array<SCR_PlayerScoreInfoFiringRange>;
-	private ref array<Widget> m_aPlayerWidgets = new ref array<Widget>;
+	private ref array<int> m_aPlayerScores = new array<int>;
+	private ref array<int> m_aPlayerScoresMax = new array<int>;
+	private ref array<string> m_aPlayerNames = new array<string>;
+	private ref array<SCR_PlayerScoreInfoFiringRange> m_aAllPlayersInfo = new array<SCR_PlayerScoreInfoFiringRange>;
+	private ref array<Widget> m_aPlayerWidgets = new array<Widget>;
 	[RplProp()]	
-	private ref array<int> m_aPlayersInArea = new ref array<int>;
+	private ref array<int> m_aPlayersInArea = new array<int>;
 	
 	// array contains all firing line controllers
-	private ref array<IEntity> m_aFiringLineControllers = new ref array<IEntity>;
+	private ref array<IEntity> m_aFiringLineControllers = new array<IEntity>;
 
 	private int m_iLocalPlayerID = -1;
 	private int m_iLastSelectedTargetId = -1;

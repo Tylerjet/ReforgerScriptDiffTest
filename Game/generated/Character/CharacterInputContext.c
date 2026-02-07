@@ -123,8 +123,14 @@ class CharacterInputContext
 	// Returns the entity both when the gadget is in hand and when hidden by another action.
 	proto external IEntity GetWantedLefHandGadgetEntity();
 	proto external void SetCancelItemAction(bool value);
-	// Returns water level where x represents approximate total depth of water body, y represents how deep character is submerged in water, z represents how deep character's nose is submerged in water.
-	proto external vector GetWaterLevel();
+	// Returns depth of the water body in which character is standing, up to 2m (computed from a raycast going directly down from the character).
+	proto external float GetWaterBodyApproxDepth();
+	// Returns how deep the character is submerged in water (how deep the entity point is). Is influenced by character animations.
+	proto external float GetWaterCharacterSubmersion();
+	// Returns how deep the character's nose is submerged in water. Is influenced by character animations.
+	proto external float GetWaterNoseSubmersion();
+	// Returns the elevation of the water surface in world space.
+	proto external float GetWaterBodySurfaceY();
 }
 
 /*!

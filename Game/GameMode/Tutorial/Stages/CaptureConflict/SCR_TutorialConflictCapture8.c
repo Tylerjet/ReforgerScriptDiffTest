@@ -24,7 +24,9 @@ class SCR_TutorialConflictCapture8 : SCR_BaseCampaignTutorialArlandStage
 		SCR_HintManagerComponent.HideHint();
 		SCR_PopUpNotification.GetInstance().PopupMsg("#AR-Tutorial_Popup_Title-UC", 20, text2: "#AR-Tutorial_Popup_Enemies", category: SCR_EPopupMsgFilter.TUTORIAL);
 		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("Conflict_HQ");
 		
 		m_Base = SCR_CampaignMilitaryBaseComponent.Cast(GetGame().GetWorld().FindEntityByName("TownBaseBeauregard").FindComponent(SCR_CampaignMilitaryBaseComponent));
 	}

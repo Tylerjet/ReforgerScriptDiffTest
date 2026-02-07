@@ -59,10 +59,12 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	*/
 	proto external void SetDynamicSpeed(float value);
 	/*!
-	Returns dynamic speed value.
+	Returns dynamic speed value. Set by mousewheel or by pressing walk button.
+	Not set by gamepad analogue stick.
 	\return Dynamic speed value as <0, 1>.
 	*/
 	proto external float GetDynamicSpeed();
+	proto external void SetShouldApplyDynamicSpeedOverride(bool shouldApply);
 	/*!
 	Sets dynamic stance of this character.
 	\param value Desired stance height as percentage of full erect <0,1>.
@@ -139,6 +141,7 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	proto external bool CanRoll(int val);
 	proto external bool ShouldHoldInputForRoll();
 	proto external void EnableHoldInputForRoll(bool enable);
+	proto external bool IsPlayerControlled();
 	proto external void SetJump(float val);
 	proto external void SetWantedLeaning(float val);
 	proto external void SetBanking(float val);
@@ -193,9 +196,12 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	// mag or projectile
 	proto external bool ReloadWeaponWith(IEntity ammunitionEntity, bool bForceDetach = false);
 	//------------------------------------------------------------------------
+	proto external ECharacterLifeState GetLifeState();
 	proto external void SetUnconscious(bool enabled);
 	proto external bool IsUnconscious();
 	proto external bool CanReviveCharacter();
+	// Returns true if there is nothing blocking starting unconscious - it does not check whether unconsciousness should actually start.
+	proto external bool CanEnterUnconsciousness();
 	proto external void EnableReviveCharacter(bool enabled);
 	//! Dying
 	proto external void Ragdoll(bool broadcast = true);
@@ -252,7 +258,7 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	\param alignmentPoint - point of the item to which the ItemUsePrediction predictioned bone of the character will keep being aligned during the animation.
 	\return Returns true if the equipped item has been used.
 	*/
-	proto external bool TryUseItemOverrideParams(IEntity item, bool allowMovementDuringAction, bool keepInHandAfterSuccessfulAction, int cmdId, int cmdIntArg, float cmdFloatArg, float animLength, int intParam, float floatParam, bool boolParam, PointInfo alignmentPoint);
+	proto external bool TryUseItemOverrideParams(notnull ItemUseParameters params);
 	//! Returns true if the character can use an item.
 	proto external bool CanUseItem();
 	//! Starts character gesture with specified duration in milliseconds (if duration <= 0, it will be played until StopCharacterGesture is called)
@@ -388,12 +394,17 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	//! Handling of melee events. Sends true if melee started, false, when melee ends
 	event protected void OnMeleeDamage(bool started);
 	event bool GetCanMeleeAttack() { return true; };
+	event bool GetCanEquipGadget(IEntity gadget) { return true; };
 	//! Override to handle what happens after pressing F button, return false to use default cpp behavior
 	event protected bool OnPerformAction() { return false; };
 	//! Override to handle whether character can get out of vehicle via GetOut input action
 	event bool CanGetOutVehicleScript() { return true; };
 	//! Override to handle whether character can eject from vehicle via JumpOut input action
 	event bool CanJumpOutVehicleScript() { return true; };
+	//! Will be called when the life state of the character changes.
+	event protected void OnLifeStateChanged(ECharacterLifeState previousLifeState, ECharacterLifeState newLifeState);
+	//! Will be called when the consciousness of the character changes.
+	event protected void OnConsciousnessChanged(bool conscious);
 	//! Handling of death. If instigatorEntity is null, you can use instigator.GetInstigatorEntity() if appropiate.
 	event protected void OnDeath(IEntity instigatorEntity, notnull Instigator instigator);
 	//! Will be called when gadget taken/removed from hand
@@ -401,9 +412,9 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	//! Will be called when gadget fully transitioned to or canceled focus mode
 	event protected void OnGadgetFocusStateChanged(IEntity gadget, bool isFocused);
 	//! Will be called when item use action is started
-	event protected void OnItemUseBegan(IEntity item, int cmdID, int cmdIntArg, float cmdFloatArg, int intParam, float floatParam, bool boolParam);
+	event protected void OnItemUseBegan(ItemUseParameters itemUseParams);
 	//! Will be called when item use action is complete
-	event protected void OnItemUseEnded(IEntity item, bool successful, int cmdID, int cmdIntArg, float cmdFloatArg, int intParam, float floatParam, bool boolParam);
+	event protected void OnItemUseEnded(ItemUseParameters itemUseParams, bool successful);
 	event protected void OnAnimationEvent(AnimationEventID animEventType, AnimationEventID animUserString, int intParam, float timeFromStart, float timeToEnd);
 	/*!
 	Output target angles vector is used during inspection to adjust look at.
@@ -413,6 +424,7 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	event float GetInspectTargetLookAt(out vector targetAngles);
 	/*Should return true if during CharacterHeadingAnimComponent aligning, the aiming angles should influence aiming angles.*/
 	event bool ShouldAligningAdjustAimingAngles();
+	event bool ShouldGadgetBeDropped(IEntity gadget);
 	//! Runs after a weapon is dropped from hands. Returns dropped weapon entity and slot that the weapon was dropped from.
 	event protected void OnWeaponDropped(IEntity pWeaponEntity, WeaponSlotComponent pWeaponSlot);
 	//! Runs after the left hand item is dropped. Returns dropped item entity.

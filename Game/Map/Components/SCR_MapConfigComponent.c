@@ -1,9 +1,8 @@
 [EntityEditorProps(category: "GameScripted/GameMode/Components", description: "Component for map config selection")]
 class SCR_MapConfigComponentClass : ScriptComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Attached to BaseGameMode, used for map config selection
 class SCR_MapConfigComponent : ScriptComponent
 {
@@ -36,4 +35,4 @@ class SCR_MapConfigComponent : ScriptComponent
 	{
 		return m_sEditorMapConfigPath;
 	}
-};
+}

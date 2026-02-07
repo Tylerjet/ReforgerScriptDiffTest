@@ -1,18 +1,15 @@
 [ComponentEditorProps(category: "GameScripted/Editor (Editables)", description: "", insertable: false)]
-class SCR_EditableEntityBaseChildComponentClass: ScriptComponentClass
+class SCR_EditableEntityBaseChildComponentClass : ScriptComponentClass
 {
-};
+}
 
-/** @ingroup Editable_Entities
-*/
+//! @ingroup Editable_Entities
 
-/*!
-Base class for child editable entity component.
-
-When this component is attached to editable entity or one of its children in hierarchy (default hierarchy, not editor one),
-it will receive events when state of the editable entity changes.
-Used to manage visualization of entity avatar's, e.g., to show virtual entity and change its color when it's selected.
-*/
+//! Base class for child editable entity component.
+//!
+//! When this component is attached to editable entity or one of its children in hierarchy (default hierarchy, not editor one),
+//! it will receive events when state of the editable entity changes.
+//! Used to manage visualization of entity avatar's, e.g., to show virtual entity and change its color when it's selected.
 class SCR_EditableEntityBaseChildComponent : ScriptComponent
 {
 	[Attribute("0", UIWidgets.Flags, "", enums: ParamEnumArray.FromEnum(EEditableEntityState))]
@@ -20,17 +17,15 @@ class SCR_EditableEntityBaseChildComponent : ScriptComponent
 	
 	protected GenericEntity m_Owner;
 	
-	/*!
-	Event called every time state of editable entity changes.
-	\param states Currently active states
-	\param changedState Changed state
-	\toSet True if the state was enabled, false if it was disabled
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Event called every time state of editable entity changes.
+	//! \param[in] states currently active states
+	//! \param[in] changedState changed state
+	//! \param[in] toSet true if the state was enabled, false if it was disabled
 	void EOnStateChanged(EEditableEntityState states, EEditableEntityState changedState, bool toSet);
 	
-	/*!
-	Update based on current state of editable entity.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Update based on current state of editable entity.
 	void UpdateFromCurrentState()
 	{
 		//--- Call event on existing states
@@ -58,18 +53,22 @@ class SCR_EditableEntityBaseChildComponent : ScriptComponent
 		}
 	}
 	
-	/*!
-	Check if effects controlled y this component can be applied when given state changes.
-	\param changedState Changed state
-	\return True if the component can be applied
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Check if effects controlled y this component can be applied when given state changes.
+	//! \param[in] changedState Changed state
+	//! \return True if the component can be applied
 	bool CanApply(EEditableEntityState changedState)
 	{
 		return (m_State & changedState) && m_Owner;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_EditableEntityBaseChildComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		m_Owner = GenericEntity.Cast(ent);
 	}
-};
+}

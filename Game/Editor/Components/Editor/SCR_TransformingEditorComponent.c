@@ -33,7 +33,7 @@ Manager of basic entity transformation in all axes, e.g., translation or rotatio
 class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 {	
 	protected ref set<SCR_EditableEntityComponent> m_aEditedEntities;
-	protected ref map<SCR_EditableEntityComponent, vector> m_mServerEntityStartingPosition = new ref map<SCR_EditableEntityComponent, vector>();
+	protected ref map<SCR_EditableEntityComponent, vector> m_mServerEntityStartingPosition = new map<SCR_EditableEntityComponent, vector>();
 	protected SCR_EditableEntityComponent m_EditedPivot;
 	protected SCR_EditableEntityComponent m_EditedLayer;
 	protected SCR_RefPreviewEntity m_RefEntity;

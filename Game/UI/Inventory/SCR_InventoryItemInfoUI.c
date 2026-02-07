@@ -121,6 +121,17 @@ class SCR_InventoryItemInfoUI : ScriptedWidgetComponent
 	{
 		WorkspaceWidget workspace = GetGame().GetWorkspace();
 		
+		//~ Clear existing hints if any
+		Widget hintChild = m_wHintWidget.GetChildren();
+		Widget deleteHint;
+		while(hintChild)
+		{
+			deleteHint = hintChild;
+			hintChild = deleteHint.GetSibling();
+		
+			delete deleteHint;
+		}
+		
 		foreach (SCR_InventoryItemHintUIInfo hintUIInfo : itemHintArray)
 		{
 			if (!hintUIInfo.CanBeShown(item, focusedSlot))

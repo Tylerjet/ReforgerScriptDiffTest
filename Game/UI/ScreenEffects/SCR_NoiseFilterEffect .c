@@ -67,8 +67,8 @@ class SCR_NoiseFilterEffect : SCR_BaseScreenEffect
 		
 		if (!outsideCharacter && m_pCharacterEntity)
 		{
-			SCR_CharacterControllerComponent scrCharController = SCR_CharacterControllerComponent.Cast(m_pCharacterEntity.GetCharacterController());
-			state = scrCharController.GetLifeState();
+			CharacterControllerComponent charController = m_pCharacterEntity.GetCharacterController();
+			state = charController.GetLifeState();
 		}
 			
 		AudioSystem.SetOutputStateSignal(

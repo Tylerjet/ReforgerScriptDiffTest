@@ -185,6 +185,9 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 
 		group.GetOnPlayerLeaderChanged().Insert(SetupJoinGroupButton);
 		group.GetOnJoinPrivateGroupRequest().Insert(SetupJoinGroupButton);
+		
+		//workaround for issues with playerControllerGroupsComponent, needs to be reworked with this whole script mess
+		SCR_GroupSubMenu.Init();
 		SCR_GroupSubMenu.GetOnJoingGroupRequestSent().Insert(SetupJoinGroupButton);
 
 		m_BaseTaskManager = GetTaskManager();
@@ -200,7 +203,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 			string company, platoon, squad, character, format;
 			group.GetCallsigns(company, platoon, squad, character, format);
 
-			if (groupName.IsEmpty() || !playerController.CanViewContentCreatedBy(group.GetNameAuthorID()) && group.GetNameAuthorID() != 0)
+			if (groupName.IsEmpty() || group.GetNameAuthorID() != 0 && !playerController.CanViewContentCreatedBy(group.GetNameAuthorID()))
 			{
 				squadName.SetTextFormat(format, company, platoon, squad, character);
 			}
@@ -404,7 +407,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		string company, platoon, squad, character, format;
 		group.GetCallsigns(company, platoon, squad, character, format);
 		
-		if (groupName.IsEmpty() || !playerController.CanViewContentCreatedBy(group.GetNameAuthorID()) && group.GetNameAuthorID() != 0)
+		if (groupName.IsEmpty() || group.GetNameAuthorID() != 0 && !playerController.CanViewContentCreatedBy(group.GetNameAuthorID()))
 		{
 			squadName.SetTextFormat(format, company, platoon, squad, character);
 		}
@@ -952,9 +955,9 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 			if (!identityComponent)
 				return;
 			string name;
-			array<string> nameParams;
+			array<string> nameParams = {};
 			identityComponent.GetFormattedFullName(name, nameParams);
-			playerName.SetText(name);
+			playerName.SetTextFormat(name, nameParams[0], nameParams[1], nameParams[2]);
 
 			playerButton = ButtonWidget.Cast(playerTile.FindAnyWidget("PlayerButton"));
 			if (!playerButton)

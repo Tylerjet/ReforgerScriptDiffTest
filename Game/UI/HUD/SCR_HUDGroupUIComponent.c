@@ -1,5 +1,8 @@
 class SCR_HUDGroupUIComponent : ScriptedWidgetComponent
 {
+	[Attribute("1")]
+	protected bool m_bEnableDebugFont;
+	
 	[Attribute("20")]
 	//! For debugging within the WorkBench Layout Editor only.
 	private int m_iDebugFontSize; 
@@ -109,39 +112,37 @@ class SCR_HUDGroupUIComponent : ScriptedWidgetComponent
 			FrameWidget slotFrame = FrameWidget.Cast(slot.GetRootWidget());
 			if (!slotFrame)
 			{
-#ifdef WORKBENCH
 				Debug.Error2("Wrong Slot Widget Type", "SCR_HUDSlotUIComponent Requires to be attached to a FrameWidget!");
-#endif
 				return;
 			}
 
-			slot.m_wDebugOverlay = OverlayWidget.Cast(workspace.CreateWidget(WidgetType.OverlayWidgetTypeID, WidgetFlags.VISIBLE, Color.Black, 0, slot.GetRootWidget()));
-			if (!slot.m_wDebugOverlay)
-				return;
+			slot.m_wDebugOverlay = OverlayWidget.Cast(workspace.CreateWidget(WidgetType.OverlayWidgetTypeID, WidgetFlags.VISIBLE, Color.FromInt(Color.BLACK), 0, slot.GetRootWidget()));
+			if (!slot.m_wDebugOverlay || !m_bEnableDebugFont)
+				return;			
 
 			slot.m_wDebugImg = ImageWidget.Cast(workspace.CreateWidget(WidgetType.ImageWidgetTypeID, WidgetFlags.VISIBLE, new Color(Math.RandomFloat(0, 0.1), Math.RandomFloat(0, 0.1), Math.RandomFloat(0, 0.1), 1), 0, slot.m_wDebugOverlay));
 			LayoutSlot.SetHorizontalAlign(slot.m_wDebugImg, LayoutHorizontalAlign.Stretch);
 			LayoutSlot.SetVerticalAlign(slot.m_wDebugImg, LayoutVerticalAlign.Stretch);
 
-			slot.m_wDebugVertical = workspace.CreateWidget(WidgetType.VerticalLayoutWidgetTypeID, WidgetFlags.VISIBLE, Color.Black, 0, slot.m_wDebugOverlay);
+			slot.m_wDebugVertical = workspace.CreateWidget(WidgetType.VerticalLayoutWidgetTypeID, WidgetFlags.VISIBLE, Color.FromInt(Color.BLACK), 0, slot.m_wDebugOverlay);
 			OverlaySlot.SetHorizontalAlign(slot.m_wDebugVertical, LayoutHorizontalAlign.Stretch);
 			OverlaySlot.SetVerticalAlign(slot.m_wDebugVertical, LayoutVerticalAlign.Stretch);
 
-			slot.m_wDebugNameText = TextWidget.Cast(workspace.CreateWidget(WidgetType.TextWidgetTypeID, WidgetFlags.VISIBLE, Color.White, 0, slot.m_wDebugVertical));
+			slot.m_wDebugNameText = TextWidget.Cast(workspace.CreateWidget(WidgetType.TextWidgetTypeID, WidgetFlags.VISIBLE, Color.FromInt(Color.WHITE), 0, slot.m_wDebugVertical));
 			OverlaySlot.SetHorizontalAlign(slot.m_wDebugNameText, LayoutHorizontalAlign.Center);
 			slot.m_wDebugNameText.SetText(slot.GetRootWidget().GetName());
 			slot.m_wDebugNameText.SetExactFontSize(m_iDebugFontSize);
 
-			slot.m_wDebugPriorityText = TextWidget.Cast(workspace.CreateWidget(WidgetType.TextWidgetTypeID, WidgetFlags.VISIBLE, Color.White, 0, slot.m_wDebugVertical));
+			slot.m_wDebugPriorityText = TextWidget.Cast(workspace.CreateWidget(WidgetType.TextWidgetTypeID, WidgetFlags.VISIBLE, Color.FromInt(Color.WHITE), 0, slot.m_wDebugVertical));
 			OverlaySlot.SetHorizontalAlign(slot.m_wDebugPriorityText, LayoutHorizontalAlign.Center);
 			slot.SetPriority(slot.GetPriority());
 			slot.m_wDebugPriorityText.SetExactFontSize(m_iDebugFontSize);
 
-			slot.m_wDebugHeightText = RichTextWidget.Cast(workspace.CreateWidget(WidgetType.RichTextWidgetTypeID, WidgetFlags.VISIBLE, Color.White, 0, slot.m_wDebugVertical));
+			slot.m_wDebugHeightText = RichTextWidget.Cast(workspace.CreateWidget(WidgetType.RichTextWidgetTypeID, WidgetFlags.VISIBLE, Color.FromInt(Color.WHITE), 0, slot.m_wDebugVertical));
 			OverlaySlot.SetHorizontalAlign(slot.m_wDebugHeightText, LayoutHorizontalAlign.Center);
 			slot.m_wDebugHeightText.SetExactFontSize(m_iDebugFontSize);
 
-			slot.m_wDebugWidthText = RichTextWidget.Cast(workspace.CreateWidget(WidgetType.RichTextWidgetTypeID, WidgetFlags.VISIBLE, Color.White, 0, slot.m_wDebugVertical));
+			slot.m_wDebugWidthText = RichTextWidget.Cast(workspace.CreateWidget(WidgetType.RichTextWidgetTypeID, WidgetFlags.VISIBLE, Color.FromInt(Color.WHITE), 0, slot.m_wDebugVertical));
 			OverlaySlot.SetHorizontalAlign(slot.m_wDebugWidthText, LayoutHorizontalAlign.Center);
 			slot.m_wDebugWidthText.SetExactFontSize(m_iDebugFontSize);
 		}

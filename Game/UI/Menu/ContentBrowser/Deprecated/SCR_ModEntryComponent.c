@@ -10,7 +10,7 @@ class SCR_ModEntryComponent : SCR_ContentEntryComponent
 	
 	// Mod handling 
 	protected ref SCR_WorkshopItem m_Item; // Strong ref!
-	ref ScriptInvoker m_OnModDonwloaded = new ref ScriptInvoker();
+	ref ScriptInvoker m_OnModDonwloaded = new ScriptInvoker();
 	ref Revision m_Version;
 	
 	// Handling button 

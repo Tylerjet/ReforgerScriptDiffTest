@@ -23,11 +23,11 @@ class SCR_ButtonSpecializationProgressComponent : SCR_WLibComponentBase
 	protected ref Color m_ColorActive;
 	
 	// Arguments passed: m_ibuttonId
-	protected ref ScriptInvoker m_OnClicked = new ref ScriptInvoker();
+	protected ref ScriptInvoker m_OnClicked = new ScriptInvoker();
 	
 	// Arguments passed: m_ibuttonId, bool isHovered
-	protected ref ScriptInvoker m_OnMouseEnter = new ref ScriptInvoker();
-	protected ref ScriptInvoker m_OnMouseLeave = new ref ScriptInvoker();
+	protected ref ScriptInvoker m_OnMouseEnter = new ScriptInvoker();
+	protected ref ScriptInvoker m_OnMouseLeave = new ScriptInvoker();
 	
 	//------------------------------------------------------------------------------------------------
 	protected override void HandlerAttached(Widget w)

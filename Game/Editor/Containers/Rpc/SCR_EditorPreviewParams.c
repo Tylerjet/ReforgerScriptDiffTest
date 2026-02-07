@@ -1,9 +1,6 @@
-/** @ingroup Editor_Containers
-*/
+//! @ingroup Editor_Containers
 
-/*!
-Network packet of variables for entity placing and transformation.
-*/
+//! Network packet of variables for entity placing and transformation.
 class SCR_EditorPreviewParams
 {
 	SCR_EditableEntityComponent m_Parent;
@@ -22,18 +19,25 @@ class SCR_EditorPreviewParams
 	EEditorPlacingFlags m_PlacingFlags;
 	SCR_EditableEntityComponent m_CurrentLayer; //--- No replicated, used to extract data from SCR_PlacingEditorComponent.SpawnEntityResource()
 	
+	//------------------------------------------------------------------------------------------------
 	static void Encode(SSnapSerializerBase snapshot, ScriptCtx hint, ScriptBitSerializer packet) 
 	{
 		snapshot.Serialize(packet, 84);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	static bool Decode(ScriptBitSerializer packet, ScriptCtx hint, SSnapSerializerBase snapshot) 
 	{
 		return snapshot.Serialize(packet, 84);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	static bool SnapCompare(SSnapSerializerBase lhs, SSnapSerializerBase rhs, ScriptCtx hint) 
 	{
 		return lhs.CompareSnapshots(rhs, 84);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	static bool PropCompare(SCR_EditorPreviewParams prop, SSnapSerializerBase snapshot, ScriptCtx hint) 
 	{
 		return snapshot.Compare(prop.m_vTransform, 48)
@@ -46,6 +50,8 @@ class SCR_EditorPreviewParams
 			&& snapshot.Compare(prop.m_TargetInteraction, 4)
 			&& snapshot.Compare(prop.m_PlacingFlags, 4);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	static bool Extract(SCR_EditorPreviewParams prop, ScriptCtx hint, SSnapSerializerBase snapshot) 
 	{
 		snapshot.SerializeBytes(prop.m_vTransform, 48);
@@ -60,6 +66,8 @@ class SCR_EditorPreviewParams
 
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	static bool Inject(SSnapSerializerBase snapshot, ScriptCtx hint, SCR_EditorPreviewParams prop) 
 	{
 		snapshot.SerializeBytes(prop.m_vTransform, 48);
@@ -75,10 +83,9 @@ class SCR_EditorPreviewParams
 		return true;
 	}
 	
-	/*!
-	Get world transformation matrix. If offset is used, it will be applied to it.
-	\param[out] outTransform Variable to be filled with transformation matrix
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get world transformation matrix. If offset is used, it will be applied to it.
+	//! \param[out] outTransform Variable to be filled with transformation matrix
 	void GetWorldTransform(out vector outTransform[4])
 	{
 		if (m_Offset == vector.Zero)
@@ -97,10 +104,9 @@ class SCR_EditorPreviewParams
 		}
 	}
 	
-	/*!
-	Convert replication-friendly values to actual variables.
-	\return True if the deserialization was completed successfully
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Convert replication-friendly values to actual variables.
+	//! \return True if the deserialization was completed successfully
 	bool Deserialize()
 	{		
 		m_Parent = SCR_EditableEntityComponent.Cast(Replication.FindItem(m_ParentID));
@@ -123,6 +129,10 @@ class SCR_EditorPreviewParams
 		
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param target
 	void SetTarget(SCR_EditableEntityComponent target)
 	{
 		if (target && target.GetOwner())
@@ -132,17 +142,16 @@ class SCR_EditorPreviewParams
 				m_TargetStaticID = target.GetOwner().GetID();
 		}
 	}
-	
-	/*!
-	Create params for entity placement.
-	\param transform Transformation matrix where the entity will be created
-	\param parentID Replication ID of parent entity
-	\param verticalMode Alignment rules
-	\param isUnderwater True if the entity is being placed under water surface
-	\param targetID Replication ID of entity on/inside which the new entity is being spawned
-	\param targetInteraction Type of interaction with the target entity
-	\return Params packet
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Create params for entity placement.
+	//! \param transform Transformation matrix where the entity will be created
+	//! \param parentID Replication ID of parent entity
+	//! \param verticalMode Alignment rules
+	//! \param isUnderwater True if the entity is being placed under water surface
+	//! \param targetID Replication ID of entity on/inside which the new entity is being spawned
+	//! \param targetInteraction Type of interaction with the target entity
+	//! \return Params packet
 	static SCR_EditorPreviewParams CreateParams(
 		vector transform[4],
 		RplId parentID = Replication.INVALID_ID,
@@ -161,14 +170,14 @@ class SCR_EditorPreviewParams
 		params.SetTarget(target);
 		return params;
 	}
-	
-	/*!
-	Create params packet for network transmission.
-	\param previewManager Manager from  which individual params will be extracted
-	\param parent Currently selected parent layer
-	\param parentChanged True if current layer changed while editing
-	\return Params packet or null if an error was encountered
-	*/	
+
+	//------------------------------------------------------------------------------------------------
+	//! Create params packet for network transmission.
+	//! \param previewManager Manager from  which individual params will be extracted - must not be null
+	//! \param parent Currently selected parent layer
+	//! \param parentChanged True if current layer changed while editing
+	//! \return Params packet or null if an error was encountered
+	// TODO: notnull or nullcheck previewManager
 	static SCR_EditorPreviewParams CreateParamsFromPreview(SCR_PreviewEntityEditorComponent previewManager, SCR_EditableEntityComponent parent = null, bool parentChanged = false)
 	{
 		//--- Check if target interaction is valid
@@ -190,4 +199,4 @@ class SCR_EditorPreviewParams
 		
 		return params;
 	}
-};
+}

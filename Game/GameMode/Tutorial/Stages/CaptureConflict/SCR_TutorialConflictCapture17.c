@@ -13,7 +13,12 @@ class SCR_TutorialConflictCapture17 : SCR_BaseCampaignTutorialArlandStage
 	override protected void Setup()
 	{
 		m_fConditionCheckPeriod = 0.1;
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("Conflict_Transmission", true);
+		HintOnVoiceOver();
+		
 		InputManager inputMan = GetGame().GetInputManager();
 		inputMan.AddActionListener("VONChannel", EActionTrigger.DOWN, OnVOIPPress);
 		inputMan.AddActionListener("VONChannel", EActionTrigger.UP, OnVOIPRelease);

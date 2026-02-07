@@ -1,7 +1,6 @@
-class SCR_ArsenalInventoryStorageManagerComponentClass: ScriptedInventoryStorageManagerComponentClass
+class SCR_ArsenalInventoryStorageManagerComponentClass : ScriptedInventoryStorageManagerComponentClass
 {
-	
-};
+}
 
 class SCR_ArsenalInventoryStorageManagerComponent : ScriptedInventoryStorageManagerComponent
 {
@@ -17,22 +16,18 @@ class SCR_ArsenalInventoryStorageManagerComponent : ScriptedInventoryStorageMana
 	protected ref set<ResourceName> m_ItemsInArsenal = new set<ResourceName>();
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check if given prefab is in the arsenal storage.
-	\param item Prefab to check if it is in the arsenal storage
-	\return True if prefab found, else returns false
-	*/
+	//! Check if given prefab is in the arsenal storage.
+	//! \param[in] item Prefab to check if it is in the arsenal storage
+	//! \return True if prefab found, else returns false
 	bool IsPrefabInArsenalStorage(ResourceName item)
 	{
 		return m_ItemsInArsenal.Contains(item);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check if given item is in the arsenal storage. (Prefabs only)
-	\param item Item to check if it is in the arsenal storage
-	\return True if item found, else returns false
-	*/
+	//! Check if given item is in the arsenal storage. (Prefabs only)
+	//! \param[in] item Item to check if it is in the arsenal storage
+	//! \return True if item found, else returns false
 	bool IsItemInArsenalStorage(notnull IEntity item)
 	{
 		EntityPrefabData prefabData = item.GetPrefabData();
@@ -139,6 +134,7 @@ class SCR_ArsenalInventoryStorageManagerComponent : ScriptedInventoryStorageMana
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_ArsenalInventoryStorageManagerComponent()
 	{
 		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.Cast(GetOwner().FindComponent(SCR_ArsenalComponent));
@@ -147,4 +143,4 @@ class SCR_ArsenalInventoryStorageManagerComponent : ScriptedInventoryStorageMana
 		
 		arsenalComponent.GetOnArsenalUpdated().Remove(OnArsenalUpdated);
 	}
-};
+}

@@ -13,7 +13,7 @@ class SCR_ImageGalleryComponent : ScriptedWidgetComponent
 	//[Attribute(defvalue: "", desc: "When the texture is an image set, define the quad name here")]
 	//private string m_sImageName;
 	
-	protected ref array<Widget> m_aElementWidgets = new ref array<Widget>();
+	protected ref array<Widget> m_aElementWidgets = new array<Widget>();
 	protected SCR_ImageGalleryButtonComponent m_SelectedItem;
 	
 	//protected ScrollLayoutWidget m_wScrollLayout;
@@ -97,7 +97,7 @@ class SCR_ImageGalleryComponent : ScriptedWidgetComponent
 	{
 		int i = -1;
 		if (!m_aResourceNames)
-			m_aResourceNames = new ref array<ref ResourceName>;
+			m_aResourceNames = new array<ref ResourceName>;
 		
 		i = m_aResourceNames.InsertAt(item, 0);
 		

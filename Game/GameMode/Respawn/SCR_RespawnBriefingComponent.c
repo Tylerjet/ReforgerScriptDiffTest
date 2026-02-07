@@ -1,12 +1,13 @@
 [ComponentEditorProps(category: "GameScripted/GameMode/Components", description: "Briefing screen shown in respawn menu.")]
 class SCR_RespawnBriefingComponentClass : SCR_BaseGameModeComponentClass
 {
-};
+}
 
 class SCR_RespawnBriefingComponent : SCR_BaseGameModeComponent
 {
 	[Attribute("")]
 	protected ResourceName m_sJournalConfigPath;
+
 	protected ref SCR_JournalSetupConfig m_JournalConfig;
 
 	[Attribute()]
@@ -20,8 +21,6 @@ class SCR_RespawnBriefingComponent : SCR_BaseGameModeComponent
 
 	[Attribute()]
 	protected ref array<ref SCR_BriefingVictoryCondition> m_aWinConditions;
-
-	protected ref ScriptInvoker m_OnBriefingChanged = new ScriptInvoker(); 
 	
 	protected bool m_bWasShown = false;
 	protected ref map<int, ref array<string>> m_BriefingInfo = new map<int, ref array<string>>();
@@ -62,11 +61,11 @@ class SCR_RespawnBriefingComponent : SCR_BaseGameModeComponent
 		string newText;
 		int paramCount;
 		string paramTemp;
-		
+		array<string> param1;
 		reader.ReadInt(count);
 		for (int i = 0; i < count; i++)
 		{
-			ref array<string> param1 = {};
+			param1 = {};
 			reader.ReadString(factionKey);
 			reader.ReadInt(entryID);
 			reader.ReadString(newText);
@@ -84,6 +83,11 @@ class SCR_RespawnBriefingComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] factionKey
+	//! \param[in] entryID
+	//! \param[in] newText
+	//! \param[in] param1
 	void RewriteEntry_SA(FactionKey factionKey, int entryID, string newText, array<string> param1)
 	{
 		RewriteEntryMain(factionKey, entryID, newText, param1);
@@ -91,6 +95,11 @@ class SCR_RespawnBriefingComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] factionKey
+	//! \param[in] entryID
+	//! \param[in] newText
+	//! \param[in] param1
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	void RpcDo_RewriteEntry(FactionKey factionKey, int entryID, string newText, array<string> param1)
 	{
@@ -98,10 +107,15 @@ class SCR_RespawnBriefingComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] factionKey
+	//! \param[in] entryID
+	//! \param[in] newText
+	//! \param[in] param1
 	void RewriteEntryMain(FactionKey factionKey, int entryID, string newText, array<string> param1)
 	{
 		m_BriefingInfo.Remove(entryID);
-		ref array<string> infoStrings = {};
+		array<string> infoStrings = {};
 		infoStrings.Insert(factionKey);
 		infoStrings.Insert(newText);
 		infoStrings.InsertAll(param1);
@@ -113,7 +127,12 @@ class SCR_RespawnBriefingComponent : SCR_BaseGameModeComponent
 		SCR_GameplaySettingsSubMenu.m_OnLanguageChanged.Insert(OnLanguageChanged);
 	}
 	
-		//------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] factionKey
+	//! \param[in] entryID
+	//! \param[in] newText
+	//! \param[in] param1
 	void RewriteEntry(FactionKey factionKey, int entryID, string newText, array<string> param1)
 	{
 		if (!m_JournalConfig)
@@ -148,7 +167,7 @@ class SCR_RespawnBriefingComponent : SCR_BaseGameModeComponent
 		targetJournalEntry.SetEntryText(newText);
 		string stringParam1;
 
-		for (int i = 0; i < (param1.Count() * 2); i +=2)
+		for (int i = 0, count = param1.Count() * 2; i < count; i += 2) // step 2
 		{
 			if (!param1.IsIndexValid(i))
 				break;
@@ -166,7 +185,7 @@ class SCR_RespawnBriefingComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnLanguageChanged(SCR_GameplaySettingsSubMenu menu)
+	protected void OnLanguageChanged(SCR_GameplaySettingsSubMenu menu)
 	{
 		array<string> temporaryInfo = {};
 		foreach (int entryID, array<string> info : m_BriefingInfo)
@@ -184,6 +203,8 @@ class SCR_RespawnBriefingComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] targetID
+	//! \return
 	array<string> GetBriefingStringParamByID(int targetID)
 	{
 		// change it to get last element
@@ -203,6 +224,7 @@ class SCR_RespawnBriefingComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_JournalSetupConfig GetJournalSetup()
 	{
 		if (!m_JournalConfig)
@@ -212,12 +234,15 @@ class SCR_RespawnBriefingComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void ResetConfig()
 	{
 		m_JournalConfig = null;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	bool LoadJournalConfig()
 	{
 		if (m_JournalConfig)
@@ -247,9 +272,8 @@ class SCR_RespawnBriefingComponent : SCR_BaseGameModeComponent
 		return true;
 	}
 	
-	/*!
-	\return Local instance of the briefing component.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return Local instance of the briefing component.
 	static SCR_RespawnBriefingComponent GetInstance()
 	{
 		if (GetGame().GetGameMode())
@@ -258,28 +282,30 @@ class SCR_RespawnBriefingComponent : SCR_BaseGameModeComponent
 			return null;
 	}
 	
-	/*!
-	\return Briefing UI info
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return Briefing UI info
 	SCR_UIInfo GetInfo()
 	{
 		return m_Info;
 	}
 	
-	/*!
-	\return Simple briefing background image
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return Simple briefing background image
 	ResourceName GetSimpleBriefingBackground()
 	{
 		return m_SimpleBriefingBackground;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetJournalConfigPath()
 	{
 		return m_sJournalConfigPath;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[out] hints
+	//! \return
 	int GetGameModeHints(out array<ref SCR_UIInfo> hints)
 	{
 		hints = m_aGameModeHints;
@@ -288,6 +314,8 @@ class SCR_RespawnBriefingComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[out] conditions
+	//! \return
 	int GetWinConditions(out array<ref SCR_BriefingVictoryCondition> conditions)
 	{
 		conditions = m_aWinConditions;
@@ -295,26 +323,20 @@ class SCR_RespawnBriefingComponent : SCR_BaseGameModeComponent
 		return m_aWinConditions.Count();
 	}
 
-	/*!
-	\return Event called when info changes, so that respawn menu can be updated (to be override by inherited classes)
-	*/
-	ScriptInvoker GetOnBriefingChanged()
-	{
-		return m_OnBriefingChanged;
-	}
-
 	//------------------------------------------------------------------------------------------------	
+	//! \param[in] shown
 	void SetBriefingShown(bool shown = true)
 	{
 		m_bWasShown = shown;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetWasBriefingShown()
 	{
 		return m_bWasShown;
 	}
-};
+}
 
 [BaseContainerProps()]
 class SCR_BriefingVictoryCondition
@@ -329,20 +351,23 @@ class SCR_BriefingVictoryCondition
 	protected string description;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetName()
 	{
 		return name;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetDescription()
 	{
 		return description;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ETaskIconType GetConditionType()
 	{
 		return victoryCondition;
 	}
-};
+}

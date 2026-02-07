@@ -1,10 +1,7 @@
-[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
-/** @ingroup ManualCamera
-*/
+//! @ingroup ManualCamera
 
-/*!
-Camera representation in the map
-*/
+//! Camera representation in the map
+[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
 class SCR_MapDescriptorManualCameraComponent : SCR_BaseManualCameraComponent
 {
 	[Attribute("0", UIWidgets.SearchComboBox, "Descriptor type.", enums: ParamEnumArray.FromEnum(EMapDescriptorType))]
@@ -38,6 +35,12 @@ class SCR_MapDescriptorManualCameraComponent : SCR_BaseManualCameraComponent
 	protected BaseWorld m_World;
 	protected ref TraceParam m_Trace = new TraceParam();
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] width
+	//! \param[in] height
+	//! \param[out] dir
+	//! \param[out] traceCoef
 	void TraceScreenPos(float width, float height, out vector dir, out float traceCoef)
 	{
 		vector pos = m_Workspace.ProjScreenToWorldNative(width, height, dir, m_World);
@@ -50,6 +53,7 @@ class SCR_MapDescriptorManualCameraComponent : SCR_BaseManualCameraComponent
 		traceCoef = Math.Max(m_World.TraceMove(m_Trace, null), traceCoef);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraFrame(SCR_ManualCameraParam param)
 	{
 		if (!m_MapEntity.IsOpen())
@@ -82,15 +86,16 @@ class SCR_MapDescriptorManualCameraComponent : SCR_BaseManualCameraComponent
 		
 		int posCamX, posCamY, posLeftX, posLeftY, posRightX, posRightY;
 		float mapZoom = m_MapEntity.GetCurrentZoom();
-		m_MapEntity.WorldToScreen(posCam[0], posCam[2], posCamX, posCamY, true, mapZoom);
-		m_MapEntity.WorldToScreen(posLeft[0], posLeft[2], posLeftX, posLeftY, true, mapZoom);
-		m_MapEntity.WorldToScreen(posRight[0], posRight[2], posRightX, posRightY, true, mapZoom);
+		m_MapEntity.WorldToScreenCustom(posCam[0], posCam[2], posCamX, posCamY, mapZoom, true);
+		m_MapEntity.WorldToScreenCustom(posLeft[0], posLeft[2], posLeftX, posLeftY, mapZoom, true);
+		m_MapEntity.WorldToScreenCustom(posRight[0], posRight[2], posRightX, posRightY, mapZoom, true);
 		
 		//--- Draw the view cone
 		m_DrawLine.m_Vertices = {posCamX, posCamY, posLeftX, posLeftY, posRightX, posRightY};
 		m_MapCanvas.SetDrawCommands(m_MapDrawCommands);
 	}
-		
+
+	//------------------------------------------------------------------------------------------------
 	override bool EOnCameraInit()
 	{
 		m_MapEntity = SCR_MapEntity.GetMapInstance();
@@ -103,7 +108,7 @@ class SCR_MapDescriptorManualCameraComponent : SCR_BaseManualCameraComponent
 		
 		MapDescriptorProps props = m_MapItem.GetProps();
 		props.SetFrontColor(m_IconColor);
-		props.SetOutlineColor(Color.Black);
+		props.SetOutlineColor(Color.FromInt(Color.BLACK));
 		props.SetIconSize(1, m_fIconScale, m_fIconScale);
 		props.Activate(true);
 		m_MapItem.SetProps(props);
@@ -117,6 +122,8 @@ class SCR_MapDescriptorManualCameraComponent : SCR_BaseManualCameraComponent
 		
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraExit()
 	{
 		if (m_MapItem)

@@ -1,10 +1,9 @@
-
 class SCR_CampaignBuildingBudgetEditorUIComponent : SCR_BudgetEditorUIComponent
 {	
 	[Attribute(desc: "Budgets to be shown in UI", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EEditableEntityBudget))]
 	protected ref array<EEditableEntityBudget> m_aVisibleBudgetUI;
 	
-	static const int UNLIMITED_PROP_BUDGET = -1;
+	protected static const int UNLIMITED_PROP_BUDGET = -1;
 	
 	//------------------------------------------------------------------------------------------------
 	override void InitializeBudgets()
@@ -17,7 +16,7 @@ class SCR_CampaignBuildingBudgetEditorUIComponent : SCR_BudgetEditorUIComponent
 			if (!m_aVisibleBudgetUI.Contains(budget.GetBudgetType()))
 				continue;
 						
-			int MaxBudgetValue = GetMaxBudgetValue();
+			int MaxBudgetValue = GetMaxBudgetValue(budget.GetBudgetType());
 			
 			if (MaxBudgetValue == UNLIMITED_PROP_BUDGET)
 			{
@@ -81,18 +80,18 @@ class SCR_CampaignBuildingBudgetEditorUIComponent : SCR_BudgetEditorUIComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Get max budget value from provider
-	int GetMaxBudgetValue()
+	//! \return max budget value from provider
+	int GetMaxBudgetValue(EEditableEntityBudget budget)
 	{
 		SCR_CampaignBuildingProviderComponent provider = GetProviderComponent();
 		if (!provider)
 			return UNLIMITED_PROP_BUDGET;
 		
-		return provider.GetMaxPropValue();
+		return provider.GetMaxBudgetValue(budget);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Get curretn budget value from provider
+	//! \return current budget value from provider
 	int GetCurrentBudgetValue()
 	{
 		SCR_CampaignBuildingProviderComponent provider = GetProviderComponent();
@@ -101,4 +100,4 @@ class SCR_CampaignBuildingBudgetEditorUIComponent : SCR_BudgetEditorUIComponent
 		
 		return provider.GetCurrentPropValue();
 	}
-};
+}

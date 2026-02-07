@@ -1,27 +1,27 @@
 [EntityEditorProps(category: "GameScripted/Editor (Editables)", description: "")]
 class SCR_EditableDecalComponentClass: SCR_EditableEntityComponentClass
 {
-};
-/*!
-@ingroup Editable_Entities
+}
 
-Component for managing editable decal entities.
-It handles changing decal transformation.
-Moving or rotating DecalEntity has no effect ont he decal itself, so the component deletes existing decal and creates a new one with the new transformation.
+//! @ingroup Editable_Entities
 
-How to configure prefab with this component:
-1. Create GenericEntity
-2. Add this component to it
-3. Add exactly one child DecalEntity from prefab (must be prefab, otherwise it won't work)
-4. Add a hierargy component to the parent and child
-5. Change child position / rotation / scale to arrange the decal correctly. Do not change any other attributes, they would be lost when the editable entity is modified in run-time.
-*/
-class SCR_EditableDecalComponent: SCR_EditableEntityComponent
+//! Component for managing editable decal entities.
+//! It handles changing decal transformation.
+//! Moving or rotating DecalEntity has no effect ont he decal itself, so the component deletes existing decal and creates a new one with the new transformation.
+//!
+//! How to configure prefab with this component:
+//! 1. Create GenericEntity
+//! 2. Add this component to it
+//! 3. Add exactly one child DecalEntity from prefab (must be prefab, otherwise it won't work)
+//! 4. Add a hierargy component to the parent and child
+//! 5. Change child position / rotation / scale to arrange the decal correctly. Do not change any other attributes, they would be lost when the editable entity is modified in run-time.
+class SCR_EditableDecalComponent : SCR_EditableEntityComponent
 {
 	protected DecalEntity m_Decal;
 	protected vector m_vDecalTransform[4];
 	protected float m_vDecalScale;
 	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	override protected void SetTransformBroadcast(vector transform[4])
 	{
@@ -44,6 +44,8 @@ class SCR_EditableDecalComponent: SCR_EditableEntityComponent
 			m_Decal = newDecal;
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
 		m_Decal = DecalEntity.Cast(owner.GetChildren());
@@ -57,6 +59,8 @@ class SCR_EditableDecalComponent: SCR_EditableEntityComponent
 			Log("No child of type DecalEntity found!", true, LogLevel.WARNING);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		super.OnPostInit(owner);
@@ -64,9 +68,11 @@ class SCR_EditableDecalComponent: SCR_EditableEntityComponent
 		owner.SetFlags(EntityFlags.NO_LINK | EntityFlags.NO_TREE);
 		owner.ClearFlags(EntityFlags.TRACEABLE);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnDelete(IEntity owner)
 	{
 		super.OnDelete(owner);
 		delete m_Decal;
 	}
-};
+}

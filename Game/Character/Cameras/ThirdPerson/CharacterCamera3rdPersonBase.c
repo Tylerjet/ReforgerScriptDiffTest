@@ -38,7 +38,10 @@ class CharacterCamera3rdPersonBase extends CharacterCameraBase
 
 		//! yaw pitch roll vector
 		vector lookAngles = m_CharacterHeadAimingComponent.GetLookAngles();
-		lookAngles[1] = lookAngles[1] + m_OwnerCharacter.GetLocalYawPitchRoll()[1];
+
+		if (!m_bIgnoreCharacterPitch)
+			lookAngles[1] = lookAngles[1] + m_OwnerCharacter.GetLocalYawPitchRoll()[1];
+
 		//! apply to rotation matrix
 		Math3D.AnglesToMatrix(lookAngles, pOutResult.m_CameraTM);
 								

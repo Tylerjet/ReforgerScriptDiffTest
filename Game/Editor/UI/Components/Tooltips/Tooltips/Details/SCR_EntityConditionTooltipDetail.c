@@ -1,6 +1,5 @@
-//
 [BaseContainerProps(), BaseContainerCustomTitleField("m_sDisplayName")]
-class SCR_EntityConditionTooltipDetail: SCR_EntityTooltipDetail
+class SCR_EntityConditionTooltipDetail : SCR_EntityTooltipDetail
 {	
 	[Attribute("{01E150D909447632}Configs/Damage/DamageStateConfig.conf", desc: "Config to get visual data from", params: "conf class=SCR_DamageStateConfig")]
 	protected ref SCR_DamageStateConfig m_DamageStateConfig;
@@ -16,7 +15,6 @@ class SCR_EntityConditionTooltipDetail: SCR_EntityTooltipDetail
 	
 	//~ Ref
 	protected Widget m_ConditionHolder;
-	protected SCR_CharacterDamageManagerComponent m_CharacterDamageManager;
 	protected ref array<EDamageType> m_aActiveDamageTypes = {};
 	
 	//~ States
@@ -27,9 +25,9 @@ class SCR_EntityConditionTooltipDetail: SCR_EntityTooltipDetail
 	
 	protected Widget m_wLabel;
 
-	
 	protected DamageManagerComponent m_DamageManager;
 	
+	//------------------------------------------------------------------------------------------------
 	override bool CreateDetail(SCR_EditableEntityComponent entity, Widget parent, TextWidget label, bool setFrameslot = true)
 	{
 		m_wLabel = label;
@@ -37,11 +35,13 @@ class SCR_EntityConditionTooltipDetail: SCR_EntityTooltipDetail
 		return super.CreateDetail(entity, parent, label, setFrameslot);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override bool NeedUpdate()
 	{
 		return m_ConditionHolder && m_DamageManager && (m_DamageManager.GetState() != EDamageState.DESTROYED || (m_DamageManager.GetState() == EDamageState.DESTROYED && !m_bIsDestroyed) && !m_aDamageStateUiInfo.IsEmpty());// && m_MultiLineTextWidget;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void UpdateDetail(SCR_EditableEntityComponent entity)
 	{
 		bool isDestroyed, isUnconscious, conditionChanged;
@@ -92,7 +92,7 @@ class SCR_EntityConditionTooltipDetail: SCR_EntityTooltipDetail
 		CreateConditionIcons(activeCondition, m_bIsUnconscious);
 	}
 	
-	
+	//------------------------------------------------------------------------------------------------
 	protected void CreateConditionIcons(array<EDamageType> activeCondition, bool isUnconscious)
 	{
 		ClearConditionHolder();
@@ -123,7 +123,7 @@ class SCR_EntityConditionTooltipDetail: SCR_EntityTooltipDetail
 		
 		foreach (EDamageType damageType: activeCondition)
 		{
-			damageStateWidget = GetGame().GetWorkspace().CreateWidgets(m_sStateIconLayout, m_ConditionHolder);		
+			damageStateWidget = GetGame().GetWorkspace().CreateWidgets(m_sStateIconLayout, m_ConditionHolder);
 			
 			if (!damageStateWidget)
 			{
@@ -143,6 +143,7 @@ class SCR_EntityConditionTooltipDetail: SCR_EntityTooltipDetail
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void CreateDestroyIcon()
 	{
 		ClearConditionHolder();
@@ -169,20 +170,22 @@ class SCR_EntityConditionTooltipDetail: SCR_EntityTooltipDetail
 			damageStateUIComponent.SetVisuals(m_DamageStateConfig.GetDeathStateUiInfo());
 	}
 	
-	/*protected void CreateConditionText(LocalizedString text)
-	{
-		ClearConditionHolder();
-		
-		TextWidget textWidget = TextWidget.Cast(GetGame().GetWorkspace().CreateWidgets(m_sStateTextOnlyLayout, m_ConditionHolder));
-		if (!textWidget)
-		{
-			Print("'SCR_EntityConditionTooltipDetail' Unable to create text widget!",LogLevel.ERROR);
-			return;
-		}
-			
-		textWidget.SetText(text);
-	}*/
+//	//------------------------------------------------------------------------------------------------
+//	protected void CreateConditionText(LocalizedString text)
+//	{
+//		ClearConditionHolder();
+//
+//		TextWidget textWidget = TextWidget.Cast(GetGame().GetWorkspace().CreateWidgets(m_sStateTextOnlyLayout, m_ConditionHolder));
+//		if (!textWidget)
+//		{
+//			Print("'SCR_EntityConditionTooltipDetail' Unable to create text widget!",LogLevel.ERROR);
+//			return;
+//		}
+//
+//		textWidget.SetText(text);
+//	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void ClearConditionHolder()
 	{
 		Widget child = m_ConditionHolder.GetChildren();
@@ -195,6 +198,7 @@ class SCR_EntityConditionTooltipDetail: SCR_EntityTooltipDetail
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override bool InitDetail(SCR_EditableEntityComponent entity, Widget widget)
 	{
 		if (!widget || !m_DamageStateConfig || m_sStateIconLayout.IsEmpty())
@@ -208,9 +212,7 @@ class SCR_EntityConditionTooltipDetail: SCR_EntityTooltipDetail
 		
 		if (m_DamageStateConfig.GetDamageStateInfoArray(m_aDamageStateUiInfo) <= 0)
 			return false;
-		
-		m_CharacterDamageManager = SCR_CharacterDamageManagerComponent.Cast(m_DamageManager);
-		
+	
 		bool isDestroyed, isUnconscious, conditionChanged;
 		array<EDamageType> activeCondition = {};
 		
@@ -223,6 +225,7 @@ class SCR_EntityConditionTooltipDetail: SCR_EntityTooltipDetail
 		return false;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected bool HasConditions(out bool isDestroyed, out bool isUnconscious, out notnull array<EDamageType> activeCondition, out bool conditionChanged, bool onlyCheckOneTrue = false)
 	{		
 		bool hasCondition = false;
@@ -233,17 +236,22 @@ class SCR_EntityConditionTooltipDetail: SCR_EntityTooltipDetail
 			isDestroyed = true;
 			return true;
 		}
-			
-		if (m_CharacterDamageManager && m_CharacterDamageManager.GetIsUnconscious())
+		
+		ChimeraCharacter char = ChimeraCharacter.Cast(m_DamageManager.GetOwner());
+		if (char)
 		{
-			isUnconscious = true;
-			
-			if (onlyCheckOneTrue)
-				return true;
-			else 
-				hasCondition = true;
+			CharacterControllerComponent controller = CharacterControllerComponent.Cast(char.GetCharacterController());
+			if (controller.GetLifeState() == ECharacterLifeState.INCAPACITATED)
+			{
+				isUnconscious = true;
+				
+				if (onlyCheckOneTrue)
+					return true;
+				else 
+					hasCondition = true;
+			}
 		}
-			
+
 		foreach (SCR_DamageStateInfo damageStateInfo: m_aDamageStateUiInfo)
 		{
 			if (m_DamageManager.IsDamagedOverTime(damageStateInfo.m_eDamageType))
@@ -272,4 +280,4 @@ class SCR_EntityConditionTooltipDetail: SCR_EntityTooltipDetail
 		
 		return hasCondition;
 	}
-};
+}

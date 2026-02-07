@@ -1,7 +1,7 @@
 [ComponentEditorProps(category: "GameScripted/Spectating", description: "Displays a colored sphere over an entity - if FactionAffiliationComponent is present")]
-class SCR_UnitDisplayComponentClass: ScriptComponentClass
+class SCR_UnitDisplayComponentClass : ScriptComponentClass
 {
-};
+}
 
 class SCR_UnitDisplayComponent : ScriptComponent
 {
@@ -19,6 +19,8 @@ class SCR_UnitDisplayComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Draw a debug shape every frame
+	//! \param[in] owner
+	//! \param[in] timeSlice
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
 		// No faction affiliation component, delete shape if it exists, return
@@ -173,6 +175,10 @@ class SCR_UnitDisplayComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_UnitDisplayComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{		
 		GenericEntity genEnt = GenericEntity.Cast(ent);
@@ -184,9 +190,4 @@ class SCR_UnitDisplayComponent : ScriptComponent
 		
 		m_Entity = ent;
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_UnitDisplayComponent()
-	{		
-	}
-};
+}

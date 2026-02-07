@@ -1,111 +1,100 @@
 class SCR_AIThrowGrenadeToBehavior : SCR_AIBehaviorBase
 {
 	//Target Position of the behavior
-	ref SCR_BTParam<vector> m_vPosition = new SCR_BTParam<vector>(SCR_AIActionTask.TARGETPOSITION_PORT);
-#ifdef AI_DEBUG
+	ref SCR_BTParam<vector> m_vTargetPosition = new SCR_BTParam<vector>(SCR_AIActionTask.TARGETPOSITION_PORT);
+	ref SCR_BTParam<EWeaponType> e_WeaponType = new SCR_BTParam<EWeaponType>(SCR_AIActionTask.WEAPON_TYPE_PORT);
+	ref SCR_BTParam<float> m_fDelay = new SCR_BTParam<float>(SCR_AIActionTask.DELAY_PORT);
+	
+	BaseWorld m_World;
+	float m_fStartTime;
+	
+#ifdef WORKBENCH
 	//Diagnostic visualization
-	static ref array<ref Shape> m_aDbgShapes;
+	ref array<ref Shape> m_aDbgShapes = {};
 #endif
 	private static vector CHARACTER_HEIGHT_OFFSET = {0, 1.6, 0};
 	
-	void SCR_AIThrowGrenadeToBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector pos, float priorityLevel = PRIORITY_LEVEL_NORMAL)
+	void SCR_AIThrowGrenadeToBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector position, EWeaponType weaponType, float delay, float priority = PRIORITY_BEHAVIOR_THROW_GRENADE, float priorityLevel = PRIORITY_LEVEL_NORMAL)
 	{
-		//m_Target.Init(this, target);
-		m_vPosition.Init(this, pos);
-	
-		if (!utility)
-			return;
+		m_vTargetPosition.Init(this, position);
+		e_WeaponType.Init(this, weaponType);
+		m_fDelay.Init(this, delay);
 		
-		m_bAllowLook = false;
-		SetPriority(PRIORITY_BEHAVIOR_THROW_GRENADE);
+		if (utility)
+		{
+			m_World = utility.m_OwnerEntity.GetWorld();
+			m_fStartTime = m_World.GetWorldTime() + delay;
+		}
+
+		m_sBehaviorTree = "{3187CAE77AAF1A35}AI/BehaviorTrees/Chimera/Soldier/ThrowGrenadeTo.bt";
+		SetPriority(priority);
 		m_fPriorityLevel.m_Value = priorityLevel;
-		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/Throw_Grenade.bt";
-#ifdef AI_DEBUG 
-		m_aDbgShapes = new array<ref Shape>;
+		m_bAllowLook = false;
+		
+#ifdef WORKBENCH 
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_SMOKE_COVER_POSITIONS))
+			DrawPositionDebug(false);		
 #endif
 	}
+		
+	//------------------------------------------------------------------------------------------------------------------------------------
+	override float CustomEvaluate()
+	{
+		if (m_World && m_World.GetWorldTime() < m_fStartTime)
+			return 0;
+		
+		return GetPriority();
+	}
+	
+	//----------------------------------------------------------------------------------
+	override void OnActionSelected()
+	{
+		m_Utility.m_AIInfo.SetAIState(EUnitAIState.BUSY);
+	
+#ifdef WORKBENCH
+		m_aDbgShapes.Clear();
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_SMOKE_COVER_POSITIONS))
+			DrawPositionDebug(true);		
+#endif	
+	}
+
 	//----------------------------------------------------------------------------------
 	override void OnActionCompleted()
 	{
 		super.OnActionCompleted();
-#ifdef AI_DEBUG 
+		m_Utility.m_AIInfo.SetAIState(EUnitAIState.AVAILABLE);
+#ifdef WORKBENCH
+		SCR_AIDebugVisualization.VisualizeMessage(m_Utility.m_OwnerEntity, "Grenade thrown", EAIDebugCategory.INFO, 5); 
 		m_aDbgShapes.Clear();
 #endif
 	}
+
 	//----------------------------------------------------------------------------------
 	override void OnActionFailed()
 	{
-		if (GetActionState() == EAIActionState.COMPLETED || GetActionState() == EAIActionState.FAILED)
-			return;
 		super.OnActionFailed();
+		m_Utility.m_AIInfo.SetAIState(EUnitAIState.AVAILABLE);
+#ifdef WORKBENCH
+		SCR_AIDebugVisualization.VisualizeMessage(m_Utility.m_OwnerEntity, "Grenade throw failed", EAIDebugCategory.INFO, 5);
+		m_aDbgShapes.Clear();
+#endif
 	}
+
 	//----------------------------------------------------------------------------------
 	override string GetActionDebugInfo()
 	{
-		return this.ToString() + " throwing grenade to " + m_vPosition.ValueToString();
+		return this.ToString() + " throwing grenade to " + m_vTargetPosition.ValueToString();
 	}
-	//----------------------------------------------------------------------------------
-	void UpdatePositionInfo(vector pos)
-	{
-		m_vPosition.m_Value = pos;
-	}
-	//----------------------------------------------------------------------------------
-	/*
-		Traces a certain distance of the grenade's movement
-		Returns true if the throw doesn't hit anything in the given distance
-		Returns false if the throw is obstructed
 	
-		INPUT 
-			Start position, target Position, distance 
-			Optional: Thrower entity, Target Entity 
-	*/
-	static bool TraceForGrenadeThrow(vector vStartPosition, vector vTargetPosition, float fTravelDistance, IEntity owner = null, IEntity target = null) 
+	//------------------------------------------------------------------------------------------------------------------------------------
+	void DrawPositionDebug(bool selected)
 	{
-		bool found = false;
-		vector direction = vTargetPosition - vStartPosition;
-		direction[1] = 0.0;
-		direction.Normalize();
-		
-		TraceParam traceparams = TraceParam();
-		traceparams.Flags = TraceFlags.ENTS | TraceFlags.WORLD;
-		traceparams.LayerMask = EPhysicsLayerDefs.Projectile;
-		ref array<IEntity> excludeArray = {owner, target};
-		traceparams.ExcludeArray = excludeArray;
-		traceparams.Start = vStartPosition + CHARACTER_HEIGHT_OFFSET;
-		traceparams.End = traceparams.Start + fTravelDistance * direction;
-		
-		float hit;
-		BaseWorld world = owner.GetWorld();
-		hit = world.TraceMove(traceparams, null);
-		found = (hit == 1);
-#ifdef AI_DEBUG
-		m_aDbgShapes.Clear();
-		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_GRENADE_TRACE))
-		{
-			int shapeFlags = ShapeFlags.VISIBLE|ShapeFlags.NOZBUFFER;
-			vector p[2];
-			if (!found)
-			{	//Setup Diagnostic visualization, draw green how much is clear, the rest in red
-				vector traversal = traceparams.End - traceparams.Start;
-				p[0] = traceparams.Start;
-				p[1] = traceparams.Start + hit * traversal;
-				Shape valid = Shape.CreateLines(ARGBF(1.0, 0.0, 1.0, 0.0), shapeFlags, p, 2);
-				m_aDbgShapes.Insert(valid);
-				
-				p[0] = traceparams.Start + hit * traversal;
-				p[1] = traceparams.End;
-				Shape invalid = Shape.CreateLines(ARGBF(1.0, 1.0, 0.0, 0.0), shapeFlags, p, 2);
-				m_aDbgShapes.Insert(invalid);
-			}
-			else
-			{
-				p[0] = traceparams.Start;
-				p[1] = traceparams.End;
-				Shape valid = Shape.CreateLines(ARGBF(1.0, 0.0, 1.0, 0.0), shapeFlags, p, 2);
-				m_aDbgShapes.Insert(valid);
-			}
-		}
+		int shapeColor = Color.RED;
+		if (selected)
+			shapeColor = Color.GREEN;
+#ifdef WORKBENCH
+		m_aDbgShapes.Insert(Shape.CreateCylinder(Color.WHITE, ShapeFlags.DEFAULT, m_vTargetPosition.m_Value, 0.3, 100));
+		m_aDbgShapes.Insert(Shape.CreateSphere(shapeColor, ShapeFlags.DEFAULT, m_vTargetPosition.m_Value, 0.6));
 #endif
-		return found;
 	}
 };

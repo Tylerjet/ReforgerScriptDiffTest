@@ -9,43 +9,37 @@ class SCR_ChimeraAIAgent : ChimeraAIAgent
 	SCR_AIUtilityComponent m_UtilityComponent;
 	SCR_AIInfoComponent m_InfoComponent;
 	
-	protected EventHandlerManagerComponent	m_EventHandlerManagerComponent;
+	protected SCR_CharacterControllerComponent m_CharacterController;
 	protected FactionAffiliationComponent m_FactionAffiliationComponent;
-	protected SCR_CharacterDamageManagerComponent m_DamageMgr;
-	
 	protected int m_iPendingPlayerId;
 	
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner) 
 	{
 		IEntity controlledEntity = GetControlledEntity();
-		
 		if (!controlledEntity)
 			return;
 		
+		ChimeraCharacter character = ChimeraCharacter.Cast(controlledEntity);
+		if (character)
+		{
+			m_CharacterController = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
+			if (m_CharacterController)
+				m_CharacterController.m_OnLifeStateChanged.Insert(OnLifeStateChanged);
+		}
+			
 		GetGame().GetCallqueue().CallLater(EnsureAILimit, 1, false);
-		
-		m_EventHandlerManagerComponent = EventHandlerManagerComponent.Cast(controlledEntity.FindComponent(EventHandlerManagerComponent));
-		if (m_EventHandlerManagerComponent)
-			m_EventHandlerManagerComponent.RegisterScriptHandler("OnConsciousnessChanged", this, this.OnConsciousnessChanged, true);
 		
 		m_FactionAffiliationComponent = FactionAffiliationComponent.Cast(controlledEntity.FindComponent(FactionAffiliationComponent));
 		m_InfoComponent = SCR_AIInfoComponent.Cast(FindComponent(SCR_AIInfoComponent));
 		m_UtilityComponent = SCR_AIUtilityComponent.Cast(FindComponent(SCR_AIUtilityComponent));
-		
-		m_DamageMgr = SCR_CharacterDamageManagerComponent.Cast(controlledEntity.FindComponent(SCR_CharacterDamageManagerComponent));
-		if (m_DamageMgr)
-			m_DamageMgr.GetOnDamageStateChanged().Insert(OnDamageStateChanged);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_ChimeraAIAgent()
 	{
-		if (m_EventHandlerManagerComponent)
-			m_EventHandlerManagerComponent.RemoveScriptHandler("OnConsciousnessChanged", this, this.OnConsciousnessChanged, true);
-		
-		if (m_DamageMgr)
-			m_DamageMgr.GetOnDamageStateChanged().Remove(OnDamageStateChanged);
+		if (m_CharacterController)
+			m_CharacterController.m_OnLifeStateChanged.Remove(OnLifeStateChanged);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -102,9 +96,9 @@ class SCR_ChimeraAIAgent : ChimeraAIAgent
 	} 
 	
 	//------------------------------------------------------------------------------------------------
-	void OnConsciousnessChanged(bool conscious)
+	void OnLifeStateChanged(ECharacterLifeState previousLifeState, ECharacterLifeState newLifeState)
 	{
-		if (!conscious)
+		if (newLifeState == ECharacterLifeState.INCAPACITATED)
 		{
 			// first send message and then deactivate otherwise message won't be sent
 			SendWoundedMsg();
@@ -113,8 +107,19 @@ class SCR_ChimeraAIAgent : ChimeraAIAgent
 			SCR_AICommsHandler commsHandler = m_UtilityComponent.m_CommsHandler;
 			if (commsHandler)
 				commsHandler.SetSuspended(true);
+			
+			return;
 		}
-		else
+		else if (newLifeState == ECharacterLifeState.DEAD)
+		{
+			GetControlComponent().DeactivateAI();
+			SCR_AICommsHandler commsHandler = m_UtilityComponent.m_CommsHandler;
+			if (commsHandler)
+				commsHandler.Reset();
+			
+			return;
+		}
+		else if (newLifeState == ECharacterLifeState.ALIVE)
 		{
 			bool possesingMainEntity = false;
 			array<int> players = new array<int>;
@@ -147,17 +152,6 @@ class SCR_ChimeraAIAgent : ChimeraAIAgent
 			SCR_AICommsHandler commsHandler = m_UtilityComponent.m_CommsHandler;
 			if (commsHandler)
 				commsHandler.SetSuspended(false);
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void OnDamageStateChanged(EDamageState state)
-	{
-		if (state == EDamageState.DESTROYED)
-		{
-			SCR_AICommsHandler commsHandler = m_UtilityComponent.m_CommsHandler;
-			if (commsHandler)
-				commsHandler.Reset();
 		}
 	}
 	

@@ -7,30 +7,32 @@ class SCR_ItemHintUIInfo : SCR_InventoryUIInfo
 	protected ResourceName m_sImageSet;
 	
 	[Attribute("", desc: "", uiwidget: UIWidgets.LocaleEditBox)]
-	protected LocalizedString m_sHintText;	
+	protected LocalizedString m_sHintText;
 		
 	[Attribute("", desc: "", uiwidget: UIWidgets.EditBox)]
 	protected string m_sImageTileName;
 	
+	//------------------------------------------------------------------------------------------------
 	ResourceName GetHintResource()
 	{
 		return m_Layout;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	ResourceName GetImageSet()
 	{
 		return m_sImageSet;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	string GetImageName()
 	{
 		return m_sImageTileName;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	LocalizedString GetHintText()
 	{
 		return m_sHintText;
 	}
-	
-	
-};
+}

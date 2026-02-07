@@ -1,8 +1,6 @@
-/**
-Creates the elements for the layer Ui menu
-If a Layer is selected this menu will show which layer is selected, which layers are before the selected layer and if the selected layer has any children.
-The player is able to use the menu to switch between layers 
-*/
+//! Creates the elements for the layer Ui menu
+//! If a Layer is selected this menu will show which layer is selected, which layers are before the selected layer and if the selected layer has any children.
+//! The player is able to use the menu to switch between layers
 class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 {	
 	//SFX
@@ -21,22 +19,27 @@ class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 	//Widget References
 	[Attribute()]
 	protected string m_sLayerElementHolder;
+
 	protected Widget m_LayerElementHolder;
+
 	[Attribute()]
 	protected string m_sExitLayerButton;
+
 	[Attribute()]
 	protected string m_sLayerEditorOverlayName;
+
 	protected Widget m_LayerEditorOverlay;
 	
 	[Attribute("LayerEditorOverlay")]
 	protected string m_sParentWidgetName;
+
 	protected Widget m_parentWidget;
 	
 	protected SCR_EditableEntitySlotManagerUIComponent m_SlotManager;
 	
 	//References
 	protected SCR_EditableEntityComponent m_SelectedLayer;
-	protected ref array<SCR_EditableEntityComponent> m_aCurrentSelectedLayers = new array<SCR_EditableEntityComponent>;
+	protected ref array<SCR_EditableEntityComponent> m_aCurrentSelectedLayers = {};
 	protected SCR_LayersEditorComponent m_LayersManager;
 	protected InputManager m_InputManager;
 	protected SCR_MenuEditorComponent m_EditorMenuManager;
@@ -46,29 +49,37 @@ class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 	//Settings
 	[Attribute(defvalue: "0", desc: "Layers shown after WorldRoot but before Dropdown")]
 	protected int m_iLayersShownAfterRoot; 
+
 	[Attribute(defvalue: "1", desc: "Layers shown before current but after Dropdown")]
 	protected int m_iLayersShownBeforeCurrent;
 
 	//Prefabs
 	[Attribute()]
 	protected ResourceName m_LayerElementPrefab;
+
 	[Attribute()]
 	protected ResourceName m_LayerElementButtonPrefab;
+
 	[Attribute()]
 	protected ResourceName m_LayerWorldPrefab;
+
 	[Attribute()]
 	protected ResourceName m_LayerWorldButtonPrefab;
+
 	[Attribute()]
 	protected ResourceName m_NextLayerIndicatorPrefab;
+
 	[Attribute()]
 	protected ResourceName m_MoreLayersIndicatorPrefab;
 	
 	//State
 	protected bool m_bUsesGamepad;
 	
-	protected ref map<SCR_ButtonBaseComponent, SCR_EditableEntityComponent> m_mButtonReferences = new ref map<SCR_ButtonBaseComponent, SCR_EditableEntityComponent>;
+	protected ref map<SCR_ButtonBaseComponent, SCR_EditableEntityComponent> m_mButtonReferences = new map<SCR_ButtonBaseComponent, SCR_EditableEntityComponent>();
 	
 	//======================== ON MENU UPDATE ========================\\
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnMenuUpdate(float tDelta)
 	{
 		bool mapShown = SCR_MapEntity.GetMapInstance() && SCR_MapEntity.GetMapInstance().IsOpen();
@@ -76,6 +87,7 @@ class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 			m_InputManager.ActivateContext("EditorEditModeContext");
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnLayerButtonPressed(SCR_ButtonBaseComponent button)
 	{
 		SCR_EditableEntityComponent layer;
@@ -86,6 +98,8 @@ class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 	
 	//~ToDo: Check is gamepad is used and show controlles for it: GetGame().OnInputDeviceIsGamepadInvoker(). Hide L1 + Right button hint if no children. Check if input can be displayed dynamicly
 	//======================== CREATE LAYER UI ========================\\
+
+	//------------------------------------------------------------------------------------------------
 	//On Layer changed recreate layer menu
 	protected void OnCompositionLayerChanged(SCR_EditableEntityComponent currentLayer, SCR_EditableEntityComponent prevLayer)
 	{			
@@ -117,6 +131,8 @@ class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 	} 
 	
 	//On input change
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
 		m_bUsesGamepad = isGamepad;
@@ -125,6 +141,8 @@ class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 	}
 	
 	//======================== PARENT ENTITY CHANGED ========================\\
+
+	//------------------------------------------------------------------------------------------------
 	protected void RefreshLayerUI()
 	{
 		if (m_SelectedLayer == null)
@@ -140,14 +158,12 @@ class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 		CreateWorldRootLayer();
 		
 		//Get Layer List
-		m_aCurrentSelectedLayers = new array<SCR_EditableEntityComponent>;
+		m_aCurrentSelectedLayers = {};
 		m_SelectedLayer.GetParentEntities(m_aCurrentSelectedLayers);
 		m_aCurrentSelectedLayers.InsertAt(m_SelectedLayer, 0);
 		int totalLayerCount = m_aCurrentSelectedLayers.Count();
 		bool hasMoreAfterRootIndicator = false;
-	
-		
-		
+
 		//Go over each layer and display them properly (In reverse order)
 		for (int i = totalLayerCount -1; i > -1; i--)
 		{
@@ -172,7 +188,11 @@ class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 	}
 	
 	//======================== CHECK IF CHANGED ========================\\
-	//Check an entity that was changed was within the current selected Hierarchy
+
+	//------------------------------------------------------------------------------------------------
+	//! Check an entity that was changed was within the current selected Hierarchy
+	//! \param[in] entity
+	//! \return
 	protected bool CheckIfSelectedLayerHierarchyChanged(SCR_EditableEntityComponent entity)
 	{
 		//If given entity is not null
@@ -189,9 +209,13 @@ class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 		return false;
 	}
 	
-	
 	//======================== PARENT ENTITY CHANGED ========================\\
-	//check if in Hierarchy, if true: Refresh UI
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if in Hierarchy, if true: Refresh UI
+	//! \param[in] entity
+	//! \param[in] parentEntity
+	//! \param[in] parentEntityPrev
 	protected void OnParentEntityVisibleChanged(SCR_EditableEntityComponent entity, SCR_EditableEntityComponent parentEntity, SCR_EditableEntityComponent parentEntityPrev)
 	{
 		if (CheckIfSelectedLayerHierarchyChanged(entity))
@@ -199,11 +223,13 @@ class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 			RefreshLayerUI();
 			return;
 		}
+
 		if (CheckIfSelectedLayerHierarchyChanged(parentEntity))
 		{
 			RefreshLayerUI();
 			return;
 		}
+
 		if (CheckIfSelectedLayerHierarchyChanged(parentEntityPrev))
 		{
 			RefreshLayerUI();
@@ -212,6 +238,8 @@ class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 	}
 	
 	//======================== ENTITY STATE CHANGED ========================\\
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnEntityStateChanged(EEditableEntityState state, set<SCR_EditableEntityComponent> entitiesInsert, set<SCR_EditableEntityComponent> entitiesRemove)
 	{
 		//Inserted Entities state changed, check if in Hierarchy, if true: Refresh UI
@@ -243,6 +271,8 @@ class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 	
 	//======================== CREATE LAYER ELEMENTS ========================\\
 	//------------------------ Layer Element in ------------------------\\
+
+	//------------------------------------------------------------------------------------------------
 	protected void CreateLayerElement(SCR_EditableEntityComponent layerEntity, bool isLast)
 	{	
 		Widget elementWidget;
@@ -295,18 +325,24 @@ class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 	}
 	
 	//------------------------ Next Layer Indicator ------------------------\\
+
+	//------------------------------------------------------------------------------------------------
 	protected void CreateNextLayerIndicator()
 	{	
 		Widget nextLayerIndicator = GetGame().GetWorkspace().CreateWidgets(m_NextLayerIndicatorPrefab, m_LayerElementHolder);
 	}
 
 	//------------------------ Drop menu creator ------------------------\\
+
+	//------------------------------------------------------------------------------------------------
 	protected void CreateMoreLayersIndicator()
 	{
 		Widget moreLayersIndicator = GetGame().GetWorkspace().CreateWidgets(m_MoreLayersIndicatorPrefab, m_LayerElementHolder);
 	}
 	
 	//------------------------ Children Indicator ------------------------\\
+
+	//------------------------------------------------------------------------------------------------
 	protected void CreateWorldRootLayer()
 	{		
 		Widget elementWidget;
@@ -338,7 +374,10 @@ class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 	}
 	
 	//======================== MENU VISIBILITY ========================\\
-	//Show/Hides Menu
+
+	//------------------------------------------------------------------------------------------------
+	//! Show/Hides Menu
+	//! \param[in] show
 	protected void SetVisible(bool show)
 	{		
 		if (!m_parentWidget)
@@ -357,7 +396,9 @@ class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 	}
 	
 	//======================== CLEAR UI ========================\\
-	//Clears the array
+
+	//------------------------------------------------------------------------------------------------
+	//! Clears the array
 	protected void ClearLayerElements()
 	{
 		Widget child = m_LayerElementHolder.GetChildren();
@@ -374,15 +415,18 @@ class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 		m_mButtonReferences.Clear();
 	}
 	
-	
 	//======================== BUTTON FUNCTIONS ========================\\
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnEditorExitLayerButton()
 	{
-		if (!m_LayersManager) return;
+		if (m_LayersManager)
 			m_LayersManager.SetCurrentLayerToParent();
 	}
 
 	//======================== INHERITED ========================\\
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttachedScripted(Widget w)
 	{		
 		if (SCR_Global.IsEditMode()) return; //--- Run-time only
@@ -400,21 +444,25 @@ class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 			
 			//Get layersEditorComponent
 			m_LayersManager = SCR_LayersEditorComponent.Cast(SCR_LayersEditorComponent.GetInstance(SCR_LayersEditorComponent, true));
-			if (!m_LayersManager) return;
+			if (!m_LayersManager)
+				return;
 			
 			//Subscribe to OnCompositionLayerChanged
 			m_LayersManager.GetOnCurrentLayerChange().Insert(OnCompositionLayerChanged);
 
 			//Get Core
 			SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore)); //Remove and just get new in Handler
-			if (!core) return;
+			if (!core)
+				return;
 		
 			//Subscribe to OnParentEntityChanged
 			core.Event_OnParentEntityChanged.Insert(OnParentEntityVisibleChanged);
 			
 			SCR_BaseEditableEntityFilter filter = SCR_BaseEditableEntityFilter.GetInstance(EEditableEntityState.VISIBLE);
-			if (!filter) return;
-				filter.GetOnChanged().Insert(OnEntityStateChanged);
+			if (!filter)
+				return;
+
+			filter.GetOnChanged().Insert(OnEntityStateChanged);
 			
 			//Register buttons
 			Widget widget = w.FindAnyWidget(m_sExitLayerButton);
@@ -428,12 +476,14 @@ class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 			m_EditorMenuManager = SCR_MenuEditorComponent.Cast(SCR_MenuEditorComponent.GetInstance(SCR_MenuEditorComponent));
 	
 			SCR_EntitiesManagerEditorComponent entitiesManager = SCR_EntitiesManagerEditorComponent.Cast(SCR_EntitiesManagerEditorComponent.GetInstance(SCR_EntitiesManagerEditorComponent, true));
-			if (!entitiesManager) return;
+			if (!entitiesManager)
+				return;
 			
 			m_StatesManager = SCR_StatesEditorComponent.Cast(SCR_StatesEditorComponent.GetInstance(SCR_StatesEditorComponent));
 			
 			m_HoverFilter = SCR_HoverEditableEntityFilter.Cast(entitiesManager.GetFilter(EEditableEntityState.HOVER));
-			if (!m_HoverFilter) return;
+			if (!m_HoverFilter)
+				return;
 			
 			MenuRootBase menu = GetMenu();
 			if (menu)
@@ -454,6 +504,7 @@ class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 		
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		if (m_LayersManager)
@@ -484,4 +535,4 @@ class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 				menu.GetOnMenuUpdate().Remove(OnMenuUpdate);
 		}
 	}
-};
+}

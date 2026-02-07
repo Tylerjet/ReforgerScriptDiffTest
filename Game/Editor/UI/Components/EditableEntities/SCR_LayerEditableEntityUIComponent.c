@@ -1,4 +1,4 @@
-class SCR_LayerEditableEntityUIComponent: SCR_BaseEditableEntityUIComponent
+class SCR_LayerEditableEntityUIComponent : SCR_BaseEditableEntityUIComponent
 {
 	[Attribute("IconEmpty", desc: "Icon used when the entity does not have any child entities.")]
 	protected string m_sEmptyIconWidgetName;
@@ -8,11 +8,14 @@ class SCR_LayerEditableEntityUIComponent: SCR_BaseEditableEntityUIComponent
 	
 	protected bool m_bIsCustom;
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnParentEntityChanged(SCR_EditableEntityComponent entity, SCR_EditableEntityComponent parent, SCR_EditableEntityComponent parentPrev)
 	{
 		if (parent == m_Entity || parentPrev == m_Entity)
 		{
-			bool isLayer = m_Entity.IsLayer();
+			bool isLayer;
+			if (m_Entity)
+				isLayer = m_Entity.IsLayer();
 			
 			Widget emptyIconWidget = GetWidget().FindAnyWidget(m_sEmptyIconWidgetName);
 			if (emptyIconWidget)
@@ -24,6 +27,7 @@ class SCR_LayerEditableEntityUIComponent: SCR_BaseEditableEntityUIComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnInit(SCR_EditableEntityComponent entity, SCR_UIInfo info, SCR_EditableEntityBaseSlotUIComponent slot)
 	{
 		if (info)
@@ -42,6 +46,8 @@ class SCR_LayerEditableEntityUIComponent: SCR_BaseEditableEntityUIComponent
 				OnParentEntityChanged(null, entity, null);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
@@ -53,4 +59,4 @@ class SCR_LayerEditableEntityUIComponent: SCR_BaseEditableEntityUIComponent
 				core.Event_OnParentEntityChanged.Remove(OnParentEntityChanged);
 		}
 	}
-};
+}

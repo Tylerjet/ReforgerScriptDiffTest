@@ -1,8 +1,7 @@
-[EntityEditorProps(category: "GameScripted/ScriptWizard", description: "ScriptWizard generated script file.")]
+[EntityEditorProps(category: "GameScripted/ScenarioFramework/Layer", description: "")]
 class SCR_ScenarioFrameworkLayerTaskDeliverClass : SCR_ScenarioFrameworkLayerTaskClass
 {
-	// prefab properties here
-};
+}
 
 class SCR_ScenarioFrameworkLayerTaskDeliver : SCR_ScenarioFrameworkLayerTask
 {	
@@ -24,18 +23,21 @@ class SCR_ScenarioFrameworkLayerTaskDeliver : SCR_ScenarioFrameworkLayerTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] entity
 	void SetDeliveryPointEntity(IEntity entity)
 	{
 		m_DeliverPoint = entity;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	IEntity GetDeliveryPointEntity()
 	{
 		return m_DeliverPoint;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetIntelMapMarkerUpdateDelay()
 	{
 		return m_iIntelMapMarkerUpdateDelay;
@@ -53,6 +55,7 @@ class SCR_ScenarioFrameworkLayerTaskDeliver : SCR_ScenarioFrameworkLayerTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void UpdateTaskTitleAndDescription()
 	{
 		if (!m_sTaskTitleUpdated.IsEmpty()) 
@@ -74,8 +77,12 @@ class SCR_ScenarioFrameworkLayerTaskDeliver : SCR_ScenarioFrameworkLayerTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_ScenarioFrameworkLayerTaskDeliver(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		m_eTypeOfTask = SCR_ESFTaskType.DELIVER;
 	}
-};
+}

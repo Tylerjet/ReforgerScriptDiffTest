@@ -1,7 +1,7 @@
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EEditableEntityBudget, "m_BudgetType")]
 class SCR_EntityBudgetValue
 {
-	[Attribute("0", UIWidgets.ComboBox, "", enums: ParamEnumArray.FromEnum(EEditableEntityBudget))]
+	[Attribute("0", UIWidgets.SearchComboBox, "", enums: ParamEnumArray.FromEnum(EEditableEntityBudget))]
 	private EEditableEntityBudget m_BudgetType;
 	
 	[Attribute("0", UIWidgets.Auto, "")]
@@ -51,7 +51,21 @@ class SCR_EntityBudgetValue
 			}
 		}
 	}
-	
+
+	static void AddBudgetValueToBudgetArray(out notnull array<ref SCR_EntityBudgetValue> budgets, EEditableEntityBudget budgetType, int value)
+	{
+		foreach (SCR_EntityBudgetValue budgetValue : budgets)
+		{
+			if (budgetValue.GetBudgetType() == budgetType)
+			{
+				budgetValue.SetBudgetValue(budgetValue.GetBudgetValue() + value);
+				return;
+			}
+		}
+		
+		budgets.Insert(new SCR_EntityBudgetValue(budgetType, value));
+	}
+
 	void SCR_EntityBudgetValue(EEditableEntityBudget budgetType, int budgetValue = -1)
 	{
 		if (budgetValue == -1) return;

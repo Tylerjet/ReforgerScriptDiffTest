@@ -1,18 +1,21 @@
 [ComponentEditorProps(category: "GameScripted/Trigger", description: "Gets the BaseTriggerComponent on the entity and triggers it on EOnInit")]
-class SCR_InstantTriggerComponentClass: ScriptComponentClass
+class SCR_InstantTriggerComponentClass : ScriptComponentClass
 {
+	//------------------------------------------------------------------------------------------------
 	//Needs BaseTriggerComponent
 	static override array<typename> Requires(IEntityComponentSource src)
 	{
-		array<typename> requires = new array<typename>;
+		array<typename> requires = {};
 		
 		requires.Insert(BaseTriggerComponent);
 		
 		return requires;
 	}
-};
-class SCR_InstantTriggerComponent: ScriptComponent
+}
+
+class SCR_InstantTriggerComponent : ScriptComponent
 {
+	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
 		if (SCR_Global.IsEditMode(owner))
@@ -24,9 +27,10 @@ class SCR_InstantTriggerComponent: ScriptComponent
 		else
 			Print("'SCR_InstantTriggerComponent' could not find 'BaseTriggerComponent'!", LogLevel.ERROR);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		SetEventMask(owner, EntityEvent.INIT);
 	}
-
-};
+}

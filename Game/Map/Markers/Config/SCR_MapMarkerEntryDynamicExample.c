@@ -59,7 +59,7 @@ class SCR_MapMarkerEntryDynamicExample : SCR_MapMarkerEntryDynamic
 	// If SCR_MapMarkerDynamicWComponent is not enough for the job, you will have to create a separate marker layout (assign it in marker config entry) and append your own widget component there
 	//
 	//------------------------------------------------------------------------------------------------
-	override void InitClientSettingsDynamic(SCR_MapMarkerEntity marker, SCR_MapMarkerDynamicWComponent widgetComp)
+	override void InitClientSettingsDynamic(notnull SCR_MapMarkerEntity marker, notnull SCR_MapMarkerDynamicWComponent widgetComp)
 	{
 		super.InitClientSettingsDynamic(marker, widgetComp);
 		

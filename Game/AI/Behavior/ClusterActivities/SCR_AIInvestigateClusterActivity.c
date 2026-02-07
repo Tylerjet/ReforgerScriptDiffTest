@@ -5,6 +5,8 @@ class SCR_AIInvestigateClusterActivity : SCR_AIFireteamsClusterActivity
 	
 	protected bool m_bOrdersSent = false;
 	
+	protected static const float INVESTIGATION_RADIUS_MIN = 20.0;
+	
 	//------------------------------------------------------------------------------------
 	//! ftInvestigate - fireteams which will investigate
 	//! ftCover - fireteams which will cover others
@@ -154,6 +156,9 @@ class SCR_AIInvestigateClusterActivity : SCR_AIFireteamsClusterActivity
 				if (!agent)
 					continue;
 				
+				if (SCR_AICompartmentHandling.IsInCompartment(agent))
+					continue;
+				
 				// Duration is large, since soldiers' investigation is tied to this activity
 				SCR_AIMessage_Investigate msg = SCR_AIMessage_Investigate.Create(pos, radius, true, duration: 10000);
 				msg.m_RelatedGroupActivity = this;
@@ -170,6 +175,9 @@ class SCR_AIInvestigateClusterActivity : SCR_AIFireteamsClusterActivity
 				if (!agent)
 					continue;
 				
+				if (SCR_AICompartmentHandling.IsInCompartment(agent))
+					continue;
+				
 				SCR_AIMessage_CoverCluster msg = new SCR_AIMessage_CoverCluster();
 				msg.m_RelatedGroupActivity = this;
 				msg.SetReceiver(agent);
@@ -182,10 +190,10 @@ class SCR_AIInvestigateClusterActivity : SCR_AIFireteamsClusterActivity
 	//! Calculates position and radius of investigation area
 	static void CalculateInvestigationArea(notnull SCR_AITargetClusterState s, out vector outCenterPos, out float outRadius)
 	{
-		const float minRadius = 15.0;
+		const float minRadius = INVESTIGATION_RADIUS_MIN;
 		
 		vector center = 0.5*(s.m_vBBMin + s.m_vBBMax);
-		float radius = vector.DistanceXZ(center, s.m_vBBMax);
+		float radius = Math.Max(minRadius, vector.DistanceXZ(center, s.m_vBBMax));
 		
 		outCenterPos = center;
 		outRadius = radius;

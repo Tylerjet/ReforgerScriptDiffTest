@@ -112,7 +112,7 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 		if (m_bHasIllumination)
 			GetGame().GetInputManager().AddActionListener(ACTION_ILLUMINATION, EActionTrigger.DOWN, ToggleIllumination);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected override void OnSightADSDeactivated()
 	{
@@ -350,7 +350,7 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected override float GetReticleYOffsetTarget()
+	protected override float GetReticleOffsetYTarget()
 	{
 		if (m_eZeroingType == SCR_EPIPZeroingType.EPZ_RETICLE_OFFSET)
 			return m_fReticleOffsetY + GetCurrentSightsRange()[0];

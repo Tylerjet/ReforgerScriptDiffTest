@@ -1,13 +1,8 @@
-class FuelConsumptionSystem: GameSystem
+class FuelConsumptionSystem : GameSystem
 {
 	protected ref array<SCR_FuelConsumptionComponent> m_Components = {};
 	
-	override protected ESystemPoint GetSystemPoint()
-	{
-		return ESystemPoint.FixedFrame;
-	}
-	
-	override protected void OnUpdate(ESystemPoint point)
+	protected override void OnUpdate(ESystemPoint point)
 	{
 		float timeSlice = GetWorld().GetFixedTimeSlice();
 		
@@ -17,7 +12,8 @@ class FuelConsumptionSystem: GameSystem
 		}
 	}
 	
-	override protected void OnDiag(float timeSlice)
+	//------------------------------------------------------------------------------------------------
+	protected override void OnDiag(float timeSlice)
 	{
 		DbgUI.Begin("FuelConsumptionSystem");
 		
@@ -34,6 +30,8 @@ class FuelConsumptionSystem: GameSystem
 		DbgUI.End();
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param component must not be null
 	void Register(SCR_FuelConsumptionComponent component)
 	{
 		//About to be deleted
@@ -46,6 +44,7 @@ class FuelConsumptionSystem: GameSystem
 		m_Components.Insert(component);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	void Unregister(SCR_FuelConsumptionComponent component)
 	{
 		int idx = m_Components.Find(component);

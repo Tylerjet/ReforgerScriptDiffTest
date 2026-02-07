@@ -70,10 +70,10 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 	protected ref ScriptInvoker m_OnPageChanged = new ScriptInvoker();
 	protected int m_FocusedIndex[2];
 	
-	//--- To be overriden by inherited classes
+	//--- To be overridden by inherited classes
 	/*!
 	Function called when the page is refreshed.
-	To be overriden by inherited classes.
+	To be overridden by inherited classes.
 	\param contentWidget Content widget
 	\param indexStart Index of the first displayed item
 	\param indexEnd Index of the last displayed item
@@ -81,7 +81,7 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 	protected void ShowEntries(Widget contentWidget, int indexStart, int indexEnd);
 	/*!
 	Return total number of entries.
-	To be overriden by inherited classes.
+	To be overridden by inherited classes.
 	\return Number of entries
 	*/
 	int GetEntryCount();

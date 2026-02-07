@@ -32,6 +32,13 @@ class CharacterCommandSwimSettings
 	float		m_fToCrouchLevel;					//!<
 	float		m_fToErectLevel;					//!<
 
+	float		m_fExpectedSubmersion;		//!< submersion of the character while swimming
+	float		m_fDrag;					//!< drag while underwater and going down, or on surface and going up
+
+	float		m_fUnconsciousStartingBuoyancy;
+	float		m_fUnconsciousFinalBuoyancy;
+	float		m_fUnconsciousBuoyancyChangeTime;
+
 }
 
 /*!

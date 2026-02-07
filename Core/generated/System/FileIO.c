@@ -30,12 +30,21 @@ sealed class FileIO
 	static proto ParseHandle BeginParse(string filename);
 	//! Check existence of file
 	static proto bool FileExists(string name);
-	//! Makes a directory
+	//! Makes a directory tree
 	static proto bool MakeDirectory(string name);
 	//! delete file. Works only on "$profile:", "$logs:" and "$saves:" locations
 	static proto bool DeleteFile(string name);
 	//! copy file. destName must be "$profile:", "$logs:" or "$saves:" location
 	static proto bool CopyFile(string sourceName, string destName);
+	/*!
+	\brief Find files with extension in given path on all FileSystems accessible for game
+	@code
+		array<string> files = {};
+		FileIO.FindFiles(files.Insert, "configs/", ".conf");
+		files.Debug();
+	@endcode
+	*/
+	static proto bool FindFiles(FindFilesCallback callback, string path, string ext);
 }
 
 /*!

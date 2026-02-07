@@ -371,6 +371,7 @@ class SCR_VehicleDustPerWheel : ScriptGameComponent
 			ParticleEffectEntitySpawnParams spawnParams();
 			spawnParams.TargetWorld = GetOwner().GetWorld();
 			spawnParams.Parent = GetOwner();
+			spawnParams.UseFrameEvent = true;
 			vehicleDust.m_pParticleEffectEntity = ParticleEffectEntity.SpawnParticleEffect(newResource, spawnParams);
 			vehicleDust.m_iLastSwap = ticks;
 		}

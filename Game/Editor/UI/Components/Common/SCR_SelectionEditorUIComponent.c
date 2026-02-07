@@ -1,9 +1,9 @@
-/** @ingroup Editor_UI Editor_UI_Components
-*/
-class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
+//! @ingroup Editor_UI Editor_UI_Components
+
+class SCR_SelectionEditorUIComponent : SCR_BaseEditorUIComponent
 {
-	const float FRAME_SIZE_MIN = 10; //--- How many ref pixels must cursor move for frame selection to begin (mouse & keyboard)
-	const float FRAME_DURATION_MIN = 0.15; //--- How long must be button pressed for frame selection to behin (controller)
+	protected static const float FRAME_SIZE_MIN = 10;		//!< How many ref pixels must cursor move for frame selection to begin (mouse & keyboard)
+	protected static const float FRAME_DURATION_MIN = 0.15;	//!< How long must the button  bepressed for frame selection to behin (controller)
 	
 	//! State in which entities are unselected.
 	[Attribute(desc: "State in which entities are unselected.", uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EEditableEntityState))]
@@ -95,11 +95,10 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 	protected int m_iGamepadSelectionHeight;
 	protected BaseWorld m_World;
 	
-	/*!
-	Disable gamepad multi-selection.
-	On gamepad, multi-selection is mapped to holding a button.
-	Use when you have the same input on an action, but don't want multi-selection to start right after the action is activated.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Disable gamepad multi-selection.
+	//! On gamepad, multi-selection is mapped to holding a button.
+	//! Use when you have the same input on an action, but don't want multi-selection to start right after the action is activated.
 	void DisableMultiSelection()
 	{
 		if (!m_InputManager.IsUsingMouseAndKeyboard())
@@ -108,11 +107,15 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Input listeners
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	protected void EditorToggleSelection(float value = 1, EActionTrigger reason = EActionTrigger.DOWN)
 	{
-		if (IsInputDisabled()) return;
+		if (IsInputDisabled())
+			return;
 		
-		set<SCR_EditableEntityComponent> focused = new set<SCR_EditableEntityComponent>;
+		set<SCR_EditableEntityComponent> focused = new set<SCR_EditableEntityComponent>();
 		m_FocusedManager.GetEntities(focused);
 		
 		//~ Multiple entities selected so play general selection sfx
@@ -123,7 +126,7 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 		//~ Only one entity so check if toggle on or off sfx should be played
 		else if (!focused.IsEmpty())
 		{
-			set<SCR_EditableEntityComponent> selected = new set<SCR_EditableEntityComponent>;
+			set<SCR_EditableEntityComponent> selected = new set<SCR_EditableEntityComponent>();
 			m_SelectedManager.GetEntities(selected, true);
 			
 			if (selected.Contains(focused[0]))
@@ -135,11 +138,14 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 		m_SelectedManager.Toggle(focused);
 		ShowGUI();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void EditorSetSelection(float value = 1, EActionTrigger reason = EActionTrigger.DOWN)
 	{
-		if (IsInputDisabled()) return;
+		if (IsInputDisabled())
+			return;
 		
-		set<SCR_EditableEntityComponent> focused = new set<SCR_EditableEntityComponent>;
+		set<SCR_EditableEntityComponent> focused = new set<SCR_EditableEntityComponent>();
 		m_FocusedManager.GetEntities(focused);
 		
 		//~ Set selected
@@ -153,21 +159,28 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 		
 		ShowGUI();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void EditorAddSelection(float value = 1, EActionTrigger reason = EActionTrigger.DOWN)
 	{
-		if (IsInputDisabled()) return;
+		if (IsInputDisabled())
+			return;
 		
-		set<SCR_EditableEntityComponent> focused = new set<SCR_EditableEntityComponent>;
+		set<SCR_EditableEntityComponent> focused = new set<SCR_EditableEntityComponent>();
 		m_FocusedManager.GetEntities(focused);
 		m_SelectedManager.Add(focused, true);
 		
 		if (!focused.IsEmpty())
 			SCR_UISoundEntity.SoundEvent(m_sSfxSelectEntities);
+
 		ShowGUI();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void EditorClearSelection(float value = 1, EActionTrigger reason = EActionTrigger.DOWN)
 	{
-		if (!m_SelectedManager) return;
+		if (!m_SelectedManager)
+			return;
 		
 		if (m_SelectedManager.GetEntitiesCount() > 0)
 			SCR_UISoundEntity.SoundEvent(m_sSfxClearSelection);
@@ -175,18 +188,22 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 		m_SelectedManager.Clear();
 		ShowGUI();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void EditorSelectAll(float value = 1, EActionTrigger reason = EActionTrigger.DOWN)
 	{
-		if (!m_UnselectedManager || !m_SelectedManager || IsMapOpened()) return;
+		if (!m_UnselectedManager || !m_SelectedManager || IsMapOpened())
+			return;
 		
-		set<SCR_EditableEntityComponent> entities = new set<SCR_EditableEntityComponent>;
+		set<SCR_EditableEntityComponent> entities = new set<SCR_EditableEntityComponent>();
 		m_UnselectedManager.GetEntities(entities);
-		if (entities.IsEmpty()) return;
+		if (entities.IsEmpty())
+			return;
 		
 		int screenW = m_Workspace.GetWidth();
 		int screenH = m_Workspace.GetHeight();
 		
-		set<SCR_EditableEntityComponent> selectEntities = new set<SCR_EditableEntityComponent>;
+		set<SCR_EditableEntityComponent> selectEntities = new set<SCR_EditableEntityComponent>();
 		foreach (SCR_EditableEntityComponent entity: entities)
 		{
 			if (!SCR_Enum.HasPartialFlag(entity.GetEntityStates(), m_MultiSelectStates))
@@ -200,38 +217,52 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 			if (posScreen[2] > 0 && posScreen[0] > 0 && posScreen[0] < screenW && posScreen[1] > 0 && posScreen[1] < screenH)
 				selectEntities.Insert(entity);
 		}
+
 		m_SelectedManager.Replace(selectEntities);
 		
 		if (!selectEntities.IsEmpty())
 			SCR_UISoundEntity.SoundEvent(m_sSfxSelectEntities);
+
 		ShowGUI();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void EditorDrawSetSelectionDown(float value, EActionTrigger reason)
 	{
 		DrawFrameDown(false);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void EditorDrawSetSelectionPressed(float value, EActionTrigger reason)
 	{
 		DrawFramePressed(false);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void EditorDrawSetSelectionUp(float value, EActionTrigger reason)
 	{
 		DrawFrameUp(false);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void EditorDrawToggleSelectionDown(float value, EActionTrigger reason)
 	{
 		DrawFrameDown(true);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void EditorDrawToggleSelectionPressed(float value, EActionTrigger reason)
 	{
 		DrawFramePressed(true);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void EditorDrawToggleSelectionUp(float value, EActionTrigger reason)
 	{
 		DrawFrameUp(true);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void EditorDrawSelectionCancel(float value, EActionTrigger reason)
 	{
 		CancelFrame();
@@ -239,6 +270,9 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Multi-selection
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	protected void DrawFrameDown(bool isToggle)
 	{
 		//--- Exit when clicked not on mouse area (e.g., on a button)
@@ -256,6 +290,8 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 		if (m_vCursorPosClick == vector.Zero)
 			m_vCursorPosClick = m_CursorComponent.GetCursorPos();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void DrawFrameUp(bool isToggle)
 	{
 		if (!m_bIsDrawingFrame || IsMapOpened())
@@ -263,16 +299,19 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 			ResetFrame();
 			return;
 		}
-		if (!m_bIsDrawingFrame || isToggle != m_bIsDrawingFrameIsToggle)
-		{
+
+		if (isToggle != m_bIsDrawingFrameIsToggle)
 			return;
-		}
+
 		m_bIsDrawingFrameConfirmed = true;
 		GetGame().GetCallqueue().Call(ConfirmFrame, isToggle); //--- Needs a delay to faciliate switching between Set (LMB) and add (Ctrl+LMB) variants
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void DrawFramePressed(bool isToggle)
 	{
-		if (!m_CursorComponent || !m_UnselectedManager) return;
+		if (!m_CursorComponent || !m_UnselectedManager)
+			return;
 		
 		//--- Some other state is preventing multi-selecting - instantly cancel, so it won't become activated after the other state is unset
 		if ((m_StatesManager && !m_StatesManager.CanSet(EEditorState.MULTI_SELECTING)) || IsMapOpened())
@@ -284,11 +323,12 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 			return;
 		}
 		
-		if (m_bIsDrawingFrameCancelled) return;
+		if (m_bIsDrawingFrameCancelled)
+			return;
 
 		//--- Get visible entities
-		set<SCR_EditableEntityComponent> entitiesInside = new set<SCR_EditableEntityComponent>;
-		set<SCR_EditableEntityComponent> entities = new set<SCR_EditableEntityComponent>;
+		set<SCR_EditableEntityComponent> entitiesInside = new set<SCR_EditableEntityComponent>();
+		set<SCR_EditableEntityComponent> entities = new set<SCR_EditableEntityComponent>();
 		m_UnselectedManager.GetEntities(entities);
 		
 		//--- Resize frame
@@ -316,19 +356,26 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 			return;
 		}
 		
-		if (!m_bIsDrawingFrame && m_EditorMenuManager) m_EditorMenuManager.SetVisible(true);
+		if (!m_bIsDrawingFrame && m_EditorMenuManager)
+			m_EditorMenuManager.SetVisible(true);
+
 		m_bIsDrawingFrame = true;
 		m_HoverManager.SetEntityUnderCursorEnabled(false);
 				
-		if (entitiesInside.Count() == m_FocusedManager.GetEntitiesCount()) return; //--- Ignore when nothing changed
+		if (entitiesInside.Count() == m_FocusedManager.GetEntitiesCount())
+			return; //--- Ignore when nothing changed
+
 		m_FocusedManager.Replace(entitiesInside);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected bool DrawFrameMouseAndKeyboard(set<SCR_EditableEntityComponent> entities, out set<SCR_EditableEntityComponent> entitiesInside)
 	{		
 		//--- Too small frame, ignore (e.g., when just clicking)
 		vector cursorPos = m_CursorComponent.GetCursorPos();
-		if (!m_bIsDrawingFrame && vector.Distance(m_vCursorPosClick, cursorPos) < FRAME_SIZE_MIN) return false;
+		if (!m_bIsDrawingFrame && vector.Distance(m_vCursorPosClick, cursorPos) < FRAME_SIZE_MIN)
+			return false;
+
 		//Print("DrawFrameMouseAndKeyboard");
 		
 		float xMin = m_vCursorPosClick[0];
@@ -340,24 +387,32 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 			xMin = xMax;
 			xMax = m_vCursorPosClick[0];
 		} 
+
 		if (yMin > yMax)
 		{
 			yMin = yMax;
 			yMax = m_vCursorPosClick[1];
 		}
+
 		if (m_bIsDrawingFrameIsToggle)
 		{
 			FrameSlot.SetPos(m_ToggleSelectionWidget, xMin, yMin);
 			FrameSlot.SetSize(m_ToggleSelectionWidget, xMax - xMin, yMax - yMin);
-			if (m_SetSelectionWidget) m_SetSelectionWidget.SetVisible(false);
-			if (m_ToggleSelectionWidget) m_ToggleSelectionWidget.SetVisible(true);
+			if (m_SetSelectionWidget)
+				m_SetSelectionWidget.SetVisible(false);
+
+			if (m_ToggleSelectionWidget)
+				m_ToggleSelectionWidget.SetVisible(true);
 		}
 		else
 		{
 			FrameSlot.SetPos(m_SetSelectionWidget, xMin, yMin);
 			FrameSlot.SetSize(m_SetSelectionWidget, xMax - xMin, yMax - yMin);
-			if (m_ToggleSelectionWidget) m_ToggleSelectionWidget.SetVisible(false);
-			if (m_SetSelectionWidget) m_SetSelectionWidget.SetVisible(true);
+			if (m_ToggleSelectionWidget)
+				m_ToggleSelectionWidget.SetVisible(false);
+
+			if (m_SetSelectionWidget)
+				m_SetSelectionWidget.SetVisible(true);
 		}
 		
 		//--- Find entities in the frame
@@ -373,19 +428,23 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 			screenPos = m_Workspace.ProjWorldToScreen(worldPos, m_World);
 			if (screenPos[2] > 0 && screenPos[0] > xMin && screenPos[0] < xMax && screenPos[1] > yMin && screenPos[1] < yMax)
 			{
-				if (m_LayersManager) entity = m_LayersManager.GetParentBelowCurrentLayer(entity);
-				if (entity) entitiesInside.Insert(entity);
+				if (m_LayersManager)
+					entity = m_LayersManager.GetParentBelowCurrentLayer(entity);
+
+				if (entity)
+					entitiesInside.Insert(entity);
 			}
 		}
 		
 		return true;
 	}
 
-	
+	//------------------------------------------------------------------------------------------------
 	protected bool DrawFrameController(set<SCR_EditableEntityComponent> entities, out set<SCR_EditableEntityComponent> entitiesInside)
 	{
 		//--- Too fast, ignore (e.g., when just clicking)
-		if (!m_bIsDrawingFrame && m_fSelectionFrameDuration < FRAME_DURATION_MIN) return false;
+		if (!m_bIsDrawingFrame && m_fSelectionFrameDuration < FRAME_DURATION_MIN)
+			return false;
 		
 		float size;
 		vector cursorPos = m_CursorComponent.GetCursorPos();
@@ -398,14 +457,16 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 			widgetShow = m_GamepadToggleSelectionWidget;
 			widgetHide = m_GamepadSetSelectionWidget;
 		}
+
 		if (widgetHide)
-		{
 			widgetHide.SetVisible(false);
-		}
+
 		if (widgetShow)
 		{
 			float cursorRadius = 0;
-			if (m_CursorComponent) cursorRadius = 2 * m_CursorComponent.GetCursorRadius() * m_fGamepadSelectionWidgetStartSize;
+			if (m_CursorComponent)
+				cursorRadius = 2 * m_CursorComponent.GetCursorRadius() * m_fGamepadSelectionWidgetStartSize;
+
 			size = cursorRadius + (m_iGamepadSelectionHeight - cursorRadius) * curveCoef;
 			FrameSlot.SetPos(widgetShow, cursorPos[0], cursorPos[1]);
 			FrameSlot.SetSize(widgetShow, size, size);
@@ -413,7 +474,7 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 			widgetShow.SetOpacity(1);
 			
 			//--- Convert to squared radius
-			size /= 2;
+			size *= 0.5;
 			size *= size;
 		}
 		
@@ -437,16 +498,23 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 			vector screenPos = m_Workspace.ProjWorldToScreen(worldPos, m_World);
 			if (screenPos[2] > 0 && vector.DistanceSq(cursorPos, screenPos) < size)
 			{
-				if (m_LayersManager) entity = m_LayersManager.GetParentBelowCurrentLayer(entity);
-				if (entity) entitiesInside.Insert(entity);
+				if (m_LayersManager)
+					entity = m_LayersManager.GetParentBelowCurrentLayer(entity);
+
+				if (entity)
+					entitiesInside.Insert(entity);
 			}
 		}
 		
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void ConfirmFrame(bool isToggle)
 	{
-		if (!m_bIsDrawingFrameConfirmed) return;
+		if (!m_bIsDrawingFrameConfirmed)
+			return;
+
 		m_bIsDrawingFrame = false;
 		if (m_bIsDrawingFrameIsToggle)
 		{
@@ -456,28 +524,24 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 		{
 			EditorSetSelection();
 			
-			set<SCR_EditableEntityComponent> selected = new set<SCR_EditableEntityComponent>;
+			set<SCR_EditableEntityComponent> selected = new set<SCR_EditableEntityComponent>();
 			m_SelectedManager.GetEntities(selected, true);
 			
 			//Nothing selected so play SFX
 			if (m_SelectedManager.GetEntitiesCount() <= 0)
 				SCR_UISoundEntity.SoundEvent(m_sSfxSelectionFrameClose_NothingSelected, true);
-				
 			
-			/*
-			if (m_InputManager.IsUsingMouseAndKeyboard())
-			{
-				EditorSetSelection();
-			}
-			else
-			{
-				EditorAddSelection(); //--- With gamepad, add to selection, don't replace it
-			}
-			*/
+//			if (m_InputManager.IsUsingMouseAndKeyboard())
+//				EditorSetSelection();
+//			else
+//				EditorAddSelection(); //--- With gamepad, add to selection, don't replace it
 		}
+
 		ResetFrame();
 		m_bIsDrawingFrameCancelled = false;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void CancelFrame()
 	{
 		if (m_bIsDrawingFrame)
@@ -490,6 +554,7 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void ResetFrame()
 	{
 		m_bIsDrawingFrameDisabled = false;
@@ -498,17 +563,27 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 		m_bIsDrawingFrame = false;
 		m_bHideCursor = false;
 		
-		if (m_StatesManager) m_StatesManager.UnsetState(EEditorState.MULTI_SELECTING);
+		if (m_StatesManager)
+			m_StatesManager.UnsetState(EEditorState.MULTI_SELECTING);
 
 		//if (m_FocusedManager) m_FocusedManager.Clear(); //--- Disabled, handled in m_HoverManager.SetEntityUnderCursorEnabled
-		if (m_HoverManager) m_HoverManager.SetEntityUnderCursorEnabled(true);
+		if (m_HoverManager)
+			m_HoverManager.SetEntityUnderCursorEnabled(true);
 		
-		if (m_SetSelectionWidget) m_SetSelectionWidget.SetVisible(false);
-		if (m_ToggleSelectionWidget) m_ToggleSelectionWidget.SetVisible(false);
-		//if (m_GamepadSetSelectionWidget) m_GamepadSetSelectionWidget.SetVisible(false);
-		//if (m_GamepadToggleSelectionWidget) m_GamepadToggleSelectionWidget.SetVisible(false);
-		if (m_CursorComponent) m_CursorComponent.SetCursorAlpha(1, 8);
+		if (m_SetSelectionWidget)
+			m_SetSelectionWidget.SetVisible(false);
+
+		if (m_ToggleSelectionWidget)
+			m_ToggleSelectionWidget.SetVisible(false);
+		//if (m_GamepadSetSelectionWidget)
+		//	m_GamepadSetSelectionWidget.SetVisible(false);
+		//if (m_GamepadToggleSelectionWidget)
+		//	m_GamepadToggleSelectionWidget.SetVisible(false);
+		if (m_CursorComponent)
+			m_CursorComponent.SetCursorAlpha(1, 8);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnCurrentLayerChange(SCR_EditableEntityComponent currentLayer, SCR_EditableEntityComponent prevLayer)
 	{
 		//--- Clear selection when layers change
@@ -518,18 +593,27 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 		GetGame().GetCallqueue().CallLater(EnableSelection, 100, false, true);
 		m_SelectedManager.Clear();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void EnableSelection(bool enable)
 	{
 		m_bEnableSelection = enable;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected bool IsMapOpened()
 	{
 		return SCR_MapEntity.GetMapInstance() && SCR_MapEntity.GetMapInstance().IsOpen();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnMenuUpdate(float tDelta)
 	{
-		if (!m_Workspace || !m_InputManager/* || !GetWidget().IsEnabledInHierarchy()*/) return;
-		if (m_StatesManager && (m_StatesManager.GetState() != EEditorState.SELECTING && m_StatesManager.GetState() != EEditorState.MULTI_SELECTING)) return; //--- ToDo: Move to OnStateChange event?
+		if (!m_Workspace || !m_InputManager/* || !GetWidget().IsEnabledInHierarchy()*/)
+			return;
+
+		if (m_StatesManager && (m_StatesManager.GetState() != EEditorState.SELECTING && m_StatesManager.GetState() != EEditorState.MULTI_SELECTING))
+			return; //--- ToDo: Move to OnStateChange event?
 
 		//--- Activate context for input listeners
 		m_InputManager.ActivateContext("EditorSelectingContext");
@@ -561,10 +645,14 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 			}
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnMenuFocusLost()
 	{
 		CancelFrame();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected Widget GetFrameWidget(Widget root, string name)
 	{
 		Widget widget = root.FindWidget(name);
@@ -582,6 +670,9 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Saved selection (cannot be done dynamically, action listeners cannot pass index as param)
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	protected void EditorSaveSelection(int index)
 	{
 		m_SelectedManager.SaveSelection(index);
@@ -596,7 +687,8 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 	protected void EditorSaveSelection8() { EditorSaveSelection(8); }
 	protected void EditorSaveSelection9() { EditorSaveSelection(9); }
 	protected void EditorSaveSelection0() { EditorSaveSelection(0); }
-		
+
+	//------------------------------------------------------------------------------------------------
 	protected void EditorLoadSelection(int index)
 	{
 		m_SelectedManager.LoadSelection(index);
@@ -611,7 +703,8 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 	protected void EditorLoadSelection8() { EditorLoadSelection(8); }
 	protected void EditorLoadSelection9() { EditorLoadSelection(9); }
 	protected void EditorLoadSelection0() { EditorLoadSelection(0); }
-		
+
+	//------------------------------------------------------------------------------------------------
 	protected void EditorTeleportSelection(int index)
 	{
 		m_SelectedManager.TeleportSelection(index);
@@ -628,7 +721,10 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 	protected void EditorTeleportSelection0() { EditorTeleportSelection(0); }
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//--- Custom functions
+	//--- Custom methods
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	protected bool IsInputDisabled()
 	{
 		return m_bIsDrawingFrame //--- Multi-selection is active
@@ -639,57 +735,69 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 			//--- Clicked with mouse on unrelated widget with no entity under cursor
 			|| (m_InputManager.IsUsingMouseAndKeyboard() && m_FocusedManager.GetEntitiesCount() == 0 && !m_MouseArea.IsMouseOn());
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void ShowGUI()
 	{
-		if (m_EditorMenuManager) m_EditorMenuManager.SetVisible(true);
+		if (m_EditorMenuManager)
+			m_EditorMenuManager.SetVisible(true);
 	}
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//--- Default functions
+	//--- Default methods
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttachedScripted(Widget w)
 	{
 		super.HandlerAttachedScripted(w);
-		if (SCR_Global.IsEditMode()) return; //--- Run-time only
-		
+		if (SCR_Global.IsEditMode())
+			return; //--- Run-time only
+
 		ArmaReforgerScripted game = GetGame();
-		if (!game) return;
+		if (!game)
+			return;
 		
 		m_InputManager = game.GetInputManager();
 		m_Workspace = game.GetWorkspace();
 		m_World = game.GetWorld();
-		if (!m_Workspace) return;
-		
+		if (!m_Workspace)
+			return;
+
 		MenuRootBase menu = GetMenu();
-		if (!menu) return;
+		if (!menu)
+			return;
 		
 		m_SetSelectionWidget = GetFrameWidget(w, m_sSetSelectionWidgetName);
 		m_ToggleSelectionWidget = GetFrameWidget(w, m_sToggleSelectionWidgetName);
 		m_GamepadSetSelectionWidget = GetFrameWidget(w, m_sGamepadSetSelectionWidgetName);
 		m_GamepadToggleSelectionWidget = GetFrameWidget(w, m_sGamepadToggleSelectionWidgetName);
 		
-		if (m_GamepadSetSelectionWidget) m_iGamepadSelectionHeight = FrameSlot.GetSizeY(m_GamepadSetSelectionWidget);
+		if (m_GamepadSetSelectionWidget)
+			m_iGamepadSelectionHeight = FrameSlot.GetSizeY(m_GamepadSetSelectionWidget);
 
 		MenuRootComponent root = GetRootComponent();
 		if (root)
 		{
 			m_CursorComponent = SCR_CursorEditorUIComponent.Cast(root.FindComponent(SCR_CursorEditorUIComponent, true));
-			if (!m_CursorComponent) return;
+			if (!m_CursorComponent)
+				return;
 			
 			m_MouseArea = SCR_MouseAreaEditorUIComponent.Cast(root.FindComponent(SCR_MouseAreaEditorUIComponent));
 		}
 		
 		m_StatesManager = SCR_StatesEditorComponent.Cast(SCR_StatesEditorComponent.GetInstance(SCR_StatesEditorComponent));
-		if (m_StatesManager) m_StatesManager.SetState(EEditorState.SELECTING);
+		if (m_StatesManager)
+			m_StatesManager.SetState(EEditorState.SELECTING);
 		
 		m_LayersManager = SCR_LayersEditorComponent.Cast(SCR_LayersEditorComponent.GetInstance(SCR_LayersEditorComponent));
 		if (m_LayersManager)
-		{
 			m_LayersManager.GetOnCurrentLayerChange().Insert(OnCurrentLayerChange);
-		}
 		
 		m_EditorMenuManager = SCR_MenuEditorComponent.Cast(SCR_MenuEditorComponent.GetInstance(SCR_MenuEditorComponent));
 		m_EntitiesManager = SCR_EntitiesManagerEditorComponent.Cast(SCR_EntitiesManagerEditorComponent.GetInstance(SCR_EntitiesManagerEditorComponent, true));
-		if (!m_EntitiesManager) return;
+		if (!m_EntitiesManager)
+			return;
 		
 		m_UnselectedManager = m_EntitiesManager.GetFilter(m_UnselectedState);
 		m_FocusedManager = m_EntitiesManager.GetFilter(EEditableEntityState.FOCUSED);
@@ -752,6 +860,8 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 		menu.GetOnMenuUpdate().Insert(OnMenuUpdate);
 		menu.GetOnMenuFocusLost().Insert(OnMenuFocusLost);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
@@ -764,9 +874,8 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 		}
 		
 		if (m_LayersManager)
-		{
 			m_LayersManager.GetOnCurrentLayerChange().Remove(OnCurrentLayerChange);
-		}
+
 		if (m_InputManager)
 		{
 			m_InputManager.RemoveActionListener("EditorSetSelection", EActionTrigger.DOWN, EditorSetSelection);
@@ -787,4 +896,4 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 			}
 		}
 	}
-};
+}

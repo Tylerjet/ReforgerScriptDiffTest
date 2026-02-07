@@ -12,6 +12,7 @@ class SCR_CampaignTutorialArlandStageShooting12 : SCR_BaseCampaignTutorialArland
 		m_fDelay = 1;
 		m_TutorialComponent.SetPlayerDeployedCheck(true);
 		RegisterWaypoint("WP_FIREPOZ_4");
+		m_bCheckWaypoint = false;
 		
 		foreach (SCR_FiringRangeTarget target : m_TutorialComponent.GetAllTargets())
 		{
@@ -24,7 +25,10 @@ class SCR_CampaignTutorialArlandStageShooting12 : SCR_BaseCampaignTutorialArland
 			}
 		}
 		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("WeaponRest", false);
+		HintOnVoiceOver();
 	}
 	
 	//------------------------------------------------------------------------------------------------

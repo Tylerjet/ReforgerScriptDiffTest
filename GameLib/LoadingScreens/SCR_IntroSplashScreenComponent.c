@@ -1,13 +1,13 @@
 class SCR_IntroSplashScreenComponent : ScriptedWidgetComponent
 {
-	Widget m_wRoot;
+	protected Widget m_wRoot;
 
-	ref SCR_IntroSplashScreenWidgets m_Widgets;	
-	SCR_LoadingSpinner m_SpinnerComp;
+	protected ref SCR_IntroSplashScreenWidgets m_Widgets;	
+	protected SCR_LoadingSpinner m_SpinnerComp;
 	
-	const float FADEIN_TIME = 2;
+	protected static const float FADEIN_TIME = 2;
 	
-	//---------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	override protected void HandlerAttached(Widget w)
 	{
 		m_wRoot = w;
@@ -29,7 +29,7 @@ class SCR_IntroSplashScreenComponent : ScriptedWidgetComponent
 		InitWidgets();
 	}
 
-	//---------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	protected void InitWidgets()
 	{
 		// Disable widgets
@@ -49,7 +49,9 @@ class SCR_IntroSplashScreenComponent : ScriptedWidgetComponent
 		m_Widgets.m_wArt.SetOpacity(1);	
 	}	
 	
-	//---------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] timeSlice
 	void Update(float timeSlice)
 	{
 		Fade(m_Widgets.m_wBILogo, true, FADEIN_TIME, timeSlice);
@@ -62,7 +64,7 @@ class SCR_IntroSplashScreenComponent : ScriptedWidgetComponent
 			m_SpinnerComp.Update(timeSlice);
 	}	
 		
-	//---------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	protected void Fade(Widget w, bool show, float length, float timeslice)
 	{
 		if (length <= 0)
@@ -89,4 +91,4 @@ class SCR_IntroSplashScreenComponent : ScriptedWidgetComponent
 		w.SetOpacity(opacity);
 		w.SetVisible(true);
 	}
-};
+}

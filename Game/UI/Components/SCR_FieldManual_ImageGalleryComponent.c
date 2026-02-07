@@ -28,6 +28,7 @@ class SCR_FieldManual_ImageGalleryComponent : ScriptedWidgetComponent
 	protected static const string S_TEXT_WIDGET_NAME = "Text";
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_FieldManual_ImageGalleryComponent()
 	{
 		if (!m_aEnumLayoutPairs)
@@ -48,6 +49,10 @@ class SCR_FieldManual_ImageGalleryComponent : ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] type
+	//! \param[in] text
+	//! \param[in] imagesData
 	void Init(SCR_EFieldManual_ImageGalleryType type, string text, array<ref SCR_FieldManual_ImageData> imagesData)
 	{
 		m_eType = type;
@@ -59,6 +64,7 @@ class SCR_FieldManual_ImageGalleryComponent : ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void ClearImages()
 	{
 		m_aImagesData.Clear();
@@ -66,6 +72,7 @@ class SCR_FieldManual_ImageGalleryComponent : ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] imagesData
 	void SetImages(array<ref SCR_FieldManual_ImageData> imagesData)
 	{
 		if (!imagesData || imagesData.IsEmpty())
@@ -76,6 +83,7 @@ class SCR_FieldManual_ImageGalleryComponent : ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] text
 	void SetText(string text)
 	{
 		m_sText = text;
@@ -89,6 +97,7 @@ class SCR_FieldManual_ImageGalleryComponent : ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] type
 	void SetType(SCR_EFieldManual_ImageGalleryType type)
 	{
 		m_eType = type;

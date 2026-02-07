@@ -5,11 +5,6 @@ class NotificationsSystem: GameSystem
 	protected ref array<SCR_NotificationsComponent> m_Components = {};
 	protected ref array<SCR_NotificationsComponent> m_DeletedComponents = {};
 	
-	override protected ESystemPoint GetSystemPoint()
-	{
-		return ESystemPoint.Frame;
-	}
-	
 	override protected void OnUpdate(ESystemPoint point)
 	{
 		float timeSlice = GetWorld().GetTimeSlice();

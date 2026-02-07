@@ -1,20 +1,22 @@
-[EntityEditorProps(category: "GameScripted/ScriptWizard", description: "ScriptWizard generated script file.")]
+[EntityEditorProps(category: "GameScripted/ScriptWizard", description: "")]
 class SCR_MineWeaponComponentClass : WeaponComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_MineWeaponComponent : WeaponComponent
 {
 	protected IEntity m_FlagEntity;
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	bool IsFlagged()
 	{
 		return m_FlagEntity != null;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] action
 	void OnFlagRemoved(SCR_MineFlagPickUpAction action)
 	{
 		m_FlagEntity = null;
@@ -75,6 +77,7 @@ class SCR_MineWeaponComponent : WeaponComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Call only on server!
+	//! \param[in] flag
 	void SetFlag(IEntity flag)
 	{
 		if (m_FlagEntity)
@@ -85,4 +88,4 @@ class SCR_MineWeaponComponent : WeaponComponent
 		if (flag)
 			RegisterToFlag(flag);
 	}
-};
+}

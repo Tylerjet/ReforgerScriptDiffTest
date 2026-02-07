@@ -1,7 +1,7 @@
 [ComponentEditorProps(category: "GameScripted/AIComponent", description: "Scripted m_Mailbox component", icon: HYBRID_COMPONENT_ICON)]
-class SCR_MailboxComponentClass: AICommunicationComponentClass
+class SCR_MailboxComponentClass : AICommunicationComponentClass
 {
-};
+}
 
 class SCR_MailboxComponent : AICommunicationComponent
 {
@@ -9,7 +9,10 @@ class SCR_MailboxComponent : AICommunicationComponent
 	protected int m_iMailboxOverflowCount = 0;
 	#endif
 	
-	// Returns first message in the queue
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] remove
+	//! \return first message in the queue
 	AIMessage ReadMessage(bool remove)
 	{
 		/*
@@ -31,7 +34,9 @@ class SCR_MailboxComponent : AICommunicationComponent
 		return msg;
 	}
 	
-	// Returns first order in the order queue
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] remove
+	//! \return first order in the order queue
 	AIOrder ReadOrder(bool remove)
 	{
 		AIOrder order = GetOrder(0);
@@ -42,7 +47,9 @@ class SCR_MailboxComponent : AICommunicationComponent
 		return order;
 	}
 	
-	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] logLevel
 	void LogMessageStatistics(LogLevel logLevel = LogLevel.NORMAL)
 	{
 		map<typename, int> msgTypeCount = new map<typename, int>();
@@ -66,15 +73,18 @@ class SCR_MailboxComponent : AICommunicationComponent
 		Print(string.Format("  Total: %1", GetMessageCount()), logLevel);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsCommunicationEnabled()
 	{
 		return IsActive();
 	}
 	
-	//-------------------------------------------------------------------------------------------------
-	// Debugging
-	
 	#ifdef AI_DEBUG
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] message
 	void DebugLogBroadcastMessage(AIMessage message)
 	{
 		AIAgent agent = GetAIAgent();
@@ -92,6 +102,9 @@ class SCR_MailboxComponent : AICommunicationComponent
 		AddDebugMessage(debugText);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] message
 	void DebugLogOnReceived(AIMessage message)
 	{
 		AIAgent agent = GetAIAgent();
@@ -118,5 +131,5 @@ class SCR_MailboxComponent : AICommunicationComponent
 		SCR_AIInfoBaseComponent infoComp = SCR_AIInfoBaseComponent.Cast(GetAIAgent().FindComponent(SCR_AIInfoBaseComponent));
 		infoComp.AddDebugMessage(str, msgType: EAIDebugMsgType.MAILBOX);
 	}
-	#endif
-};
+	#endif // AI_DEBUG
+}

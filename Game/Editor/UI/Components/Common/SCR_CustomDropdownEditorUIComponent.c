@@ -1,4 +1,4 @@
-class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
+class SCR_CustomDropdownEditorUIComponent : ScriptedWidgetComponent
 {
 	//TODO: Check how to close the drop down if anything else is clicked (How does the combobox work?)
 	[Attribute("ItemHolder")]
@@ -42,25 +42,24 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 	protected TextWidget m_DropdownText;
 	protected ImageWidget m_ArrowWidget;
 	protected SCR_ButtonImageComponent m_DropdownButton;
-	protected ref array<SCR_ButtonImageComponent> m_aItemButtons = new ref array<SCR_ButtonImageComponent>;
-	protected ref array<SCR_EditorModeUIInfo> m_aModeUIInfo = new ref array<SCR_EditorModeUIInfo>;
+	protected ref array<SCR_ButtonImageComponent> m_aItemButtons = {};
+	protected ref array<SCR_EditorModeUIInfo> m_aModeUIInfo = {};
 	
 	//States
 	protected bool m_bIsOpened;
 	protected int m_iSelectedItem;
 	protected bool m_bHovered;
 	
-	ref ScriptInvoker Event_OnDropdownOpened = new ref ScriptInvoker;
-	ref ScriptInvoker Event_OnDropdownClosed = new ref ScriptInvoker;
-	ref ScriptInvoker Event_OnChanged = new ref ScriptInvoker;
+	protected ref ScriptInvoker Event_OnDropdownOpened;
+	protected ref ScriptInvoker Event_OnDropdownClosed;
+	protected ref ScriptInvoker Event_OnChanged;
 	
 	protected int m_iCloseOnIndex;
 	protected bool m_bIsEnabled = true;
 	
-	/*!
-	If enabled shows the dropdown arrow else it looks like a static header
-	\param enabled to set enabled or disabled
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! If enabled shows the dropdown arrow else it looks like a static header
+	//! \param[in] enabled to set enabled or disabled
 	void SetDropdownEnable(bool enable)
 	{
 		m_bIsEnabled = enable;
@@ -120,6 +119,10 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 		CloseDropdown();
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] uiInfo
+	//! \param[in] color
 	void AddItem(SCR_EditorModeUIInfo uiInfo, Color color)
 	{
 		if (!m_ItemHolder)
@@ -128,7 +131,6 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 		Widget itemWidget = GetGame().GetWorkspace().CreateWidgets(m_sItemPrefab, m_ItemHolder);
 		if (!itemWidget)
 			return;
-		
 		
 		SCR_ButtonImageComponent newItem = SCR_ButtonImageComponent.Cast(itemWidget.FindHandler(SCR_ButtonImageComponent));
 		
@@ -160,19 +162,18 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 		}
 	}
 	
-	/*!
-	If dropdown is open
-	\return bool if dropdown is open
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! If dropdown is open
+	//! \return bool if dropdown is open
+	//!
 	bool IsOpened()
 	{
 		return m_bIsOpened;
 	}
 	
-	/*!
-	Open the dropdown
-	\param focusIndex set which button should be focused. Ignored if -1
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Open the dropdown
+	//! \param[in] focusIndex set which button should be focused. Ignored if -1
 	void OpenDropdown(int focusIndex =-1)
 	{
 		float fadeDelay = 0;
@@ -210,8 +211,8 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 		//Rotate arrow
 		
 		m_bIsOpened = true;
-		Event_OnDropdownOpened.Invoke(this);
-		
+		if (Event_OnDropdownOpened)
+			Event_OnDropdownOpened.Invoke(this);
 		
 		if (focusIndex > -1)
 		{
@@ -226,9 +227,8 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 		GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_LEFT, EActionTrigger.DOWN, OnMenuActionLeft);
 	}
 	
-	/*!
-	Close the dropdown
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Close the dropdown
 	void CloseDropdown()
 	{
 		m_ListWidget.SetVisible(false);
@@ -245,7 +245,8 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 		}
 		
 		m_bIsOpened = false;
-		Event_OnDropdownClosed.Invoke(this);
+		if (Event_OnDropdownClosed)
+			Event_OnDropdownClosed.Invoke(this);
 		
 		SCR_FadeUIComponent fadeComponent;
 		foreach (SCR_ButtonImageComponent button: m_aItemButtons)
@@ -254,6 +255,7 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 			if (fadeComponent)
 				fadeComponent.CancelFade(false);
 		}
+
 		if (m_ListWidgetStripeFadeComponent)
 			m_ListWidgetStripeFadeComponent.CancelFade(false);
 		
@@ -267,24 +269,21 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 			CloseDropdown();
 	}
 	
-	/*!
-	Set current item selected in dropdown
-	\param index index of item
-	\param callOnChanged if the Event_OnChanged event should be called
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Set current item selected in dropdown
+	//! \param[in] index index of item
+	//! \param[in] callOnChanged if the Event_OnChanged event should be called
 	void SetCurrentItem(int index, bool callOnChanged)
 	{
 		m_iSelectedItem = index;
 		
-		if (callOnChanged)
+		if (callOnChanged && Event_OnChanged)
 			Event_OnChanged.Invoke(this, index);
 		
-		if (m_aModeUIInfo.IsEmpty())
+		if (!m_aModeUIInfo.IsIndexValid(index))
 			return;
 		
 		SCR_EditorModeUIInfo uiInfo = m_aModeUIInfo[index];
-		if (!uiInfo)
-			return;
 		
 		if (m_DropdownText)
 			uiInfo.SetNameTo(m_DropdownText);
@@ -293,36 +292,31 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 			uiInfo.SetIconTo(m_DropdownButton.GetImageWidget());
 	}
 	
-	/*!
-	Get selected index
-	\return int get selected index
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get selected index
+	//! \return int get selected index
 	int GetSelectedIndex()
 	{
 		return m_iSelectedItem;
 	}
+
+//	//------------------------------------------------------------------------------------------------
+//	//! Clear all elements
+//	void ClearAll()
+//	{
+//	}
 	
-	
-	/*void ClearAll()
-	{
-		//Clears all elements
-	
-	}*/
-	
-	/*!
-	Get root widget
-	\return Widget rootwidget
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return root widget
 	Widget GetRootWidget()
 	{
 		return m_Root;
 	}
 	
-	/*!
-	Set item enabled
-	\param index index of item
-	\param enabled enabled state
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Set item enabled
+	//! \param[in] index index of item
+	//! \param[in] enabled enabled state
 	void SetItemEnabled(int index, bool enabled)
 	{		
 		if (index < 0 || index >= m_aItemButtons.Count())
@@ -331,11 +325,11 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 		m_aItemButtons[index].GetRootWidget().SetEnabled(enabled);
 	}
 	
-	/*!
-	Set item visible
-	\param index index of item
-	\param visible visible state
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Set item visible
+	//! \param[in] index index of item
+	//! \param[in] visible visible state
+	//!
 	void SetItemVisible(int index, bool visible)
 	{
 		if (index < 0 || index >= m_aItemButtons.Count())
@@ -345,33 +339,38 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 	}
 	
 	////////////////////////////////////////////////////////////////////////////
-	/*!
-	Get On Change script invoker
-	\return scriptInvoker Event_OnChanged
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \return On Change script invoker
 	ScriptInvoker GetOnChanged()
 	{
+		if (!Event_OnChanged)
+			Event_OnChanged = new ScriptInvoker();
+
 		return Event_OnChanged;
 	}
 	
-	/*!
-	Get On Opened script invoker
-	\return scriptInvoker Event_OnDropdownOpened
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return On Opened script invoker
 	ScriptInvoker GetOnOpened()
 	{
+		if (!Event_OnDropdownOpened)
+			Event_OnDropdownOpened = new ScriptInvoker();
+
 		return Event_OnDropdownOpened;
 	}
 	
-	/*!
-	Get On Closed script invoker
-	\return scriptInvoker Event_OnDropdownClosed
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return On Closed script invoker
 	ScriptInvoker GetOnClosed()
 	{
+		if (!Event_OnDropdownClosed)
+			Event_OnDropdownClosed = new ScriptInvoker();
+
 		return Event_OnDropdownClosed;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{	
 		if (!m_bIsEnabled)
@@ -384,12 +383,14 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 			gamePadhintWidget.SetVisible(isGamepad);
 	}
 	
-	
+	//------------------------------------------------------------------------------------------------
 	override bool OnMouseEnter(Widget w, int x, int y)
 	{
 		m_bHovered = true;
 		return false;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
 	{
 		m_bHovered = false;
@@ -450,4 +451,4 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 		
 		GetGame().GetInputManager().RemoveActionListener("MouseLeft", EActionTrigger.DOWN, OnLMB);
 	}
-};
+}

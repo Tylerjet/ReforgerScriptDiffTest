@@ -1,7 +1,4 @@
-/*
-Componenet for displaying progress of budget
-*/
-
+//! Component to display budget progress
 class SCR_BudgetUIComponent : SCR_BaseEditorUIComponent
 {
 	[Attribute("0", UIWidgets.ComboBox, "", enums: ParamEnumArray.FromEnum(EEditableEntityBudget))]
@@ -12,12 +9,11 @@ class SCR_BudgetUIComponent : SCR_BaseEditorUIComponent
 	
 	protected SCR_CampaignBuildingEditorComponent m_CampaignBuildingComponent;
 	protected SCR_BudgetEditorComponent m_BudgetManager;
-	protected SCR_EditableEntityCoreBudgetSetting m_Budget;
-	
 	protected SCR_BudgetProgressEditorUIComponent m_BudgetProgress;
 	
 	protected int m_iCurrentBudget;
 	protected int m_iMaxBudget;
+	protected const int INVALID_BUDGET = -1;
 	
 	//------------------------------------------------------------------------------------------------
 	// Override
@@ -49,32 +45,57 @@ class SCR_BudgetUIComponent : SCR_BaseEditorUIComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	override void HandlerDeattached(Widget w)
+	{
+		if (!m_BudgetManager)
+			return;	
+		
+		m_BudgetManager.Event_OnBudgetUpdated.Remove(OnBudgetUpdate);
+		m_BudgetManager.Event_OnBudgetMaxUpdated.Remove(OnBudgetMaxUpdate);
+		m_BudgetManager.Event_OnBudgetPreviewUpdated.Remove(OnBudgetPreviewUpdate);
+		m_BudgetManager.Event_OnBudgetPreviewReset.Remove(ResetWidgetPreviewData);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override protected bool IsUnique()
+	{
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	// Protected
 	//------------------------------------------------------------------------------------------------
 	
 	//------------------------------------------------------------------------------------------------
 	protected void InitializeBudgets()
 	{
-		// Setup 
-		array<ref SCR_EditableEntityCoreBudgetSetting> budgets = {};
-		m_BudgetManager.GetBudgets(budgets);
+		if (!m_CampaignBuildingComponent || !m_BudgetManager)
+			return;
 		
-		foreach (SCR_EditableEntityCoreBudgetSetting budget : budgets)
+		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(m_CampaignBuildingComponent.GetProviderComponent());
+		if (!providerComponent)
+			return;
+		
+		EEditableEntityBudget budgetToShow = m_CampaignBuildingComponent.GetShownBudget();
+		if (budgetToShow == INVALID_BUDGET)
 		{
-			if (budget.GetBudgetType() == m_BudgetType)
-				m_Budget = budget;
-		} 
+			m_BudgetProgress.GetRootWidget().SetVisible(false);
+			return;
+		}
+			
+		SetBudgetType(budgetToShow);
 		
 		// Setup values 
 		m_iCurrentBudget = m_BudgetManager.GetCurrentBudgetValue(m_BudgetType);
 		m_BudgetManager.GetMaxBudgetValue(m_BudgetType, m_iMaxBudget);
 		
-		// Update UI
-		bool base = m_CampaignBuildingComponent.IsProviderBase(); 
-		m_BudgetProgress.GetRootWidget().SetVisible(base);
+		if (!m_CampaignBuildingComponent)
+			return;
 		
 		m_BudgetProgress.HideBudgetChange();
-		m_BudgetProgress.ShowBudget(m_iCurrentBudget / m_iMaxBudget);
+		
+		if (m_iMaxBudget != 0)
+			m_BudgetProgress.ShowBudget(m_iCurrentBudget / m_iMaxBudget);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -88,18 +109,21 @@ class SCR_BudgetUIComponent : SCR_BaseEditorUIComponent
 		m_BudgetManager.GetMaxBudgetValue(m_BudgetType, m_iMaxBudget);
 		
 		m_BudgetProgress.HideBudgetChange();
-		m_BudgetProgress.ShowBudget(originalBudgetValue / maxBudgetValue);
+		m_BudgetProgress.ShowBudget(m_iCurrentBudget / m_iMaxBudget);
 	}
 		
 	//------------------------------------------------------------------------------------------------
 	protected void OnBudgetMaxUpdate(EEditableEntityBudget budgetType, int currentBudgetValue, int maxBudgetValue)
 	{
-		m_iMaxBudget = maxBudgetValue;
+		m_BudgetManager.GetMaxBudgetValue(m_BudgetType, m_iMaxBudget);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnBudgetPreviewUpdate(EEditableEntityBudget budgetType, float previewBudgetValue, float budgetChange)
 	{
+		if (m_BudgetType != budgetType)
+			return;
+		
 		m_BudgetProgress.ShowBudgetChange(budgetChange, previewBudgetValue);
 	}
 	
@@ -107,5 +131,47 @@ class SCR_BudgetUIComponent : SCR_BaseEditorUIComponent
 	protected void ResetWidgetPreviewData()
 	{
 		m_BudgetProgress.HideBudgetChange();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Load icon of given budget from budgetUI and set it.
+	protected void SetBudgetUIIcon(EEditableEntityBudget budgetType)
+	{
+		if (!m_BudgetManager || !m_BudgetProgress)
+			return;
+		
+		SCR_EditableEntityCoreBudgetSetting budgetSettings = m_BudgetManager.GetBudgetSetting(budgetType);
+		if (!budgetSettings)
+			return;
+		
+		SCR_UIInfo info = budgetSettings.GetInfo();
+		if (!info)
+			return;
+
+		info.SetIconTo(m_BudgetProgress.GetIconWidhget());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Public 
+	//------------------------------------------------------------------------------------------------
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set a budget which will will be used in UI of provider detail.
+	void SetBudgetType(EEditableEntityBudget type)
+	{
+		m_BudgetType = type;
+		SetBudgetUIIcon(m_BudgetType);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	EEditableEntityBudget GetBudgetType()
+	{
+		return m_BudgetType;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_BudgetProgressEditorUIComponent GetUIComponent()
+	{
+		return m_BudgetProgress;
 	}
 }

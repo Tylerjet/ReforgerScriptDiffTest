@@ -74,15 +74,15 @@ class SCR_AIGetAllocatedCompartment: AITaskScripted
 		{
 			case EAICompartmentType.Turret : 
 			{
-				return compartmentType == TurretCompartmentSlot;
+				return compartmentType.IsInherited(TurretCompartmentSlot);
 			};
 			case EAICompartmentType.Cargo : 
 			{
-				return compartmentType == CargoCompartmentSlot;
+				return compartmentType.IsInherited(CargoCompartmentSlot);
 			};
 			case EAICompartmentType.Pilot : 
 			{
-				return compartmentType == PilotCompartmentSlot;				
+				return compartmentType.IsInherited(PilotCompartmentSlot);
 			};
 			default: //unspecified means type is "ANY"
 			{
@@ -103,5 +103,5 @@ class SCR_AIGetAllocatedCompartment: AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override string GetOnHoverDescription() { return "Gets allocated compartments of group to distribute (and eventually occupy) along group members. \nOne can restrict which compartment types to allocate None means any"; };	
+	override string GetOnHoverDescription() { return "Gets allocated compartments of group to distribute (and eventually occupy) along group members. \nOne can restrict which compartment types to allocate None means any"; };
 };

@@ -1,40 +1,42 @@
 class DeployMenuSystem : GameSystem
-{	
+{
 	protected SCR_PlayerDeployMenuHandlerComponent m_LocalMenuHandler;
 	protected bool m_bReady = false;
 
-	protected override ESystemPoint GetSystemPoint()
-	{
-		return ESystemPoint.Frame;
-	}
-
+	//------------------------------------------------------------------------------------------------
 	protected override void OnInit()
 	{
 		SCR_RespawnSystemComponent rsc = SCR_RespawnSystemComponent.GetInstance();
 		Enable(
-			!System.IsConsoleApp() && 
+			!System.IsConsoleApp() &&
 			(rsc && rsc.CanOpenDeployMenu())
 		);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! \param handler must not be null
 	void Register(SCR_PlayerDeployMenuHandlerComponent handler)
 	{
 		if (handler.GetPlayerController() == GetGame().GetPlayerController())
 			m_LocalMenuHandler = handler;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! \param handler must not be null
 	void Unregister(SCR_PlayerDeployMenuHandlerComponent handler)
 	{
 		if (handler.GetPlayerController() == GetGame().GetPlayerController())
 			m_LocalMenuHandler = null;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	void SetReady(bool ready)
 	{
 		m_bReady = ready;
 	}
 
-	override protected void OnUpdate(ESystemPoint point)
+	//------------------------------------------------------------------------------------------------
+	protected override void OnUpdate(ESystemPoint point)
 	{
 		if (!m_LocalMenuHandler)
 			return;

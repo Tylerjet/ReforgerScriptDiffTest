@@ -1,9 +1,8 @@
 [EntityEditorProps(category: "GameScripted/Gadgets", description: "Map gadget", color: "0 0 255 255")]
-class SCR_MapGadgetComponentClass: SCR_GadgetComponentClass
+class SCR_MapGadgetComponentClass : SCR_GadgetComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Map gadget component
 class SCR_MapGadgetComponent : SCR_GadgetComponent
 {
@@ -17,7 +16,7 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Switch between map view
-	//! \param state is desired state: true = open, false = close
+	//! \param[in] state is desired state: true = open, false = close
 	void SetMapMode(bool state)
 	{		
 		if (!m_MapEntity || !m_CharacterOwner || !GetGame().GetGameMode())
@@ -25,12 +24,11 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 				
 		// no delay/fade for forced cancel
 		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(m_CharacterOwner.FindComponent(SCR_CharacterControllerComponent));
-		
+		ECharacterLifeState lifeState = controller.GetLifeState();
 		float delay; 
-		if (!controller.IsDead()) 
+		if (lifeState != ECharacterLifeState.DEAD) 
 			delay = m_fActivationDelay * 1000;
 
-				
 		GetGame().GetCallqueue().Remove(ToggleMapGadget);
 		
 		if (state)
@@ -44,7 +42,7 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 		{
 			GetGame().GetCallqueue().CallLater(ToggleMapGadget, delay, false, false);
 			
-			if (!controller.IsDead() && m_FadeInOutEffect) 
+			if (lifeState != ECharacterLifeState.DEAD && m_FadeInOutEffect) 
 			{
 				if (m_MapEntity.IsOpen())
 					m_FadeInOutEffect.FadeOutEffect(true, m_fActivationDelay); // fade out on map close
@@ -56,7 +54,7 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Open/close map
-	//! \param state is desired state: true = open, false = close
+	//! \param[in] state is desired state: true = open, false = close
 	protected void ToggleMapGadget(bool state)
 	{			
 		if (state)
@@ -78,6 +76,7 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 				
 	//------------------------------------------------------------------------------------------------
 	//! SCR_MapEntity event
+	//! \param[in] config
 	protected void OnMapOpen(MapConfiguration config)
 	{
 		if (m_FadeInOutEffect)
@@ -93,6 +92,7 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! SCR_MapEntity event
+	//! \param[in] config
 	protected void OnMapClose(MapConfiguration config)
 	{
 		if (m_FadeInOutEffect)
@@ -100,20 +100,6 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 		
 		SCR_MapEntity.GetOnMapOpen().Remove(OnMapOpen);
 		SCR_MapEntity.GetOnMapClose().Remove(OnMapClose);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void ActivateGadgetFlag()
-	{
-		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
-		if (!playerController)
-			return;
-		
-		SCR_HUDManagerComponent hudManager = SCR_HUDManagerComponent.Cast(playerController.GetHUDManagerComponent());
-		if (!hudManager)
-			return;
-		
-		m_FadeInOutEffect = SCR_FadeInOutEffect.Cast(hudManager.FindInfoDisplay(SCR_FadeInOutEffect));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -132,6 +118,14 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
  		if (mode != EGadgetMode.IN_HAND)
 			return;
 
+		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
+		if (!playerController)
+			return;
+		
+		SCR_HUDManagerComponent hudManager = SCR_HUDManagerComponent.Cast(playerController.GetHUDManagerComponent());
+		if (hudManager)
+			m_FadeInOutEffect = SCR_FadeInOutEffect.Cast(hudManager.FindInfoDisplay(SCR_FadeInOutEffect));
+		
 		ToggleFocused(true);
 	}
 	
@@ -175,5 +169,4 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 		if (!m_MapEntity)
 			m_MapEntity = SCR_MapEntity.GetMapInstance();
 	}
-	
-};
+}

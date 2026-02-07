@@ -1,10 +1,8 @@
 [EntityEditorProps(category: "GameScripted/UI/RadialMenu", description: "Radial menu for item selection")]
 class SCR_RadialMenuItemsComponentClass : ScriptComponentClass
 {
-	// prefab properties here
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_RadialMenuItemsComponent : ScriptComponent
 {
 	[Attribute()]
@@ -102,4 +100,4 @@ class SCR_RadialMenuItemsComponent : ScriptComponent
 
 		radialMenu.AddEntries(entries);
 	}
-};
+}

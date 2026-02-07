@@ -77,7 +77,7 @@ class SCR_BaseTask : GenericEntity
 	protected int m_iTaskID = INVALID_TASK_ID;
 	protected float m_fAssigneeTimeLimit = DEFAULT_ASSIGNEE_TIME_LIMIT;
 	protected float m_fLastAssigneeAddedTimestamp = INVALID_TIMESTAMP;
-	protected ref array<SCR_BaseTaskExecutor> m_aAssignees = new ref array<SCR_BaseTaskExecutor>();
+	protected ref array<SCR_BaseTaskExecutor> m_aAssignees = new array<SCR_BaseTaskExecutor>();
 	protected SCR_TaskState m_eState;
 	protected SCR_BaseTaskExecutor m_TimedOutAssignee = null;
 	protected float m_fAssigneeTimeoutTimestamp = INVALID_TIMESTAMP;
@@ -225,12 +225,20 @@ class SCR_BaseTask : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Remove icon assigned to this task.
+	void ClearWidgetIcon()
+	{
+		if (m_wMapTaskIcon && m_wMapTaskIcon.GetParent())
+			m_wMapTaskIcon.GetParent().RemoveFromHierarchy();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void UpdateMapTaskIcon()
 	{
 		if (!m_wMapTaskIcon)
 			return;
 		
-		m_wMapTaskIcon.SetColor(Color.White);
+		m_wMapTaskIcon.SetColor(Color.FromInt(Color.WHITE));
 		if (m_TargetFaction && (IsAssignedToLocalPlayer() || SCR_EditorManagerEntity.IsOpenedInstance(false)))
 			m_wMapTaskIcon.SetColor(m_TargetFaction.GetFactionColor());
 		

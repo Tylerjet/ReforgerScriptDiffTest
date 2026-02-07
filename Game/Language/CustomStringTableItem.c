@@ -29,6 +29,8 @@ class CustomStringTableItem: ScriptStringTableItem
 	string Target_pt_br;
 	[Attribute(category:"Translated Texts", desc: "Chinese (China)", uiwidget: UIWidgets.EditBoxWithButton)]
 	string Target_zh_cn;
+	[Attribute(category:"Translated Texts", desc: "Ukrainian (Ukraine)", uiwidget: UIWidgets.EditBoxWithButton)]
+	string Target_uk_ua;
 	
 	[Attribute(category:"Custom", uiwidget: UIWidgets.EditBoxWithButton, desc: "Comment for translators.")]
 	string Comment;

@@ -1,9 +1,8 @@
-[EntityEditorProps(category: "GameScripted/ScriptWizard", description: "ScriptWizard generated script file.")]
+[EntityEditorProps(category: "GameScripted/ScriptWizard", description: "")]
 class SCR_PressureTriggerComponentClass : SCR_BaseTriggerComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_PressureTriggerComponent : SCR_BaseTriggerComponent
 {	
 	protected const float MIN_DELAY = 125; //time between explosion tries in ms
@@ -51,9 +50,7 @@ class SCR_PressureTriggerComponent : SCR_BaseTriggerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Manually trigger the entity (Server Only)
-	*/
+	//! Manually trigger the entity (Server Only)
 	void TriggerManuallyServer()
 	{
 		//~ Delay it to next frame, cannot trigger entity at the same time as Rpc
@@ -81,4 +78,4 @@ class SCR_PressureTriggerComponent : SCR_BaseTriggerComponent
 		if (m_bLive)
 			ActivateTrigger(); // Using call later to avoid accessing uninitialized components
 	}
-};
+}

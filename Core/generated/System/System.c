@@ -154,13 +154,9 @@ sealed class System
 	*/
 	static proto float GetFrameTimeS();
 	/*!
-	\brief Find files with extension in given path on all FileSystems accessible for game
-	@code
-		array<string> files = {};
-		System.FindFiles(files.Insert, "configs/", ".conf");
-		files.Debug();
-	@endcode
+	Use FileIO.FindFiles instead
 	*/
+	[Obsolete("Use FileIO.FindFiles instead")]
 	static proto bool FindFiles(FindFilesCallback callback, string path, string ext);
 	/*!
 	Return current platform

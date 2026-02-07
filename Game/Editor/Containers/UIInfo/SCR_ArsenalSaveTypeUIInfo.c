@@ -5,9 +5,7 @@ class SCR_ArsenalSaveTypeUIInfo : SCR_UIDescription
 	protected LocalizedString m_sPlayerActionDisplayName;
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return Localized name to be displayed for player action. This can be null to not display any specific type of saving for the action
-	*/
+	//! \return Localized name to be displayed for player action. This can be empty to not display any specific type of saving for the action
 	LocalizedString GetPlayerActionDisplayName()
 	{
 		return m_sPlayerActionDisplayName;
@@ -24,4 +22,4 @@ class SCR_ArsenalSaveTypeUIInfo : SCR_UIDescription
 
 		super.CopyFrom(source);
 	}
-};
+}

@@ -10,12 +10,6 @@ class SCR_AIReactionBase
 	[Attribute(defvalue: "", uiwidget: UIWidgets.EditBox, desc: "(TEMP) Relavive path to a behavior tree with forward slashes \nExample: 'AI/BehaviorTrees/Chimera/Soldier/Wait.bt'", params: "bt")]
 	string m_OverrideBehaviorTree;
 	
-	// Beyond this distance AI considers shooting as long range fire
-	static const int LONG_RANGE_FIRE_DISTANCE = 200;
-	
-	// will be defined on AI component hopefully later
-	static const int AI_WEAPONFIRED_REACTION_DISTANCE = 500;
-
 	void PerformReaction(notnull SCR_AIUtilityComponent utility) {}
 	void PerformReaction(notnull SCR_AIGroupUtilityComponent utility) {}
 	

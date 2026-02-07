@@ -10,36 +10,18 @@ class AnimExportProfilesRequest: JsonApiStruct
 
 class AnimExportProfilesResponse: JsonApiStruct
 {
-	string ProfileNames;
-	string PathToExportProfiles;
-	
-	void AnimExportProfilesResponse()
-	{
-		RegV("ProfileNames");
-		RegV("PathToExportProfiles");
-	}
-}
+	ref TxaExporter m_txaExporter;
 
-
-class AnimExportProfilesUtils{
-	
-	string createProfileNamesCache(AnimExportProfileCtx ctx)
+	override void OnPack()
 	{
-		string profileNames = "[";		
-		for(int i = 0; i < ctx.GetNumProfiles(); i++)
+		StartArray("ProfileNames");
+		int numProfiles = m_txaExporter.GetNumProfiles();
+		for (int i = 0; i < numProfiles; i++)
 		{
-			string profileFormat = "'" + ctx.GetProfileName(i) + "', ";
-			if(i + 1 != ctx.GetNumProfiles())
-			{
-				profileNames += "(" + profileFormat + profileFormat + "''), ";
-			}
-			else
-			{
-				profileNames += "(" + profileFormat + profileFormat + "'')";
-			}
+			string pn = m_txaExporter.GetProfileName(i);
+			ItemString(pn);
 		}
-		profileNames += "]";
-		return profileNames;
+		EndArray();
 	}
 }
 
@@ -55,12 +37,70 @@ class AnimExportProfiles: NetApiHandler
 	{
 		AnimExportProfilesRequest req = AnimExportProfilesRequest.Cast(request);
 		AnimExportProfilesResponse response = new AnimExportProfilesResponse();
-		AnimExportProfilesUtils utils = new AnimExportProfilesUtils();
-		AnimExportProfileCtx ctx = AnimExportProfileCtx.LoadProfile(req.ExportProfileAbsPath);
-		
-		response.ProfileNames = utils.createProfileNamesCache(ctx);
-		response.PathToExportProfiles = req.ExportProfileAbsPath;
+
+		response.m_txaExporter = new TxaExporter();
+		response.m_txaExporter.LoadProfiles(req.ExportProfileAbsPath);
 		return response;
 	}
 
+}
+
+
+class AnimExportProfileChannelsRequest: JsonApiStruct
+{
+	string ProfileName;
+	
+	void AnimExportProfileChannelsRequest()
+	{
+		RegV("ProfileName");
+	}
+}
+
+class AnimExportProfileChannelsResponse: JsonApiStruct
+{
+	ref TxaExporter		m_txaExporter;
+	int 							m_profileIdx;
+
+	override void OnPack()
+	{
+		int nChannels = 0;
+		if (m_profileIdx != -1)
+		{
+			nChannels = m_txaExporter.GetProfileChannelCount(m_profileIdx)
+		}
+		
+		StartObject("Channels");
+
+		for (int channelIdx = 0; channelIdx < nChannels; channelIdx++)
+		{
+			string name = m_txaExporter.GetProfileChannelName(m_profileIdx, channelIdx);
+			StartObject(name);
+			string genFn = m_txaExporter.GetProfileChannelGenFn(m_profileIdx, channelIdx);
+			if (!genFn.IsEmpty())
+			{
+				StoreString("GenFn", genFn);
+			}
+			EndObject();
+		}
+
+		EndObject();
+	}
+}
+
+class AnimExportProfileChannels : NetApiHandler
+{
+	override JsonApiStruct GetRequest()
+	{
+		return new AnimExportProfileChannelsRequest();
+	}
+
+	override JsonApiStruct GetResponse(JsonApiStruct request)
+	{
+		AnimExportProfileChannelsRequest req = AnimExportProfileChannelsRequest.Cast(request);
+		AnimExportProfileChannelsResponse response = new AnimExportProfileChannelsResponse();
+
+		response.m_txaExporter = new TxaExporter();
+		response.m_profileIdx = response.m_txaExporter.GetProfileIndex(req.ProfileName);
+		return response;
+	}
 }

@@ -1,8 +1,7 @@
-	void ScriptInvoker_GameplaySettingsSubMenu(SCR_GameplaySettingsSubMenu menu);
-	typedef func ScriptInvoker_GameplaySettingsSubMenu;
-	typedef ScriptInvokerBase<ScriptInvoker_GameplaySettingsSubMenu> ScriptInvoker_GameplaySettingsSubMenuChanged;
+void ScriptInvoker_GameplaySettingsSubMenu(SCR_GameplaySettingsSubMenu menu);
+typedef func ScriptInvoker_GameplaySettingsSubMenu;
+typedef ScriptInvokerBase<ScriptInvoker_GameplaySettingsSubMenu> ScriptInvoker_GameplaySettingsSubMenuChanged;
 
-//------------------------------------------------------------------------------------------------
 class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 {
 	protected static const ref array<string> m_aLanguages = {
@@ -23,9 +22,9 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 	static ref ScriptInvoker_GameplaySettingsSubMenuChanged m_OnLanguageChanged = new ScriptInvoker_GameplaySettingsSubMenuChanged();
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuHide(SCR_SuperMenuBase parentMenu)
+	override void OnTabHide()
 	{
-		super.OnMenuHide(parentMenu);
+		super.OnTabHide();
 
 		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
 		if (playerController)
@@ -33,9 +32,9 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuOpen(SCR_SuperMenuBase parentMenu)
+	override void OnTabCreate(Widget menuRoot, ResourceName buttonsLayout, int index)
 	{
-		super.OnMenuOpen(parentMenu);
+		super.OnTabCreate(menuRoot, buttonsLayout, index);
 
 		m_aSettingsBindings.Clear();
 

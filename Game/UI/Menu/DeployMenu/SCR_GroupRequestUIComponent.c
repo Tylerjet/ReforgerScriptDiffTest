@@ -642,7 +642,7 @@ class SCR_GroupButton : SCR_DeployButtonBase
 			if (full)
 				m_wPlayerCount.SetColor(m_ColorWarning);
 			else
-				m_wPlayerCount.SetColor(Color.White);
+				m_wPlayerCount.SetColor(Color.FromInt(Color.WHITE));
 		}
 	}
 

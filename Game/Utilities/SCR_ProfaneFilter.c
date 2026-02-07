@@ -1,36 +1,62 @@
-//------------------------------------------------------------------------------------------------
-//! SCR_ProfaneFilter
-//!
 //! Handles filtering profanities in texts
-//------------------------------------------------------------------------------------------------
 class SCR_ProfaneFilter
 {
-	//todo@mour:speedrun solution, look into performance!!!
-	//todo@mour:solve lowercasing
+	// TODO@mour:speedrun solution, look into performance!!!
+	// TODO: replace 4 -> a, 3 -> e, 7 -> t, $ -> s etc to cover 13375p34k? (1 = l or i...)
 	
 	//------------------------------------------------------------------------------------------------
-	bool ReplaceProfanities(string inputText, out string output, string replaceText = "*")
+	//! Replace profanities with a same-sized repetition of replaceText char
+	//! \param[in] input the input string, potentially containing profanities
+	//! \param[out] output the resulting string, censored
+	//! \param[in] replaceChar must be ONE character, will be cut to one char or default to * if not provided
+	//! \return true if profanities were found, false otherwise
+	static bool ReplaceProfanities(string input, out string output, string replaceChar = "*")
 	{
 		bool profanityFound = false;
-		
-		if (inputText.IsEmpty())
-			return false;
-		
-		inputText.ToLower();
-		foreach (string profane : m_aProfanityBlacklist)
+
+		if (input.IsEmpty())
 		{
-			if (inputText.Contains(profane))
+			output = string.Empty;
+			return false;
+		}
+
+		if (replaceChar.IsEmpty())
+			replaceChar = "*";
+		else
+		if (replaceChar.Length() > 1)
+			replaceChar = replaceChar[0];
+
+		int inputLength = input.Length();
+		string inputLC = input;
+		inputLC.ToLower();
+		foreach (string profanity : s_aProfanityBlacklist)
+		{
+			int indexOf = inputLC.IndexOf(profanity);
+			if (indexOf < 0)
+				continue;
+
+			profanityFound = true;
+
+			int profanityLength = profanity.Length();
+			string replacement = SCR_StringHelper.PadLeft("", profanityLength, "*");
+			while (indexOf > -1)
 			{
-				inputText.Replace(profane, SCR_StringHelper.PadLeft("", profane.Length(), replaceText));			
-				profanityFound = true;
+				if (indexOf > 0)
+					input = input.Substring(0, indexOf) + replacement + input.Substring(indexOf + profanityLength, inputLength - profanityLength - indexOf);
+				else
+					input = replacement + input.Substring(profanityLength, inputLength - profanityLength);
+
+				indexOf = inputLC.IndexOfFrom(indexOf + profanityLength, profanity);
 			}
 		}
 		
-		output = inputText;
+		output = input;
 		return profanityFound;
 	}
-	
-	protected ref array<string> m_aProfanityBlacklist = {	"figlio di puttana",
+
+	//! profanities must be lowercase
+	protected static ref array<string> s_aProfanityBlacklist = {
+												"figlio di puttana",
 												"shokubutsuningen",
 												"madonna puttana",
 												"seishinhakujaku",
@@ -720,5 +746,79 @@ class SCR_ProfaneFilter
 												"強姦",
 												"援交",
 												"精薄",
-												"輪姦"};
-};
+												"輪姦",
+
+//												// added: English variants
+//												"dick",
+//													"d1ck",
+//												// "asshole",
+//													"a55hole",
+//													"a55h0le",
+//													"assh0le",
+//													"4sshole",
+//													"455h0le",
+//
+//												// added: French variants
+//												"batard",
+//													"batar",
+//													"bâtard",
+//													"bâtârd",
+//													"batârd",
+//													"b4t4rd",
+//													"b4t4r",
+//												"branleur",
+//												"branleuse",
+//												"branleuze",
+//												" branler",
+//												" catin",
+//												"enculé",
+//													"ankulé",
+//													"ankuler",
+//												"connard",
+//													"conard",
+//													"conar",
+//													"konar",
+//												"connasse",
+//													"conasse",
+//													"conass",
+//													"konasse",
+//													"konass",
+//												"konasse",
+//												"ma bite",
+//												"masturbation",
+//												"masturber",
+//												"pédé",
+//												"pédophile",
+//												"pétasse",
+//												"petasse",
+//												"pouffiasse",
+//													"poufiasse",
+//													"pouffiase",
+//													"poufiase",
+//													"pouffiace",
+//													"poufiace",
+//												"salop",
+//												"salop",
+//												"suce ma",
+//													"suse ma",
+//													"sus ma",
+//												" chier",
+//												"chieur",
+//												"chieuse",
+//													"chieuze",
+//												"nique ta",
+//													"nik ta",
+//													"niq ta",
+//													"niquer ta",
+//													"niker ta",
+//													"niqer ta",
+//													"niqué ta",
+//													"niké ta",
+//													"niqé ta",
+//												// " fdp",		// les fdport
+//												" teub",
+//												// "te viol", 	// porTE VIOLette
+//												"violer",
+//													"violé",
+	};
+}

@@ -151,10 +151,18 @@ class SCR_CaptureArea : ScriptedGameTriggerEntity
 	//! callback - activation - occurs when and entity which fulfills the filter definitions enters the Trigger
 	protected override void OnActivate(IEntity ent)
 	{
+		if (!m_mOccupants)
+			return;
+		
 		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(ent);
+		if (!character)
+			return;
+		
 		Faction faction = character.GetFaction();
+		if (!faction)
+			return;
 
-		if (faction)
+		if (faction && !m_mOccupants[faction].Contains(character))
 		{
 			m_mOccupants[faction].Insert(character);
 			OnCharacterEntered(faction, character);
@@ -220,7 +228,7 @@ class SCR_CaptureArea : ScriptedGameTriggerEntity
 	//------------------------------------------------------------------------------------------------
 	/*!
 		Evaluate and return the faction that owns this point.
-		Can be overriden and implemented for custom logic.
+		Can be overridden and implemented for custom logic.
 
 		Returns the faction with most players alive in the point.
 	*/

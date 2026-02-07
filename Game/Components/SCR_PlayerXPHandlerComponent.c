@@ -1,9 +1,7 @@
-//------------------------------------------------------------------------------------------------
 class SCR_PlayerXPHandlerComponentClass : ScriptComponentClass
 {
 }
 
-//------------------------------------------------------------------------------------------------
 //! Takes care of player-specific XP handling
 //! Should be hooked on PlayerController
 class SCR_PlayerXPHandlerComponent : ScriptComponent
@@ -26,6 +24,7 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Setter for player XP accumulated since last respawn
+	//! \param[in] xp
 	void SetPlayerXPSinceLastSpawn(int xp)
 	{
 		m_iPlayerXPSinceLastSpawn = xp;
@@ -39,18 +38,21 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] timestamp
 	void SetSuicidePenaltyTimestamp(float timestamp)
 	{
 		m_fSuicidePenaltyTimestamp = timestamp;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetSuicidePenaltyTimestamp()
 	{
 		return m_fSuicidePenaltyTimestamp;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnXPChanged()
 	{
 		if (!m_OnXPChanged)
@@ -60,6 +62,7 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsProxy()
 	{
 		RplComponent rpl = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
@@ -68,12 +71,15 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void OnPlayerKilled()
 	{
 		m_iPlayerXPSinceLastSpawn = 0;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] notify
 	void UpdatePlayerRank(bool notify = true)
 	{
 		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetOwner());
@@ -160,6 +166,10 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Addition to player XP
+	//! \param[in] rewardID
+	//! \param[in] multiplier
+	//! \param[in] volunteer
+	//! \param[in] addDirectly
 	void AddPlayerXP(SCR_EXPRewards rewardID, float multiplier = 1.0, bool volunteer = false, int addDirectly = 0)
 	{
 		if (IsProxy())

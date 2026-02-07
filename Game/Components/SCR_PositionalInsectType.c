@@ -2,16 +2,6 @@
 [BaseContainerProps(configRoot: true)]
 class SCR_PositionalInsectType
 {
-	protected const int INVALID = -1;
-	protected SCR_AmbientSoundsComponent m_AmbientSoundsComponent;
-	protected SignalsManagerComponent m_LocalSignalsManager;
-
-	protected ref array<IEntity> m_aClosestEntities = {};
-	protected ref array<IEntity> m_aActiveEntities = {};
-	protected ref array<ref SCR_InsectParticle> m_aParticles = {};
-
-	protected ref set<BaseContainer> m_PrefabContainerSet = new ref set<BaseContainer>();
-
 	[Attribute()]
 	protected ref array<ref SCR_InsectDef> m_aInsectDef;
 
@@ -22,10 +12,23 @@ class SCR_PositionalInsectType
 	protected int m_iSpawnChance;
 
 	[Attribute(defvalue: "0 0 0", desc: "Offset from parent entity")];
-	protected vector 	m_vOffset;
+	protected vector m_vOffset;
+
+	protected SCR_AmbientSoundsComponent m_AmbientSoundsComponent;
+	protected SignalsManagerComponent m_LocalSignalsManager;
+
+	protected ref array<IEntity> m_aClosestEntities = {};
+	protected ref array<IEntity> m_aActiveEntities = {};
+	protected ref array<ref SCR_InsectParticle> m_aParticles = {};
+
+	protected ref set<ref Resource> m_ResourceSet = new set<ref Resource>();
+	protected ref set<BaseContainer> m_PrefabContainerSet = new set<BaseContainer>();
+
+	protected static const int INVALID = -1;
 
 	//------------------------------------------------------------------------------------------------
-	//! Initializes necessary things for Insect type
+	//! Initialises necessary things for Insect type
+	//! \param[in] ambientSoundsComponent
 	void Init(SCR_AmbientSoundsComponent ambientSoundsComponent)
 	{
 		m_AmbientSoundsComponent = ambientSoundsComponent;
@@ -33,10 +36,11 @@ class SCR_PositionalInsectType
 
 	//------------------------------------------------------------------------------------------------
 	//! Performs updates to the Insect type
+	//! \param[in] cameraPos
 	void Update(vector cameraPos);
 	
 	//------------------------------------------------------------------------------------------------
-	//! Randomizes animation for Insect
+	//! Randomises animation for Insect
 	protected void RandomizeAnimation(IEntity entity)
 	{
 		AnimationPlayerComponent animComponent = AnimationPlayerComponent.Cast(entity.FindComponent(AnimationPlayerComponent));
@@ -53,6 +57,8 @@ class SCR_PositionalInsectType
 	
 	//------------------------------------------------------------------------------------------------
 	//! Spawns particle with sound based on spawnParams and randomized chance
+	//! \param[in] spawnParams
+	//! \param[in] chance
 	protected void SpawnParticle(ParticleEffectEntitySpawnParams spawnParams, int chance = 100)
 	{
 		SCR_InsectDef insectDef = m_aInsectDef.GetRandomElement();
@@ -119,10 +125,8 @@ class SCR_PositionalInsectType
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get prefab container set
-	\return prefab container set
-	*/
+	//! Get prefab container set
+	//! \return prefab container set
 	set<BaseContainer> GetPrefabContainerSet()
 	{
 		return m_PrefabContainerSet;
@@ -130,6 +134,7 @@ class SCR_PositionalInsectType
 
 	//------------------------------------------------------------------------------------------------
 	//! Adds entity to the closest entities array for selected insect type
+	//! \param[in] entity
 	void AddClosestEntity(IEntity entity)
 	{
 		m_aClosestEntities.Insert(entity);
@@ -148,23 +153,26 @@ class SCR_PositionalInsectType
 class SCR_PositionalLightSourceInsect : SCR_PositionalInsectType
 {
 	[Attribute(desc: "Prefab names of entities that correspond with this insect type")]
-	protected ref array<ResourceName> 	m_aPrefabNames;
+	protected ref array<ResourceName> m_aPrefabNames;
 
 	//------------------------------------------------------------------------------------------------
-	//! Initializes necessary things for Insect type
+	//! Initialises necessary things for Insect type
 	override void Init(SCR_AmbientSoundsComponent ambientSoundsComponent)
 	{
 		super.Init(ambientSoundsComponent);
 
-		array<BaseContainer> BaseContainerArray = {};
-		BaseContainerArray = SCR_BaseContainerTools.GetBaseContainerArray(m_aPrefabNames);
-		
-		foreach(BaseContainer baseContainer : BaseContainerArray)
+		Resource resource;		
+		foreach (ResourceName prefab : m_aPrefabNames)
 		{
-			m_PrefabContainerSet.Insert(baseContainer);
+			resource = Resource.Load(prefab);
+			if (!resource.IsValid())
+				continue;
+
+			m_ResourceSet.Insert(resource);
+			m_PrefabContainerSet.Insert(resource.GetResource().ToBaseContainer());
 		}
 
-		delete m_aPrefabNames;
+		m_aPrefabNames = null;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -179,7 +187,7 @@ class SCR_PositionalLightSourceInsect : SCR_PositionalInsectType
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Processeses closest light sources and spawns Insects on correct positions
+	//! Processes closest light sources and spawns Insects on correct positions
 	protected void ProcessLightsSources()
 	{
 		foreach (IEntity entity : m_aClosestEntities)
@@ -236,7 +244,7 @@ class SCR_PositionalAmbientLeafParticles : SCR_PositionalInsectType
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Processeses closest trees and spawns Insects on correct positions
+	//! Processes closest trees and spawns Insects on correct positions
 	protected void ProcessTrees()
 	{
 		foreach (IEntity entity : m_aClosestEntities)
@@ -288,23 +296,26 @@ class SCR_PositionalAmbientLeafParticles : SCR_PositionalInsectType
 class SCR_PositionalGenericInsect : SCR_PositionalInsectType
 {
 	[Attribute(desc: "Prefab names of entities that correspond with this insect type")]
-	protected ref array<ResourceName> 	m_aPrefabNames;
+	protected ref array<ResourceName> m_aPrefabNames;
 
 	//------------------------------------------------------------------------------------------------
-	//! Initializes necessary things for Insect type
+	//! Initialises necessary things for Insect type
 	override void Init(SCR_AmbientSoundsComponent ambientSoundsComponent)
 	{
 		super.Init(ambientSoundsComponent);
 
-		array<BaseContainer> BaseContainerArray = {};
-		BaseContainerArray = SCR_BaseContainerTools.GetBaseContainerArray(m_aPrefabNames);
-		
-		foreach(BaseContainer baseContainer : BaseContainerArray)
+		Resource resource;		
+		foreach (ResourceName prefab : m_aPrefabNames)
 		{
-			m_PrefabContainerSet.Insert(baseContainer);
+			resource = Resource.Load(prefab);
+			if (!resource.IsValid())
+				continue;
+
+			m_ResourceSet.Insert(resource);
+			m_PrefabContainerSet.Insert(resource.GetResource().ToBaseContainer());
 		}
-		
-		delete m_aPrefabNames;
+
+		m_aPrefabNames = null;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -319,7 +330,7 @@ class SCR_PositionalGenericInsect : SCR_PositionalInsectType
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Processeses closest entities and spawns Insects on correct positions
+	//! Processes closest entities and spawns Insects on correct positions
 	protected void ProcessEntitySources()
 	{
 		foreach (IEntity entity : m_aClosestEntities)

@@ -80,13 +80,13 @@ class ObjectImportTool: WorldEditorTool
 				}
 				
 				//Print("Creating " + entityResource.GetPath() + " on: " + pos + " angles: " + angles + " scale: " + scale, LogLevel.VERBOSE);
-				IEntity ent = m_API.CreateEntity(resourceHash, "", m_API.GetCurrentEntityLayerId(), null, pos, angles);
-				if (ent == null)
+				IEntitySource ent = m_API.CreateEntity(resourceHash, "", m_API.GetCurrentEntityLayerId(), null, pos, angles);
+				if (!ent)
 				{
 					Print("Line " + i + ": Entity could not be created", LogLevel.ERROR);
 					continue;
 				}
-				m_API.ModifyEntityKey(ent, "scale", scale.ToString());
+				m_API.SetVariableValue(ent, null, "scale", scale.ToString());
 			}
 			m_API.EndEntityAction();
 		}

@@ -1,11 +1,6 @@
-#include "scripts/Game/config.c"
 class SCR_SessionInfo : JsonApiStruct
 {
-	#ifndef AR_LOGIN_TIMESTAMP
-	protected float m_fLoginTimestamp;
-	#else
 	protected WorldTimestamp m_fLoginTimestamp;
-	#endif
 	
 	// Backend-stored variables
 	protected string m_sRoomID;
@@ -57,12 +52,8 @@ class SCR_SessionInfo : JsonApiStruct
 		m_iLoginHour = hour;
 		m_iLoginMinute = minute;
 		m_iLoginSecond = second;
-		#ifndef AR_LOGIN_TIMESTAMP
-		m_fLoginTimestamp = Replication.Time();
-		#else
 		ChimeraWorld world = GetGame().GetWorld();
 		m_fLoginTimestamp = world.GetServerTimestamp();
-		#endif
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -80,12 +71,8 @@ class SCR_SessionInfo : JsonApiStruct
 		m_iLogoutHour = hour;
 		m_iLogoutMinute = minute;
 		m_iLogoutSecond = second;
-		#ifndef AR_LOGIN_TIMESTAMP
-		m_fTimeInSession = Replication.Time() - m_fLoginTimestamp;
-		#else
 		ChimeraWorld world = GetGame().GetWorld();
 		m_fTimeInSession = world.GetServerTimestamp().DiffMilliseconds(m_fLoginTimestamp);
-		#endif
 	}
 	
 	//------------------------------------------------------------------------------------------------

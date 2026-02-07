@@ -100,8 +100,8 @@ class SCR_WorldEditorToolHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Wrapper for the method below
-	//! \param wantedExtension (case-insensitive)
-	//! \param keywords words that should be present in the file name (case-insensitive)
+	//! \param[in] wantedExtension (case-insensitive)
+	//! \param[in] keywords words that should be present in the file name (case-insensitive)
 	//! \return an array of found ResourceNames - cannot be null
 	static array<ResourceName> GetSelectedOrOpenedResources(string wantedExtension, array<string> keywords = null)
 	{
@@ -110,8 +110,8 @@ class SCR_WorldEditorToolHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Get selected or opened resources
-	//! \param acceptedExtensions accepted extensions (case-insensitive)
-	//! \param keywords words that should be present in the file name (case-insensitive)
+	//! \param[in] acceptedExtensions accepted extensions (case-insensitive)
+	//! \param[in] keywords words that should be present in the file name (case-insensitive)
 	//! \return an array of found ResourceNames - cannot be null
 	static array<ResourceName> GetSelectedOrOpenedResources(array<string> acceptedExtensions = null, array<string> keywords = null)
 	{
@@ -177,7 +177,7 @@ class SCR_WorldEditorToolHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Get all ResourceName that are selected in the Resource Browser
-	//! \param recursive true to get a selected directory's files, false to stop at the directory
+	//! \param[in] recursive true to get a selected directory's files, false to stop at the directory
 	//! \return array of ResourceName of selected resources
 	static array<ResourceName> GetSelectedResources(bool recursive = true)
 	{
@@ -198,10 +198,10 @@ class SCR_WorldEditorToolHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Search Workbench-available files by extension and filters inside a provided directory
-	//! \param fileExtensions
-	//! \param searchStrArray
-	//! \param rootPath
-	//! \param recursive
+	//! \param[in] fileExtensions
+	//! \param[in] searchStrArray
+	//! \param[in] rootPath
+	//! \param[in] recursive
 	//! \return found resources
 	static array<ResourceName> SearchWorkbenchResources(array<string> fileExtensions = null, array<string> searchStrArray = null, string rootPath = "", bool recursive = true)
 	{
@@ -231,13 +231,9 @@ class SCR_WorldEditorToolHelper
 			return;
 		}
 
-		IEntity entity = worldEditorAPI.SourceToEntity(entitySource);
-		if (!entity)
-			return;
-
 		bool manageEditAction = BeginEntityAction();
 
-		worldEditorAPI.DeleteEntity(entity);
+		worldEditorAPI.DeleteEntity(entitySource);
 
 		EndEntityAction(manageEditAction);
 	}
@@ -267,7 +263,7 @@ class SCR_WorldEditorToolHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! End an Entity Action in World Editor API if required
-	//! \param manageEditAction if World Editor Entity Action should be terminated, result of an earlier BeginEntityAction call
+	//! \param[in] manageEditAction if World Editor Entity Action should be terminated, result of an earlier BeginEntityAction call
 	static void EndEntityAction(bool manageEditAction)
 	{
 		WorldEditorAPI worldEditorAPI = GetWorldEditorAPI();
@@ -292,8 +288,8 @@ class SCR_WorldEditorToolHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Return all entities found by moved sphere trace
-	//! \param traceSphere
-	//! \param world
+	//! \param[in] traceSphere
+	//! \param[in] world
 	//! \return found entities or null on error
 	static array<IEntity> TraceMoveEntitiesBySphere(notnull World world, notnull TraceSphere traceSphere)
 	{
@@ -310,8 +306,8 @@ class SCR_WorldEditorToolHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Return all entities found by sphere trace
-	//! \param traceSphere
-	//! \param world
+	//! \param[in] traceSphere
+	//! \param[in] world
 	//! \return found entities or null on error
 	static array<IEntity> TracePositionEntitiesBySphere(notnull World world, notnull TraceSphere traceSphere)
 	{
@@ -332,8 +328,8 @@ class SCR_WorldEditorToolHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! WorkbenchSearchResourcesCallback method used for Workbench searches and Resource Browser-selected files
-	//! \param resName found ResourceName
-	//! \param filePath absolute filepath of said ResourceName if available, empty string otherwise
+	//! \param[in] resName found ResourceName
+	//! \param[in] filePath absolute filepath of said ResourceName if available, empty string otherwise
 	protected static void ResourceNameCallback(ResourceName resName, string filePath = "")
 	{
 		Print("DEBUG LINE | " + filePath + " " + FilePath.StripPath(__FILE__) + ":" + __LINE__, LogLevel.DEBUG);
@@ -348,4 +344,4 @@ class SCR_WorldEditorToolHelper
 		return true;
 	}
 }
-#endif
+#endif // WORKBENCH

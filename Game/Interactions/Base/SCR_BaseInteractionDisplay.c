@@ -19,8 +19,8 @@ class ActionsTuple
 	
 	void Init()
 	{
-		param1 = new ref array<BaseUserAction>();
-		param2 = new ref array<bool>();
+		param1 = new array<BaseUserAction>();
+		param2 = new array<bool>();
 	}
 };
 

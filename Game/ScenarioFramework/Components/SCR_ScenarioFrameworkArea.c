@@ -1,7 +1,7 @@
-[EntityEditorProps(category: "GameScripted/ScriptWizard", description: "ScriptWizard generated script file.")]
+[EntityEditorProps(category: "GameScripted/ScenarioFramework", description: "")]
 class SCR_ScenarioFrameworkAreaClass : SCR_ScenarioFrameworkLayerBaseClass
 {
-};
+}
 
 // Helper class for designer to specify what tasks will be available in this area
 [BaseContainerProps()]
@@ -10,20 +10,17 @@ class SCR_ScenarioFrameworkTaskType
 	[Attribute("Type of task", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_ESFTaskType))]
 	protected SCR_ESFTaskType m_eTypeOfTask;
 
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_ESFTaskType GetTaskType()
 	{
 		return m_eTypeOfTask;
 	}
 }
 
-
-/*
-* Class is managing the area including the Slots (prefab Slot.et).
-* The Slots should be placed in its hierarchy.
-* GameModePatrolManager will select one instance of this type and will start to populate it based on the selected task
-*
-*/
-
+//! Class is managing the area including the Slots (prefab Slot.et).
+//! The Slots should be placed in its hierarchy.
+//! GameModePatrolManager will select one instance of this type and will start to populate it based on the selected task
 class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 {
 	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, "Trigger for area", category: "Trigger")]
@@ -35,13 +32,13 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	[Attribute(defvalue: "1", UIWidgets.CheckBox, desc: "Activate the trigger once or everytime the activation condition is true?", category: "Trigger")]
 	protected bool		m_bOnce;
 	
-	[Attribute(desc: "Actions that will be activated when Trigger gets activated", category: "OnActivation")];
+	[Attribute(desc: "Actions that will be activated when Trigger gets activated", category: "OnActivation")]
 	protected ref array<ref SCR_ScenarioFrameworkActionBase>	m_aTriggerActions;
 	
-	[Attribute(desc: "Should the dynamic Spawn/Despawn based on distance from observer cameras be enabled?", category: "Activation")];
+	[Attribute(desc: "Should the dynamic Spawn/Despawn based on distance from observer cameras be enabled?", category: "Activation")]
 	protected bool							m_bDynamicDespawn;
 
-	[Attribute(defvalue: "750", desc: "How close at least one observer camera must be in order to trigger spawn", category: "Activation")];
+	[Attribute(defvalue: "750", desc: "How close at least one observer camera must be in order to trigger spawn", category: "Activation")]
 	protected int 							m_iDynamicDespawnRange;
 
 	protected SCR_BaseTriggerEntity											m_Trigger;
@@ -54,47 +51,54 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	protected SCR_ScenarioFrameworkSlotTask									m_SlotTask; 				//storing this one in order to get the task title and description
 	
 #ifdef WORKBENCH
-	[Attribute(defvalue: "0", desc: "Show the debug shapes in Workbench", category: "Debug")];
+	[Attribute(defvalue: "0", desc: "Show the debug shapes in Workbench", category: "Debug")]
 	protected bool							m_bShowDebugShapesInWorkbench;
 #endif	
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetDynamicDespawnEnabled()
 	{
 		return m_bDynamicDespawn;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] enabled
 	void SetDynamicDespawnEnabled(bool enabled)
 	{
 		m_bDynamicDespawn = enabled;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetDynamicDespawnRange()
 	{
 		return m_iDynamicDespawnRange;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] range
 	void SetDynamicDespawnRange(int range)
 	{
 		m_iDynamicDespawnRange = range;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_BaseTask GetTask()
 	{
 		return m_Task;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_ScenarioFrameworkSlotTask GetSlotTask()
 	{
 		return m_SlotTask;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] slotTask
 	void SetSlotTask(SCR_ScenarioFrameworkSlotTask slotTask)
 	{
 		m_SlotTask = slotTask;
@@ -107,30 +111,36 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] layerTask
 	void SetLayerTask(SCR_ScenarioFrameworkLayerTask layerTask)
 	{
 		m_LayerTask = layerTask;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetLayerTaskName()
 	{
 		return m_LayerTask.GetOwner().GetName();
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_ESFTaskType GetLayerTaskType()
 	{
 		return m_LayerTask.GetTaskType();
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetDeliveryPointName()
 	{
 		return m_sItemDeliveryPointName;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] sDeliveryPointName
 	void StoreDeliveryPoint(string sDeliveryPointName)
 	{
 		m_sItemDeliveryPointName = sDeliveryPointName;
@@ -141,12 +151,16 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] task
 	void StoreTaskToArea(SCR_BaseTask task)
 	{
 		m_Task = task;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[out] areaStruct
 	void StoreState(out SCR_ScenarioFrameworkAreaStruct areaStruct)
 	{
 		//Checks if area is named. If it is not, we cannot use it for serialization
@@ -368,6 +382,8 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	SCR_ScenarioFrameworkLayerTask Create()
 	{
 		array<SCR_ScenarioFrameworkLayerBase> aSlotsOut = {};
@@ -384,6 +400,9 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] eTaskType
+	//! \return
 	SCR_ScenarioFrameworkLayerTask Create(SCR_ESFTaskType eTaskType)
 	{
 		array<SCR_ScenarioFrameworkLayerBase> aSlotsOut = {};
@@ -401,6 +420,8 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] layerTask
 	void Create(SCR_ScenarioFrameworkLayerTask layerTask)
 	{
 		if (!layerTask)
@@ -411,12 +432,14 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_BaseTriggerEntity GetTrigger()
 	{
 		return m_Trigger;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void SpawnTrigger()
 	{
 		Resource resource = Resource.Load(m_sTriggerResource);
@@ -452,6 +475,8 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] task
 	void MoveTaskIconToArea(notnull SCR_BaseTask task)
 	{
 		task.SetOrigin(GetOwner().GetOrigin());
@@ -459,6 +484,8 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] eTaskType
+	//! \return
 	bool GetIsTaskSuitableForArea(SCR_ESFTaskType eTaskType)
 	{
 		array<SCR_ESFTaskType> aTaskTypes = {};
@@ -470,6 +497,7 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[out] aTaskTypes
 	void GetAvailableTaskTypes(out array<SCR_ESFTaskType> aTaskTypes)
 	{
 		array<SCR_ScenarioFrameworkLayerBase> aSlots = {};
@@ -489,6 +517,8 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[out] aSlotsOut
+	//! \param[in] eTaskType
 	void GetSuitableLayersForTaskType(out notnull array<SCR_ScenarioFrameworkLayerBase> aSlotsOut, SCR_ESFTaskType eTaskType)
 	{
 		SCR_ESFTaskType eType;
@@ -508,6 +538,7 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[out] aSlots
 	void GetAllSlots(out array<SCR_ScenarioFrameworkLayerBase> aSlots)
 	{
 		SCR_ScenarioFrameworkLayerBase slotComponent;
@@ -524,6 +555,7 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[out] aLayerTasks
 	void GetAllLayerTasks(out notnull array<SCR_ScenarioFrameworkLayerTask> aLayerTasks)
 	{
 		aLayerTasks = {};
@@ -540,18 +572,21 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] bSet
 	void SetAreaSelected(bool bSet)
 	{
 		 m_bAreaSelected = bSet;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetIsAreaSelected()
 	{
 		return m_bAreaSelected;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] entity
 	void OnAreaTriggerActivated(IEntity entity)
 	{
 		if (m_OnTriggerActivated)
@@ -566,6 +601,7 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnAreaTriggerActivated()
 	{
 		if (!m_OnTriggerActivated)
@@ -575,6 +611,7 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnAreaInit()
 	{	
 		return m_OnAreaInit;
@@ -587,7 +624,7 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void DynamicDespawn()
+	override void DynamicDespawn(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		if (m_bExcludeFromDynamicDespawn)
 			return;
@@ -596,7 +633,7 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 		m_bDynamicallyDespawned = true;
 		foreach (SCR_ScenarioFrameworkLayerBase child : m_aChildren)
 		{
-			child.DynamicDespawn();
+			child.DynamicDespawn(this);
 		}
 		
 		m_aChildren.Clear();
@@ -605,7 +642,7 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	//------------------------------------------------------------------------------------------------
 	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
 	{
-		if (m_bInitiated)
+		if (m_bInitiated || m_bIsTerminated)
 			return;
 		
 		foreach (SCR_ScenarioFrameworkActivationConditionBase activationCondition : m_aActivationConditions)
@@ -699,6 +736,10 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 #endif	
 	
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_ScenarioFrameworkArea(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		m_fDebugShapeRadius = m_iDynamicDespawnRange;

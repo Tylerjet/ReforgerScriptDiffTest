@@ -19,10 +19,11 @@ class EntityOrientationTool: WorkbenchPlugin
 		}
 
 		vector mat[4];
-		IEntity e = api.GetSelectedEntity(0);
+		IEntitySource src = api.GetSelectedEntity(0);
+		IEntity e = api.SourceToEntity(src);
 		e.GetWorld().GetCamera(19, mat);
 		
-		IEntity parent = api.SourceToEntity(api.EntityToSource(e).GetParent());
+		IEntity parent = api.SourceToEntity(src.GetParent());
 		if (parent)
 		{			
 			vector mat_parent[4];
@@ -47,10 +48,10 @@ class EntityOrientationTool: WorkbenchPlugin
 		}
 		
 		api.BeginEntityAction("Set entity to view orientation script");
-		api.ModifyEntityKey(e, "coords", pos.ToString(false));
-		api.ModifyEntityKey(e, "angleX", yawPitchRoll[1].ToString());
-		api.ModifyEntityKey(e, "angleY", yawPitchRoll[0].ToString());
-		api.ModifyEntityKey(e, "angleZ", yawPitchRoll[2].ToString());
+		api.SetVariableValue(src, null, "coords", pos.ToString(false));
+		api.SetVariableValue(src, null, "angleX", yawPitchRoll[1].ToString());
+		api.SetVariableValue(src, null, "angleY", yawPitchRoll[0].ToString());
+		api.SetVariableValue(src, null, "angleZ", yawPitchRoll[2].ToString());
 		api.EndEntityAction();
 	}
 
@@ -78,7 +79,7 @@ class CameraOrientationTool: WorkbenchPlugin
 		}
 
 		vector mat[4];
-		IEntity e = api.GetSelectedEntity(0);
+		IEntity e = api.SourceToEntity(api.GetSelectedEntity(0));
 		e.GetTransform(mat);
 		
 		api.SetCamera(mat[3], mat[2]);

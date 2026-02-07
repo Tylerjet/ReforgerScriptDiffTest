@@ -1,25 +1,23 @@
-//------------------------------------------------------------------------------------------------
 class SCR_CampaignMutePlayerComponent : ScriptedWidgetComponent
 {
 	protected int m_iPlayerID = -1;
 	protected bool m_bMuted = false;
 
 	//------------------------------------------------------------------------------------------------
-	//! Returns player ID
+	//! \return player ID
 	int GetPlayerID()
 	{
 		return m_iPlayerID;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Sets player ID
+	//! \param[in] playerID the player ID to set
 	void SetPlayerID(int playerID)
 	{
 		m_iPlayerID = playerID;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! An event called when the button, this component is attached to, is clicked
 	override bool OnClick(Widget w, int x, int y, int button)
 	{
 		PlayerController pController = GetGame().GetPlayerController();
@@ -40,4 +38,4 @@ class SCR_CampaignMutePlayerComponent : ScriptedWidgetComponent
 		
 		return false;
 	}
-};
+}

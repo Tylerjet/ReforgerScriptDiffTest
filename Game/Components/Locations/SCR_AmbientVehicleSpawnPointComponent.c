@@ -1,10 +1,7 @@
-#include "scripts/Game/config.c"
-//------------------------------------------------------------------------------------------------
 class SCR_AmbientVehicleSpawnPointComponentClass : ScriptComponentClass
 {
 }
 
-//------------------------------------------------------------------------------------------------
 class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 {
 	[Attribute("0", UIWidgets.EditBox, "How often will the vehicle respawn when destroyed. (seconds, 0 = no respawn)", "0 inf 1")]
@@ -23,16 +20,12 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 
 	protected bool m_bDepleted;
 	protected bool m_bFirstSpawnDone;
+	protected bool m_bSpawnProcessed;
 
 	protected int m_iID;
 
-	#ifndef AR_CAMPAIGN_TIMESTAMP
-	protected float m_fRespawnTimestamp;
-	protected float m_fDespawnTimer = -1;
-	#else
 	protected WorldTimestamp m_fRespawnTimestamp;
 	protected WorldTimestamp m_fDespawnTimer;
-	#endif
 
 	protected ResourceName m_sPrefab;
 
@@ -41,88 +34,92 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 	protected Faction m_SavedFaction;
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetRespawnPeriod()
 	{
 		return m_iRespawnPeriod;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] ID
 	void SetID(int ID)
 	{
 		m_iID = ID;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetID()
 	{
 		return m_iID;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] depleted
 	void SetIsDepleted(bool depleted)
 	{
 		m_bDepleted = depleted;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetIsDepleted()
 	{
 		return m_bDepleted;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetIsFirstSpawnDone()
 	{
 		return m_bFirstSpawnDone;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	#ifndef AR_CAMPAIGN_TIMESTAMP
-	void SetDespawnTimer(float time)
-	#else
+	//! \return
+	bool GetIsSpawnProcessed()
+	{
+		return m_bSpawnProcessed;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] time
 	void SetDespawnTimer(WorldTimestamp time)
-	#endif
 	{
 		m_fDespawnTimer = time;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	#ifndef AR_CAMPAIGN_TIMESTAMP
-	float GetDespawnTimer()
-	#else
+	//! \return
 	WorldTimestamp GetDespawnTimer()
-	#endif
 	{
 		return m_fDespawnTimer;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	#ifndef AR_CAMPAIGN_TIMESTAMP
-	void SetRespawnTimestamp(float timestamp)
-	#else
+	//! \param[in] timestamp
 	void SetRespawnTimestamp(WorldTimestamp timestamp)
-	#endif
 	{
 		m_fRespawnTimestamp = timestamp;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	#ifndef AR_CAMPAIGN_TIMESTAMP
-	float GetRespawnTimestamp()
-	#else
+	//! \return
 	WorldTimestamp GetRespawnTimestamp()
-	#endif
 	{
 		return m_fRespawnTimestamp;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	Vehicle GetSpawnedVehicle()
 	{
 		return m_Vehicle;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return the created vehicle
 	Vehicle SpawnVehicle()
 	{
 		SCR_FactionAffiliationComponent comp = SCR_FactionAffiliationComponent.Cast(GetOwner().FindComponent(SCR_FactionAffiliationComponent));
@@ -168,12 +165,9 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 		GetOwner().GetTransform(params.Transform);
 
 		m_Vehicle = Vehicle.Cast(GetGame().SpawnEntityPrefab(prefab, null, params));
-		#ifndef AR_CAMPAIGN_TIMESTAMP
-		m_fRespawnTimestamp = 0;
-		#else
 		m_fRespawnTimestamp = null;
-		#endif
 		m_bFirstSpawnDone = true;
+		m_bSpawnProcessed = true;
 
 		if (!m_Vehicle)
 			return null;
@@ -199,31 +193,26 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] vehicle
 	void OnVehicleDestroyed(IEntity vehicle)
 	{
 		m_Vehicle = null;
 
 		if (m_iRespawnPeriod > 0)
-		#ifndef AR_CAMPAIGN_TIMESTAMP
-			m_fRespawnTimestamp = Replication.Time() + (m_iRespawnPeriod * 1000);
-		#else
 		{
 			ChimeraWorld world = GetOwner().GetWorld();
 			m_fRespawnTimestamp = world.GetServerTimestamp().PlusSeconds(m_iRespawnPeriod);
 		}
-		#endif
 		else
 			m_bDepleted = true;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void DespawnVehicle()
 	{
-		#ifndef AR_CAMPAIGN_TIMESTAMP
-		m_fDespawnTimer = -1;
-		#else
 		m_fDespawnTimer = null;
-		#endif
+		m_bSpawnProcessed = false;
 
 		if (!m_Vehicle)
 			return;
@@ -281,18 +270,23 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
-		if (!GetGame().InPlayMode() || Replication.IsClient())
+		SCR_AmbientVehicleSystem manager = SCR_AmbientVehicleSystem.GetInstance();
+
+		if (!manager)
 			return;
 
-		SCR_AmbientVehiclesManager.GetInstance().RegisterSpawnpoint(this);
+		manager.RegisterSpawnpoint(this);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_AmbientVehicleSpawnPointComponent()
 	{
-		SCR_AmbientVehiclesManager manager = SCR_AmbientVehiclesManager.GetInstance(false);
+		SCR_AmbientVehicleSystem manager = SCR_AmbientVehicleSystem.GetInstance();
 
-		if (manager)
-			manager.UnregisterSpawnpoint(this);
+		if (!manager)
+			return;
+
+		manager.UnregisterSpawnpoint(this);
 	}
 }

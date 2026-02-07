@@ -15,8 +15,12 @@ class SCR_CampaignTutorialArlandStageMedical18: SCR_BaseCampaignTutorialArlandSt
 		RegisterWaypoint("Victim");
 		
 		m_Figurant = GetGame().GetWorld().FindEntityByName("Victim");
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
 		GetGame().GetCallqueue().Remove(m_TutorialComponent.RefreshVictimResilience);
+		
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("FirstAid_MorphineApply", true);
+		HintOnVoiceOver();
 	}
 	
 	//------------------------------------------------------------------------------------------------

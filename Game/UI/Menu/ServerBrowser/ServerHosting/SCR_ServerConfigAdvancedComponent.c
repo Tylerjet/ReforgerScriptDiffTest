@@ -47,7 +47,7 @@ class SCR_ServerConfigAdvancedComponent : SCR_ConfigListComponent
 	}
 	
 	//-------------------------------------------------------------------------------------------
-	protected void OnHostLocalyChanged(SCR_SpinBoxComponent spni, int option)
+	protected void OnHostLocalyChanged(SCR_SpinBoxComponent spinBox, int option)
 	{
 		bool selected = option == 1;
 		

@@ -69,8 +69,8 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 	[Attribute("SaveImage")]
 	protected string m_sEntryIconWidgetName;
 	
-	[Attribute("#AR-Date_Format")]
-	protected string m_sDateFormat;
+	[Attribute("false", UIWidgets.CheckBox)]
+	protected bool m_bVerboseDate;
 	
 	[Attribute(uiwidget: UIWidgets.ResourceNamePicker, params: "layout")]
 	protected ResourceName m_sCreateLayout;
@@ -118,6 +118,8 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 	//////////////////////////////////////////////////////////////////////////////////////////
 	// Control buttons
 	//////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnClose(SCR_InputButtonComponent button, string actionName)
 	{
 		CloseMenu();
@@ -232,6 +234,8 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 	//////////////////////////////////////////////////////////////////////////////////////////
 	// Main operations
 	//////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	protected void SaveEntry()
 	{
 		string customName = m_SaveNameInput.GetValue();
@@ -262,9 +266,7 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 		callback.GetEventOnResponse().Remove(OnLoadEntryUploadResponse);
 		
 		if (callback.GetResponseType() != EBackendCallbackResponse.SUCCESS)
-		{
 			SCR_CommonDialogs.CreateRequestErrorDialog();
-		}
 		
 		if (m_LoadingOverlay)
 			m_LoadingOverlay.Close();
@@ -275,6 +277,8 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 	//////////////////////////////////////////////////////////////////////////////////////////
 	// Interaction
 	//////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	protected void SelectEntry(Widget w, string fileName)
 	{
 		string customName = GetGame().GetSaveManager().GetCustomName(fileName);
@@ -285,6 +289,8 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 		
 		UpdateButtons();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateButtons()
 	{
 		string customName = m_SaveNameInput.GetValue();
@@ -302,6 +308,8 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 		m_ConfirmButton.SetVisible(!isOverride, false);
 		m_ConfirmButton.SetEnabled(!isOverride && isValid);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnFrame()
 	{
 		//--- Ignore if all entries were shown
@@ -370,7 +378,7 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 					
 					SCR_UIInfo info = GetGame().GetSaveManager().GetSaveTypeInfo(fileName);
 					string displayName = entryName;
-					Color imageColor = Color.White;;
+					Color imageColor = Color.FromInt(Color.WHITE);
 					if (info)
 					{
 						info.SetIconTo(entryIconWidget);
@@ -385,7 +393,7 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 					entryNameWidget.SetText(displayName);
 					
 					TextWidget entryDateWidget = TextWidget.Cast(entryWidget.FindAnyWidget(m_sEntryDateWidgetName));
-					entryDateWidget.SetTextFormat(m_sDateFormat, d, SCR_DateTimeHelper.GetMonthString(m), y);
+					entryDateWidget.SetText(SCR_DateTimeHelper.GetDateString(d, m, y, m_bVerboseDate));
 					
 					TextWidget entryTimeWidget = TextWidget.Cast(entryWidget.FindAnyWidget(m_sEntryTimeWidgetName));
 					entryTimeWidget.SetText(SCR_FormatHelper.GetTimeFormattingHoursMinutes(hh, mm));
@@ -426,7 +434,7 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 					Widget entryMetaWidget = entryWidget.FindAnyWidget(m_sEntryMeta);
 					entryMetaWidget.SetVisible(false);
 					
-					entryIconWidget.SetColor(UIColors.WARNING);
+					entryIconWidget.SetColor(Color.FromInt(UIColors.WARNING.PackToInt()));
 				}
 				
 				AnimateWidget.Opacity(entryWidget, 1, 3);
@@ -445,6 +453,8 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 	//////////////////////////////////////////////////////////////////////////////////////////
 	// Overrides
 	//////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	override bool OnClick(Widget w, int x, int y, int button)
 	{
 		if (w.GetParent() != m_wList)
@@ -559,4 +569,4 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 	{
 		GetGame().GetCallqueue().Remove(OnFrame);
 	}
-};
+}

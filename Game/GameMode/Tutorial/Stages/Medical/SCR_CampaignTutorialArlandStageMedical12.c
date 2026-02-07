@@ -12,7 +12,10 @@ class SCR_CampaignTutorialArlandStageMedical12: SCR_BaseCampaignTutorialArlandSt
 	{
 		m_PlayerInventory = SCR_CharacterInventoryStorageComponent.Cast(m_Player.FindComponent(SCR_CharacterInventoryStorageComponent));
 
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("FirstAid_CheckChest");
+		HintOnVoiceOver();
 	}
 	
 	//------------------------------------------------------------------------------------------------

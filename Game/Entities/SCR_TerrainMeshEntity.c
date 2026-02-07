@@ -90,7 +90,8 @@ class SCR_TerrainMeshEntity : GenericEntity
 		int numIndices[] = {iI};
 		string materials[] = {material};
 		
-		MeshObject meshObject = MeshObject.Create(1, numVertices, numIndices, materials, 0);
+		Resource res = MeshObject.Create(1, numVertices, numIndices, materials, 0);
+		MeshObject meshObject = res.GetResource().ToMeshObject();
 		meshObject.UpdateVerts(0, verts, uvs);
 		meshObject.UpdateIndices(0, indices);
 		SetObject(meshObject,"");

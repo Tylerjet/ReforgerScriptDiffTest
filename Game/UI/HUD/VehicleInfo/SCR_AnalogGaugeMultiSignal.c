@@ -42,7 +42,7 @@ class SCR_AnalogGaugeMultiSignal : SCR_AnalogGaugeSmall
 	//------------------------------------------------------------------------------------------------
 	void SCR_AnalogGaugeMultiSignal()
 	{
-		m_iArraysOfSignalsIDs = new ref array<int>();
+		m_iArraysOfSignalsIDs = new array<int>();
 	}
 	
 	//------------------------------------------------------------------------------------------------

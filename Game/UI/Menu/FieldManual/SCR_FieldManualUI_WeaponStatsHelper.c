@@ -12,30 +12,35 @@ class SCR_FieldManualUI_WeaponStatsHelper
 	protected ref array<int> m_aSightDistanceSettings;
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetDisplayName()
 	{
 		return m_sDisplayName;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetInventoryIcon()
 	{
 		return m_sInventoryIcon;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetDescription()
 	{
 		return m_sDescription;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	array<string> GetFireModes()
 	{
 		return m_aFireModes;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetRateOfFire()
 	{
 		return m_iRateOfFire;
@@ -49,18 +54,22 @@ class SCR_FieldManualUI_WeaponStatsHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	array<int> GetSightDistanceSettings()
 	{
 		return m_aSightDistanceSettings;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetDefaultSightDistanceSetting()
 	{
 		return m_iDefaultSightDistanceSetting;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] weaponResource
 	void SCR_FieldManualUI_WeaponStatsHelper(ResourceName weaponResource)
 	{
 		if (!weaponResource)

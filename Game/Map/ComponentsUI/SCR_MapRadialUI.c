@@ -1,6 +1,16 @@
 //------------------------------------------------------------------------------------------------
-//! 2d map radial menu UI
-class SCR_MapRadialUI: SCR_MapUIBaseComponent
+void ScriptInvokerEntrySelectedMethod(SCR_SelectionMenuEntry entry, int i);
+typedef func ScriptInvokerEntrySelectedMethod;
+typedef ScriptInvokerBase<ScriptInvokerEntrySelectedMethod> ScriptInvokerMenuEntrySelected;
+
+//------------------------------------------------------------------------------------------------
+void ScriptInvokerEntryPerformedMethod(SCR_SelectionMenuEntry entry, float worldPos[2]);
+typedef func ScriptInvokerEntryPerformedMethod;
+typedef ScriptInvokerBase<ScriptInvokerEntryPerformedMethod> ScriptInvokerMenuEntryPerformed;
+
+//------------------------------------------------------------------------------------------------
+//! 2D map radial menu UI
+class SCR_MapRadialUI : SCR_MapUIBaseComponent
 {
 	[Attribute()]
 	protected ref SCR_RadialMenuController m_RadialController;
@@ -16,28 +26,47 @@ class SCR_MapRadialUI: SCR_MapUIBaseComponent
 
 	protected vector m_vMenuWorldPos;
 	
-	protected ref ScriptInvoker<> m_OnMenuInit = new ScriptInvoker();	// used to fill in entries after map open
-	protected ref ScriptInvoker<SCR_SelectionMenuEntry, float[]> m_OnEntryPerformed = new ScriptInvoker();
+	protected ref ScriptInvokerVoid 				m_OnMenuInit = new ScriptInvokerVoid();	// used to fill in entries after map open;
+	protected ref ScriptInvokerMenuEntrySelected 	m_OnEntrySelected = new ScriptInvokerMenuEntrySelected();
+	protected ref ScriptInvokerMenuEntryPerformed 	m_OnEntryPerformed = new ScriptInvokerMenuEntryPerformed();
 	
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetOnMenuInitInvoker() { return m_OnMenuInit; }
+	//! \return
+	ScriptInvokerVoid GetOnMenuInitInvoker()
+	{
+		return m_OnMenuInit;
+	}
 	
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetOnEntryPerformedInvoker() { return m_OnEntryPerformed; }
+	//! \return
+	ScriptInvokerMenuEntrySelected GetOnEntrySelectedInvoker()
+	{
+		return m_OnEntrySelected;
+	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
+	ScriptInvokerMenuEntryPerformed GetOnEntryPerformedInvoker()
+	{
+		return m_OnEntryPerformed;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_RadialMenuController GetRadialController() 
 	{
 		return m_RadialController;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_MapRadialDisplay GetRadialDisplay()
 	{
 		return m_Display;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	static SCR_MapRadialUI GetInstance()
 	{
 		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
@@ -48,6 +77,7 @@ class SCR_MapRadialUI: SCR_MapUIBaseComponent
 	}
 		
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	vector GetMenuWorldPosition()
 	{				
 		m_vMenuWorldPos[1] = GetGame().GetWorld().GetSurfaceY(m_vMenuWorldPos[0], m_vMenuWorldPos[2]);
@@ -57,7 +87,9 @@ class SCR_MapRadialUI: SCR_MapUIBaseComponent
 		
 	//------------------------------------------------------------------------------------------------
 	//! Listener callback
-	void OnInputMenuOpen(float value, EActionTrigger reason)
+	//! \param[in] value
+	//! \param[in] reason
+	protected void OnInputMenuOpen(float value, EActionTrigger reason)
 	{
 		if (m_CursorModule.GetCursorState() & EMapCursorState.CS_PAN)	// dont open + pan at the same time
 			return;
@@ -70,6 +102,8 @@ class SCR_MapRadialUI: SCR_MapUIBaseComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! SCR_RadialMenuController event
+	//! \param[in] controller
+	//! \param[in] hasControl
 	protected void InputOpenMenu(SCR_RadialMenuController controller, bool hasControl)
 	{		
 		if (!hasControl)
@@ -91,9 +125,11 @@ class SCR_MapRadialUI: SCR_MapUIBaseComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! SCR_RadialMenuController event
+	//! \param[in] controller
 	protected void OnControllerTakeControl(SCR_RadialMenuController controller)
 	{
 		m_RadialMenu = m_RadialController.GetRadialMenu();
+		m_RadialMenu.GetOnSelect().Insert(OnEntrySelected);
 		m_RadialMenu.GetOnPerform().Insert(OnEntryPerformed);
 		m_RadialMenu.GetOnOpen().Insert(OpenMenu);
 		m_RadialMenu.GetOnClose().Insert(CloseMenu);
@@ -105,9 +141,11 @@ class SCR_MapRadialUI: SCR_MapUIBaseComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! SCR_RadialMenuController event
+	//! \param[in] controller
 	protected void OnControllerChanged(SCR_RadialMenuController controller)
 	{
 		m_RadialMenu = m_RadialController.GetRadialMenu();
+		m_RadialMenu.GetOnSelect().Remove(OnEntrySelected);
 		m_RadialMenu.GetOnPerform().Remove(OnEntryPerformed);
 		m_RadialMenu.GetOnOpen().Remove(OpenMenu);
 		m_RadialMenu.GetOnClose().Remove(CloseMenu);
@@ -156,6 +194,18 @@ class SCR_MapRadialUI: SCR_MapUIBaseComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! SCR_RadialMenu event
+	//! \param[in] menu
+	//! \param[in] entry
+	//! \param[in] entryID
+	void OnEntrySelected(SCR_SelectionMenu menu, SCR_SelectionMenuEntry entry, int entryID)
+	{		
+		m_OnEntrySelected.Invoke(entry, entryID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! SCR_RadialMenu event
+	//! \param[in] menu
+	//! \param[in] entry
 	void OnEntryPerformed(SCR_SelectionMenu menu, SCR_SelectionMenuEntry entry)
 	{
 		float wX, wY;
@@ -169,6 +219,8 @@ class SCR_MapRadialUI: SCR_MapUIBaseComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Insert own entry into the menu
+	//! \param[in] entry
+	//! \param[in] category
 	void InsertCustomRadialEntry(SCR_SelectionMenuEntry entry, SCR_SelectionMenuCategoryEntry category = null)
 	{
 		if (category)
@@ -179,6 +231,8 @@ class SCR_MapRadialUI: SCR_MapUIBaseComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Insert own category into the menu
+	//! \param[in] entry
+	//! \param[in] parent
 	void InsertCustomRadialCategory(SCR_SelectionMenuCategoryEntry entry, SCR_SelectionMenuCategoryEntry parent = null)
 	{ 
 		if (parent)
@@ -189,6 +243,9 @@ class SCR_MapRadialUI: SCR_MapUIBaseComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Add simple entry
+	//! \param[in] name
+	//! \param[in] category
+	//! \return
 	SCR_SelectionMenuEntry AddRadialEntry(string name, SCR_SelectionMenuCategoryEntry category = null)
 	{		
 		SCR_SelectionMenuEntry entry = new SCR_SelectionMenuEntry();
@@ -204,6 +261,9 @@ class SCR_MapRadialUI: SCR_MapUIBaseComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Add simple category
+	//! \param[in] name
+	//! \param[in] parent
+	//! \return
 	SCR_SelectionMenuCategoryEntry AddRadialCategory(string name, SCR_SelectionMenuCategoryEntry parent = null)
 	{
 		SCR_SelectionMenuCategoryEntry entry = new SCR_SelectionMenuCategoryEntry();
@@ -219,6 +279,7 @@ class SCR_MapRadialUI: SCR_MapUIBaseComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Remove entry
+	//! \param[in] entry
 	void RemoveRadialEntry(SCR_SelectionMenuEntry entry)
 	{
 		m_RadialMenu.RemoveEntry(entry);
@@ -226,6 +287,8 @@ class SCR_MapRadialUI: SCR_MapUIBaseComponent
 										
 	//------------------------------------------------------------------------------------------------
 	// OVERRIDES
+	//------------------------------------------------------------------------------------------------
+
 	//------------------------------------------------------------------------------------------------
 	override void Update(float timeSlice)
 	{
@@ -258,6 +321,9 @@ class SCR_MapRadialUI: SCR_MapUIBaseComponent
 		
 		if (m_RadialController.HasControl())	
 		{
+			if (m_RadialMenu.IsOpened())	// close event is unregistered below so close manually here
+				CloseMenu();
+			
 			OnControllerChanged(null);
 			m_RadialController.StopControl(true);
 		}
@@ -266,8 +332,9 @@ class SCR_MapRadialUI: SCR_MapUIBaseComponent
 	}
 		
 	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_MapRadialUI()
 	{
 		m_bHookToRoot = true;
 	}
-};
+}

@@ -60,7 +60,9 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 	protected string m_sReceivingTransmissionLayout;
 
 	const string ICON_DIRECT_SPEECH = "VON_directspeech";
+	const string ICON_RADIO_HINT = "VON_radio";
 	const string ICON_RADIO = "VON_frequency";
+	const string ICON_SERVER_DISABLE_HINT = "server-locked";
 
 	const string LABEL_FREQUENCY_UNITS = "#AR-VON_FrequencyUnits_MHz";
 	const string LABEL_UNKNOWN_SOURCE = "#AR-VON_UnknownSource";
@@ -70,11 +72,12 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 	const string WIDGET_OVERFLOW = "VonAdditional";
 	const string WIDGET_OVERFLOW_TEXT = "number";
 	const string WIDGET_SELECTED_ROOT = "VonSelected";
+	const string WIDGET_SELECTED_ICON = "Selected_Icon";
+	const string WIDGET_SELECTED_ICONGLOW = "Selected_IconGlow";
 	const string WIDGET_SELECTED_VON = "Selected_VONChannel";
-	const string WIDGET_SELECTED_FREQUENCY = "Selected_Frequency";
+	const string WIDGET_SELECTED_TEXT = "Selected_Text";
 
 	const ref Color COLOR_WHITE = Color.FromSRGBA(255, 255, 255, 255);
-	const ref Color COLOR_ORANGE = Color.FromSRGBA(226, 167, 79, 255);
 
 	protected int m_iTransmissionSlots = 4;			// max amount of receiving transmissions
 	const float FADEOUT_TIMER_THRESHOLD = 1;
@@ -97,11 +100,14 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 	protected PlayerManager m_PlayerManager;
 	protected SCR_VONController m_VONController;
 	protected SCR_InfoDisplaySlotHandler m_SlotHandler;
+	protected SCR_HUDSlotUIComponent m_HUDSlotComponent;
 
 	protected Widget m_wVerticalLayout;
 	protected Widget m_wSelectedHint;
+	protected ImageWidget m_wSelectedHintIcon;
+	protected ImageWidget m_wSelectedHintIconGlow;
 	protected TextWidget m_wSelectedVON;
-	protected TextWidget m_wSelectedFrequency;
+	protected TextWidget m_wSelectedText;
 	protected Widget m_wTalkingAmountWidget;
 	protected Widget m_wAdditionalSpeakersWidget;
 	protected RichTextWidget m_wAdditionalSpeakersText;
@@ -207,7 +213,7 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 		// update only when first activation / device changed / frequency changed
 		if (pTransmission.m_bIsActive == false
 			|| pTransmission.m_RadioTransceiver != receiver
-			|| (receiver && m_OutTransmission.m_fFrequency != frequency)
+			|| (receiver && pTransmission.m_fFrequency != frequency)
 		)
 		{
 			bool filtered = UpdateTransmission(pTransmission, receiver, frequency, true);
@@ -282,6 +288,9 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 			adjustedFreq = Math.Round(data.m_fFrequency * 0.1) / 100;
 			data.m_Widgets.m_wFrequency.SetText(adjustedFreq.ToString() + " " + LABEL_FREQUENCY_UNITS);
 			data.m_Widgets.m_wFrequency.SetVisible(true);
+			
+			if (adjustedFreq == 0) 
+				Print("SCR_VonDisplay: Incoming frequency 0 | base: " + frequency + " | adjusted: " + adjustedFreq, LogLevel.WARNING);
 		}
 		// direct speech
 		else
@@ -301,7 +310,31 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 			data.m_Widgets.m_wIcon.SetColor(COLOR_WHITE);
 
 			if (!enemyTransmission)
-				data.m_Widgets.m_wName.SetText(m_PlayerManager.GetPlayerName(data.m_iPlayerID));
+			{			
+				data.m_Entity = GetGame().GetPlayerManager().GetPlayerControlledEntity(data.m_iPlayerID);
+				SCR_PossessingManagerComponent possMgr =  SCR_PossessingManagerComponent.GetInstance();
+				if (data.m_Entity && possMgr && possMgr.IsPossessing(data.m_iPlayerID))		// if possessing, use name of the possessed character instead of player
+				{					
+					SCR_CharacterIdentityComponent scrCharIdentity = SCR_CharacterIdentityComponent.Cast(data.m_Entity.FindComponent(SCR_CharacterIdentityComponent));
+					if (scrCharIdentity)
+					{
+						string name;
+						array<string> nameParams = {};
+						scrCharIdentity.GetFormattedFullName(name, nameParams);
+						data.m_Widgets.m_wName.SetTextFormat(name, nameParams[0], nameParams[1], nameParams[2])
+					}
+					else	// char might not be using scripted identity component
+					{
+						CharacterIdentityComponent charIdentity = CharacterIdentityComponent.Cast(data.m_Entity.FindComponent(CharacterIdentityComponent));
+						if (charIdentity && charIdentity.GetIdentity())
+							data.m_Widgets.m_wName.SetText(charIdentity.GetIdentity().GetName());	 
+						else 
+							data.m_Widgets.m_wName.SetText(m_PlayerManager.GetPlayerName(data.m_iPlayerID));	
+					}
+				}
+				else 
+					data.m_Widgets.m_wName.SetText(m_PlayerManager.GetPlayerName(data.m_iPlayerID));		
+			}
 			else
 				data.m_Widgets.m_wName.SetText(LABEL_UNKNOWN_SOURCE);
 
@@ -312,7 +345,7 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 		}
 		else	// outgoing
 		{
-			data.m_Widgets.m_wIcon.SetColor(COLOR_ORANGE);
+			data.m_Widgets.m_wIcon.SetColor(Color.FromInt(GUIColors.ORANGE.PackToInt()));
 			data.m_Widgets.m_wName.SetText(string.Empty);
 			data.m_Widgets.m_wName.SetVisible(false);
 
@@ -390,23 +423,79 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 	//! Show hint displaying which VON method was selected
 	void ShowSelectedVONHint(SCR_VONEntry entry)
 	{
-		SCR_VONEntryRadio radioEntry = SCR_VONEntryRadio.Cast(entry);
-		if (!radioEntry || !m_wSelectedHint || !radioEntry.GetUIInfo())
+		if (entry.GetVONMethod() == ECommMethod.DIRECT)
+		{
+			m_wSelectedVON.SetText("#AR-VON_DirectTalk");
+			SetHintIcon(false);
+		}
+		else 
+		{
+			SCR_VONEntryRadio radioEntry = SCR_VONEntryRadio.Cast(entry);
+			if (!radioEntry || !m_wSelectedHint || !radioEntry.GetUIInfo())
 			return;
+						
+			string formatText = "#AR-VON_ChannelHint"; 
+			m_wSelectedVON.SetTextFormat(formatText, radioEntry.GetUIInfo().GetName(), radioEntry.GetTransceiverNumber(), radioEntry.GetDisplayText());
 
+			SetHintIcon(true);
+		}
+
+		m_wSelectedText.SetVisible(true);
+		
 		m_wSelectedHint.SetOpacity(1);
-		m_wSelectedVON.SetText(radioEntry.GetUIInfo().GetName() + " Ch" + radioEntry.GetTransceiverNumber());
-		m_wSelectedFrequency.SetText("[" + radioEntry.GetDisplayText() + "]");
-
 		GetGame().GetCallqueue().Remove(FadeSelectedVONHint);								// in case of multiple selections
 		GetGame().GetCallqueue().CallLater(FadeSelectedVONHint, SELECTED_HINT_FADE_SPEED);	// start fading after a certain display time
 
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Show hint displaying which VON method was selected
+	//! \param isServerDisabled determines type of disable
+	void ShowSelectedVONDisabledHint(bool isServerDisabled = false)
+	{
+		if (isServerDisabled)
+		{
+			m_wSelectedHintIcon.LoadImageFromSet(0, m_sImageSet, ICON_SERVER_DISABLE_HINT);
+			m_wSelectedHintIconGlow.LoadImageFromSet(0, m_sImageSetGlow, ICON_SERVER_DISABLE_HINT);
+		}
+		else 
+		{
+			m_wSelectedHintIcon.LoadImageFromSet(0, m_sImageSet, ICON_RADIO_HINT);
+			m_wSelectedHintIconGlow.LoadImageFromSet(0, m_sImageSetGlow, ICON_RADIO_HINT);
+		}
+		
+		m_wSelectedHintIcon.SetColor(Color.FromInt(GUIColors.RED.PackToInt()));
+		
+		m_wSelectedVON.SetText("");
+		m_wSelectedText.SetVisible(false);
+		
+		m_wSelectedHint.SetOpacity(1);
+		GetGame().GetCallqueue().Remove(FadeSelectedVONHint);								// in case of multiple selections
+		GetGame().GetCallqueue().CallLater(FadeSelectedVONHint, SELECTED_HINT_FADE_SPEED);	// start fading after a certain display time
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void FadeSelectedVONHint()
 	{
 		AnimateWidget.Opacity(m_wSelectedHint, 0, 4);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set VON info hint icon type
+	protected void SetHintIcon(bool isRadio)
+	{
+		if (isRadio)
+		{
+			m_wSelectedHintIcon.LoadImageFromSet(0, m_sImageSet, ICON_RADIO_HINT);
+			m_wSelectedHintIconGlow.LoadImageFromSet(0, m_sImageSetGlow, ICON_RADIO_HINT);
+		}
+		else 
+		{
+			m_wSelectedHintIcon.LoadImageFromSet(0, m_sImageSet, ICON_DIRECT_SPEECH);
+			m_wSelectedHintIconGlow.LoadImageFromSet(0, m_sImageSetGlow, ICON_DIRECT_SPEECH);
+		}
+		
+		m_wSelectedHintIcon.SetColor(Color.FromInt(GUIColors.ORANGE.PackToInt()));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -457,18 +546,31 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 		m_wAdditionalSpeakersText = RichTextWidget.Cast(m_wRoot.FindAnyWidget(WIDGET_OVERFLOW_TEXT));
 
 		m_wSelectedHint = m_wRoot.FindAnyWidget(WIDGET_SELECTED_ROOT);
+		m_wSelectedHintIcon = ImageWidget.Cast(m_wSelectedHint.FindAnyWidget(WIDGET_SELECTED_ICON));
+		m_wSelectedHintIconGlow = ImageWidget.Cast(m_wSelectedHint.FindAnyWidget(WIDGET_SELECTED_ICONGLOW));
 		m_wSelectedVON = TextWidget.Cast(m_wRoot.FindAnyWidget(WIDGET_SELECTED_VON));
-		m_wSelectedFrequency = TextWidget.Cast(m_wRoot.FindAnyWidget(WIDGET_SELECTED_FREQUENCY));
+		m_wSelectedText = TextWidget.Cast(m_wRoot.FindAnyWidget(WIDGET_SELECTED_TEXT));
 
 		m_SlotHandler = SCR_InfoDisplaySlotHandler.Cast(GetHandler(SCR_InfoDisplaySlotHandler));
-		if (m_SlotHandler)
-			m_SlotHandler.GetSlotUIComponent().GetOnResize().Insert(OnSlotUIResize);
+		if (!m_SlotHandler)
+			return;
+		
+		m_HUDSlotComponent = m_SlotHandler.GetSlotUIComponent();
+		if (!m_HUDSlotComponent)
+			return;
+		
+		m_HUDSlotComponent.GetOnResize().Insert(OnSlotUIResize);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnSlotUIResize()
 	{
-		int height = m_SlotHandler.GetSlotUIComponent().GetHeight();
+		// Assign it again in case the SlotUIComponent has changed
+		m_HUDSlotComponent = m_SlotHandler.GetSlotUIComponent();
+		if (!m_HUDSlotComponent)
+			return;
+		
+		int height = m_HUDSlotComponent.GetHeight();
 		m_iTransmissionSlots = ((int)height / HEIGHT_DIVIDER) - 1;
 		if (m_iTransmissionSlots <= 0)
 			m_iTransmissionSlots = 1;
@@ -515,6 +617,19 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 	//------------------------------------------------------------------------------------------------
 	override void DisplayUpdate(IEntity owner, float timeSlice)
 	{
+		//Check if the SlotUIComponent is still valid otherwise change to the new one
+		if (m_HUDSlotComponent != m_SlotHandler.GetSlotUIComponent())
+		{
+			if (m_HUDSlotComponent)
+				m_HUDSlotComponent.GetOnResize().Remove(OnSlotUIResize);
+			
+			m_HUDSlotComponent = m_SlotHandler.GetSlotUIComponent();
+			if (!m_HUDSlotComponent)
+				return;
+			
+			m_HUDSlotComponent.GetOnResize().Insert(OnSlotUIResize);
+		}
+		
 		// update visibility timer
 		if (m_OutTransmission.m_bIsActive)
 		{

@@ -4,17 +4,22 @@ class SCR_SpeedBoostUpManualCameraComponent : SCR_BaseManualCameraComponent
 {
 	[Attribute("1")]
 	private bool m_bSpeedBoostUpEnabled;
+
 	[Attribute("1")]
 	private bool m_bHoldBoostUpEnabled;
+
 	[Attribute("1")]
 	private bool m_bDisableOnSprint;
 	
 	[Attribute("25")]
 	private float m_iHeightMax;
+
 	[Attribute("2")]
 	private float m_HeightMultiplier;
+
 	[Attribute("3")]
 	private float m_fHoldSpeedMultiplier;
+
 	[Attribute("2")]
 	private float m_fHoldBoostMax;
 	
@@ -22,22 +27,23 @@ class SCR_SpeedBoostUpManualCameraComponent : SCR_BaseManualCameraComponent
 	
 	private bool m_bDebugEnabled;
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraFrame(SCR_ManualCameraParam param)
 	{
 		m_bDebugEnabled = DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_MANUAL_CAMERA_SPEED_BOOST_UP);
 		
 		if (!m_bDebugEnabled && param.velocityOriginal[1] <= 0)
-		{
 			return;
-		}
 		
 		DrawDebug1(param);
 		
-		if (!param.isManualInputEnabled) return;
+		if (!param.isManualInputEnabled)
+			return;
 		
 		vector pos = CoordFromCamera(param.transform[3]);
 		float surfaceY = param.world.GetSurfaceY(pos[0], pos[2]);
-		if (pos[1] > 0) surfaceY = Math.Max(surfaceY, 0); //--- When above ground, use ASL, not ATL height
+		if (pos[1] > 0)
+			surfaceY = Math.Max(surfaceY, 0); //--- When above ground, use ASL, not ATL height
 		float height = pos[1] - surfaceY;
 		
 		float multiplierVertical = 0;
@@ -45,23 +51,15 @@ class SCR_SpeedBoostUpManualCameraComponent : SCR_BaseManualCameraComponent
 		InputManager inputManager = GetGame().GetInputManager();
 		
 		if (m_bHoldBoostUpEnabled && height < m_iHeightMax && inputManager.GetActionValue("ManualCameraMoveVertical") > 0)
-		{
 			m_HoldMultiplier = Math.Min( m_HoldMultiplier + (param.timeSlice * m_fHoldSpeedMultiplier), m_fHoldBoostMax);
-		}
 		else
-		{
 			m_HoldMultiplier = 0;
-		}
 		
 		if (height < m_iHeightMax && param.velocityOriginal[1] > 0)
-		{
 			multiplierVertical = (1 - (height / m_iHeightMax)) * m_HeightMultiplier;
-		}
 		
 		if (m_bHoldBoostUpEnabled)
-		{
 			multiplierVertical *= m_HoldMultiplier;
-		}
 		
 		DrawDebug2(height);
 		
@@ -76,12 +74,14 @@ class SCR_SpeedBoostUpManualCameraComponent : SCR_BaseManualCameraComponent
 		DrawDebug4(param, multiplierVertical);
 	}	
 	
+	//------------------------------------------------------------------------------------------------
 	override bool EOnCameraInit()
 	{
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_MANUAL_CAMERA_SPEED_BOOST_UP, "", "Speed boost up debug", "Manual Camera", false);
 		return true;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	private void DrawDebug1(SCR_ManualCameraParam param)
 	{
 		if (m_bDebugEnabled)
@@ -116,6 +116,7 @@ class SCR_SpeedBoostUpManualCameraComponent : SCR_BaseManualCameraComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	private void DrawDebug2(float height)
 	{
 		if (m_bDebugEnabled)
@@ -125,6 +126,7 @@ class SCR_SpeedBoostUpManualCameraComponent : SCR_BaseManualCameraComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	private void DrawDebug3(SCR_ManualCameraParam param)
 	{
 		if (m_bDebugEnabled)
@@ -139,6 +141,7 @@ class SCR_SpeedBoostUpManualCameraComponent : SCR_BaseManualCameraComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	private void DrawDebug4(SCR_ManualCameraParam param, float multiplierVertical)
 	{
 		if (m_bDebugEnabled)
@@ -158,8 +161,7 @@ class SCR_SpeedBoostUpManualCameraComponent : SCR_BaseManualCameraComponent
 				DbgUI.PlotLive("HoldMultplier", 200, 100, (1 + m_HoldMultiplier), 100, 100);
 			}
 
-			
 			DbgUI.End();
 		}
 	}
-};
+}

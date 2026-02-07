@@ -1,24 +1,20 @@
 [ComponentEditorProps(category: "GameScripted/Editor (Editables)", description: "", icon: "WBData/ComponentEditorProps/componentEditor.png")]
-class SCR_EditablePreviewComponentClass: SCR_EditableEntityComponentClass
+class SCR_EditablePreviewComponentClass : SCR_EditableEntityComponentClass
 {
-};
+}
 
-/** @ingroup Editable_Entities
-*/
+//! @ingroup Editable_Entities
 
-/*!
-Special configuration to show icon of SCR_BasePreviewEntity ghost preview.
-*/
+//! Special configuration to show icon of SCR_BasePreviewEntity ghost preview.
 class SCR_EditablePreviewComponent : SCR_EditableEntityComponent
 {
 	protected SCR_EditableEntityComponent m_SourceEntity;
 	protected EEditableEntityType m_EntityTypeInternal;
 	protected ref SCR_UIInfo m_UIInfoInternal;
 	
-	/*!
-	Initialize the entity from another entity (copy its visualization).
-	\param from Original entity
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Initialise the entity from another entity (copy its visualization).
+	//! \param[in] from Original entity
 	void InitFromEntity(SCR_EditableEntityComponent from)
 	{
 		if (!from || !from.IsRegistered())
@@ -30,10 +26,10 @@ class SCR_EditablePreviewComponent : SCR_EditableEntityComponent
 		m_iIconBoneIndex = from.m_iIconBoneIndex;
 		RestoreParentEntity();
 	}
-	/*!
-	Initialize the entity from entity source.
-	\param from Entity source
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Initialise the entity from entity source.
+	//! \param[in] from Entity source
 	void InitFromSource(IEntityComponentSource from)
 	{
 		if (!from)
@@ -53,6 +49,7 @@ class SCR_EditablePreviewComponent : SCR_EditableEntityComponent
 		RestoreParentEntity();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override bool GetPos(out vector pos)
 	{
 		if (m_Owner && (m_Owner.GetFlags() & EntityFlags.VISIBLE))
@@ -60,14 +57,20 @@ class SCR_EditablePreviewComponent : SCR_EditableEntityComponent
 		else
 			return false;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void UpdateGameHierarchy(IEntity parent, IEntity child, bool toAdd)
 	{
 		//--- Game hierarchy is managed by SCR_BasePreviewEntity
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override EEditableEntityType GetEntityType(IEntity owner = null)
 	{
 		return m_EntityTypeInternal;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override SCR_UIInfo GetInfo(IEntity owner = null)
 	{
 		if (m_UIInfoInternal)
@@ -81,4 +84,4 @@ class SCR_EditablePreviewComponent : SCR_EditableEntityComponent
 		
 		return info;
 	}
-};
+}

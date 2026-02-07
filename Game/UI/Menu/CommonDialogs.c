@@ -42,9 +42,28 @@ class SCR_CommonDialogs
 	{
 		return SCR_ConfigurableDialogUi.CreateFromPreset(DIALOGS_CONFIG, "tutorial");
 	}
-};
-
-
+	
+	//---------------------------------------------------------------------------------------------
+	static ServerHostingUI CreateServerHostingDialog()
+	{
+		ServerHostingUI dialog = new ServerHostingUI();
+		return ServerHostingUI.Cast(SCR_ConfigurableDialogUi.CreateFromPreset(DIALOGS_CONFIG, "server_hosting", dialog));
+	}
+	
+	//---------------------------------------------------------------------------------------------
+	static AddonsToolsUI CreateModPresetsDialog()
+	{
+		AddonsToolsUI dialog = new AddonsToolsUI();
+		return AddonsToolsUI.Cast(SCR_ConfigurableDialogUi.CreateFromPreset(DIALOGS_CONFIG, "mod_presets", dialog));
+	}
+	
+	//---------------------------------------------------------------------------------------------
+	static SCR_DownloadManager_Dialog CreateDownloadManagerDialog()
+	{
+		SCR_DownloadManager_Dialog dialog = new SCR_DownloadManager_Dialog();
+		return SCR_DownloadManager_Dialog.Cast(SCR_ConfigurableDialogUi.CreateFromPreset(DIALOGS_CONFIG, "download_manager", dialog));
+	}
+}
 
 //---------------------------------------------------------------------------------------------
 class SCR_ExitGameDialog : SCR_ConfigurableDialogUi
@@ -60,9 +79,7 @@ class SCR_ExitGameDialog : SCR_ConfigurableDialogUi
 	{		
 		GetGame().RequestClose();
 	}
-};
-
-
+}
 
 //---------------------------------------------------------------------------------------------
 class SCR_ExitGameWhileDownloadingDialog : SCR_ConfigurableDialogUi
@@ -72,8 +89,6 @@ class SCR_ExitGameWhileDownloadingDialog : SCR_ConfigurableDialogUi
 	{
 		SCR_ConfigurableDialogUi.CreateFromPreset(SCR_CommonDialogs.DIALOGS_CONFIG, "exit_game_while_downloading", this);
 	}
-	
-	
 	
 	//---------------------------------------------------------------------------------------------
 	override void OnConfirm()
@@ -86,9 +101,7 @@ class SCR_ExitGameWhileDownloadingDialog : SCR_ConfigurableDialogUi
 		// Exit the game
 		GetGame().RequestClose();
 	}
-};
-
-
+}
 
 //------------------------------------------------------------------------------------------------
 //! Dialog which is shown when user wants to start a scenario while there are still downloads in progress.
@@ -96,39 +109,77 @@ class SCR_ExitGameWhileDownloadingDialog : SCR_ConfigurableDialogUi
 class SCR_StartScenarioWhileDownloadingDialog : SCR_ConfigurableDialogUi
 {
 	protected ref MissionWorkshopItem m_Scenario;
-	protected bool m_bHostScenario;
-	
 	
 	//---------------------------------------------------------------------------------------------
-	//! Creates this dialog for a scenario.
-	//! host - when true, it will be self-hosted. When false, it will be started in SP mode.
-	void SCR_StartScenarioWhileDownloadingDialog(MissionWorkshopItem scenario, bool host)
+	static void CreateDialog(MissionWorkshopItem scenario)
 	{
-		m_Scenario = scenario;
-		m_bHostScenario = host;
-		SCR_ConfigurableDialogUi.CreateFromPreset(SCR_CommonDialogs.DIALOGS_CONFIG, "start_scenario_while_downloading", this)
+		SCR_StartScenarioWhileDownloadingDialog dialog = new SCR_StartScenarioWhileDownloadingDialog();
+		dialog.SetScenario(scenario);
+		
+		SCR_ConfigurableDialogUi.CreateFromPreset(SCR_CommonDialogs.DIALOGS_CONFIG, "start_scenario_while_downloading", dialog);
 	}
-	
-	
 	
 	//---------------------------------------------------------------------------------------------
 	override void OnConfirm()
 	{
 		SCR_DownloadManager mgr = SCR_DownloadManager.GetInstance();
-		
 		if (mgr)
 			mgr.EndAllDownloads();
 		
-		// Start scenario
-		//TODO
-		if (m_bHostScenario)
-			m_Scenario.Host(null);
-		else
+		if (m_Scenario)
 			m_Scenario.Play();
+		
+		super.OnConfirm();
 	}
-};
+	
+	//---------------------------------------------------------------------------------------------
+	void SetScenario(MissionWorkshopItem scenario)
+	{
+		m_Scenario = scenario;
+	}
+}
 
-
+//------------------------------------------------------------------------------------------------
+class SCR_HostScenarioWhileDownloadingDialog : SCR_ConfigurableDialogUi
+{
+	protected ref MissionWorkshopItem m_Scenario;
+	protected ref SCR_DSConfig m_DSConfig;
+	
+	//---------------------------------------------------------------------------------------------
+	static void CreateDialog(MissionWorkshopItem scenario, SCR_DSConfig config)
+	{
+		SCR_HostScenarioWhileDownloadingDialog dialog = new SCR_HostScenarioWhileDownloadingDialog();
+		dialog.SetScenario(scenario);
+		dialog.SetConfig(config);
+		
+		SCR_ConfigurableDialogUi.CreateFromPreset(SCR_CommonDialogs.DIALOGS_CONFIG, "start_scenario_while_downloading", dialog);
+	}
+	
+	//---------------------------------------------------------------------------------------------
+	override void OnConfirm()
+	{
+		SCR_DownloadManager mgr = SCR_DownloadManager.GetInstance();
+		if (mgr)
+			mgr.EndAllDownloads();
+		
+		if (m_Scenario && m_DSConfig)
+			m_Scenario.Host(m_DSConfig);
+		
+		super.OnConfirm();
+	}
+	
+	//---------------------------------------------------------------------------------------------
+	void SetScenario(MissionWorkshopItem scenario)
+	{
+		m_Scenario = scenario;
+	}
+	
+	//---------------------------------------------------------------------------------------------
+	void SetConfig(SCR_DSConfig config)
+	{
+		m_DSConfig = config;
+	}
+}
 
 //------------------------------------------------------------------------------------------------
 //! There is not enough storage on your hard drive. The space required is at least %1.
@@ -173,10 +224,9 @@ class SCR_NotEnoughStorageDialog : SCR_ConfigurableDialogUi
 		SetMessage(messageStr);
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
 	void SCR_NotEnoughStorageDialog(float sizeBytes)
 	{
 		m_fSizeBytes = sizeBytes;
 	}
-};
+}

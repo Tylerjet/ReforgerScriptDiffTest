@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 class SCR_MapRulerUI : SCR_MapUIBaseComponent
 {
 	[Attribute(defvalue: "1994", uiwidget: UIWidgets.EditBox, desc: "pix, exact length of the ruler within the provided image, default base length being 1km in world space")]
@@ -47,8 +46,8 @@ class SCR_MapRulerUI : SCR_MapUIBaseComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Set visibility
-	//! \param visible is true/false switch
-	//! \param saveState determines whether this is visibility set during closing of the map, so the pos and rotation should be saved
+	//! \param[in] visible is true/false switch
+	//! \param[in] saveState determines whether this is visibility set during closing of the map, so the pos and rotation should be saved
 	protected void SetVisible(bool visible, bool saveState = false)
 	{
 		m_bIsVisible = visible;
@@ -58,7 +57,7 @@ class SCR_MapRulerUI : SCR_MapUIBaseComponent
 		if (visible)
 		{									
 			float zoomVal = m_MapEntity.GetCurrentZoom();
-			m_fSizeCoef = 1000/(m_fRulerLength/m_fBaseImageSize[0]); // (ruler real length%) / 1000 pix(meters)
+			m_fSizeCoef = 1000 / (m_fRulerLength / m_fBaseImageSize[0]); // (ruler real length%) / 1000 pix(meters)
 			float sizeVal = m_wWorkspace.DPIUnscale(zoomVal * m_fSizeCoef);
 			SetSize(sizeVal, sizeVal);
 			
@@ -90,7 +89,8 @@ class SCR_MapRulerUI : SCR_MapUIBaseComponent
 				m_fAngle = 0;
 				m_fPosX = 0;
 				m_fPosY = 0;
-			}			
+			}
+
 			m_MapEntity.GetOnMapZoom().Remove(OnMapZoom);	// zoom for scaling
 			m_MapEntity.GetOnMapPan().Remove(OnMapPan);		// zoom for scaling
 		}
@@ -101,9 +101,9 @@ class SCR_MapRulerUI : SCR_MapUIBaseComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Set size of image, multiply by current size mode
-	//! \param x is unscaled size in px
-	//! \param y is unscaled size in px
-	//! \param nextSize determines whether current size is kept or swapped to the next one in size array
+	//! \param[in] x is unscaled size in px
+	//! \param[in] y is unscaled size in px
+	//! \param[in] nextSize determines whether current size is kept or swapped to the next one in size array
 	protected void SetSize(float x, float y, bool nextSize = false)
 	{
 		if (nextSize)
@@ -170,7 +170,16 @@ class SCR_MapRulerUI : SCR_MapUIBaseComponent
 		
 		float zoomVal = m_MapEntity.GetCurrentZoom();
 		float sizeVal = m_wWorkspace.DPIUnscale(zoomVal * m_fSizeCoef);
-		SetSize(sizeVal, sizeVal, true);
+				
+		if (m_MapEntity.GetMapSizeX() < m_fSizeCoef * m_aSizesArray[m_iCurrentSizeIndex])	// ruler size is bigger than the map, skip to start of the size array
+		{
+			m_iCurrentSizeIndex = 0;
+			SetSize(sizeVal, sizeVal);
+		}
+		else
+		{
+			SetSize(sizeVal, sizeVal, true);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -249,8 +258,9 @@ class SCR_MapRulerUI : SCR_MapUIBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_MapRulerUI()
 	{
 		m_bHookToRoot = true;
 	}
-};
+}

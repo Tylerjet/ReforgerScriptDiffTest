@@ -10,6 +10,8 @@ class SCR_CampaignTutorialArlandStageMovement1 : SCR_BaseCampaignTutorialArlandS
 	override protected void Setup()
 	{
 		RegisterWaypoint("WP_ZIGZAG_1");
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		GetGame().GetCallqueue().CallLater(PlaySoundSystem, 1000, false, "ObstacleStart", true);
 	}
 };

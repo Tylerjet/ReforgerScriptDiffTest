@@ -1,57 +1,49 @@
-//------------------------------------------------------------------------------------------------
-class SCR_ScoringSystemComponentClass: SCR_BaseScoringSystemComponentClass
+class SCR_ScoringSystemComponentClass : SCR_BaseScoringSystemComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
 class IScoringAction
 {
 	[Attribute("0", UIWidgets.ComboBox, "Scoring mode", "", ParamEnumArray.FromEnum(EScoringActionMode) )]
 	protected EScoringActionMode m_eScoringMode;
 
-	/*!
-		Called via SCR_ScoringSystemComponent if player score changes.
-		\param playerId PlayerId of target player
-		\param scoreInfo New scoring info of provided player
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Called via SCR_ScoringSystemComponent if player score changes.
+	//! \param[in] playerId PlayerId of target player
+	//! \param[in] scoreInfo New scoring info of provided player
 	void OnPlayerScoreChanged(int playerId, SCR_BaseScoringSystemComponent scoring);
 
-	/*!
-		Called via SCR_ScoringSystemComponent if faction score changes.
-		\param Faction Faction whose score changed
-		\param scoreInfo New scoring info of provided player
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Called via SCR_ScoringSystemComponent if faction score changes.
+	//! \param[in] Faction Faction whose score changed
+	//! \param[in] scoreInfo New scoring info of provided player
 	void OnFactionScoreChanged(Faction faction, SCR_BaseScoringSystemComponent scoring);
-};
+}
 
-
-//------------------------------------------------------------------------------------------------
-/*!
-	Action type
-*/
+//! Action type
 enum EScoringActionMode
 {
 	SLM_Player,
 	SLM_Faction,
 	SLM_Any
-};
+}
 
-//------------------------------------------------------------------------------------------------
-/*!
-	Terminates the game once target score is met.
-*/
+//! Terminates the game once target score is met.
 [BaseContainerProps()]
 class EndGameAction : IScoringAction
 {
 	[Attribute("100", UIWidgets.EditBox, "Scoring limit", "")]
 	protected int m_iScoreLimit;
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetScoreLimit()
 	{
 		return m_iScoreLimit;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void Execute(SCR_GameModeEndData endData)
 	{
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
@@ -61,6 +53,7 @@ class EndGameAction : IScoringAction
 		gameMode.EndGameMode(endData);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void OnPlayerScoreChanged(int playerId, SCR_BaseScoringSystemComponent scoring)
 	{
 		if (m_eScoringMode != EScoringActionMode.SLM_Player && m_eScoringMode != EScoringActionMode.SLM_Any)
@@ -70,10 +63,11 @@ class EndGameAction : IScoringAction
 		if (score < m_iScoreLimit)
 			return;
 
-		ref SCR_GameModeEndData endData = SCR_GameModeEndData.CreateSimple(EGameOverTypes.ENDREASON_SCORELIMIT, winnerId: playerId);
+		SCR_GameModeEndData endData = SCR_GameModeEndData.CreateSimple(EGameOverTypes.ENDREASON_SCORELIMIT, winnerId: playerId);
 		Execute(endData);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void OnFactionScoreChanged(Faction faction, SCR_BaseScoringSystemComponent scoring)
 	{
 		if (m_eScoringMode != EScoringActionMode.SLM_Faction && m_eScoringMode != EScoringActionMode.SLM_Any)
@@ -84,37 +78,35 @@ class EndGameAction : IScoringAction
 			return;
 		
 		int factionIndex = GetGame().GetFactionManager().GetFactionIndex(faction);
-		ref SCR_GameModeEndData endData = SCR_GameModeEndData.CreateSimple(EGameOverTypes.ENDREASON_SCORELIMIT, winnerFactionId: factionIndex );
+		SCR_GameModeEndData endData = SCR_GameModeEndData.CreateSimple(EGameOverTypes.ENDREASON_SCORELIMIT, winnerFactionId: factionIndex);
 		Execute(endData);
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
-/*!
-	This component implements logic of handling certain score limits.
-*/
+//! This component implements logic of handling certain score limits.
 class SCR_ScoringSystemComponent : SCR_BaseScoringSystemComponent
 {
 	//Score multipliers
 	[Attribute("1", UIWidgets.EditBox, "Kill score multiplier", category: "Scoring: Multipliers")]
 	protected int m_iKillScoreMultiplier;
+
 	[Attribute("-1", UIWidgets.EditBox, "Teamkill score multiplier", category: "Scoring: Multipliers")]
 	protected int m_iTeamKillScoreMultiplier;
+
 	[Attribute("0", UIWidgets.EditBox, "Death score multiplier", category: "Scoring: Multipliers")]
 	protected int m_iDeathScoreMultiplier;
+
 	[Attribute("-1", UIWidgets.EditBox, "Suicide score multiplier", category: "Scoring: Multipliers")]
 	protected int m_iSuicideScoreMultiplier;
+
 	[Attribute("1", UIWidgets.EditBox, "Objective score multiplier", category: "Scoring: Multipliers")]
 	protected int m_iObjectiveScoreMultiplier;
 	
-	
 	[Attribute("", UIWidgets.Object, "List of actions executed when score changes.", category: "Scoring: Actions")]
-	ref array<ref IScoringAction> m_aActions;
+	protected ref array<ref IScoringAction> m_aActions;
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Returns maximum allowed score or -1 if undefined.
-	*/
+	//! \return maximum allowed score or -1 if undefined.
 	override int GetScoreLimit() 
 	{
 		foreach (IScoringAction scoringAction : m_aActions)
@@ -143,9 +135,7 @@ class SCR_ScoringSystemComponent : SCR_BaseScoringSystemComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Handle and dispatch scoring logic for this event.
-	*/
+	//! Handle and dispatch scoring logic for this event.
 	protected override void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
 		super.OnPlayerKilled(playerId, playerEntity, killerEntity, killer);
@@ -191,26 +181,26 @@ class SCR_ScoringSystemComponent : SCR_BaseScoringSystemComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*
-		Called on all machines when player score changes.
-	*/
+	//! Called on all machines when player score changes.
 	protected override void OnPlayerScoreChanged(int playerId, SCR_ScoreInfo scoreInfo)
 	{
 		super.OnPlayerScoreChanged(playerId, scoreInfo);
 		
 		foreach (IScoringAction action : m_aActions)
+		{
 			action.OnPlayerScoreChanged(playerId, this);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*
-		Called on all machines when faction score changes.
-	*/
+	//! Called on all machines when faction score changes.
 	protected override void OnFactionScoreChanged(Faction faction, SCR_ScoreInfo scoreInfo)
 	{
 		super.OnFactionScoreChanged(faction, scoreInfo);
 		
 		foreach (IScoringAction action : m_aActions)
+		{
 			action.OnFactionScoreChanged(faction, this);
+		}
 	}
-};
+}

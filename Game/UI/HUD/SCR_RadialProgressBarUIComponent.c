@@ -25,8 +25,8 @@ class SCR_RadialProgressBarUIComponent: ScriptedWidgetComponent
 	protected ImageWidget m_wRadialProgressPreview;
 	protected ImageWidget m_wBackground;
 	
-	protected ref ScriptInvoker Event_OnProgressFull = new ref ScriptInvoker;
-	protected ref ScriptInvoker Event_OnProgressEmpty = new ref ScriptInvoker;
+	protected ref ScriptInvoker Event_OnProgressFull = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnProgressEmpty = new ScriptInvoker;
 	
 	protected bool m_bProgressFull;
 	

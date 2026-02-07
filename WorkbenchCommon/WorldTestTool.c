@@ -26,6 +26,21 @@ class WorldTestPlugin: WorkbenchPlugin
 		}
 	}
 	
+	bool WaitForGameMode(WorldEditor we, int timeout = 120000)
+	{
+		while (we.GetApi() && !we.GetApi().IsGameMode())
+		{
+			Sleep(50);
+			timeout -= 50;
+			if (timeout < 0)
+				return false;
+		}
+
+		if (we.GetApi() == null)
+			return false;
+		return true;
+	}
+	
 	bool TestMap(string path, int waitTime)
 	{
 		bool success = false;
@@ -40,7 +55,7 @@ class WorldTestPlugin: WorkbenchPlugin
 			Print("WorldTestPlugin: running game mode", LogLevel.VERBOSE);
 			
 			we.SwitchToGameMode(false, true);
-			we.WaitForGameMode();
+			WaitForGameMode(we);
 			
 			if (waitTime < 0)
 			{

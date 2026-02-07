@@ -1,10 +1,9 @@
-//------------------------------------------------------------------------------------------------
 //! Bandage effect
 [BaseContainerProps()]
 class SCR_ConsumableBandage : SCR_ConsumableEffectHealthItems
 {
 	//------------------------------------------------------------------------------------------------
-	override void ApplyEffect(notnull IEntity target, notnull IEntity user, IEntity item, SCR_ConsumableEffectAnimationParameters animParams)
+	override void ApplyEffect(notnull IEntity target, notnull IEntity user, IEntity item, ItemUseParameters animParams)
 	{
 		super.ApplyEffect(target, user, item, animParams);
 
@@ -18,7 +17,7 @@ class SCR_ConsumableBandage : SCR_ConsumableEffectHealthItems
 
 		array<HitZone> hitZones = {};
 		ECharacterHitZoneGroup hzGroup;
-		damageMgr.GetBandageAnimHitzones(animParams.m_intParam, hitZones);
+		damageMgr.GetBandageAnimHitzones(animParams.GetIntParam(), hitZones);
 		if (hitZones.IsEmpty())
 		{
 			hzGroup = damageMgr.GetCharMostDOTHitzoneGroup(EDamageType.BLEEDING);
@@ -69,7 +68,7 @@ class SCR_ConsumableBandage : SCR_ConsumableEffectHealthItems
 
 	//------------------------------------------------------------------------------------------------
 	//! Optional param for specific hitzone, still will ensure external users don't have to create their own local animParams
-	override SCR_ConsumableEffectAnimationParameters GetAnimationParameters(notnull IEntity target, ECharacterHitZoneGroup group = ECharacterHitZoneGroup.VIRTUAL)
+	override ItemUseParameters GetAnimationParameters(IEntity item, notnull IEntity target, ECharacterHitZoneGroup group = ECharacterHitZoneGroup.VIRTUAL)
 	{
 		ChimeraCharacter char = ChimeraCharacter.Cast(target);
 		if (!char)
@@ -103,13 +102,24 @@ class SCR_ConsumableBandage : SCR_ConsumableEffectHealthItems
 		
 		if (bodyPartToBandage == EBandagingAnimationBodyParts.Invalid)
 			return null;
+		
+		ItemUseParameters params = ItemUseParameters();
+		params.SetEntity(item);
+		params.SetAllowMovementDuringAction(false);
+		params.SetKeepInHandAfterSuccess(false);
+		params.SetCommandID(GetApplyToSelfAnimCmnd(target));
+		params.SetCommandIntArg(1);
+		params.SetCommandFloatArg(0.0);
+		params.SetMaxAnimLength(m_fApplyToSelfDuration);
+		params.SetIntParam(bodyPartToBandage);
 			
-		return new SCR_ConsumableEffectAnimationParameters(GetApplyToSelfAnimCmnd(target), 1, 0.0, m_fApplyToSelfDuration, bodyPartToBandage, 0, false);
+		return params;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_ConsumableBandage()
 	{
 		m_eConsumableType = SCR_EConsumableType.BANDAGE;
 	}		
-};
+}

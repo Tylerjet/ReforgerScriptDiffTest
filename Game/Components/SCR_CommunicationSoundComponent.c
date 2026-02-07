@@ -1,8 +1,7 @@
-[EntityEditorProps(category: "GameScripted/ScriptWizard", description: "ScriptWizard generated script file.")]
+[EntityEditorProps(category: "GameScripted/ScriptWizard", description: "")]
 class SCR_CommunicationSoundComponentClass : CommunicationSoundComponentClass
 {
-	// prefab properties here
-};
+}
 
 enum ECP_VehicleRoles
 {
@@ -12,8 +11,8 @@ enum ECP_VehicleRoles
 	PILOT,
 	COPILOT,
 	OPERATOR,
-	PASSANGER
-};
+	PASSANGER	// TODO: PASSENGER
+}
 
 enum ECP_Characters
 {
@@ -25,7 +24,7 @@ enum ECP_Characters
 	AT_SOLDIER,
 	OFFICER,
 	RADIO_MAN
-};
+}
 
 enum ECP_VehicleTypes
 {
@@ -38,7 +37,7 @@ enum ECP_VehicleTypes
 	SUPPLY_TRUCK,
 	MORTAR,
 	HELICOPTER,
-};
+}
 
 enum SCR_ECommunicationSoundEventPriority
 {
@@ -66,8 +65,11 @@ class SCR_CommunicationSoundComponent : CommunicationSoundComponent
 	protected int m_iDamageTypeSignalIdx;
 	protected int m_iHitScreamIntensitySignalIdx;
 	
-	static bool m_bShowSubtitles;
+	protected static bool m_bShowSubtitles;
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] metadata
 	void ShowSubtitles(array<string> metadata)
 	{
 		int size = metadata.Count();
@@ -114,6 +116,7 @@ class SCR_CommunicationSoundComponent : CommunicationSoundComponent
 		SCR_ChatComponent.RadioProtocolMessage(localizedText);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	// Inserted to OnUserSettingsChangedInvoker() on SCR_UISoundEntity
 	static void SetSubtitiles()
 	{	
@@ -122,7 +125,12 @@ class SCR_CommunicationSoundComponent : CommunicationSoundComponent
 			settings.Get("m_bShowRadioProtocolText", m_bShowSubtitles);
 	}
 	
-	//
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] company
+	//! \param[in] platoon
+	//! \param[in] squad
+	//! \param[in] character
+	//! \param[in] characterRole
 	void SetCallsignSignals(int company, int platoon, int squad, int character, int characterRole)
 	{
 		if (!m_SignalsManagerComponent)
@@ -133,11 +141,11 @@ class SCR_CommunicationSoundComponent : CommunicationSoundComponent
 		m_SignalsManagerComponent.SetSignalValue(m_SignalsManagerComponent.AddOrFindSignal("SquadCaller"), squad);
 		m_SignalsManagerComponent.SetSignalValue(m_SignalsManagerComponent.AddOrFindSignal("SoldierCaller"), character -1);
 	}
-		
+	
 	//------------------------------------------------------------------------------------------------
-	/*! Schedule and prioritize appropriate injury sounds to be played. The sound scheduled will skip the internal queue
-	\param critical Whether current hit event is considered a critical hit. Multiple critical hits will increase intensity of hit scream.
-	*/
+	//!  Schedule and prioritise appropriate injury sounds to be played. The sound scheduled will skip the internal queue
+	//! \param[in] critical Whether current hit event is considered a critical hit. Multiple critical hits will increase intensity of hit scream.
+	//! \param[in] damageType
 	void SoundEventHit(bool critical, EDamageType damageType)
 	{
 		if (critical)
@@ -151,11 +159,11 @@ class SCR_CommunicationSoundComponent : CommunicationSoundComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*! Schedule and prioritize appropriate injury sounds to be played. The sound scheduled will skip the internal queue
-	\param eventName Name of the sound event to be played after delayMS.
-	\param priority Priority of the sound event. The event with higher priority will override the current delayed event.
-	\param delayMS Miliseconds delay for determining the sound event to be played
-	*/
+	//!  Schedule and prioritise appropriate injury sounds to be played. The sound scheduled will skip the internal queue
+	//! \param[in] eventName Name of the sound event to be played after delayMS.
+	//! \param[in] priority Priority of the sound event. The event with higher priority will override the current delayed event.
+	//! \param[in] delayMS Miliseconds delay for determining the sound event to be played
+	//! \param[in] damageType
 	void DelayedSoundEventPriority(string eventName, SCR_ECommunicationSoundEventPriority priority, int delayMS, EDamageType damageType = EDamageType.TRUE)
 	{
 		if (priority < m_eDelayedSoundEventPriority)
@@ -201,10 +209,9 @@ class SCR_CommunicationSoundComponent : CommunicationSoundComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*! Called by damage manager when character dies. 
-	Depending on silent parameter, character will cancel current delayed sound event and then either scream or not
-	\param silent When true, character will play SOUND_KNOCKOUT event. When false, SOUND_DEATH will be played instead.
-	*/
+	//! Called by damage manager when character dies.
+	//! Depending on silent parameter, character will cancel current delayed sound event and then either scream or not
+	//! \param[in] silent When true, character will play SOUND_KNOCKOUT event. When false, SOUND_DEATH will be played instead.
 	void SoundEventDeath(bool silent)
 	{
 		GetGame().GetCallqueue().Remove(DelayedSoundEventPriority);
@@ -243,20 +250,25 @@ class SCR_CommunicationSoundComponent : CommunicationSoundComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnSoundEventFinished(string eventName, AudioHandle handle, int priority, bool terminated)
 	{
-		
+		// do nothing
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_CommunicationSoundComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		SetScriptedMethodsCall(true);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_CommunicationSoundComponent()
 	{
 		SCR_CallsignBaseComponent callsignBaseComponent = SCR_CallsignBaseComponent.Cast(GetOwner().FindComponent(SCR_CallsignBaseComponent));
 		if (callsignBaseComponent)
 			callsignBaseComponent.GetOnCallsignChanged().Remove(SetCallsignSignals);
 	}
-};
+}

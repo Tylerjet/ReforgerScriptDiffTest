@@ -1,5 +1,5 @@
 [BaseContainerProps(), BaseContainerCustomTitleField("m_sDisplayName")]
-class SCR_WeaponsTooltipDetail: SCR_EntityTooltipDetail
+class SCR_WeaponsTooltipDetail : SCR_EntityTooltipDetail
 {
 	//[Attribute(defvalue: "3")]
 	//protected int m_iColumns;
@@ -13,13 +13,17 @@ class SCR_WeaponsTooltipDetail: SCR_EntityTooltipDetail
 	protected TextWidget m_Text;
 	protected BaseWeaponManagerComponent m_WeaponManager;
 	
+	//------------------------------------------------------------------------------------------------
 	override bool NeedUpdate()
 	{
 		return false;//m_WeaponManager != null; //--- ToDo: More optimized
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void UpdateDetail(SCR_EditableEntityComponent entity)
 	{
-		if (!m_WeaponManager || !m_Text) return;
+		if (!m_WeaponManager || !m_Text)
+			return;
 		
 		//WorkspaceWidget workspace = GetGame().GetWorkspace();
 		
@@ -30,21 +34,21 @@ class SCR_WeaponsTooltipDetail: SCR_EntityTooltipDetail
 		//int n;
 		foreach (WeaponSlotComponent weapon : weapons)
 		{
-			if (weapon.GetWeaponSlotType() == "grenade") continue;
+			if (weapon.GetWeaponSlotType() == "grenade")
+				continue;
 			
 			info = WeaponUIInfo.Cast(weapon.GetUIInfo());
-			if (!info) continue;
+			if (!info)
+				continue;
 			
 			text += info.GetName() + "\n";
 			
-			/*
-			ImageWidget weaponWidget = ImageWidget.Cast(workspace.CreateWidgets(m_WeaponLayout, m_Grid));
-			weaponWidget.LoadImageTexture(0, info.GetWeaponIconPath());
-			
-			GridSlot.SetRow(weaponWidget, Math.Floor(n / m_iColumns));
-			GridSlot.SetColumn(weaponWidget, n % m_iColumns);
-			n++;
-			*/
+//			ImageWidget weaponWidget = ImageWidget.Cast(workspace.CreateWidgets(m_WeaponLayout, m_Grid));
+//			weaponWidget.LoadImageTexture(0, info.GetWeaponIconPath());
+//
+//			GridSlot.SetRow(weaponWidget, Math.Floor(n / m_iColumns));
+//			GridSlot.SetColumn(weaponWidget, n % m_iColumns);
+//			n++;
 		}
 		
 		if (!text.IsEmpty())
@@ -53,6 +57,8 @@ class SCR_WeaponsTooltipDetail: SCR_EntityTooltipDetail
 			m_Text.SetText(m_sUnarmedText);
 		
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool InitDetail(SCR_EditableEntityComponent entity, Widget widget)
 	{
 		m_WeaponManager = BaseWeaponManagerComponent.Cast(entity.GetOwner().FindComponent(BaseWeaponManagerComponent));
@@ -71,14 +77,15 @@ class SCR_WeaponsTooltipDetail: SCR_EntityTooltipDetail
 		}
 		
 		return true;
-		/*
-		m_Grid = widget;
-		if (!m_Grid) return false;
-		
-		m_WeaponLayout = SCR_LayoutTemplateComponent.GetLayout(widget);
-		if (m_WeaponLayout.IsEmpty()) return false;
-		
-		return true;
-		*/
+
+//		m_Grid = widget;
+//		if (!m_Grid)
+//			return false;
+//
+//		m_WeaponLayout = SCR_LayoutTemplateComponent.GetLayout(widget);
+//		if (m_WeaponLayout.IsEmpty())
+//			return false;
+//
+//		return true;
 	}
-};
+}

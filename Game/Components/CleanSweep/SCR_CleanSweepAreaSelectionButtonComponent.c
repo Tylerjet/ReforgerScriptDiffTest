@@ -1,7 +1,5 @@
-//------------------------------------------------------------------------------------------------
 class SCR_CleanSweepAreaSelectionButtonComponent : ScriptedWidgetComponent
 {
-	
 	//------------------------------------------------------------------------------------------------
 	//! An event called when the button, this component is attached to, is clicked
 	override bool OnClick(Widget w, int x, int y, int button)
@@ -31,4 +29,4 @@ class SCR_CleanSweepAreaSelectionButtonComponent : ScriptedWidgetComponent
 		
 		return false;
 	}
-};
+}

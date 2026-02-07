@@ -15,6 +15,7 @@ class SCR_GroupFlagImageComponent : SCR_ButtonImageComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] name
 	void SetFlagButtonFromImageSet(string name)
 	{		
 		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
@@ -35,6 +36,7 @@ class SCR_GroupFlagImageComponent : SCR_ButtonImageComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------	
+	//! \param[in] name
 	void SetFlagButtonFromTexture(ResourceName name)
 	{
 		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
@@ -55,42 +57,50 @@ class SCR_GroupFlagImageComponent : SCR_ButtonImageComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] scale
 	void Resize(float scale = 1)
 	{
 		m_wImage.SetSize(m_vImageSize[0] * scale, m_vImageSize[1] * scale);		
 	}
 	
 	//------------------------------------------------------------------------------------------------		
+	//! \param[in] value
 	void SetIsFromImageset(bool value)
 	{
 		m_bIsFromImageset = value;
 	}
 	
 	//------------------------------------------------------------------------------------------------		
+	//! \return
 	bool GetIsFromImageset()
 	{
 		return m_bIsFromImageset;
 	}
 	
 	//------------------------------------------------------------------------------------------------		
+	//! \return
 	int GetImageID()
 	{
 		return m_iPicID;
 	}
 	
 	//------------------------------------------------------------------------------------------------		
+	//! \param[in] ID
 	void SetImageID(int ID)
 	{
 		m_iPicID = ID;
 	}
 	
 	//------------------------------------------------------------------------------------------------		
+	//! \param[in] imageSet
 	void SetImageSet(ResourceName imageSet)
 	{
 		m_sImageSet = imageSet;
 	}
 
 	//------------------------------------------------------------------------------------------------		
+	//! \return
 	ResourceName GetImageSet()
 	{
 		return m_sImageSet;

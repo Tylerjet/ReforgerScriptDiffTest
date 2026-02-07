@@ -11,13 +11,9 @@ class SCR_DrowningScreenEffect : SCR_BaseScreenEffect
 	// Play Animation of BlackoutEffect()
 	protected const float BLACKOUT_OPACITY_MULTIPLIER					= 0.70;
 	
-	// Adaptive opacity widgets 
-	protected Widget								m_wAdaptiveOpacityDrowning;
-	protected ImageWidget							m_wBlackOut;
-
-	
 	// Widgets
 	protected ImageWidget 							m_wDrowningEffect;
+	protected ImageWidget							m_wBlackOut;	
 	
 	// Character
 	protected ChimeraCharacter						m_pCharacterEntity;
@@ -56,17 +52,6 @@ class SCR_DrowningScreenEffect : SCR_BaseScreenEffect
 		// In case player started drowning before invokers were established, check if already drowning
 		if (m_CharController.IsCharacterDrowning())
 			CreateEffect(10, 4);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void UpdateOpacity(float opacity, float sceneBrightness, float sceneBrightnessRaw)
-	{
-		if (!m_wAdaptiveOpacityDrowning)
-			m_wAdaptiveOpacityDrowning = m_wRoot.FindAnyWidget("AdaptiveOpacity-Drowning");
-
-		//PrintFormat("<Adaptive Opacity - m_wAdaptiveOpacityDrowning> %1 | Updating opacity %2 -> %3", this, m_wAdaptiveOpacityDrowning.GetOpacity(), opacity);
-		
-		m_wAdaptiveOpacityDrowning.SetOpacity(opacity);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -162,12 +147,5 @@ class SCR_DrowningScreenEffect : SCR_BaseScreenEffect
 			m_CharController.m_OnPlayerDrowning.Remove(CreateEffect);			
 		if (m_CharController.m_OnPlayerStopDrowning)
 			m_CharController.m_OnPlayerStopDrowning.Remove(ClearEffect);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override event void DisplayStopDraw(IEntity owner)
-	{
-		if (GetGame().GetHUDManager())
-			GetGame().GetHUDManager().GetSceneBrightnessChangedInvoker().Remove(UpdateOpacity);
 	}
 };

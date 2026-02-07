@@ -1,13 +1,7 @@
-[EntityEditorProps(category: "GameScripted/ScriptWizard", description: "ScriptWizard generated script file.")]
+[EntityEditorProps(category: "GameScripted/ScenarioFramework", description: "")]
 class SCR_ScenarioFrameworkInventoryLoaderClass : SCR_ScenarioFrameworkLayerTaskClass
 {
-	// prefab properties here
-};
-
-//------------------------------------------------------------------------------------------------
-/*!
-	
-*/
+}
 
 class SCR_InvCallBackCheck : SCR_InvCallBack
 {
@@ -25,12 +19,10 @@ class SCR_InvCallBackCheck : SCR_InvCallBack
 	{
 		//PrintFormat("ScenarioFramework: The item %1 has been correctly inserted into %2 inventory", m_sNameItem, m_sNameMaster);
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_ScenarioFrameworkInventoryLoader : SCR_ScenarioFrameworkLayerBase
-{		
-	
+{
 	[Attribute(defvalue: "", desc: "Name of the entity whose inventory to be filled with")];
 	protected string					m_sIDMaster;
 	
@@ -75,4 +67,4 @@ class SCR_ScenarioFrameworkInventoryLoader : SCR_ScenarioFrameworkLayerBase
 			inventoryComponent.TryInsertItem(item, EStoragePurpose.PURPOSE_ANY, pInvCallback);
 		}
 	}
-};
+}

@@ -336,7 +336,7 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 		
 		m_TabViewComponent = SCR_TabViewComponent.Cast(tabWidget.FindHandler(SCR_TabViewComponent));
 		if (!m_TabViewComponent) return;
-		m_TabViewComponent.m_OnChanged.Insert(OnCurrentTabChanged);
+		m_TabViewComponent.GetOnChanged().Insert(OnCurrentTabChanged);
 		
 		m_ContentHolder = widget.FindAnyWidget(m_sContentHolderWidgetName);
 		if (!m_ContentHolder) return;
@@ -814,7 +814,7 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 		}
 		
 		if (m_TabViewComponent)
-			m_TabViewComponent.m_OnChanged.Remove(OnCurrentTabChanged);
+			m_TabViewComponent.GetOnChanged().Remove(OnCurrentTabChanged);
 		
 		
 		InputManager inputManager = GetGame().GetInputManager();

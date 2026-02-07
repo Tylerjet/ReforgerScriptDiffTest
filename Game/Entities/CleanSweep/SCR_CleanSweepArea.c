@@ -12,7 +12,7 @@ class SCR_CleanSweepArea : GenericEntity
 	[Attribute("0", UIWidgets.CheckBox, "Can this location be selected in the mission")]
 	bool m_Active;
 	
-	static ref array<SCR_CleanSweepArea> s_aInstances = new ref array<SCR_CleanSweepArea>;
+	static ref array<SCR_CleanSweepArea> s_aInstances = new array<SCR_CleanSweepArea>;
 	
 	#ifdef WORKBENCH
 	override void _WB_AfterWorldUpdate(float timeSlice)

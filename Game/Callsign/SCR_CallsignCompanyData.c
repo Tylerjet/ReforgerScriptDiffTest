@@ -3,7 +3,7 @@ For each company, holds availible platoons, which in turn holds availible squads
 */
 class SCR_CallsignCompanyData
 {
-	protected ref map<int, ref SCR_CallsignPlatoonData> m_mPlatoonCallsigns = new ref map<int, ref SCR_CallsignPlatoonData>;
+	protected ref map<int, ref SCR_CallsignPlatoonData> m_mPlatoonCallsigns = new map<int, ref SCR_CallsignPlatoonData>;
 
 	//---------------------------------------- On Init ----------------------------------------\\
 	/*!

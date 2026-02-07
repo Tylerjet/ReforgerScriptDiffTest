@@ -84,5 +84,15 @@ class SCR_InventorySpinBoxComponent : SCR_SpinBoxComponent
 				m_ButtonRight.m_OnClicked.Insert(OnRightArrowClick);
 		}
 	}
+	
+	override protected void OnMenuLeft() 
+	{
+		
+	}
+
+	override protected void OnMenuRight()
+	{
+	
+	}
 
 };

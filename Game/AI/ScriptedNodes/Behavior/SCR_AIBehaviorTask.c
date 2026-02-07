@@ -15,6 +15,7 @@ class SCR_AIActionTask : AITaskScripted
 	static const string NEXTCOVERPOSITION_PORT = "NextCoverPosition";
 	static const string COMPARTMENT_PORT = "Compartment";
 	static const string SMARTACTION_PORT = "SmartActionComponent";
+	static const string WEAPON_TYPE_PORT = "WeaponType";
 	static const string MAGAZINE_WELL_PORT = "MagazineWell";
 	static const string PRIORITY_LEVEL_PORT = "PriorityLevel";
 	static const string WAYPOINT_PORT = "Waypoint";
@@ -25,6 +26,7 @@ class SCR_AIActionTask : AITaskScripted
 	static const string IS_DANGEROUS_PORT = "isDangerous";
 	static const string RESET_TIMER_PORT = "ResetTimer";
 	static const string TIMEOUT_PORT = "Timeout";
+	static const string DELAY_PORT = "Delay";
 	static const string REINIT_PORT = "Reinit";
 	static const string RADIUS_PORT = "Radius";
 	

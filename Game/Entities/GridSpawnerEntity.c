@@ -163,7 +163,7 @@ class SCR_GridSpawnerEntity: GenericEntity
 			DeleteEntities();
 		
 		if (!m_aSpawnedEntities)
-			m_aSpawnedEntities = new ref array<IEntity>();
+			m_aSpawnedEntities = new array<IEntity>();
 		
 		// Get origin, cell size and resource
 		vector currentPosition = GetOrigin();

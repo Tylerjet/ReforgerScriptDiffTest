@@ -8,7 +8,7 @@ class SCR_BuildingConfigManagerEntity : GenericEntity
 {
 	static SCR_BuildingConfigManagerEntity s_Instance = null;
 	
-	ref map<ResourceName, ref SCR_BuildingSetup> m_BuildingSetups = new ref map<ResourceName, ref SCR_BuildingSetup>();
+	ref map<ResourceName, ref SCR_BuildingSetup> m_BuildingSetups = new map<ResourceName, ref SCR_BuildingSetup>();
 	
 	//------------------------------------------------------------------------------------------------
 	static void CreateInstance()

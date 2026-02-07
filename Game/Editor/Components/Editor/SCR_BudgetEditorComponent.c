@@ -1,7 +1,7 @@
 [ComponentEditorProps(category: "GameScripted/Editor", description: "", icon: "WBData/ComponentEditorProps/componentEditor.png")]
-class SCR_BudgetEditorComponentClass: SCR_BaseEditorComponentClass
+class SCR_BudgetEditorComponentClass : SCR_BaseEditorComponentClass
 {
-};
+}
 
 void ScriptInvoker_EntityBudgetMaxUpdated(EEditableEntityBudget budgetType, int currentBudgetValue, int newMaxBudgetValue);
 typedef func ScriptInvoker_EntityBudgetMaxUpdated;
@@ -11,14 +11,10 @@ void ScriptInvoker_EntityBudgetUpdated(EEditableEntityBudget budgetType, int ori
 typedef func ScriptInvoker_EntityBudgetUpdated;
 typedef ScriptInvokerBase<ScriptInvoker_EntityBudgetUpdated> ScriptInvoker_EntityBudgetUpdatedEvent;
 
-
 void ScriptInvoker_EntityBudgetMaxReached(EEditableEntityBudget budgetType, bool maxReached);
 typedef func ScriptInvoker_EntityBudgetMaxReached;
 typedef ScriptInvokerBase<ScriptInvoker_EntityBudgetMaxReached> ScriptInvoker_EntityBudgetMaxReachedEvent;
 
-/*
-
-*/
 class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 {
 	const int DEFAULT_MAX_BUDGET = 100;
@@ -35,54 +31,61 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 	ref ScriptInvoker_EntityBudgetUpdatedEvent Event_OnBudgetUpdated = new ScriptInvoker_EntityBudgetUpdatedEvent();
 	ref ScriptInvoker_EntityBudgetMaxReachedEvent Event_OnBudgetMaxReached = new ScriptInvoker_EntityBudgetMaxReachedEvent();
 	ref ScriptInvoker_EntityBudgetMaxUpdatedEvent Event_OnBudgetMaxUpdated = new ScriptInvoker_EntityBudgetMaxUpdatedEvent();
-	ref ScriptInvoker Event_OnBudgetPreviewUpdated = new ScriptInvoker;
-	ref ScriptInvoker Event_OnBudgetPreviewReset = new ScriptInvoker;
+	ref ScriptInvoker Event_OnBudgetPreviewUpdated = new ScriptInvoker();
+	ref ScriptInvoker Event_OnBudgetPreviewReset = new ScriptInvoker();
 	
 	//Delayed set max values
-	protected ref map<EEditableEntityBudget, int> m_DelayedSetMaxBudgetsMap = new map<EEditableEntityBudget, int>;
+	protected ref map<EEditableEntityBudget, int> m_DelayedSetMaxBudgetsMap = new map<EEditableEntityBudget, int>();
 	protected bool m_bListenToMaxBudgetDelay = false;
 	
-	/*!
-	Checks if budget is sufficient to place passed entity
-	\param entity Entity to check, must be placed in world, for checking prefab budget cost use SCR_EditableEntityComponentClass.GetEntityBudgetCost()
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Checks if budget is sufficient to place passed entity
+	//! \param[in] info
+	//! \param[out] blockingBudget
+	//! \param[in] showNotification
+	//! \return
 	bool CanPlaceEntityInfo(SCR_EditableEntityUIInfo info, out EEditableEntityBudget blockingBudget, bool showNotification)
 	{
 		array<ref SCR_EntityBudgetValue> budgetCosts = {};
 		return CanPlaceEntityInfo(info, budgetCosts, blockingBudget, showNotification);
 	}
 	
-	/*!
-	Checks if budget is sufficient to place passed entity
-	\param entity Entity to check, must be placed in world, for checking prefab budget cost use SCR_EditableEntityComponentClass.GetEntityBudgetCost()
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Checks if budget is sufficient to place passed entity
+	//! \param[in] info
+	//! \param[out] budgetCosts
+	//! \param[out] blockingBudget
+	//! \param[in] showNotification
+	//! \return
 	bool CanPlaceEntityInfo(SCR_EditableEntityUIInfo info, out notnull array<ref SCR_EntityBudgetValue> budgetCosts, out EEditableEntityBudget blockingBudget, bool showNotification)
 	{
-		if (!IsBudgetCapEnabled()) return true;
+		if (!IsBudgetCapEnabled())
+			return true;
+
 		bool canPlace = false;
 		if (GetEntityPreviewBudgetCosts(info, budgetCosts))
-		{
 			canPlace = CanPlace(budgetCosts, blockingBudget);
-		}
 		else
-		{
 			canPlace = CanPlaceEntityType(info.GetEntityType(), budgetCosts, blockingBudget);
-		}
+
 		if (showNotification)
-		{
 			CanPlaceResult(canPlace, showNotification);
-		}
+
 		return canPlace;
 	}
 	
-	/*!
-	Checks if budget is sufficient to place passed EditableEntityComponentClass source
-	\param IEntityComponentSource SCR_EditableEntityComponentClass to check budget cost of prefab
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Checks if budget is sufficient to place passed EditableEntityComponentClass source
+	//! \param[in] editableEntitySource IEntityComponentSource SCR_EditableEntityComponentClass to check budget cost of prefab
+	//! \param[out] blockingBudget
+	//! \param[in] isPlacingPlayer
+	//! \param[in] updatePreview
+	//! \param[in] showNotification
+	//! \return
 	bool CanPlaceEntitySource(IEntityComponentSource editableEntitySource, out EEditableEntityBudget blockingBudget, bool isPlacingPlayer = false, bool updatePreview = true, bool showNotification = true)
 	{
 		bool canPlace = true;
-		if (IsBudgetCapEnabled() && editableEntitySource)
+		if (editableEntitySource && IsBudgetCapEnabled())
 		{
 			array<ref SCR_EntityBudgetValue> budgetCosts = {};
 			if (!GetEntitySourcePreviewBudgetCosts(editableEntitySource, budgetCosts))
@@ -91,40 +94,40 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 			}
 			// Clear budget cost when placing as player
 			if (isPlacingPlayer)
-			{
 				budgetCosts.Clear();
-			}
 			
 			if (updatePreview)
-			{
 				UpdatePreviewCost(budgetCosts);
-			}
 			
 			canPlace = canPlace && CanPlace(budgetCosts, blockingBudget);
 		}
 		return CanPlaceResult(canPlace, showNotification);
 	}
 	
-	/*!
-	Fallback function in case no budget costs are defined on the entity
-	\param entityType EEditableEntityType of the entity
-	\return True if passed array is not empty and entity can be placed according to the passed values
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Fallback function in case no budget costs are defined on the entity
+	//! \param[in] entityType EEditableEntityType of the entity
+	//! \param[out] budgetCosts
+	//! \param[out] blockingBudget
+	//! \return true if passed array is not empty and entity can be placed according to the passed values
 	protected bool CanPlaceEntityType(EEditableEntityType entityType, out notnull array<ref SCR_EntityBudgetValue> budgetCosts, out EEditableEntityBudget blockingBudget)
 	{
-		if (!IsBudgetCapEnabled()) return true;
+		if (!IsBudgetCapEnabled())
+			return true;
+
 		GetEntityTypeBudgetCost(entityType, budgetCosts);		
 		return CanPlace(budgetCosts, blockingBudget);
 	}
 	
-	/*!
-	Checks if budget is sufficient using passed budget costs
-	\param budgetCosts array with budget costs values either read from entity in world or directly from prefab
-	\return True if passed budgetCosts array is not empty and entity can be placed according to the passed values
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Checks if budget is sufficient using passed budget costs
+	//! \param[in] budgetCosts array with budget costs values either read from entity in world or directly from prefab
+	//! \param[out] blockingBudget
+	//! \return True if passed budgetCosts array is not empty and entity can be placed according to the passed values
 	bool CanPlace(notnull array<ref SCR_EntityBudgetValue> budgetCosts, out EEditableEntityBudget blockingBudget)
 	{
-		if (!IsBudgetCapEnabled() || budgetCosts.IsEmpty()) return true;
+		if (!IsBudgetCapEnabled() || budgetCosts.IsEmpty())
+			return true;
 		
 		foreach (SCR_EntityBudgetValue budgetCost : budgetCosts)
 		{
@@ -134,6 +137,7 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		return true;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected bool CanPlace(SCR_EntityBudgetValue budgetCost, out EEditableEntityBudget blockingBudget)
 	{
 		EEditableEntityBudget budgetType = budgetCost.GetBudgetType();
@@ -154,22 +158,23 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected bool CanPlace(int currentBudget, int budgetChange, int maxBudget)
 	{
 		return currentBudget + budgetChange <= maxBudget;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] entityUIInfo
+	//! \param[out] budgetCosts
+	//! \return
 	bool GetEntityPreviewBudgetCosts(SCR_EditableEntityUIInfo entityUIInfo, out notnull array<ref SCR_EntityBudgetValue> budgetCosts)
 	{
 		if (!entityUIInfo)
-		{
 			return false;
-		}
 		
 		if (!entityUIInfo.GetEntityBudgetCost(budgetCosts))
-		{
 			GetEntityTypeBudgetCost(entityUIInfo.GetEntityType(), budgetCosts);
-		}
 		
 		array<ref SCR_EntityBudgetValue> entityChildrenBudgetCosts = {};
 		entityUIInfo.GetEntityChildrenBudgetCost(entityChildrenBudgetCosts);
@@ -181,29 +186,29 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		return true;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] editableEntitySource
+	//! \param[out] budgetCosts
+	//! \return
 	bool GetEntitySourcePreviewBudgetCosts(IEntityComponentSource editableEntitySource, out notnull array<ref SCR_EntityBudgetValue> budgetCosts)
 	{
 		if (!editableEntitySource)
-		{
 			return false;
-		}
 		
  		SCR_EditableEntityUIInfo editableUIInfo = SCR_EditableEntityUIInfo.Cast(SCR_EditableEntityComponentClass.GetInfo(editableEntitySource));
 		if (editableUIInfo)
-		{
 			return GetEntityPreviewBudgetCosts(editableUIInfo, budgetCosts);
-		}
+
 		return false;
 	}
 	
-	/*!
-	Return the cost of the occupants for a vehicle. It takes the cost directly from the UIinfo
-	\param editableEntitySource The Vehicle Entity source to get budget from
-	\param placingFlags To check which costs it needs to grab (Passengers and/or Vrew)
-	\param[out] budgetCosts Array of total budget costs
-	\param includeVehicleCost If true will also return the vehicle budget cost
-	\return False if unsuccesfull in obtaining costs
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Return the cost of the occupants for a vehicle. It takes the cost directly from the UIinfo
+	//! \param[in] editableEntitySource The Vehicle Entity source to get budget from
+	//! \param[in] placingFlags To check which costs it needs to grab (Passengers and/or Vrew)
+	//! \param[out] budgetCosts Array of total budget costs
+	//! \param[in] includeVehicleCost If true will also return the vehicle budget cost
+	//! \return False if unsuccesfull in obtaining costs
 	bool GetVehicleOccupiedBudgetCosts(IEntityComponentSource editableEntitySource, EEditorPlacingFlags placingFlags, out notnull array<ref SCR_EntityBudgetValue> budgetCosts, bool includeVehicleCost = true)
 	{
 		if (includeVehicleCost && !GetEntitySourcePreviewBudgetCosts(editableEntitySource, budgetCosts))
@@ -213,6 +218,11 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		return GetVehicleOccupiedBudgetCosts(editableUIInfo, placingFlags, budgetCosts);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] editableUIInfo
+	//! \param[in] placingFlags
+	//! \param[out] budgetCosts
+	//! \return
 	bool GetVehicleOccupiedBudgetCosts(SCR_EditableVehicleUIInfo editableUIInfo, EEditorPlacingFlags placingFlags, out notnull array<ref SCR_EntityBudgetValue> budgetCosts)
 	{
 		if (!editableUIInfo)
@@ -225,6 +235,7 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 			editableUIInfo.GetFillBudgetCostsOfCrew(vehicleOccupantsBudgetCosts);
 			SCR_EntityBudgetValue.MergeBudgetCosts(budgetCosts, vehicleOccupantsBudgetCosts);
 		}
+
 		if (placingFlags & EEditorPlacingFlags.VEHICLE_PASSENGER)
 		{
 			editableUIInfo.GetFillBudgetCostsOfPassengers(vehicleOccupantsBudgetCosts);
@@ -234,6 +245,9 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		return true;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] budgetCosts
 	void UpdatePreviewCost(notnull array<ref SCR_EntityBudgetValue> budgetCosts)
 	{
 		ResetPreviewCost();
@@ -243,9 +257,8 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 			int budgetValue = budgetCost.GetBudgetValue();
 			int maxBudget;
 			if (!GetMaxBudgetValue(budgetType, maxBudget))
-			{
 				continue;
-			}
+
 			float max = maxBudget;
 			// Calculate current budget percentage
 			int currentBudget = GetCurrentBudgetValue(budgetType);
@@ -271,17 +284,21 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
 	void ResetPreviewCost()
 	{
 		Event_OnBudgetPreviewReset.Invoke();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected bool IsBudgetAvailable(EEditableEntityBudget type)
 	{
 		SCR_EntityBudgetValue budget;
 		return GetMaxBudget(type, budget);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected bool GetMaxBudget(EEditableEntityBudget type, out SCR_EntityBudgetValue budget)
 	{
 		foreach	(SCR_EntityBudgetValue maxBudget : m_MaxBudgets)
@@ -295,9 +312,11 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		return false;
 	}
 	
-	/*!
-	Get max budget for this player per budget type
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get max budget for this player per budget type
+	//! \param[in] type
+	//! \param[out] maxBudget
+	//! \return
 	bool GetMaxBudgetValue(EEditableEntityBudget type, out int maxBudget)
 	{
 		SCR_EntityBudgetValue budgetValue;
@@ -309,9 +328,10 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		return false;
 	}
 	
-	/*!
-	Set max budget for this player for budget type
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Set max budget for this player for budget type
+	//! \param[in] type
+	//! \param[in] newValue
 	void SetMaxBudgetValue(EEditableEntityBudget type, int newValue)
 	{
 		int oldValue = 0;
@@ -324,6 +344,11 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		Rpc(UpdateMaxBudgetOwner, type, oldValue, newValue);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] type
+	//! \param[in] newValue
+	//! \param[in] playerChangingBudget
 	void DelayedSetMaxBudgetSetup(EEditableEntityBudget type, int newValue, int playerChangingBudget)
 	{
 		m_DelayedSetMaxBudgetsMap.Insert(type, newValue);
@@ -335,6 +360,7 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void DelayedSetMaxBudget(int playerChangingBudget)
 	{
 		m_bListenToMaxBudgetDelay = false;
@@ -342,6 +368,9 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		m_DelayedSetMaxBudgetsMap.Clear();
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] budgets
+	//! \param[in] playerChangingBudget unused
 	void SetMultiMaxBudgetValues(notnull map<EEditableEntityBudget, int> budgets, int playerChangingBudget)
 	{
 		foreach (EEditableEntityBudget type, int budget: budgets)
@@ -350,19 +379,19 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
    		}
 	}
 	
-	/*!
-	Gets the minimun cost of the given entity type
-	\param entityType entity type
-	\param[out] budgetCosts The minimum cost for the given budget type
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Gets the minimun cost of the given entity type
+	//! \param[in] entityType entity type
+	//! \param[out] budgetCosts The minimum cost for the given budget type
 	void GetEntityTypeBudgetCost(EEditableEntityType entityType, out array<ref SCR_EntityBudgetValue> budgetCosts)
 	{
 		EEditableEntityBudget entityBudgetType = m_EntityCore.GetBudgetForEntityType(entityType);
 		int minBudgetCost = GetEntityTypeBudgetCost(entityBudgetType);
 		
-		budgetCosts = { new SCR_EntityBudgetValue(entityBudgetType, minBudgetCost)};
+		budgetCosts = { new SCR_EntityBudgetValue(entityBudgetType, minBudgetCost) };
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected int GetEntityTypeBudgetCost(EEditableEntityBudget budgetType)
 	{
 		int minCost;
@@ -373,9 +402,10 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		return DEFAULT_MIN_COST;
 	}
 	
-	/*!
-	Get last received budget value for type
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get last received budget value for type
+	//! \param[in] type
+	//! \return
 	int GetCurrentBudgetValue(EEditableEntityBudget type)
 	{
 		SCR_EditableEntityCoreBudgetSetting budgetSettings;
@@ -385,9 +415,10 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		return budgetSettings.GetCurrentBudget() + budgetSettings.GetReservedBudget();
 	}
 	
-	/*!
-	Set current budget value
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Set current budget value
+	//! \param[in] budgetType
+	//! \param[in] value
 	void SetCurrentBudgetValue(EEditableEntityBudget budgetType, int value)
 	{
 		int originalBudgetValue, budgetChange, maxBudgetValue;
@@ -407,10 +438,11 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		}
 	}
 	
-	/*!
-	Get current settings of budget with given type
-	\param[out] BudgetSetting of given type, contains UIInfo, and current budget value
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get current settings of budget with given type
+	//! \param[in] budgetType
+	//! \param[out] blockingBudgetInfo
+	//! \return
 	bool GetCurrentBudgetInfo(EEditableEntityBudget budgetType, out SCR_UIInfo blockingBudgetInfo)
 	{
 		SCR_EditableEntityCoreBudgetSetting budgetSettings;
@@ -422,6 +454,8 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		return false;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[out] budgets
 	void GetBudgets(out notnull array<ref SCR_EditableEntityCoreBudgetSetting> budgets)
 	{
 		foreach (EEditableEntityBudget budgetType, SCR_EditableEntityCoreBudgetSetting setting : m_BudgetSettingsMap)
@@ -430,14 +464,14 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected bool GetCurrentBudgetSettings(EEditableEntityBudget budgetType, out SCR_EditableEntityCoreBudgetSetting budgetSettings)
 	{
 		return m_BudgetSettingsMap.Find(budgetType, budgetSettings);
 	}
 	
-	/*!
-	Get default budget definitions from core, budget values not synced on client, use GetCurrentBudget for updated budget
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get default budget definitions from core, budget values not synced on client, use GetCurrentBudget for updated budget
 	protected void RefreshBudgetSettings()
 	{
 		m_BudgetSettingsMap.Clear();
@@ -468,19 +502,16 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void UpdateMaxBudgetOwner(int budgetType, int oldMaxBudget, int newMaxBudget)
 	{
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_LOG_BUDGET_CHANGES))
-		{
-			PrintFormat("Updated maximum budget received for type %1: %2", budgetType, newMaxBudget);
-		}
+			Print(string.Format("Updated maximum budget received for type %1: %2", budgetType, newMaxBudget), LogLevel.NORMAL);
 		
 		SCR_EntityBudgetValue maxBudget;
 		if (GetMaxBudget(budgetType, maxBudget))
-		{
 			maxBudget.SetBudgetValue(newMaxBudget);
-		}
 		
 		int currentBudget = GetCurrentBudgetValue(budgetType);
 		// Notify max budget reached
@@ -492,15 +523,16 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		Event_OnBudgetMaxUpdated.Invoke(budgetType, currentBudget, newMaxBudget);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected bool CanPlaceResult(bool canPlace, bool showNotification)
 	{
 		if (showNotification)
-		{
 			Rpc(CanPlaceOwner, canPlace);
-		}
+
 		return canPlace;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void CanPlaceOwner(bool canPlace)
 	{
@@ -511,6 +543,7 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnEntityCoreBudgetUpdated(EEditableEntityBudget entityBudget, int originalBudgetValue, int budgetChange, int updatedBudgetValue, SCR_EditableEntityComponent entity)
 	{
 		int maxBudgetValue;
@@ -523,13 +556,12 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 			Rpc(OnEntityCoreBudgetUpdatedOwner, entityBudget, updatedBudgetValue, budgetChange, sendBudgetMaxEvent, budgetMaxReached);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void OnEntityCoreBudgetUpdatedOwner(EEditableEntityBudget entityBudget, int budgetValue, int budgetChange, bool sendBudgetMaxEvent, bool budgetMaxReached)
 	{
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_LOG_BUDGET_CHANGES))
-		{
-			PrintFormat("Updated budget received for type %1: %2", entityBudget, budgetValue);
-		}
+			Print(string.Format("Updated budget received for type %1: %2", entityBudget, budgetValue), LogLevel.NORMAL);
 		
 		int maxBudget;
 		SCR_EditableEntityCoreBudgetSetting budgetSettings;
@@ -545,6 +577,7 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected bool CheckMaxBudgetReached(EEditableEntityBudget entityBudget, int budgetChange, int originalBudgetValue, int updatedBudgetValue, int maxBudgetValue, out bool maxBudgetReached)
 	{
 		if (budgetChange >= 0 && originalBudgetValue + budgetChange >= maxBudgetValue)
@@ -566,6 +599,7 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		return false;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void FilterAvailableBudgets(inout notnull array<ref SCR_EntityBudgetValue> budgetCosts)
 	{
 		SCR_EntityBudgetValue budget;
@@ -578,11 +612,14 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] budgetType
+	//! \return
 	SCR_EditableEntityCoreBudgetSetting GetBudgetSetting(EEditableEntityBudget budgetType)
 	{
 		return m_BudgetSettingsMap.Get(budgetType);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected EEditableEntityBudget GetFirstAvailableBudget()
 	{
 		if (!m_MaxBudgets || m_MaxBudgets.IsEmpty())
@@ -591,6 +628,8 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 			return m_MaxBudgets[0].GetBudgetType();;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//!
 	void DemandBudgetUpdateFromServer()
 	{
 		if (!m_RplComponent)
@@ -602,6 +641,8 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		Rpc(RpcServer_UpdateBudget);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//!
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RpcServer_UpdateBudget()
 	{
@@ -614,6 +655,10 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] budgetType
+	//! \param[in] currentBudget
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	void RpcOwner_UpdateBudget(EEditableEntityBudget budgetType, int currentBudget)
 	{
@@ -633,6 +678,7 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected bool IsBudgetCapEnabled()
 	{
 	#ifdef ENABLE_DIAG
@@ -642,6 +688,7 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 	#endif
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override protected void EOnEditorDebug(array<string> debugTexts)
 	{
 		SCR_EntityBudgetValue maxBudget;
@@ -652,33 +699,32 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected override void EOnEditorInitServer()
 	{
 		m_EntityCore = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
 		m_EntityCore.Event_OnEntityBudgetUpdated.Insert(OnEntityCoreBudgetUpdated);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected override void EOnEditorDeleteServer()
 	{
 		if (m_EntityCore)
-		{
 			m_EntityCore.Event_OnEntityBudgetUpdated.Remove(OnEntityCoreBudgetUpdated);
-		}
 		
-		/*
-		if (m_DestroyedEntityFilter)
-		{
-			m_DestroyedEntityFilter.GetOnChanged().Remove(OnDestroyedChanged);
-		}
-		*/
+//		if (m_DestroyedEntityFilter)
+//			m_DestroyedEntityFilter.GetOnChanged().Remove(OnDestroyedChanged);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected override void EOnEditorActivate()
 	{
-		SCR_EntitiesManagerEditorComponent entitiesManager = SCR_EntitiesManagerEditorComponent.Cast(SCR_EntitiesManagerEditorComponent.GetInstance(SCR_EntitiesManagerEditorComponent, true));
-		if (entitiesManager)
-		{
-			//m_DestroyedEntityFilter = entitiesManager.GetFilter(EEditableEntityState.DESTROYED);
-			//m_DestroyedEntityFilter.GetOnChanged().Insert(OnDestroyedChanged);		
-		}
+//		SCR_EntitiesManagerEditorComponent entitiesManager = SCR_EntitiesManagerEditorComponent.Cast(SCR_EntitiesManagerEditorComponent.GetInstance(SCR_EntitiesManagerEditorComponent, true));
+//		if (entitiesManager)
+//		{
+//			//m_DestroyedEntityFilter = entitiesManager.GetFilter(EEditableEntityState.DESTROYED);
+//			//m_DestroyedEntityFilter.GetOnChanged().Insert(OnDestroyedChanged);
+//		}
 
 		RefreshBudgetSettings();
 
@@ -686,6 +732,7 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 			Rpc(RpcServer_UpdateBudget);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected override void EOnEditorInit()
 	{
 		m_EntityCore = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
@@ -702,6 +749,8 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_BudgetEditorComponent()
 	{
 	#ifdef ENABLE_DIAG
@@ -709,4 +758,4 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_BUDGET_CAP);
 	#endif
 	}
-};
+}

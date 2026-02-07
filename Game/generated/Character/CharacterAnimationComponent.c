@@ -19,6 +19,9 @@ class CharacterAnimationComponent: BaseAnimPhysComponent
 	proto external void SetAnimationLayerTPP();
 	//! Set animation layer for first person camera
 	proto external void SetAnimationLayerFPP();
+	proto external bool SetIKTarget(string bindingName, string boneName, vector position, vector rotationRad);
+	// Set an IK target plane to a plane given by specified normal vector and a dist distance from the world origin.
+	proto external bool SetIKTargetPlane(string bindingName, float normalX, float normalY, float normalZ, float dist);
 	/*!
 	Returns the collision box of the character in a specific stance.
 	\param outMin Minimum point of the collision box.
@@ -29,6 +32,8 @@ class CharacterAnimationComponent: BaseAnimPhysComponent
 	proto external void GetMovementState(out CharacterMovementState movementState);
 	//! heading component - AnimPhysAgent component
 	proto external CharacterHeadingAnimComponent GetHeadingComponent();
+	//! Character Buoyancy - AnimPhysAgent component
+	proto external CharacterBuoyancyComponent GetKinematicBuoyancyComponent();
 	proto external bool IsWeaponADSTag();
 	proto external bool IsPrimaryTag(AnimationTagID tagID);
 	proto external bool IsSecondaryTag(AnimationTagID tagID);
@@ -43,6 +48,8 @@ class CharacterAnimationComponent: BaseAnimPhysComponent
 	proto external vector GetInertiaSpeed();
 	//! command handler access
 	proto external CharacterCommandHandlerComponent GetCommandHandler();
+	//! Returns if Character is currently ragdolling.
+	proto external bool IsRagdollActive();
 	//! Adds damage effectors that will be applied to ragdoll once it is enabled
 	//! Position and Direction in character's local space, force is in m/kg3, maxLifeTime is time in seconds as for how long this damage will be applicable (scales with decrease)
 	proto external void AddRagdollEffectorDamage(vector posLS, vector dirLS, float force, float radius, float maxLifeTime);

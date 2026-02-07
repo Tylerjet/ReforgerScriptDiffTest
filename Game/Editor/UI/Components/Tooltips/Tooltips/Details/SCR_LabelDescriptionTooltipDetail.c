@@ -1,5 +1,5 @@
 [BaseContainerProps(), BaseContainerCustomTitleField("m_sDisplayName")]
-class SCR_LabelDescriptionTooltipDetail: SCR_EntityTooltipDetail
+class SCR_LabelDescriptionTooltipDetail : SCR_EntityTooltipDetail
 {	
 	[Attribute(desc: "The discription shown")]
 	protected LocalizedString m_sDescription;
@@ -10,6 +10,7 @@ class SCR_LabelDescriptionTooltipDetail: SCR_EntityTooltipDetail
 	[Attribute("0", desc: "In which modes should the tooltip be shown", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(EEditorMode))]
 	protected ref array<EEditorMode> m_aShownInEditorModes;
 	
+	//------------------------------------------------------------------------------------------------
 	override bool InitDetail(SCR_EditableEntityComponent entity, Widget widget)
 	{
 		if (m_sDescription.IsEmpty() || m_aShownInEditorModes.IsEmpty() || m_aLabelRequired.IsEmpty())

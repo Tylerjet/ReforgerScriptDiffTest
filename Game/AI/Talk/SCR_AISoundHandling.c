@@ -284,6 +284,8 @@ class SCR_AISoundHandling
 			return ECP_Characters.MACHINE_GUNNER;
 		else if (info.HasRole(EUnitRole.AT_SPECIALIST))
 			return ECP_Characters.AT_SOLDIER;
+		else if (info.HasRole(EUnitRole.SNIPER))
+			return ECP_Characters.SNIPER;
 		else if (info.HasRole(EUnitRole.RIFLEMAN))
 			return ECP_Characters.SOLDIER;
 		return ECP_Characters.MAN;

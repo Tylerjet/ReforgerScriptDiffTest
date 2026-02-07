@@ -1,9 +1,8 @@
 [ComponentEditorProps(category: "GameScripted/Sound", description: "Signal Debug Component")]
-class SCR_SignalDebugComponentClass: ScriptComponentClass
+class SCR_SignalDebugComponentClass : ScriptComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_SignalDebugComponent : ScriptComponent
 {	
 	[Attribute("", uiwidget: UIWidgets.Object, "Signals names")]
@@ -22,7 +21,8 @@ class SCR_SignalDebugComponent : ScriptComponent
 		
 	protected SignalsManagerComponent m_SignalsManagerComponent;
 	protected SoundComponent m_SoundComponent;
-		
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
 		if (m_bPrintToLog)
@@ -43,6 +43,7 @@ class SCR_SignalDebugComponent : ScriptComponent
 		}			
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{		
 		// Get Components								
@@ -70,6 +71,7 @@ class SCR_SignalDebugComponent : ScriptComponent
 		}	
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{				
 		if (m_bPrintSignalsOnSoundComponent)
@@ -86,12 +88,11 @@ class SCR_SignalDebugComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_SignalDebugComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 	}
-
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_SignalDebugComponent()
-	{
-	}
-};
+}

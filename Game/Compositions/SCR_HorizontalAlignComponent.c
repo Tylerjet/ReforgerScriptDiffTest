@@ -1,11 +1,13 @@
 [ComponentEditorProps(category: "GameScripted/Compositions", description: "If entity is placed in a slot or converted to editableEntity then the system makes sure that the entity is always horizontally aligned")]
-class SCR_HorizontalAlignComponentClass: ScriptComponentClass
+class SCR_HorizontalAlignComponentClass : ScriptComponentClass
 {
-};
-class SCR_HorizontalAlignComponent: ScriptComponent
+}
+
+class SCR_HorizontalAlignComponent : ScriptComponent
 {
 	//Force horizontal alignment in WB
 	#ifdef WORKBENCH
+	//------------------------------------------------------------------------------------------------
 	override void _WB_SetTransform(IEntity owner, inout vector mat[4], IEntitySource src)
 	{
 		owner.GetWorldTransform(mat);
@@ -15,4 +17,4 @@ class SCR_HorizontalAlignComponent: ScriptComponent
 		Math3D.AnglesToMatrix(angles, mat);
 	}
 	#endif
-};
+}

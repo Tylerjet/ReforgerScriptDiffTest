@@ -190,23 +190,42 @@ class SCR_PlayersManagerEditorComponent : SCR_BaseEditorComponent
 	protected void OnSpawnServer(int playerID, IEntity controlledEntity)
 	{
 		SCR_EditableEntityComponent entity = SCR_EditableEntityComponent.GetEditableEntity(controlledEntity);
-		if (!entity) return;
+		if (!entity)
+			return;
+
+		UpdatePlayerFaction(entity, controlledEntity);
+		UpdatePlayerGroup(entity, controlledEntity, playerID);
 
 		Rpc(OnSpawnOwner, playerID, Replication.FindId(entity));
-		
+	}
+
+	protected void UpdatePlayerGroup(notnull SCR_EditableEntityComponent editableEntity, notnull IEntity controlledEntity, int playerID)
+	{
 		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
 		if (!groupManager)
 			return;
-		
-		if (groupManager.IsPlayerInAnyGroup(playerID))
-			return;
 
-		SCR_AIGroup foundGroup = groupManager.GetFirstNotFullForFaction(entity.GetFaction(), null, true);
+		Faction entityFaction = editableEntity.GetFaction();
+		SCR_AIGroup group = groupManager.GetPlayerGroup(playerID);
+		if (group && group.GetFaction() == entityFaction)
+			return; 
+
+		SCR_AIGroup foundGroup = groupManager.GetFirstNotFullForFaction(entityFaction, null, true);
 		if (!foundGroup)
-			foundGroup = groupManager.CreateNewPlayableGroup(entity.GetFaction());
+			foundGroup = groupManager.CreateNewPlayableGroup(entityFaction);
 
 		foundGroup.AddPlayer(playerID);
 	}
+	
+	protected void UpdatePlayerFaction(SCR_EditableEntityComponent editableEntity, IEntity controlledEntity)
+	{
+		FactionAffiliationComponent factionAffiliaton = FactionAffiliationComponent.Cast(controlledEntity.FindComponent(FactionAffiliationComponent));
+		if (!factionAffiliaton)
+			return;
+
+		factionAffiliaton.SetAffiliatedFaction(editableEntity.GetFaction());
+	}
+
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void OnSpawnOwner(int playerID, int entityID)
 	{

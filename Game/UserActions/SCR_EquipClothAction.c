@@ -104,7 +104,7 @@ class SCR_EquipClothAction: SCR_InventoryAction
 		if (m_bIsSwappingItems)
 		{
 			string replaceAction = string.Format(WidgetManager.Translate(m_sReplaceActionString), WidgetManager.Translate(m_sItemToSwapName));
-			outName = string.Format( "%1 (%2)", m_sSwapActionString, replaceAction );
+			outName = string.Format( "%1 %2", m_sSwapActionString, replaceAction );
 		}
 		else
 			outName = m_sEquipActionString;

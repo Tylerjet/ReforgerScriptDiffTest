@@ -8,10 +8,12 @@ class SCR_ChatHud : SCR_InfoDisplayExtended
 {
 	protected SCR_ChatPanel m_ChatPanel;
 	protected SCR_InfoDisplaySlotHandler m_slotHandler;
+	protected SCR_HUDSlotUIComponent m_HUDSlotComponent;
 	
 	protected int m_iHUDPriorityDefault;
 	
-	protected const int HEIGHT_DEVIDER = 50;
+	protected const int HEIGHT_DIVIDER = 50;
+	protected const int INPUTFIELD_HEIGHT = 2;
 	
 	//------------------------------------------------------------------------------------------------
 	override void DisplayUpdate(IEntity owner, float timeSlice)
@@ -20,8 +22,19 @@ class SCR_ChatHud : SCR_InfoDisplayExtended
 		{
 			m_ChatPanel.OnUpdateChat(timeSlice);
 		}
+		
+		if (m_HUDSlotComponent != m_slotHandler.GetSlotUIComponent())
+		{
+			if (m_HUDSlotComponent)
+				m_HUDSlotComponent.GetOnResize().Remove(OnSlotUIResize);
+			
+			m_HUDSlotComponent = m_slotHandler.GetSlotUIComponent();
+			if (!m_HUDSlotComponent)
+				return;
+			
+			m_HUDSlotComponent.GetOnResize().Insert(OnSlotUIResize);
+		}
 	}
-	
 	
 	//------------------------------------------------------------------------------------------------
 	override void DisplayStartDraw(IEntity owner)
@@ -41,8 +54,12 @@ class SCR_ChatHud : SCR_InfoDisplayExtended
 		if(!m_slotHandler)
 			return;
 		
-		m_slotHandler.GetSlotUIComponent().GetOnResize().Insert(OnSlotUIResize);
-		m_iHUDPriorityDefault = m_slotHandler.GetSlotUIComponent().GetPriority();
+		m_HUDSlotComponent = m_slotHandler.GetSlotUIComponent();
+		if (!m_HUDSlotComponent)
+			return;
+		
+		m_HUDSlotComponent.GetOnResize().Insert(OnSlotUIResize);
+		m_iHUDPriorityDefault = m_HUDSlotComponent.GetPriority();
 		m_ChatPanel.GetOnChatOpen().Insert(OnChatOpen);
 		m_ChatPanel.GetOnChatClosed().Insert(OnChatClose);
 		
@@ -51,9 +68,14 @@ class SCR_ChatHud : SCR_InfoDisplayExtended
 	//------------------------------------------------------------------------------------------------
 	//! Calculate how many Chat line widgets can be shown when HUD resizes
 	protected void OnSlotUIResize()
-	{
-		int maxLines = (int)m_slotHandler.GetSlotUIComponent().GetHeight() / HEIGHT_DEVIDER;
-		maxLines -= 2;
+	{	
+		// Assign it again in case the SlotUIComponent has changed
+		m_HUDSlotComponent = m_slotHandler.GetSlotUIComponent();
+		if (!m_HUDSlotComponent)
+			return;
+		
+		int maxLines = (int)m_HUDSlotComponent.GetHeight() / HEIGHT_DIVIDER;
+		maxLines -= INPUTFIELD_HEIGHT;
 		if (maxLines < 0)
 			maxLines = 0;
 		
@@ -64,15 +86,24 @@ class SCR_ChatHud : SCR_InfoDisplayExtended
 	//! When the chat is open, increase it's priority to make it easier to read through the chat
 	void OnChatOpen()
 	{
-		m_slotHandler.GetSlotUIComponent().SetPriority(m_iHUDPriorityDefault + 1);
-		Print(m_slotHandler);
+		// Assign it again in case the SlotUIComponent has changed
+		m_HUDSlotComponent = m_slotHandler.GetSlotUIComponent();
+		if (!m_HUDSlotComponent)
+			return;
+		
+		m_HUDSlotComponent.SetPriority(m_iHUDPriorityDefault + 1);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! When chat is closed reset it's priority back to default 
 	void OnChatClose()
 	{
-		m_slotHandler.GetSlotUIComponent().SetPriority(m_iHUDPriorityDefault);
+		// Assign it again in case the SlotUIComponent has changed
+		m_HUDSlotComponent = m_slotHandler.GetSlotUIComponent();
+		if (!m_HUDSlotComponent)
+			return;
+		
+		m_HUDSlotComponent.SetPriority(m_iHUDPriorityDefault);
 	}
 	
 	//------------------------------------------------------------------------------------------------

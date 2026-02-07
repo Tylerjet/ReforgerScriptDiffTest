@@ -1,12 +1,8 @@
-class CampaignBasesSystem: GameSystem
+class CampaignBasesSystem : GameSystem
 {
 	protected ref array<SCR_CampaignMilitaryBaseComponent> m_Components = {};
 	
-	override protected ESystemPoint GetSystemPoint()
-	{
-		return ESystemPoint.FixedFrame;
-	}
-	
+	//------------------------------------------------------------------------------------------------
 	override protected void OnUpdate(ESystemPoint point)
 	{
 		float timeSlice = GetWorld().GetFixedTimeSlice();
@@ -17,6 +13,7 @@ class CampaignBasesSystem: GameSystem
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override protected void OnDiag(float timeSlice)
 	{
 		DbgUI.Begin("CampaignBasesSystem");
@@ -34,6 +31,8 @@ class CampaignBasesSystem: GameSystem
 		DbgUI.End();
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param component must not be null
 	void Register(SCR_CampaignMilitaryBaseComponent component)
 	{
 		//About to be deleted
@@ -46,6 +45,7 @@ class CampaignBasesSystem: GameSystem
 		m_Components.Insert(component);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	void Unregister(SCR_CampaignMilitaryBaseComponent component)
 	{
 		int idx = m_Components.Find(component);

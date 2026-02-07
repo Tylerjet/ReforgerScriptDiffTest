@@ -3,19 +3,24 @@ class SCR_FireplaceComponentClass : SCR_BaseInteractiveLightComponentClass
 {
 	[Attribute("{C0E2E7DC28B71E2C}Particles/Enviroment/Campfire_medium_normal.ptc", UIWidgets.ResourceNamePicker, "Prefab of fire particle used for a fire action.", "ptc")]
 	protected ResourceName m_sParticle;	
+
 	[Attribute("0 0.2 0", UIWidgets.EditBox, "Particle offset in local space from the origin of the entity")]
 	protected vector m_vParticleOffset;
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetParticle()
 	{
 		return m_sParticle;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	vector GetParticleOffset()
 	{
 		return m_vParticleOffset;
 	}
-};
+}
 
 class SCR_FireplaceComponent : SCR_BaseInteractiveLightComponent
 {
@@ -52,6 +57,7 @@ class SCR_FireplaceComponent : SCR_BaseInteractiveLightComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void TurnOn()
 	{
 		SCR_FireplaceComponentClass componentData = SCR_FireplaceComponentClass.Cast(GetComponentData(GetOwner()));
@@ -81,6 +87,7 @@ class SCR_FireplaceComponent : SCR_BaseInteractiveLightComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void TurnOff()
 	{
 		// Hide decals
@@ -113,6 +120,7 @@ class SCR_FireplaceComponent : SCR_BaseInteractiveLightComponent
 		super.OnPostInit(owner);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnVisible(IEntity owner, int frameNumber)
 	{
 		super.EOnVisible(owner, frameNumber);
@@ -172,4 +180,4 @@ class SCR_FireplaceComponent : SCR_BaseInteractiveLightComponent
 		if (m_pFireParticle)
 			RplComponent.DeleteRplEntity(m_pFireParticle, false);
 	}
-};
+}

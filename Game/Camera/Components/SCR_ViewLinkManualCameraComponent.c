@@ -1,12 +1,10 @@
-[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
-/** @ingroup ManualCamera
-*/
+//! @ingroup ManualCamera
 
-/*!
-Teleporting camera to position defined by Workbench link
-*/
+//! Teleporting camera to position defined by Workbench link
+[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
 class SCR_ViewLinkManualCameraComponent : SCR_BaseManualCameraComponent
 {
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraFrame(SCR_ManualCameraParam param)
 	{
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_MANUAL_CAMERA_VIEW_LINK))
@@ -43,13 +41,17 @@ class SCR_ViewLinkManualCameraComponent : SCR_BaseManualCameraComponent
 			DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_MANUAL_CAMERA_VIEW_LINK, 0);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool EOnCameraInit()
 	{
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_MANUAL_CAMERA_VIEW_LINK, "lshift+lalt+l", "Paste view link", "Manual Camera");
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraExit()
 	{
 		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_MANUAL_CAMERA_VIEW_LINK);
 	}
-};
+}

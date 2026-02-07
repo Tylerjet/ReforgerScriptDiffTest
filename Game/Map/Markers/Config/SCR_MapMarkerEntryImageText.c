@@ -76,7 +76,7 @@ class SCR_MarkerSimpleConfig
 	//------------------------------------------------------------------------------------------------
 	Color GetColor()
 	{
-		return new Color(m_Color.R(), m_Color.G(), m_Color.B(), m_Color.A());
+		return Color.FromInt(m_Color.PackToInt());
 	}
 	
 	//------------------------------------------------------------------------------------------------

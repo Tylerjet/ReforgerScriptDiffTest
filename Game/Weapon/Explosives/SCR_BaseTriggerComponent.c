@@ -1,9 +1,8 @@
-[EntityEditorProps(category: "GameScripted/ScriptWizard", description: "ScriptWizard generated script file.")]
+[EntityEditorProps(category: "GameScripted/ScriptWizard", description: "")]
 class SCR_BaseTriggerComponentClass : BaseTriggerComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_BaseTriggerComponent : BaseTriggerComponent
 {
 	[Attribute("0", "Is this mine live by default?")]
@@ -18,12 +17,15 @@ class SCR_BaseTriggerComponent : BaseTriggerComponent
 	//protected Instigator m_User;
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	bool IsActivated()
 	{
 		return m_bActivated;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] user
 	void SetUser(notnull IEntity user)
 	{
 		GetInstigator().SetInstigator(user);
@@ -31,6 +33,7 @@ class SCR_BaseTriggerComponent : BaseTriggerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	// Only call this on the server
 	void ActivateTrigger()
 	{
@@ -38,15 +41,11 @@ class SCR_BaseTriggerComponent : BaseTriggerComponent
 		RplComponent rplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
 		if (!rplComponent || rplComponent.IsProxy())
 			return;
-		
-		ChimeraWorld world = ChimeraWorld.CastFrom(GetOwner().GetWorld());
-		if (world)
-		{
-			GarbageManager garbageManager = world.GetGarbageManager();
-			if (garbageManager)
-				garbageManager.Withdraw(owner); //withdraw from garbage manager to avoid unwanted deletion
-		}
-		
+
+		auto garbageSystem = SCR_GarbageSystem.GetByEntityWorld(owner);
+		if (garbageSystem)
+			garbageSystem.Withdraw(owner);
+
 		SetLive();
 		m_bActivated = true;
 		ShowFuse();
@@ -54,6 +53,7 @@ class SCR_BaseTriggerComponent : BaseTriggerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void ShowFuse()
 	{
 		IEntity owner = GetOwner();
@@ -65,7 +65,7 @@ class SCR_BaseTriggerComponent : BaseTriggerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// Method called on the clients, the item should be outside inventory already
+	//! Method called on the clients, the item should be outside inventory already
 	void OnActivatedChanged()
 	{
 		if (m_bActivated)
@@ -73,6 +73,7 @@ class SCR_BaseTriggerComponent : BaseTriggerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	void RPC_DoTrigger()
 	{
@@ -91,8 +92,12 @@ class SCR_BaseTriggerComponent : BaseTriggerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_BaseTriggerComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		SetEventMask(ent, EntityEvent.INIT);
 	}
-};
+}

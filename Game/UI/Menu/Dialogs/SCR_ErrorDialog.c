@@ -62,6 +62,12 @@ class SCR_ErrorDialog : ScriptedWidgetComponent
 		if (m_wImgLine)
 			m_wImgLine.SetVisible(true);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	static SCR_ErrorDialog FindErrorComponent(notnull Widget w)
+	{
+		return SCR_ErrorDialog.Cast(w.FindHandler(SCR_ErrorDialog));
+	}
 };
 
 

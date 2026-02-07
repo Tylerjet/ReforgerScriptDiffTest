@@ -53,6 +53,8 @@ class SCR_RefuelAtSupportStationAction : SCR_BaseUseSupportStationAction
 	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
 	{
 		m_FuelManager = SCR_FuelManagerComponent.Cast(pOwnerEntity.FindComponent(SCR_FuelManagerComponent));
+		if (!m_FuelManager)
+			Print("'SCR_RefuelAtSupportStationAction': '" + pOwnerEntity.GetName() + "' is missing SCR_FuelManager!", LogLevel.WARNING);
 		
 		super.Init(pOwnerEntity, pManagerComponent);
 	}
@@ -97,6 +99,12 @@ class SCR_RefuelAtSupportStationAction : SCR_BaseUseSupportStationAction
 		You can also potentially check here if fuel type is correct
 	}
 	*/
+	
+	//------------------------------------------------------------------------------------------------
+	protected override bool PrioritizeHeldGadget()
+	{
+		return true;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)

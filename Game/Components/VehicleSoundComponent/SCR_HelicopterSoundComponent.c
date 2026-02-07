@@ -1,12 +1,11 @@
 [EntityEditorProps(category: "GameScripted/Sound", description: "")]
 class SCR_HelicopterSoundComponentClass : SCR_VehicleSoundComponentClass
 {
-	// prefab properties here
-};
+}
 
 class SCR_HelicopterSoundComponent : SCR_VehicleSoundComponent
 {		 
-	//! Signal names	
+	// Signal names
 	protected const string SPEED_TO_CAMERA_SIGNAL_NAME = "SpeedToCamera";
 	protected const string DISTANCE_SIGNAL_NAME = "Distance";	
 	protected const string ALTITUDE_AGL = "AltitudeAGL";	
@@ -14,24 +13,32 @@ class SCR_HelicopterSoundComponent : SCR_VehicleSoundComponent
 	protected const string MAIN_ROTOR_HIT_ZONE_NAME = "RotorMain";	
 	protected const string DAMAGE_STATE_SIGNAL_NAME = "DamageState";
 	protected const string ROTOR_MAIN_DAMAGE_STATE_SIGNAL_NAME = "RotorMainDamageState";
-	//! Constants
+
+	// Constants
 	protected const float UPDATE_TIME = 0.15;
 	protected const float WASH_ROTOR_DISTANCE_LIMIT = 100;
 	protected const float ALTITUDE_LIMIT = 50;
 	protected const float MAIN_ROTOR_RPM_SCALED_THRESHOLD = 0.2;
-	//! Signal indexes
+
+	// Signal indexes
 	protected int m_iDistanceSignalIdx;
 	protected int m_iSpeedToCameraSignalIdx;
 	protected int m_AltitudeAGLSignalIdx;
 	protected int m_MainRotorRPMScaledIdx;
-	//!
+
+	//
+	protected SignalsManagerComponent m_SignalsManagerComponent;
 	protected float m_fTimer;
+
 	//! Wash rotor audio handle
 	protected AudioHandle m_WashRotorAudioHandle = AudioHandle.Invalid;		
+
 	//! Damage state signal
 	protected SCR_HelicopterDamageManagerComponent m_HelicopterDamageManagerComponent;
+
 	//! Main rotor damage state
-	protected ScriptedHitZone m_RotorMainHitZone;
+	protected SCR_HitZone m_RotorMainHitZone;
+
 	protected EDamageState m_eRotorMainDamageState;
 	
 	//------------------------------------------------------------------------------------------------
@@ -52,10 +59,8 @@ class SCR_HelicopterSoundComponent : SCR_VehicleSoundComponent
 	}
 		
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Updates SpeedToCamera signal based on owner velocity towards the camera
-	\param owner Owner entity
-	*/
+	//! Updates SpeedToCamera signal based on owner velocity towards the camera
+	//! \param owner owner entity - cannot be null
 	protected void CalculateSpeedToCameraSignal(IEntity owner)
 	{
 		Physics physics = owner.GetPhysics();
@@ -76,9 +81,8 @@ class SCR_HelicopterSoundComponent : SCR_VehicleSoundComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Handles wash rotor sound. Triggeres the sound, when conditions are met and updates sounds position based owner altitude.
-	*/
+	//! Handles wash rotor sound. Triggers the sound, when conditions are met and updates sounds position based on owner's altitude.
+	//! \param[in] owner cannot be null
 	protected void HandleWashRotor(IEntity owner)
 	{
 		if (m_eRotorMainDamageState == EDamageState.DESTROYED || m_SignalsManagerComponent.GetSignalValue(m_iDistanceSignalIdx) > WASH_ROTOR_DISTANCE_LIMIT || m_SignalsManagerComponent.GetSignalValue(m_MainRotorRPMScaledIdx) < MAIN_ROTOR_RPM_SCALED_THRESHOLD)
@@ -95,7 +99,7 @@ class SCR_HelicopterSoundComponent : SCR_VehicleSoundComponent
 		}
 		
 		vector mat[4];
-		mat[3] = owner.GetOrigin();
+		owner.GetTransform(mat);
 		mat[3][1] = mat[3][1] - altitudeAGL;
 		
 		if (IsFinishedPlaying(m_WashRotorAudioHandle))
@@ -130,12 +134,12 @@ class SCR_HelicopterSoundComponent : SCR_VehicleSoundComponent
 	//------------------------------------------------------------------------------------------------	
 	protected void RegisterRotorMainOnDamageChanged()
 	{
-		SCR_HitZoneContainerComponent hitZoneContainerComponent = SCR_HitZoneContainerComponent.Cast(GetOwner().FindComponent(SCR_HitZoneContainerComponent));
+		SCR_DamageManagerComponent hitZoneContainerComponent = SCR_DamageManagerComponent.Cast(GetOwner().FindComponent(SCR_DamageManagerComponent));
 		if (!hitZoneContainerComponent)
 			return;
 								
 		HitZone hitZone = hitZoneContainerComponent.GetHitZoneByName(MAIN_ROTOR_HIT_ZONE_NAME);
-		m_RotorMainHitZone = ScriptedHitZone.Cast(hitZone);
+		m_RotorMainHitZone = SCR_HitZone.Cast(hitZone);
 		if (m_RotorMainHitZone)
 			m_RotorMainHitZone.GetOnDamageStateChanged().Insert(RotorMainOnStateChanged);
 	}
@@ -143,12 +147,12 @@ class SCR_HelicopterSoundComponent : SCR_VehicleSoundComponent
 	//------------------------------------------------------------------------------------------------	
 	protected void UnregisterRotorMainOnDamageChanged()
 	{
-		SCR_HitZoneContainerComponent hitZoneContainerComponent = SCR_HitZoneContainerComponent.Cast(GetOwner().FindComponent(SCR_HitZoneContainerComponent));
+		SCR_DamageManagerComponent hitZoneContainerComponent = SCR_DamageManagerComponent.Cast(GetOwner().FindComponent(SCR_DamageManagerComponent));
 		if (!hitZoneContainerComponent)
 			return;
 								
 		HitZone hitZone = hitZoneContainerComponent.GetHitZoneByName(MAIN_ROTOR_HIT_ZONE_NAME);
-		m_RotorMainHitZone = ScriptedHitZone.Cast(hitZone);
+		m_RotorMainHitZone = SCR_HitZone.Cast(hitZone);
 		if (m_RotorMainHitZone)
 			m_RotorMainHitZone.GetOnDamageStateChanged().Remove(RotorMainOnStateChanged);
 	}
@@ -169,6 +173,7 @@ class SCR_HelicopterSoundComponent : SCR_VehicleSoundComponent
 	{	
 		super.OnPostInit(owner);
 		
+		m_SignalsManagerComponent = SignalsManagerComponent.Cast(owner.FindComponent(SignalsManagerComponent));
 		if (!m_SignalsManagerComponent)
 			return;
 			
@@ -188,6 +193,7 @@ class SCR_HelicopterSoundComponent : SCR_VehicleSoundComponent
 	}
 				
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_HelicopterSoundComponent()
 	{
 		UnregisterOnDamageChanged();

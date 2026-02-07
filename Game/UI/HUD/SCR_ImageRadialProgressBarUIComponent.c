@@ -20,7 +20,7 @@ class SCR_ImageRadialProgressBarUIComponent: SCR_RadialProgressBarUIComponent
 	protected bool m_bIsFadingIn;
 	
 	//Script invoker
-	protected ref ScriptInvoker Event_OnFadeDone = new ref ScriptInvoker; //SCR_ImageRadialProgressBarUIComponent, bool wasFadingIn
+	protected ref ScriptInvoker Event_OnFadeDone = new ScriptInvoker; //SCR_ImageRadialProgressBarUIComponent, bool wasFadingIn
 	
 
 	

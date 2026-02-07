@@ -1,7 +1,6 @@
-//------------------------------------------------------------------------------------------------
-class SCR_BaseScoringSystemComponentClass: SCR_BaseGameModeComponentClass
+class SCR_BaseScoringSystemComponentClass : SCR_BaseGameModeComponentClass
 {
-};
+}
 
 void OnPlayerEventDelegate(int playerId);
 typedef func OnPlayerEventDelegate;
@@ -15,87 +14,80 @@ void OnFactionScoreChangedDelegate(Faction faction, SCR_ScoreInfo scoreInfo);
 typedef func OnFactionScoreChangedDelegate;
 typedef ScriptInvokerBase<OnFactionScoreChangedDelegate> OnFactionScoreChangedInvoker;
 
-
-//------------------------------------------------------------------------------------------------
-/*!
-	This component serves as a base and interface for game mode scoring system.
-
-	It keeps track of individual player scores and manages replication of such values to
-	all clients when necessary.
-
-	Scoring is implemented in authoritative way, ie. only the server can update score.
-
-	This component only keeps track of scores, but does not react or change the game flow in
-	any way. For specialized logic inherit this component and implement custom logic.
-*/
+//! This component serves as a base and interface for game mode scoring system.
+//!
+//! It keeps track of individual player scores and manages replication of such values to
+//! all clients when necessary.
+//!
+//! Scoring is implemented in authoritative way, ie. only the server can update score.
+//!
+//! This component only keeps track of scores, but does not react or change the game flow in
+//! any way. For specialised logic inherit this component and implement custom logic.
 class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 {
-	/*!
-		Map of scores per player.
-			key: playerId
-	*/
+	//! Map of scores per player.
+	//! 	key: playerId
 	protected ref map<int, ref SCR_ScoreInfo> m_mPlayerScores = new map<int, ref SCR_ScoreInfo>();
-	/*!
-		Map of scores per faction.
-	*/
+
+	//! Map of scores per faction.
 	protected ref map<Faction, ref SCR_ScoreInfo> m_mFactionScores = new map<Faction, ref SCR_ScoreInfo>();
 	
-	/*!
-		This invoker is invoked when score of provided player changes.
-	*/
-	protected ref OnPlayerScoreChangedInvoker m_OnPlayerScoreChangedInvoker = new OnPlayerScoreChangedInvoker();
+	//! This invoker is invoked when score of provided player changes.
+	protected ref OnPlayerScoreChangedInvoker m_OnPlayerScoreChangedInvoker;
 	
-	/*!
-		Returns invoker that is invoked when score of provided player changes.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return invoker that is invoked when score of provided player changes.
 	OnPlayerScoreChangedInvoker GetOnPlayerScoreChanged()
 	{
+		if (!m_OnPlayerScoreChangedInvoker)
+			m_OnPlayerScoreChangedInvoker = new OnPlayerScoreChangedInvoker();
+
 		return m_OnPlayerScoreChangedInvoker;
 	}
 	
-	/*!
-		This invoker is invoked when score of provided faction changes.
-	*/
-	protected ref OnFactionScoreChangedInvoker m_OnFactionScoreChangedInvoker = new OnFactionScoreChangedInvoker();
+	//! This invoker is invoked when score of provided faction changes.
+	protected ref OnFactionScoreChangedInvoker m_OnFactionScoreChangedInvoker;
 	
-	/*!
-		Returns invoker that is invoked when score of provided player changes.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return invoker that is invoked when score of provided player changes.
 	OnFactionScoreChangedInvoker GetOnFactionScoreChanged()
 	{
+		if (!m_OnFactionScoreChangedInvoker)
+			m_OnFactionScoreChangedInvoker = new OnFactionScoreChangedInvoker();
+
 		return m_OnFactionScoreChangedInvoker;
 	}
 	
-	/*!
-		This invoker is invoked when a player is registered to the scoreboard.
-	*/
-	protected ref OnPlayerEventInvoker m_OnPlayerAdded = new OnPlayerEventInvoker();
+	//! This invoker is invoked when a player is registered to the scoreboard.
+	protected ref OnPlayerEventInvoker m_OnPlayerAdded;
 	
-	/*!
-		Returns invoker that is invoked when any score changes.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return invoker that is invoked when any score changes.
 	OnPlayerEventInvoker GetOnPlayerAdded()
 	{
+		if (!m_OnPlayerAdded)
+			m_OnPlayerAdded = new OnPlayerEventInvoker();
+
 		return m_OnPlayerAdded;
 	}
 	
-	/*!
-		This invoker is invoked when a player is registered to the scoreboard.
-	*/
-	protected ref OnPlayerEventInvoker m_OnPlayerRemoved = new OnPlayerEventInvoker();
+	//! This invoker is invoked when a player is registered to the scoreboard.
+	protected ref OnPlayerEventInvoker m_OnPlayerRemoved;
 	
-	/*!
-		Returns invoker that is invoked when any score changes.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return invoker that is invoked when any score changes.
 	OnPlayerEventInvoker GetOnPlayerRemoved()
 	{
+		if (!m_OnPlayerRemoved)
+			m_OnPlayerRemoved = new OnPlayerEventInvoker();
+
 		return m_OnPlayerRemoved;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*
-		Serialize current state of scoring into buffer via provided writer.
-	*/
+	//! Serialise current state of scoring into buffer via provided writer.
+	//! \param[in] writer
+	//! \return
 	override bool RplSave(ScriptBitWriter writer)
     {
 		super.RplSave(writer);
@@ -122,11 +114,10 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 		return true;
     }
 
-
 	//------------------------------------------------------------------------------------------------
-	/*
-		Deserialize state of scoring into buffer via provided reader.
-	*/
+	//! Deserialise state of scoring into buffer via provided reader.
+	//! \param[in] reader
+	//! \return
     override bool RplLoad(ScriptBitReader reader)
     {
 		super.RplLoad(reader);
@@ -141,7 +132,7 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 		for (int i = 0; i < players; i++)
 		{
 			int playerId;
-			ref SCR_ScoreInfo scoreInfo = new SCR_ScoreInfo();
+			SCR_ScoreInfo scoreInfo = new SCR_ScoreInfo();
 
 			if (!reader.ReadInt(playerId))
 				return false;
@@ -153,7 +144,6 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 			playerScores.Insert(scoreInfo);
 		}
 
-
 		int factions;
 		if (!reader.ReadInt(factions))
 			return false;
@@ -161,10 +151,11 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 		array<int> factionIds = {};
 		array<ref SCR_ScoreInfo> factionScores = {};
 
+		SCR_ScoreInfo scoreInfo;
 		for (int i = 0; i < factions; i++)
 		{
 			int factionId;
-			ref SCR_ScoreInfo scoreInfo = new SCR_ScoreInfo();
+			scoreInfo = new SCR_ScoreInfo();
 
 			if (!reader.ReadInt(factionId))
 				return false;
@@ -176,27 +167,29 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 			factionScores.Insert(scoreInfo);
 		}
 
-
 		// Fill our instance with newly received data
 		m_mPlayerScores.Clear();
 		for (int i = 0; i < players; i++)
+		{
 			m_mPlayerScores.Insert(playerIds[i], playerScores[i]);
+		}
 
 		FactionManager factionManager = GetGame().GetFactionManager();
 		if (!factionManager)
 		{
-			Print("Score deserialization fail, no FactionManager present in the world, faction scoring will not work properly!");
+			Print("Score deserialization fail, no FactionManager present in the world, faction scoring will not work properly!", LogLevel.WARNING);
 			return false;
 		}
 
 		array<Faction> _ = {};
 		int facCnt = factionManager.GetFactionsList(_);
 		m_mFactionScores.Clear();
+		Faction faction;
 		for (int i = 0; i < factions; i++)
 		{
 			int factionIndex = factionIds[i];
-			Print(string.Format("idx=%1, facIdx=%2, facMan=%3, facCnt=%4", i, factionIndex, factionManager, facCnt));
-			Faction faction = factionManager.GetFactionByIndex(factionIndex);
+			Print(string.Format("idx=%1, facIdx=%2, facMan=%3, facCnt=%4", i, factionIndex, factionManager, facCnt), LogLevel.NORMAL);
+			faction = factionManager.GetFactionByIndex(factionIndex);
 			m_mFactionScores.Insert(faction, factionScores[i]);
 
 		}
@@ -205,10 +198,8 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
     }
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Internal helper method.
-		Returns player's affiliated faction index or -1 if none.
-	*/
+	//! Internal helper method.
+	//! Returns player's affiliated faction index or -1 if none.
 	private int GetPlayerFactionIndex(int playerId)
 	{
 		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
@@ -221,10 +212,9 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 		return -1;
 	}
 
-	/*!
-		Internal helper method.
-		Returns faction from provided index.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Internal helper method.
+	//! \return faction from provided index.
 	private Faction GetFactionByIndex(int factionIndex)
 	{
 		if (factionIndex < 0)
@@ -233,10 +223,9 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 		return GetGame().GetFactionManager().GetFactionByIndex(factionIndex);
 	}
 
-	/*!
-		Internal helper method.
-		Returns index of provided faction.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Internal helper method.
+	//! \return index of provided faction.
 	private int GetFactionIndex(Faction faction)
 	{
 		if (!faction)
@@ -265,6 +254,8 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	//! Add count x kills to playerId's score info and their affiliated faction's.
 	//! Server-only, propagated to all clients via BC reliable RPC.
+	//! \param[in] playerId
+	//! \param[in] count
 	void AddKill(int playerId, int count = 1)
 	{
 		// Server only
@@ -296,6 +287,8 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	//! Add count x deaths to playerId's score info and their affiliated faction's.
 	//! Server-only, propagated to all clients via BC reliable RPC.
+	//! \param[in] playerId
+	//! \param[in] count
 	void AddDeath(int playerId, int count = 1)
 	{
 		// Server only
@@ -306,7 +299,6 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 		RpcDo_AddDeath(playerId, factionIdx, count);
 		Rpc(RpcDo_AddDeath, playerId, factionIdx, count);
 	}
-
 
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
@@ -328,6 +320,8 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	//! Add count x teamKills to playerId's score info and their affiliated faction's.
 	//! Server-only, propagated to all clients via BC reliable RPC.
+	//! \param[in] playerId
+	//! \param[in] count
 	void AddTeamKill(int playerId, int count = 1)
 	{
 		// Server only
@@ -359,6 +353,8 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	//! Add count x suicides to playerId's score info and their affiliated faction's.
 	//! Server-only, propagated to all clients via BC reliable RPC.
+	//! \param[in] playerId
+	//! \param[in] count
 	void AddSuicide(int playerId, int count = 1)
 	{
 		// Server only
@@ -390,7 +386,9 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	//! Add count x objectives to playerId's score info.
 	//! Server-only, propagated to all clients via BC reliable RPC.
-	//! \param addToFaction If false, score is not added to faction automatically
+	//! \param[in] playerId
+	//! \param[in] count
+	//! \param[in] addToFaction If false, score is not added to faction automatically
 	void AddObjective(int playerId, int count = 1, bool addToFaction = true)
 	{
 		// Server only
@@ -421,7 +419,8 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	//! Add count x objectives to provided faction.
 	//! Server-only, propagated to all clients via BC reliable RPC.
-	//! \param addToFaction If false, score is not added to faction automatically
+	//! \param[in] faction
+	//! \param[in] count
 	void AddFactionObjective(notnull Faction faction, int count = 1)
 	{
 		// Server only
@@ -433,33 +432,35 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 		Rpc(RpcDo_AddFactionObjective, factionIdx, count);
 	}
 
-
 	//------------------------------------------------------------------------------------------------
-	/*
-		Called on all machines when player score changes.
-	*/
+	//! Called on all machines when player score changes.
+	//! \param[in] playerId
+	//! \param[in] scoreInfo
 	protected void OnPlayerScoreChanged(int playerId, SCR_ScoreInfo scoreInfo)
 	{
-		m_OnPlayerScoreChangedInvoker.Invoke(playerId, scoreInfo);
+		if (m_OnPlayerScoreChangedInvoker)
+			m_OnPlayerScoreChangedInvoker.Invoke(playerId, scoreInfo);
+
 		GameStatsApi statsApi = GetGame().GetStatsApi();
 		if (statsApi)
 			statsApi.PlayerScore(playerId, scoreInfo);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*
-		Called on all machines when faction score changes.
-	*/
+	//! Called on all machines when faction score changes.
+	//! \param[in] faction
+	//! \param[in] scoreInfo
 	protected void OnFactionScoreChanged(Faction faction, SCR_ScoreInfo scoreInfo)
 	{
-		m_OnFactionScoreChangedInvoker.Invoke(faction, scoreInfo);
+		if (m_OnFactionScoreChangedInvoker)
+			m_OnFactionScoreChangedInvoker.Invoke(faction, scoreInfo);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Calculate score for provided score info.
-		Different kinds of score multipliers and evaluation can be calculated by overriding this method.
-	*/
+	//! Calculate score for provided score info.
+	//! Different kinds of score multipliers and evaluation can be calculated by overriding this method.
+	//! \param[in] info
+	//! \return
 	protected int CalculateScore(SCR_ScoreInfo info)
 	{
 		int val = (info.m_iKills + info.m_iObjectives) - info.m_iSuicides - info.m_iTeamKills;
@@ -470,9 +471,7 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		\return Returns score for given player by their playerId or 0 if none.
-	*/
+	//! \return score for given player by their playerId or 0 if none.
 	int GetPlayerScore(int playerId)
 	{
 		SCR_ScoreInfo info = GetPlayerScoreInfo(playerId);
@@ -483,9 +482,7 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		\return Returns score info of provided player or null if none.
-	*/
+	//! \return score info of provided player or null if none.
 	SCR_ScoreInfo GetPlayerScoreInfo(int playerId)
 	{
 		if (!m_mPlayerScores.Contains(playerId))
@@ -495,9 +492,7 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		\return Returns score of provided faction or 0 if none.
-	*/
+	//! \return score of provided faction or 0 if none.
 	int GetFactionScore(notnull Faction faction)
 	{
 		SCR_ScoreInfo info = GetFactionScoreInfo(faction);
@@ -508,9 +503,7 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		\return Returns score info of provided faction or null if none.
-	*/
+	//! \return score info of provided faction or null if none.
 	SCR_ScoreInfo GetFactionScoreInfo(notnull Faction faction)
 	{
 		if (!m_mFactionScores.Contains(faction))
@@ -527,12 +520,14 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 		// Register player info
 		if (!m_mPlayerScores.Contains(playerId))
 		{
-			ref SCR_ScoreInfo scoreInfo = new SCR_ScoreInfo();
+			SCR_ScoreInfo scoreInfo = new SCR_ScoreInfo();
 			m_mPlayerScores.Insert(playerId, scoreInfo);
-			m_OnPlayerScoreChangedInvoker.Invoke(playerId, scoreInfo);
+			if (m_OnPlayerScoreChangedInvoker)
+				m_OnPlayerScoreChangedInvoker.Invoke(playerId, scoreInfo);
 		}
 		
-		m_OnPlayerAdded.Invoke(playerId);
+		if (m_OnPlayerAdded)
+			m_OnPlayerAdded.Invoke(playerId);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -540,7 +535,8 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 	{
 		super.OnPlayerDisconnected(playerId, cause, timeout);
 		
-		m_OnPlayerRemoved.Invoke(playerId);
+		if (m_OnPlayerRemoved)
+			m_OnPlayerRemoved.Invoke(playerId);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -602,9 +598,7 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Returns maximum allowed score or -1 if undefined.
-	*/
+	//! \return maximum allowed score or -1 if undefined.
 	int GetScoreLimit() 
 	{
 		return -1;
@@ -622,7 +616,9 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 			factionManager.GetFactionsList(factions);
 
 			foreach (Faction faction : factions)
+			{
 				m_mFactionScores.Insert(faction, new SCR_ScoreInfo);
+			}
 		}
 
 		#ifdef ENABLE_DIAG
@@ -650,4 +646,4 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 		
 		super.OnDelete(owner);
 	}
-};
+}

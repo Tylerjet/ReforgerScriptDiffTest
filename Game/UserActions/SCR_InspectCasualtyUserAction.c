@@ -56,7 +56,7 @@ class SCR_InspectCasualtyUserAction : ScriptedUserAction
 			return false;
 
 		// Don't inspect dead people
-		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(char.GetCharacterController());
+		CharacterControllerComponent controller = char.GetCharacterController();
 		if (controller.GetLifeState() == ECharacterLifeState.DEAD)
 			return false;
 		

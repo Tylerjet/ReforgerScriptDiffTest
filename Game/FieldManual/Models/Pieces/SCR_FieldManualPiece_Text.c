@@ -8,6 +8,7 @@ class SCR_FieldManualPiece_Text : SCR_FieldManualPiece
 	ResourceName m_Layout;
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_FieldManualPiece_Text()
 	{
 		if (m_Layout.Trim().IsEmpty())
@@ -40,4 +41,4 @@ class SCR_FieldManualPiece_Text : SCR_FieldManualPiece
 
 		textWidget.SetText(m_sText);
 	}
-};
+}

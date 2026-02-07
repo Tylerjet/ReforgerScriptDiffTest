@@ -1,15 +1,13 @@
-[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
-/** @ingroup ManualCamera
-*/
+//! @ingroup ManualCamera
 
-/*!
-Basic camera movement and rotation
-*/
+//! Basic camera movement and rotation
+[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
 class SCR_MoveRelativeManualCameraComponent : SCR_BaseManualCameraComponent
 {
 	[Attribute(defvalue: "25", desc: "Speed coefficient.")]
 	private float m_fSpeed;	
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraFrame(SCR_ManualCameraParam param)
 	{
 		if (!param.isManualInputEnabled) return;
@@ -36,8 +34,10 @@ class SCR_MoveRelativeManualCameraComponent : SCR_BaseManualCameraComponent
 			param.isDirty = true;
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool EOnCameraInit()
 	{
 		return true;
 	}
-};
+}

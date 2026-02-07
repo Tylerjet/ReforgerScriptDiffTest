@@ -377,25 +377,17 @@ class SCR_ResourceContainer : SCR_ResourceActor
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!	Sets the resource value of the container to the specified value, clamped to the maximum 
+	//!		resource value.
+	//!	
+	//!	\param[in] value The resource value to set the container to.
+	//!	\param[in] notifyChange Whenever or not changes in resource value should be notified for this 
+	//!		instance.
+	//!	\return true if any change in resource was actually performed, false otherwise.
 	bool SetResourceValue(float value, bool notifyChange = true)
-	{
-		float previousValue		= m_fResourceValueCurrent;
-		m_fResourceValueCurrent	= Math.Clamp(value, 0.0, m_fResourceValueMax);
-		
-		if (previousValue == m_fResourceValueCurrent)
-			return false;
-		
-		if (notifyChange)
-			OnResourcesChanged(previousValue);
-
-		return true;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	bool SetResourceValueEx(float value, bool notifyChange = true)
-	{
+	{	
 		if (!m_ResourceEncapsulator)
-			return SetResourceValue(value, notifyChange);
+			return SetResourceValueUnsafe(value, notifyChange);
 		
 		float previousValue		= m_fResourceValueCurrent;
 		float newValue			= Math.Clamp(value, 0.0, m_fResourceValueMax);
@@ -407,6 +399,33 @@ class SCR_ResourceContainer : SCR_ResourceActor
 		else
 			return false;
 		
+		if (notifyChange)
+			OnResourcesChanged(previousValue);
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!	Unsafely sets the resource value of the container to the specified value, clamped to the 
+	//!		maximum resource value.
+	//!	
+	//!	\warning Use with care, changing the resource value with this method expects you to take care 
+	//!		of all the other factors externally, such as updating resource encapsulators and alike.
+	//!	\param[in] value The resource value to set the container to.
+	//!	\param[in] notifyChange Whenever or not changes in resource value should be notified for this 
+	//!		instance.
+	//!	\return true if any change in resource value was actually performed, false otherwise.
+	bool SetResourceValueUnsafe(float value, bool notifyChange = true)
+	{
+		float previousValue		= m_fResourceValueCurrent;
+		m_fResourceValueCurrent	= Math.Clamp(value, 0.0, m_fResourceValueMax);
+		
+		if (previousValue == m_fResourceValueCurrent)
+			return false;
+		
+		if (notifyChange)
+			OnResourcesChanged(previousValue);
+
 		return true;
 	}
 	
@@ -688,24 +707,32 @@ class SCR_ResourceContainer : SCR_ResourceActor
 	protected void ComputeResourceGain(float timeslice, out float resourceValue)
 	{
 		m_fResourceGainElapsedTime += timeslice;;
-			
-		if (m_fResourceGainElapsedTime < m_fResourceGainTickrate || m_fResourceGainTickrate == 0.0)
+		
+		float resourceGainElapsedTimeRelative = m_fResourceGainElapsedTime - m_fResourceGainTimeout;
+		
+		if (m_fResourceGainElapsedTime < m_fResourceGainTimeout 
+		||	resourceGainElapsedTimeRelative < m_fResourceGainTickrate 
+		||	m_fResourceGainTickrate <= 0.0)
 			return;
 		
-		resourceValue				+= m_fResourceGain * (int)(m_fResourceGainElapsedTime / m_fResourceGainTickrate);
-		m_fResourceGainElapsedTime	= 0.0;
+		resourceValue				+= m_fResourceGain * (int)(resourceGainElapsedTimeRelative / m_fResourceGainTickrate);
+		m_fResourceGainElapsedTime	= m_fResourceGainTimeout;
 	}
 	
 	//------------------------------------------------------------------------------------------------	
 	protected void ComputeResourceDecay(float timeslice, out float resourceValue)
 	{
 		m_fResourceDecayElapsedTime += timeslice;
-			
-		if (m_fResourceDecayElapsedTime < m_fResourceDecayTickrate || m_fResourceDecayTickrate == 0.0)
+		
+		float resourceDecayElapsedTimeRelative = m_fResourceDecayElapsedTime - m_fResourceDecayTimeout;
+		
+		if (m_fResourceDecayElapsedTime < m_fResourceDecayTimeout 
+		||	resourceDecayElapsedTimeRelative < m_fResourceDecayTickrate 
+		||	m_fResourceDecayTickrate <= 0.0)
 			return;
 		
-		resourceValue				-= m_fResourceDecay * (int)(m_fResourceDecayElapsedTime / m_fResourceDecayTickrate);
-		m_fResourceDecayElapsedTime	= 0.0;
+		resourceValue				-= m_fResourceDecay * (int)(resourceDecayElapsedTimeRelative / m_fResourceDecayTickrate);
+		m_fResourceDecayElapsedTime	= m_fResourceDecayTimeout;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -726,6 +753,17 @@ class SCR_ResourceContainer : SCR_ResourceActor
 			OnResourcesIncreased(previousValue);
 		else
 			OnResourcesDecreased(previousValue);
+
+		// Gameplay actions not marking for saving hotfix.
+		// Decouple this from Resources after 1.0 and move it to Editor
+		if (!m_Owner)
+			return;
+
+		SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(m_Owner.FindComponent(SCR_EditableEntityComponent));
+		if (!editableEntity)
+			return;
+
+		editableEntity.SetHierarchyAsDirtyInParents();
 	}
 
 	//------------------------------------------------------------------------------------------------

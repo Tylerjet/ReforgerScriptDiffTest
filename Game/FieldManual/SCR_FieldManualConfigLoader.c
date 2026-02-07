@@ -1,6 +1,9 @@
 class SCR_FieldManualConfigLoader
 {
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] configPath
+	//! \return
 	static SCR_FieldManualConfigRoot LoadConfigRoot(ResourceName configPath)
 	{
 		SCR_FieldManualConfigRoot result = SCR_ConfigHelperT<SCR_FieldManualConfigRoot>.GetConfigObject(configPath);
@@ -77,4 +80,4 @@ class SCR_FieldManualConfigLoader
 
 		weaponEntry.m_WeaponStatsHelper = weaponStatsHelper;
 	}
-};
+}

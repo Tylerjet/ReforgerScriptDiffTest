@@ -1,12 +1,14 @@
 class SCR_MilitaryBaseLogicComponentClass : ScriptComponentClass
 {
-};
+}
 
 class SCR_MilitaryBaseLogicComponent : ScriptComponent
 {
 	protected ref array<SCR_MilitaryBaseComponent> m_aBases = {};
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] base
 	void RegisterBase(notnull SCR_MilitaryBaseComponent base)
 	{
 		if (m_aBases.Contains(base))
@@ -17,6 +19,7 @@ class SCR_MilitaryBaseLogicComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] base
 	void OnBaseRegistered(notnull SCR_MilitaryBaseComponent base)
 	{
 		if (base.GetOwner() == GetOwner())
@@ -27,6 +30,8 @@ class SCR_MilitaryBaseLogicComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] base
 	void UnregisterBase(notnull SCR_MilitaryBaseComponent base)
 	{
 		if (!m_aBases.Contains(base))
@@ -37,11 +42,12 @@ class SCR_MilitaryBaseLogicComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnBaseUnregistered(notnull SCR_MilitaryBaseComponent base)
-	{
-	}
+	//! \param[in] base
+	void OnBaseUnregistered(notnull SCR_MilitaryBaseComponent base);
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[out] bases
+	//! \return
 	int GetBases(out array<SCR_MilitaryBaseComponent> bases)
 	{
 		if (bases)
@@ -51,6 +57,7 @@ class SCR_MilitaryBaseLogicComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] faction
 	void OnBaseFactionChanged(Faction faction)
 	{
 		FactionAffiliationComponent factionControl = FactionAffiliationComponent.Cast(GetOwner().FindComponent(FactionAffiliationComponent));
@@ -70,7 +77,7 @@ class SCR_MilitaryBaseLogicComponent : ScriptComponent
 		if (!GetGame().InPlayMode())
 			return;
 
-		SCR_MilitaryBaseManager baseManager = SCR_MilitaryBaseManager.GetInstance();
+		SCR_MilitaryBaseSystem baseManager = SCR_MilitaryBaseSystem.GetInstance();
 
 		if (baseManager)
 			baseManager.RegisterLogicComponent(this);
@@ -88,9 +95,13 @@ class SCR_MilitaryBaseLogicComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_MilitaryBaseLogicComponent()
 	{
-		SCR_MilitaryBaseManager.UnregisterLogicComponentStatic(this);
+		SCR_MilitaryBaseSystem baseManager = SCR_MilitaryBaseSystem.GetInstance();
+		
+		if (baseManager)
+			baseManager.UnregisterLogicComponent(this);
 
 		foreach (SCR_MilitaryBaseComponent base : m_aBases)
 		{
@@ -98,4 +109,4 @@ class SCR_MilitaryBaseLogicComponent : ScriptComponent
 				base.UnregisterLogicComponent(this);
 		}
 	}
-};
+}

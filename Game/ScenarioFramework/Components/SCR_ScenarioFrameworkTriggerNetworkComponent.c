@@ -1,13 +1,13 @@
-//------------------------------------------------------------------------------------------------
 class SCR_ScenarioFrameworkTriggerNetworkComponentClass : ScriptComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_ScenarioFrameworkTriggerNetworkComponent : ScriptComponent
 {
 	//------------------------------------------------------------------------------------------------
 	//! Handles replication according to if owner of this component is in the trigger or just left it
+	//! \param[in] trigger
+	//! \param[in] left
 	void ReplicateTriggerState(SCR_CharacterTriggerEntity trigger, bool left)
 	{
 		if (!left)
@@ -18,6 +18,13 @@ class SCR_ScenarioFrameworkTriggerNetworkComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Invokes OnTriggerUpdated
+	//! \param[in] activationCountdownTimer
+	//! \param[in] tempWaitTime
+	//! \param[in] playersCountByFactionInside
+	//! \param[in] playersCountByFaction
+	//! \param[in] playerActivationNotificationTitle
+	//! \param[in] triggerConditionsStatus
+	//! \param[in] minimumPlayersNeededPercentage
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	void Rpc_InvokeTriggerUpdated(float activationCountdownTimer, float tempWaitTime, int playersCountByFactionInside, int playersCountByFaction, string playerActivationNotificationTitle, bool triggerConditionsStatus, float minimumPlayersNeededPercentage)
 	{
@@ -31,4 +38,4 @@ class SCR_ScenarioFrameworkTriggerNetworkComponent : ScriptComponent
 	{
 		SCR_CharacterTriggerEntity.s_OnTriggerUpdatedPlayerNotPresent.Invoke(0);
 	}
-};
+}

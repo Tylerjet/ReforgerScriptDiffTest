@@ -4,7 +4,7 @@ class SCR_BaseHUDComponentClass: BaseHUDComponentClass
 
 class SCR_BaseHUDComponent : BaseHUDComponent
 {
-	protected ref array<SCR_InfoDisplay> m_aHUDElements = new ref array<SCR_InfoDisplay>;
+	protected ref array<SCR_InfoDisplay> m_aHUDElements = new array<SCR_InfoDisplay>;
 	void RegisterHUDElement(SCR_InfoDisplay element)
 	{
 		int i = m_aHUDElements.Find(element);

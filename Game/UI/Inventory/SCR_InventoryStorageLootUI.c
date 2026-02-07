@@ -62,6 +62,10 @@ class SCR_InventoryStorageLootUI : SCR_InventoryStorageBaseUI
 		m_InventoryManager = SCR_InventoryStorageManagerComponent.Cast( m_Character.FindComponent( SCR_InventoryStorageManagerComponent ) );
 		m_InventoryStorage = SCR_CharacterInventoryStorageComponent.Cast( m_Character.FindComponent( SCR_CharacterInventoryStorageComponent ) );
 		m_Vicinity = CharacterVicinityComponent.Cast( m_Character.FindComponent(CharacterVicinityComponent) );
+		m_wWidthOverride = SizeLayoutWidget.Cast(m_widget.FindWidget("TitleWidthOverride"));
+		
+		if (m_wWidthOverride)
+			m_wWidthOverride.SetWidthOverride(m_iMaxColumns * SLOT_LAYOUT_WIDTH);
 		
 		if( m_InventoryStorage )
 		{

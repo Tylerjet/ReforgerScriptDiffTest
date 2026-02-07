@@ -141,12 +141,7 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 	{
 		if(!item || item != m_Asset)
 			return;
-		
-		ChimeraWorld world = item.GetWorld();
-		GarbageManager garbageManager = world.GetGarbageManager();
-		if (garbageManager && garbageManager.IsInserted(item))
-			garbageManager.Withdraw(item);
-		
+
 		SetState(SCR_TaskState.UPDATED);
 		UpdateTaskTitleAndDescription(0);
 	}

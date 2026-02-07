@@ -1,9 +1,7 @@
-//------------------------------------------------------------------------------------------------
 class SCR_XPHandlerComponentClass : SCR_BaseGameModeComponentClass
 {
 }
 
-//------------------------------------------------------------------------------------------------
 class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 {
 	[Attribute("{E6FC4537B53EA00B}Configs/Campaign/XPRewards.conf", params: "conf class=SCR_XPRewardList")]
@@ -21,6 +19,7 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 	//static const float SKILL_LEVEL_XP_BONUS = 0.1;
 
 	protected static const float TRANSPORT_POINTS_TO_XP_RATIO = 0.01;
+	protected static const float TRANSPORT_HELI_MULTIPLIER = 0.25;
 	protected static const int TRANSPORT_XP_PAYOFF_THRESHOLD = 15;
 
 	protected ref array<ref SCR_XPRewardInfo> m_aXPRewardList = {};
@@ -155,6 +154,18 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 
 		if (!temp || stat != SCR_EDataStats.POINTS_AS_DRIVER_OF_PLAYERS)
 			return;
+		
+		SCR_ChimeraCharacter player = SCR_ChimeraCharacter.Cast(GetGame().GetPlayerManager().GetPlayerControlledEntity(playerId));
+		IEntity vehicle = CompartmentAccessComponent.GetVehicleIn(player);
+
+		if (vehicle)
+		{
+			VehicleHelicopterSimulation heliSim = VehicleHelicopterSimulation.Cast(vehicle.FindComponent(VehicleHelicopterSimulation));
+			
+			// Award lower XP per distance travelled in a helicopter
+			if (heliSim)
+				amount *= TRANSPORT_HELI_MULTIPLIER;
+		}
 
 		int newValue = m_mPlayerTransportPoints.Get(playerId) + amount;
 		m_mPlayerTransportPoints.Set(playerId, newValue);
@@ -166,6 +177,8 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerId
 	void ProcessSuicide(int playerId)
 	{
 #ifdef NO_SUICIDE_PENALTY
@@ -233,6 +246,11 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Add XP to given playerId
+	//! \param[in] playerId
+	//! \param[in] rewardID
+	//! \param[in] multiplier
+	//! \param[in] volunteer
+	//! \param[in] customXP
 	void AwardXP(int playerId, SCR_EXPRewards rewardID, float multiplier = 1.0, bool volunteer = false, int customXP = 0)
 	{
 		if (IsProxy())
@@ -246,6 +264,11 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Add XP to given controller
+	//! \param[in] controller
+	//! \param[in] rewardID
+	//! \param[in] multiplier
+	//! \param[in] volunteer
+	//! \param[in] customXP
 	void AwardXP(notnull PlayerController controller, SCR_EXPRewards rewardID, float multiplier = 1.0, bool volunteer = false, int customXP = 0)
 	{
 		if (IsProxy())
@@ -276,6 +299,9 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] controller
+	//! \param[in] multiplier
 	void VeterancyAward(notnull PlayerController controller, float multiplier)
 	{
 		AwardXP(controller, SCR_EXPRewards.VETERANCY, multiplier);
@@ -283,6 +309,8 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns XP reward amount
+	//! \param[in] reward
+	//! \return
 	int GetXPRewardAmount(SCR_EXPRewards reward)
 	{
 		int rewardsCnt = m_aXPRewardList.Count();
@@ -298,6 +326,7 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns XP reward amount
+	//! \return
 	float GetXPMultiplier()
 	{
 		return m_fXpMultiplier;
@@ -305,6 +334,8 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns XP reward name
+	//! \param[in] reward
+	//! \return XP reward name
 	string GetXPRewardName(SCR_EXPRewards reward)
 	{
 		int rewardsCnt = m_aXPRewardList.Count();
@@ -319,6 +350,9 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] reward
+	//! \return
 	bool AllowNotification(SCR_EXPRewards reward)
 	{
 		int rewardsCnt = m_aXPRewardList.Count();
@@ -334,18 +368,20 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns XP reward skill
-	/*EProfileSkillID GetXPRewardSkill(SCR_EXPRewards reward)
-	{
-		int rewardsCnt = m_aXPRewardList.Count();
-
-		for (int i = 0; i < rewardsCnt; i++)
-		{
-			if (m_aXPRewardList[i].GetRewardID() == reward)
-				return m_aXPRewardList[i].GetRewardSkill();
-		}
-
-		return EProfileSkillID.GLOBAL;
-	}*/
+	//! \param[in] reward
+	//! \return
+//	EProfileSkillID GetXPRewardSkill(SCR_EXPRewards reward)
+//	{
+//		int rewardsCnt = m_aXPRewardList.Count();
+//
+//		for (int i = 0; i < rewardsCnt; i++)
+//		{
+//			if (m_aXPRewardList[i].GetRewardID() == reward)
+//				return m_aXPRewardList[i].GetRewardSkill();
+//		}
+//
+//		return EProfileSkillID.GLOBAL;
+//	}
 
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
@@ -364,7 +400,6 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 	}
 }
 
-//------------------------------------------------------------------------------------------------
 enum SCR_EXPRewards
 {
 	UNDEFINED,

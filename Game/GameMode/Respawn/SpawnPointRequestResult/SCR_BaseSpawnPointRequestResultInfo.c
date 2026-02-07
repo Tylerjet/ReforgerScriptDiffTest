@@ -14,27 +14,25 @@ class SCR_BaseSpawnPointRequestResultInfo
 	protected ref SCR_UIInfoSpawnRequestResult m_UIInfo;
 	
 	//------------------------------------------------------------------------------------------------
-	//! return Returns UI info of Disable reason
+	//! \return Returns UI info of Disable reason
 	SCR_UIInfoSpawnRequestResult GetUIInfo()
 	{
 		return m_UIInfo;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! return True if Respawn Time should be displayed if any is active
+	//! \return True if Respawn Time should be displayed if any is active
 	bool ShowRespawnTime()
 	{
 		return m_bShowRespawnTime;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Override this function in inherent classes to display the correct reason why a spawn point is disabled
-	\param spawnPoint Spawn Point that is checked
-	\param playerId Id of player that checks the spawn point
-	*/
-	bool IsValidRequestResultInfo(SCR_SpawnRequestComponent requestComponent, SCR_ESpawnResult response, SCR_SpawnData data)
-	{
-		return false;
-	}
+	//! Reason why the spawn point is disabled
+	//! \param[in] requestComponent
+	//! \param[in] response
+	//! \param[in] data
+	//! \return
+	// Override this method in inherited classes to display the correct reason why a spawn point is disabled
+	bool IsValidRequestResultInfo(SCR_SpawnRequestComponent requestComponent, SCR_ESpawnResult response, SCR_SpawnData data);
 }

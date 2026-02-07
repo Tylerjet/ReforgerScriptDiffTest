@@ -10,7 +10,9 @@ class SCR_CampaignTutorialArlandDriving24 : SCR_BaseCampaignTutorialArlandStage
 	override protected void Setup()
 	{
 		m_fDuration = 10;
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("EndOfStage", true);
 		m_TutorialComponent.SetStagesComplete(4, true);
 	}
 };

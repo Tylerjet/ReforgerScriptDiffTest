@@ -10,9 +10,7 @@ class SCR_HeliCourse_stage3 : SCR_BaseCampaignTutorialArlandStage
 	protected ScriptInvokerVoid m_OnEngineStartedInvoker;
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
-	{	
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
-	
+	{		
 		Vehicle helicopter = Vehicle.Cast(GetGame().GetWorld().FindEntityByName("UH1COURSE"));
 		if (!helicopter)
 			return;
@@ -25,7 +23,11 @@ class SCR_HeliCourse_stage3 : SCR_BaseCampaignTutorialArlandStage
 		if (m_OnEngineStartedInvoker)
 			comp.GetOnEngineStart().Insert(OnEngineStart);
 		
+		GetGame().GetCallqueue().CallLater(PlaySoundSystem, 2000, false, "Heli_StartEngine", true);
+		
+		HintOnVoiceOver();
 	}
+	
 	//------------------------------------------------------------------------------------------------
 	protected void OnEngineStart()
 	{
@@ -38,6 +40,6 @@ class SCR_HeliCourse_stage3 : SCR_BaseCampaignTutorialArlandStage
 	//------------------------------------------------------------------------------------------------
 	override protected bool GetIsFinished()
 	{
-		return m_bEngineStarted;
+		return m_bEngineStarted && !m_TutorialComponent.GetVoiceSystem().IsPlaying();
 	}
 };

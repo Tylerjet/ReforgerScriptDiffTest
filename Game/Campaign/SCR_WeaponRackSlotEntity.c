@@ -40,6 +40,7 @@ class SCR_WeaponRackSlotEntity : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Delete the slot's item (first found child)
 	void RemoveItem()
 	{
 		IEntity child = GetChildren();
@@ -50,6 +51,9 @@ class SCR_WeaponRackSlotEntity : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Return whether it is possible to create an item
+	//! \param deleteExisting if provided true, return true
+	//! \return true if the rack has no child entity, false otherwise
 	bool CanSpawnItem(bool deleteExisting = false)
 	{
 		if (deleteExisting)
@@ -59,6 +63,14 @@ class SCR_WeaponRackSlotEntity : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Create a new item in this slot.\
+	//! If an item already exists and deleteExisting is false, nothing is done.\
+	//! If an item already exists and deleteExisting is true, it is deleted and replaced.
+	//! \param itemResource the wanted item's resource - must not be null
+	//! \param arsenalData must not be null
+	//! \param itemDisplayData if provided, 
+	//! \param deleteExisting if true, delete the existing item if there is one
+	// TODO: notnull itemResource & arsenalData
 	void SpawnNewItem(Resource itemResource, SCR_ArsenalItem arsenalData, SCR_ArsenalItemDisplayData itemDisplayData = null, bool deleteExisting = false)
 	{
 		IEntity child = GetChildren();

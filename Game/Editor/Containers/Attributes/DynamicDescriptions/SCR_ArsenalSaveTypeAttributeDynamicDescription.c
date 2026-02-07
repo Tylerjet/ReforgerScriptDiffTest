@@ -1,6 +1,4 @@
-/**
-Dynamic description for arsenal save types. What they mean when they are set
-*/
+//! Dynamic description for arsenal save types. What they mean when they are set
 [BaseContainerProps(), BaseContainerCustomStringTitleField("Arsenal Save type description (CUSTOM)")]
 class SCR_ArsenalSaveTypeAttributeDynamicDescription : SCR_BaseAttributeDynamicDescription
 {
@@ -53,4 +51,4 @@ class SCR_ArsenalSaveTypeAttributeDynamicDescription : SCR_BaseAttributeDynamicD
 		param1 = saveTypeUIInfo.GetDescription();
 		uiInfo = m_DescriptionDisplayInfo;
 	}
-};
+}

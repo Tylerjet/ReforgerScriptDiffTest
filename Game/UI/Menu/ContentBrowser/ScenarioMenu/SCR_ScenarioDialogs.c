@@ -34,6 +34,7 @@ class SCR_ScenarioConfirmationDialogUi : SCR_ConfigurableDialogUi
 	protected SCR_InputButtonComponent m_Favorite;
 	protected SCR_InputButtonComponent m_Host;
 	protected SCR_InputButtonComponent m_FindServers;
+	protected ref array<SCR_InputButtonComponent> m_aRightFooterButtons = {};
 	
 	protected SCR_ModularButtonComponent m_FavoriteStarButton;
 
@@ -88,7 +89,6 @@ class SCR_ScenarioConfirmationDialogUi : SCR_ConfigurableDialogUi
 
 		Widget singlePlayerImage = contentLayoutRoot.FindAnyWidget("SinglePlayerImageOverlay");
 		Widget multiPlayerImage = contentLayoutRoot.FindAnyWidget("MultiPlayerImageOverlay");
-		TextWidget playerCountText = TextWidget.Cast(contentLayoutRoot.FindAnyWidget("PlayerCountText"));
 		TextWidget playerCountLabelText = TextWidget.Cast(contentLayoutRoot.FindAnyWidget("PlayerCountLabelText"));
 
 		Widget sourceImageOfficial = contentLayoutRoot.FindAnyWidget("SourceImageOfficialOverlay");
@@ -98,15 +98,12 @@ class SCR_ScenarioConfirmationDialogUi : SCR_ConfigurableDialogUi
 
 		//! Type and player count
 		int playerCount = m_Scenario.GetPlayerCount();
-		bool mp = playerCount > 1;
+		bool mp = SCR_ScenarioEntryHelper.IsMultiplayer(m_Scenario);
 		singlePlayerImage.SetVisible(!mp);
 		multiPlayerImage.SetVisible(mp);
-		if (mp)
-		{
-			playerCountText.SetText(playerCount.ToString());
-			playerCountLabelText.SetText("#AR-ServerBrowser_ServerPlayers");
-		}
-
+		
+		playerCountLabelText.SetText(WidgetManager.Translate("#AR-Scenario_Players", playerCount.ToString()));
+		
 		//! Source addon
 		bool isSourceAddonValid;
 		WorkshopItem sourceAddon = m_Scenario.GetOwner();
@@ -126,37 +123,13 @@ class SCR_ScenarioConfirmationDialogUi : SCR_ConfigurableDialogUi
 		sourceNameTextOfficial.SetVisible(!isSourceAddonValid);
 		sourceNameTextCommunity.SetVisible(isSourceAddonValid);
 
-		//! Buttons
-		SCR_MissionHeader header = SCR_MissionHeader.Cast(MissionHeader.ReadMissionHeader(m_Scenario.Id()));
-		bool canBeLoaded = header && GetGame().GetSaveManager().HasLatestSave(header);
+		//! Footer Buttons
+		SCR_ScenarioEntryHelper.UpdateInputButtons(m_Scenario, m_aRightFooterButtons);
+		
+		m_FindServers = FindButton(SCR_ScenarioEntryHelper.BUTTON_FIND_SERVERS);
+		m_Host = FindButton(SCR_ScenarioEntryHelper.BUTTON_HOST);
 
-		SCR_InputButtonComponent confirm = FindButton("confirm");
-		if (confirm)
-			confirm.SetVisible(!canBeLoaded);
-
-		SCR_InputButtonComponent load = FindButton("load");
-		if (load)
-			load.SetVisible(canBeLoaded);
-
-		SCR_InputButtonComponent restart = FindButton("restart");
-		if (restart)
-			restart.SetVisible(canBeLoaded, false);
-
-		m_FindServers = FindButton("join");
-		if (m_FindServers)
-		{
-			m_FindServers.SetVisible(mp, false);
-			SCR_ServicesStatusHelper.SetConnectionButtonEnabled(m_FindServers, SCR_ServicesStatusHelper.SERVICE_BI_BACKEND_MULTIPLAYER);
-		}
-
-		m_Host = FindButton("host");
-		if (m_Host)
-		{
-			m_Host.SetVisible(mp && !GetGame().IsPlatformGameConsole() /*&& SCR_ContentBrowser_ScenarioSubMenu.GetHostingAllowed()*/, false);
-			SCR_ServicesStatusHelper.SetConnectionButtonEnabled(m_Host, SCR_ServicesStatusHelper.SERVICE_BI_BACKEND_MULTIPLAYER);
-		}
-
-		m_Favorite = FindButton("favorite");
+		m_Favorite = FindButton(SCR_ScenarioEntryHelper.BUTTON_FAVORITE);
 		if (m_Favorite)
 			m_Favorite.m_OnActivated.Insert(OnFavoritesButton);
 
@@ -182,9 +155,22 @@ class SCR_ScenarioConfirmationDialogUi : SCR_ConfigurableDialogUi
 	//------------------------------------------------------------------------------------------------
 	override void OnButtonPressed(SCR_InputButtonComponent button)
 	{
+		if (GetButtonTag(button) == SCR_ScenarioEntryHelper.BUTTON_FAVORITE)
+			return; // We use a specific invoker for favorites button
+		
 		super.OnButtonPressed(button);
 
-		if (m_sLastPressedButtonTag != "favorite")
+		bool close = true;
+		SCR_EScenarioEntryErrorState state = SCR_ScenarioEntryHelper.GetErrorState(m_Scenario);
+		bool error = SCR_ScenarioEntryHelper.IsInErrorState(state);
+		
+		switch (m_sLastPressedButtonTag)
+		{
+			case SCR_ScenarioEntryHelper.BUTTON_FIND_SERVERS:	close = !error; break;
+			case SCR_ScenarioEntryHelper.BUTTON_HOST:			close = !error; break;
+		}
+		
+		if (close)
 			Close();
 	}
 
@@ -208,16 +194,34 @@ class SCR_ScenarioConfirmationDialogUi : SCR_ConfigurableDialogUi
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnCommStatusCheckFinished(SCR_ECommStatus status, float responseTime, float lastSuccessTime, float lastFailTime)
+	override SCR_InputButtonComponent CreateButton(SCR_ConfigurableDialogUiButtonPreset buttonPreset)
 	{
-		if (m_FindServers)
-			SCR_ServicesStatusHelper.SetConnectionButtonEnabled(m_FindServers, SCR_ServicesStatusHelper.SERVICE_BI_BACKEND_MULTIPLAYER);
-
-		if (m_Host)
-			SCR_ServicesStatusHelper.SetConnectionButtonEnabled(m_Host, SCR_ServicesStatusHelper.SERVICE_BI_BACKEND_MULTIPLAYER);
+		SCR_InputButtonComponent comp = super.CreateButton(buttonPreset);
+		
+		Widget w;
+		if (comp)
+			w = comp.GetRootWidget();
+		
+		if (w)
+			w.SetName(buttonPreset.m_sTag);
+		
+		if (buttonPreset.m_eAlign == EConfigurableDialogUiButtonAlign.RIGHT)
+			m_aRightFooterButtons.Insert(comp);
+		
+		return comp;
 	}
 	
 	//! PROTECTED
+	//------------------------------------------------------------------------------------------------
+	protected void OnCommStatusCheckFinished(SCR_ECommStatus status, float responseTime, float lastSuccessTime, float lastFailTime)
+	{
+		if (m_FindServers)
+			SCR_ScenarioEntryHelper.UpdateInputButton(m_FindServers, m_Scenario);
+
+		if (m_Host)
+			SCR_ScenarioEntryHelper.UpdateInputButton(m_Host, m_Scenario);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	protected void OnFavoritesButton()
 	{
@@ -234,7 +238,6 @@ class SCR_ScenarioConfirmationDialogUi : SCR_ConfigurableDialogUi
 		m_Scenario.SetFavorite(isFavorite);
 		UpdateFavoriteWidgets(isFavorite);
 	}
-
 
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateFavoriteWidgets(bool isFavorite)
@@ -257,7 +260,6 @@ class SCR_ScenarioConfirmationDialogUi : SCR_ConfigurableDialogUi
 	{
 		return m_Scenario;
 	}
-	
 	
 	//------------------------------------------------------------------------------------------------
 	ScriptInvokerMissionWorkshopItem GetOnFavorite()

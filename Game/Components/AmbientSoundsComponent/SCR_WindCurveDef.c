@@ -1,3 +1,4 @@
+// TODO: store it in a class instead of a GLOBAL variable
 const int WIND_CURVE_COUNT = 3;
 
 enum EWindCurve
@@ -5,7 +6,7 @@ enum EWindCurve
 	ALWAYS,
 	DEFAULT,
 	CREAKING,
-};
+}
 
 [BaseContainerProps()]
 class SCR_WindCurveDef

@@ -1,7 +1,7 @@
 class SCR_AIDefendActivity : SCR_AIActivityBase
 {
-	ref SCR_BTParam<AIWaypoint> m_Waypoint = new ref SCR_BTParam<AIWaypoint>(SCR_AIActionTask.WAYPOINT_PORT);
-	ref SCR_BTParam<vector> m_vAttackLocation = new ref SCR_BTParam<vector>(SCR_AIActionTask.ATTACK_LOCATION_PORT);	
+	ref SCR_BTParam<AIWaypoint> m_Waypoint = new SCR_BTParam<AIWaypoint>(SCR_AIActionTask.WAYPOINT_PORT);
+	ref SCR_BTParam<vector> m_vAttackLocation = new SCR_BTParam<vector>(SCR_AIActionTask.ATTACK_LOCATION_PORT);	
 	
 	protected ref array<AIAgent> m_aRadialCoverAgents = {};
 	//-------------------------------------------------------------------------------------------------

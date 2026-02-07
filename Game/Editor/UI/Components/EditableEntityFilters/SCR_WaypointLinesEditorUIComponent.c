@@ -1,6 +1,6 @@
 //#define WAYPOINT_LINES_DEBUG
 
-class SCR_WaypointLinesEditorUIComponent: SCR_BaseEditorUIComponent
+class SCR_WaypointLinesEditorUIComponent : SCR_BaseEditorUIComponent
 {
 	[Attribute(desc: "Show waypoint lines when a group or a waypoint has one of these states.", uiwidget: UIWidgets.Flags, enums: ParamEnumArray.FromEnum(EEditableEntityState))]
 	protected EEditableEntityState m_States;
@@ -11,16 +11,17 @@ class SCR_WaypointLinesEditorUIComponent: SCR_BaseEditorUIComponent
 	[Attribute(defvalue: string.Format("%1", ShapeFlags.VISIBLE | ShapeFlags.NOZBUFFER | ShapeFlags.ONCE), desc: "Shape flags of lines.", uiwidget: UIWidgets.Flags, enums: ParamEnumArray.FromEnum(ShapeFlags))]
 	protected ShapeFlags m_ShapeFlags;
 	
-	protected ref map<SCR_EditableEntityComponent, int> m_Groups = new map<SCR_EditableEntityComponent, int>; //--- ToDo: Save entities in an array if tokens prove to be unreliable
+	protected ref map<SCR_EditableEntityComponent, int> m_Groups = new map<SCR_EditableEntityComponent, int>(); //--- ToDo: Save entities in an array if tokens prove to be unreliable
 	protected int m_iLineColorPacked;
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnMenuUpdate(float timeSlice)
 	{
 		SCR_EditableEntityComponent child, prevWaypoint;
 		SCR_EditableWaypointComponent waypoint;
 		vector points[2];
 		vector pos1, pos2;
-		foreach (SCR_EditableEntityComponent group, int groupTokens: m_Groups)
+		foreach (SCR_EditableEntityComponent group, int groupTokens : m_Groups)
 		{
 			if (!group)
 				continue;
@@ -50,6 +51,7 @@ class SCR_WaypointLinesEditorUIComponent: SCR_BaseEditorUIComponent
 #endif
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnChanged(EEditableEntityState state, set<SCR_EditableEntityComponent> entitiesInsert, set<SCR_EditableEntityComponent> entitiesRemove)
 	{
 #ifdef WAYPOINT_LINES_DEBUG
@@ -81,6 +83,7 @@ class SCR_WaypointLinesEditorUIComponent: SCR_BaseEditorUIComponent
 #endif
 			}
 		}
+
 		if (entitiesInsert)
 		{
 			SCR_EditableEntityComponent group;
@@ -104,6 +107,7 @@ class SCR_WaypointLinesEditorUIComponent: SCR_BaseEditorUIComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttachedScripted(Widget w)
 	{
 		SCR_EntitiesManagerEditorComponent entitiesManager = SCR_EntitiesManagerEditorComponent.Cast(SCR_EntitiesManagerEditorComponent.GetInstance(SCR_EntitiesManagerEditorComponent, true));
@@ -114,7 +118,7 @@ class SCR_WaypointLinesEditorUIComponent: SCR_BaseEditorUIComponent
 		
 		EEditableEntityState state;
 		SCR_BaseEditableEntityFilter filter;
-		set<SCR_EditableEntityComponent> entities = new set<SCR_EditableEntityComponent>;
+		set<SCR_EditableEntityComponent> entities = new set<SCR_EditableEntityComponent>();
 		array<int> states = {};
 		for (int i = 0, count = SCR_Enum.BitToIntArray(m_States, states); i < count; i++)
 		{
@@ -132,6 +136,8 @@ class SCR_WaypointLinesEditorUIComponent: SCR_BaseEditorUIComponent
 		if (menu)
 			menu.GetOnMenuUpdate().Insert(OnMenuUpdate);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		SCR_EntitiesManagerEditorComponent entitiesManager = SCR_EntitiesManagerEditorComponent.Cast(SCR_EntitiesManagerEditorComponent.GetInstance(SCR_EntitiesManagerEditorComponent));
@@ -155,4 +161,4 @@ class SCR_WaypointLinesEditorUIComponent: SCR_BaseEditorUIComponent
 		if (menu)
 			menu.GetOnMenuUpdate().Remove(OnMenuUpdate);
 	}
-};
+}

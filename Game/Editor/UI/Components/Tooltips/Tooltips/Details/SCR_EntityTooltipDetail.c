@@ -12,10 +12,20 @@ class SCR_EntityTooltipDetail
 	[Attribute("1", "If false hides label")]
 	protected bool m_bShowLabel;
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool NeedUpdate()
 	{
 		return false;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] entity
+	//! \param[in] parent
+	//! \param[in] label
+	//! \param[in] setFrameslot
+	//! \return
 	bool CreateDetail(SCR_EditableEntityComponent entity, Widget parent, TextWidget label, bool setFrameslot = true)
 	{
 		if (label)
@@ -35,18 +45,23 @@ class SCR_EntityTooltipDetail
 			return false;
 		}
 	}
-	void UpdateDetail(SCR_EditableEntityComponent entity)
-	{
-	}
-	bool InitDetail(SCR_EditableEntityComponent entity, Widget widget)
-	{
-		//--- Return true to show the detail
-		return false;
-	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] entity
+	void UpdateDetail(SCR_EditableEntityComponent entity);
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] entity
+	//! \param[in] widget
+	//! \return true to show the detail
+	bool InitDetail(SCR_EditableEntityComponent entity, Widget widget);
 	
-	//Returns if label should be shown
+	//------------------------------------------------------------------------------------------------
+	//! \return if label should be shown
 	bool GetShowLabel()
 	{
 		return m_bShowLabel;
 	}
-};
+}

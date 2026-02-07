@@ -1,10 +1,7 @@
-[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
-/** @ingroup ManualCamera
-*/
+//! @ingroup ManualCamera
 
-/*!
-Camera movement above sea level.
-*/
+//! Camera movement above sea level.
+[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
 class SCR_MoveManualCameraComponent : SCR_BaseManualCameraComponent
 {
 	[Attribute(defvalue: "27", desc: "Speed coefficient.")]
@@ -12,6 +9,7 @@ class SCR_MoveManualCameraComponent : SCR_BaseManualCameraComponent
 	
 	protected bool m_bBlockedByRadialMenu;
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraSave(SCR_ManualCameraComponentSave data)
 	{
 		vector transform[4];
@@ -23,6 +21,8 @@ class SCR_MoveManualCameraComponent : SCR_BaseManualCameraComponent
 			angles[0], angles[1] //--- Yaw, pitch (don't save roll, this component cannot change)
 		};
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraLoad(SCR_ManualCameraComponentSave data)
 	{
 		if (!data.m_aValues || data.m_aValues.Count() < 5)
@@ -34,9 +34,12 @@ class SCR_MoveManualCameraComponent : SCR_BaseManualCameraComponent
 		
 		GetCameraEntity().SetWorldTransform(transform);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraFrame(SCR_ManualCameraParam param)
 	{
-		if (!param.isManualInputEnabled) return;
+		if (!param.isManualInputEnabled)
+			return;
 		
 		bool radialMenu = !m_InputManager.IsUsingMouseAndKeyboard() && (m_InputManager.GetActionValue("RadialX") || m_InputManager.GetActionValue("RadialY"));
 		if (radialMenu)
@@ -76,8 +79,10 @@ class SCR_MoveManualCameraComponent : SCR_BaseManualCameraComponent
 		param.isManualInput = true;
 		param.isDirty = true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool EOnCameraInit()
 	{
 		return true;
 	}
-};
+}

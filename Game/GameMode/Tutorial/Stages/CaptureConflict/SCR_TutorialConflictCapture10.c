@@ -15,7 +15,10 @@ class SCR_TutorialConflictCapture10 : SCR_BaseCampaignTutorialArlandStage
 		m_fWaypointHeightOffset = 5;
 		m_bCheckWaypoint = false;
 		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("Conflict_ExpandRangeMCU");
+		HintOnVoiceOver();
 	
 		m_MHQ = Vehicle.Cast(GetGame().GetWorld().FindEntityByName("MobileHQ"));
 	}

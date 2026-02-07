@@ -29,6 +29,7 @@ class SCR_FlushToilet : ScriptedUserAction
 			return;
 		
 		vector mat[4];
+		pOwnerEntity.GetTransform(mat);
 		mat[3] = pOwnerEntity.CoordToParent(m_vSoundOffset);
 		
 		soundManagerEntity.PlayAudioSource(audioSource, mat);

@@ -1,9 +1,8 @@
 [EntityEditorProps(category: "GameScripted/GameMode", description: "Takes care of loading and storing player profile data.", color: "0 0 255 255")]
-class SCR_PlayerProfileManagerComponentClass: SCR_BaseGameModeComponentClass
+class SCR_PlayerProfileManagerComponentClass : SCR_BaseGameModeComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_PlayerProfileManagerComponent : SCR_BaseGameModeComponent
 {
 	//************************//
@@ -21,9 +20,9 @@ class SCR_PlayerProfileManagerComponent : SCR_BaseGameModeComponent
 	//RUNTIME MEMBER VARIABLES//
 	//************************//
 	protected ref map<int, ref CareerBackendData> m_mPlayerProfiles = null;
-	protected ref array<int> m_aPlayerIDsToLoadProfile = new ref array<int>();
+	protected ref array<int> m_aPlayerIDsToLoadProfile = {};
 	protected float m_fCurrentRefreshTime = 1;
-	protected ref CampaignCallback m_Callback = new ref CampaignCallback();
+	protected ref CampaignCallback m_Callback = new CampaignCallback();
 	
 	//------------------------------------------------------------------------------------------------
 	protected Faction GetPlayerFaction(int playerID)
@@ -32,7 +31,8 @@ class SCR_PlayerProfileManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//Get method for player profiles in the m_mPlayerProfiles map
+	//! \param[in] playerID
+	//! \return player profile from playerID
 	CareerBackendData GetPlayerProfile(int playerID)
 	{
 		if (m_mPlayerProfiles)
@@ -43,6 +43,8 @@ class SCR_PlayerProfileManagerComponent : SCR_BaseGameModeComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! What happens when a player is assigned a faction
+	//! \param[in] playerID
+	//! \param[in] assignedFaction
 	override void HandleOnFactionAssigned(int playerID, Faction assignedFaction)
 	{
 		if (!assignedFaction)
@@ -57,13 +59,11 @@ class SCR_PlayerProfileManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Called after a player gets killed.
-		\param playerId PlayerId of victim player.
-		\param playerEntity Entity of victim player if any.
-		\param killerEntity Entity of killer instigator if any.
-		\param killer Instigator of the kill, use type to see if there's any
-	*/
+	//! Called after a player gets killed.
+	//! \param[in] playerId PlayerId of victim player.
+	//! \param[in] playerEntity Entity of victim player if any.
+	//! \param[in] killerEntity Entity of killer instigator if any.
+	//! \param[in] killer Instigator of the kill, use type to see if there is any
 	protected override void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
 		super.OnPlayerKilled(playerId, playerEntity, killerEntity, killer);
@@ -113,14 +113,18 @@ class SCR_PlayerProfileManagerComponent : SCR_BaseGameModeComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! What happens when a player disconnects.
-	//! Method is called from SCR_DeathmatchLobbyEntity
-	//! \param playerID is a unique player identifier that defines which player has disconnected.
+	//! \param[in] playerID is a unique player identifier that defines which player has disconnected.
+	//! \param[in] cause
+	//! \param[in] timeout
 	override void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
 	{
 		StoreProfile(playerId, true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerID
+	//! \param[in] disconnecting
 	void StoreProfile(int playerID, bool disconnecting = false)
 	{
 		if (!GetGame().GetBackendApi())
@@ -144,13 +148,16 @@ class SCR_PlayerProfileManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerID
+	//! \return
 	bool LoadPlayerProfileFromBackend(int playerID)
 	{
 		if (m_mPlayerProfiles && GetGame().GetBackendApi())
 		{
 			if (GetGame().GetBackendApi().GetDSSession() && GetGame().GetBackendApi().GetDSSession().Status() == EDsSessionState.EDSESSION_ACTIVE)
 			{
-				CareerBackendData playerProfile = new ref CareerBackendData();
+				CareerBackendData playerProfile = new CareerBackendData();
 				m_mPlayerProfiles.Set(playerID, playerProfile);
 				playerProfile = GetPlayerProfile(playerID);
 				
@@ -169,10 +176,14 @@ class SCR_PlayerProfileManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerID
 	void LoadConnectingPlayerProfile(int playerID)
 	{
 		if (!LoadPlayerProfileFromBackend(playerID))
+		{
 			m_aPlayerIDsToLoadProfile.Insert(playerID);
+		}
 		else
 		{
 			CareerBackendData playerProfile = GetPlayerProfile(playerID);
@@ -222,7 +233,7 @@ class SCR_PlayerProfileManagerComponent : SCR_BaseGameModeComponent
 	override void EOnInit(IEntity owner)
 	{
 		m_fCurrentRefreshTime = m_fRefreshTime;
-		m_mPlayerProfiles = new ref map<int, ref CareerBackendData>();
+		m_mPlayerProfiles = new map<int, ref CareerBackendData>();
 		SCR_RespawnSystemComponent respawnSystem = SCR_RespawnSystemComponent.Cast(owner.FindComponent(SCR_RespawnSystemComponent));
 		
 		if (!respawnSystem)
@@ -235,20 +246,11 @@ class SCR_PlayerProfileManagerComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_PlayerProfileManagerComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 	}
-
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_PlayerProfileManagerComponent()
-	{
-		if (m_mPlayerProfiles)
-		{
-			m_mPlayerProfiles.Clear();
-			m_mPlayerProfiles = null;
-		}
-		
-		m_Callback = null;
-	}
-
-};
+}

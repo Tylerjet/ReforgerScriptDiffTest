@@ -15,6 +15,14 @@ class HUDManagerComponentClass: SCR_BaseHUDComponentClass
 
 class HUDManagerComponent: SCR_BaseHUDComponent
 {
+	proto external bool IsHUDEnabled();
+	proto external bool EnableHUD(bool state);
+	proto external bool StartDrawing(BaseInfoDisplay display);
+	proto external void StopDrawing(BaseInfoDisplay display);
+	proto external int GetInfoDisplaysDrawn(out notnull array<BaseInfoDisplay> outInfoDisplays, bool getAllShown = false);
+
+	// callbacks
+
 	/*!
 	Called during EOnInit.
 	\param owner Entity this component is attached to.

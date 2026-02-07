@@ -18,7 +18,7 @@ class SCR_ModesEditorAttribute: SCR_BaseMultiSelectPresetsEditorAttribute
 		if (!editorSettings)
 			return null;
 		
-		//--- Select overriden base modes. If there is no override, select modes added by default to everyone.
+		//--- Select overridden base modes. If there is no override, select modes added by default to everyone.
 		EEditorMode modes;
 		if (!editorSettings.GetBaseModes(modes))
 			modes = core.GetBaseModes(EEditorModeFlag.DEFAULT);

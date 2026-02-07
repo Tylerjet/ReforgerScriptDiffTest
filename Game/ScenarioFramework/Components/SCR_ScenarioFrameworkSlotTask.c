@@ -1,82 +1,83 @@
-[EntityEditorProps(category: "GameScripted/ScriptWizard", description: "ScriptWizard generated script file.")]
+[EntityEditorProps(category: "GameScripted/ScenarioFramework/Slot", description: "")]
 class SCR_ScenarioFrameworkSlotTaskClass : SCR_ScenarioFrameworkSlotBaseClass
 {
-	// prefab properties here
 }
 
-//------------------------------------------------------------------------------------------------
 class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 {
 	[Attribute(desc: "Name of the task in list of tasks", category: "Task")]		
-	protected LocalizedString m_sTaskTitle;
+	LocalizedString m_sTaskTitle;
 	
 	[Attribute(desc: "Description of the task", category: "Task")]
-	protected LocalizedString m_sTaskDescription;
+	LocalizedString m_sTaskDescription;
 	
 	[Attribute(desc: "Text for the Execution category in Briefing", category: "Task")]
-	protected LocalizedString m_sTaskExecutionBriefing;
+	LocalizedString m_sTaskExecutionBriefing;
+		
+	[Attribute(desc: "StringID for the Intro Voiceline action to be processed. Processing must be setup after tasks are initialized.", category: "Task")]
+	string m_sTaskIntroVoiceline;
 		
 	[Attribute(defvalue: "1", desc: "What to do once task is finished", UIWidgets.Auto, category: "OnTaskFinish")];
-	protected ref array<ref SCR_ScenarioFrameworkActionBase>	m_aActionsOnFinished;
+	ref array<ref SCR_ScenarioFrameworkActionBase>	m_aActionsOnFinished;
 	
 	[Attribute(defvalue: "1", desc: "What to do once task is created", UIWidgets.Auto, category: "OnTaskCreate")];
-	protected ref array<ref SCR_ScenarioFrameworkActionBase>	m_aActionsOnCreated;
+	ref array<ref SCR_ScenarioFrameworkActionBase>	m_aActionsOnCreated;
 	
 	[Attribute(defvalue: "1", desc: "What to do once task is created", UIWidgets.Auto, category: "OnTaskFailed")];
-	protected ref array<ref SCR_ScenarioFrameworkActionBase>	m_aActionsOnFailed;
+	ref array<ref SCR_ScenarioFrameworkActionBase>	m_aActionsOnFailed;
 	
 	[Attribute(defvalue: "1", desc: "What to do once task progressed", UIWidgets.Auto, category: "OnTaskProgress")];
-	protected ref array<ref SCR_ScenarioFrameworkActionBase>	m_aActionsOnProgress;
+	ref array<ref SCR_ScenarioFrameworkActionBase>	m_aActionsOnProgress;
 	
 	[Attribute(defvalue: "1", desc: "What to do once task is updated", UIWidgets.Auto, category: "OnTaskUpdated")];
-	protected ref array<ref SCR_ScenarioFrameworkActionBase>	m_aActionsOnUpdated;
+	ref array<ref SCR_ScenarioFrameworkActionBase>	m_aActionsOnUpdated;
 	
-	
-	
-	protected SCR_ScenarioFrameworkLayerTask	m_TaskLayer;		//parent layer where the task is defined
-	protected bool m_bTaskResolvedBeforeLoad;
+	SCR_ScenarioFrameworkLayerTask	m_TaskLayer;		//parent layer where the task is defined
+	bool m_bTaskResolvedBeforeLoad;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] newState
 	void OnTaskStateChanged(SCR_TaskState newState)
 	{
 		if (newState == SCR_TaskState.OPENED)
 		{
 			foreach (SCR_ScenarioFrameworkActionBase action : m_aActionsOnCreated)
 			{
-				action.OnActivate(null);
+				action.OnActivate(GetOwner());
 			}
 		}			
 		else if (newState == SCR_TaskState.FINISHED && !m_bTaskResolvedBeforeLoad)
 		{
 			foreach (SCR_ScenarioFrameworkActionBase action : m_aActionsOnFinished)
 			{
-				action.OnActivate(null);
+				action.OnActivate(GetOwner());
 			}
 		}
 		else if (newState == SCR_TaskState.CANCELLED && !m_bTaskResolvedBeforeLoad)
 		{
 			foreach (SCR_ScenarioFrameworkActionBase action : m_aActionsOnFailed)
 			{
-				action.OnActivate(null);
+				action.OnActivate(GetOwner());
 			}
 		}
 		else if (newState == SCR_TaskState.PROGRESSED && !m_bTaskResolvedBeforeLoad)
 		{
 			foreach (SCR_ScenarioFrameworkActionBase action : m_aActionsOnProgress)
 			{
-				action.OnActivate(null);
+				action.OnActivate(GetOwner());
 			}
 		}
 		else
 		{
 			foreach (SCR_ScenarioFrameworkActionBase action : m_aActionsOnUpdated)
 			{
-				action.OnActivate(null);
+				action.OnActivate(GetOwner());
 			};
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] state
 	void SetTaskResolvedBeforeLoad(bool state)
 	{
 		m_bTaskResolvedBeforeLoad = state;
@@ -94,26 +95,31 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 		}
 		else
 		{
-			PrintFormat("ScenarioFramework: %1 could not be spawned and cannot bind it to task %2", m_sObjectToSpawn, m_TaskLayer.GetOwner().GetName(), LogLevel.ERROR);
+			Print(string.Format("ScenarioFramework: %1 could not be spawned and cannot bind it to task %2", m_sObjectToSpawn, m_TaskLayer.GetOwner().GetName()), LogLevel.ERROR);
 		}
 	}
 		
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] iState
+	//! \return
 	LocalizedString GetTaskTitle(int iState = 0) 
 	{ 
 		return m_sTaskTitle;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	LocalizedString GetTaskExecutionBriefing() 
 	{ 
 		return m_sTaskExecutionBriefing;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] iState
+	//! \return
 	string GetTaskDescription(int iState = 0)
 	{ 
-		return m_sTaskDescription;
+			return m_sTaskDescription;
 	}	
 	
 	//------------------------------------------------------------------------------------------------
@@ -141,7 +147,7 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void DynamicDespawn()
+	override void DynamicDespawn(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		GetOnAllChildrenSpawned().Remove(DynamicDespawn);
 		if (!m_Entity && !SCR_StringHelper.IsEmptyOrWhiteSpace(m_sObjectToSpawn))
@@ -154,7 +160,12 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 			return;
 		
 		if (m_Entity)
+		{
 			m_vPosition = m_Entity.GetOrigin();
+			InventoryItemComponent invComp = InventoryItemComponent.Cast(m_Entity.FindComponent(InventoryItemComponent));
+			if (invComp)
+				invComp.m_OnParentSlotChangedInvoker.Remove(OnInventoryParentChanged);
+		}
 		
 		m_bInitiated = false;
 		m_bDynamicallyDespawned = true;
@@ -227,7 +238,7 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 		if (!m_sID.IsEmpty())
 			m_Entity.SetName(m_sID);	
 		
-		ScriptedDamageManagerComponent objectDmgManager = ScriptedDamageManagerComponent.Cast(m_Entity.FindComponent(ScriptedDamageManagerComponent));
+		SCR_DamageManagerComponent objectDmgManager = SCR_DamageManagerComponent.Cast(m_Entity.FindComponent(SCR_DamageManagerComponent));
 		if (objectDmgManager)
 			objectDmgManager.GetOnDamageStateChanged().Insert(OnObjectDamage);
 		
@@ -236,6 +247,17 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 			EventHandlerManagerComponent ehManager = EventHandlerManagerComponent.Cast(m_Entity.FindComponent(EventHandlerManagerComponent));
 			if (ehManager)
 				ehManager.RegisterScriptHandler("OnCompartmentEntered", this, OnCompartmentEntered, false, true);
+		}
+		
+		InventoryItemComponent invComp = InventoryItemComponent.Cast(m_Entity.FindComponent(InventoryItemComponent));
+		if (invComp)
+			invComp.m_OnParentSlotChangedInvoker.Insert(OnInventoryParentChanged);
+
+		if (!m_bCanBeGarbageCollected)
+		{
+			SCR_GarbageSystem garbageSystem = SCR_GarbageSystem.GetByEntityWorld(m_Entity);
+			if (garbageSystem)
+				garbageSystem.UpdateBlacklist(m_Entity, true);
 		}
 			
 		StoreTaskSubjectToParentTaskLayer();

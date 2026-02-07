@@ -40,12 +40,6 @@ class CharacterIdentityComponent: GameComponent
 	\param wound Whether part should be wounded or not.
 	*/
 	proto external bool SetWoundState(string bodyPart, bool wound);
-	/*
-	Sets visibility of specific bodyPart
-	\param bodyPart Name of the part to be changed
-	\param visible Whether part should be visible or not.
-	*/
-	proto external bool SetCovered(string bodyPart, bool visible);
 	/*!
 	Check if bodypart is covered
 	\param bodyPart name of bodypart

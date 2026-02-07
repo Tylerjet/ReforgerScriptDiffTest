@@ -80,19 +80,19 @@ class SCR_AddonManager : GenericEntity
 	protected const static float ADDONS_OUTDATED_UPDATE_INTERVAL_S = 1.0;
 	
 	// Public callbacks
-	ref ScriptInvoker m_OnAddonsChecked = new ref ScriptInvoker;
+	ref ScriptInvoker m_OnAddonsChecked = new ScriptInvoker;
 
 	// Called when a new addon is downloaded or uninstalled
-	ref ScriptInvoker m_OnAddonOfflineStateChanged = new ref ScriptInvoker; // (SCR_WorkshopItem item, bool newState) - newState: true - addon downloaded, false - addon deleted
+	ref ScriptInvoker m_OnAddonOfflineStateChanged = new ScriptInvoker; // (SCR_WorkshopItem item, bool newState) - newState: true - addon downloaded, false - addon deleted
 
 	// Called when reported state of addon is changed
-	ref ScriptInvoker m_OnAddonReportedStateChanged = new ref ScriptInvoker; // (SCR_WorkshopItem item, bool newReported) - newReported: new reported value
+	ref ScriptInvoker m_OnAddonReportedStateChanged = new ScriptInvoker; // (SCR_WorkshopItem item, bool newReported) - newReported: new reported value
 
 	// Called as a result of NegotiateUgcPrivilege
-	ref ScriptInvoker m_OnUgcPrivilegeResult = new ref ScriptInvoker;	// (bool result)
+	ref ScriptInvoker m_OnUgcPrivilegeResult = new ScriptInvoker;	// (bool result)
 
 	// Called wherever set of enabled addons has changed
-	ref ScriptInvoker m_OnAddonsEnabledChanged = new ref ScriptInvoker; //
+	ref ScriptInvoker m_OnAddonsEnabledChanged = new ScriptInvoker; //
 	
 
 	// Other
@@ -111,7 +111,7 @@ class SCR_AddonManager : GenericEntity
 	protected ref SCR_ScriptPlatformRequestCallback m_CallbackGetPrivilege;
 	protected bool m_bInitFinished 			= false;
 
-	
+	protected ref SCR_BackendCallback m_AddonCheckCallback = new SCR_BackendCallback();
 	
 	//-----------------------------------------------------------------------------------------------
 	// 				P U B L I C   A P I
@@ -281,18 +281,7 @@ class SCR_AddonManager : GenericEntity
 
 		return item.GetLoaded();
 	}
-
-
-
-
-	//-----------------------------------------------------------------------------------------------
-	//! Calls WorkshopApi.OnItemsChecked(). Subscribe to m_OnAddonsChecked before calling this.
-	void CheckAddons()
-	{
-		Internal_CheckAddons();
-	}
-
-
+	
 	//-----------------------------------------------------------------------------------------------
 	//! Selects items which match query. Only one flag is tested!
 	//! EWorkshopItemQuery.OFFLINE - will return items which are offline AND enabled.
@@ -444,6 +433,64 @@ class SCR_AddonManager : GenericEntity
 		return -1;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! Compare availability state for item current revision 
+	//! Returns state base on if current and latest revision is avaiable in workshop
+	static SCR_ERevisionAvailability ItemAvailability(notnull WorkshopItem item)
+	{
+		Revision currentRev = item.GetActiveRevision();
+		if (!currentRev)
+		{
+			// Downloading was not finished 
+			if (item.GetDownloadingRevision())
+				return SCR_ERevisionAvailability.ERA_DOWNLOAD_NOT_FINISHED;
+			
+			// No current version but item has offline flag
+			if (item.GetStateFlags() & EWorkshopItemState.EWSTATE_OFFLINE)
+				Print("ItemAvailability() - Can't find item offline although offline flag is present " + item.Name() + " current revision", LogLevel.WARNING);
+			
+			return SCR_ERevisionAvailability.ERA_UNKNOWN_AVAILABILITY;
+		}
+		
+		ERevisionAvailability currentAvailability = currentRev.GetAvailability();
+		
+		// Addon is ok 
+		if (currentAvailability == ERevisionAvailability.ERA_AVAILABLE)
+			return SCR_ERevisionAvailability.ERA_AVAILABLE;
+		
+		Revision latestRev = item.GetLatestRevision();
+		ERevisionAvailability latestAvailability = latestRev.GetAvailability();
+		
+		if (!latestRev)
+		{
+			Print("ItemAvailability() - Can't compare availability of item " + item.Name() + " latest revision", LogLevel.WARNING);
+			return SCR_ERevisionAvailability.ERA_DELETED;
+		}
+		
+		// Deleted 
+		if (currentAvailability == ERevisionAvailability.ERA_DELETED)
+		{
+			// Update is available 
+			if (latestAvailability == ERevisionAvailability.ERA_AVAILABLE)
+				return SCR_ERevisionAvailability.ERA_COMPATIBLE_UPDATE_AVAILABLE;
+			
+			return SCR_ERevisionAvailability.ERA_DELETED;
+		}
+		
+		// Current addon is obsolete (not compatible with client version)
+		if (currentAvailability == ERevisionAvailability.ERA_OBSOLETE)
+		{
+			// Update is available 
+			if (latestAvailability == ERevisionAvailability.ERA_AVAILABLE)
+				return SCR_ERevisionAvailability.ERA_COMPATIBLE_UPDATE_AVAILABLE;
+			
+			// No compatible update available
+			return SCR_ERevisionAvailability.ERA_OBSOLETE;
+		}
+		
+		return SCR_ERevisionAvailability.ERA_AVAILABLE;
+	}
+	
 	protected SCR_LoadingOverlay m_LoadingOverlay;
 	
 	protected ref ScriptInvoker<SCR_WorkshopItem, int> Event_OnAddonEnabled;
@@ -542,17 +589,16 @@ class SCR_AddonManager : GenericEntity
 	{
 		_print("Internal_CheckAddons()", LogLevel.NORMAL);
 
-		if (!m_CallbackCheckAddons)
-		{
-			m_CallbackCheckAddons = new ref SCR_WorkshopCallbackBase;
-			m_CallbackCheckAddons.m_OnSuccess.Insert(Callback_CheckAddons_OnSuccess);
-		}
-
+		
+		if (!m_AddonCheckCallback)
+			m_AddonCheckCallback = new SCR_BackendCallback();
+		
 		WorkshopApi api = GetGame().GetBackendApi().GetWorkshop();
 
 		if (api)
 		{
-			api.OnItemsChecked(m_CallbackCheckAddons);
+			m_AddonCheckCallback.GetEventOnResponse().Insert(AddonCheckResponse);
+			api.OnItemsChecked(m_AddonCheckCallback);
 		}
 	}
 
@@ -720,6 +766,21 @@ class SCR_AddonManager : GenericEntity
 			m_Storage = new SCR_WorkshopAddonManagerPresetStorage();
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected void AddonCheckResponse(SCR_BackendCallback callback)
+	{
+		EBackendCallbackResponse type = callback.GetResponseType();
+		
+		if (type != EBackendCallbackResponse.SUCCESS)
+		{
+			// TODO: Notify error
+			return;
+		}
+		
+		// Success
+		Callback_CheckAddons_OnSuccess();
+	}
+	
 	//-----------------------------------------------------------------------------------------------
 	protected void Callback_CheckAddons_OnSuccess()
 	{
@@ -762,8 +823,6 @@ class SCR_AddonManager : GenericEntity
 		if (!arr.IsEmpty())
 			SCR_AddonListDialog.CreateFailedToStartWithMods(arr);
 	}
-
-
 
 	//-----------------------------------------------------------------------------------------------
 	protected void Callback_GetPrivilege_OnPrivilegeResult(UserPrivilege privilege, UserPrivilegeResult result)
@@ -906,7 +965,8 @@ class SCR_AddonManager : GenericEntity
 		
 		foreach (SCR_WorkshopItem item : items)
 		{
-			if (!item.Internal_GetWorkshopItem().HasLatestVersion())
+			auto wi = item.Internal_GetWorkshopItem();
+			if (!wi || !wi.HasLatestVersion())
 				m_iAddonsOutdated++;
 		}
 	}
@@ -1026,3 +1086,10 @@ class SCR_AddonManager : GenericEntity
 		Print(string.Format("[SCR_AddonManager] %1 %2", this, str), logLevel);
 	}
 };
+
+enum SCR_ERevisionAvailability : ERevisionAvailability
+{
+	ERA_COMPATIBLE_UPDATE_AVAILABLE,
+	ERA_DOWNLOAD_NOT_FINISHED,
+	ERA_UNKNOWN_AVAILABILITY,
+}

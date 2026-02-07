@@ -4,7 +4,7 @@ class SCR_GameOverScreenConfig
 	[Attribute()]
 	protected ref array<ref SCR_BaseGameOverScreenInfo> m_aGameOverScreens;
 	
-	protected ref map<EGameOverTypes, SCR_BaseGameOverScreenInfo> m_mGameOverScreensMap = new ref map<EGameOverTypes, SCR_BaseGameOverScreenInfo>;
+	protected ref map<EGameOverTypes, SCR_BaseGameOverScreenInfo> m_mGameOverScreensMap = new map<EGameOverTypes, SCR_BaseGameOverScreenInfo>;
 		
 	
 	/*!

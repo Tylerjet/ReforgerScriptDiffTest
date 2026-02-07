@@ -1,50 +1,62 @@
 [ComponentEditorProps(category: "GameScripted/AI", description: "Component for utility AI system calculations")]
-class SCR_AISettingsComponentClass: ScriptComponentClass
+class SCR_AISettingsComponentClass : ScriptComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_AISettingsComponent : ScriptComponent
 {
 	// rewrite if condition below if adding new lines!!!
-	[Attribute( defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Enable debug visualization" )]
-	bool m_EnableVisualization;
-	[Attribute( defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Alow movement" )]
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Enable debug visualization")]
+	protected bool m_EnableVisualization;
+
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Allow movement")]
 	bool m_EnableMovement;
-	[Attribute( defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Allow reacting on danger events" )]
+
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Allow reacting on danger events")]
 	bool m_EnableDangerEvents;
-	[Attribute( defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Allow reacting on perceived targets" )]
+
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Allow reacting on perceived targets")]
 	bool m_EnablePerception;
-	[Attribute( defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Allow shooting and attacking in general" )]
+
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Allow shooting and attacking in general")]
 	bool m_EnableAttack;
-	[Attribute( defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Allow finding and taking cover" )]
+
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Allow finding and taking cover")]
 	bool m_EnableTakeCover;
-	[Attribute( defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Allow aiming and gestures in general" )]
+
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Allow aiming and gestures in general")]
 	bool m_EnableLooking;
-	[Attribute( defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Allow sending messages" )]
+
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Allow sending messages")]
 	bool m_EnableCommunication;
-	[Attribute( defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Allow artificial aiming error for AI" )]
+
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Allow artificial aiming error for AI")]
 	bool m_EnableAimError;
-	[Attribute( defvalue: "0", uiwidget: UIWidgets.CheckBox, desc: "Allow leader to stop when formation is deformed" )]
+
+	[Attribute(defvalue: "0", uiwidget: UIWidgets.CheckBox, desc: "Allow leader to stop when formation is deformed")]
 	bool m_EnableLeaderStop;
 	
-	[Attribute( defvalue: "", uiwidget: UIWidgets.EditBox, desc: "Title for world description")]
-	string m_sDescriptionTitle;
-	[Attribute( defvalue: "", uiwidget: UIWidgets.EditBox, desc: "World description")]
-	string m_sDescriptionText;
+	[Attribute(defvalue: "", uiwidget: UIWidgets.EditBox, desc: "Title for world description")]
+	protected string m_sDescriptionTitle;
+
+	[Attribute(defvalue: "", uiwidget: UIWidgets.EditBox, desc: "World description")]
+	protected string m_sDescriptionText;
 	
  	private Widget m_wHint;
 	private Widget m_wOverlay;
 
-	
-	SCR_AIDebugInfoComponent m_UIComponent;
-	static SCR_AISettingsComponent m_sInstance;
+	protected SCR_AIDebugInfoComponent m_UIComponent;
+	protected static SCR_AISettingsComponent m_sInstance;
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	static SCR_AISettingsComponent GetInstance()
 	{
 		return m_sInstance;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void InitVisualization()
 	{
 		if (!m_EnableVisualization)
@@ -63,7 +75,8 @@ class SCR_AISettingsComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void UpdateDebug()
+	//!
+	protected void UpdateDebug()
 	{
 		if (!m_EnableVisualization)
 			return;
@@ -83,6 +96,7 @@ class SCR_AISettingsComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_AISettingsComponent()
 	{
 		if (m_wOverlay)
@@ -91,4 +105,4 @@ class SCR_AISettingsComponent : ScriptComponent
 		if (m_wHint)
 			m_wHint.RemoveFromHierarchy();
 	}
-};
+}

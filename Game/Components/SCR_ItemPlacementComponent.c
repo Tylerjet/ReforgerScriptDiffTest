@@ -1,9 +1,8 @@
-[EntityEditorProps(category: "GameScripted/Components", description: "ScriptWizard generated script file.")]
+[EntityEditorProps(category: "GameScripted/Components", description: "")]
 class SCR_ItemPlacementComponentClass : ScriptComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_ItemPlacementComponent : ScriptComponent
 {
 	[Attribute("{56EBF5038622AC95}Assets/Conflict/CanBuild.emat")]
@@ -13,7 +12,7 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	ResourceName m_sCannotBuildMaterial;
 	
 	[Attribute("5")]
-	int m_iFramesBetweenChecks;
+	int m_iFramesBetweenChecks; // unused?
 	
 	protected int m_iEquipComplete;
 	protected bool m_bCanPlace;
@@ -26,6 +25,11 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! id = id of items rpl component
+	//! \param[in] right
+	//! \param[in] up
+	//! \param[in] forward
+	//! \param[in] position
+	//! \param[in] id
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RPC_AskPlaceItem(vector right, vector up, vector forward, vector position, RplId id)
 	{
@@ -117,7 +121,9 @@ class SCR_ItemPlacementComponent : ScriptComponent
 			m_EquippedItem = characterTo.GetCharacterController().GetRightHandItem();
 		}
 		else
+		{
 			m_CompartmnetAccessComponent = null;
+		}
 		
 		// unregister from previous event handler
 		UnregisterEvents(from);
@@ -170,7 +176,17 @@ class SCR_ItemPlacementComponent : ScriptComponent
 		mat[1] = vector.Up;
 		mat[0] = Vector(mat[2][2], mat[2][1], -mat[2][0]);
 		ptWS.Set(null, "", mat);
-		if (characterController.TryUseItemOverrideParams(m_EquippedItem, false, false, itemActionId, 1, 0, 15.0, 1, 0.0, false, ptWS))
+
+		ItemUseParameters params = new ItemUseParameters();
+		params.SetEntity(m_EquippedItem);
+		params.SetAllowMovementDuringAction(false);
+		params.SetKeepInHandAfterSuccess(false);
+		params.SetCommandID(itemActionId);
+		params.SetCommandIntArg(1);
+		params.SetMaxAnimLength(15.0);
+		params.SetAlignmentPoint(ptWS);
+
+		if (characterController.TryUseItemOverrideParams(params))
 		{
 			characterController.m_OnItemUseEndedInvoker.Insert(OnPlacingEnded);
 			DisablePreview();
@@ -181,7 +197,7 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*protected*/ void OnPlacingEnded(IEntity item, bool successful, SCR_ConsumableEffectAnimationParameters animParams)
+	/*protected*/ void OnPlacingEnded(IEntity item, bool successful, ItemUseParameters animParams)
 	{
 		IEntity controlledEntity = GetGame().GetPlayerController().GetControlledEntity();
 		if (!controlledEntity)
@@ -272,6 +288,8 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] weaponComponent
+	//! \return
 	IEntity GetWeaponFromWeaponComponent(BaseWeaponComponent weaponComponent)
 	{
 		WeaponSlotComponent weaponSlot = WeaponSlotComponent.Cast(weaponComponent);
@@ -360,6 +378,10 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] owner
+	//! \param[in] maxPlacementDistance
+	//! \param[in] cameraMat
 	void UseXZFixedPlacement(IEntity owner, float maxPlacementDistance, vector cameraMat[4])
 	{
 		vector direction = cameraMat[2];
@@ -399,6 +421,10 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] owner
+	//! \param[in] maxPlacementDistance
+	//! \param[in] cameraMat
 	void UseXYZPlacement(IEntity owner, float maxPlacementDistance, vector cameraMat[4])
 	{
 		// Trace against terrain and entities to detect item placement position
@@ -458,6 +484,9 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] entity
+	//! \return
 	bool ValidateEntity(notnull IEntity entity)
 	{
 		Physics physics = entity.GetPhysics();
@@ -477,6 +506,12 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] up
+	//! \param[in] tracedEntity
+	//! \param[in] world
+	//! \param[in] character
+	//! \return
 	bool ValidatePlacement(vector up, IEntity tracedEntity, BaseWorld world, IEntity character)
 	{
 		if (vector.Dot(up, vector.Up) < 0.5) // Early reject based on the angle of placement (the maximum should be dictated by item settings)
@@ -514,12 +549,17 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] e
+	//! \return
 	bool TraceEntitiesCallback(notnull IEntity e, vector start = "0 0 0", vector dir = "0 0 0")
 	{
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] normal
 	void OrientToNormal(vector normal)
 	{
 		vector origin = m_vCurrentMat[3];
@@ -593,14 +633,12 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_ItemPlacementComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		m_iEquipComplete = GameAnimationUtils.RegisterAnimationEvent("EquipComplete");
 	}
-
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_ItemPlacementComponent()
-	{
-	}
-
-};
+}

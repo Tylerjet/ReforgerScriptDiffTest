@@ -1,5 +1,5 @@
 [BaseContainerProps()]
-class SCR_EditableEntityUIInfo: SCR_UIInfo
+class SCR_EditableEntityUIInfo : SCR_UIInfo
 {
 	[Attribute(params: "edds imageset", uiwidget: UIWidgets.ResourcePickerThumbnail)]
 	private ResourceName m_Image;
@@ -28,7 +28,8 @@ class SCR_EditableEntityUIInfo: SCR_UIInfo
 	
 	//~ Hotfix to make sure Entity names that are not localized get a default fallback name	
 	static const LocalizedString EDITABLE_ENTITY_FALLBACK_NAME = "#AR-AttributesDialog_TitlePage_Entity_Text";
-	
+
+	//------------------------------------------------------------------------------------------------
 	//~ Hotfix to make sure Entity names that are not localized get a default fallback name	
 	override LocalizedString GetName()
 	{
@@ -39,19 +40,26 @@ class SCR_EditableEntityUIInfo: SCR_UIInfo
 		
 		return Name;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	ResourceName GetImage()
 	{
 		return m_Image;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	EEditableEntityType GetEntityTypex()
 	{
 		return 0;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	FactionKey GetFactionKey()
 	{
 		return m_sFaction;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	Faction GetFaction()
 	{
 		FactionManager factionManager = GetGame().GetFactionManager();
@@ -60,6 +68,11 @@ class SCR_EditableEntityUIInfo: SCR_UIInfo
 		else
 			return null;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Fill the provided array with auto and authored labels
+	//! \param[out] entityLabels
+	//! \return number of provided labels (auto + authored)
 	int GetEntityLabels(out notnull array<EEditableEntityLabel> entityLabels)
 	{
 		entityLabels.InsertAll(m_aAutoLabels);
@@ -67,72 +80,76 @@ class SCR_EditableEntityUIInfo: SCR_UIInfo
 		return entityLabels.Count();
 	}
 	
-	/*!
-	Check if entity has label in either Auto or Authored labels
-	\param label Label to search
-	\return true if entity has the label
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Check if entity has label in either Auto or Authored labels
+	//! \param label Label to search
+	//! \return true if entity has the label
 	bool HasEntityLabel(EEditableEntityLabel label)
 	{
 		if (m_aAutoLabels.Contains(label))
 			return true;
+
 		if (m_aAuthoredLabels.Contains(label))
 			return true;
-		
+
 		return false;
 	}
 		
-	/*!
-	Get Entity budget costs
-	\return false if budget cost should be determined by entitytype, or return true with an empty cost array to avoid any budget cost
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get Entity budget costs
+	//! \return false if budget cost should be determined by entitytype, or return true with an empty cost array to avoid any budget cost
 	bool GetEntityBudgetCost(out notnull array<ref SCR_EntityBudgetValue> outBudgets)
 	{
 		SCR_EntityBudgetValue.MergeBudgetCosts(outBudgets, m_EntityBudgetCost);
 		return !outBudgets.IsEmpty();
 	}
-	/*!
-	Get only Entity's children budget costs, i.e. cost of entities inside a composition entitiy
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get Entity and its children budgets
+	void GetEntityAndChildrenBudgetCost(out notnull array<ref SCR_EntityBudgetValue> outBudgets)
+	{
+		SCR_EntityBudgetValue.MergeBudgetCosts(outBudgets, m_EntityBudgetCost);
+		SCR_EntityBudgetValue.MergeBudgetCosts(outBudgets, m_EntityChildrenBudgetCost);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get only Entity's children budget costs, i.e. cost of entities inside a composition entitiy
 	void GetEntityChildrenBudgetCost(out notnull array<ref SCR_EntityBudgetValue> outBudgets)
 	{
 		SCR_EntityBudgetValue.MergeBudgetCosts(outBudgets, m_EntityChildrenBudgetCost);
 	}
-	
-	/*!
-	Get prefab this entity prefab extends.
-	\return Type
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get prefab this entity prefab extends.
+	//! \return Type
 	ResourceName GetSlotPrefab()
 	{
 		return m_SlotPrefab;
 	}
-	
-	/*!
-	Get entity type.
-	\return Type
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get entity type.
+	//! \return Type
 	EEditableEntityType GetEntityType()
 	{
 		return m_EntityType;
 	}
-	/*!
-	Check if a flag is active.
-	\param flag
-	\return True if the flag is active
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if a flag is active.
+	//! \param flag
+	//! \return True if the flag is active
 	bool HasEntityFlag(EEditableEntityFlag flag)
 	{
 		return (m_EntityFlags & flag) == flag;
 	}
-	
-	/*!
-	Set asset image to given image widget.
-	Use this function instead of retrieving the texture using GetIconPath() and setting it manually!
-	When the texture is an image set, manual setting would not work.
-	\param imageWidget Target image widget
-	\return True when the image was set
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Set asset image to given image widget.
+	//! Use this function instead of retrieving the texture using GetIconPath() and setting it manually!
+	//! When the texture is an image set, manual setting would not work.
+	//! \param imageWidget Target image widget
+	//! \return True when the image was set
 	bool SetAssetImageTo(ImageWidget imageWidget)
 	{
 		if (!imageWidget || m_Image.IsEmpty())
@@ -141,17 +158,17 @@ class SCR_EditableEntityUIInfo: SCR_UIInfo
 		imageWidget.LoadImageTexture(0, m_Image);
 		return true;
 	}
-	
-	/*!
-	Initialize UI info from component source
-	\param componentSource
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Initialise UI info from component source
+	//! \param componentSource
 	void InitFromSource(IEntityComponentSource componentSource)
 	{
 		m_EntityType = SCR_EditableEntityComponentClass.GetEntityType(componentSource);
 		m_EntityFlags = SCR_EditableEntityComponentClass.GetEntityFlags(componentSource);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	protected override void CopyFrom(SCR_UIName source)
 	{
 		SCR_EditableEntityUIInfo editableEntitySource = SCR_EditableEntityUIInfo.Cast(source);
@@ -168,4 +185,4 @@ class SCR_EditableEntityUIInfo: SCR_UIInfo
 		
 		super.CopyFrom(source);
 	}
-};
+}

@@ -1,9 +1,8 @@
 [ComponentEditorProps(category: "GameScripted/Character", description: "Enables melee for character")]
-class SCR_MeleeComponentClass: ScriptComponentClass
+class SCR_MeleeComponentClass : ScriptComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_MeleeHitDataClass
 {
 	IEntity m_Entity = null;
@@ -15,13 +14,12 @@ class SCR_MeleeHitDataClass
 	vector m_vHitPosition = vector.Zero;
 	vector m_vHitDirection = vector.Zero;
 	vector m_vHitNormal = vector.Zero;
-};
+}
 
 void OnMeleePerformedDelegate(IEntity owner);
 typedef func OnMeleePerformedDelegate;
 typedef ScriptInvokerBase<OnMeleePerformedDelegate> OnMeleePerformedInvoker;
 
-//------------------------------------------------------------------------------------------------
 class SCR_MeleeComponent : ScriptComponent
 {
 	//#define SCR_MELEE_DEBUG				//! uncomment to enable melee debug draws
@@ -31,7 +29,6 @@ class SCR_MeleeComponent : ScriptComponent
 	ref array<ref Shape> m_aDbgCollisionShapes;
 #endif
 	
-	//------------------------------------------------------------------------------------------------
 	private ref SCR_MeleeHitDataClass m_MeleeHitData;		//! holds melee hit data
 	private bool m_bMeasurementDone;
 	private bool m_bAttackAlreadyExecuted = false;			//! attack execution limiter
@@ -40,6 +37,7 @@ class SCR_MeleeComponent : ScriptComponent
 	protected ref OnMeleePerformedInvoker m_OnMeleePerformed;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	OnMeleePerformedInvoker GetOnMeleePerformed()
 	{
 		if (!m_OnMeleePerformed)
@@ -65,10 +63,8 @@ class SCR_MeleeComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/**
-	 \brief Enable or disable measuring of hit detechtion probes
-	 \param state if is/is not allowed to measure
-	*/
+	//! Enable or disable measuring of hit detection probes
+	//! \param[in] state if is/is not allowed to measure
 	void SetMeleeAttackStarted(bool started)
 	{
 		m_bMeleeAttackStarted = started;
@@ -76,27 +72,31 @@ class SCR_MeleeComponent : ScriptComponent
 		if (!started)
 			Do_OnFrameCleanup();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected bool TraceFilter(notnull IEntity e)
+	{
+		return !SCR_ArmorDamageManagerComponent.Cast(e.FindComponent(SCR_ArmorDamageManagerComponent));
+	}
 
 	//------------------------------------------------------------------------------------------------
-	/**
-	 \brief Primary collision check that uses TraceMove and single TraceSphere fired from character eye pos along the aim fwd vector
-	 \param pHitData SCR_MeleeHitDataClass holder that keeps information about actual hit
-	 \return bool When hit is detected or it is miss
-	*/
-	private bool CheckCollisionsSimple(out SCR_MeleeHitDataClass pHitData)
+	//! Primary collision check that uses TraceMove and single TraceSphere fired from character eye pos along the aim fwd vector
+	//! \param[in] pHitData SCR_MeleeHitDataClass holder that keeps information about actual hit
+	//! \return When hit is detected or it is miss
+	protected bool CheckCollisionsSimple(out SCR_MeleeHitDataClass pHitData)
 	{
 		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
-		autoptr TraceSphere param = new TraceSphere;
+		TraceSphere param = new TraceSphere();
 		param.Exclude = character;
 		param.LayerMask = EPhysicsLayerDefs.Projectile;
 		param.Flags = TraceFlags.ENTS | TraceFlags.WORLD;
 		param.Radius = 0.3;
 		param.Start = character.EyePosition();
 		//! trace to a range defined by MeleeWeaponProperties along the players direction
-		param.End = param.Start + GetPlayersDirection() * m_fMWPWeaponRange;
+		param.End = param.Start + GetPlayersDirection(character) * m_fMWPWeaponRange;
 
 		// Trace stops on the first hit entity if you want to change this, change the filter callback
-		float hit = character.GetWorld().TraceMove(param, null);
+		float hit = character.GetWorld().TraceMove(param, TraceFilter);
 
 		if (!param.TraceEnt)
 			return false;
@@ -123,13 +123,11 @@ class SCR_MeleeComponent : ScriptComponent
 		return true;
 	}
 
-	//! TODO: call this from SCR_CharacterControllerComponent.OnWeaponSelected() when possible and remove from PerformAttack()
+	// TODO: call this from SCR_CharacterControllerComponent.OnWeaponSelected() when possible and remove from PerformAttack()
 	//------------------------------------------------------------------------------------------------
-	/**
-	 \brief Prepare information from MeleeWeaponProperties component on weapon
-	 \param weapon Equipped melee weapon we are getting the data from
-	*/
-	private void CollectMeleeWeaponProperties()
+	//! Prepare information from MeleeWeaponProperties component on weapon
+	//! \param[in] weapon Equipped melee weapon we are getting the data from
+	protected void CollectMeleeWeaponProperties()
 	{
 		BaseWeaponManagerComponent wpnManager = BaseWeaponManagerComponent.Cast(GetOwner().FindComponent(BaseWeaponManagerComponent));
 		if (!wpnManager)
@@ -155,94 +153,109 @@ class SCR_MeleeComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Returns the direction the player is looking
-	private vector GetPlayersDirection()
+	//! \return the direction in which the player is looking
+	protected vector GetPlayersDirection(ChimeraCharacter character)
 	{
 		vector aimMat[4];
-		Math3D.AnglesToMatrix(CharacterControllerComponent.Cast(GetOwner().FindComponent(CharacterControllerComponent)).GetInputContext().GetAimingAngles() * Math.RAD2DEG, aimMat);
+		if (character)
+			Math3D.AnglesToMatrix(character.GetCharacterController().GetInputContext().GetAimingAngles() * Math.RAD2DEG, aimMat);
+	
 		return aimMat[2];
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Handles playing of sound & setting of signals (AUDIO)
-	private void HandleMeleeSound()
-	{		
-		SoundComponent soundComp = SoundComponent.Cast(m_MeleeHitData.m_Weapon.FindComponent(SoundComponent));
-		if (!soundComp)
+	protected void HandleMeleeSound()
+	{
+		IEntity weapon = m_MeleeHitData.m_Weapon;
+		if (!weapon)
 			return;
-	
-		GameMaterial material = m_MeleeHitData.m_SurfaceProps;
 		
+		GameMaterial material = m_MeleeHitData.m_SurfaceProps;		
 		if (!material)	
 			return;
 		
 		int surfaceInt = material.GetSoundInfo().GetSignalValue();
 		
-		soundComp.SetSignalValueStr("HitZone", m_MeleeHitData.m_iColliderIndex);
-		soundComp.SetSignalValueStr("Surface", surfaceInt);
+		PlaySound(m_MeleeHitData.m_Weapon, m_MeleeHitData.m_vHitPosition, m_MeleeHitData.m_iColliderIndex, surfaceInt);
+		
+		RplComponent weaponRpl = RplComponent.Cast(m_MeleeHitData.m_Weapon.FindComponent(RplComponent));
+		if (!weaponRpl)
+			return;
+				
+		Rpc(RPC_HandleMeleeSound, weaponRpl.Id(), m_MeleeHitData.m_vHitPosition, m_MeleeHitData.m_iColliderIndex, surfaceInt);
 		
 		#ifdef WORKBENCH
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_SOUNDS_PRINT_MELEESURFACE))
 		{
-			Print(string.Format("HitZone: %1", m_MeleeHitData.m_iColliderIndex));
-			Print(string.Format("Surface: %1", surfaceInt));
-			Print(string.Format("-------------------------------------"))
+			Print(string.Format("HitZone: %1", m_MeleeHitData.m_iColliderIndex), LogLevel.NORMAL);
+			Print(string.Format("Surface: %1", surfaceInt), LogLevel.NORMAL);
+			Print(string.Format("-------------------------------------"), LogLevel.NORMAL);
 		}
 		#endif
-		
-		vector mat[4];
-		Math3D.MatrixIdentity3(mat);
-		mat[3] = m_MeleeHitData.m_vHitPosition;
-		soundComp.SoundEventTransform(SCR_SoundEvent.SOUND_MELEE_IMPACT, mat);
-	}
-	
+	}	
 	
 	//------------------------------------------------------------------------------------------------
-	// Goes upwards the hierarchy of startEntity searching for DamageManagerComponent to deal damage to
-	protected DamageManagerComponent SearchHierarchyForDamageManager(IEntity startEntity, out HitZone hitzone)
+	protected void PlaySound(IEntity weaponEntity, vector position, int signalValue0, int signalValue1)
+	{
+		SoundComponent soundComp = SoundComponent.Cast(weaponEntity.FindComponent(SoundComponent));
+		if (!soundComp)
+			return;
+		
+		soundComp.SetSignalValueStr("HitZone", signalValue0);
+		soundComp.SetSignalValueStr("Surface", signalValue1);
+		
+		vector transform[4];
+		Math3D.MatrixIdentity3(transform);
+		transform[3] = position;
+		
+		soundComp.SoundEventTransform(SCR_SoundEvent.SOUND_MELEE_IMPACT, transform);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Unreliable, RplRcver.Broadcast)]
+	protected void RPC_HandleMeleeSound(RplId weaponID, vector position, int signalValue0, int signalValue1)
+	{
+		RplComponent weaponRpl = RplComponent.Cast(Replication.FindItem(weaponID));
+		if (!weaponRpl)
+			return;
+		
+		IEntity weaponEntity = weaponRpl.GetEntity();
+		if (!weaponEntity)
+			return;
+		
+		PlaySound(weaponEntity, position, signalValue0, signalValue1);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Goes upwards the hierarchy of startEntity searching for SCR_DamageManagerComponent to deal damage to
+	//! \param[in] startEntity
+	//! \param[out] hitZone
+	//! \return the found SCR_DamageManagerComponent or null if not found or if startEntity is null
+	protected SCR_DamageManagerComponent SearchHierarchyForDamageManager(IEntity startEntity, out HitZone hitZone)
 	{
 		if (!startEntity)
 			return null;
 		
-		DamageManagerComponent damageManager = DamageManagerComponent.Cast(startEntity.FindComponent(DamageManagerComponent));
-		if (damageManager)
-		{
-			hitzone = damageManager.GetDefaultHitZone();
-			return damageManager;
-		}
-			
-		DamageManagerComponent tempManager;
-		
+		SCR_DamageManagerComponent damageManager;		
 		while (startEntity)
 		{
-			//if the parent entity has a multiphase destruction we don't want to pass the damage
-			//Because multi phase destructibles can be quite big and be separated by multiple entities on the hierarchy
-			tempManager = DamageManagerComponent.Cast(startEntity.FindComponent(DamageManagerComponent));
-			if (tempManager)
-			{
-				//if its a multiphase destructible, we dont pass dmg.
-				if (!SCR_DestructionMultiPhaseComponent.Cast(tempManager))
-				{	
-					damageManager = tempManager;
-					break;
-				}
-			}
+			damageManager = SCR_DamageManagerComponent.GetDamageManager(startEntity);
+			if (damageManager)
+				break;
 			
 			startEntity = startEntity.GetParent();
 		}
 		
 		if (damageManager)
-			hitzone = damageManager.GetDefaultHitZone();
+			hitZone = damageManager.GetDefaultHitZone();
 		
 		return damageManager;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Processes the melee attack
-	\Applies the damage if applicable
-	*/
-	private void ProcessMeleeAttack()
+	//! Processes the melee attack. Applies the damage if applicable
+	protected void ProcessMeleeAttack()
 	{
 		RplComponent rplComponent = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
 		if (rplComponent && rplComponent.IsProxy())
@@ -267,29 +280,22 @@ class SCR_MeleeComponent : ScriptComponent
 		if (m_OnMeleePerformed)
 			m_OnMeleePerformed.Invoke(GetOwner());
 		
-		//! check if the entity has the damage manager component
-		HitZone hitzone;
-		DamageManagerComponent damageManager = SearchHierarchyForDamageManager(m_MeleeHitData.m_Entity, hitzone);
-		if (damageManager)
+		// check if the entity is destructible entity
+		SCR_DestructibleEntity destructibleEntity = SCR_DestructibleEntity.Cast(m_MeleeHitData.m_Entity);
+		if (destructibleEntity)
 		{
-			damageManager.HandleDamage(EDamageType.MELEE,
-			m_MeleeHitData.m_fDamage, 
-			hitPosDirNorm,
-			m_MeleeHitData.m_Entity, 
-			hitzone,
-			Instigator.CreateInstigator(GetOwner()),
-			m_MeleeHitData.m_SurfaceProps,
-			m_MeleeHitData.m_iColliderIndex, 
-			m_MeleeHitData.m_iNodeIndex);
+			destructibleEntity.HandleDamage(EDamageType.MELEE, m_MeleeHitData.m_fDamage, hitPosDirNorm);
 			return;
 		}
 		
-		SCR_DestructibleEntity destructible = SCR_DestructibleEntity.Cast(m_MeleeHitData.m_Entity);
-		if (destructible)
-		{
-			destructible.HandleDamage(EDamageType.MELEE, m_MeleeHitData.m_fDamage, hitPosDirNorm);
-			return;
-		}
+		// check if the entity has the damage manager component
+		HitZone hitZone;
+		SCR_DamageManagerComponent damageManager = SearchHierarchyForDamageManager(m_MeleeHitData.m_Entity, hitZone);
+		if (!hitZone && damageManager)
+			hitZone = damageManager.GetDefaultHitZone();
+		
+		if (hitZone)
+			hitZone.HandleDamage(m_MeleeHitData.m_fDamage, EDamageType.MELEE, GetOwner());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -297,28 +303,23 @@ class SCR_MeleeComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	
 	//------------------------------------------------------------------------------------------------
-	/**
-	 \brief Cleanup of several variables called on frame
-	*/
-	private void Do_OnFrameCleanup()
+	//! Cleanup of several variables called on frame
+	protected void Do_OnFrameCleanup()
 	{
 		m_bAttackAlreadyExecuted = false;
 		m_bMeasurementDone = false;
 	}
 	
 #ifdef SCR_MELEE_DEBUG
-	//! dbg
+	// dbg
 	//------------------------------------------------------------------------------------------------
-	/**
-	 \brief Cleanup of several variables called on frame
-	*/
-	private void Do_ClearDbgShapes()
+	//! Cleanup of several variables called on frame
+	protected void Do_ClearDbgShapes()
 	{
 		m_aDbgSamplePositionsShapes.Clear();
 		m_aDbgCollisionShapes.Clear();
 	}
 #endif
-
 
 	//------------------------------------------------------------------------------------------------
 	//! DEBUG methods
@@ -326,7 +327,7 @@ class SCR_MeleeComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Drawing of sphere if specified attributes on given vector pos
-	private void Debug_DrawSphereAtPos(vector v, array<ref Shape> dbgShapes, int color = COLOR_BLUE, float size = 0.03, ShapeFlags shapeFlags = ShapeFlags.VISIBLE)
+	protected void Debug_DrawSphereAtPos(vector v, array<ref Shape> dbgShapes, int color = COLOR_BLUE, float size = 0.03, ShapeFlags shapeFlags = ShapeFlags.VISIBLE)
 	{
 		shapeFlags = ShapeFlags.NOOUTLINE | shapeFlags;
 		
@@ -339,7 +340,7 @@ class SCR_MeleeComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	private void Debug_DrawSphereAtPos(vector pos, int color, array<ref Shape> dbgShapes)
+	protected void Debug_DrawSphereAtPos(vector pos, int color, array<ref Shape> dbgShapes)
 	{
 		vector matx[4];
 		Math3D.MatrixIdentity4(matx);
@@ -351,7 +352,7 @@ class SCR_MeleeComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	private void Debug_DrawLineSimple(vector start, vector end, array<ref Shape> dbgShapes)
+	protected void Debug_DrawLineSimple(vector start, vector end, array<ref Shape> dbgShapes)
 	{
 		vector p[2];
 		p[0] = start;
@@ -364,10 +365,11 @@ class SCR_MeleeComponent : ScriptComponent
 	
 #ifdef SCR_MELEE_DEBUG_MSG
 	//------------------------------------------------------------------------------------------------
-	//! Melee specific prints only
-	private void MCDbgPrint(string msg = "")
+	//! Melee-specific prints only
+	//! \param[in] msg the message to display
+	protected void MCDbgPrint(string msg = "")
 	{
-		Print("\\_ SCR_MELEE_DEBUG] " + GetGame().GetTickCount().ToString() + " ** " + msg);
+		Print("\\_ SCR_MELEE_DEBUG] " + GetGame().GetTickCount().ToString() + " ** " + msg, LogLevel.NORMAL);
 	}
 #endif
 	
@@ -376,6 +378,8 @@ class SCR_MeleeComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] timeSlice
 	void Update(float timeSlice)
 	{
 		if (!m_bAttackAlreadyExecuted || !m_bMeleeAttackStarted || m_bMeasurementDone)
@@ -416,8 +420,8 @@ class SCR_MeleeComponent : ScriptComponent
 	#endif
 		
 #ifdef SCR_MELEE_DEBUG
-		m_aDbgSamplePositionsShapes = new array<ref Shape>;
-		m_aDbgCollisionShapes = new array<ref Shape>;
+		m_aDbgSamplePositionsShapes = {};
+		m_aDbgCollisionShapes = {};
 #endif
 	}
-};
+}

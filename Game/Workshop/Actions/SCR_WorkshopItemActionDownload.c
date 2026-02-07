@@ -1,6 +1,6 @@
 //! Action for downloading a specific revision of a mod
 
-void ScriptInvoker_ActionDownloadProgress(SCR_WorkshopItemActionDownload action, int progressSize);
+void ScriptInvoker_ActionDownloadProgress(SCR_WorkshopItemActionDownload action, float progressSize);
 typedef func ScriptInvoker_ActionDownloadProgress;
 
 void ScriptInvoker_ActionDownloadFullStorage(SCR_WorkshopItemActionDownload action, float size);
@@ -24,6 +24,7 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 	protected bool m_bDownloadStarted;
 	
 	protected float m_fProgress;
+	protected float m_fProcessingProgress;
 	protected float m_fDownloadedSize;
 	
 	// State of enabled state when this action was activated
@@ -103,6 +104,12 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 		if (IsCompleted())
 			return 1.0;
 		return m_fProgress;
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	float GetProcessingProgress()
+	{
+		return m_fProcessingProgress;
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -328,6 +335,9 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 				//#endif
 				
 				float progress = m_Wrapper.Internal_GetDownloadProgress();
+				float processingProgress = m_Wrapper.Internal_GetProcessingProgress();
+				
+				// Downloading
 				if (progress > m_fProgress)
 				{					
 					float currentDownloadSize = m_Wrapper.GetTargetRevisionPatchSize() * progress;
@@ -338,6 +348,13 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 					m_fProgress = progress;
 					m_fDownloadedSize = currentDownloadSize;
 					
+					InvokeOnChanged();
+				}
+				
+				// Processing (copying fragments)
+				else if (processingProgress > m_fProcessingProgress)
+				{
+					m_fProcessingProgress = processingProgress;
 					InvokeOnChanged();
 				}
 				
@@ -407,5 +424,11 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 	float GetDownloadSize()
 	{
 		return m_fDownloadedSize;
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	bool IsProcessing()
+	{
+		return m_Wrapper && m_Wrapper.Internal_GetIsProcessing();
 	}
 };

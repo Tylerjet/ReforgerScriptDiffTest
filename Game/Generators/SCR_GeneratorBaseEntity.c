@@ -7,8 +7,8 @@ class SCR_GeneratorBaseEntityClass : GeneratorBaseEntityClass
 //! SCR_GeneratorBaseEntity responsibilities:
 //! - trigger a warning if the generator is not the child of a shape
 //! - keep the generator at shape's {0,0,0}, at angles {0,0,0}, at scale 1
-//! - (future) delete all child entities if no parent is set
-//! - (future) set generator's and shape's "Editor Only" flag
+//! - delete all child entities if no parent is set
+//! - set generator's and shape's "Editor Only" flag
 class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 {
 
@@ -95,6 +95,15 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 			}
 		}
 
+		ShapeEntity parentShape = ShapeEntity.Cast(parent);
+		if (parentShape)
+			m_ParentShapeSource = worldEditorAPI.EntityToSource(parentShape);
+		else
+			m_ParentShapeSource = null;
+
+		// let's not save here for the moment
+		// BaseContainerTools.WriteToInstance(this, worldEditorAPI.EntityToSource(this));
+
 		return true;
 	}
 
@@ -149,16 +158,16 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 		if (!worldEditorAPI)
 			return;
 
-		array<IEntity> entities = {};
+		array<IEntitySource> entities = {};
 		for (int i = m_Source.GetNumChildren() - 1; i >= 0; --i)
 		{
-			entities.Insert(worldEditorAPI.SourceToEntity(m_Source.GetChild(i)));
+			entities.Insert(m_Source.GetChild(i));
 		}
 		worldEditorAPI.DeleteEntities(entities);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \return 3D anchor points relative to the provided shape source
+	//! \return 3D anchor points relative to the provided shape source; or empty array if not a shape (never null)
 	protected static array<vector> GetPoints(notnull IEntitySource shapeEntitySrc)
 	{
 		BaseContainerList points = shapeEntitySrc.GetObjectArray("Points");
@@ -171,6 +180,32 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 		{
 			points.Get(i).Get("Position", pos);
 			result.Insert(pos);
+		}
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return 3D anchor points in absolute (world) coordinates or null if WorldEditorAPI is not available / source is not a shape
+	protected array<vector> GetWorldAnchorPoints(notnull IEntitySource shapeEntitySrc)
+	{
+		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
+		if (!worldEditorAPI)
+			return null;
+
+		ShapeEntity shapeEntity = ShapeEntity.Cast(worldEditorAPI.SourceToEntity(shapeEntitySrc));
+		if (!shapeEntity)
+			return null;
+
+		array<vector> result = {};
+		shapeEntity.GetPointsPositions(result);
+
+		vector matrix[4];
+		shapeEntity.GetTransform(matrix);
+
+		for (int i, count = result.Count(); i < count; ++i)
+		{
+			result[i] = result[i].Multiply4(matrix);
 		}
 
 		return result;
@@ -195,13 +230,39 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return 3D points in absolute (world) coordinates or null if WorldEditorAPI is not available / source is not a shape
+	protected array<vector> GetWorldTesselatedShapePoints(notnull IEntitySource shapeEntitySrc)
+	{
+		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
+		if (!worldEditorAPI)
+			return null;
+
+		ShapeEntity shapeEntity = ShapeEntity.Cast(worldEditorAPI.SourceToEntity(shapeEntitySrc));
+		if (!shapeEntity)
+			return null;
+
+		array<vector> result = {};
+		shapeEntity.GenerateTesselatedShape(result);
+
+		vector matrix[4];
+		shapeEntity.GetTransform(matrix);
+
+		for (int i, count = result.Count(); i < count; ++i)
+		{
+			result[i] = result[i].Multiply4(matrix);
+		}
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected Color GetColor()
 	{
 		SCR_GeneratorBaseEntityClass prefabData = SCR_GeneratorBaseEntityClass.Cast(GetPrefabData());
 		if (!prefabData)
-			return BASE_GENERATOR_COLOR;
+			return Color.FromInt(BASE_GENERATOR_COLOR.PackToInt());
 
-		return prefabData.m_Color;
+		return Color.FromInt(prefabData.m_Color.PackToInt());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -238,6 +299,7 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Set shape's line colour to GetColor() value
 	protected void ColorShape()
 	{
 		if (!m_Source)
@@ -269,6 +331,7 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 #endif // WORKBENCH
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_GeneratorBaseEntity(IEntitySource src, IEntity parent)
 	{
 

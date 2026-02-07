@@ -76,7 +76,7 @@ class SCR_BaseEditorAction
 	*/
 	bool CanBeShown(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition, int flags)
 	{
-		Print(string.Format("CanBeShown condition method not overriden for action %1, action won't show", Type()), LogLevel.WARNING);
+		Print(string.Format("CanBeShown condition method not overridden for action %1, action won't show", Type()), LogLevel.WARNING);
 		return false;
 	}
 	

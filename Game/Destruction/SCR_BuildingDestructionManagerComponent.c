@@ -1,9 +1,8 @@
 [EntityEditorProps(category: "GameScripted/Destruction", description: "Building destruction manager, stores data for destroyed buildings.")]
 class SCR_BuildingDestructionManagerComponentClass : ScriptComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_BuildingDestructionData
 {
 	int m_iNextFreeIndex = -1;
@@ -56,9 +55,8 @@ class SCR_BuildingDestructionData
 		m_AudioSource = null;
 		m_fBuildingVolume = 0;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_BuildingDestructionManagerComponent : ScriptComponent
 {			
 	[Attribute()]
@@ -73,6 +71,7 @@ class SCR_BuildingDestructionManagerComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Returns data stored at provided index
+	//! \param[in,out] index
 	notnull SCR_BuildingDestructionData GetData(inout int index)
 	{
 		if (index == -1)
@@ -83,7 +82,7 @@ class SCR_BuildingDestructionManagerComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Allocates data for the objects storing it here
-	//! Returns index of the stored data
+	//! \return index of the stored data
 	private int AllocateData()
 	{
 		if (m_iFirstFreeData == -1)
@@ -98,6 +97,7 @@ class SCR_BuildingDestructionManagerComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Public to be used by objects storing data here
+	//! \param[in] index
 	void FreeData(int index)
 	{
 		// If you got a VME here, please report it only if you didn't touch the array/index
@@ -108,17 +108,22 @@ class SCR_BuildingDestructionManagerComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Get array of typenames to be excluded from entity query
+	//! \return array of typenames to be excluded from entity query
 	array<string> GetExcludedQueryTypes()
 	{
+		array<string> outArray = {};
 		if (!m_BuildingDestructionConfig)
-			return null;
-		
-		return m_BuildingDestructionConfig.m_aExcludedEntityQueryTypes;
+			return outArray;
+		else 
+			outArray.Copy(m_BuildingDestructionConfig.m_aExcludedEntityQueryTypes);
+		return outArray;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// Returns true if id is taken by other building than "building"
+	//!
+	//! \param[in] id
+	//! \param[in] building
+	//! \return true if id is taken by other building than "building"
 	static bool IsIdTaken(int id, SCR_DestructibleBuildingComponent building)
 	{
 		SCR_DestructibleBuildingComponent idBuilding = s_mBuildingIds.Get(id);
@@ -126,6 +131,7 @@ class SCR_BuildingDestructionManagerComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	static int GetNewId()
 	{
 		s_iHighestId++;
@@ -133,12 +139,16 @@ class SCR_BuildingDestructionManagerComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] id
+	//! \return
 	static SCR_DestructibleBuildingComponent GetDestructibleBuilding(int id)
 	{
 		return s_mBuildingIds.Get(id);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] component
 	static void UnregisterBuildingId(notnull SCR_DestructibleBuildingComponent component)
 	{
 		int id = s_mBuildingIds.GetKeyByValue(component);
@@ -157,6 +167,9 @@ class SCR_BuildingDestructionManagerComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] component
+	//! \param[in] id
 	static void RegisterBuildingId(notnull SCR_DestructibleBuildingComponent component, int id)
 	{
 		if (s_mBuildingIds.Contains(id))
@@ -172,12 +185,16 @@ class SCR_BuildingDestructionManagerComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] destroyedBuildings
+	//! \return
 	int GetDestroyedBuildings(notnull array<SCR_DestructibleBuildingComponent> destroyedBuildings)
 	{
 		return destroyedBuildings.Copy(m_aDestroyedBuildings);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] building
 	void RegisterDestroyedBuilding(SCR_DestructibleBuildingComponent building)
 	{
 		if (m_aDestroyedBuildings.Contains(building))
@@ -187,14 +204,19 @@ class SCR_BuildingDestructionManagerComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_BuildingDestructionManagerComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		GetGame().RegisterBuildingDestructionManager(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_BuildingDestructionManagerComponent()
 	{
 		GetGame().UnregisterBuildingDestructionManager(this);
 	}
-};
+}

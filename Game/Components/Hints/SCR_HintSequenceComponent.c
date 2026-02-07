@@ -1,25 +1,29 @@
 [ComponentEditorProps(category: "GameScripted/Misc", description: "")]
-class SCR_HintSequenceComponentClass: ScriptComponentClass
+class SCR_HintSequenceComponentClass : ScriptComponentClass
 {
 	[Attribute()]
 	protected ref SCR_HintSequenceList m_Sequence;
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_HintSequenceList GetSequence()
 	{
 		return m_Sequence;
 	}
-};
-class SCR_HintSequenceComponent: ScriptComponent
+}
+
+class SCR_HintSequenceComponent : ScriptComponent
 {
 	protected bool m_bIsActive;
 	protected ref ScriptInvoker m_OnSequenceChange = new ScriptInvoker;
 	
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Public functions
-	/*!
-	Start hint sequence defined by this component.
-	\return True if the sequence started
-	*/
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
+	//! Start hint sequence defined by this component.
+	//! \return True if the sequence started
 	bool StartSequence()
 	{
 		SCR_HintSequenceComponentClass prefabData = SCR_HintSequenceComponentClass.Cast(GetComponentData(GetOwner()));
@@ -40,10 +44,10 @@ class SCR_HintSequenceComponent: ScriptComponent
 		m_OnSequenceChange.Invoke(true);
 		return true;
 	}
-	/*!
-	Stop hint sequence defined by this component.
-	Has no effect if the sequence is not active.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Stop hint sequence defined by this component.
+	//! Has no effect if the sequence is not active.
 	void StopSequence()
 	{
 		SCR_HintSequenceComponentClass prefabData = SCR_HintSequenceComponentClass.Cast(GetComponentData(GetOwner()));
@@ -54,10 +58,10 @@ class SCR_HintSequenceComponent: ScriptComponent
 			hintManager.Hide();
 		}
 	}
-	/*!
-	Toggle hint sequence defined by this component.
-	Stops the sequence if it's active, and starts it if it's not.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Toggle hint sequence defined by this component.
+	//! Stops the sequence if it is active, and starts it if it is not.
 	void ToggleSequence()
 	{
 		if (IsSequenceActive())
@@ -65,18 +69,18 @@ class SCR_HintSequenceComponent: ScriptComponent
 		else
 			StartSequence();
 	}
-	/*!
-	Check if the hint sequence is currently active.
-	\return True when active
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if the hint sequence is currently active.
+	//! \return True when active
 	bool IsSequenceActive()
 	{
 		return m_bIsActive;
 	}
-	/*!
-	Get event triggered when the hint sequence starts or stops.
-	\return Script invoker
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get the event triggered when the hint sequence starts or stops.
+	//! \return Script invoker
 	ScriptInvoker GetOnSequenceChange()
 	{
 		return m_OnSequenceChange;
@@ -84,6 +88,9 @@ class SCR_HintSequenceComponent: ScriptComponent
 	
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Protected functions
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnHintShow(SCR_HintUIInfo info, bool isSilent)
 	{
 		//--- Interrupted by unrelated hint
@@ -91,6 +98,8 @@ class SCR_HintSequenceComponent: ScriptComponent
 		if (prefabData.GetSequence().FindHint(info) == -1)
 			Clear();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnHintHide(SCR_HintUIInfo info, bool isSilent)
 	{
 		SCR_HintSequenceComponentClass prefabData = SCR_HintSequenceComponentClass.Cast(GetComponentData(GetOwner()));
@@ -105,6 +114,8 @@ class SCR_HintSequenceComponent: ScriptComponent
 			Clear();
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void Clear()
 	{
 		m_bIsActive = false;
@@ -115,4 +126,4 @@ class SCR_HintSequenceComponent: ScriptComponent
 		
 		m_OnSequenceChange.Invoke(false);
 	}
-};
+}

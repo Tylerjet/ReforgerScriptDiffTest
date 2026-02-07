@@ -59,11 +59,12 @@ class SCR_AddonsPresetsSubMenuComponent : SCR_SubMenuBase
 	override void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
+		
 		GetGame().SaveUserSettings();
 	}
 	
 	//---------------------------------------------------------------------------------------------------
-	override void OnMenuShow(SCR_SuperMenuBase parentMenu)
+	override void OnTabShow()
 	{
 		// Create new buttons 
 		if (!m_NavLoad)
@@ -90,10 +91,9 @@ class SCR_AddonsPresetsSubMenuComponent : SCR_SubMenuBase
 			m_NavOverride.m_OnActivated.Insert(OnOverrideButton);
 		}
 
-		super.OnMenuShow(parentMenu);
+		super.OnTabShow();
 		
 		UpdatePresetListbox();
-		
 		
 		if (!GetGame().InPlayMode())
 			return;
@@ -110,7 +110,7 @@ class SCR_AddonsPresetsSubMenuComponent : SCR_SubMenuBase
 	//---------------------------------------------------------------------------------------------------
 	//---------------------------------------------------------------------------------------------------
 	//! Display list of current addon presets
-	void UpdatePresetListbox()
+	protected void UpdatePresetListbox()
 	{
 		if (!m_Widgets || !m_Widgets.m_ScrollPresetsComponent)
 			return;
@@ -166,7 +166,7 @@ class SCR_AddonsPresetsSubMenuComponent : SCR_SubMenuBase
 			m_aPresetLines.Insert(line);
 		}
 		
-		GetGame().GetCallqueue().CallLater(OnUsedPresetChanged, 0, false, SCR_AddonManager.GetInstance().GetPresetStorage().GetUsedPreset(), "");
+		GetGame().GetCallqueue().Call(OnUsedPresetChanged, SCR_AddonManager.GetInstance().GetPresetStorage().GetUsedPreset(), "");
 	}
 	
 	//---------------------------------------------------------------------------------------------------
@@ -178,6 +178,7 @@ class SCR_AddonsPresetsSubMenuComponent : SCR_SubMenuBase
 			return false;
 		
 		array<ref SCR_WorkshopAddonPresetAddonMeta> addons = preset.GetAddons();
+		
 		foreach (SCR_WorkshopAddonPresetAddonMeta meta : addons)
 		{
 			string guid = meta.GetGuid();
@@ -284,10 +285,9 @@ class SCR_AddonsPresetsSubMenuComponent : SCR_SubMenuBase
 	//---------------------------------------------------------------------------------------------------
 	// Preset actions 
 	//---------------------------------------------------------------------------------------------------
-	
 	//---------------------------------------------------------------------------------------------------
 	//! Create new preset with curent mods 
-	void CreateNewPreset()
+	protected void CreateNewPreset()
 	{
 		int addonsCount = SCR_AddonManager.GetInstance().CountOfEnabledAddons();
 		
@@ -401,7 +401,7 @@ class SCR_AddonsPresetsSubMenuComponent : SCR_SubMenuBase
 	
 	//---------------------------------------------------------------------------------------------------
 	//! Activate mods of given preset
-	void LoadPreset(SCR_AddonLinePresetComponent line)
+	protected void LoadPreset(SCR_AddonLinePresetComponent line)
 	{
 		SCR_WorkshopAddonPreset preset = line.GetPreset();
 		if (!preset)
@@ -416,7 +416,7 @@ class SCR_AddonsPresetsSubMenuComponent : SCR_SubMenuBase
 	
 	//---------------------------------------------------------------------------------------------------
 	//! Change mod setup of given preset
-	void OverridePreset(SCR_AddonLinePresetComponent line)
+	protected void OverridePreset(SCR_AddonLinePresetComponent line)
 	{
 		SCR_WorkshopAddonPreset preset = line.GetPreset();
 		if (!preset)
@@ -461,7 +461,7 @@ class SCR_AddonsPresetsSubMenuComponent : SCR_SubMenuBase
 	
 	//---------------------------------------------------------------------------------------------------
 	//! Delete given preset
-	void DeletePreset(SCR_AddonLinePresetComponent line)
+	protected void DeletePreset(SCR_AddonLinePresetComponent line)
 	{
 		SCR_WorkshopAddonPreset preset = line.GetPreset();
 		if (!preset)
@@ -484,7 +484,7 @@ class SCR_AddonsPresetsSubMenuComponent : SCR_SubMenuBase
 	
 	//---------------------------------------------------------------------------------------------------
 	//! Change name of given preset
-	void RenamePreset(SCR_AddonLinePresetComponent line, string name)
+	protected void RenamePreset(SCR_AddonLinePresetComponent line, string name)
 	{
 		SCR_WorkshopAddonPreset preset = line.GetPreset();
 		if (!preset)
@@ -554,7 +554,7 @@ class SCR_AddonsPresetsSubMenuComponent : SCR_SubMenuBase
 	
 	//---------------------------------------------------------------------------------------------------
 	//! Return addon preset line component of currently focused widget if has any 
-	SCR_AddonLinePresetComponent FocusedPresetLine()
+	protected SCR_AddonLinePresetComponent FocusedPresetLine()
 	{
 		Widget focused = GetGame().GetWorkspace().GetFocusedWidget();
 		if (!focused)

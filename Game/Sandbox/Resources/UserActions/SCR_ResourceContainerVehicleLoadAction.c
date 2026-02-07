@@ -6,6 +6,8 @@ class SCR_ResourceContainerVehicleLoadAction : SCR_ScriptedUserAction
 	[Attribute("2000", "Amount of resources transfered on each action execute, -1 means max is transfer", params: "-1 inf")]
 	protected float m_fTransferAmount;
 	
+	protected const LocalizedString OCCUPIED_BY_CHARACTER = "#AR-UserAction_SeatOccupied";
+	
 	protected SCR_ResourceSystemSubscriptionHandleBase m_ResourceSubscriptionHandleConsumer;
 	protected SCR_ResourceSystemSubscriptionHandleBase m_ResourceSubscriptionHandleGenerator;
 	protected SCR_ResourceComponent m_ResourceComponent;
@@ -16,6 +18,8 @@ class SCR_ResourceContainerVehicleLoadAction : SCR_ScriptedUserAction
 	protected float m_fCurrentResource;
 	protected float m_fCurrentTransferValue;
 	protected bool m_bCanPerform;
+	
+	protected SCR_BaseCompartmentManagerComponent m_CompartmentManager;
 	
 	//------------------------------------------------------------------------------------------------
 	//~ If continues action it will only execute everytime the duration is done
@@ -87,9 +91,28 @@ class SCR_ResourceContainerVehicleLoadAction : SCR_ScriptedUserAction
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	/*override bool CanBeShownScript(IEntity user)
+	{	
+		if (!super.CanBeShownScript(user))
+			return false;
+		
+		if (!m_ResourceComponent || !m_ResourceComponent.AreSuppliesEnabled())
+			return false;
+		
+		return true;
+	}*/
+	
+	//------------------------------------------------------------------------------------------------
 	override event bool CanBePerformedScript(IEntity user)
 	{	
 		m_bCanPerform = false;
+		
+		//~ TODO: Hotfix until proper solution, only blocks player does not block AI or Editor actions
+		if (m_CompartmentManager && m_CompartmentManager.BlockSuppliesIfOccupied() && m_CompartmentManager.GetOccupantCount() > 0)
+		{
+			SetCannotPerformReason(OCCUPIED_BY_CHARACTER);
+			return false;
+		}
 		
 		if (!m_ResourceInventoryPlayerComponentRplId || !m_ResourceInventoryPlayerComponentRplId.IsValid())
 			m_ResourceInventoryPlayerComponentRplId = Replication.FindId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent)));
@@ -138,5 +161,6 @@ class SCR_ResourceContainerVehicleLoadAction : SCR_ScriptedUserAction
 		
 		m_ResourceGenerator	= m_ResourceComponent.GetGenerator(EResourceGeneratorID.VEHICLE_LOAD, m_eResourceType);
 		m_ResourceConsumer	= m_ResourceComponent.GetConsumer(EResourceGeneratorID.VEHICLE_LOAD, m_eResourceType);
+		m_CompartmentManager = SCR_BaseCompartmentManagerComponent.Cast(pOwnerEntity.FindComponent(SCR_BaseCompartmentManagerComponent));
 	}
 }

@@ -7,7 +7,7 @@ class SCR_ButtonListViewComponent : SCR_ListViewComponent
 {	
 	protected ref array<SCR_ButtonComponent> m_aButtons = new array<SCR_ButtonComponent>;
 	
-	ref ScriptInvoker m_OnEntryFocus = new ref ScriptInvoker;
+	ref ScriptInvoker m_OnEntryFocus = new ScriptInvoker;
 	
 	//-------------------------------------
 	// List component override

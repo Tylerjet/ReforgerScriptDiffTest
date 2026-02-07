@@ -6,7 +6,6 @@ enum EResourcePlayerInteractionType
 	INVENTORY_SPLIT
 }
 
-//------------------------------------------------------------------------------------------------
 void ScriptInvoker_ResourceOnPlayerInteraction(EResourcePlayerInteractionType interactionType, PlayerController playerController, SCR_ResourceComponent resourceComponentFrom, SCR_ResourceComponent resourceComponentTo, EResourceType resourceType, float resourceValue);
 typedef func ScriptInvokerActiveWidgetInteractionFunc;
 typedef ScriptInvokerBase<ScriptInvokerActiveWidgetInteractionFunc> ScriptInvokerResourceOnPlayerInteraction;
@@ -23,6 +22,7 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 	protected ref ScriptInvokerResourceOnPlayerInteraction m_OnPlayerInteractionInvoker;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvokerResourceOnPlayerInteraction GetOnPlayerInteraction()
 	{
 		if (!m_OnPlayerInteractionInvoker)
@@ -169,18 +169,33 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] resourceComponentRplId
+	//! \param[in] interactorType
+	//! \param[in] resourceType
+	//! \param[in] resourceIdentifier
 	void RequestSubscription(RplId resourceComponentRplId, typename interactorType, EResourceType resourceType, EResourceGeneratorID resourceIdentifier)
 	{
 		Rpc(RpcAsk_RequestSubscription, resourceComponentRplId, interactorType.ToString(), resourceType, resourceIdentifier);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] resourceComponentRplId
+	//! \param[in] interactorType
+	//! \param[in] resourceType
+	//! \param[in] resourceIdentifier
 	void RequestUnsubscription(RplId resourceComponentRplId, typename interactorType, EResourceType resourceType, EResourceGeneratorID resourceIdentifier)
 	{
 		Rpc(RpcAsk_RequestUnsubscription, resourceComponentRplId, interactorType.ToString(), resourceType, resourceIdentifier);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] resourceComponentRplId
+	//! \param[in] interactorType
+	//! \param[in] resourceType
+	//! \param[in] resourceIdentifier
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RpcAsk_RequestSubscription(RplId resourceComponentRplId, string interactorType, EResourceType resourceType, EResourceGeneratorID resourceIdentifier)
 	{
@@ -205,6 +220,11 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] resourceComponentRplId
+	//! \param[in] interactorType
+	//! \param[in] resourceType
+	//! \param[in] resourceIdentifier
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RpcAsk_RequestUnsubscription(RplId resourceComponentRplId, string interactorType, EResourceType resourceType, EResourceGeneratorID resourceIdentifier)
 	{
@@ -229,6 +249,12 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] interactionType
+	//! \param[in] rplIdResourceComponentFrom
+	//! \param[in] rplIdResourceComponentTo
+	//! \param[in] resourceType
+	//! \param[in] resourceValue
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	void RpcAsk_OnPlayerInteraction(EResourcePlayerInteractionType interactionType, RplId rplIdResourceComponentFrom, RplId rplIdResourceComponentTo, EResourceType resourceType, float resourceValue)
 	{
@@ -251,6 +277,12 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] rplIdResourceComponent
+	//! \param[in] rplIdInventoryManager
+	//! \param[in] rplIdStorageComponent
+	//! \param[in] resourceNameItem
+	//! \param[in] resourceType
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RpcAsk_ArsenalRequestItem(RplId rplIdResourceComponent, RplId rplIdInventoryManager, RplId rplIdStorageComponent, ResourceName resourceNameItem, EResourceType resourceType)
 	{
@@ -293,7 +325,7 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 				return;
 			
 			//~ Get Supply cost only if arsenal has supplies enabled
-			SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.Cast(resourcesOwner.FindComponent(SCR_ArsenalComponent));
+			SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.FindArsenalComponent(resourcesOwner);
 			if ((arsenalComponent && arsenalComponent.IsArsenalUsingSupplies()) || !arsenalComponent)
 			{
 				SCR_Faction faction;
@@ -311,7 +343,13 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 				{
 					SCR_ArsenalItem data = SCR_ArsenalItem.Cast(entry.GetEntityDataOfType(SCR_ArsenalItem));
 					if (data)
-						resourceCost = data.GetSupplyCost();
+					{
+						if (arsenalComponent)
+							resourceCost = data.GetSupplyCost(arsenalComponent.GetSupplyCostType());
+						else 
+							resourceCost = data.GetSupplyCost(SCR_EArsenalSupplyCostType.DEFAULT);
+					}
+						
 				}
 			}
 		}
@@ -323,6 +361,10 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] rplIdResourceComponent
+	//! \param[in] rplIdInventoryItem
+	//! \param[in] resourceType
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RpcAsk_ArsenalRefundItem(RplId rplIdResourceComponent, RplId rplIdInventoryItem, EResourceType resourceType)
 	{
@@ -360,34 +402,40 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 				return;
 			
 			//~ Get Supply cost only if arsenal has supplies enabled
-			SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.Cast(resourcesOwner.FindComponent(SCR_ArsenalComponent));
+			SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.FindArsenalComponent(resourcesOwner);
 			if ((arsenalComponent && arsenalComponent.IsArsenalUsingSupplies()) || !arsenalComponent)
 			{
 				SCR_Faction faction;
 				if (arsenalComponent)
 					faction = arsenalComponent.GetAssignedFaction();
 				
-				SCR_EntityCatalogEntry entry;
-				
 				ResourceName resourceNameItem = inventoryItemEntity.GetPrefabData().GetPrefabName();
 				
-				if (faction)
-					 entry = entityCatalogManager.GetEntryWithPrefabFromFactionCatalog(EEntityCatalogType.ITEM, resourceNameItem, faction);
-				else 
-					entry = entityCatalogManager.GetEntryWithPrefabFromCatalog(EEntityCatalogType.ITEM, resourceNameItem);
-				
+				SCR_EntityCatalogEntry entry = entityCatalogManager.GetEntryWithPrefabFromAnyCatalog(EEntityCatalogType.ITEM, resourceNameItem, faction);
 				if (!entry)
 					return;
 	
 				SCR_ArsenalItem data = SCR_ArsenalItem.Cast(entry.GetEntityDataOfType(SCR_ArsenalItem));
 				if (data)
-					resourceCost = data.GetSupplyCost();
+				{
+					if (arsenalComponent)
+						resourceCost = data.GetSupplyCost(arsenalComponent.GetSupplyCostType());
+					else 
+						resourceCost = data.GetSupplyCost(SCR_EArsenalSupplyCostType.DEFAULT);
+				}
+					
 			}
 		}
 		
-		SCR_ResourceGenerationResponse response = generator.RequestAvailability(resourceCost * generator.GetResourceMultiplier());
-		if (response.GetReason() != EResourceReason.SUFFICIENT)
-			return;
+		resourceCost = SCR_ResourceSystemHelper.RoundRefundSupplyAmount(resourceCost * generator.GetResourceMultiplier());
+		
+		//~ Check if it can refund if resource cost is greater than 0
+		if (resourceCost > 0)
+		{
+			SCR_ResourceGenerationResponse response = generator.RequestAvailability(resourceCost);
+			if (response.GetReason() != EResourceReason.SUFFICIENT)
+				return;
+		}
 		
 		IEntity parentEntity = inventoryItemEntity.GetParent();
 		SCR_InventoryStorageManagerComponent inventoryManagerComponent;
@@ -400,10 +448,14 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		else if (!inventoryManagerComponent)
 			RplComponent.DeleteRplEntity(inventoryItemEntity, false);
 		
-		generator.RequestGeneration(resourceCost * generator.GetResourceMultiplier());
+		generator.RequestGeneration(SCR_ResourceSystemHelper.RoundRefundSupplyAmount(resourceCost));
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] rplIdFrom
+	//! \param[in] rplIdTo
+	//! \param[in] resourceType
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RpcAsk_MergeContainerWithContainer(RplId rplIdFrom, RplId rplIdTo, EResourceType resourceType)
 	{
@@ -433,6 +485,11 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] rplIdFrom
+	//! \param[in] rplIdTo
+	//! \param[in] resourceType
+	//! \param[in] requestedResources
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RpcAsk_MergeContainerWithContainerPartial(RplId rplIdFrom, RplId rplIdTo, EResourceType resourceType, float requestedResources)
 	{
@@ -462,6 +519,12 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] rplIdResourceComponent
+	//! \param[in] rplIdInventoryManager
+	//! \param[in] rplIdStorageComponent
+	//! \param[in] resourceType
+	//! \param[in] requestedResources
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RpcAsk_CreatePhysicalContainerWithContainer(RplId rplIdResourceComponent, RplId rplIdInventoryManager, RplId rplIdStorageComponent, EResourceType resourceType, float requestedResources)
 	{
@@ -556,7 +619,6 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		if (!storageComponent)
 			return;
 		
-		IEntity localEntity							= null;
 		IEntity resourcesOwner						= resourceComponentFrom.GetOwner();
 		SCR_EntityCatalogEntry selectedEntry		= null;
 		int selectedEntryIdx						= -1;
@@ -569,19 +631,13 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		
 		foreach (int idx, SCR_EntityCatalogEntry entry: entries)
 		{
-			localEntity = GetGame().SpawnEntityPrefabLocal(Resource.Load(entry.GetPrefab()));
-			
-			if (inventoryManagerComponent.CanInsertItemInStorage(localEntity, storageComponent))
+			if (inventoryManagerComponent.CanInsertResourceInStorage(entry.GetPrefab(), storageComponent))
 			{
 				selectedEntry		= entry;
 				selectedEntryIdx	= idx;
-				
-				delete localEntity;
-				
+	
 				break;
 			}
-			
-			delete localEntity;
 		}
 		
 		if (!selectedEntry)
@@ -622,6 +678,11 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] interactionType
+	//! \param[in] resourceComponentFrom
+	//! \param[in] resourceComponentTo
+	//! \param[in] resourceType
+	//! \param[in] resourceValue
 	void OnPlayerInteraction(EResourcePlayerInteractionType interactionType, SCR_ResourceComponent resourceComponentFrom, SCR_ResourceComponent resourceComponentTo, EResourceType resourceType, float resourceValue)
 	{
 		IEntity owner = GetOwner();
@@ -641,10 +702,9 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		GetOnPlayerInteraction().Invoke(interactionType, owner, resourceComponentFrom, resourceComponentTo, resourceType, resourceValue);
 	}
 	
-	/*!
-	Called when Entity is being to be destroyed (deleted) or component to be deleted (see Game::DeleteScriptComponent).
-	\param owner Entity which owns the component
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Called when Entity is being to be destroyed (deleted) or component to be deleted (see Game::DeleteScriptComponent).
+	//! \param[in] owner Entity which owns the component
 	override event protected void OnDelete(IEntity owner)
 	{
 		super.OnDelete(owner);

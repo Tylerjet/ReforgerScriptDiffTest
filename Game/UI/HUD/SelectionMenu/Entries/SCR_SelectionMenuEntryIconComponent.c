@@ -81,7 +81,7 @@ class SCR_SelectionMenuEntryIconComponent : SCR_SelectionMenuEntryComponent
 	//------------------------------------------------------------------------------------------------
 	Color GetAltColor()
 	{
-		return m_cAltColor;
+		return Color.FromInt(m_cAltColor.PackToInt());
 	}
 	
 	//------------------------------------------------------------------------------------------------

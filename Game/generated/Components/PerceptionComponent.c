@@ -15,6 +15,7 @@ class PerceptionComponentClass: AIComponentEntityClass
 
 class PerceptionComponent: AIComponentEntity
 {
+	proto external int GetSimulateCounter();
 	proto external int GetTargetsList(out notnull array<BaseTarget> outTargets, ETargetCategory category);
 	/*!
 	Returns count of targets of given category

@@ -1,10 +1,7 @@
-/* Sub menu base for handlign scenario lines.
-Child classes:
-- SCR_ContentBrowser_ScenarioSubMenu
-- SCR_ContentBrowserDetails_OverviewSubMenu
+/* 
+Sub menu base for handlign scenario lines.
 */
 
-//------------------------------------------------------------------------------------------------
 class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 {
 	protected ref array<SCR_ContentBrowser_ScenarioLineComponent> m_aScenarioLines = {};
@@ -14,12 +11,16 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 
 	protected MissionWorkshopItem m_SelectedScenario;
 	protected ref SCR_MissionHeader m_Header;
+	
+	protected SCR_ScenarioDetailsPanelComponent m_ScenarioDetailsPanel;
 
 	// Line Actions
 	protected EInputDeviceType m_eLastInputType;
 	protected bool m_bWasLineSelected;
 	protected SCR_ContentBrowser_ScenarioLineComponent m_ClickedLine; // Cache last clicked line to trigger the correct dialog after the double click window
 
+	protected SCR_MenuActionsComponent m_ActionsComponent;
+	
 	// Nav buttons
 	protected SCR_InputButtonComponent m_NavPlay;
 	protected SCR_InputButtonComponent m_NavContinue;
@@ -27,41 +28,56 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 	protected SCR_InputButtonComponent m_NavHost;
 	protected SCR_InputButtonComponent m_NavFindServers;
 	protected SCR_InputButtonComponent m_NavFavorite;
+	protected ref array<SCR_InputButtonComponent> m_aRightFooterButtons = {};
 
 	// Invokers
 	protected ref ScriptInvokerBool m_OnLineFavorite;
 
 	protected bool m_bIsListeningForCommStatus;
+	protected WorkshopApi m_WorkshopApi;
+		
+	//------------------------------------------------------------------------------------------------
+	override void HandlerAttached(Widget w)
+	{
+		super.HandlerAttached(w);
+		InitWidgets();
+	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuOpen(SCR_SuperMenuBase parentMenu)
+	override void OnTabCreate(Widget menuRoot, ResourceName buttonsLayout, int index)
 	{
-		super.OnMenuOpen(parentMenu);
+		super.OnTabCreate(menuRoot, buttonsLayout, index);
 
 		// Listen for Actions
-		SCR_MenuActionsComponent actionsComp = SCR_MenuActionsComponent.FindComponent(GetRootWidget());
-		if (actionsComp)
-			actionsComp.GetOnAction().Insert(OnActionTriggered);
+		m_ActionsComponent = SCR_MenuActionsComponent.FindComponent(GetRootWidget());
+		if (m_ActionsComponent)
+			m_ActionsComponent.GetOnAction().Insert(OnActionTriggered);
 
 		// Right footer buttons
 		// These are visible when using keyboard / gamepad and focusing a line
-		SCR_DynamicFooterComponent footer = parentMenu.GetFooterComponent();
-		footer.GetOnButtonActivated().Insert(OnInteractionButtonPressed);
+		m_DynamicFooter.GetOnButtonActivated().Insert(OnInteractionButtonPressed);
 
-		m_NavPlay = footer.FindButton("Play");
-		m_NavContinue = footer.FindButton("Continue");
-		m_NavRestart = footer.FindButton("Restart");
-		m_NavHost = footer.FindButton("Host");
-		m_NavFindServers = footer.FindButton("FindServers");
-		m_NavFavorite = footer.FindButton("Favorite");
+		m_NavPlay = m_DynamicFooter.FindButton(SCR_ScenarioEntryHelper.BUTTON_PLAY);
+		m_NavContinue = m_DynamicFooter.FindButton(SCR_ScenarioEntryHelper.BUTTON_CONTINUE);
+		m_NavRestart = m_DynamicFooter.FindButton(SCR_ScenarioEntryHelper.BUTTON_RESTART);
+		m_NavHost = m_DynamicFooter.FindButton(SCR_ScenarioEntryHelper.BUTTON_HOST);
+		m_NavFindServers = m_DynamicFooter.FindButton(SCR_ScenarioEntryHelper.BUTTON_FIND_SERVERS);
+		m_NavFavorite = m_DynamicFooter.FindButton(SCR_ScenarioEntryHelper.BUTTON_FAVORITE);
+		
+		m_aRightFooterButtons = m_DynamicFooter.GetButtonsInFooter(SCR_EDynamicFooterButtonAlignment.RIGHT);
 
 		UpdateNavigationButtons();
+		
+		// Backend
+		m_WorkshopApi = GetGame().GetBackendApi().GetWorkshop();
+		
+		InitWorkshopApi()
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuUpdate(SCR_SuperMenuBase parentMenu, float tDelta)
+	override void OnMenuUpdate(float tDelta)
 	{
-		super.OnMenuUpdate(parentMenu, tDelta);
+		super.OnMenuUpdate(tDelta);
 
 		//! Update selected scenario
 		MissionWorkshopItem selectedMission = GetSelectedScenario();
@@ -84,9 +100,9 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuShow(SCR_SuperMenuBase parentMenu)
+	override void OnTabShow()
 	{
-		super.OnMenuShow(parentMenu);
+		super.OnTabShow();
 
 		SCR_ServicesStatusHelper.RefreshPing();
 		
@@ -94,12 +110,15 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 			SCR_ServicesStatusHelper.GetOnCommStatusCheckFinished().Insert(OnCommStatusCheckFinished);
 		
 		m_bIsListeningForCommStatus = true;
+		
+		if (m_ActionsComponent)
+			m_ActionsComponent.ActivateActions();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuHide(SCR_SuperMenuBase parentMenu)
+	override void OnTabHide()
 	{
-		super.OnMenuHide(parentMenu);
+		super.OnTabHide();
 
 		UpdateNavigationButtons(false);
 		
@@ -115,8 +134,20 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 		SCR_ServicesStatusHelper.RefreshPing();
 		
 		UpdateNavigationButtons();
+		
+		if (m_bShown && m_ActionsComponent)
+			m_ActionsComponent.ActivateActions();
 	}
 
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuShow()
+	{
+		super.OnMenuShow();
+		
+		if (m_bShown && m_ActionsComponent)
+			m_ActionsComponent.ActivateActions();
+	}
+	
 	// ---- EVENTS ----
 	//------------------------------------------------------------------------------------------------
 	protected void OnCommStatusCheckFinished(SCR_ECommStatus status, float responseTime, float lastSuccessTime, float lastFailTime)
@@ -133,6 +164,7 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 		m_SelectedLine.m_OnClick.Insert(OnLineMouseClick);
 
 		UpdateNavigationButtons();
+		UpdateSidePanel();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -140,6 +172,8 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 	{
 		m_LastSelectedLine = m_SelectedLine;
 		m_SelectedLine.m_OnClick.Remove(OnLineMouseClick);
+		
+		UpdateSidePanel();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -158,6 +192,7 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 	//! Called from scenario line component when scenario state changes
 	protected void OnScenarioStateChanged(SCR_ContentBrowser_ScenarioLineComponent comp)
 	{
+		UpdateSidePanel();
 	}
 
 	// ---- INPUTS ----
@@ -169,16 +204,20 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 		if (GetGame().GetInputManager().GetLastUsedInputDevice() != EInputDeviceType.MOUSE)
 			return;
 
+		MissionWorkshopItem scenario = GetSelectedScenario();
+		if (!SCR_ScenarioEntryHelper.IsReady(scenario) && action != SCR_ScenarioEntryHelper.ACTION_DOUBLE_CLICK)
+			return;
+		
 		switch (action)
 		{
-			case "MenuSelectDouble": OnLineClickInteraction(multiplier); break;
-			case "MenuRestart": OnRestartButton(); break;
-			case "MenuJoin": OnJoinButton(); break;
-			case "MenuFavourite": OnFavouriteButton(); break;
-			case "MenuHost":
+			case SCR_ScenarioEntryHelper.ACTION_DOUBLE_CLICK:	OnLineClickInteraction(multiplier); break;
+			case SCR_ScenarioEntryHelper.ACTION_RESTART:		Restart(scenario); break;
+			case SCR_ScenarioEntryHelper.ACTION_FIND_SERVERS:	Join(scenario); break;
+			case SCR_ScenarioEntryHelper.ACTION_FAVORITE:		OnFavouriteButton(); break;
+			case SCR_ScenarioEntryHelper.ACTION_HOST:
 			{
 				if (!GetGame().IsPlatformGameConsole())
-					OnHostButton();
+					Host(scenario);
 				break;
 			}
 		}
@@ -187,15 +226,7 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void OnInteractionButtonPressed(string action)
 	{
-		switch (action)
-		{
-			case "Play": OnPlayButton(); break;
-			case "Continue": OnContinueButton(); break;
-			case "Restart": OnRestartButton(); break;
-			case "FindServers": OnJoinButton(); break;
-			case "Favorite": OnFavouriteButton(); break;
-			case "Host": OnHostButton(); break;
-		}
+		SwitchOnButton(action, GetSelectedScenario());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -204,18 +235,27 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 		if (!dialog)
 			return;
 
-		MissionWorkshopItem scenario = dialog.GetScenario();
-
-		switch (tag)
-		{
-			case "confirm": Play(scenario); break;
-			case "load":	Continue(scenario); break;
-			case "restart": Restart(scenario); break;
-			case "join": 	Join(scenario); break;
-			case "host": 	Host(scenario); break;
-		}
+		SwitchOnButton(tag, dialog.GetScenario());
 	}
 
+	//------------------------------------------------------------------------------------------------
+	protected void SwitchOnButton(string tag, MissionWorkshopItem scenario)
+	{
+		if (!SCR_ScenarioEntryHelper.IsReady(scenario))
+			return;
+		
+		switch (tag)
+		{
+			case SCR_ConfigurableDialogUi.BUTTON_CONFIRM:		Play(scenario); break;
+			case SCR_ScenarioEntryHelper.BUTTON_PLAY:			Play(scenario); break;
+			case SCR_ScenarioEntryHelper.BUTTON_CONTINUE:		Continue(scenario); break;
+			case SCR_ScenarioEntryHelper.BUTTON_RESTART:		Restart(scenario); break;
+			case SCR_ScenarioEntryHelper.BUTTON_FIND_SERVERS:	Join(scenario); break;
+			case SCR_ScenarioEntryHelper.BUTTON_HOST:			Host(scenario); break;
+			case SCR_ScenarioEntryHelper.BUTTON_FAVORITE:		OnFavouriteButton(); break;
+		}
+	}
+	
 	// CLICKS
 	//------------------------------------------------------------------------------------------------
 	protected void OnLineClickInteraction(float multiplier)
@@ -278,18 +318,6 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 
 	// BUTTONS
 	//------------------------------------------------------------------------------------------------
-	protected void OnRestartButton()
-	{
-		Restart(GetSelectedScenario());
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnJoinButton()
-	{
-		Join(GetSelectedScenario());
-	}
-
-	//------------------------------------------------------------------------------------------------
 	protected void OnFavouriteButton()
 	{
 		SetFavorite(GetSelectedScenario());
@@ -297,34 +325,14 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 			m_NavFavorite.SetLabel(GetFavoriteLabel(GetSelectedScenario().IsFavorite()));
 	}
 
-	//------------------------------------------------------------------------------------------------
-	protected void OnHostButton()
-	{
-		Host(GetSelectedScenario());
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnPlayButton()
-	{
-		Play(GetSelectedScenario());
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnContinueButton()
-	{
-		Continue(GetSelectedScenario());
-	}
-
 	// INTERACTIONS
 	//------------------------------------------------------------------------------------------------
 	protected void OnPlayInteraction(MissionWorkshopItem scenario)
 	{
-		if (!scenario)
+		if (!SCR_ScenarioEntryHelper.IsReady(scenario))
 			return;
 
-		bool canBeLoaded = m_Header && GetGame().GetSaveManager().HasLatestSave(m_Header);
-
-		if (canBeLoaded)
+		if (SCR_ScenarioEntryHelper.HasSave(scenario))
 			Continue(scenario);
 		else
 			Play(scenario);
@@ -361,9 +369,8 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 
 		m_SelectedScenario = scenario;
 		m_Header = SCR_MissionHeader.Cast(MissionHeader.ReadMissionHeader(scenario.Id()));
-		bool canBeLoaded = m_Header && GetGame().GetSaveManager().HasLatestSave(m_Header);
 
-		if (!canBeLoaded)
+		if (!SCR_ScenarioEntryHelper.HasSave(scenario))
 			return;
 
 		SCR_ConfigurableDialogUi dialog = SCR_CommonDialogs.CreateDialog("scenario_restart");
@@ -380,27 +387,25 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void Join(MissionWorkshopItem scenario)
 	{
-		if (!scenario)
+		SCR_EScenarioEntryErrorState state = SCR_ScenarioEntryHelper.GetErrorState(scenario);
+		if (!scenario || !SCR_ScenarioEntryHelper.IsMultiplayer(scenario) || SCR_ScenarioEntryHelper.IsInErrorState(state))
 			return;
 
-		if (scenario.GetPlayerCount() > 1)
-			ServerBrowserMenuUI.OpenWithScenarioFilter(scenario);
+		ServerBrowserMenuUI.OpenWithScenarioFilter(scenario);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void Host(MissionWorkshopItem scenario)
 	{
-		if (!scenario)
-			return;
-
-		bool mp = scenario.GetPlayerCount() > 1;
-		if (!mp)
+		SCR_EScenarioEntryErrorState state = SCR_ScenarioEntryHelper.GetErrorState(scenario);
+		if (!scenario || !SCR_ScenarioEntryHelper.IsMultiplayer(scenario) || SCR_ScenarioEntryHelper.IsInErrorState(state))
 			return;
 
 		// Open server hosting dialog
-		ServerHostingUI dialog = ServerHostingUI.Cast(GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.ServerHostingDialog));
+		ServerHostingUI dialog = SCR_CommonDialogs.CreateServerHostingDialog();
 
-		dialog.SelectScenario(scenario);
+		if (dialog)
+			dialog.SelectScenario(scenario);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -448,42 +453,37 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 
 		return true;
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	protected void InitWidgets();
+	
+	//------------------------------------------------------------------------------------------------
+	// Inits workshop API according to current mode
+	protected void InitWorkshopApi()
+	{
+		// Scan offline items if needed
+		if (m_WorkshopApi.NeedScan())
+			m_WorkshopApi.ScanOfflineItems();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateSidePanel()
+	{
+		SCR_ContentBrowser_ScenarioLineComponent lineComp = GetSelectedLine();
+		if (!lineComp)
+			return;
+		
+		MissionWorkshopItem scenario = lineComp.GetScenario();
+		if (scenario && m_ScenarioDetailsPanel)
+			m_ScenarioDetailsPanel.SetScenario(scenario);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateNavigationButtons(bool visible = true)
 	{
-		bool mp;
-		bool canBeLoaded;
-
-		if (visible)
-		{
-			MissionWorkshopItem scenario = GetSelectedScenario();
-			mp = scenario.GetPlayerCount() > 1;
-			SCR_MissionHeader header = SCR_MissionHeader.Cast(MissionHeader.ReadMissionHeader(scenario.Id()));
-			canBeLoaded = header && GetGame().GetSaveManager().HasLatestSave(header);
-		}
-
-		if (m_NavPlay)
-			m_NavPlay.SetVisible(visible && !canBeLoaded, false);
-
-		if (m_NavContinue)
-			m_NavContinue.SetVisible(visible && canBeLoaded, false);
-
-		if (m_NavRestart)
-			m_NavRestart.SetVisible(visible && canBeLoaded, false);
-
-		if (m_NavHost)
-		{
-			m_NavHost.SetVisible(visible && mp && !GetGame().IsPlatformGameConsole() /*&& SCR_ContentBrowser_ScenarioSubMenu.GetHostingAllowed()*/, false);
-			SCR_ServicesStatusHelper.SetConnectionButtonEnabled(m_NavHost, SCR_ServicesStatusHelper.SERVICE_BI_BACKEND_MULTIPLAYER); //TODO: update on event instead of tick
-		}
-
-		if (m_NavFindServers)
-		{
-			m_NavFindServers.SetVisible(visible && mp, false);
-			SCR_ServicesStatusHelper.SetConnectionButtonEnabled(m_NavFindServers, SCR_ServicesStatusHelper.SERVICE_BI_BACKEND_MULTIPLAYER); //TODO: update on event instead of tick
-		}
-
+		MissionWorkshopItem scenario = GetSelectedScenario();
+		SCR_ScenarioEntryHelper.UpdateInputButtons(scenario, m_aRightFooterButtons, visible);
+		
 		if (m_NavFavorite)
 		{
 			m_NavFavorite.SetVisible(visible, false);

@@ -1,5 +1,4 @@
 #ifdef WORKBENCH
-
 [WorkbenchPluginAttribute(
 	name: "Entities Setup",
 	category: "World Setup",
@@ -32,14 +31,18 @@ class SCR_WorldSetupPlugin_Entities : SCR_WorldSetupPluginBasePlugin
 		if (!Init())
 			return;
 
-		if (Workbench.ScriptDialog(
+		if (!Workbench.ScriptDialog(
 				"World Setup (required entities creation)",
 				"This plugin helps generating default entities to setup a freshly created world properly.\n" +
 					"Pick a config of your choice (keep the default one if it is good enough).\n\n" +
 					"Entities will be created in the currently selected layer.",
 				this))
-			CreateEntities();
+			return;
 
+		if (!LoadConfig())
+			return;
+
+		CreateEntities();
 		Cleanup();
 	}
 
@@ -70,7 +73,12 @@ class SCR_WorldSetupPlugin_Entities : SCR_WorldSetupPluginBasePlugin
 			return false;
 		}
 
-		// load config
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected bool LoadConfig()
+	{
 		if (m_sConfig.IsEmpty())
 			m_sConfig = DEFAULT_CONFIG;
 
@@ -122,7 +130,7 @@ class SCR_WorldSetupPlugin_Entities : SCR_WorldSetupPluginBasePlugin
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected IEntity CreateEntityFromEntry(notnull SCR_WorldSetupPluginConfig_Entity entry)
+	protected IEntitySource CreateEntityFromEntry(notnull SCR_WorldSetupPluginConfig_Entity entry)
 	{
 		if (entry.m_sPrefab.IsEmpty())
 		{
@@ -163,8 +171,8 @@ class SCR_WorldSetupPlugin_Entities : SCR_WorldSetupPluginBasePlugin
 			return null;
 		}
 
-		IEntity entity = m_WorldEditorAPI.CreateEntity(prefab, string.Empty, m_WorldEditorAPI.GetCurrentEntityLayerId(), null, entry.m_vPosition, entry.m_vAngles);
-		if (!entity)
+		IEntitySource entitySource = m_WorldEditorAPI.CreateEntity(prefab, string.Empty, m_WorldEditorAPI.GetCurrentEntityLayerId(), null, entry.m_vPosition, entry.m_vAngles);
+		if (!entitySource)
 		{
 			Print("Entity failed to be created by World Editor API " + prefab, LogLevel.WARNING);
 			return null;
@@ -172,14 +180,6 @@ class SCR_WorldSetupPlugin_Entities : SCR_WorldSetupPluginBasePlugin
 
 		if (entry.m_aAdditionalValues && !entry.m_aAdditionalValues.IsEmpty())
 		{
-			IEntitySource entitySource = m_WorldEditorAPI.EntityToSource(entity);
-			if (!entitySource)
-			{
-				Print("Entity is created but does not have an EntitySource... what?", LogLevel.WARNING);
-				m_WorldEditorAPI.DeleteEntity(entity);
-				return null;
-			}
-
 			foreach (SCR_WorldSetupPluginConfig_EntitySourceKeyValue kvp : entry.m_aAdditionalValues)
 			{
 				if (!m_WorldEditorAPI.SetVariableValue(entitySource, null, kvp.m_sKey, kvp.m_sValue))
@@ -190,7 +190,7 @@ class SCR_WorldSetupPlugin_Entities : SCR_WorldSetupPluginBasePlugin
 		m_ClassNames.Insert(className);
 		m_Prefabs.Insert(prefab);
 
-		return entity;
+		return entitySource;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -216,5 +216,4 @@ class SCR_WorldSetupPlugin_Entities : SCR_WorldSetupPluginBasePlugin
 		return false;
 	}
 }
-
 #endif // WORKBENCH

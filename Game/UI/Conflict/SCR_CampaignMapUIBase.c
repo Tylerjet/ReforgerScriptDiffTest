@@ -1,4 +1,3 @@
-#include "scripts/Game/config.c"
 //------------------------------------------------------------------------------------------------
 class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 {
@@ -138,10 +137,8 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void FlashBaseIcon(float remainingTime = 0, Faction faction = null, bool changeToDefault = false, bool infiniteTimer = false)
+	void FlashBaseIcon(Faction faction = null, bool changeToDefault = false)
 	{
-		GetGame().GetCallqueue().Remove(FlashBaseIcon);
-
 		// Flash the icon only if base faction is known to player's faction
 		// Otherwise just switch to default
 		if (m_Base.IsHQRadioTrafficPossible(SCR_FactionManager.SGetLocalPlayerFaction()))
@@ -158,11 +155,6 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 
 			SetBaseIconFactionColor(null);
 		}
-
-		remainingTime -= SCR_CampaignFeedbackComponent.ICON_FLASH_PERIOD;
-
-		if (infiniteTimer || remainingTime > 0 || !changeToDefault)
-			GetGame().GetCallqueue().CallLater(FlashBaseIcon, SCR_CampaignFeedbackComponent.ICON_FLASH_PERIOD * 1000, false, remainingTime, faction, !changeToDefault, infiniteTimer);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -531,12 +523,8 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 			return;
 
 		Faction baseFaction = m_Base.GetFaction();
-		#ifndef AR_CAMPAIGN_TIMESTAMP
-		float respawnCooldown = Math.Ceil((m_Base.GetRespawnTimestamp() - Replication.Time()) * 0.001);
-		#else
 		ChimeraWorld world = GetGame().GetWorld();
 		float respawnCooldown = Math.Ceil(m_Base.GetRespawnTimestamp().DiffMilliseconds(world.GetServerTimestamp()) * 0.001);
-		#endif
 		string shownRespawnCooldown;
 		int d, h, m, s;
 		string sStr;

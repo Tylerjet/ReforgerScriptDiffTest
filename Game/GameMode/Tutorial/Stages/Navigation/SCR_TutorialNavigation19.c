@@ -9,7 +9,11 @@ class SCR_TutorialNavigation19 : SCR_BaseCampaignTutorialArlandStage
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
 	{
-		m_fDuration = 10;
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		
+		m_fDuration = 12;
+		m_bConditionPassCheck = true;
 		
 		GetGame().GetCallqueue().CallLater(TeleportFromVehicle, m_fDuration * 1000, false);
 		
@@ -17,7 +21,8 @@ class SCR_TutorialNavigation19 : SCR_BaseCampaignTutorialArlandStage
 		if (!waypoint)
 			return;
 		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		PlaySoundSystem("Navigation_Finish", true);
+		
 		m_TutorialComponent.SetStagesComplete(3, true);	
 	}
 	
@@ -39,5 +44,11 @@ class SCR_TutorialNavigation19 : SCR_BaseCampaignTutorialArlandStage
 		vector mat[4];
 		tpPos.GetTransform(mat);
 		compartmentAccessComp.MoveOutVehicle(-1, mat);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool GetIsFinished()
+	{
+		return !m_TutorialComponent.GetVoiceSystem().IsPlaying();
 	}
 };

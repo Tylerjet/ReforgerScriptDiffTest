@@ -24,7 +24,60 @@ class SCR_BaseCampaignTutorialArlandStage : GenericEntity
 	protected bool m_bFinished;
 	protected Resource m_HintsConfig;
 	protected ref SCR_HintTutorialList m_TutorialHintList;
+	protected SCR_VoiceoverSystem m_System;
 	
+	//------------------------------------------------------------------------------------------------
+	protected void CancelHintOnVoiceOver()
+	{
+		if (!m_System)
+			m_System = m_TutorialComponent.GetVoiceSystem();
+		
+		ScriptInvokerVoid invoker =  m_System.GetOnFinished();
+		if (!invoker)
+			return;
+		
+		invoker.Remove(ShowHintOnVoiceOver);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void HintOnVoiceOver()
+	{
+		if (!m_System)
+			m_System = m_TutorialComponent.GetVoiceSystem();
+		
+		ScriptInvokerVoid invoker =  m_System.GetOnFinished();
+		if (!invoker)
+			return;
+		
+		invoker.Remove(ShowHintOnVoiceOver);
+		invoker.Insert(ShowHintOnVoiceOver);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ShowHintOnVoiceOver()
+	{
+		if (!m_System)
+			m_System = m_TutorialComponent.GetVoiceSystem();
+		
+		ScriptInvokerVoid invoker =  m_System.GetOnFinished();
+		if (!invoker)
+			return;
+		
+		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void PlaySoundSystem(string audio, bool line = false)
+	{
+   		if (!m_System)
+			m_System = m_TutorialComponent.GetVoiceSystem();
+		
+		if (line)
+			m_System.PlayLine(audio);
+		else
+			m_System.PlaySequence(audio);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	protected bool IsSupplyTruckInArea()
 	{

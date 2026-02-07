@@ -1,9 +1,5 @@
-/*
-	Component for core menu header button that shows connection state based on comm test, but also needs to show a warning for low bandwidth
- 	Uses the parent's icon & label attributes for Low Bandwidth state and considers it the default, as it is outside of the comm test results
-*/
-
-//------------------------------------------------------------------------------------------------
+//! Component for core menu header button that shows connection state based on comm test, but also needs to show a warning for low bandwidth
+//! Uses the parent's icon & label attributes for Low Bandwidth state and considers it the default, as it is outside of the comm test results
 class SCR_ConnectionStateButtonComponent : SCR_CoreMenuHeaderButtonComponent
 {
 	// services
@@ -24,7 +20,7 @@ class SCR_ConnectionStateButtonComponent : SCR_CoreMenuHeaderButtonComponent
 	[Attribute("ConnectionState")]
 	protected string m_sTooltipTag;
 	
-	[Attribute("0.75")]
+	[Attribute(UIConstants.PROCESSING_SPINNER_ANIMATION_SPEED.ToString())]
 	protected float m_fSpinnerSpeed;
 	
 	[Attribute(defvalue: SCR_Enum.GetDefault(EAnimationCurve.EASE_IN_OUT_SINE), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EAnimationCurve))]
@@ -92,7 +88,6 @@ class SCR_ConnectionStateButtonComponent : SCR_CoreMenuHeaderButtonComponent
 		if (!visible && m_Tooltip)
 			m_Tooltip.ForceHidden();
 	}
-	
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnMenuEnabled(ChimeraMenuBase menu)
@@ -186,7 +181,7 @@ class SCR_ConnectionStateButtonComponent : SCR_CoreMenuHeaderButtonComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// Returns true in case services are unavailable and caches the problematic ones to be displayed in tooltips
+	// \return true in case services are unavailable and caches the problematic ones to be displayed in tooltips
 	protected bool AreServicesUnavailable()
 	{
 		if (!m_ServicesPresets)
@@ -376,7 +371,6 @@ class SCR_ConnectionStateButtonComponent : SCR_CoreMenuHeaderButtonComponent
 	}
 }
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
 class SCR_ConnectionStateButtonComponent_StatusPreset
 {

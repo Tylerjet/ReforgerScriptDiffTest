@@ -10,8 +10,6 @@ class SCR_CampaignTutorialArlandStageMedical8: SCR_BaseCampaignTutorialArlandSta
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
 	{
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
-		
 		array<BaseInfoDisplay> infoDisplays = {};
 		GetGame().GetPlayerController().GetHUDManagerComponent().GetInfoDisplays(infoDisplays);
 		foreach (BaseInfoDisplay baseInfoDisplays : infoDisplays)
@@ -20,6 +18,11 @@ class SCR_CampaignTutorialArlandStageMedical8: SCR_BaseCampaignTutorialArlandSta
 			if (m_CasualtyInspectDisplay)
 				break;
 		}
+		
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("FirstAid_CheckHealth", true);
+		HintOnVoiceOver();
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -82,6 +82,9 @@ class SCR_MainMenuEntity : GenericEntity
 		GetGame().GetMenuManager().OpenMenu(m_eMenu);
 		if (m_eMenu == ChimeraMenuPreset.MainMenu)
 			GetGame().m_bIsMainMenuOpen = true;
+			
+		// Check hosting fail 
+		SCR_KickDialogs.CheckLastServerHost();
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -4,46 +4,25 @@ class SCR_SupplyAvailableItemHintUIInfo : SCR_BaseSupplyItemHintUIInfo
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShown(InventoryItemComponent item, SCR_InventorySlotUI focusedSlot)
 	{
-		 if (!super.CanBeShown(item, focusedSlot))
-			return false;
-
-		SCR_ResourceComponent resourceComp = GetResourceComponent(item);
-		if (!resourceComp)
+		if (!super.CanBeShown(item, focusedSlot))
 			return false;
 		
-		return resourceComp.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected override void GetSupplyAmounts(InventoryItemComponent item, out float supplies, out float maxSupplies = -1)
-	{
-		supplies = 0;	
-		maxSupplies = 0;
+		if (!m_ResourceComponent.IsResourceTypeEnabled())
+			return false;
 		
-		if (!item)
-			return;
-		
-		SCR_ResourceComponent resourceComp = GetResourceComponent(item);
-		if (!resourceComp)
-			return;
-		
-		SCR_ResourceConsumer consumer = resourceComp.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
-		if (!consumer)
-			return;
-		
-		supplies = consumer.GetAggregatedResourceValue();
-		maxSupplies = consumer.GetAggregatedMaxResourceValue();
+		float availableResources;
+		return SCR_ResourceSystemHelper.GetAvailableResources(m_ResourceComponent, availableResources);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override string GetItemHintName(InventoryItemComponent item)
 	{
-		if (!item)
+		if (!m_ResourceComponent)
 			return super.GetItemHintName(item);
 		
-		float supplies;
-		GetSupplyAmounts(item, supplies);
+		float availableResources;
+		SCR_ResourceSystemHelper.GetAvailableResources(m_ResourceComponent, availableResources);
 		
-		return WidgetManager.Translate(GetName(), supplies);
+		return WidgetManager.Translate(GetName(), SCR_ResourceSystemHelper.SuppliesToString(availableResources));
 	}
 }

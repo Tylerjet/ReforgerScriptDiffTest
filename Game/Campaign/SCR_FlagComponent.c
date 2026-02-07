@@ -11,23 +11,26 @@ class SCR_FlagComponentClass : SCR_MilitaryBaseLogicComponentClass
 	protected ResourceName m_sDefaultMLOD;
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsFlagPole()
 	{
 		return m_bIsFlagPole;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetDefaultMaterial()
 	{
 		return m_sDefaultMaterial;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetDefaultMLOD()
 	{
 		return m_sDefaultMLOD;
 	}
-};
+}
 
 //------------------------------------------------------------------------------------------------
 class SCR_FlagComponent : SCR_MilitaryBaseLogicComponent
@@ -35,6 +38,11 @@ class SCR_FlagComponent : SCR_MilitaryBaseLogicComponent
 	//------------------------------------------------------------------------------------------------
 	//! Changes Material used on Flag or Sign
 	//! Parameters: flagResource = material to be used, resourceMlod = MLOD , Flags doesn't need this, only signs
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] flagResource
+	//! \param[in] resourceMLOD
 	void ChangeMaterial(ResourceName flagResource, ResourceName resourceMLOD = string.Empty)
 	{
 		IEntity flag = GetFlagEntity();
@@ -79,7 +87,7 @@ class SCR_FlagComponent : SCR_MilitaryBaseLogicComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Get entity with flag from slotComponent or return owner if component is directly on flag entity
+	//! \return entity with flag from slotComponent or return owner if component is directly on flag entity
 	IEntity GetFlagEntity()
 	{
 		SCR_FlagComponentClass prefabData = SCR_FlagComponentClass.Cast(GetComponentData(GetOwner()));
@@ -121,4 +129,4 @@ class SCR_FlagComponent : SCR_MilitaryBaseLogicComponent
 		super.OnPostInit(owner);
 		SetEventMask(owner, EntityEvent.INIT);
 	}
-};
+}

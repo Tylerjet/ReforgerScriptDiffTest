@@ -40,14 +40,6 @@ class SCR_WorkshopDownloadSequence : SCR_DownloadSequence
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Cancels this download request.
-	void Cancel()
-	{
-		m_bCanceled = true;
-		m_bWaitingResponse = false;
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	protected void CreateLoadingOverlay()
 	{
 		// Skip if already loaded
@@ -91,7 +83,7 @@ class SCR_WorkshopDownloadSequence : SCR_DownloadSequence
 			
 			// Display fail dialog in next frame to display it after action is really failed
 			// TODO - improve logic and move to base
-			if (!GetGame().GetMenuManager().FindMenuByPreset(ChimeraMenuPreset.DownloadManagerDialog))
+			if (!SCR_DownloadManager_Dialog.Cast(SCR_ConfigurableDialogUi.GetCurrentDialog()))
 			{
 				GetGame().GetCallqueue().CallLater(SetupAddonFail, 0, false, action);
 			}
@@ -239,8 +231,7 @@ class SCR_WorkshopDownloadSequence : SCR_DownloadSequence
 		if (m_LoadingOverlay)
 			m_LoadingOverlay.Close();
 		
-		//SCR_CommonDialogs.CreateRequestErrorDialog();
-		HandleError();
+		OnItemError(item);
 	}
 	
 	//------------------------------------------------------------------------------------------------

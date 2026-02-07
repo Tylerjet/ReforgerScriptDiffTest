@@ -3,11 +3,12 @@ class SCR_BaseDeployableSpawnPointComponentClass : SCR_BaseDeployableInventoryIt
 {
 }
 
-//------------------------------------------------------------------------------------------------
 //! Base class which all deployable spawn points / radios inherit from
 class SCR_BaseDeployableSpawnPointComponent : SCR_BaseDeployableInventoryItemComponent
 {
 	protected static ref array<SCR_BaseDeployableSpawnPointComponent> s_aActiveDeployedSpawnPoints = {};
+	
+	protected static ref ScriptInvokerInt s_OnSpawnPointDismantled;
 
 	[Attribute("{84680168E273774F}Prefabs/MP/Spawning/DeployableItemSpawnPoint_Base.et")]
 	protected ResourceName m_sSpawnPointPrefab;
@@ -17,14 +18,26 @@ class SCR_BaseDeployableSpawnPointComponent : SCR_BaseDeployableInventoryItemCom
 
 	[Attribute()]
 	protected FactionKey m_FactionKey;
+	
+	[Attribute(defvalue: "1")]
+	protected bool m_bEnableSounds;
 
 	protected SCR_DeployableSpawnPoint m_SpawnPoint;
 
 	protected IEntity m_ReplacementEntity;
 
-	protected vector m_vOriginalTransform[4];
+	protected vector m_aOriginalTransform[4];
 	
-	protected bool m_bDeployableSpawnPointsEnabled;
+	protected static bool s_bDeployableSpawnPointsEnabled;
+	
+	//------------------------------------------------------------------------------------------------
+	static ScriptInvokerInt GetOnSpawnPointDismantled()
+	{
+		if (!s_OnSpawnPointDismantled)
+			s_OnSpawnPointDismantled = new ScriptInvokerInt();
+		
+		return s_OnSpawnPointDismantled;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
@@ -35,7 +48,7 @@ class SCR_BaseDeployableSpawnPointComponent : SCR_BaseDeployableInventoryItemCom
 	
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Unreliable, RplRcver.Broadcast)]
-	protected void RPC_PlaySoundBroadcast(bool deploy)
+	protected void RPC_PlaySoundOnDeployBroadcast(bool deploy)
 	{
 		SoundComponent soundComp = SoundComponent.Cast(GetOwner().FindComponent(SoundComponent));
 		if (!soundComp)
@@ -63,33 +76,35 @@ class SCR_BaseDeployableSpawnPointComponent : SCR_BaseDeployableInventoryItemCom
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnCompositionDestroyed()
+	protected void OnCompositionDestroyed(IEntity instigator)
 	{
-		Dismantle();
+		Dismantle(instigator);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected override void OnRplDeployed()
 	{
-		ToggleRadioChatter(m_bIsDeployed);
+		if (m_bEnableSounds)
+			ToggleRadioChatter(m_bIsDeployed);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Spawns replacement composition and attaches owner entity to it - called from SCR_DeployItemBaseAction.PerformAction
+	//! \param[in] userEntity
 	override void Deploy(IEntity userEntity = null)
 	{
 		//~ Not allowed to deploy
-		if (!m_bDeployableSpawnPointsEnabled)
+		if (!s_bDeployableSpawnPointsEnabled)
 			return;
 		
-		RplComponent rplComp = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
-		if (!rplComp || rplComp.IsProxy())
+		if (!m_RplComponent || m_RplComponent.IsProxy())
 			return;
 
 		vector transform[4];
-		SCR_TerrainHelper.GetTerrainBasis(GetOwner().GetOrigin(), transform, GetGame().GetWorld(), false, new TraceParam());
+		IEntity owner = GetOwner();
+		SCR_TerrainHelper.GetTerrainBasis(owner.GetOrigin(), transform, GetGame().GetWorld(), false, new TraceParam());
 
-		m_vOriginalTransform = transform;
+		m_aOriginalTransform = transform;
 
 		EntitySpawnParams params = new EntitySpawnParams();
 		params.Transform = transform;
@@ -138,38 +153,32 @@ class SCR_BaseDeployableSpawnPointComponent : SCR_BaseDeployableInventoryItemCom
 		m_bIsDeployed = true;
 		Replication.BumpMe();
 
-		PlayerManager playerManager = GetGame().GetPlayerManager();
-		if (!playerManager)
-			return;
-
 		if (userEntity)
-			m_iItemOwnerID = playerManager.GetPlayerIdFromControlledEntity(userEntity);
+			m_iItemOwnerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(userEntity);
 
 		s_aActiveDeployedSpawnPoints.Insert(this);
 		
-		ToggleRadioChatter(true);		
-		RPC_PlaySoundBroadcast(true);
-		Rpc(RPC_PlaySoundBroadcast, true);
+		if (m_bEnableSounds)
+		{
+			ToggleRadioChatter(true);		
+			RPC_PlaySoundOnDeployBroadcast(true);
+			Rpc(RPC_PlaySoundOnDeployBroadcast, true);
+		}
 
-		ChimeraWorld world = GetOwner().GetWorld();
-		if (!world)
-			return;
-
-		GarbageManager garbageManager = world.GetGarbageManager();
-		if (!garbageManager)
-			return;
-
-		garbageManager.Withdraw(GetOwner()); // Withdraw owner entity from garbage collection while radio is deployed
+		auto garbageSystem = SCR_GarbageSystem.GetByEntityWorld(owner);
+		if (garbageSystem)
+			garbageSystem.Withdraw(owner);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Delete replacement composition and spawnpoint and set position of owner entity to it's original position - called from SCR_DismantleItemBaseAction.PerformAction
+	//! \param[in] userEntity
 	override void Dismantle(IEntity userEntity = null)
 	{
-		RplComponent rplComp = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
-			if (!rplComp || rplComp.IsProxy())
-				return;
+		if (!m_RplComponent || m_RplComponent.IsProxy())
+			return;
 
+		RplComponent rplComp;
 		if (m_SpawnPoint)
 		{
 			rplComp = RplComponent.Cast(m_SpawnPoint.FindComponent(RplComponent));
@@ -188,8 +197,8 @@ class SCR_BaseDeployableSpawnPointComponent : SCR_BaseDeployableInventoryItemCom
 			rplComp.DeleteRplEntity(m_ReplacementEntity, false);
 		}
 
-		RPC_SetTransformBroadcast(m_vOriginalTransform);
-		Rpc(RPC_SetTransformBroadcast, m_vOriginalTransform);
+		RPC_SetTransformBroadcast(m_aOriginalTransform);
+		Rpc(RPC_SetTransformBroadcast, m_aOriginalTransform);
 
 		m_bIsDeployed = false;
 		Replication.BumpMe();
@@ -198,61 +207,100 @@ class SCR_BaseDeployableSpawnPointComponent : SCR_BaseDeployableInventoryItemCom
 
 		s_aActiveDeployedSpawnPoints.RemoveItem(this);
 		
-		ToggleRadioChatter(false);		
-		RPC_PlaySoundBroadcast(false);
-		Rpc(RPC_PlaySoundBroadcast, false);
+		int userID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(userEntity);		
+		if (s_OnSpawnPointDismantled)
+			s_OnSpawnPointDismantled.Invoke(userID);
+		
+		if (m_bEnableSounds)
+		{
+			ToggleRadioChatter(false);		
+			RPC_PlaySoundOnDeployBroadcast(false);
+			Rpc(RPC_PlaySoundOnDeployBroadcast, false);
+		}
 
-		ChimeraWorld world = GetOwner().GetWorld();
-		if (!world)
-			return;
-
-		GarbageManager garbageManager = world.GetGarbageManager();
-		if (!garbageManager)
-			return;
-
-		garbageManager.Insert(GetOwner()); // Insert owner entity back into garbage collection after item is dismantled
+		IEntity owner = GetOwner();
+		auto garbageSystem = SCR_GarbageSystem.GetByEntityWorld(owner);
+		if (garbageSystem)
+			garbageSystem.Insert(owner);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	protected void OnSpawnPointDeployingEnabledChanged(bool enabled)
+	protected static void OnSpawnPointDeployingEnabledChanged(bool enabled)
 	{
-		m_bDeployableSpawnPointsEnabled = enabled;
+		s_bDeployableSpawnPointsEnabled = enabled;
+		
+		if (enabled)
+			return;
+		
+		foreach (SCR_BaseDeployableSpawnPointComponent spawnPointComp : s_aActiveDeployedSpawnPoints)
+		{
+			spawnPointComp.Dismantle();
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	static array<SCR_BaseDeployableSpawnPointComponent> GetActiveDeployedSpawnPoints()
 	{
 		return s_aActiveDeployedSpawnPoints;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_SpawnPoint GetSpawnPoint()
 	{
 		return m_SpawnPoint;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] timeSlice
+	void Update(float timeSlice);
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ConnectToDeployableSpawnPointSystem()
+	{
+		World world = GetOwner().GetWorld();
+		SCR_DeployableSpawnPointSystem updateSystem = SCR_DeployableSpawnPointSystem.Cast(world.FindSystem(SCR_DeployableSpawnPointSystem));
+		if (!updateSystem)
+			return;
+
+		updateSystem.Register(this);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void DisconnectFromDeployableSpawnPointSystem()
+	{
+		World world = GetOwner().GetWorld();
+		SCR_DeployableSpawnPointSystem updateSystem = SCR_DeployableSpawnPointSystem.Cast(world.FindSystem(SCR_DeployableSpawnPointSystem));
+		if (!updateSystem)
+			return;
+
+		updateSystem.Unregister(this);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
+		super.EOnInit(owner);	
+		
 		BaseGameMode gameMode = GetGame().GetGameMode();
 		if (!gameMode)
 			return;
 		
 		SCR_PlayerSpawnPointManagerComponent playerSpawnPointManager = SCR_PlayerSpawnPointManagerComponent.Cast(gameMode.FindComponent(SCR_PlayerSpawnPointManagerComponent));
 		if (!playerSpawnPointManager)
+		{
+			OnSpawnPointDeployingEnabledChanged(true);
 			return;
+		}
 		
 		OnSpawnPointDeployingEnabledChanged(playerSpawnPointManager.IsDeployingSpawnPointsEnabled());
 		playerSpawnPointManager.GetOnSpawnPointDeployingEnabledChanged().Insert(OnSpawnPointDeployingEnabledChanged);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnPostInit(IEntity owner)
-	{
-		SetEventMask(owner, EntityEvent.INIT);
-	}
-
-	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_BaseDeployableSpawnPointComponent()
 	{
 		BaseGameMode gameMode = GetGame().GetGameMode();
@@ -263,11 +311,7 @@ class SCR_BaseDeployableSpawnPointComponent : SCR_BaseDeployableInventoryItemCom
 				playerSpawnPointManager.GetOnSpawnPointDeployingEnabledChanged().Remove(OnSpawnPointDeployingEnabledChanged);
 		}
 		
-		RplComponent rplComp = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
-			if (!rplComp || rplComp.IsProxy())
-				return;
-
-		if (m_bIsDeployed)
-			s_aActiveDeployedSpawnPoints.RemoveItem(this); // Remove this deployed item from the static array in case someone shoots and destroys it
+		if (m_bIsDeployed && Replication.IsServer())
+			s_aActiveDeployedSpawnPoints.RemoveItem(this);
 	}
 }

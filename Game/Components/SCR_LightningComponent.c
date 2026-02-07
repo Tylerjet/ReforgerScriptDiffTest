@@ -1,11 +1,9 @@
 [ComponentEditorProps(category: "GameScripted", description: "")]
 class SCR_LightningComponentClass : ScriptComponentClass
 {
-};
+}
 
-/*!
-	Inform weather manager a lightning has been spawned. Weather Manager will handle light changes.
-*/
+//! Inform the weather manager a lightning has been spawned. Weather Manager will handle light changes.
 class SCR_LightningComponent : ScriptComponent
 {
 	protected ref RandomGenerator m_pRandomGenerator = new RandomGenerator();
@@ -42,14 +40,18 @@ class SCR_LightningComponent : ScriptComponent
 	protected float m_fRadiusKM;
 	
 	[RplProp(onRplName: "OnFlashesRpl")]
-	protected ref array<float> m_aFlashesStartTime = new array<float>();
+	protected ref array<float> m_aFlashesStartTime = {};
+
 	[RplProp(onRplName: "OnFlashesRpl")]
-	protected ref array<float> m_aFlashesDuration = new array<float>();
+	protected ref array<float> m_aFlashesDuration = {};
+
 	[RplProp(onRplName: "OnFlashesRpl")]
-	protected ref array<float> m_aFlashesCooldownDuration = new array<float>();
+	protected ref array<float> m_aFlashesCooldownDuration = {};
 	
 	protected int m_iCurFlashIndex;
 	
+	//------------------------------------------------------------------------------------------------
+	//!
 	void OnFlashesRpl()
     {
     	if(m_iCurFlashIndex < m_iNumFlashes 
@@ -83,6 +85,7 @@ class SCR_LightningComponent : ScriptComponent
 		}	
     }
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		m_iCurFlashIndex = 0;
@@ -124,4 +127,4 @@ class SCR_LightningComponent : ScriptComponent
 			OnFlashesRpl();
 		}
 	}
-};
+}

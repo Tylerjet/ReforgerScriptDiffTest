@@ -1,34 +1,39 @@
 class SCR_RequestToJoinSubmenu : SCR_SubMenuBase
 {		
 	protected const string REQUESTER_ENTRY_LAYOUT = "{B3381965FF7747CE}UI/layouts/Menus/GroupSlection/GroupRequestEntry.layout";
-	protected ref ScriptInvoker m_OnJoinRequestRespond = new ScriptInvoker();	
+	protected ref ScriptInvokerVoid m_OnJoinRequestRespond;
 	protected ref array<Widget> m_aEntryWidgets = {};
 	protected VerticalLayoutWidget m_wContent;
 				
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuShow(SCR_SuperMenuBase parentMenu)
+	override void OnTabShow()
 	{
-		super.OnMenuShow(parentMenu);	
+		super.OnTabShow();	
 		
-		UpdateRequesters(parentMenu);
-		m_OnJoinRequestRespond.Insert(UpdateRequesters);
+		UpdateRequesters();
+		
+		GetOnJoinRequestRespond().Insert(UpdateRequesters);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuClose(SCR_SuperMenuBase parentMenu)
+	override void OnTabRemove()
 	{
-		super.OnMenuClose(parentMenu);
-		m_OnJoinRequestRespond.Remove(UpdateRequesters);
+		super.OnTabRemove();
+		
+		GetOnJoinRequestRespond().Remove(UpdateRequesters);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetOnJoinRequestRespond()
+	ScriptInvokerVoid GetOnJoinRequestRespond()
 	{
+		if (!m_OnJoinRequestRespond)
+			m_OnJoinRequestRespond = new ScriptInvokerVoid();
+		
 		return m_OnJoinRequestRespond;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void UpdateRequesters(SCR_SuperMenuBase parentMenu)
+	void UpdateRequesters()
 	{
 		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
 		if (!groupsManager)
@@ -38,7 +43,7 @@ class SCR_RequestToJoinSubmenu : SCR_SubMenuBase
 		if (!group)
 			return;
 		
-		VerticalLayoutWidget content = VerticalLayoutWidget.Cast(parentMenu.GetRootWidget().FindAnyWidget("Content"));
+		VerticalLayoutWidget content = VerticalLayoutWidget.Cast(m_wMenuRoot.FindAnyWidget("Content"));
 		if (!content)
 			return;				
 		
@@ -93,7 +98,8 @@ class SCR_RequestToJoinSubmenu : SCR_SubMenuBase
 			refuseButton.m_OnClicked.Insert(RefuseJoinPrivateGroup);			
 		}		
 		
-		SCR_GroupMenu groupMenu = SCR_GroupMenu.Cast(m_ParentMenu);
+		// TODO: a sub menu tab should not call a method on the menu class. This should be an invoker
+		SCR_GroupMenu groupMenu = SCR_GroupMenu.Cast(ChimeraMenuBase.GetOwnerMenu(GetRootWidget()));
 		if (!groupMenu)
 			return;
 		
@@ -141,8 +147,9 @@ class SCR_RequestToJoinSubmenu : SCR_SubMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void InvokeOnJoinRequestRespond()
+	protected void InvokeOnJoinRequestRespond()
 	{
-		GetOnJoinRequestRespond().Invoke(m_ParentMenu);
+		if (m_OnJoinRequestRespond)
+			m_OnJoinRequestRespond.Invoke();
 	}
 }

@@ -8,4 +8,4 @@ class ADSCameraData
 	vector m_vSightsOffset;
 	vector m_mSightsLocalMat[4];
 	bool m_bFreeLook;
-};
+}

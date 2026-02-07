@@ -3,16 +3,16 @@ class SCR_SelectionWidgetComponent : SCR_ChangeableComponentBase
 	[Attribute()]
 	ref array<string> m_aElementNames;
 
-	protected ref array<ref Managed> m_aElementData = new ref array<ref Managed>;
+	protected ref array<ref Managed> m_aElementData = new array<ref Managed>;
 
 	[Attribute("-1", UIWidgets.EditBox, "Element selected by default")]
 	int m_iSelectedItem;
 
 	//------------------------------------------------------------------------------------------------
-	int AddItem(string item, Managed data = null)
+	int AddItem(string item, bool last = false, Managed data = null)
 	{
 		if (!m_aElementNames)
-			m_aElementNames = new ref array<string>;
+			m_aElementNames = new array<string>;
 
 		int id = m_aElementNames.Insert(item);
 
@@ -34,7 +34,7 @@ class SCR_SelectionWidgetComponent : SCR_ChangeableComponentBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void RemoveItem(int item)
+  	void RemoveItem(int item, bool last = false)
 	{
 		if (!m_aElementNames || item < 0 || item >= m_aElementNames.Count())
 			return;
@@ -106,9 +106,11 @@ class SCR_SelectionWidgetComponent : SCR_ChangeableComponentBase
 			return false;
 
 		m_iSelectedItem = i;
+		
 		return true;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	static SCR_SelectionWidgetComponent GetSelectionComponent(string name, Widget parent, bool searchAllChildren = true)
 	{
 		auto comp = SCR_SelectionWidgetComponent.Cast(

@@ -1,9 +1,8 @@
 [ComponentEditorProps(category: "GameScripted/Spectating", description: "Entity that this is attached to becomes selectable by the Spectator Camera.")]
-class SCR_SpectateTargetComponentClass: ScriptComponentClass
+class SCR_SpectateTargetComponentClass : ScriptComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_SpectateTargetComponent : ScriptComponent
 {
 	// List of all spectate targets
@@ -12,16 +11,15 @@ class SCR_SpectateTargetComponent : ScriptComponent
 	private DamageManagerComponent m_DamageManagerComponent = null;
 	private IEntity m_Entity = null;
 	
-	
 	//------------------------------------------------------------------------------------------------
-	//! Returns entity that this component is attached to.
+	//! \return the entity to which this component is attached.
 	IEntity GetEntity()
 	{
 		return m_Entity;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Returns true if unit is alive or has no damage component attached. Returns false otherwise.
+	//!\return true if unit is alive or has no damage component attached. Returns false otherwise.
 	bool IsAlive()
 	{
 		if (!m_DamageManagerComponent)
@@ -31,6 +29,8 @@ class SCR_SpectateTargetComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] index
+	//! \return
 	static SCR_SpectateTargetComponent GetSpectateTarget(int index)
 	{
 		if (!s_aSpectateTargets)
@@ -46,7 +46,7 @@ class SCR_SpectateTargetComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Returns the amount of possible elements to spectate.
+	//! \return the amount of possible elements to spectate.
 	static int GetSpectateTargetCount()
 	{
 		if (!s_aSpectateTargets)
@@ -59,7 +59,7 @@ class SCR_SpectateTargetComponent : ScriptComponent
 	private static void RegisterTarget(SCR_SpectateTargetComponent spectateTarget)
 	{
 		if (!s_aSpectateTargets)
-			s_aSpectateTargets = new ref array<SCR_SpectateTargetComponent>();
+			s_aSpectateTargets = new array<SCR_SpectateTargetComponent>();
 		
 		if (s_aSpectateTargets)
 		{
@@ -92,6 +92,10 @@ class SCR_SpectateTargetComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_SpectateTargetComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		if (!GetGame().GetWorldEntity())
@@ -104,9 +108,9 @@ class SCR_SpectateTargetComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_SpectateTargetComponent()
 	{		
 		UnregisterTarget(this);
 	}
-
-};
+}

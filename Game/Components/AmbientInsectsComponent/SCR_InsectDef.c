@@ -6,7 +6,7 @@ class SCR_InsectDef
 
 	[Attribute(desc: "Particle effect to be created (Do not use together with Prefab Name as Prefabs will be preferred first)")]
 	ResourceName 	m_sParticleEffect;
-	
+
 	[Attribute(desc: "Insect prefab to be created (Do not use together with Particle Effect as Prefabs will be preferred first)")]
 	ResourceName 	m_sPrefabName;
 

@@ -36,6 +36,23 @@ class SCR_AISwitchMagazine : SCR_AIWeaponHandlingBase
 		BaseMagazineComponent currentMagazineComp = SCR_AIWeaponHandling.GetCurrentMagazineComponent(weaponMgr);
 		if (currentMagazineComp == newMagazineComp)
 		{
+			if (!compartmentSlot)
+			{
+				if (m_ControlComp.IsReloading())
+					return ENodeResult.RUNNING;
+				
+				if (!SCR_AIWeaponHandling.IsCurrentMuzzleChambered(weaponMgr))
+				{
+					#ifdef AI_DEBUG
+					AddDebugMessage("Muzzle is not chambered, requesting reload");
+					#endif
+					
+					m_ControlComp.ReloadWeapon();
+					return ENodeResult.RUNNING;
+				}
+			}
+			
+			
 			#ifdef AI_DEBUG
 			AddDebugMessage("Magazine switch completed");
 			#endif

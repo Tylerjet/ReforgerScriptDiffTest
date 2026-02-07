@@ -6,7 +6,7 @@ class SCR_MapMarkerEntryPlaced : SCR_MapMarkerEntryConfig
 	[Attribute("#AR-MapMarker_CustomHint", desc: "Description in selection menu")]
 	protected string m_sMenuDescription;
 	
-	[Attribute("{2EFEA2AF1F38E7F0}UI/Textures/Icons/icons_wrapperUI-64.imageset", UIWidgets.ResourcePickerThumbnail, desc: "Imageset resource", params: "imageset")]
+	[Attribute("{3262679C50EF4F01}UI/Textures/Icons/icons_wrapperUI.imageset", UIWidgets.ResourcePickerThumbnail, desc: "Imageset resource", params: "imageset")]
 	protected ResourceName m_sMenuImageset;
 	
 	[Attribute("settings", desc: "Imageset icon")]
@@ -43,7 +43,7 @@ class SCR_MapMarkerEntryPlaced : SCR_MapMarkerEntryConfig
 	Color GetColorEntry(int i)
 	{
 		if (!m_aPlacedMarkerColors.IsIndexValid(i))
-			return Color.White;
+			return Color.FromInt(Color.WHITE);
 		
 		return m_aPlacedMarkerColors[i].GetColor();
 	}
@@ -118,17 +118,15 @@ class SCR_MapMarkerEntryPlaced : SCR_MapMarkerEntryConfig
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnMapLayerChanged(SCR_MapMarkerWidgetComponent widgetComp, int layerID)
+	override void OnMapLayerChanged(notnull SCR_MapMarkerWidgetComponent widgetComp, int layerID)
 	{
 		if (layerID > 1) 
 		{
 			widgetComp.SetTextVisible(false);
-			widgetComp.SetAuthorVisible(false);
 		}
 		else
 		{
 			widgetComp.SetTextVisible(true);	
-			widgetComp.SetAuthorVisible(true);
 		}	
 	}
 }
@@ -144,7 +142,7 @@ class SCR_MarkerColorEntry
 	//------------------------------------------------------------------------------------------------
 	Color GetColor()
 	{
-		return new Color(m_Color.R(), m_Color.G(), m_Color.B(), m_Color.A());
+		return Color.FromInt(m_Color.PackToInt());
 	}
 	
 }

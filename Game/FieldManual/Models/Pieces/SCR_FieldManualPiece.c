@@ -5,6 +5,8 @@ class SCR_FieldManualPiece
 	protected SCR_EInputTypeCondition m_eInputDisplayCondition;
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] parent
 	// To be overridden by child pieces
 	void CreateWidget(notnull Widget parent);
 

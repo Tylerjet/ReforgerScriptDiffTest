@@ -30,6 +30,7 @@ enum ENotification
 	PLAYER_LOADOUT_ITEM_FAILED_ITEM_BLACKLISTED = 122, ///< Player failed to save loadout because given item is blacklisted and cannot be saved (param1 = inventoryItemRplId)
 	PLAYER_LOADOUT_CLEARED_BY_EDITOR = 123, ///< Player loadout was cleared as GM changed the blacklisted items
 	PLAYER_LOADOUT_CLEARED = 124, ///< Player loadout was cleared without GM control
+	PLAYER_LOADOUT_SAVED_SUPPLY_COST = 125, ///< Player changed their loadout and show the supply cost for that loadout in notification (param1 = SupplyCost)
 	
 	//RIGHTS
 	EDITOR_EDITOR_RIGHTS_ASSIGNED = 200, ///< Player got rights assigned - (param1 = GameMasterID, param2 = TargetPlayerID))
@@ -97,6 +98,9 @@ enum ENotification
 	EDITOR_PREVIEWING_IN_NIGHTMODE = 531, ///< Local player is previewing datetime or weather in night mode. This means night mode is disabled until previewing is done
 	EDITOR_COMPOSITION_UNDER_CONSTRUCTION = 532, ///< Composition cannot be moved or deleted because the construction works has begun.
 	EDITOR_PLACING_NO_MORE_COMPOSITIONS_AT_BASE = 533, ///< Player cannot place more compositions at the base
+	EDITOR_COOLDOWN = 534, ///< Cooldown for requesting another entity is running.
+	EDITOR_AILIMIT = 535, ///< Max limit of spawned AI at base (Free Roam Building) has been reached.
+	EDITOR_ENEMY_IN_AREA = 536, ///< The enemy was detected in Free Roam Building mode area, mode is terminated.
 	
 	//AI
 	//EDITOR_AI_GROUP_ELIMINATED = 600, ///< An AI group was eliminated - (param1 = EditableEntityID)
@@ -111,7 +115,7 @@ enum ENotification
 	EDITOR_ATTRIBUTES_GM_BUDGET_CHANGED = 706, ///< GM change other GM editor budget - (param1 = GameMasterID)
 	EDITOR_ATTRIBUTES_FACTION_CHANGED = 707, ///< A GM enabling/disabled a faction - (param1: GM)
 	EDITOR_ATTRIBUTES_WIND_CHANGED = 709, ///< GM changed wind Speed and/or Direction - (param1: GM)
-	EDITOR_ATTRIBUTES_WIND_DEFAULT = 710, ///< GM set wind speed to be default instead of overriden - (param1: GM)
+	EDITOR_ATTRIBUTES_WIND_DEFAULT = 710, ///< GM set wind speed to be default instead of overridden - (param1: GM)
 	EDITOR_ATTRIBUTES_WEATHER_AUTO = 711, ///< Weather set to auto - (param1: GM)
 	EDITOR_ATTRIBUTES_DAY_DURATION_CHANGED = 712, ///< GM changed day duration - (param1 = GM, param2 = NewDuration)
 	EDITOR_ATTRIBUTES_RESPAWN_TIME_CHANGED = 713, ///< GM changed respawn time - (param1 = GM id, param2 = NewTime)
@@ -149,6 +153,7 @@ enum ENotification
 	
 	EDITOR_ATTRIBUTES_ENABLE_GLOBAL_SUPPLY_USAGE = 747, ///< Called when GM enables Global supplies usage (param1 = GM)
 	EDITOR_ATTRIBUTES_DISABLE_GLOBAL_SUPPLY_USAGE = 748, ///< Called when GM disables Global supplies usage (param1 = GM)
+	//EDITOR_ATTRIBUTES_CHANGED_SPAWN_SUPPLYCOST_MULTIPLIER = 749, ///< Called when GM changes the supply cost multiplier for loadouts (param1 = GM, param2 = SupplyCost multiplier)
 	
 	//GM
 	EDITOR_PLAYER_BECAME_GM = 800, ///<Player become GM - (param1 = PlayerID)
@@ -253,6 +258,8 @@ enum ENotification
 	DEPLOYABLE_SPAWNPOINTS_DISPLAY_RESPAWN_COUNT = 1603,
 	DEPLOYABLE_SPAWNPOINTS_DISPLAY_GROUP = 1604,
 	DEPLOYABLE_SPAWNPOINTS_NEARBY_BASE = 1605,
-	DEPLOYABLE_SPAWNPOINTS_NEARBY_HQ = 1606
+	DEPLOYABLE_SPAWNPOINTS_NEARBY_HQ = 1606,
+	DEPLOYABLE_SPAWNPOINTS_ZONE_ENTERED = 1607,
+	DEPLOYABLE_SPAWNPOINTS_ZONE_EXITED = 1608
 };
 

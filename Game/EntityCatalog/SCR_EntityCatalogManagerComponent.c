@@ -1,10 +1,8 @@
-/**
-Manager for non-faction specific entity catalogs as well as getters for faction specific catalogs
-*/
+//! Manager for non-faction specific entity catalogs as well as getters for faction specific catalogs
 [ComponentEditorProps(category: "GameScripted/GameMode/Components", description: "Manager for holding non-faction enities and to getter functions for entities from factions")]
 class SCR_EntityCatalogManagerComponentClass : SCR_BaseGameModeComponentClass
 {
-};
+}
 
 class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 {
@@ -12,30 +10,38 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 	protected ref array<ref SCR_EntityCatalog> m_aEntityCatalogs;
 
 	//~ Catalog map for quicker obtaining the catalog using EEntityCatalogType
-	protected ref map<EEntityCatalogType, ref SCR_EntityCatalog> m_mEntityCatalogs = new ref map<EEntityCatalogType, ref SCR_EntityCatalog>();
+	protected ref map<EEntityCatalogType, ref SCR_EntityCatalog> m_mEntityCatalogs = new map<EEntityCatalogType, ref SCR_EntityCatalog>();
 
 	//~ Faction manager ref
 	protected SCR_FactionManager m_FactionManager;
 
 	//~ Instance
 	protected static SCR_EntityCatalogManagerComponent s_Instance;
+	
+	protected bool m_bInitDone;
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	static SCR_EntityCatalogManagerComponent GetInstance()
 	{		
 		return s_Instance;
 	}
 
 	//======================================== GET CATALOG ========================================\\
-	//--------------------------------- Get General Entity Catalog ---------------------------------\\
-	/*!
-	Get Entity catalog of specific type not part of a faction
-	The catalog contains all entities part of the specific type not part of a faction
-	\param catalogType Type to get catalog of
-	\return Catalog. Can be null if not found. Note that Only one catalog of each type can be in the list
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get Entity catalog of specific type not part of a faction
+	//! The catalog contains all entities part of the specific type not part of a faction
+	//! \param[in] catalogType Type to get catalog of
+	//! \return Catalog. Can be null if not found. Note that Only one catalog of each type can be in the list
 	SCR_EntityCatalog GetEntityCatalogOfType(EEntityCatalogType catalogType)
 	{
+		if (!m_bInitDone)
+		{
+			Debug.Error2("SCR_EntityCatalogManagerComponent", "Trying to obtain catalog of type: '" + typename.EnumToString(EEntityCatalogType, catalogType) + "' (Factionless) but catalog is not yet initialized! Call your function one frame later!");
+			return null;
+		}
+		
 		//~ Get catalog
 		SCR_EntityCatalog entityCatalog = m_mEntityCatalogs.Get(catalogType);
 
@@ -47,14 +53,12 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 		return null;
 	}
 
-	//--------------------------------- Get Faction Entity Catalog with Key ---------------------------------\\
-	/*!
-	Get Entity catalog of specific type linked to given faction
-	The catalog contains all entities part of the faction of that specific type
-	\param catalogType Type to get catalog of
-	\param factionKey FactionKey of faction
-	\return Catalog. Can be null if not found. Note that Only one catalog of each type can be in the list
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get Entity catalog of specific type linked to given faction
+	//! The catalog contains all entities part of the faction of that specific type
+	//! \param[in] catalogType Type to get catalog of
+	//! \param[in] factionKey FactionKey of faction
+	//! \return Catalog. Can be null if not found. Note that Only one catalog of each type can be in the list
 	SCR_EntityCatalog GetFactionEntityCatalogOfType(EEntityCatalogType catalogType, FactionKey factionKey)
 	{
 		if (!m_FactionManager)
@@ -70,27 +74,24 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 		return GetFactionEntityCatalogOfType(catalogType, faction);
 	}
 
-	//--------------------------------- Get Faction Entity Catalog with Faction ---------------------------------\\
-	/*!
-	Get Entity catalog of specific type linked to given faction
-	The catalog contains all entities part of the faction of that specific type
-	\param catalogType Type to get catalog of
-	\param faction Faction to find
-	\return Catalog. Can be null if not found. Note that Only one catalog of each type can be in the list
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get Entity catalog of specific type linked to given faction
+	//! The catalog contains all entities part of the faction of that specific type
+	//! \param[in] catalogType Type to get catalog of
+	//! \param[in] faction Faction to find
+	//! \return Catalog. Can be null if not found. Note that Only one catalog of each type can be in the list
 	SCR_EntityCatalog GetFactionEntityCatalogOfType(EEntityCatalogType catalogType, notnull SCR_Faction faction)
 	{
 		return faction.GetFactionEntityCatalogOfType(catalogType);
 	}
 
 	//======================================== GET ALL CATALOGS ========================================\\
-	//--------------------------------- Get All General Entity Catalogs ---------------------------------\\
-	/*!
-	Get all entity catalogs not part of a faction
-	The catalogs contain all entities not part of a faction
-	\param[out] List of all catalogs within the faction
-	\return List size
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get all entity catalogs not part of a faction
+	//! The catalogs contain all entities not part of a faction
+	//! \param[out] List of all catalogs within the faction
+	//! \return List size
 	int GetAllEntityCatalogs(notnull out array<SCR_EntityCatalog> outEntityCatalogs)
 	{
 		outEntityCatalogs.Clear();
@@ -102,14 +103,13 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 		return outEntityCatalogs.Count();
 	}
 
-	//--------------------------------- Get All Faction Entity Catalogs with factionKey ---------------------------------\\
-	/*!
-	Get all entity catalogs within the faction
-	The catalogs contain all entities part of the faction
-	\param[out] List of all catalogs within the faction
-	\param factionKey key of faction to get all catalogs from
-	\return List size
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get all entity catalogs within the faction
+	//! The catalogs contain all entities part of the faction
+	//! \param[out] List of all catalogs within the faction
+	//! \param[in] factionKey key of faction to get all catalogs from
+	//! \return List size
+	//!
 	int GetAllFactionEntityCatalogs(notnull out array<SCR_EntityCatalog> outEntityCatalogs, FactionKey factionKey)
 	{
 		if (!m_FactionManager)
@@ -125,29 +125,26 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 		return GetAllFactionEntityCatalogs(outEntityCatalogs, faction);
 	}
 
-	//--------------------------------- Get All Faction Entity Catalogs with faction ---------------------------------\\
-	/*!
-	Get all entity catalogs within the faction
-	The catalogs contain all entities part of the faction
-	\param[out] List of all catalogs within the faction
-	\param faction faction to get all catalogs from
-	\return List size
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get all entity catalogs within the faction
+	//! The catalogs contain all entities part of the faction
+	//! \param[out] List of all catalogs within the faction
+	//! \param[in] faction faction to get all catalogs from
+	//! \return List size
 	int GetAllFactionEntityCatalogs(notnull out array<SCR_EntityCatalog> outEntityCatalogs, notnull SCR_Faction faction)
 	{
 		return faction.GetAllFactionEntityCatalogs(outEntityCatalogs);
 	}
 
 	//======================================== GET SPECIFIC ENTRY WITH PREFAB ========================================\\
-	//--------------------------------- Direct Getter general ---------------------------------\\
-	/*!
-	Return entry with specific prefab within general catalog
-	Ignores Disabled Entries
-	Note this search can be somewhat extensive
-	\param catalogType Catalog type to get entry in
-	\param prefabToFind Prefab the entry has that you are looking for
-	\return Found Entry, can be null if not found
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Return entry with specific prefab within general catalog
+	//! Ignores Disabled Entries
+	//! Note this search can be somewhat extensive
+	//! \param[in] catalogType Catalog type to get entry in
+	//! \param[in] prefabToFind Prefab the entry has that you are looking for
+	//! \return Found Entry, can be null if not found
 	SCR_EntityCatalogEntry GetEntryWithPrefabFromCatalog(EEntityCatalogType catalogType, ResourceName prefabToFind)
 	{
 		//~ No prefab given
@@ -163,16 +160,14 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 		return catalog.GetEntryWithPrefab(prefabToFind);
 	}
 
-	//--------------------------------- Direct Getter faction ---------------------------------\\
-	/*!
-	Return entry with specific prefab within faction catalog
-	Ignores Disabled Entries
-	Note this search can be somewhat extensive
-	\param catalogType Catalog type to get entry in
-	\param prefabToFind Prefab the entry has that you are looking for
-	\param faction faction to find entry in
-	\return Found Entry, can be null if not found
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Return entry with specific prefab within faction catalog
+	//! Ignores Disabled Entries
+	//! Note this search can be somewhat extensive
+	//! \param[in] catalogType Catalog type to get entry in
+	//! \param[in] prefabToFind Prefab the entry has that you are looking for
+	//! \param[in] faction faction to find entry in
+	//! \return Found Entry, can be null if not found
 	SCR_EntityCatalogEntry GetEntryWithPrefabFromFactionCatalog(EEntityCatalogType catalogType, ResourceName prefabToFind, notnull SCR_Faction faction)
 	{
 		//~ No prefab given
@@ -188,17 +183,15 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 		return catalog.GetEntryWithPrefab(prefabToFind);
 	}
 
-	//--------------------------------- Direct Getter general or faction ---------------------------------\\
-	/*!
-	Return entry with specific prefab within general or faction catalog
-	Ignores Disabled Entries
-	Note this search can be somewhat extensive
-	\param catalogType Catalog type to get entry in
-	\param prefabToFind Prefab the entry has that you are looking for
-	\param prioritizeGeneralCatalog If true will search in general catalog then faction catalog. False to search the other way around
-	\param faction faction to find entry in along with general catalog
-	\return Found Entry, can be null if not found
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Return entry with specific prefab within general or faction catalog
+	//! Ignores Disabled Entries
+	//! Note this search can be somewhat extensive
+	//! \param[in] catalogType Catalog type to get entry in
+	//! \param[in] prefabToFind Prefab the entry has that you are looking for
+	//! \param[in] prioritizeGeneralCatalog If true will search in general catalog then faction catalog. False to search the other way around
+	//! \param[in] faction faction to find entry in along with general catalog
+	//! \return Found Entry, can be null if not found
 	SCR_EntityCatalogEntry GetEntryWithPrefabFromGeneralOrFactionCatalog(EEntityCatalogType catalogType, ResourceName prefabToFind, notnull SCR_Faction faction, bool prioritizeGeneralCatalog = false)
 	{
 		//~ No prefab given
@@ -238,17 +231,15 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 		return null;
 	}
 
-	//--------------------------------- Direct Getter general or any faction ---------------------------------\\
-	/*!
-	Return entry with specific prefab within general or ANY faction catalog
-	Note this search can be quite extensive!
-	Ignores Disabled Entries
-	\param catalogType Catalog type to get entry in
-	\param prefabToFind Prefab the entry has that you are looking for
-	\param prioritizeGeneralOfPriorityFaction If true will search in general catalog then faction catalogs. False it will first search priorityFaction (if any) than General than any other faction
-	\param priorityFaction If given it will first try and get the entry from this faction before searching all the other factions
-	\return Found Entry, can be null if not found
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Return entry with specific prefab within general or ANY faction catalog
+	//! Note this search can be quite extensive!
+	//! Ignores Disabled Entries
+	//! \param[in] catalogType Catalog type to get entry in
+	//! \param[in] prefabToFind Prefab the entry has that you are looking for
+	//! \param[in] prioritizeGeneralOfPriorityFaction If true will search in general catalog then faction catalogs. False it will first search priorityFaction (if any) than General than any other faction
+	//! \param[in] priorityFaction If given it will first try and get the entry from this faction before searching all the other factions
+	//! \return Found Entry, can be null if not found
 	SCR_EntityCatalogEntry GetEntryWithPrefabFromAnyCatalog(EEntityCatalogType catalogType, ResourceName prefabToFind, SCR_Faction priorityFaction = null, bool prioritizeGeneralOfPriorityFaction = false)
 	{
 		SCR_EntityCatalogEntry foundEntry;
@@ -307,18 +298,136 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 
 		return null;
 	}
+		
+	//======================================== SPAWNER ========================================\\
+		//--------------------------------- Get List of valid prefabs for spawner ---------------------------------\\
+	/*!
+	Get all prefabs that have the spawner data, the given labels and are valid in the editor mode for all factions
+	\param catalogType Type to catalog to get prefabs from
+	\param editorMode Editor mode to get valid entries from
+	\param[out] filteredPrefabsList Filltered array of valid prefabs
+	\param includedLabels A list of labels the entity needs all/any to have. Can be null if any of the other arrays are filled
+	\param excludedLabels A list of labels the entity CANNOT have ANY of. Can be null if any of the other arrays are filled
+	\param needsAllIncludedLabels If true included List all needs to be true, if false any needs to be true
+	\param getFactionLessPrefabs If true than it will also get the prefabs not assigned to any faction
+	\return Size of found prefabs
+	*/
+	int GetFilteredEditorPrefabsOfAllFactions(EEntityCatalogType catalogType, EEditorMode editorMode, notnull out array<ResourceName> filteredPrefabsList, array<EEditableEntityLabel> includedLabels = null, array<EEditableEntityLabel> excludedLabels = null, bool needsAllIncludedLabels = true, bool getFactionLessPrefabs = false)
+	{
+		filteredPrefabsList.Clear();
+		
+		array<Faction> factions = {};
+		
+		//~ Get sorted factions
+		SCR_DelegateFactionManagerComponent delegateFactionManager = SCR_DelegateFactionManagerComponent.GetInstance();
+		if (delegateFactionManager)
+		{
+			SCR_SortedArray<SCR_EditableFactionComponent> sortedDelegates = new SCR_SortedArray<SCR_EditableFactionComponent>();
+			int count = delegateFactionManager.GetSortedFactionDelegates(sortedDelegates);
+			
+			//~ Get sorted factions
+			for(int i = 0; i < count; ++i)
+			{
+				factions.Insert(sortedDelegates.Get(i).GetFaction());
+			}
+			
+		}
+		//~ No delegate found so get factions from faction manager
+		else if (m_FactionManager)
+		{
+			m_FactionManager.GetFactionsList(factions);
+		}
+		//~ Could not find faction nor faction manager
+		else 
+		{
+			return 0;
+		}
+	
+		array<ResourceName> filteredPrefabsOfFaction = {};
+		SCR_Faction scrFaction;
+		
+		//~ Get filtered prefabs of each faction
+		foreach (Faction faction : factions)
+		{
+			scrFaction = SCR_Faction.Cast(faction);
+			if (!scrFaction)
+				continue;
+			
+			GetFilteredEditorPrefabs(catalogType, editorMode, scrFaction, filteredPrefabsOfFaction, includedLabels, excludedLabels, needsAllIncludedLabels);
+			filteredPrefabsList.InsertAll(filteredPrefabsOfFaction);
+		}
+		
+		//~ Get filtered prefabs of factionless entries
+		if (getFactionLessPrefabs)
+		{
+			GetFilteredEditorPrefabs(catalogType, editorMode, null, filteredPrefabsOfFaction, includedLabels, excludedLabels, needsAllIncludedLabels);
+			filteredPrefabsList.InsertAll(filteredPrefabsOfFaction);
+		}
+		
+		return filteredPrefabsList.Count();
+	}
+	
+	//--------------------------------- Get List of valid prefabs for spawner ---------------------------------\\
+	/*!
+	Get all prefabs that have the spawner data, the given labels and are valid in the editor mode
+	\param catalogType Type to catalog to get prefabs from
+	\param editorMode Editor mode to get valid entries from
+	\param faction Faction (Optional) to get valid prefabs from
+	\param[out] filteredPrefabsList Filltered array of valid prefabs
+	\param includedLabels A list of labels the entity needs all/any to have. Can be null if any of the other arrays are filled
+	\param excludedLabels A list of labels the entity CANNOT have ANY of. Can be null if any of the other arrays are filled
+	\param needsAllIncludedLabels If true included List all needs to be true, if false any needs to be true
+	\return Size of found prefabs
+	*/
+	int GetFilteredEditorPrefabs(EEntityCatalogType catalogType, EEditorMode editorMode, SCR_Faction faction, notnull out array<ResourceName> filteredPrefabsList, array<EEditableEntityLabel> includedLabels = null, array<EEditableEntityLabel> excludedLabels = null, bool needsAllIncludedLabels = true)
+	{
+		SCR_EntityCatalog catalog;
+		filteredPrefabsList.Clear();
+		
+		//~ Get the catalog from faction or factionless
+		if (faction)
+			catalog = GetFactionEntityCatalogOfType(catalogType, faction);
+		else 
+			catalog = GetEntityCatalogOfType(catalogType);
+		
+		//~ No catalog found
+		if (!catalog)
+			return 0;
+		
+		array<SCR_EntityCatalogEntry> filteredEntityList = {};
+		array<typename> filterClassArray = {};
+		filterClassArray.Insert(SCR_EntityCatalogEditorData);
+		
+		catalog.GetFullFilteredEntityList(filteredEntityList, includedLabels, excludedLabels, filterClassArray, needsAllIncludedLabels: needsAllIncludedLabels);
+		
+		SCR_EntityCatalogEditorData editorData;
+		
+		//~ Get all valid prefabs for mode
+		foreach (SCR_EntityCatalogEntry entry : filteredEntityList)
+		{
+			editorData = SCR_EntityCatalogEditorData.Cast(entry.GetEntityDataOfType(SCR_EntityCatalogEditorData));
+			
+			//~ Ignore entries not valid in current editor mode
+			if (!editorData.IsValidInEditorMode(editorMode))
+				continue;
+		
+			//~ Add the prefab to the array
+			filteredPrefabsList.Insert(entry.GetPrefab());
+		}
+		
+		return filteredPrefabsList.Count();
+	}
 	
 	//======================================== ARSENAL ========================================\\	
-	//--------------------------------- Get arsenal items from general catalog ---------------------------------\\
-	/*!
-	Get all arsenal items configured on the faction
-	Values taken from General Catalog ITEM
-	\param[out] arsenalItems output array
-	\param typeFilter filter for Types (-1 is ignore filter)
-	\param modeFilter filter for Modes (-1 is ignore filter)
-	\param requiresDisplayType Requires the Arsenal data to have display data type (-1 is ignore)
-	\return bool False if no config is set and when 0 items are configured
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get all arsenal items configured on the faction
+	//! Values taken from General Catalog ITEM
+	//! \param[out] arsenalItems output array
+	//! \param[in] typeFilter filter for Types (-1 is ignore filter)
+	//! \param[in] modeFilter filter for Modes (-1 is ignore filter)
+	//! \param[in] requiresDisplayType Requires the Arsenal data to have display data type (-1 is ignore)
+	//! \return bool False if no config is set and when 0 items are configured
 	bool GetArsenalItems(out array<SCR_ArsenalItem> arsenalItems, SCR_EArsenalItemType typeFilter = -1, SCR_EArsenalItemMode modeFilter = -1, EArsenalItemDisplayType requiresDisplayType = -1)
 	{
 		arsenalItems.Clear();
@@ -330,17 +439,15 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 		return GetArsenalItems(arsenalItems, itemCatalog, typeFilter, modeFilter, requiresDisplayType);
 	}
 	
-	//--------------------------------- Get arsenal Items from Faction ---------------------------------\\
-	/*!
-	Get all arsenal items configured on the faction
-	Values taken from Faction Catalog ITEM
-	\param[out] arsenalItems output array
-	\param faction faction to get items from
-	\param typeFilter filter for Types (-1 is ignore filter)
-	\param modeFilter filter for Modes (-1 is ignore filter)
-	\param requiresDisplayType Requires the Arsenal data to have display data type (-1 is ignore)
-	\return bool False if no config is set and when 0 items are configured
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get all arsenal items configured on the faction
+	//! Values taken from Faction Catalog ITEM
+	//! \param[out] arsenalItems output array
+	//! \param[in] faction faction to get items from
+	//! \param[in] typeFilter filter for Types (-1 is ignore filter)
+	//! \param[in] modeFilter filter for Modes (-1 is ignore filter)
+	//! \param[in] requiresDisplayType Requires the Arsenal data to have display data type (-1 is ignore)
+	//! \return bool False if no config is set and when 0 items are configured
 	bool GetFactionArsenalItems(out array<SCR_ArsenalItem> arsenalItems, SCR_Faction faction, SCR_EArsenalItemType typeFilter = -1, SCR_EArsenalItemMode modeFilter = -1, EArsenalItemDisplayType requiresDisplayType = -1)
 	{		
 		arsenalItems.Clear();
@@ -352,8 +459,14 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 		return GetArsenalItems(arsenalItems, itemCatalog, typeFilter, modeFilter, requiresDisplayType);
 	}
 	
-	//--------------------------------- Get Arsenal items from catalog ---------------------------------\\
-	//~ Gets a filtered list of arsenal items
+	//------------------------------------------------------------------------------------------------
+	//! Gets a filtered list of arsenal items
+	//! \param[out] arsenalItems
+	//! \param[in] itemCatalog
+	//! \param[in] typeFilter
+	//! \param[in] modeFilter
+	//! \param[in] requiresDisplayType
+	//! \return
 	protected bool GetArsenalItems(out array<SCR_ArsenalItem> arsenalItems, notnull SCR_EntityCatalog itemCatalog, SCR_EArsenalItemType typeFilter = -1, SCR_EArsenalItemMode modeFilter = -1, EArsenalItemDisplayType requiresDisplayType = -1)
 	{
 		array<SCR_EntityCatalogEntry> arsenalEntries = {};
@@ -385,17 +498,14 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 		return !arsenalItems.IsEmpty();
 	}
 	
-	
-	//--------------------------------- Get Arsenal items from catalog ---------------------------------\\
-	/*!
-	Get all arsenal items configured in any faction and the non-faction catalogs. Note this is a very intensive seach
-	Values taken from Faction Catalog ITEM
-	\param[out] allArsenalItems output array
-	\param typeFilter filter for Types (-1 is ignore filter)
-	\param modeFilter filter for Modes (-1 is ignore filter)
-	\param requiresDisplayType Requires the Arsenal data to have display data type (-1 is ignore)
-	\return int count of items found
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get all arsenal items configured in any faction and the non-faction catalogs. Note this is a very intensive seach
+	//! Values taken from Faction Catalog ITEM
+	//! \param[out] allArsenalItems output array
+	//! \param[in] typeFilter filter for Types (-1 is ignore filter)
+	//! \param[in] modeFilter filter for Modes (-1 is ignore filter)
+	//! \param[in] requiresDisplayType Requires the Arsenal data to have display data type (-1 is ignore)
+	//! \return int count of items found
 	int GetAllArsenalItems(out array<SCR_ArsenalItem> allArsenalItems, SCR_EArsenalItemType typeFilter = -1, SCR_EArsenalItemMode modeFilter = -1, EArsenalItemDisplayType requiresDisplayType = -1)
 	{
 		allArsenalItems.Clear();
@@ -421,16 +531,13 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 		return allArsenalItems.Count();
 	}
 	
-	//--------------------------------- Returns an array of filtered arsenal items ---------------------------------\\
-	/*!
-	Get arsenal items filtered by SCR_EArsenalItemType filter, caches values
-	\param typeFilter Combined flags for available items for this faction (RIFLE, MAGAZINE, EQUIPMENT, RADIOBACKPACK etc.)
-	\param modeFilter Things like AMMO and CONSUMABLE
-	\param faction If empty will take non-faction data else will take the data from the faction
-	\param requiresDisplayData if true also requires display data for displaying item in arsenal rack
-	\param requiresDisplayType Requires the Arsenal data to have display data type (-1 is ignore)
-	\return array with availabe arsenal items of give filter types
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get arsenal items filtered by SCR_EArsenalItemType filter, caches values
+	//! \param[in] typeFilter Combined flags for available items for this faction (RIFLE, MAGAZINE, EQUIPMENT, RADIOBACKPACK etc.)
+	//! \param[in] modeFilter Things like AMMO and CONSUMABLE
+	//! \param[in] faction If empty will take non-faction data else will take the data from the faction
+	//! \param[in] requiresDisplayType Requires the Arsenal data to have display data type (-1 is ignore)
+	//! \return array with availabe arsenal items of give filter types
 	array<SCR_ArsenalItem> GetFilteredArsenalItems(SCR_EArsenalItemType typeFilter, SCR_EArsenalItemMode modeFilter, SCR_Faction faction = null, EArsenalItemDisplayType requiresDisplayType = -1)
 	{
 		array<SCR_ArsenalItem> refFilteredItems = {};
@@ -450,11 +557,11 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 	}
 
 	//======================================== INIT ========================================\\
-	/*!
-	Init Catalog lists to move the arrays into a map for faster processing
-	\param entityCatalogArray Array of entity catalog to move into the map
-	\param entityCatalogMap the map to move the catalogs to. Catalogs with the same type will be merged
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Init Catalog lists to move the arrays into a map for faster processing
+	//! \param[in] entityCatalogArray Array of entity catalog to move into the map
+	//! \param[in] entityCatalogMap the map to move the catalogs to. Catalogs with the same type will be merged
 	static void InitCatalogs(notnull array<ref SCR_EntityCatalog> entityCatalogArray, notnull map<EEntityCatalogType, ref SCR_EntityCatalog> entityCatalogMap)
 	{
 		SCR_EntityCatalog foundCatalog;
@@ -481,6 +588,8 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 		//~ Init the catalog
 		InitCatalogs(m_aEntityCatalogs, m_mEntityCatalogs);
 		
+		m_bInitDone = true;
+		
 		//~ Clear array as no longer needed
 		m_aEntityCatalogs = null;
 	}
@@ -502,4 +611,4 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 
 		SetEventMask(owner, EntityEvent.INIT);
 	}
-};
+}

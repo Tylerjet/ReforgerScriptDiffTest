@@ -37,7 +37,7 @@ class FilteredServerParams : RoomFilterBase
 	protected ref array<SCR_FilterEntryRoom> m_aFiltersUncategorized = {};
 	protected ref array<ref SCR_FilterEntryRoom> m_aDefaultFilters = {};
 
-	protected ref array<string> modIds = new ref array<string>;
+	protected ref array<string> modIds = new array<string>;
 
 	// Direct search
 	protected string text = "";
@@ -169,12 +169,6 @@ class FilteredServerParams : RoomFilterBase
 	void ClearModIds()
 	{
 		modIds.Clear();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void FilterByScenraioId(string id, bool allow)
-	{
-		scenarioId = id;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -515,10 +509,12 @@ class FilteredServerParams : RoomFilterBase
 	string GetScenarioId() { return scenarioId; }
 	
 	//------------------------------------------------------------------------------------------------
-	void SetScenarioId(string id) { scenarioId = id; }
-	
+	void SetScenarioId(string id)
+	{
+		scenarioId = id;
+	}
+
 	// Scenario mod id 
-	
 	//------------------------------------------------------------------------------------------------
 	string GetHostedScenarioModId() { return hostedScenarioModId; }
 	

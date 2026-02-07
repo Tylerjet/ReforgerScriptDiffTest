@@ -1,26 +1,22 @@
 [ComponentEditorProps(category: "GameScripted/Misc", description: "")]
-class SCR_PlayerTeleportedFeedbackComponentClass: ScriptComponentClass
+class SCR_PlayerTeleportedFeedbackComponentClass : ScriptComponentClass
 {
-};
+}
 
-class SCR_PlayerTeleportedFeedbackComponent: ScriptComponent
+class SCR_PlayerTeleportedFeedbackComponent : ScriptComponent
 {
-	protected ref ScriptInvoker m_OnPlayerTeleported = new ScriptInvoker; //param int GM that teleported the player
+	protected ref ScriptInvoker m_OnPlayerTeleported = new ScriptInvoker(); //param int GM that teleported the player
 	protected PlayerManager m_PlayerManager;
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get on player Teleported script invoker. 
-	*/
+	//! Get on player Teleported script invoker.
 	ScriptInvoker GetOnPlayerTeleported()
 	{
 		return m_OnPlayerTeleported;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	On player teleported send a notification and event that the local player character is teleported
-	*/
+	//! On player teleported send a notification and event that the local player character is teleported
 	void PlayerTeleported(IEntity character, bool isLongFade, SCR_EPlayerTeleportedReason teleportReason)
 	{
 		//~ Do not show teleport feedback if no character
@@ -49,13 +45,12 @@ class SCR_PlayerTeleportedFeedbackComponent: ScriptComponent
 			SCR_NotificationsComponent.SendLocal(ENotification.TELEPORTED_PLAYER_BLOCKING_SPAWNER);
 		}
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 enum SCR_EPlayerTeleportedReason
 {
 	DEFAULT,
 	EDITOR,
 	BLOCKING_SPAWNER,
 	FAST_TRAVEL
-};
+}

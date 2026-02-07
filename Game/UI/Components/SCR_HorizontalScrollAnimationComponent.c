@@ -5,6 +5,10 @@ The component animates content left-right when activated.
 !!! WARNING !!!
 The content widget (the one which will be animated) must be in a Frame Slot!
 In most basic case you should create a Frame, attach the component to it, and and put a text widget inside the Frame.
+NB: this might cause the font to be cut on top and bottom if set to clip, in which case wrap the text into another widget and give it some padding
+Frame
+	Wrapper
+		Text (with top & bottom padding)
 */
 
 class SCR_HorizontalScrollAnimationComponent : ScriptedWidgetComponent
@@ -125,7 +129,9 @@ class SCR_HorizontalScrollAnimationComponent : ScriptedWidgetComponent
 	//------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
-		GetGame().GetCallqueue().Remove(OnEachFrame);
+		ArmaReforgerScripted game = GetGame();
+		if (game && game.GetCallqueue())
+			game.GetCallqueue().Remove(OnEachFrame);
 	}
 	
 	//------------------------------------------------------------------------
@@ -218,5 +224,12 @@ class SCR_HorizontalScrollAnimationComponent : ScriptedWidgetComponent
 		float currentPos = FrameSlot.GetPosX(m_wContent);
 		float newPos = currentPos + tDelta * speed;
 		FrameSlot.SetPosX(m_wContent, newPos);
+	}
+	
+	
+	//------------------------------------------------------------------------------------------------
+	static SCR_HorizontalScrollAnimationComponent FindComponent(Widget w)
+	{
+		return SCR_HorizontalScrollAnimationComponent.Cast(w.FindHandler(SCR_HorizontalScrollAnimationComponent));
 	}
 };

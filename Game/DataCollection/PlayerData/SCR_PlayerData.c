@@ -875,6 +875,14 @@ class SCR_PlayerData : JsonApiStruct
 	//------------------------------------------------------------------------------------------------
 	void CalculateSessionDuration()
 	{
+		// HOTFIX: m_aStats is empty on reconnect to end screen. This shouldn't be probably called
+		// at all, but it is to someone else to review this system. Lets just check, if the index
+		// is valid to prevent VM exception
+		if (!m_aStats.IsIndexValid(SCR_EDataStats.SESSION_DURATION))
+		{
+			return;
+		}
+
 		m_aStats[SCR_EDataStats.SESSION_DURATION] = m_aStats[SCR_EDataStats.SESSION_DURATION] + (System.GetTickCount() - m_iSessionStartedTickCount) * 0.001;
 		m_iSessionStartedTickCount = System.GetTickCount();
 	}

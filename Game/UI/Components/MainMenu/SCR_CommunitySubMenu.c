@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 class SCR_CommunitySubMenu : SCR_SubMenuBase
 {
 	[Attribute("{6FFF0601A48C7FEE}UI/layouts/Menus/MainMenu/CommunityNotificationButton.layout", UIWidgets.ResourceNamePicker, "", "layout")]
@@ -21,11 +20,13 @@ class SCR_CommunitySubMenu : SCR_SubMenuBase
 	protected SCR_EditBoxComponent m_Feedback;
 	protected SCR_ComboBoxComponent m_FeedbackType;
 	protected SCR_ComboBoxComponent m_FeedbackCategory;
+	
+	SCR_InputButtonComponent m_TermsOfService;
 
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuOpen(SCR_SuperMenuBase parentMenu)
+	override void OnTabCreate(Widget menuRoot, ResourceName buttonsLayout, int index)
 	{
-		super.OnMenuOpen(parentMenu);
+		super.OnTabCreate(menuRoot, buttonsLayout, index);
 
 		SetupNotifications();
 
@@ -38,13 +39,44 @@ class SCR_CommunitySubMenu : SCR_SubMenuBase
 
 		m_Feedback = SCR_EditBoxComponent.GetEditBoxComponent(m_sFeedbackEditboxName, m_wRoot);
 
-		SCR_InputButtonComponent tos = SCR_InputButtonComponent.GetInputButtonComponent("ToS",parentMenu.GetRootWidget());
-		if (tos)
-			tos.SetVisible(true);
+		m_TermsOfService = m_DynamicFooter.FindButton("ToS");
+		if (m_TermsOfService)
+		{
+			m_TermsOfService.SetVisible(true);
+			m_TermsOfService.m_OnActivated.Insert(OnTos);
+		}
 
 		SetupCategories();
 	}
 
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuUpdate(float tDelta)
+	{
+		super.OnMenuUpdate(tDelta);
+		
+		if (m_Send)
+			m_Send.SetEnabled(m_Feedback.GetValue() != string.Empty && FeedbackDialogUI.CanSendFeedback());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnTabHide()
+	{
+		super.OnTabHide();
+		
+		FeedbackDialogUI.ClearFeedback();
+
+		if (m_TermsOfService)
+			m_TermsOfService.SetVisible(false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnTabRemove()
+	{
+		super.OnTabRemove();
+		
+		FeedbackDialogUI.ClearFeedback();
+	}
+	
 	// Setup type and category combos according to FeedbackDialogUI constants
 	//------------------------------------------------------------------------------------------------
 	protected void SetupCategories()
@@ -73,7 +105,7 @@ class SCR_CommunitySubMenu : SCR_SubMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void SetupNotifications()
+	protected void SetupNotifications()
 	{
 		Widget notifications = m_wRoot.FindAnyWidget(m_sNotificationName);
 		if (!notifications)
@@ -94,17 +126,10 @@ class SCR_CommunitySubMenu : SCR_SubMenuBase
 			tile.ShowTile(entry);
 		}
 	}
-
-	//------------------------------------------------------------------------------------------------
-	override void OnMenuUpdate(SCR_SuperMenuBase parentMenu, float tDelta)
-	{
-		if (m_Send)
-			m_Send.SetEnabled(m_Feedback.GetValue() != string.Empty && FeedbackDialogUI.CanSendFeedback());
-	}
-
+	
 	// Copy code from feedback dialog
 	//------------------------------------------------------------------------------------------------
-	void OnSendFeedback()
+	protected void OnSendFeedback()
 	{
 		if (!m_Feedback || !m_FeedbackType || !m_FeedbackCategory)
 			return;
@@ -117,13 +142,10 @@ class SCR_CommunitySubMenu : SCR_SubMenuBase
 		// Send feedback
 		FeedbackDialogUI.SendFeedback(content, m_FeedbackType.GetCurrentIndex(), m_FeedbackCategory.GetCurrentIndex());
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuClose(SCR_SuperMenuBase parentMenu)
+	protected void OnTos()
 	{
-		FeedbackDialogUI.ClearFeedback();
-		SCR_InputButtonComponent tos = SCR_InputButtonComponent.GetInputButtonComponent("ToS",parentMenu.GetRootWidget());
-		if (tos)
-			tos.SetVisible(false);
+		GetGame().GetPlatformService().OpenBrowser(GetGame().GetBackendApi().GetLinkItem("Link_PrivacyPolicy"));
 	}
-};
+}

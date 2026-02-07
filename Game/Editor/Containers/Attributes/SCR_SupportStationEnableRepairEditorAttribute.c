@@ -1,8 +1,8 @@
 [BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
 class SCR_SupportStationEnableRepairEditorAttribute : SCR_BaseSupportStationEnableEditorAttribute
 {
-	protected override bool IsValidSupportStation(ESupportStationType supportStationType)
+	protected override SCR_ESupportStationResupplyType GetSupportStationType()
 	{
-		return supportStationType == ESupportStationType.REPAIR || supportStationType == ESupportStationType.FIELD_REPAIR || supportStationType == ESupportStationType.EMERGENCY_REPAIR;
+		return ESupportStationType.REPAIR;
 	}
 };

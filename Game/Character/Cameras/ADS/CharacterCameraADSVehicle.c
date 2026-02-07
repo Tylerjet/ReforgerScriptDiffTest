@@ -7,6 +7,9 @@ class CharacterCameraADSVehicle extends CharacterCameraADS
 	private IEntity m_OwnerVehicle;
 	private bool m_bUseCameraSlot;
 
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param pCameraHandler
 	void CharacterCameraADSVehicle(CameraHandlerComponent pCameraHandler)
 	{
 		m_WeaponManager = null;
@@ -131,6 +134,14 @@ class CharacterCameraADSVehicle extends CharacterCameraADS
 		// Apply shake
 		if (m_CharacterCameraHandler)
 			m_CharacterCameraHandler.AddShakeToToTransform(pOutResult.m_CameraTM, pOutResult.m_fFOV);
+				
+		SCR_2DSightsComponent sights = SCR_2DSightsComponent.Cast(turret.GetSights());
+		if (sights)
+		{
+			SCR_SightsZoomFOVInfo fovInfo = SCR_SightsZoomFOVInfo.Cast(sights.GetFOVInfo());
+			if (fovInfo) 
+				fovInfo.ForceUpdate(m_TurretController.GetOwner(), sights, pDt);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------

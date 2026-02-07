@@ -24,6 +24,7 @@ class SCR_InsectParticle
 #endif
 
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_InsectParticle()
 	{
 		delete m_ParticleEffect;

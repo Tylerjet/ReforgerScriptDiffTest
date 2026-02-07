@@ -1,4 +1,4 @@
-class SCR_PlayerToolbarItemEditorUIComponent: SCR_EntityToolbarItemEditorUIComponent
+class SCR_PlayerToolbarItemEditorUIComponent : SCR_EntityToolbarItemEditorUIComponent
 {
 	[Attribute()]
 	protected string m_sPlayerNameWidgetName;
@@ -11,7 +11,8 @@ class SCR_PlayerToolbarItemEditorUIComponent: SCR_EntityToolbarItemEditorUICompo
 		super.SetEntity(entity, widget, slotManager);
 		
 		SCR_EditablePlayerDelegateComponent delegate = SCR_EditablePlayerDelegateComponent.Cast(entity);
-		if (!delegate) return;
+		if (!delegate)
+			return;
 				
 		int playerID = delegate.GetPlayerID();
 		
@@ -26,7 +27,7 @@ class SCR_PlayerToolbarItemEditorUIComponent: SCR_EntityToolbarItemEditorUICompo
 		super.OnFocus(w, x, y);
 		
 		if (m_wPlayerName)
-			m_wPlayerName.SetColor(UIColors.HIGHLIGHTED);
+			m_wPlayerName.SetColor(Color.FromInt(UIColors.HIGHLIGHTED.PackToInt()));
 		
 		return false;
 	}
@@ -37,8 +38,8 @@ class SCR_PlayerToolbarItemEditorUIComponent: SCR_EntityToolbarItemEditorUICompo
 		super.OnFocusLost(w, x, y);
 		
 		if (m_wPlayerName)
-			m_wPlayerName.SetColor(Color.White);
+			m_wPlayerName.SetColor(Color.FromInt(Color.WHITE));
 		
 		return false;
 	}
-};
+}

@@ -6,10 +6,9 @@ Player can generate JSON and CLI text for current enabled addons and copy this t
 enum EAddonExportFormat
 {
 	JSON,
-	CLI,
+	CLI
 }
 
-//---------------------------------------------------------------------------------------------------
 class SCR_AddonsExportSubMenuComponent : SCR_SubMenuBase
 {
 	[Attribute("0", UIWidgets.ComboBox, "Used format for submenu", "", ParamEnumArray.FromEnum(EAddonExportFormat))]
@@ -24,7 +23,6 @@ class SCR_AddonsExportSubMenuComponent : SCR_SubMenuBase
 	//---------------------------------------------------------------------------------------------------
 	// Override 
 	//---------------------------------------------------------------------------------------------------
-	
 	//---------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
@@ -34,9 +32,9 @@ class SCR_AddonsExportSubMenuComponent : SCR_SubMenuBase
 	}
 	
 	//---------------------------------------------------------------------------------------------------
-	override void OnMenuShow(SCR_SuperMenuBase parentMenu)
+	override void OnTabShow()
 	{
-		super.OnMenuShow(parentMenu);
+		super.OnTabShow();
 		
 		if (!m_NavCopyComponent)
 		{
@@ -54,7 +52,6 @@ class SCR_AddonsExportSubMenuComponent : SCR_SubMenuBase
 	//---------------------------------------------------------------------------------------------------
 	// Protected 
 	//---------------------------------------------------------------------------------------------------
-	
 	//---------------------------------------------------------------------------------------------------
 	//! Display text in widgets 
 	protected void DisplayText(string text)
@@ -67,13 +64,6 @@ class SCR_AddonsExportSubMenuComponent : SCR_SubMenuBase
 	//! Generate text of addon in json config format 
 	protected string GenerateAddonJson(SCR_WorkshopItem item)
 	{
-		/*
-		{
-        	"modId": "123",
-        	"name": "SomeName",
-        	"version": "1.2.3"
-      	}
-		*/
 		return string.Format(
 			"\t{\n\t\t\%1: %2,\n\t\t%3: %4,\n\t\t%5: %6\n\t}",
 			qstr("modId"), qstr(item.GetId()),
@@ -81,13 +71,15 @@ class SCR_AddonsExportSubMenuComponent : SCR_SubMenuBase
 			qstr("version"), qstr(item.GetCurrentLocalRevision().GetVersion()) );
 	}
 	
-	// puts quotes around a string
-	static string qstr(string s) { return string.Format("\"%1\"", s); }
+	// Puts quotes around a string
+	static string qstr(string s)
+	{ 
+		return string.Format("\"%1\"", s);
+	}
 	
 	//---------------------------------------------------------------------------------------------------
 	// Actions 
 	//---------------------------------------------------------------------------------------------------
-	
 	//---------------------------------------------------------------------------------------------------
 	//! Generate text for enbled addons in json format for server config
 	void GenerateJSONFormat()
@@ -139,7 +131,6 @@ class SCR_AddonsExportSubMenuComponent : SCR_SubMenuBase
 	//---------------------------------------------------------------------------------------------------
 	// API 
 	//---------------------------------------------------------------------------------------------------
-	
 	//---------------------------------------------------------------------------------------------------
 	string GetGeneratedText()
 	{

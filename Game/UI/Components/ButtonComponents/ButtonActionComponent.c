@@ -1,6 +1,4 @@
-/*!
-Component to execute action when the button or its shortcut is pressed.
-*/
+//! Component to execute action when the button or its shortcut is pressed.
 class ButtonActionComponent : ScriptedWidgetComponent
 {
 	[Attribute(defvalue: "0", uiwidget: UIWidgets.ComboBox, enums: { ParamEnum("LMB", "0", ""), ParamEnum("RMB", "1", ""), ParamEnum("MMB", "2", ""), ParamEnum("ALL", "3", "") }, desc: "ID of mouse button which activates the action upon click.")]
@@ -15,60 +13,62 @@ class ButtonActionComponent : ScriptedWidgetComponent
 	[Attribute(desc: "Name of the widget which shows key assigned to the input action.")]
 	private string m_bWidgetHintName;
 	
-	private Widget m_Widget;
-	private ref ScriptInvoker Event_OnAction = new ScriptInvoker;
+	private Widget m_wWidget;
+	private ref ScriptInvoker m_OnAction = new ScriptInvoker();
 	
-	/*!
-	Get invoker called when the button or its shortcut is pressed.
-	\return Script invoker
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get invoker called when the button or its shortcut is pressed.
+	//! \return Script invoker
 	ScriptInvoker GetOnAction()
 	{
-		return Event_OnAction;
+		return m_OnAction;
 	}
-	/*!
-	Get mouse button this component is tracking.
-	\return Mouse button ID
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get mouse button this component is tracking.
+	//! \return Mouse button ID
 	int GetMouseButton()
 	{
 		return m_iMouseButton;
 	}
-	/*!
-	Get invoker called when the button or its shortcut is pressed.
-	Example of use:
-	~~~~
-	ScriptInvoker onButtonPressed = ButtonActionComponent.GetOnAction(w, "MyButton");
-	if (onButtonPressed) onButtonPressed.Insert(OnButtonPressed);
-	~~~~
-	\param w Parent widget
-	\param buttonName Button whose invoker is looked for
-	\param When true, new ButtonActionComponent will be created for the widget when none exists
-	\return Script invoker
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get invoker called when the button or its shortcut is pressed.
+	//! Example of use:
+	//! \code
+	//! ScriptInvoker onButtonPressed = ButtonActionComponent.GetOnAction(w, "MyButton");
+	//! if (onButtonPressed)
+	//! 	onButtonPressed.Insert(OnButtonPressed);
+	//! \endcode
+	//! \param[in] w Parent widget
+	//! \param[in] buttonName Button whose invoker is looked for
+	//! \param[in] canCreateComponent when true, new ButtonActionComponent will be created for the widget when none exists
+	//! \param[in] mouseButton
+	//! \return Script invoker
 	static ScriptInvoker GetOnAction(Widget w, string buttonName, bool canCreateComponent = false, int mouseButton = 0)
 	{
 		Widget button = w.FindAnyWidget(buttonName);
 		if (!button)
 		{
 			Print(string.Format("Widget '%1' not found in widget '%2'!", buttonName, w.GetName()), LogLevel.ERROR);
-			return new ScriptInvoker;
+			return new ScriptInvoker();
 		}
 		
 		return GetOnAction(button, canCreateComponent, mouseButton);
 	}
-	/*!
-	Get invoker called when the button or its shortcut is pressed.
-	Example of use:
-	~~~~
-	ScriptInvoker onButtonPressed = ButtonActionComponent.GetOnAction(buttonWidget);
-	if (onButtonPressed) onButtonPressed.Insert(OnButtonPressed);
-	~~~~
-	\param w Button widget
-	\param canCreateComponent When true, new ButtonActionComponent will be created for the widget when none exists
-	\param mouseButton ID of mouse button which the component should track
-	\return Script invoker
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get invoker called when the button or its shortcut is pressed.
+	//! Example of use:
+	//! \code
+	//! ScriptInvoker onButtonPressed = ButtonActionComponent.GetOnAction(buttonWidget);
+	//! if (onButtonPressed)
+	//! 	onButtonPressed.Insert(OnButtonPressed);
+	//! \endcode
+	//! \param[in] button button widget
+	//! \param[in] canCreateComponent When true, new ButtonActionComponent will be created for the widget when none exists
+	//! \param[in] mouseButton ID of mouse button which the component should track
+	//! \return Script invoker
 	static ScriptInvoker GetOnAction(Widget button, bool canCreateComponent = false, int mouseButton = 0)
 	{
 		ButtonActionComponent component;
@@ -94,30 +94,41 @@ class ButtonActionComponent : ScriptedWidgetComponent
 			else
 			{
 				Print(string.Format("Widget '%1' is missing ButtonActionComponent component!", button.GetName()), LogLevel.ERROR);
-				return new ScriptInvoker;
+				return new ScriptInvoker();
 			}
 		}
 		
 		return component.GetOnAction();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void Execute(float value, EActionTrigger reason)
 	{
-		if (!m_Widget.IsVisible() || !m_Widget.IsEnabledInHierarchy()) return;
-		Event_OnAction.Invoke(m_Widget, value, reason);
+		if (!m_wWidget.IsVisible() || !m_wWidget.IsEnabledInHierarchy())
+			return;
+
+		m_OnAction.Invoke(m_wWidget, value, reason);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnAction(float value, EActionTrigger reason)
 	{
 		Execute(value, reason);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool OnClick(Widget w, int x, int y, int button)
 	{
-		if (button == m_iMouseButton || m_iMouseButton == 3) Execute(1, EActionTrigger.DOWN);
+		if (button == m_iMouseButton || m_iMouseButton == 3)
+			Execute(1, EActionTrigger.DOWN);
+
 		return false;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
-		m_Widget = w;
+		m_wWidget = w;
 		
 		//--- Get hint widget
 		RichTextWidget widgetIcon;
@@ -135,26 +146,35 @@ class ButtonActionComponent : ScriptedWidgetComponent
 		}
 		else
 		{
-			if (m_bWidgetHintName != "") Print(string.Format("ButtonActionComponent: RichTextWidget widget '%1' not found on widget '%2'!", m_bWidgetHintName, w.GetName()), LogLevel.ERROR);
+			if (m_bWidgetHintName != "")
+				Print(string.Format("ButtonActionComponent: RichTextWidget widget '%1' not found on widget '%2'!", m_bWidgetHintName, w.GetName()), LogLevel.ERROR);
 		}
 		
 		//--- Add action listener
-		if (m_bActionName == "") return;
+		if (m_bActionName == "")
+			return;
 		
 		ArmaReforgerScripted game = GetGame();
-		if (!game) return;
+		if (!game)
+			return;
 		
 		InputManager inputManager = game.GetInputManager();
-		if (inputManager) inputManager.AddActionListener(m_bActionName, m_ActionTrigger, OnAction);
+		if (inputManager)
+			inputManager.AddActionListener(m_bActionName, m_ActionTrigger, OnAction);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
-		if (m_bActionName == "") return;
+		if (m_bActionName == "")
+			return;
 		
 		ArmaReforgerScripted game = GetGame();
-		if (!game) return;
+		if (!game)
+			return;
 		
 		InputManager inputManager = game.GetInputManager();
-		if (inputManager) inputManager.RemoveActionListener(m_bActionName, m_ActionTrigger, OnAction);
+		if (inputManager)
+			inputManager.RemoveActionListener(m_bActionName, m_ActionTrigger, OnAction);
 	}
-};
+}

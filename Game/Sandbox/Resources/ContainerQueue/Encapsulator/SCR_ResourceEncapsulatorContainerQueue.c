@@ -63,7 +63,7 @@ class SCR_ResourceEncapsulatorContainerQueue : SCR_ResourceContainerQueue<SCR_Re
 		
 		color1.Scale(0.2);
 		color1.SetA(1.0);
-		color2.Lerp(Color.White, 0.0);
+		color2.Lerp(Color.FromInt(Color.WHITE), 0.0);
 		color2.SetA(1.0);
 		
 		foreach (int idx, SCR_ResourceContainer container: m_aRegisteredContainers)

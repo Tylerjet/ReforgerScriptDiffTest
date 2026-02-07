@@ -9,7 +9,7 @@ class SCR_RichTextTags
 	//! color - in linear space.
 	static string TagColor(string content, Color color)
 	{
-		Color colorCopy = Color.White;
+		Color colorCopy = Color.FromInt(Color.WHITE);
 		colorCopy = Color.FromInt(color.PackToInt());
 		colorCopy.LinearToSRGB();
 		

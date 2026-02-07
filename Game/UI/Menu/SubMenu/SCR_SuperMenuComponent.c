@@ -1,243 +1,266 @@
 /*!
-Super menu base as component to apply super menu behavior for non menus 
+Handles tab menus. Requires: 
+	- TabView component, to handle displaying tabs
+	- Each tab layout to have a SCR_SubMenuBase component, to take care of the tab's needs
+	- A manager/brain class (like SCR_SuperMenuBase or SCR_TabDialog) to call Init() and the main events
+
+Also determines which button layouts are used in the sub menus, so they are consistent across al tabs
 */
 
-class SCR_SuperMenuComponent : ScriptedWidgetComponent
+class SCR_SuperMenuComponent : SCR_ScriptedWidgetComponent
 {
-	protected const static string TITLE = "Title";
-	protected const static string TAB_VIEW_NAME = "TabView";
-	protected const static string LEFT_FOOTER = "Footer";
-	protected const static string RIGHT_FOOTER = "FooterRight";
-	protected const static ResourceName DEFAULT_NAV_BUTTON = "{08CF3B69CB1ACBC4}UI/layouts/WidgetLibrary/Buttons/WLib_NavigationButton.layout";
+	[Attribute("{08CF3B69CB1ACBC4}UI/layouts/WidgetLibrary/WLib_NavigationButton.layout")]
+	protected ResourceName m_sNavigationButtonLayout;
 	
-	// Attributes 
-	[Attribute(TITLE, UIWidgets.EditBox, desc: "Name of title widget.")]
-	protected string m_sTitle;
-	
-	[Attribute(TAB_VIEW_NAME, UIWidgets.EditBox, desc: "Name of tabview widget to find tab view component.")]
+	[Attribute("TabView", UIWidgets.EditBox, desc: "Name of tabview widget to find tab view component.")]
 	protected string m_sTabViewName;
-	
-	[Attribute(LEFT_FOOTER, UIWidgets.EditBox, desc: "Name of footer root for nav buttons on left.")]
-	protected string m_sLeftFooter;
-	
-	[Attribute(RIGHT_FOOTER, UIWidgets.EditBox, desc: "Name of footer root for nav buttons on right.")]
-	protected string m_sRightFooter;
-	
-	[Attribute(DEFAULT_NAV_BUTTON, UIWidgets.ResourceNamePicker, desc: "Layout of navigation button.")]
-	protected ResourceName m_NavButtonLayout;
-	
-	// Fields 
-	protected Widget m_wRoot;
-	protected TextWidget m_wTitle;
-	protected SCR_TabViewComponent m_TabView;
-	protected Widget m_wLeftFooter;
-	protected Widget m_wRightFooter;
+
+	protected SCR_TabViewComponent m_TabViewComponent;
 	
 	protected SCR_SubMenuBase m_OpenedSubmenu;
-	protected ref array<SCR_SubMenuBase> m_aSubMenus = new ref array<SCR_SubMenuBase>;
+	protected ref array<SCR_SubMenuBase> m_aSubMenus = {};
 	
-	//------------------------------------------------------------------------------------------------
-	// Override 
-	//------------------------------------------------------------------------------------------------
+	Widget m_wMenuRoot;
 	
+	// Menu requests
+	protected ref ScriptInvokerVoid m_OnRequestCloseMenu;
+
 	//------------------------------------------------------------------------------------------------
-	override void HandlerAttached(Widget w)
-	{
-		Init(w);
-	}
-	
+	// --- Main events, needing to be called by manager classes ---
 	//------------------------------------------------------------------------------------------------
-	// Public 
-	//------------------------------------------------------------------------------------------------
-	
-	//------------------------------------------------------------------------------------------------
-	//! Setup widgets and action
-	void Init(Widget w)
-	{
-		m_wRoot = w;
-		
-		m_wTitle = TextWidget.Cast(w.FindAnyWidget(m_sTitle));
+	// As parameter, pass a widget the sub menus can use to grab whatever they need from the menu layout (eg the SCR_DynamicFooterComponent)
+	void Init(Widget menuRoot)
+	{	
+		m_wMenuRoot = menuRoot;
 		
 		// Tab view 
-		Widget tabView = w.FindAnyWidget(m_sTabViewName); 
+		Widget tabView = m_wRoot.FindAnyWidget(m_sTabViewName); 
 		if (tabView)
-			m_TabView = SCR_TabViewComponent.Cast(tabView.FindHandler(SCR_TabViewComponent));
+			m_TabViewComponent = SCR_TabViewComponent.Cast(tabView.FindHandler(SCR_TabViewComponent));
 	
-		if (m_TabView)
+		if (!m_TabViewComponent)
+			return;
+		
+		m_TabViewComponent.GetOnContentCreate().Insert(OnTabCreate);
+		m_TabViewComponent.GetOnContentShow().Insert(OnTabShow);
+		m_TabViewComponent.GetOnContentHide().Insert(OnTabHide);
+		m_TabViewComponent.GetOnContentRemove().Insert(OnTabRemove);
+		m_TabViewComponent.GetOnTabChange().Insert(OnTabChange);
+		
+		// Init tabs
+		if (m_TabViewComponent.m_bManualInit)
 		{
-			m_TabView.m_OnContentCreate.Insert(OnTabCreate);
-			m_TabView.m_OnContentShow.Insert(OnTabShow);
-			m_TabView.m_OnContentHide.Insert(OnTabHide);
-			m_TabView.m_OnContentRemove.Insert(OnTabRemove);
-			
-			m_TabView.Init();
-			
-			// Init opened content 
-			int selected = m_TabView.m_iSelectedTab;
-			Widget content =  m_TabView.GetEntryContent(selected).m_wTab;
-			OnTabShow(m_TabView, content);
+			// Init tab view and rely on it's events
+			m_TabViewComponent.Init();
 		}
-
-		// Footers 
-		m_wLeftFooter = w.FindAnyWidget(m_sLeftFooter);
-		m_wRightFooter = w.FindAnyWidget(m_sRightFooter); 
+		else
+		{
+			// Tab view has already created tabs, manually init opened content
+			array<ref SCR_TabViewContent> contents = m_TabViewComponent.GetContents();
+			
+			foreach (int i, SCR_TabViewContent content : contents)
+			{
+				if (!content.m_wTab)
+					continue;
+				
+				OnTabCreate(m_TabViewComponent, content.m_wTab, i);
+				
+				if (i == m_TabViewComponent.m_iSelectedTab)
+					OnTabShow(m_TabViewComponent, content.m_wTab);
+			}
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Update content of opened submenu
-	void Update(float tDelta)
+	void OnMenuShow()
 	{
-		if (m_OpenedSubmenu && m_OpenedSubmenu.GetRootWidget().IsVisible())
-			m_OpenedSubmenu.OnMenuUpdate(null, tDelta);
+		if (m_OpenedSubmenu && m_OpenedSubmenu.GetRootWidget().IsVisible() && m_OpenedSubmenu.GetShown())
+			m_OpenedSubmenu.OnMenuShow();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void Show()
+	void OnMenuHide()
 	{
 		if (m_OpenedSubmenu)
-			m_OpenedSubmenu.OnMenuShow(null);
+			m_OpenedSubmenu.OnMenuHide();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void Hide()
+	void OnMenuUpdate(float tDelta)
+	{
+		if (m_OpenedSubmenu && m_OpenedSubmenu.GetRootWidget().IsVisible() && m_OpenedSubmenu.GetShown())
+			m_OpenedSubmenu.OnMenuUpdate(tDelta);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnMenuFocusGained()
 	{
 		if (m_OpenedSubmenu)
-			m_OpenedSubmenu.OnMenuHide(null);
+			m_OpenedSubmenu.OnMenuFocusGained();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void Close()
+	void OnMenuFocusLost()
+	{
+		if (m_OpenedSubmenu)
+			m_OpenedSubmenu.OnMenuFocusLost();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnMenuClose()
 	{
 		foreach (SCR_SubMenuBase subMenu : m_aSubMenus)
 		{
-			if (subMenu)
-				subMenu.OnMenuClose(null);
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void SetTitle(string title)
-	{
-		if (!m_wTitle)
-			return;
-		
-		if (m_wTitle)
-			m_wTitle.SetText(title);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Add new navigation button, sub (SCR_SubMenuBase) menu should be owner and take care of display and hide
-	//! rightFooter - when true, the button will be added to the right footer.
-	SCR_InputButtonComponent AddNavigationButton(string action, string buttonText, bool rightFooter = false)
-	{
-		// Fallback widget search
-		if (!m_wLeftFooter)
-			m_wLeftFooter = m_wRoot.FindAnyWidget(m_sLeftFooter);
-		
-		if (!m_wRightFooter)
-			m_wRightFooter = m_wRoot.FindAnyWidget(m_sRightFooter); 
-		
-		// Check widget 
-		if (!m_wLeftFooter || !m_wRightFooter || m_NavButtonLayout == string.Empty)
-			return null;
-		
-		Widget footer = m_wLeftFooter;
-		if (rightFooter)
-		{
-			footer = m_wRightFooter;
-		}
+			if (!subMenu)
+				continue;
 			
-		Widget w = GetGame().GetWorkspace().CreateWidgets(m_NavButtonLayout, footer);
-		if (!w)
-			return null;
-		
-		//Handle padding
-		float padding, paddingLeft, paddingRight;
-		float a, b, c;
-		AlignableSlot.GetPadding(w, a, b, padding, c);
-		if(rightFooter)
-			paddingLeft = padding;
-		else 
-			paddingRight = padding;
-		
-		AlignableSlot.SetPadding(w, paddingLeft, 0.0, paddingRight, 0.0);
-		
-		
-		SCR_InputButtonComponent comp = SCR_InputButtonComponent.Cast(w.FindHandler(SCR_InputButtonComponent));
-		if (!comp)
-			return null;
-		
-		comp.SetLabel(buttonText);
-		comp.SetAction(action);
-		return comp;
+			subMenu.OnTabHide();
+			subMenu.OnTabRemove();
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// Tab view callbacks 
+	// --- Sub menus handling ---
 	//------------------------------------------------------------------------------------------------
-	
-	//------------------------------------------------------------------------------------------------
-	void OnTabCreate(SCR_TabViewComponent comp, Widget w)
+	SCR_SubMenuBase OnTabCreate(SCR_TabViewComponent comp, Widget w, int index)
 	{
 		if (!w)
-			return;
+			return null;
 		
 		SCR_SubMenuBase subMenu = SCR_SubMenuBase.Cast(w.FindHandler(SCR_SubMenuBase));
 		if (!subMenu)
-			return;
+			return null;
+
+		subMenu.GetOnRequestCloseMenu().Insert(OnRequestCloseMenu);
+		subMenu.GetOnRequestTabChange().Insert(OnRequestTabChange);
 		
-		subMenu.SetParentMenuComponent(this);
+		// Init sub menu
+		subMenu.OnTabCreate(m_wMenuRoot, m_sNavigationButtonLayout, index);
+		
 		m_aSubMenus.Insert(subMenu);
+		
+		return subMenu;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnTabShow(SCR_TabViewComponent comp, Widget w)
+	SCR_SubMenuBase OnTabShow(SCR_TabViewComponent comp, Widget w)
 	{
 		if (!w)
-			return;
+			return null;
 		
 		SCR_SubMenuBase subMenu = SCR_SubMenuBase.Cast(w.FindHandler(SCR_SubMenuBase));
 		if (!subMenu)
-			return;
+			return null;
 		
-		subMenu.OnMenuShow(null);
-		subMenu.SetParentMenuComponent(this);
+		subMenu.OnTabShow();
 		m_OpenedSubmenu = subMenu;
+		
+		return subMenu;
 	}
 
-	
 	//------------------------------------------------------------------------------------------------
-	//TODO: this never gets called
-	void OnTabHide(SCR_TabViewComponent comp, Widget w)
+	SCR_SubMenuBase OnTabHide(SCR_TabViewComponent comp, Widget w)
 	{
 		if (!w)
-			return;
+			return null;
 		
 		SCR_SubMenuBase subMenu = SCR_SubMenuBase.Cast(w.FindHandler(SCR_SubMenuBase));
 		if (!subMenu)
-			return;
+			return null;
 		
-		subMenu.OnMenuHide(null);
+		subMenu.OnTabHide();
+		
+		return subMenu;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//TODO: this gets called when switching tab (if the tab is set to be destroyed), but not when closing the dialog
-	void OnTabRemove(SCR_TabViewComponent comp, Widget w)
+	SCR_SubMenuBase OnTabRemove(SCR_TabViewComponent comp, Widget w)
 	{
 		if (!w)
-			return;
+			return null;
 		
 		SCR_SubMenuBase subMenu = SCR_SubMenuBase.Cast(w.FindHandler(SCR_SubMenuBase));
 		if (!subMenu)
-			return;
+			return null;
 		
-		subMenu.OnMenuClose(null);
+		subMenu.OnTabRemove();
 		m_aSubMenus.RemoveItem(subMenu);
+		
+		return subMenu;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	SCR_SubMenuBase OnTabChange(SCR_TabViewComponent comp, Widget w)
+	{
+		if (!w)
+			return null;
+
+		SCR_SubMenuBase subMenu = SCR_SubMenuBase.Cast(w.FindHandler(SCR_SubMenuBase));
+		if (!subMenu)
+			return null;
+
+		subMenu.OnTabChange();
+		
+		return subMenu;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnRequestCloseMenu()
+	{
+		if (m_OnRequestCloseMenu)
+			m_OnRequestCloseMenu.Invoke();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnRequestTabChange(int newTab, int oldTab)
+	{
+		m_TabViewComponent.ShowTab(newTab);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//  --- Public ---
 	//------------------------------------------------------------------------------------------------
 	SCR_TabViewComponent GetTabView()
 	{
-		return m_TabView;
+		return m_TabViewComponent;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetSelectedTab()
+	{
+		return m_TabViewComponent.m_iSelectedTab;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_SubMenuBase GetOpenedSubMenu()
+	{
+		return m_OpenedSubmenu;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_SubMenuBase GetSubMenu(int index)
+	{
+		if (!m_aSubMenus.IsIndexValid(index))
+			return null;
+		
+		return m_aSubMenus[index];
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static SCR_SuperMenuComponent FindComponent(notnull Widget w)
+	{
+		return SCR_SuperMenuComponent.Cast(w.FindHandler(SCR_SuperMenuComponent));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//  --- Invokers ---
+	//------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerVoid GetOnRequestCloseMenu()
+	{
+		if (!m_OnRequestCloseMenu)
+			m_OnRequestCloseMenu = new ScriptInvokerVoid();
+		
+		return m_OnRequestCloseMenu;
 	}
 }

@@ -1,19 +1,17 @@
 class SCR_ResourceSystem : GameSystem
 {
-	static const int DYNAMIC_COMPONENTS_MAX_FRAME_BUDGET = 10;
+	static const int DYNAMIC_COMPONENTS_MAX_FRAME_BUDGET		= 10;
+	static const int SUBSCRIBED_INTERACTORS_MAX_FRAME_BUDGET	= 10;
+	static const int CONTAINERS_MAX_FRAME_BUDGET				= 10;
+	
     protected ref array<SCR_ResourceInteractor> m_aSubscribedInteractors	= {};
     protected ref array<SCR_ResourceComponent> m_aDynamicComponents			= {};
     protected ref array<SCR_ResourceContainer> m_aContainers				= {};
 	protected SCR_ResourceSystemSubscriptionManager m_ResourceSystemSubscriptionManager;
  	protected ref SCR_ResourceGrid m_ResourceGrid;
-	protected int m_iSubscribedInteractorPivot;
-	protected int m_iDynamicComponentsPivot;
-	protected int m_iDynamicComponentsFrameBudget = SCR_ResourceSystem.DYNAMIC_COMPONENTS_MAX_FRAME_BUDGET;
-	//------------------------------------------------------------------------------------------------
-    override protected ESystemPoint GetSystemPoint()
-    {
-        return ESystemPoint.FixedFrame;
-    }
+	protected ref SCR_ContainerBudgetManager<array<SCR_ResourceInteractor>,	SCR_ResourceInteractor>	m_SubscribedInteractorsBudgetManager;
+	protected ref SCR_ContainerBudgetManager<array<SCR_ResourceComponent>,	SCR_ResourceComponent>	m_DynamicComponentsBudgetManager;
+	protected ref SCR_ContainerBudgetManager<array<SCR_ResourceContainer>,	SCR_ResourceContainer>	m_ContainersBudgetManager;
  	
 	//------------------------------------------------------------------------------------------------
 	bool IsRegistered(notnull SCR_ResourceComponent component)
@@ -30,7 +28,6 @@ class SCR_ResourceSystem : GameSystem
 	//------------------------------------------------------------------------------------------------
     override protected void OnUpdate(ESystemPoint point)
     {
- 		bool wasGridUpdateIdIncreased;
 		float timeSlice = GetWorld().GetFixedTimeSlice();
 		
 		//!------------------------------------------------------------ Process new items in the grid.
@@ -40,39 +37,31 @@ class SCR_ResourceSystem : GameSystem
 		m_ResourceSystemSubscriptionManager.ProcessGracefulHandles();
 		
 		//!------------------------------------------------------------------- Container self updates.
-		int containersCount = m_aContainers.Count();
-		SCR_ResourceContainer container;
-		
-		for (int i = containersCount - 1; i >= 0; --i)
+		foreach (SCR_ResourceContainer container : m_aContainers)
 		{
-			container = m_aContainers[i];
-			
 			if (container)
 				container.Update(timeSlice);
 			else
-				m_aContainers.Remove(i);
+				/*!
+				It could not always remove the specific null container, but eventually it should
+					clear them out.
+				*/
+				m_aContainers.RemoveItem(container);
 		}
 		
 		//!-------------------------------------------------------- Process dynamic items in the grid.
-		int dynamicComponentsCount = m_aDynamicComponents.Count();
-		m_iDynamicComponentsFrameBudget = SCR_ResourceSystem.DYNAMIC_COMPONENTS_MAX_FRAME_BUDGET;
-		SCR_ResourceComponent dynamicComponent;
+		bool wasGridUpdateIdIncreased;
 		
-		for (int i = dynamicComponentsCount - 1; i >= 0; --i)
+		foreach (SCR_ResourceComponent component : m_DynamicComponentsBudgetManager.ProcessNextBatch())
 		{
-			if(m_iDynamicComponentsPivot >= dynamicComponentsCount)
-				m_iDynamicComponentsPivot = 0;
-			
-			dynamicComponent = m_aDynamicComponents[m_iDynamicComponentsPivot];
-			
-			if (!dynamicComponent)
-			{
-				m_aDynamicComponents.Remove(m_iDynamicComponentsPivot);
-				
+			/*!
+			It could not always remove the specific null component, but eventually it should clear
+				them out.
+			*/
+			if (!component && m_aDynamicComponents.RemoveItem(component))
 				continue;
-			}
 			
-			if (vector.DistanceSq(dynamicComponent.GetOwner().GetOrigin(), dynamicComponent.GetLastPosition()) <= SCR_ResourceComponent.UPDATE_DISTANCE_TRESHOLD_SQUARE)
+			if (vector.DistanceSq(component.GetOwner().GetOrigin(), component.GetLastPosition()) <= SCR_ResourceComponent.UPDATE_DISTANCE_TRESHOLD_SQUARE)
 				continue;
 			
 			if (!wasGridUpdateIdIncreased)
@@ -82,40 +71,23 @@ class SCR_ResourceSystem : GameSystem
 				wasGridUpdateIdIncreased = true;
 			}
 			
-			m_ResourceGrid.UpdateResourceDynamicItem(dynamicComponent);
-			dynamicComponent.UpdateLastPosition();
-			
-			--m_iDynamicComponentsFrameBudget;
-			++m_iDynamicComponentsPivot;
-			
-			if (m_iDynamicComponentsFrameBudget <= 0)
-				break;
-        }
+			m_ResourceGrid.UpdateResourceDynamicItem(component);
+			component.UpdateLastPosition();
+		}
 		
 		//!------------------------------------------------ Process and update subscribed interactors.
 		m_ResourceGrid.ResetFrameBudget();
 		
-		int subscribedInteractorsCount = m_aSubscribedInteractors.Count();
-		SCR_ResourceInteractor subscribedInteractor;
-		
-		for (int i = subscribedInteractorsCount - 1; i >= 0; --i)
+		foreach (SCR_ResourceInteractor interactor : m_SubscribedInteractorsBudgetManager.ProcessNextBatch())
 		{
-			if(m_iSubscribedInteractorPivot >= subscribedInteractorsCount)
-				m_iSubscribedInteractorPivot = 0;
-			
-			subscribedInteractor = m_aSubscribedInteractors[m_iSubscribedInteractorPivot];
-			
-			if (!subscribedInteractor)
-			{
-				m_aSubscribedInteractors.Remove(m_iSubscribedInteractorPivot);
-				
+			/*!
+			It could not always remove the specific null interactor, but eventually it should clear
+				them out.
+			*/
+			if (!interactor && m_aSubscribedInteractors.RemoveItem(interactor))
 				continue;
-			}
 			
-			if (vector.DistanceSq(subscribedInteractor.GetOwnerOrigin(), subscribedInteractor.GetLastPosition()) > SCR_ResourceComponent.UPDATE_DISTANCE_TRESHOLD_SQUARE)
-				m_ResourceGrid.UpdateInteractor(m_aSubscribedInteractors[m_iSubscribedInteractorPivot], true);
-			
-			++m_iSubscribedInteractorPivot;
+			m_ResourceGrid.UpdateInteractor(interactor, true);
 			
 			if (m_ResourceGrid.GetFrameBudget() <= 0)
 				break;
@@ -198,5 +170,10 @@ class SCR_ResourceSystem : GameSystem
 	{
 		m_ResourceGrid = GetGame().GetResourceGrid();
 		m_ResourceSystemSubscriptionManager = GetGame().GetResourceSystemSubscriptionManager();
+		
+		m_SubscribedInteractorsBudgetManager	= new SCR_ContainerBudgetManager<array<SCR_ResourceInteractor>,	SCR_ResourceInteractor>(m_aSubscribedInteractors,	SUBSCRIBED_INTERACTORS_MAX_FRAME_BUDGET);
+		m_DynamicComponentsBudgetManager		= new SCR_ContainerBudgetManager<array<SCR_ResourceComponent>,	SCR_ResourceComponent>(m_aDynamicComponents,		DYNAMIC_COMPONENTS_MAX_FRAME_BUDGET);
+		m_ContainersBudgetManager				= new SCR_ContainerBudgetManager<array<SCR_ResourceContainer>,	SCR_ResourceContainer>(m_aContainers,				CONTAINERS_MAX_FRAME_BUDGET);
+		
 	}
 }

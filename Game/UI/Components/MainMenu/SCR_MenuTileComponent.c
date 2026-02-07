@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 class SCR_MenuTileComponent : ScriptedWidgetComponent
 {
 	[Attribute("")]
@@ -27,12 +26,16 @@ class SCR_MenuTileComponent : ScriptedWidgetComponent
 
 	[Attribute("Title")]
 	protected LocalizedString m_sTitleName;
+
 	[Attribute("Description")]
 	protected LocalizedString m_sDescriptionName;
+
 	[Attribute("ImageDefault")]
 	protected string m_sDefaultWidgetName;
+
 	[Attribute("ImageSelected")]
 	protected string m_sSelectedWidgetName;
+
 	[Attribute("Icon")]
 	protected string m_sIconImageName;
 
@@ -69,7 +72,6 @@ class SCR_MenuTileComponent : ScriptedWidgetComponent
 		{
 			m_wDescription.SetText(m_sDescription);
 			m_wDescription.SetOpacity(0);
-		
 		}
 		
 		if (m_wTitle)
@@ -122,5 +124,10 @@ class SCR_MenuTileComponent : ScriptedWidgetComponent
 		return false;
 	}
 	
-	Widget GetRootWidget() { return m_wRoot; }
-};
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	Widget GetRootWidget()
+	{
+		return m_wRoot;
+	}
+}

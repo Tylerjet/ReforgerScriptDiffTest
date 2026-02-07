@@ -15,7 +15,13 @@ class SCR_PlayerLoadoutData
     ref array<ref SCR_ClothingLoadoutData> Clothings = {};
 	ref array<ref SCR_WeaponLoadoutData> Weapons = {};
 	float LoadoutCost;
- 
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] instance
+	//! \param[in] ctx
+	//! \param[in] snapshot
+	//! \return
     static bool Extract(SCR_PlayerLoadoutData instance, ScriptCtx ctx, SSnapSerializerBase snapshot)
     {
         // Fill a snapshot with values from an instance.
@@ -47,6 +53,12 @@ class SCR_PlayerLoadoutData
         return true;
     }
  
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] snapshot
+	//! \param[in] ctx
+	//! \param[in] instance
+	//! \return
     static bool Inject(SSnapSerializerBase snapshot, ScriptCtx ctx, SCR_PlayerLoadoutData instance)
     {
         // Fill an instance with values from snapshot.
@@ -89,6 +101,12 @@ class SCR_PlayerLoadoutData
         return true;
     }
  
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] snapshot
+	//! \param[in] ctx
+	//! \param[in] packet
+	//! \return
     static void Encode(SSnapSerializerBase snapshot, ScriptCtx ctx, ScriptBitSerializer packet)
     {
 		int clothingCount;
@@ -114,6 +132,12 @@ class SCR_PlayerLoadoutData
 		snapshot.EncodeFloat(packet);
     }
  
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] packet
+	//! \param[in] ctx
+	//! \param[in] snapshot
+	//! \return
     static bool Decode(ScriptBitSerializer packet, ScriptCtx ctx, SSnapSerializerBase snapshot)
     {
 		int clothingCount;
@@ -141,15 +165,27 @@ class SCR_PlayerLoadoutData
         return true;
     }
  
-    static bool SnapCompare(SSnapSerializerBase lhs, SSnapSerializerBase rhs , ScriptCtx ctx)
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] lhs
+	//! \param[in] rhs
+	//! \param[in] ctx
+	//! \return
+	static bool SnapCompare(SSnapSerializerBase lhs, SSnapSerializerBase rhs, ScriptCtx ctx)
     {
-		Print("Can't use SCR_PlayerLoadoutData as a property", LogLevel.ERROR);
+		Print("Cannot use SCR_PlayerLoadoutData as a property", LogLevel.ERROR);
         return true;
     }
- 
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] instance
+	//! \param[in] snapshot
+	//! \param[in] ctx
+	//! \return
     static bool PropCompare(SCR_PlayerLoadoutData instance, SSnapSerializerBase snapshot, ScriptCtx ctx)
     {
-        Print("Can't use SCR_PlayerLoadoutData as a property", LogLevel.ERROR);
+        Print("Cannot use SCR_PlayerLoadoutData as a property", LogLevel.ERROR);
         return true;
     }
 }

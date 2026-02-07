@@ -22,6 +22,7 @@ class SCR_FieldManualConfigCategory
 	SCR_FieldManualConfigCategory m_Parent; // no strong ref: if the parent dies, he dies
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_FieldManualConfigCategory()
 	{
 		if (!m_aCategories) // can be config-provided
@@ -36,6 +37,9 @@ class SCR_FieldManualConfigCategory
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] parent
+	//! \return
 	Widget CreateWidget(notnull Widget parent)
 	{
 		if (m_aCategories.Count() > 0)
@@ -49,7 +53,7 @@ class SCR_FieldManualConfigCategory
 	}
 
 	//------------------------------------------------------------------------------------------------
-	Widget CreateMainCategory(notnull Widget parent)
+	protected Widget CreateMainCategory(notnull Widget parent)
 	{
 		Widget createdWidget = GetGame().GetWorkspace().CreateWidgets(m_CategoryLayout, parent);
 		if (!createdWidget)
@@ -67,7 +71,7 @@ class SCR_FieldManualConfigCategory
 	}
 
 	//------------------------------------------------------------------------------------------------
-	Widget CreateSubCategory(notnull Widget parent)
+	protected Widget CreateSubCategory(notnull Widget parent)
 	{
 		Widget createdWidget = GetGame().GetWorkspace().CreateWidgets(m_SubCategoryLayout, parent);
 		if (!createdWidget)

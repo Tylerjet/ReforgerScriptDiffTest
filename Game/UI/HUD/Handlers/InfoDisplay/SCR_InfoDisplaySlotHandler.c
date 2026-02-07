@@ -18,6 +18,13 @@ class SCR_InfoDisplaySlotHandler : SCR_InfoDisplayHandler
 	//------------------------------------------------------------------------------------------------
 	SCR_HUDSlotUIComponent GetSlotUIComponent()
 	{
+		if (!m_wContent)
+			return null;
+		
+		Widget parentWidget = m_wContent.GetParent();
+		if (parentWidget)
+			m_SlotComponent = SCR_HUDSlotUIComponent.Cast(parentWidget.FindHandler(SCR_HUDSlotUIComponent));
+
 		return m_SlotComponent;
 	}
 
@@ -33,6 +40,18 @@ class SCR_InfoDisplaySlotHandler : SCR_InfoDisplayHandler
 	//------------------------------------------------------------------------------------------------
 	SCR_HUDGroupUIComponent GetGroupUIComponent()
 	{
+		if (!m_wContent)
+			return null;
+
+		Widget slotWidget = m_wContent.GetParent();
+		if (!slotWidget)
+			return null;
+
+		Widget groupWidget = slotWidget.GetParent();
+		if (!groupWidget)
+			return null;
+
+		m_GroupComponent = SCR_HUDGroupUIComponent.Cast(groupWidget.FindHandler(SCR_HUDGroupUIComponent));
 		return m_GroupComponent;
 	}
 

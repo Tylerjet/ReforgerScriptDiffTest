@@ -14,7 +14,7 @@ class SCR_LootDeadBodyAction : SCR_LootAction
 			return false;
 		
 		// Disallow looting when alive
-		SCR_CharacterControllerComponent contr = SCR_CharacterControllerComponent.Cast(char.GetCharacterController());
+		CharacterControllerComponent contr = char.GetCharacterController();
 		if (!contr)
 			return false;
 		

@@ -1,48 +1,47 @@
-
 [EntityEditorProps(category: "GameScripted/TreeDestructionV2", description: "A tree entity that can be destroyed.", color: "0 0 255 255", visible: false, dynamicBox: true)]
-class SCR_DestructibleTreeV2Class: TreeClass
+class SCR_DestructibleTreeV2Class : TreeClass
 {
 	[Attribute("200")]
 	float m_fDamageThreshold;
+
 	[Attribute("30000")]
 	float m_fHealth;
-	[Attribute("-1", UIWidgets.Object, "Pick a prefab of the broken tree.")]
+
+	[Attribute("-1", desc: "Pick a prefab of the broken tree.")]
 	ref SCR_TreePartHierarchyV2 m_TreePartHierarchy;
 
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] prefab
 	void SCR_DestructibleTreeV2Class(BaseContainer prefab)
 	{
-/*		Print("CreatePrefabData");
-		Print(prefab.GetClassName());
-		Print(prefab.GetName());
-		Print(m_fDamageThreshold);
-		Print(m_fHealth);*/
+//		Print("CreatePrefabData");
+//		Print(prefab.GetClassName());
+//		Print(prefab.GetName());
+//		Print(m_fDamageThreshold);
+//		Print(m_fHealth);
 	}
-	
-	void ~SCR_DestructibleTreeV2Class(BaseContainer prefab)
-	{
-		m_TreePartHierarchy = null;
-	}
-};
+}
 
-class SCR_TreeTraceInfo : Managed
+class SCR_TreeTraceInfo
 {
 	float impulse;
 	float distance;
 	vector position;
 	vector direction;
 	EDamageType type;
-};
+}
 
-class SCR_DestroyedTreePartsData : Managed
+class SCR_DestroyedTreePartsData
 {
 	int treePartIdx;
 	vector position;
 	float rotation[4];
 	bool isDynamic;
 	bool isParented;
-};
+}
 
-class SCR_ActiveTreeData : Managed
+class SCR_ActiveTreeData
 {
 	ref array<SCR_TreePartV2> m_aTreeParts = null;
 	ref array<ref SCR_TreeTraceInfo> m_aTreeTraceInfo = null;
@@ -50,10 +49,9 @@ class SCR_ActiveTreeData : Managed
 	ref array<int> m_aTreePartsToBreak = null;
 	float m_fDamage = 0;
 	float m_fTimeSinceLastSoundEvent = 0;
-};
+}
 
-//------------------------------------------------------------------------------------------------
-//Encapsulates the functionality of a destructible tree entity in the world.
+//! Encapsulates the functionality of a destructible tree entity in the world.
 class SCR_DestructibleTreeV2 : Tree
 {
 #ifdef ENABLE_DESTRUCTION
@@ -67,13 +65,15 @@ class SCR_DestructibleTreeV2 : Tree
 	//private ref SCR_ActiveTreeData treeData = null;
 	private int m_iIndex = INACTIVE_TREE_INDEX;
 	
-	//-----------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetIsDestroyed()
 	{
 		return m_iIndex == DESTROYED_TREE_INDEX;
 	}
 	
-	//-----------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] sentRPC
 	void SetToDestroy(bool sentRPC = false)
 	{
 		SetEventMask(EntityEvent.FRAME);
@@ -92,8 +92,8 @@ class SCR_DestructibleTreeV2 : Tree
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//Changes the tree prefab into multiple tree part entities which are held together by joints.
-	//Also applies the impulse vector to the correct tree part.
+	//! Changes the tree prefab into multiple tree part entities which are held together by joints.
+	//! Also applies the impulse vector to the correct tree part.
 	private void Destroy()
 	{
 		//Print("Destroy");
@@ -123,6 +123,7 @@ class SCR_DestructibleTreeV2 : Tree
 				SetToBreak(i);
 				RemoveTreePartFromParent(i)
 			}
+
 			treeData.m_aTreePartsToBreak.Clear();
 			treeData.m_aTreePartsToBreak = null;
 		}
@@ -182,13 +183,12 @@ class SCR_DestructibleTreeV2 : Tree
 		SCR_ActiveTreeData treeData = synchManager.GetActiveTreeData(m_iIndex);
 		
 		if (!treeData)
-			treeData = new ref SCR_ActiveTreeData();
+			treeData = new SCR_ActiveTreeData();
 		
 		if (!treeData.m_aTreeParts)
-			treeData.m_aTreeParts = new ref array<SCR_TreePartV2>();
+			treeData.m_aTreeParts = {};
 		
 		Resource resource = Resource.Load(prefabData.m_TreePartHierarchy.m_Prefab);		
-		
 		if (!resource.IsValid())
 			return null;
 		
@@ -199,7 +199,8 @@ class SCR_DestructibleTreeV2 : Tree
 		
 		if (RplSession.Mode() == RplMode.Client)
 			AddChild(rootEnt, -1, EAddChildFlags.AUTO_TRANSFORM);
-		else AddChild(rootEnt, -1, EAddChildFlags.NONE);
+		else
+			AddChild(rootEnt, -1, EAddChildFlags.NONE);
 		
 		rootEnt.SetTransform(mat);
 		SCR_TreePartV2 rootTreePart = SCR_TreePartV2.Cast(rootEnt);
@@ -212,7 +213,7 @@ class SCR_DestructibleTreeV2 : Tree
 		
 		prefabData.m_TreePartHierarchy.SpawnAllChildren(rootEnt, treeData.m_aTreeParts);
 		
-		array<IEntity> children = new array<IEntity>();
+		array<IEntity> children = {};
 		SCR_Global.GetHierarchyEntityList(rootEnt, children);
 		
 		foreach (SCR_TreePartV2 treePart : treeData.m_aTreeParts)
@@ -226,10 +227,11 @@ class SCR_DestructibleTreeV2 : Tree
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] treePartIdx
+	//! \param[in] quat
 	void SetRotationOfTreePart(int treePartIdx, float quat[4])
 	{
 		SCR_TreePartV2 foundTreePart = FindTreePart(treePartIdx);
-		
 		if (!foundTreePart)
 			return;
 		
@@ -237,6 +239,9 @@ class SCR_DestructibleTreeV2 : Tree
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] treePartIdx
+	//! \param[in] quat
 	void CacheRotationOfTreePart(int treePartIdx, float quat[4])
 	{
 		SCR_TreePartV2 foundTreePart = FindTreePart(treePartIdx);
@@ -248,6 +253,9 @@ class SCR_DestructibleTreeV2 : Tree
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] treePartIdx
+	//! \param[in] toDynamic
 	void CacheSwitchTreePartPhysics(int treePartIdx, bool toDynamic)
 	{
 		SCR_TreePartV2 foundTreePart = FindTreePart(treePartIdx);
@@ -259,10 +267,14 @@ class SCR_DestructibleTreeV2 : Tree
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] treePartIdx
+	//! \param[in] positionVector
+	//! \param[in] impulseVector
+	//! \param[in] damageType
 	void ServerSetToBreak(int treePartIdx, vector positionVector, vector impulseVector, EDamageType damageType)
 	{
 		SCR_TreePartV2 foundTreePart = FindTreePart(treePartIdx);
-		
 		if (!foundTreePart)
 			return;
 		
@@ -270,6 +282,7 @@ class SCR_DestructibleTreeV2 : Tree
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] treePartIdx
 	void SetToBreak(int treePartIdx)
 	{
 		SCR_TreePartV2 foundTreePart = FindTreePart(treePartIdx);
@@ -282,9 +295,11 @@ class SCR_DestructibleTreeV2 : Tree
 			SCR_ActiveTreeData treeData = synchManager.GetActiveTreeData(m_iIndex);
 			
 			if (!treeData)
-				treeData = new ref SCR_ActiveTreeData();
+				treeData = new SCR_ActiveTreeData();
+
 			if (!treeData.m_aTreePartsToBreak)
-				treeData.m_aTreePartsToBreak = new ref array<int>();
+				treeData.m_aTreePartsToBreak = {};
+
 			treeData.m_aTreePartsToBreak.Insert(treePartIdx);
 			return;
 		}
@@ -293,10 +308,11 @@ class SCR_DestructibleTreeV2 : Tree
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] treePartIndex
 	void RemoveTreePartFromParent(int treePartIndex)
 	{
 		SCR_TreePartV2 foundTreePart = FindTreePart(treePartIndex);
-		
 		if (!foundTreePart)
 			return;
 		
@@ -304,6 +320,12 @@ class SCR_DestructibleTreeV2 : Tree
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] treePartIdx
+	//! \param[in] position
+	//! \param[in] quat
+	//! \param[in] isDynamic
+	//! \param[in] isParented
 	void CacheDestroyedTreePart(int treePartIdx, vector position, float quat[4], bool isDynamic, bool isParented)
 	{
 		SCR_DestroyedTreePartsData data = new SCR_DestroyedTreePartsData();
@@ -321,18 +343,24 @@ class SCR_DestructibleTreeV2 : Tree
 		SCR_ActiveTreeData treeData = synchManager.GetActiveTreeData(m_iIndex);
 		
 		if (!treeData)
-			treeData = new ref SCR_ActiveTreeData();
+			treeData = new SCR_ActiveTreeData();
 		
 		if (!treeData.m_aCachedTreePartsToDestroy)
-			treeData.m_aCachedTreePartsToDestroy = new ref array<ref SCR_DestroyedTreePartsData>();
+			treeData.m_aCachedTreePartsToDestroy = {};
+
 		treeData.m_aCachedTreePartsToDestroy.Insert(data);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] treePartIdx
+	//! \param[in] pos
+	//! \param[in] quat
+	//! \param[in] velocityLinear
+	//! \param[in] velocityAngular
 	void UpdateTransformOfTreePart(int treePartIdx, vector pos, float quat[4], vector velocityLinear, vector velocityAngular)
 	{
 		SCR_TreePartV2 treePart = FindTreePart(treePartIdx);
-		
 		if (!treePart)
 			return;
 		
@@ -340,10 +368,11 @@ class SCR_DestructibleTreeV2 : Tree
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] treePartIdx
+	//! \param[in] pos
 	void SetPositionOfTreePart(int treePartIdx, vector pos)
 	{
 		SCR_TreePartV2 foundTreePart = FindTreePart(treePartIdx);
-		
 		if (!foundTreePart)
 			return;
 		
@@ -351,10 +380,12 @@ class SCR_DestructibleTreeV2 : Tree
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] treePartIdx
+	//! \param[in] pos
 	void CachePositionOfTreePart(int treePartIdx, vector pos)
 	{
 		SCR_TreePartV2 foundTreePart = FindTreePart(treePartIdx);
-		
 		if (!foundTreePart)
 			return;
 		
@@ -362,10 +393,12 @@ class SCR_DestructibleTreeV2 : Tree
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] treePartIdx
+	//! \param[in] velocity
 	void UpdateVelocityOfTreePart(int treePartIdx, vector velocity)
 	{
 		SCR_TreePartV2 foundTreePart = FindTreePart(treePartIdx);
-		
 		if (!foundTreePart)
 			return;
 		
@@ -373,10 +406,12 @@ class SCR_DestructibleTreeV2 : Tree
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] treePartIdx
+	//! \param[in] angularVelocity
 	void UpdateAngularVelocityOfTreePart(int treePartIdx, vector angularVelocity)
 	{
 		SCR_TreePartV2 foundTreePart = FindTreePart(treePartIdx);
-		
 		if (!foundTreePart)
 			return;
 		
@@ -384,10 +419,11 @@ class SCR_DestructibleTreeV2 : Tree
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] treePartIdx
 	void ClientSwitchTreePartToStatic(int treePartIdx)
 	{
 		SCR_TreePartV2 foundTreePart = FindTreePart(treePartIdx);
-		
 		if (!foundTreePart)
 			return;
 		
@@ -395,6 +431,12 @@ class SCR_DestructibleTreeV2 : Tree
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] position
+	//! \param[in] direction
+	//! \param[in] impulse
+	//! \param[in] distance
+	//! \param[in] type
+	//! \param[in] other
 	void SetToTrace(vector position, vector direction, float impulse, float distance, EDamageType type, IEntity other)
 	{
 		SCR_TreeTraceInfo info = new SCR_TreeTraceInfo();
@@ -410,13 +452,16 @@ class SCR_DestructibleTreeV2 : Tree
 		SCR_ActiveTreeData treeData = synchManager.GetActiveTreeData(m_iIndex);
 		
 		if (!treeData)
-			treeData = new ref SCR_ActiveTreeData;
+			treeData = new SCR_ActiveTreeData();
+
 		if (!treeData.m_aTreeTraceInfo)
-			treeData.m_aTreeTraceInfo = new ref array<ref SCR_TreeTraceInfo>();
+			treeData.m_aTreeTraceInfo = {};
+
 		treeData.m_aTreeTraceInfo.Insert(info);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void Trace()
 	{
 		if (m_iIndex < 0 || !synchManager)
@@ -438,6 +483,7 @@ class SCR_DestructibleTreeV2 : Tree
 				{
 					if (treePart.m_bDebugDamage)
 						treePart.PrintDamageDebug(info.impulse, info.type);
+
 					float reducedImpulse;
 					if (treePart.WouldBreak(info.impulse, info.type, reducedImpulse))
 						treePart.SetToBreak(positionVector: info.position, impulseVector: reducedImpulse * info.direction, damageType: info.type);
@@ -445,11 +491,11 @@ class SCR_DestructibleTreeV2 : Tree
 			}
 			else 
 			{
-				autoptr TraceSphere param = new TraceSphere;
+				TraceSphere param = new TraceSphere();
 				
 				param.Radius = 0.1;
 				param.Start = info.position;
-				param.End = (info.position + info.direction);
+				param.End = info.position + info.direction;
 				param.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
 				param.LayerMask = EPhysicsLayerDefs.Camera; // is this a correct layer mask?
 				
@@ -465,6 +511,7 @@ class SCR_DestructibleTreeV2 : Tree
 					{
 						if (tracedTreePart.m_bDebugDamage)
 							tracedTreePart.PrintDamageDebug(info.impulse, info.type);
+
 						float reducedImpulse;
 						if (tracedTreePart.WouldBreak(info.impulse, info.type, reducedImpulse))
 							tracedTreePart.SetToBreak(positionVector: info.position, impulseVector: reducedImpulse * info.direction, damageType: info.type);
@@ -474,6 +521,7 @@ class SCR_DestructibleTreeV2 : Tree
 				treeData.m_aTreeTraceInfo[i] = null;
 			}
 		}
+
 		treeData.m_aTreeTraceInfo.Clear();
 		treeData.m_aTreeTraceInfo = null;
 	}
@@ -494,9 +542,7 @@ class SCR_DestructibleTreeV2 : Tree
 		{
 			BaseSoundComponent soundComponent = synchManager.GetSoundComponent();
 			if (soundComponent)
-			{
 				soundComponent.PlayStr(SCR_SoundEvent.SOUND_HIT_GROUND);
-			}
 		}
 	}
 	
@@ -554,13 +600,12 @@ class SCR_DestructibleTreeV2 : Tree
 		
 		direction.Normalize();
 		
-		auto vehicle = Vehicle.Cast(damageSource);
+		Vehicle vehicle = Vehicle.Cast(damageSource);
 		if (vehicle)
-		{
 			SetToTrace(position, direction, damage, distance, type, vehicle);
-		}
 		else 
 			SetToTrace(position, direction, damage, distance, type, null);
+
 		SetToDestroy();
 	}
 	
@@ -578,9 +623,7 @@ class SCR_DestructibleTreeV2 : Tree
 		foreach (SCR_TreePartV2 treePart : treeData.m_aTreeParts)
 		{
 			if (treePart.GetTreePartIndex() == treePartIdx)
-			{
 				return treePart;
-			}
 		}
 		
 		return null;
@@ -610,10 +653,5 @@ class SCR_DestructibleTreeV2 : Tree
 			ClearFlags(EntityFlags.ACTIVE);
 		}
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_DestructibleTreeV2()
-	{
-	}
 #endif
-};
+}

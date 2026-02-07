@@ -189,7 +189,8 @@ class SCR_VirtualAreaEntity : GenericEntity
 			}
 		}
 		
-		MeshObject meshObject = SCR_Shape.CreateAreaMesh(positions, sizeY * 2, m_Material, m_bStretchMaterial);
+		Resource res = SCR_Shape.CreateAreaMesh(positions, sizeY * 2, m_Material, m_bStretchMaterial);
+		MeshObject meshObject = res.GetResource().ToMeshObject();
 		if (meshObject) SetObject(meshObject,"");
 	}
 	

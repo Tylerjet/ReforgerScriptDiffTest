@@ -1,10 +1,7 @@
-/** @ingroup ManualCamera
-*/
+//! @ingroup ManualCamera
 
+//! Parent class from which all SCR_ManualCamera components inherit.
 [BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
-/*!
-Parent class from which all SCR_ManualCamera components inherit.
-*/
 class SCR_BaseManualCameraComponent
 {
 	[Attribute("1")]
@@ -22,107 +19,125 @@ class SCR_BaseManualCameraComponent
 	protected SCR_ManualCamera m_Camera;
 	protected InputManager m_InputManager;
 
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////
-	/*! @name Override Functions
-	Functions to be overriden by child classes.
-	*/
-	///@{
-	/*!
-	Evaluate the component every frame.
-	\param param Object carrying camera properties
-	*/
+	//! @name Override Methods
+	//! Methods to be overridden by child classes.
+	//! @{
+	//------------------------------------------------------------------------------------------------
+	//! Evaluate the component every frame.
+	//! \param[in] param Object carrying camera properties
 	void EOnCameraFrame(SCR_ManualCameraParam param);
-	/*!
-	Initialize the component.
-	\return True if the component should be evaluated every frame
-	*/
-	bool EOnCameraInit() { return false; }
-	/*!
-	Terminate the component.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Initialise the component.
+	//! \return True if the component should be evaluated every frame
+	bool EOnCameraInit();
+
+	//------------------------------------------------------------------------------------------------
+	//! Terminate the component.
 	void EOnCameraExit();
-	/*!
-	Camera value are reset.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Camera value are reset.
 	void EOnCameraReset();
-	/*!
-	Terminate the component.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Terminate the component.
+	//! \param[in] attached
+	//! \param[in] parent
 	void EOnCameraParentChange(bool attached, IEntity parent);
-	/*!
-	Save persistent data.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Save persistent data.
+	//! \param[in] data
 	void EOnCameraSave(SCR_ManualCameraComponentSave data);
-	/*!
-	Load persistent data.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Load persistent data.
+	//! \param[in] data
 	void EOnCameraLoad(SCR_ManualCameraComponentSave data);
-	///@}
+	//! @}
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Custom functions
+
+	//------------------------------------------------------------------------------------------------
 	protected SCR_ManualCamera GetCameraEntity()
 	{
 		return m_Camera;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected InputManager GetInputManager()
 	{
 		return m_InputManager;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected vector CoordToCamera(vector pos)
 	{
-		if (!m_Camera.GetParent()) return pos;
+		if (!m_Camera.GetParent())
+			return pos;
+
 		return m_Camera.GetParent().CoordToLocal(pos);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected vector CoordFromCamera(vector pos)
 	{
-		if (!m_Camera.GetParent()) return pos;
+		if (!m_Camera.GetParent())
+			return pos;
+
 		return m_Camera.GetParent().CoordToParent(pos);
 	}
-	/*!
-	Enable the component. EOnCameraFrame is not evaluated for disabled components.
-	\param True to enable the component, false to disable it
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Enable the component. EOnCameraFrame is not evaluated for disabled components.
+	//! \param[in] True to enable the component, false to disable it
 	void SetEnabled(bool enabled)
 	{
 		m_bEnabled = enabled;
 	}
-	/*!
-	Check if the component is enabled.
-	\return True when enabled
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if the component is enabled.
+	//! \return True when enabled
 	int IsEnabled()
 	{
 		return m_bEnabled;
 	}
-	/*!
-	Get evaluation priority.
-	\return Priority. Higher value = higher priority. 
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get evaluation priority.
+	//! \return Priority. Higher value = higher priority.
 	int GetPriority()
 	{
 		return m_iPriority;
 	}
-	/*!
-	Check if the required flag is active.
-	\param Camera flag
-	\return True if the camera flag contains the required flag
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if the required flag is active.
+	//! \param[in] Camera flag
+	//! \return True if the camera flag contains the required flag
 	bool HasFlag(EManualCameraFlag flag)
 	{
 		return m_bEnabled && (flag & m_FlagsWhitelist) == m_FlagsWhitelist && (flag & m_FlagsBlacklist) == 0;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] camera
+	//! \return
 	bool InitBase(SCR_ManualCamera camera)
 	{
 		m_Camera = camera;
 		m_InputManager = GetGame().GetInputManager();
 		return EOnCameraInit();
 	}
-};
+}
 
-class SCR_BaseManualCameraComponentTitle: BaseContainerCustomTitle
+class SCR_BaseManualCameraComponentTitle : BaseContainerCustomTitle
 {
+	//------------------------------------------------------------------------------------------------
 	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
 	{
 		title = source.GetClassName();
@@ -134,11 +149,13 @@ class SCR_BaseManualCameraComponentTitle: BaseContainerCustomTitle
 		string textWhitelist;
 		if (flagsWhitelist != 0)
 		{
-			array<int> bitValues = new array<int>;
+			array<int> bitValues = {};
 			SCR_Enum.BitToIntArray(flagsWhitelist, bitValues);
 			foreach (int i, int value: bitValues)
 			{
-				if (i != 0) textWhitelist += " && ";
+				if (i != 0)
+					textWhitelist += " && ";
+
 				textWhitelist += typename.EnumToString(EManualCameraFlag, value);
 			}
 		}
@@ -148,12 +165,16 @@ class SCR_BaseManualCameraComponentTitle: BaseContainerCustomTitle
 		string textBlacklist;
 		if (flagsBlacklist != 0)
 		{
-			if (flagsWhitelist != 0) textBlacklist += " && ";
-			array<int> bitValues = new array<int>;
+			if (flagsWhitelist != 0)
+				textBlacklist += " && ";
+
+			array<int> bitValues = {};
 			SCR_Enum.BitToIntArray(flagsBlacklist, bitValues);
 			foreach (int i, int value: bitValues)
 			{
-				if (i != 0) textBlacklist += " && ";
+				if (i != 0)
+					textBlacklist += " && ";
+
 				textBlacklist += "!" + typename.EnumToString(EManualCameraFlag, value);
 			}
 		}
@@ -171,9 +192,4 @@ class SCR_BaseManualCameraComponentTitle: BaseContainerCustomTitle
 		
 		return true;
 	}
-};
-
-
-
-
-
+}

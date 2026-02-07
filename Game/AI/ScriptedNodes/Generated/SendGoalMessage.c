@@ -216,113 +216,6 @@ class SCR_AISendGoalMessage_AttackClusterDone : SCR_AISendMessageGenerated
 }
 
 //---------------------------------------------------------------------------------------
-// Generated from class: SCR_AIMessage_AttackStatic
-class SCR_AISendGoalMessage_AttackStatic : SCR_AISendMessageGenerated
-{
-	[Attribute("", UIWidgets.Auto)]
-	float m_fPriorityLevel;
-	
-	[Attribute("", UIWidgets.Auto)]
-	bool m_bIsWaypointRelated;
-	
-	protected static ref TStringArray _s_aVarsIn =
-	{
-		SCR_AISendMessageGenerated.PORT_RECEIVER,
-		"PriorityLevel",
-		"IsWaypointRelated",
-		"TargetInfo"
-	};
-	override TStringArray GetVariablesIn() { return _s_aVarsIn; }
-	
-	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
-	{
-		AIAgent receiver = GetReceiverAgent(owner);
-		SCR_AIMessage_AttackStatic msg = new SCR_AIMessage_AttackStatic();
-		
-		msg.m_RelatedGroupActivity = GetRelatedActivity(owner);
-		
-		msg.SetText(m_sText);
-		
-		if(!GetVariableIn("PriorityLevel", msg.m_fPriorityLevel))
-			msg.m_fPriorityLevel = m_fPriorityLevel;
-		
-		if(!GetVariableIn("IsWaypointRelated", msg.m_bIsWaypointRelated))
-			msg.m_bIsWaypointRelated = m_bIsWaypointRelated;
-		
-		GetVariableIn("TargetInfo", msg.m_TargetInfo);
-		
-		if (msg.m_bIsWaypointRelated)
-			msg.m_RelatedWaypoint = GetRelatedWaypoint(owner);
-		
-		if (SendMessage(owner, receiver, msg))
-			return ENodeResult.SUCCESS;
-		else
-			return ENodeResult.FAIL;
-	}
-	
-	override string GetNodeMiddleText()
-	{
-		string s;
-		s = s + string.Format("m_fPriorityLevel: %1\n", m_fPriorityLevel);
-		s = s + string.Format("m_bIsWaypointRelated: %1\n", m_bIsWaypointRelated);
-		return s;
-	}
-	override bool VisibleInPalette() { return true; }
-}
-
-//---------------------------------------------------------------------------------------
-// Generated from class: SCR_AIMessage_AttackStaticDone
-class SCR_AISendGoalMessage_AttackStaticDone : SCR_AISendMessageGenerated
-{
-	[Attribute("", UIWidgets.Auto)]
-	float m_fPriorityLevel;
-	
-	[Attribute("", UIWidgets.Auto)]
-	bool m_bIsWaypointRelated;
-	
-	protected static ref TStringArray _s_aVarsIn =
-	{
-		SCR_AISendMessageGenerated.PORT_RECEIVER,
-		"PriorityLevel",
-		"IsWaypointRelated"
-	};
-	override TStringArray GetVariablesIn() { return _s_aVarsIn; }
-	
-	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
-	{
-		AIAgent receiver = GetReceiverAgent(owner);
-		SCR_AIMessage_AttackStaticDone msg = new SCR_AIMessage_AttackStaticDone();
-		
-		msg.m_RelatedGroupActivity = GetRelatedActivity(owner);
-		
-		msg.SetText(m_sText);
-		
-		if(!GetVariableIn("PriorityLevel", msg.m_fPriorityLevel))
-			msg.m_fPriorityLevel = m_fPriorityLevel;
-		
-		if(!GetVariableIn("IsWaypointRelated", msg.m_bIsWaypointRelated))
-			msg.m_bIsWaypointRelated = m_bIsWaypointRelated;
-		
-		if (msg.m_bIsWaypointRelated)
-			msg.m_RelatedWaypoint = GetRelatedWaypoint(owner);
-		
-		if (SendMessage(owner, receiver, msg))
-			return ENodeResult.SUCCESS;
-		else
-			return ENodeResult.FAIL;
-	}
-	
-	override string GetNodeMiddleText()
-	{
-		string s;
-		s = s + string.Format("m_fPriorityLevel: %1\n", m_fPriorityLevel);
-		s = s + string.Format("m_bIsWaypointRelated: %1\n", m_bIsWaypointRelated);
-		return s;
-	}
-	override bool VisibleInPalette() { return true; }
-}
-
-//---------------------------------------------------------------------------------------
 // Generated from class: SCR_AIMessage_KeepFormation
 class SCR_AISendGoalMessage_KeepFormation : SCR_AISendMessageGenerated
 {
@@ -1273,8 +1166,9 @@ class SCR_AISendGoalMessage_ThrowGrenadeTo : SCR_AISendMessageGenerated
 		SCR_AISendMessageGenerated.PORT_RECEIVER,
 		"PriorityLevel",
 		"IsWaypointRelated",
-		"TargetEntity",
-		"TargetPosition"
+		"TargetPosition",
+		"WeaponType",
+		"Delay"
 	};
 	override TStringArray GetVariablesIn() { return _s_aVarsIn; }
 	
@@ -1293,9 +1187,11 @@ class SCR_AISendGoalMessage_ThrowGrenadeTo : SCR_AISendMessageGenerated
 		if(!GetVariableIn("IsWaypointRelated", msg.m_bIsWaypointRelated))
 			msg.m_bIsWaypointRelated = m_bIsWaypointRelated;
 		
-		GetVariableIn("TargetEntity", msg.m_TargetEntity);
-		
 		GetVariableIn("TargetPosition", msg.m_vTargetPosition);
+		
+		GetVariableIn("WeaponType", msg.e_WeaponType);
+		
+		GetVariableIn("Delay", msg.m_fDelay);
 		
 		if (msg.m_bIsWaypointRelated)
 			msg.m_RelatedWaypoint = GetRelatedWaypoint(owner);

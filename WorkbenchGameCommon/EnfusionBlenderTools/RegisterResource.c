@@ -24,7 +24,11 @@ class RegisterResourceUtils
 	{
 		//Get Resource
 		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
-		MetaFile meta = resourceManager.RegisterResourceFile(absPath);
+		MetaFile meta = resourceManager.GetMetaFile(absPath);
+		if (!meta)
+		{
+			meta = resourceManager.RegisterResourceFile(absPath);
+		} 
 		//Check if metafile was created
 		if (!meta)
 		{

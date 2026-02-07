@@ -1,7 +1,4 @@
-// This component handles server entry and visiualization of server data
-//
-//------------------------------------------------------------------------------------------------
-
+//! This component handles server entry and visiualization of server data
 class SCR_ServerBrowserEntryComponent : SCR_ListMenuEntryComponent
 {
 	// Attributes
@@ -15,22 +12,22 @@ class SCR_ServerBrowserEntryComponent : SCR_ListMenuEntryComponent
 	protected float m_fTooltipDownloadIconScale;
 
 	// Const
-	protected const string LAYOUT_CONTENT = "HorizontalLayout";
-	protected const string LAYOUT_LOADING = "Loading";
+	protected static const string LAYOUT_CONTENT = "HorizontalLayout";
+	protected static const string LAYOUT_LOADING = "Loading";
 	
-	protected const string BUTTON_FAVORITE = "FavButton";
-	protected const string BUTTON_JOIN = "JoinButton";
-	protected const string BUTTON_PASSWORD = "PasswordButton";
+	protected static const string BUTTON_FAVORITE = "FavButton";
+	protected static const string BUTTON_JOIN = "JoinButton";
+	protected static const string BUTTON_PASSWORD = "PasswordButton";
 	
-	protected const string ICON_WARNING = "VersionWarningIcon";
-	protected const string ICON_UNJOINABLE = "JoinWarningIcon";
-	protected const string ICON_MODDED = "ImageModded";
-	protected const string ICON_PING = "ImgPing";
+	protected static const string ICON_WARNING = "VersionWarningIcon";
+	protected static const string ICON_UNJOINABLE = "JoinWarningIcon";
+	protected static const string ICON_MODDED = "ImageModded";
+	protected static const string ICON_PING = "ImgPing";
 	
-	protected const string FRAME_NAME = "FrameName";
-	protected const string FRAME_SCENARIO = "FrameScenario";
+	protected static const string FRAME_NAME = "FrameName";
+	protected static const string FRAME_SCENARIO = "FrameScenario";
 	
-	protected const string TEXT_CELL = "Content";
+	protected static const string TEXT_CELL = "Content";
 	
 	// Base
 	protected Room m_RoomInfo;
@@ -57,10 +54,13 @@ class SCR_ServerBrowserEntryComponent : SCR_ListMenuEntryComponent
 	protected SCR_RoomModsManager m_ModsManager;
 	protected string m_sPatchSize;
 	protected bool m_bIsPatchSizeLoaded;
+	
+	protected Widget m_wVersionWarningIcon;
 
 	//------------------------------------------------------------------------------------------------
 	// Override
 	//------------------------------------------------------------------------------------------------
+
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
@@ -132,10 +132,9 @@ class SCR_ServerBrowserEntryComponent : SCR_ListMenuEntryComponent
 		m_wLoading.SetVisible(false);
 
 		// Get highest ping
-		for (int i = 0, count = m_aPingStates.Count(); i < count; i++)
+		foreach (ServerBrowserEntryProperty pingState : m_aPingStates)
 		{
-			int ping = m_aPingStates[i].m_sValue.ToInt();
-
+			int ping = pingState.m_sValue.ToInt();
 			if (m_iHighestPing < ping)
 				m_iHighestPing = ping;
 		}
@@ -192,6 +191,7 @@ class SCR_ServerBrowserEntryComponent : SCR_ListMenuEntryComponent
 	//------------------------------------------------------------------------------------------------
 	// Protected
 	//------------------------------------------------------------------------------------------------
+
 	//------------------------------------------------------------------------------------------------
 	protected void OnJoinInteractionButtonClicked()
 	{
@@ -201,6 +201,8 @@ class SCR_ServerBrowserEntryComponent : SCR_ListMenuEntryComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Set text in cell by it's widget name
+	//! \param[in] cellName
+	//! \param[in] str
 	protected void SetCellText(string cellName, string str)
 	{
 		Widget wCell = m_wRoot.FindAnyWidget(cellName);
@@ -214,6 +216,7 @@ class SCR_ServerBrowserEntryComponent : SCR_ListMenuEntryComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Display number of current ping and add icon and color
+	//! \param[in] ping
 	protected void DisplayPing(int ping)
 	{
 		//TODO: the ping threshold are manually set in the layout. This values should be unified with the server browser threshold check and filters .conf 4F6F41C387ADC14E
@@ -298,7 +301,7 @@ class SCR_ServerBrowserEntryComponent : SCR_ListMenuEntryComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Create property images based on room setup
+	//! Create property images based on room setup
 	protected void DisplayServerProperties()
 	{
 		// Check states
@@ -371,8 +374,10 @@ class SCR_ServerBrowserEntryComponent : SCR_ListMenuEntryComponent
 	//------------------------------------------------------------------------------------------------
 	// Public
 	//------------------------------------------------------------------------------------------------
+
 	//------------------------------------------------------------------------------------------------
 	//! Set room and display room info in entry
+	//! \param[in] room
 	void SetRoomInfo(Room room)
 	{
 		m_RoomInfo = room;
@@ -406,7 +411,8 @@ class SCR_ServerBrowserEntryComponent : SCR_ListMenuEntryComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Set button visuals and behavior
+	//! Set button visuals and behaviour
+	//! \param[in] enable
 	void EmptyVisuals(bool enable)
 	{
 		m_wHorizontalContent.SetVisible(!enable);
@@ -414,6 +420,7 @@ class SCR_ServerBrowserEntryComponent : SCR_ListMenuEntryComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] modsManager
 	void SetModsManager(SCR_RoomModsManager modsManager)
 	{
 		m_ModsManager = modsManager;
@@ -426,18 +433,23 @@ class SCR_ServerBrowserEntryComponent : SCR_ListMenuEntryComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	Room GetRoomInfo()
 	{
 		return m_RoomInfo;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetIsModded()
 	{
 		return m_iProperties & SCR_EServerEntryProperty.MODDED;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[out] versionMismatch
+	//! \param[out] unjoinable
+	//! \return
 	bool GetIsEnabled(out bool versionMismatch, out bool unjoinable)
 	{
 		versionMismatch = m_iProperties & SCR_EServerEntryProperty.VERSION_MISMATCH;
@@ -446,7 +458,6 @@ class SCR_ServerBrowserEntryComponent : SCR_ListMenuEntryComponent
 	}
 }
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
 class ServerBrowserEntryProperty
 {
@@ -463,13 +474,12 @@ class ServerBrowserEntryProperty
 	ref Color m_Color;
 }
 
-//------------------------------------------------------------------------------------------------
 enum SCR_EServerEntryProperty
 {
-	VERSION_MISMATCH = 1<<0,
-	PASSWORD_PROTECTED = 1<<1,
-	CROSS_PLATFORM = 1<<2,
-	LAN = 1<<3,
-	MODDED = 1<<4,
-	UNJOINABLE = 1<<5
+	VERSION_MISMATCH	= 1 << 0,
+	PASSWORD_PROTECTED	= 1 << 1,
+	CROSS_PLATFORM		= 1 << 2,
+	LAN					= 1 << 3,
+	MODDED				= 1 << 4,
+	UNJOINABLE			= 1 << 5,
 }

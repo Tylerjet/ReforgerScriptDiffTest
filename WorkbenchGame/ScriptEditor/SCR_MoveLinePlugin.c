@@ -1,3 +1,4 @@
+#ifdef WORKBENCH
 [WorkbenchPluginAttribute(name: "Move Line Up", shortcut: "Alt+Up", wbModules: { "ScriptEditor" }, category: "Move Line", awesomeFontCode: 0xF062)]
 class SCR_MoveLineUpPlugin : WorkbenchPlugin
 {
@@ -53,6 +54,9 @@ class SCR_MoveLineDownPlugin : WorkbenchPlugin
 class SCR_MoveLineDownPluginHelper
 {
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in,out] lineAbove
+	//! \param[in,out] lineBelow
 	static void IndentChange(inout string lineAbove, inout string lineBelow)
 	{
 		int tabsDiffAbove; // "above" and "below" are -before- change
@@ -73,3 +77,4 @@ class SCR_MoveLineDownPluginHelper
 			lineAbove = lineAbove.Substring(1, lineAbove.Length() - 1);
 	}
 }
+#endif // WORKBENCH

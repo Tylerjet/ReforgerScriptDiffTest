@@ -1,4 +1,3 @@
-#include "scripts/Game/config.c"
 class SCR_HintUIComponent: ScriptedWidgetComponent
 {
 	[Attribute()]
@@ -67,6 +66,10 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 	protected bool m_bMenuScanned;
 	protected Widget m_VisibilitySelector;
 	
+	protected bool m_bIsHintShown;
+	protected ref ScriptInvokerBool m_OnHintShown;
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnHintShow(SCR_HintUIInfo info, bool isSilent)
 	{
 		//--- When part of a menu, check if the menu is focused
@@ -77,6 +80,11 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 		}
 		
 		m_Widget.SetVisible(true);
+
+		if (m_OnHintShown)
+			m_OnHintShown.Invoke(true);
+
+		m_bIsHintShown = true;
 
 		if (m_Widget.IsVisibleInHierarchy() && info && info.HasDescription() && (!m_Menu || m_Menu.IsFocused()))
 		{
@@ -113,20 +121,6 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 			
 			float startvalue;
 			int duration;
-			#ifndef AR_HINT_UI_TIMESTAMP
-			int timeDifferenceFromStart = Replication.Time() - info.GetTimeStarted();
-			
-			if (info.GetTimeStarted() == -1 || Replication.Time() == info.GetTimeStarted() || info.GetDuration() == -1 || !info.IsTimerVisible())
-			{
-				startvalue = 1;
-				duration = info.GetDuration();
-			}
-			else	
-			{
- 				startvalue = 1 - timeDifferenceFromStart / info.GetDuration() / 1000;
-				duration = info.GetDuration() - timeDifferenceFromStart / 1000;
-			}
-			#else
 			ChimeraWorld world = GetGame().GetWorld();
 			WorldTimestamp currentTime = world.GetServerTimestamp();
 			if (info.GetTimeStarted() != 0 || currentTime == info.GetTimeStarted() || info.GetDuration() == -1 || !info.IsTimerVisible())
@@ -140,7 +134,6 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
  				startvalue = 1 - timeDifferenceFromStart / info.GetDuration() / 1000;
 				duration = info.GetDuration() - timeDifferenceFromStart / 1000;
 			}
-			#endif
 			
 			if (info.IsTimerVisible() && m_TimeWidget)
 			{
@@ -180,6 +173,8 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 			OnHintHide(info, isSilent);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnHintHide(SCR_HintUIInfo info, bool isSilent)
 	{
 		AnimateWidget.Opacity(m_Widget, 0, UIConstants.FADE_RATE_DEFAULT, true);
@@ -192,7 +187,14 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 					hightlightWidget.RemoveFromHierarchy();
 			}
 		}
+
+		if (m_OnHintShown)
+			m_OnHintShown.Invoke(false);
+
+		m_bIsHintShown = false;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void CreateHighlights(SCR_HintUIInfo info)
 	{
 		if (!m_HighlightParentWidget && m_sHighlightParentWidgetName)
@@ -208,6 +210,8 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 				m_aHighlightWidgets.Insert(hightlightWidget);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool OnClick(Widget w, int x, int y, int button)
 	{
 		if (SCR_WidgetTools.InHierarchy(w, m_ToggleButtonWidget))
@@ -225,6 +229,7 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 		return false;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//--- Refresh hint, as it sometimes uses device-specific lines
 	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
@@ -233,6 +238,7 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 			hintManager.Refresh();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		m_Widget = w;
@@ -283,6 +289,8 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 		
 		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
@@ -294,4 +302,19 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 		hintManager.GetOnHintShow().Remove(OnHintShow);
 		hintManager.GetOnHintHide().Remove(OnHintHide);
 	}
-};
+
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerBool GetOnHintShown()
+	{
+		if (!m_OnHintShown)
+			m_OnHintShown = new ScriptInvokerBool();
+
+		return m_OnHintShown;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool IsHintShown()
+	{
+		return m_bIsHintShown;
+	}
+}

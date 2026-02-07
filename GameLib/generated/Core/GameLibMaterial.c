@@ -11,7 +11,6 @@ Do not modify, this script is generated
 
 sealed class GameLibMaterial: SurfaceProperties
 {
-	proto external ContactSurface GetVehicleInfo();
 }
 
 /*!

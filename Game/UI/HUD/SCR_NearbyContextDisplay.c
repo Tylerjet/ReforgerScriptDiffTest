@@ -1,3 +1,5 @@
+#define DEBUG_NEARBY_CONTEXT_DISPLAY
+
 //------------------------------------------------------------------------------------------------
 class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 {
@@ -137,8 +139,9 @@ class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 	//------------------------------------------------------------------------------------------------
 	override void DisplayUpdate(IEntity owner, float timeSlice)
 	{
+		bool bCameraActive = m_CameraHandler && m_CameraHandler.IsCameraActive();
 		// m_pInteractionHandlerComponent.SetNearbyCollectionEnabled(true);
-		if (!m_pInteractionHandlerComponent.GetNearbyCollectionEnabled())
+		if (!m_pInteractionHandlerComponent.GetNearbyCollectionEnabled() || !bCameraActive)
 		{
 			// Were we drawing something?
 			// If yes, then disable all
@@ -174,7 +177,13 @@ class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 		if (cameraManager)
 		{
 			CameraBase camera = cameraManager.CurrentCamera();
-			if (camera)
+			
+			#ifdef DEBUG_NEARBY_CONTEXT_DISPLAY
+			if(camera.GetProjType() == CameraType.NONE)
+				Print(string.Format("%1 [DisplayUpdate] None Projection", this));
+			#endif	
+			
+			if (camera && camera.GetProjType() != CameraType.NONE)
 				zoom = fovBase / Math.Max(camera.GetVerticalFOV(), 1);
 		}
 		float distanceLimit =  m_fWidgetMaximumRange * zoom;

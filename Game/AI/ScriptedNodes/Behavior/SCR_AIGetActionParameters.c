@@ -111,7 +111,7 @@ class SCR_AIGetDefendBehaviorParameters : SCR_AIGetActionParameters
 
 class SCR_AIGetAttackBehaviorParameters : SCR_AIGetActionParameters
 {
-	static ref TStringArray s_aVarsOut = (new SCR_AIAttackBehavior(null, null, null, vector.Zero)).GetPortNames();
+	static ref TStringArray s_aVarsOut = (new SCR_AIAttackBehavior(null, null, null, null)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
 	override bool VisibleInPalette() { return true; }
@@ -207,10 +207,10 @@ class SCR_AIGetRetreatWhileLookAtBehaviorParameters : SCR_AIGetActionParameters
 	
 	override bool VisibleInPalette() { return true; }
 };
-class SCR_AIGetThrowGrenadeBehaviorParameters : SCR_AIGetActionParameters
+class SCR_AIGetThrowGrenadeToBehaviorParameters : SCR_AIGetActionParameters
 {
-	static ref TStringArray s_aVarsOut = (new SCR_AIThrowGrenadeToBehavior(null, null, vector.Zero)).GetPortNames();
-	override TStringArray GetVariablesOut() { return s_aVarsOut; }
+	static ref TStringArray s_aVarsOut = (new SCR_AIThrowGrenadeToBehavior(null, null, vector.Zero, EWeaponType.WT_NONE, 0)).GetPortNames();
 	
+	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	override bool VisibleInPalette() { return true; }
 };

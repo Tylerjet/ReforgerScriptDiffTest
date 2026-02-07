@@ -1,7 +1,5 @@
 class SCR_WorkshopAddonBarComponent : SCR_ScriptedWidgetComponent
 {
-	protected const ResourceName ADDON_BAR_ICON_LAYOUT = "{9B80BD4A534C651C}UI/layouts/Menus/ContentBrowser/AddonManager/AddonBar/AddonBarIcon.layout";
-
 	protected ref SCR_WorkshopAddonBarWidgets m_Widgets = new SCR_WorkshopAddonBarWidgets();
 
 	[Attribute("20", UIWidgets.EditBox, desc: "After how many character should be display preset name cut")]
@@ -10,8 +8,10 @@ class SCR_WorkshopAddonBarComponent : SCR_ScriptedWidgetComponent
 	protected static SCR_ConfigurableDialogUi m_FailDialog;
 
 	protected ref SCR_AddonPatchSizeLoader m_Loader = new SCR_AddonPatchSizeLoader();
-	SCR_LoadingOverlayDialog m_LoadingOverlay;
+	protected SCR_LoadingOverlayDialog m_LoadingOverlay;
 
+	protected const int UPDATE_DELAY = 250;
+	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
@@ -33,16 +33,13 @@ class SCR_WorkshopAddonBarComponent : SCR_ScriptedWidgetComponent
 
 		UpdateAllWidgets();
 
-		m_Widgets.m_PresetsButtonComponent.GetButton().m_OnClicked.Insert(OnPresetsButtonClicked);
+		m_Widgets.m_PresetsButtonComponent.GetButton().m_OnClicked.Insert(SCR_CommonDialogs.CreateModPresetsDialog);
 		m_Widgets.m_UpdateButtonComponent.GetButton().m_OnClicked.Insert(OnUpdateButtonClicked);
 
-		OnFrame();
+		HandleUpdatesButton();
+		GetGame().GetCallqueue().CallLater(HandleUpdatesButton, UPDATE_DELAY, true);
 		
-		// Owner menu events
-		SCR_MenuHelper.GetOnMenuFocusGained().Insert(OnMenuEnabled);
-		SCR_MenuHelper.GetOnMenuOpen().Insert(OnMenuEnabled);
-		SCR_MenuHelper.GetOnMenuFocusLost().Insert(OnMenuDisabled);
-		SCR_MenuHelper.GetOnMenuClose().Insert(OnMenuDisabled);
+		SCR_MenuHelper.GetOnMenuOpen().Insert(OnMenuShow);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -54,18 +51,22 @@ class SCR_WorkshopAddonBarComponent : SCR_ScriptedWidgetComponent
 
 		if (mgr)
 			SCR_AddonManager.GetInstance().m_OnAddonsEnabledChanged.Remove(Callback_OnAddonsEnabledChanged);
-
-		ChimeraMenuBase menu = ChimeraMenuBase.GetOwnerMenu(w);
-		if (menu)
-			menu.m_OnUpdate.Remove(OnFrame);
 		
-		// Owner menu events
-		SCR_MenuHelper.GetOnMenuFocusGained().Remove(OnMenuEnabled);
-		SCR_MenuHelper.GetOnMenuOpen().Remove(OnMenuEnabled);
-		SCR_MenuHelper.GetOnMenuFocusLost().Remove(OnMenuDisabled);
-		SCR_MenuHelper.GetOnMenuClose().Remove(OnMenuDisabled);
+		if (m_LoadingOverlay)
+			m_LoadingOverlay.Close();
+		
+		GetGame().GetCallqueue().Remove(HandleUpdatesButton);
+		
+		SCR_MenuHelper.GetOnMenuOpen().Remove(OnMenuShow);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	protected void OnMenuShow(ChimeraMenuBase menu)
+	{
+		if (ChimeraMenuBase.GetOwnerMenu(m_wRoot) == menu)
+			HandleUpdatesButton();
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	protected void Callback_OnAddonsEnabledChanged()
 	{
@@ -93,14 +94,7 @@ class SCR_WorkshopAddonBarComponent : SCR_ScriptedWidgetComponent
 
 		// Mod count text
 		int nAddonsEnabled = SCR_AddonManager.CountItemsBasic(SCR_AddonManager.GetInstance().GetOfflineAddons(), EWorkshopItemQuery.ENABLED);
-		m_Widgets.m_PresetsButtonComponent.SetVisible(nAddonsEnabled > 0);
 		m_Widgets.m_PresetsButtonComponent.SetCountText(nAddonsEnabled.ToString());
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnPresetsButtonClicked()
-	{
-		GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.AddonsToolsMenu);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -130,7 +124,8 @@ class SCR_WorkshopAddonBarComponent : SCR_ScriptedWidgetComponent
 	{
 		// Cleanup
 		m_Loader.GetOnAllPatchSizeLoaded().Remove(OnUpdatePatchSizeLoaded);
-		m_LoadingOverlay.Close();
+		if (m_LoadingOverlay)
+			m_LoadingOverlay.Close();
 
 		SCR_AddonManager mgr = SCR_AddonManager.GetInstance();
 		array<ref SCR_WorkshopItem> addonsOutdated = SCR_AddonManager.SelectItemsBasic(mgr.GetOfflineAddons(), EWorkshopItemQuery.UPDATE_AVAILABLE);
@@ -143,24 +138,41 @@ class SCR_WorkshopAddonBarComponent : SCR_ScriptedWidgetComponent
 
 		}
 
-		SCR_AddonUpdateConfirmationDialog.CreateForUpdates(addonsAndVersions, false);
+		SCR_AddonUpdateConfirmationDialog dialog = SCR_AddonUpdateConfirmationDialog.CreateForUpdates(addonsAndVersions, false);
+		if (dialog)
+			dialog.m_OnClose.Insert(OnAddonUpdateDialogClose);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnFrame()
+	protected void OnAddonUpdateDialogClose(SCR_ConfigurableDialogUi dialog)
 	{
-		SCR_AddonManager mgr = SCR_AddonManager.GetInstance();
-		if (!mgr)
+		HandleUpdatesButton();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void HandleUpdatesButton()
+	{
+		if (!SCR_MenuHelper.IsInTopMenu(GetRootWidget()))
+		{
+			m_Widgets.m_UpdateButtonComponent.SetVisible(false);
 			return;
+		}
+		
+		SCR_AddonManager mgr = SCR_AddonManager.GetInstance();
+		array<ref SCR_WorkshopItem> addonsOutdated = SCR_AddonManager.SelectItemsBasic(mgr.GetOfflineAddons(), EWorkshopItemQuery.UPDATE_AVAILABLE);
 
-		int nOutdated = mgr.GetCountAddonsOutdated();
+		int nOutdated;
+		
+		foreach (SCR_WorkshopItem item : addonsOutdated)
+		{
+			if (!item.IsDownloadRunning())
+				nOutdated++;
+		}
 
 		m_Widgets.m_UpdateButtonComponent.SetVisible(nOutdated > 0);
 
 		if (nOutdated > 0)
-		{
 			m_Widgets.m_UpdateButtonComponent.SetCountText(nOutdated.ToString());
-		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -198,22 +210,5 @@ class SCR_WorkshopAddonBarComponent : SCR_ScriptedWidgetComponent
 		m_FailDialog.Close();
 		m_FailDialog = null;
 		SCR_DownloadManager.GetInstance().ClearFailedDownloads();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnMenuEnabled(ChimeraMenuBase menu)
-	{
-		if (menu == ChimeraMenuBase.GetOwnerMenu(GetRootWidget()))
-		{
-			menu.m_OnUpdate.Remove(OnFrame);
-			menu.m_OnUpdate.Insert(OnFrame);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnMenuDisabled(ChimeraMenuBase menu)
-	{
-		if (menu == ChimeraMenuBase.GetOwnerMenu(GetRootWidget()))
-			menu.m_OnUpdate.Remove(OnFrame);
 	}
 }

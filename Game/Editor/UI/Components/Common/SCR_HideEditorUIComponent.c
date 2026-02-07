@@ -1,6 +1,6 @@
-/** @ingroup Editor_UI Editor_UI_Components
-*/
-class SCR_HideEditorUIComponent: SCR_BaseEditorUIComponent
+//! @ingroup Editor_UI Editor_UI_Components
+
+class SCR_HideEditorUIComponent : SCR_BaseEditorUIComponent
 {
 	[Attribute("10", UIWidgets.Auto, "Speed of smooth transition between visible and hidden state.")]
 	protected float m_fTransitionSpeed;
@@ -11,17 +11,17 @@ class SCR_HideEditorUIComponent: SCR_BaseEditorUIComponent
 	protected SCR_MenuEditorComponent m_EditorMenuManager;
 	protected float m_fTargetOpacity = 1;
 	protected bool m_bInTransition;
-	protected ref ScriptInvoker Event_OnOpacityChange = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnOpacityChange;
 	
-	/*!
-	Set widget visibility.
-	\param visible True when visible
-	\param instant True to set visibility instantly, false to animate it
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Set widget visibility.
+	//! \param[in] visible True when visible
+	//! \param[in] instant True to set visibility instantly, false to animate it
 	void SetVisible(bool visible, bool instant = false)
 	{
 		Widget widget = GetWidget();
-		if (!widget) return;
+		if (!widget)
+			return;
 		
 		widget.SetEnabled(visible);
 		
@@ -35,12 +35,14 @@ class SCR_HideEditorUIComponent: SCR_BaseEditorUIComponent
 		else
 			m_bInTransition = true;
 	}
-	/*!
-	Get event invoker every time opacity changes.
-	\return Script invoker
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \return event invoker every time opacity changes.
 	ScriptInvoker GetOnOpacityChange()
 	{
+		if (!Event_OnOpacityChange)
+			Event_OnOpacityChange = new ScriptInvoker();
+
 		return Event_OnOpacityChange;
 	}
 	
@@ -58,27 +60,31 @@ class SCR_HideEditorUIComponent: SCR_BaseEditorUIComponent
 			m_EditorMenuManager.SetVisible(visible);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void SetWidgetOpacity(Widget widget, float opacity)
 	{
-		if (widget) widget.SetOpacity(opacity);
-		Event_OnOpacityChange.Invoke(opacity);
+		if (widget)
+			widget.SetOpacity(opacity);
+
+		if (Event_OnOpacityChange)
+			Event_OnOpacityChange.Invoke(opacity);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnMenuUpdate(float tDelta)
 	{
 		Widget widget = GetWidget();
-		if (!widget) return;
+		if (!widget)
+			return;
 		
-		/*
 		//--- Disabled, handled by SCR_ToggleInterfaceToolbarAction now
-		if (m_InputManager.GetActionTriggered("EditorToggleUI"))
-		{
-			if (m_EditorMenuManager)
-				m_EditorMenuManager.ToggleVisible();
-			else
-				SetVisible(!widget.IsEnabled());
-		}
-		*/
+//		if (m_InputManager.GetActionTriggered("EditorToggleUI"))
+//		{
+//			if (m_EditorMenuManager)
+//				m_EditorMenuManager.ToggleVisible();
+//			else
+//				SetVisible(!widget.IsEnabled());
+//		}
 		
 		if (m_bInTransition)
 		{
@@ -92,17 +98,24 @@ class SCR_HideEditorUIComponent: SCR_BaseEditorUIComponent
 			SetWidgetOpacity(widget, Math.Lerp(opacity, m_fTargetOpacity, m_fTransitionSpeed * tDelta));
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnMenuInit()
 	{
-		if (m_EditorMenuManager) SetVisible(m_EditorMenuManager.IsVisible(), true);
+		if (m_EditorMenuManager)
+			SetVisible(m_EditorMenuManager.IsVisible(), true);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttachedScripted(Widget w)
 	{
 		super.HandlerAttachedScripted(w);
-		if (SCR_Global.IsEditMode()) return; //--- Run-time only
+		if (SCR_Global.IsEditMode())
+			return; //--- Run-time only
 		
 		MenuRootBase menu = GetMenu();
-		if (!menu) return;
+		if (!menu)
+			return;
 
 		OnMenuInit();
 		menu.GetOnMenuInit().Insert(OnMenuInit);
@@ -113,12 +126,14 @@ class SCR_HideEditorUIComponent: SCR_BaseEditorUIComponent
 		InputManager inputManager = GetGame().GetInputManager();
 		if (inputManager)
 		{
-			for (int i, count = m_aShowActions.Count(); i < count; i++)
+			foreach (string showAction : m_aShowActions)
 			{
-				inputManager.AddActionListener(m_aShowActions[i], EActionTrigger.DOWN, Show);
+				inputManager.AddActionListener(showAction, EActionTrigger.DOWN, Show);
 			}
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
@@ -126,10 +141,10 @@ class SCR_HideEditorUIComponent: SCR_BaseEditorUIComponent
 		InputManager inputManager = GetGame().GetInputManager();
 		if (inputManager)
 		{
-			for (int i, count = m_aShowActions.Count(); i < count; i++)
+			foreach (string showAction : m_aShowActions)
 			{
-				inputManager.RemoveActionListener(m_aShowActions[i], EActionTrigger.DOWN, Show);
+				inputManager.RemoveActionListener(showAction, EActionTrigger.DOWN, Show);
 			}
 		}
 	}
-};
+}

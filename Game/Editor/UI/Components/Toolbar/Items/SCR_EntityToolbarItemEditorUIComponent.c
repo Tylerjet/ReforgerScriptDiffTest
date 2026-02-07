@@ -1,4 +1,4 @@
-class SCR_EntityToolbarItemEditorUIComponent: SCR_BaseToolbarItemEditorUIComponent
+class SCR_EntityToolbarItemEditorUIComponent : SCR_BaseToolbarItemEditorUIComponent
 {
 	[Attribute()]
 	protected string m_sIconWidgetName;
@@ -9,10 +9,15 @@ class SCR_EntityToolbarItemEditorUIComponent: SCR_BaseToolbarItemEditorUICompone
 	protected SCR_EditableEntityComponent m_Entity;
 	protected TextWidget m_NameWidget;
 	
+	//------------------------------------------------------------------------------------------------
 	override void InitToolbarItem(Widget widget)
 	{	
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] entity
+	//! \param[in] widget
+	//! \param[in] slotManager
 	void SetEntity(SCR_EditableEntityComponent entity, Widget widget, SCR_EditableEntitySlotManagerUIComponent slotManager)
 	{
 		if (slotManager)
@@ -22,9 +27,7 @@ class SCR_EntityToolbarItemEditorUIComponent: SCR_BaseToolbarItemEditorUICompone
 			{
 				SCR_EditableEntityBaseSlotUIComponent slot = SCR_EditableEntityBaseSlotUIComponent.Cast(slotWidget.FindHandler(SCR_EditableEntityBaseSlotUIComponent));
 				if (slot)
-				{
 					slotManager.InsertSlotExternal(entity, slot);
-				}
 			}
 		}
 		else
@@ -50,6 +53,8 @@ class SCR_EntityToolbarItemEditorUIComponent: SCR_BaseToolbarItemEditorUICompone
 			}
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void SetName(SCR_EditableEntityComponent entity)
 	{
 		int playerID = entity.GetPlayerID();
@@ -64,10 +69,14 @@ class SCR_EntityToolbarItemEditorUIComponent: SCR_BaseToolbarItemEditorUICompone
 				info.SetNameTo(m_NameWidget);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void RefreshName()
 	{
 		SetName(m_Entity);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
@@ -75,4 +84,4 @@ class SCR_EntityToolbarItemEditorUIComponent: SCR_BaseToolbarItemEditorUICompone
 		if (m_Entity)
 			m_Entity.GetOnUIRefresh().Remove(RefreshName);
 	}
-};
+}

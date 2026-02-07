@@ -1,59 +1,60 @@
-//------------------------------------------------------------------------------------------------
 class SCR_ScenarioFrameworkParamBase
 {
-};
+}
 
 class SCR_ScenarioFrameworkParam<Class T> : SCR_ScenarioFrameworkParamBase
 {
 	T m_Value;
-	
+
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	T GetValue()
 	{
-		return m_Value;	
+		return m_Value;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] value
 	void SCR_ScenarioFrameworkParam(T value)
 	{
 		m_Value = value;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ScenarioFrameworkGet
 {
-	protected SCR_ScenarioFrameworkParamBase m_Value;
-	
+	SCR_ScenarioFrameworkParamBase m_Value;
+
 	//------------------------------------------------------------------------------------------------
-	protected void SetValue(SCR_ScenarioFrameworkParamBase value) 
+	//! \param[in] value
+	void SetValue(SCR_ScenarioFrameworkParamBase value)
 	{
 		m_Value = value;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_ScenarioFrameworkParamBase Get()
-	{ 
-		return m_Value; 
+	{
+		return m_Value;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] name
+	//! \return
 	IEntity FindEntityByName(string name)
 	{
-		if (!GetGame().GetWorld())
-			return null;
-		
 		IEntity entity = GetGame().GetWorld().FindEntityByName(name);
 		if (!entity)
 			return null;
-	
+
 		return entity;
 	}
-};
+}
 
-
-//------------------------------------------------------------------------------------------------
 //[BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ScenarioFrameworkGetLastFinishedTaskLayer : SCR_ScenarioFrameworkGet
 {
@@ -63,12 +64,11 @@ class SCR_ScenarioFrameworkGetLastFinishedTaskLayer : SCR_ScenarioFrameworkGet
 		SCR_GameModeSFManager gameModeManager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
 		if (!gameModeManager)
 			return null;
-		
+
 		return new SCR_ScenarioFrameworkParam<SCR_ScenarioFrameworkLayerTask>(SCR_ScenarioFrameworkLayerTask.Cast(gameModeManager.GetLastFinishedTaskLayer()));
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ScenarioFrameworkGetLastFinishedTaskEnity : SCR_ScenarioFrameworkGet
 {
@@ -78,73 +78,51 @@ class SCR_ScenarioFrameworkGetLastFinishedTaskEnity : SCR_ScenarioFrameworkGet
 		SCR_GameModeSFManager gameModeManager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
 		if (!gameModeManager)
 			return null;
-		
+
 		return new SCR_ScenarioFrameworkParam<IEntity>(gameModeManager.GetLastFinishedTask());
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_ContainerActionTitle()]
-class SCR_ScenarioFrameworkGetEntityByName: SCR_ScenarioFrameworkGet
+class SCR_ScenarioFrameworkGetEntityByName : SCR_ScenarioFrameworkGet
 {
 	[Attribute()]
-	protected string 		m_sEntityName;
-	
+	string 		m_sEntityName;
+
 	//------------------------------------------------------------------------------------------------
 	override SCR_ScenarioFrameworkParamBase Get()
 	{
-		if (!GetGame().GetWorld())
-			return null;
-		
 		return new SCR_ScenarioFrameworkParam<IEntity>(GetGame().GetWorld().FindEntityByName(m_sEntityName));
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_ContainerActionTitle()]
-class SCR_ScenarioFrameworkGetSpawnedEntity: SCR_ScenarioFrameworkGet
+class SCR_ScenarioFrameworkGetSpawnedEntity : SCR_ScenarioFrameworkGet
 {
 	[Attribute()]
-	protected string 		m_sLayerName;
-	
+	string 		m_sLayerName;
+
 	//------------------------------------------------------------------------------------------------
 	override SCR_ScenarioFrameworkParamBase Get()
 	{
 		IEntity entity = FindEntityByName(m_sLayerName);
+		if (!entity)
+			return null;
+		
 		SCR_ScenarioFrameworkLayerBase layer = SCR_ScenarioFrameworkLayerBase.Cast(entity.FindComponent(SCR_ScenarioFrameworkLayerBase));
 		if (!layer)
 			return null;
-		
+
 		return new SCR_ScenarioFrameworkParam<IEntity>(layer.GetSpawnedEntity());
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_ContainerActionTitle()]
-class SCR_ScenarioFrameworkGetTask: SCR_ScenarioFrameworkGet
+class SCR_ScenarioFrameworkGetTask : SCR_ScenarioFrameworkGet
 {
 	[Attribute()]
-	protected string 		m_sLayerTaskName;
-	
-	//------------------------------------------------------------------------------------------------
-	override SCR_ScenarioFrameworkParamBase Get()
-	{
-		IEntity entity = FindEntityByName(m_sLayerTaskName);
-		SCR_ScenarioFrameworkLayerTask layer = SCR_ScenarioFrameworkLayerTask.Cast(entity.FindComponent(SCR_ScenarioFrameworkLayerTask));
-		if (!layer)
-			return null;
-		
-		return new SCR_ScenarioFrameworkParam<IEntity>(layer.GetTask());
-	}
-};
+	string 		m_sLayerTaskName;
 
-//------------------------------------------------------------------------------------------------
-[BaseContainerProps(), SCR_ContainerActionTitle()]
-class SCR_ScenarioFrameworkGetLayerTask: SCR_ScenarioFrameworkGet
-{
-	[Attribute()]
-	protected string 		m_sLayerTaskName;
-	
 	//------------------------------------------------------------------------------------------------
 	override SCR_ScenarioFrameworkParamBase Get()
 	{
@@ -156,139 +134,173 @@ class SCR_ScenarioFrameworkGetLayerTask: SCR_ScenarioFrameworkGet
 		if (!layer)
 			return null;
 
-		return new SCR_ScenarioFrameworkParam<IEntity>(entity);
+		return new SCR_ScenarioFrameworkParam<IEntity>(layer.GetTask());
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_ContainerActionTitle()]
-class SCR_ScenarioFrameworkGetLayerBase: SCR_ScenarioFrameworkGet
+class SCR_ScenarioFrameworkGetLayerTask : SCR_ScenarioFrameworkGet
 {
 	[Attribute()]
-	protected string 		m_sLayerBaseName;
-	
+	string 		m_sLayerTaskName;
+
+	//------------------------------------------------------------------------------------------------
+	override SCR_ScenarioFrameworkParamBase Get()
+	{
+		IEntity entity = FindEntityByName(m_sLayerTaskName);
+		if (!entity)
+			return null;
+
+		SCR_ScenarioFrameworkLayerTask layer = SCR_ScenarioFrameworkLayerTask.Cast(entity.FindComponent(SCR_ScenarioFrameworkLayerTask));
+		if (!layer)
+			return null;
+
+		return new SCR_ScenarioFrameworkParam<IEntity>(entity);
+	}
+}
+
+[BaseContainerProps(), SCR_ContainerActionTitle()]
+class SCR_ScenarioFrameworkGetLayerBase : SCR_ScenarioFrameworkGet
+{
+	[Attribute()]
+	string 		m_sLayerBaseName;
+
 	//------------------------------------------------------------------------------------------------
 	override SCR_ScenarioFrameworkParamBase Get()
 	{
 		IEntity entity = FindEntityByName(m_sLayerBaseName);
 		if (!entity)
 			return null;
-		
+
 		SCR_ScenarioFrameworkLayerBase layer = SCR_ScenarioFrameworkLayerBase.Cast(entity.FindComponent(SCR_ScenarioFrameworkLayerBase));
 		if (!layer)
 			return null;
 
 		return new SCR_ScenarioFrameworkParam<IEntity>(entity);
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_ContainerActionTitle()]
-class SCR_ScenarioFrameworkGetArea: SCR_ScenarioFrameworkGet
+class SCR_ScenarioFrameworkGetRandomLayerBase : SCR_ScenarioFrameworkGet
+{
+	[Attribute(defvalue: "", UIWidgets.EditComboBox, desc: "From this list, random layer will be selected")]
+	ref array<string> 	m_aNameOfLayers;
+
+	//------------------------------------------------------------------------------------------------
+	override SCR_ScenarioFrameworkParamBase Get()
+	{
+		if (m_aNameOfLayers.IsEmpty())
+			return null;
+
+		Math.Randomize(-1);
+		string selectedLayer = m_aNameOfLayers.GetRandomElement();
+
+		IEntity entity = FindEntityByName(selectedLayer);
+		if (!entity)
+			return null;
+
+		SCR_ScenarioFrameworkLayerBase layer = SCR_ScenarioFrameworkLayerBase.Cast(entity.FindComponent(SCR_ScenarioFrameworkLayerBase));
+		if (!layer)
+			return null;
+
+		return new SCR_ScenarioFrameworkParam<IEntity>(entity);
+	}
+}
+
+[BaseContainerProps(), SCR_ContainerActionTitle()]
+class SCR_ScenarioFrameworkGetArea : SCR_ScenarioFrameworkGet
 {
 	[Attribute()]
-	protected string 		m_sAreaName;
-	
+	string 		m_sAreaName;
+
 	//------------------------------------------------------------------------------------------------
 	override SCR_ScenarioFrameworkParamBase Get()
 	{
 		IEntity entity = FindEntityByName(m_sAreaName);
 		if (!entity)
 			return null;
-		
+
 		SCR_ScenarioFrameworkArea area = SCR_ScenarioFrameworkArea.Cast(entity.FindComponent(SCR_ScenarioFrameworkArea));
 		if (!area)
 			return null;
 
 		return new SCR_ScenarioFrameworkParam<IEntity>(entity);
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_ContainerActionTitle()]
-class SCR_ScenarioFrameworkGetAreaTrigger: SCR_ScenarioFrameworkGet
+class SCR_ScenarioFrameworkGetAreaTrigger : SCR_ScenarioFrameworkGet
 {
 	[Attribute()]
-	protected string 		m_sAreaName;
-	
+	string 		m_sAreaName;
+
 	//------------------------------------------------------------------------------------------------
 	override SCR_ScenarioFrameworkParamBase Get()
 	{
 		IEntity entity = FindEntityByName(m_sAreaName);
 		if (!entity)
 			return null;
-		
+
 		SCR_ScenarioFrameworkArea area = SCR_ScenarioFrameworkArea.Cast(entity.FindComponent(SCR_ScenarioFrameworkArea));
 		if (!area)
 			return null;
-		
+
 		SCR_CharacterTriggerEntity trigger = SCR_CharacterTriggerEntity.Cast(area.GetTrigger());
 		if (!trigger)
 			return null;
 
 		return new SCR_ScenarioFrameworkParam<IEntity>(entity);
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ScenarioFrameworkGetListEntitiesInTrigger : SCR_ScenarioFrameworkGet
 {
 	[Attribute()]
-	protected string 		m_sTriggerName;
+	string 		m_sTriggerName;
 	
+	ref array<IEntity> m_aEntities = {};
+
 	//------------------------------------------------------------------------------------------------
 	override SCR_ScenarioFrameworkParamBase Get()
 	{
-		if (!GetGame().GetWorld())
-			return null;
-			
-		array<IEntity> aEntities = {};
-		GetEntitiesInTrigger(aEntities);
+		GetEntitiesInTrigger(m_aEntities);
 
-		return new SCR_ScenarioFrameworkParam<array<IEntity>>(aEntities);
+		return new SCR_ScenarioFrameworkParam<array<IEntity>>(m_aEntities);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	protected void GetEntitiesInTrigger(out notnull array<IEntity> aEntities)
+	//! \param[out] aEntities
+	void GetEntitiesInTrigger(out notnull array<IEntity> aEntities)
 	{
 		BaseGameTriggerEntity trigger = BaseGameTriggerEntity.Cast(GetGame().GetWorld().FindEntityByName(m_sTriggerName));
 		if (!trigger)
 			return;
-		
-		trigger.GetEntitiesInside(aEntities);	
-	}
-};
 
-//------------------------------------------------------------------------------------------------
+		trigger.GetEntitiesInside(aEntities);
+	}
+}
+
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ScenarioFrameworkGetCountEntitiesInTrigger : SCR_ScenarioFrameworkGetListEntitiesInTrigger
 {
 	//------------------------------------------------------------------------------------------------
 	override SCR_ScenarioFrameworkParamBase Get()
 	{
-		if (!GetGame().GetWorld())
-			return null;
-		
 		array<IEntity> aEntities = {};
 		GetEntitiesInTrigger(aEntities);
-		
-		
+
 		return new SCR_ScenarioFrameworkParam<int>(aEntities.Count());
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Intended mainly for the one player scenario, because it will retrieve the first player it finds
 [BaseContainerProps(), SCR_ContainerActionTitle()]
-class SCR_ScenarioFrameworkGetPlayerEntity: SCR_ScenarioFrameworkGet
+class SCR_ScenarioFrameworkGetPlayerEntity : SCR_ScenarioFrameworkGet
 {
 	//------------------------------------------------------------------------------------------------
 	override SCR_ScenarioFrameworkParamBase Get()
 	{
-		if (!GetGame().GetWorld())
-			return null;
-		
 		array<int> playerIDs = {};
 		GetGame().GetPlayerManager().GetPlayers(playerIDs);
 		IEntity entity;
@@ -297,34 +309,30 @@ class SCR_ScenarioFrameworkGetPlayerEntity: SCR_ScenarioFrameworkGet
 			entity = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerID);
 			if (!entity)
 				continue;
-			
+
 			return new SCR_ScenarioFrameworkParam<IEntity>(entity);
 		}
-		
+
 		return null;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Gets the closest player to provided getter
 [BaseContainerProps(), SCR_ContainerActionTitle()]
-class SCR_ScenarioFrameworkGetClosestPlayerEntity: SCR_ScenarioFrameworkGet
+class SCR_ScenarioFrameworkGetClosestPlayerEntity : SCR_ScenarioFrameworkGet
 {
-	[Attribute(desc: "Closest to what - use getter")];
-	protected ref SCR_ScenarioFrameworkGet		m_Getter;
-	
+	[Attribute(desc: "Closest to what - use getter")]
+	ref SCR_ScenarioFrameworkGet		m_Getter;
+
 	//------------------------------------------------------------------------------------------------
 	override SCR_ScenarioFrameworkParamBase Get()
 	{
-		if (!GetGame().GetWorld())
-			return null;
-		
 		if (!m_Getter)
 		{
 			Print("ScenarioFramework: GetClosestPlayerEntity - The object the distance is calculated from is missing!", LogLevel.ERROR);
 			return null;
 		}
-		
+
 		SCR_ScenarioFrameworkParam<IEntity> entityWrapper = SCR_ScenarioFrameworkParam<IEntity>.Cast(m_Getter.Get());
 		if (!entityWrapper)
 			return null;
@@ -332,10 +340,10 @@ class SCR_ScenarioFrameworkGetClosestPlayerEntity: SCR_ScenarioFrameworkGet
 		IEntity entityFrom = IEntity.Cast(entityWrapper.GetValue());
 		if (!entityFrom)
 			return null;
-		
+
 		array<int> playerIDs = {};
 		GetGame().GetPlayerManager().GetPlayers(playerIDs);
-		
+
 		IEntity closestEntity;
 		IEntity entityToBeChecked;
 		float fDistance = float.MAX;
@@ -344,7 +352,7 @@ class SCR_ScenarioFrameworkGetClosestPlayerEntity: SCR_ScenarioFrameworkGet
 			entityToBeChecked = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerID);
 			if (!entityToBeChecked)
 				continue;
-			
+
 			float fActualDistance = vector.DistanceSqXZ(entityFrom.GetOrigin(), entityToBeChecked.GetOrigin());
 
 			if (fActualDistance < fDistance)
@@ -356,7 +364,40 @@ class SCR_ScenarioFrameworkGetClosestPlayerEntity: SCR_ScenarioFrameworkGet
 
 		if (!closestEntity)
 			return null;
-		
+
 		return new SCR_ScenarioFrameworkParam<IEntity>(closestEntity);
 	}
-};
+}
+
+[BaseContainerProps(), SCR_ContainerActionTitle()]
+class SCR_ScenarioFrameworkGetArrayOfPlayers : SCR_ScenarioFrameworkGet
+{
+	ref array<IEntity> m_aEntities = {};
+	
+	//------------------------------------------------------------------------------------------------
+	override SCR_ScenarioFrameworkParamBase Get()
+	{
+		m_aEntities.Clear();
+		GetPlayerEntities(m_aEntities);
+
+		return new SCR_ScenarioFrameworkParam<array<IEntity>>(m_aEntities);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[out] aEntities
+	void GetPlayerEntities(out notnull array<IEntity> aEntities)
+	{
+		array<int> playerIDs = {};
+		GetGame().GetPlayerManager().GetPlayers(playerIDs);
+		
+		IEntity playerEntity;
+		foreach (int playerID : playerIDs)
+		{
+			playerEntity = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerID);
+			if (!playerEntity)
+				continue;
+
+			aEntities.Insert(playerEntity);
+		}
+	}
+}

@@ -1,9 +1,8 @@
 [ComponentEditorProps(visible: false)]
-class SCR_AIInfoBaseComponentClass: ScriptComponentClass
+class SCR_AIInfoBaseComponentClass : ScriptComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Base class for AIInfoComponent and AIGroupInfoComponent
 class SCR_AIInfoBaseComponent : ScriptComponent
 {
@@ -11,24 +10,30 @@ class SCR_AIInfoBaseComponent : ScriptComponent
 	#ifdef AI_DEBUG
 	ref array<ref SCR_AIDebugMessage> m_aDebugMessages = {};
 	
-	//-------------------------------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] str
+	//! \param[in] msgType
+	//! \param[in] logLevel
 	void AddDebugMessage(string str, EAIDebugMsgType msgType = EAIDebugMsgType.NONE, LogLevel logLevel = LogLevel.NORMAL)
 	{
 		SCR_AIDebugMessage msg = new SCR_AIDebugMessage(str, msgType, logLevel);
 		AddDebugMessageObject(msg);
 	}
 	
-	//-------------------------------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] msg
 	void AddDebugMessageObject(SCR_AIDebugMessage msg)
 	{
 		m_aDebugMessages.Insert(msg);
 	}
 	
-	//-------------------------------------------------------------------------------------------------------------------------------
-	/*!
-	Dumps all debug messages of this AI.
-	ageThresholdMs - Will dump most recent messages younger than given threshold. Ignored when -1.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Dumps all debug messages of this AI.
+	//! \param[in] msgTypeFilter
+	//! \param[in] useTypeFilter
+	//! \param[in] ageThresholdMs will dump most recent messages younger than given threshold. Ignored when -1.
 	void DumpDebugMessages(EAIDebugMsgType msgTypeFilter = EAIDebugMsgType.NONE, bool useTypeFilter = false, int ageThresholdMs = -1)
 	{	
 		int idStart = 0;
@@ -69,11 +74,12 @@ class SCR_AIInfoBaseComponent : ScriptComponent
 		LogToFile("\n\n\n\n");
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void LogToFile(string msg, LogLevel logLevel = LogLevel.NORMAL)
 	{
 		Print(msg, logLevel);
 		SCR_AIDebug.DebugLog(msg, logLevel);
 	}
 	
-	#endif
-};
+	#endif // AI_DEBUG
+}

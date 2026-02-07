@@ -40,17 +40,16 @@ class SCR_NotificationMessageUIComponent: ScriptedWidgetComponent
 	protected bool m_bShowTeleportControlHint;
 	
 	//Animation speed and update	
-	const float ANIMATION_DONE_UPDATE_SPEED = 100;
-	const float FORCE_DELETE_FADE_SPEED = 3;
-	const float AUTO_FADE_SPEED = 1;
-	const float FADE_IN_SPEED = 2;
+	protected static const float ANIMATION_DONE_UPDATE_SPEED = 100;
+	protected static const float FORCE_DELETE_FADE_SPEED = 3;
+	protected static const float AUTO_FADE_SPEED = 1;
+	protected static const float FADE_IN_SPEED = 2;
 	
-	/*!
-	Init the message, setting the visuals
-	\param data the data of the notification
-	\param notificationLog a reference to the notificationLog
-	\param fadeDelay automatic fade delay of notification
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Init the message, setting the visuals
+	//! \param[in] data the data of the notification
+	//! \param[in] notificationLog a reference to the notificationLog
+	//! \param[in] fadeDelay automatic fade delay of notification
 	void Init(SCR_NotificationData data, SCR_NotificationsLogComponent notificationLog, float fadeDelay)
 	{
 		if (!m_wRoot)
@@ -67,7 +66,6 @@ class SCR_NotificationMessageUIComponent: ScriptedWidgetComponent
 		m_NotificationsLog = notificationLog;
 		
 		TextWidget notificationText = TextWidget.Cast(m_wRoot.FindAnyWidget(m_sNotificationText));
-		
 		if (!notificationText)
 			return;
 		
@@ -171,6 +169,8 @@ class SCR_NotificationMessageUIComponent: ScriptedWidgetComponent
 	}
 	
 	//======================== SET COLOR ========================\\
+
+	//------------------------------------------------------------------------------------------------
 	protected void SetWidgetColor(Color notificationColor)
 	{
 		if (!m_aColoredWidgets || m_aColoredWidgets.IsEmpty())
@@ -183,7 +183,7 @@ class SCR_NotificationMessageUIComponent: ScriptedWidgetComponent
 			Widget widget = m_wRoot.FindAnyWidget(widgetName);
 			if (widget)
 			{
-				color = notificationColor;
+				color = Color.FromInt(notificationColor.PackToInt());
 				color.SetA(widget.GetColor().A());
 				widget.SetColor(notificationColor);
 			}
@@ -191,29 +191,28 @@ class SCR_NotificationMessageUIComponent: ScriptedWidgetComponent
 	}
 	
 	//Removed for now but can be used for mods. 
-	/*protected void OnNotification(SCR_NotificationData data)
-	{
-		
-	}*/
+//	protected void OnNotification(SCR_NotificationData data)
+//	{
+//
+//	}
 	
 	//Quickly fades out notification and deletes it. Called when max notification count is reached
-	/*!
-	Delete the notification with a fast fade
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Delete the notification with a fast fade
 	void ForceRemoveNotification()
 	{
 		FadeDelete(FORCE_DELETE_FADE_SPEED);
 	}
 	
-	/*!
-	Get script invoker for when notification is deleted
-	\return ScriptInvoker Event_OnDeleted
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get script invoker for when notification is deleted
+	//! \return ScriptInvoker Event_OnDeleted
 	ScriptInvoker GetOnDeleted()
 	{
 		return Event_OnDeleted;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnNewNotificationHasPosition()
 	{		
 		if (!m_GoToControlHint || !m_GoToIndicator || !m_GoToIndicatorsHolder)
@@ -230,7 +229,7 @@ class SCR_NotificationMessageUIComponent: ScriptedWidgetComponent
 		bool isLimited = m_NotificationsLog.GetEditorManager().IsLimited();
 		
 		//Keyboard and mouse
-		if (m_NotificationsLog.GetIsUsingMouseAndKeyboard() && !isLimited)
+		if (!isLimited && m_NotificationsLog.GetIsUsingMouseAndKeyboard())
 		{
 			m_GoToControlHint.SetVisible(false);
 			m_GoToIndicator.SetVisible(true);
@@ -243,6 +242,7 @@ class SCR_NotificationMessageUIComponent: ScriptedWidgetComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void EditorOpened()
 	{	
 		bool limited = m_NotificationsLog.GetEditorManager().IsLimited();
@@ -270,6 +270,7 @@ class SCR_NotificationMessageUIComponent: ScriptedWidgetComponent
 			m_wRoot.SetEnabled(!limited);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void EditorClosed()
 	{
 		if (m_GoToControlHint)
@@ -279,11 +280,13 @@ class SCR_NotificationMessageUIComponent: ScriptedWidgetComponent
 			m_wRoot.SetEnabled(false);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnLimitedChanged(bool limited)
 	{
 		EditorOpened();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnInputDeviceChanged(bool isUsingMouseAndKeyboard)
 	{
 		bool limited = m_NotificationsLog.GetEditorManager().IsLimited();
@@ -298,6 +301,7 @@ class SCR_NotificationMessageUIComponent: ScriptedWidgetComponent
 			m_GoToIndicatorsHolder.SetVisible(isUsingMouseAndKeyboard || m_bShowTeleportControlHint)
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void TeleportToLocation()
 	{		
 		if (!m_NotificationsLog.HasNotificationInput() || !m_Data)
@@ -308,20 +312,21 @@ class SCR_NotificationMessageUIComponent: ScriptedWidgetComponent
 			return;
 		
 		vector position;
-			
 		if (m_Data.GetDisplayData().GetPosition(m_Data, position))
 		{
 			SCR_ManualCamera camera = SCR_CameraEditorComponent.GetCameraInstance();
 			if (!camera)
 				return;
+
 			SCR_TeleportToCursorManualCameraComponent cursorManualCameraComponent = SCR_TeleportToCursorManualCameraComponent.Cast(camera.FindCameraComponent(SCR_TeleportToCursorManualCameraComponent));
 			if (!cursorManualCameraComponent)
 				return;
+
 			cursorManualCameraComponent.TeleportCamera(position);
 		}
 	}
 	
-	
+	//------------------------------------------------------------------------------------------------
 	protected void FadeDelete(float fadeSpeed)
 	{
 		AnimateWidget.Opacity(m_wRoot, 0, fadeSpeed);
@@ -333,18 +338,22 @@ class SCR_NotificationMessageUIComponent: ScriptedWidgetComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void AnimationDoneListenerUpdate()
 	{
 		if (!AnimateWidget.IsAnimating(m_wRoot))
 			DeleteNotification();
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
 	void DeleteNotification()
 	{
 		if (m_wRoot)
 			m_wRoot.RemoveFromHierarchy();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void AutoFadeDelay()
 	{
 		if (m_bIsListeningToDoneFade)
@@ -353,6 +362,7 @@ class SCR_NotificationMessageUIComponent: ScriptedWidgetComponent
 		FadeDelete(AUTO_FADE_SPEED);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		if (SCR_Global.IsEditMode()) 
@@ -372,6 +382,7 @@ class SCR_NotificationMessageUIComponent: ScriptedWidgetComponent
 			teleportButton.Insert(TeleportToLocation);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{	
 		if (SCR_Global.IsEditMode()) 
@@ -396,8 +407,10 @@ class SCR_NotificationMessageUIComponent: ScriptedWidgetComponent
 			GetGame().GetCallqueue().Remove(AnimationDoneListenerUpdate);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_NotificationData GetData()
 	{
 		return m_Data;
 	}
-};
+}

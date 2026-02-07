@@ -1,9 +1,7 @@
-//------------------------------------------------------------------------------------------------
 class SCR_CampaignTutorialArlandComponentClass : SCR_BaseGameModeComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 {
 	[Attribute("", UIWidgets.ResourceNamePicker, "", "conf")]
@@ -14,7 +12,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	
 	protected static const int TARGETS_SEARCH_DISTANCE = 1500;
 	protected static const int INVALID_STANCE = -1;
-	protected static const vector BACK_DOOR_OFFSET = {0,-0.7,0};
+	protected static const vector BACK_DOOR_OFFSET = { 0, -0.7, 0 };
 	protected static float WAYPOINT_FADE_THRESHOLD = 20;
 	protected static float WAYPOINT_MINIMUM_OPACITY = 0.2;
 	protected static float WAYPOINT_DISTANCE_INDICATOR_FADE_START = 100;
@@ -75,7 +73,36 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	protected IEntity m_DrivingRange;
 	protected bool m_bStagesComplete = false;
 	protected ref array<bool> m_aTutorialBool = {};
+	protected SCR_VoiceoverSystem m_VoiceoverSystem;
 	
+	//------------------------------------------------------------------------------------------------
+	void HideSubtitles(Widget widgeter)
+	{
+		widgeter.SetVisible(false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void SetupVoiceSystem()
+	{
+		if (!m_VoiceoverSystem)
+			m_VoiceoverSystem = SCR_VoiceoverSystem.GetInstance();
+		
+		if (!m_ActiveConfig)
+			return;
+		
+		ResourceName voiceDataConfig = m_ActiveConfig.GetVoiceOverDataConfig();
+		if (voiceDataConfig.IsEmpty())
+			return;
+		
+		m_VoiceoverSystem.SetData(voiceDataConfig);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_VoiceoverSystem GetVoiceSystem()
+	{
+		return m_VoiceoverSystem;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	protected void RemovePlayerMapMarkers()
 	{
@@ -83,14 +110,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 		if (!mapMarkerManager)
 			return;
 		
-		array <ref SCR_MapMarkerBase> markerArray = {};
-		markerArray = mapMarkerManager.GetLocalMarkers();
-		
-		for (int index = markerArray.Count()-1; index >= 0; index--)
-		{
-			mapMarkerManager.RemoveLocalMarker(markerArray[index]);
-		}
-		
+		array <ref SCR_MapMarkerBase> markerArray = {};		
 		markerArray = mapMarkerManager.GetStaticMarkers();
 		for (int index = markerArray.Count()-1; index >= 0; index--)
 		{
@@ -99,6 +119,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 		
 	//------------------------------------------------------------------------------------------------
+	//!
 	void HandleAchievement()
 	{
 		/* Achievement SWEAT_SAVES_BLOOD */
@@ -117,6 +138,8 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] tutorialNumber
+	//! \param[in] completed
 	void SetStagesComplete(int tutorialNumber, bool completed)
 	{
 		if (m_aTutorialBool.IsIndexValid(tutorialNumber))
@@ -137,6 +160,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void StageReset_Helicopter()
 	{
 		m_Helicopter = Vehicle.Cast(SpawnAsset("UH1COURSE", HELICOPTER_PREFAB));
@@ -163,7 +187,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 			rotor = slot.GetAttachedEntity();
 			SCR_RotorDamageManagerComponent rotorDmgComp = SCR_RotorDamageManagerComponent.Cast(rotor.FindComponent(SCR_RotorDamageManagerComponent));
 			rotorDmgComp.GetOnDamageStateChanged().Insert(OnHelicopterDamaged);
-		}
+	}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -179,20 +203,20 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 		if (!vehicleController.GetEngineDrowned())
 			return;
 		
-		SetActiveConfig(SCR_ETutorialArlandStageMasters.HUB);	
+		SetActiveConfig(SCR_ETutorialArlandStageMasters.HUB);
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void RemoveHelicopterInvokers()
-	{
+	{	
 		if (!m_Helicopter)
 			return;
 		
 		//General damage invoker
 		SCR_VehicleDamageManagerComponent heliDamageManager = SCR_VehicleDamageManagerComponent.Cast(m_Helicopter.GetDamageManager());
-		if (heliDamageManager)
-			heliDamageManager.GetOnDamageStateChanged().Remove(OnHelicopterDamaged);
+			if (heliDamageManager)
+				heliDamageManager.GetOnDamageStateChanged().Remove(OnHelicopterDamaged);
 		
 		//Drowned periodical check
 		GetGame().GetCallqueue().Remove(HelicopterDrownedCheck);
@@ -240,12 +264,12 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 			{
 				damageManager.GetOnDamageStateChanged().Remove(OnVehicleDamaged);
 			
-				ScriptedHitZone engine = ScriptedHitZone.Cast(damageManager.GetHitZoneByName("Engine_01"));
+				SCR_HitZone engine = SCR_HitZone.Cast(damageManager.GetHitZoneByName("Engine_01"));
 		
 				if (engine)
 					engine.GetOnDamageStateChanged().Remove(OnVehicleDamaged);
 		
-				ScriptedHitZone gearbox = ScriptedHitZone.Cast(damageManager.GetHitZoneByName("Gearbox_01"));
+				SCR_HitZone gearbox = SCR_HitZone.Cast(damageManager.GetHitZoneByName("Gearbox_01"));
 		
 				if (gearbox)
 					gearbox.GetOnDamageStateChanged().Remove(OnVehicleDamaged);
@@ -310,12 +334,12 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 			{
 				damageManager.GetOnDamageStateChanged().Remove(OnTruckDamaged);
 			
-				ScriptedHitZone engine = ScriptedHitZone.Cast(damageManager.GetHitZoneByName("Engine_01"));
+				SCR_HitZone engine = SCR_HitZone.Cast(damageManager.GetHitZoneByName("Engine_01"));
 		
 				if (engine)
 					engine.GetOnDamageStateChanged().Remove(OnTruckDamaged);
 		
-				ScriptedHitZone gearbox = ScriptedHitZone.Cast(damageManager.GetHitZoneByName("Gearbox_01"));
+				SCR_HitZone gearbox = SCR_HitZone.Cast(damageManager.GetHitZoneByName("Gearbox_01"));
 		
 				if (gearbox)
 					gearbox.GetOnDamageStateChanged().Remove(OnTruckDamaged);
@@ -339,12 +363,12 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 			{
 				damageManager.GetOnDamageStateChanged().Remove(OnHmwDamaged);
 			
-				ScriptedHitZone engine = ScriptedHitZone.Cast(damageManager.GetHitZoneByName("Engine_01"));
+				SCR_HitZone engine = SCR_HitZone.Cast(damageManager.GetHitZoneByName("Engine_01"));
 		
 				if (engine)
 					engine.GetOnDamageStateChanged().Remove(OnHmwDamaged);
 		
-				ScriptedHitZone gearbox = ScriptedHitZone.Cast(damageManager.GetHitZoneByName("Gearbox_01"));
+				SCR_HitZone gearbox = SCR_HitZone.Cast(damageManager.GetHitZoneByName("Gearbox_01"));
 		
 				if (gearbox)
 					gearbox.GetOnDamageStateChanged().Remove(OnHmwDamaged);
@@ -355,6 +379,9 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] prefabName
+	//! \return
 	IEntity FindBuiltComposition(string prefabName)
 	{
 		if (!m_aPlacedCompositions)
@@ -370,18 +397,23 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetActiveStage()
 	{
 		return m_iActiveStage;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] i
 	void SetActiveStage(int i)
 	{
 		m_iActiveStage = i;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] descriptorOwnerName
+	//! \param[in] enable
 	void ShowMapDescriptor(string descriptorOwnerName, bool enable)
 	{
 		IEntity ent = IEntity.Cast(GetGame().GetWorld().FindEntityByName(descriptorOwnerName));
@@ -396,15 +428,19 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! ToDo - replace with proper Math.MapAngle usage
+	//! \param[in] angle
+	//! \param[in] range
+	//! \return
+	// ToDo - replace with proper Math.MapAngle usage
 	bool IsMyAngleInRange(float angle, float range)
 	{
 		float cameraAngle = Math.RAD2DEG * m_Player.GetCharacterController().GetInputContext().GetAimingAngles()[0];
-		return (cameraAngle > angle-range) && (cameraAngle < angle+range);
+		return (cameraAngle > angle - range) && (cameraAngle < angle+range);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! returns angle to entity from players current position.
+	//! \param[in] ent
+	//! \return angle to entity from players current position.
 	float GetEntityCompassAngle(notnull IEntity ent)
 	{
 		if (!m_Player)
@@ -419,18 +455,21 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] ent
 	void SetPreviewBunker(IEntity ent)
 	{
 		m_PreviewBunker = ent;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	IEntity GetPreviewBunker()
 	{
 		return m_PreviewBunker;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] modeEntity
 	void OnModeAdded(SCR_EditorModeEntity modeEntity)
 	{
 		if (modeEntity.GetModeType() != EEditorMode.BUILDING)
@@ -444,6 +483,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void SetupEditorModeListener()
 	{	
 		SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
@@ -458,6 +498,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_PlacingEditorComponent GetPlacingComponent()
 	{
 		return m_PlacingComponent;
@@ -480,10 +521,11 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	static ScriptInvoker GetOnStructureBuilt()
 	{
 		return m_OnStructureBuilt;
-	}									   
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
@@ -507,6 +549,9 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
+		if (!SCR_HintManagerComponent.GetInstance())
+			return;
+		
 		if (!SCR_HintManagerComponent.GetInstance().IsShown())
 			return;
 		
@@ -528,12 +573,15 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ChimeraCharacter GetPlayer()
 	{
 		return m_Player;
 	}	
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] fadeOut
 	void FadeToBlack(bool fadeOut)
 	{
 		SCR_FadeInOutEffect fade = SCR_FadeInOutEffect.Cast(GetGame().GetHUDManager().FindInfoDisplay(SCR_FadeInOutEffect));
@@ -541,8 +589,47 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void SetConfigEnvironmentOverride()
+	{
+		if (!m_ActiveConfig)
+			return;
+		
+		ChimeraWorld world = GetGame().GetWorld();
+		if (!world)
+			return;
+				
+		TimeAndWeatherManagerEntity tmwManager = world.GetTimeAndWeatherManager();
+		if (!tmwManager)
+			return;
+		
+		string weatherName;
+		switch (m_ActiveConfig.GetWeatherOverride())
+		{
+			case SCR_EWeatherStates.CLEAR:
+				weatherName = "Clear";
+				break;
+			
+			case SCR_EWeatherStates.RAINY:
+				weatherName = "Rainy";
+				break;
+			
+			case SCR_EWeatherStates.CLOUDY:
+				weatherName = "Cloudy";
+				break;
+			
+			case SCR_EWeatherStates.OVERCAST:
+				weatherName = "Overcast";
+				break;
+		}
+		
+		tmwManager.ForceWeatherTo(m_ActiveConfig.ShouldWeatherLoop(), weatherName);
+		tmwManager.SetTimeOfTheDay(m_ActiveConfig.GetTime());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] config
 	void SetActiveConfig(SCR_ETutorialArlandStageMasters config)
-	{	
+	{
 		RemovePlayerMapMarkers();
 		
 		if (m_ActiveConfig && m_ActiveConfig.GetConfigClassName() == SCR_ETutorialArlandStageMasters.HELICOPTERS)
@@ -560,18 +647,19 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 				delete m_Stage;
 				m_iActiveStage = 0;
 				SetStage(m_aStageInfos[0].GetIndex(), m_aStageInfos[m_aStageInfos.Count()-1].GetIndex());
-				ResetPlayerPosition()
+				ResetPlayerPosition();
+				
+				SetConfigEnvironmentOverride();
+				SetupVoiceSystem();
 			}
+			
 		}
+
 		SetupStageCounts();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnWorldPostProcess(World world)
-	{
-	}
-	
-	//------------------------------------------------------------------------------------------------
+	//!
 	void FiringRangeInit()
 	{
 		typename stages = SCR_ECampaignTutorialArlandStage;
@@ -586,6 +674,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void MobileHQInit()
 	{
 		IEntity mHQ = GetGame().GetWorld().FindEntityByName("MobileHQ");
@@ -612,7 +701,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 		if (!slotManager)
 			return;
 		
-		array<EntitySlotInfo> slots = new array<EntitySlotInfo>;
+		array<EntitySlotInfo> slots = {};
 		slotManager.GetSlotInfos(slots);
 		
 		foreach (EntitySlotInfo slot: slots)
@@ -636,6 +725,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void SupplyTruckInit()
 	{
 		IEntity supplyTruck = GetGame().GetWorld().FindEntityByName("BuildingSupplyTruck");
@@ -648,7 +738,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 		if (!slotManager)
 			return;
 		
-		array<EntitySlotInfo> slots = new array<EntitySlotInfo>;
+		array<EntitySlotInfo> slots = {};
 		slotManager.GetSlotInfos(slots);
 		
 		foreach (EntitySlotInfo slot: slots)
@@ -672,6 +762,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void StageReset_RifleRespawn()
 	{
 		SpawnAsset("M16", "{3E413771E1834D2F}Prefabs/Weapons/Rifles/M16/Rifle_M16A2.et");
@@ -680,6 +771,8 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] position
 	void StageReset_MoveInJeep(IEntity position = null)
 	{
 		SpawnAsset("Jeep", "{5168FEA3054D6D15}Prefabs/Vehicles/Wheeled/M151A2/M151A2_M2HB_MERDC.et", position);
@@ -687,6 +780,8 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] position
 	void StageReset_SpawnTruck(IEntity position = null)
 	{
 		SpawnAsset("SupplyTruck", "{F37113A988304565}Prefabs/MP/Campaign/Assets/CampaignSupplyTruckWest.et", position);
@@ -694,6 +789,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void StageReset_ProcessTruck()
 	{
 		//m_SupplyTruckComponent.AddSupplies(1000);
@@ -707,17 +803,19 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 		}
 	}
 	
-	//------------------------------------------------------------------------------------------------
-	void StageReset_PrepareFarm()
-	{
-		/*m_SupplyTruckComponent.AddSupplies(500);
-		SCR_CampaignMilitaryBaseComponent baseFarm = SCR_CampaignMilitaryBaseComponent.Cast(GetGame().GetWorld().FindEntityByName("TownBaseFarm").FindComponent(SCR_CampaignMilitaryBaseComponent));
+//	//------------------------------------------------------------------------------------------------
+//	//!
+//	void StageReset_PrepareFarm()
+//	{
+//		m_SupplyTruckComponent.AddSupplies(500);
+//		SCR_CampaignMilitaryBaseComponent baseFarm = SCR_CampaignMilitaryBaseComponent.Cast(GetGame().GetWorld().FindEntityByName("TownBaseFarm").FindComponent(SCR_CampaignMilitaryBaseComponent));
+//
+//		if (baseFarm && baseFarm.GetSupplies() < 950)
+//			baseFarm.AddSupplies(950 - baseFarm.GetSupplies());
+//	}
 		
-		if (baseFarm && baseFarm.GetSupplies() < 950)
-			baseFarm.AddSupplies(950 - baseFarm.GetSupplies());*/
-	}
-	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void StageReset_ResetSeizing()
 	{
 		if (m_DrivingRange)
@@ -743,6 +841,14 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 		if (!mhq)
 			return;
 		
+		SCR_ArsenalComponent arsenalComp = SCR_ArsenalComponent.FindArsenalComponent(mhq);
+		if (!arsenalComp)
+			return;
+		
+		SCR_ResourceComponent resourceComp = SCR_ResourceComponent.FindResourceComponent(arsenalComp.GetOwner());
+		if (resourceComp)
+			resourceComp.SetResourceTypeEnabled(false);
+		
 		SCR_CampaignFaction bluforFaction = m_CampaignGamemode.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR);
 		if (!bluforFaction)
 			return;
@@ -761,32 +867,26 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 		
 		array<EntitySlotInfo> slots = {};
 		slotManager.GetSlotInfos(slots);
-
+		
 		foreach (EntitySlotInfo slot : slots)
 		{
 			IEntity truckBed = slot.GetAttachedEntity();
 
 			if (!truckBed)
 				continue;
-
+			
 			SCR_CampaignMobileAssemblyComponent mobileAssemblyComponent = SCR_CampaignMobileAssemblyComponent.Cast(truckBed.FindComponent(SCR_CampaignMobileAssemblyComponent));
 			if (mobileAssemblyComponent)
-			{
+			{	
 				mobileAssemblyComponent.SetParentFactionID(GetGame().GetFactionManager().GetFactionIndex(bluforFaction));
 				break;
 			}
 		}
 		
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	void StageReset_HandleRespawnRadios()
-	{
-		while (m_CampaignGamemode.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR).GetActiveRespawnRadios() > 0)
-			m_CampaignGamemode.RemoveActiveRespawnRadio(m_CampaignGamemode.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR));
-	}
-	
-	//------------------------------------------------------------------------------------------------
+	//!
 	void StageReset_DeployMHQ()
 	{
 		if (m_MobileAssemblyComponent && !m_MobileAssemblyComponent.IsDeployed())
@@ -866,6 +966,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void ResetStage_Medical()
 	{
 		//Return back to HUB should stage preparation fail
@@ -876,10 +977,10 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 			SetActiveConfig(SCR_ETutorialArlandStageMasters.HUB);
 		
 		SpawnAsset("Backpack", "{4805E67E2AE30F8D}Prefabs/Items/Equipment/Backpacks/Backpack_Medical_M5.et");
-		
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void ResetStage_VehiclesSimple()
 	{
 		m_Jeep = Vehicle.Cast(SpawnAsset("SmallJeep", JEEP_PREFAB));
@@ -891,12 +992,12 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 		{
 			damageManager.GetOnDamageStateChanged().Insert(OnVehicleDamaged);
 		
-			ScriptedHitZone engine = ScriptedHitZone.Cast(damageManager.GetHitZoneByName("Engine_01"));
+			SCR_HitZone engine = SCR_HitZone.Cast(damageManager.GetHitZoneByName("Engine_01"));
 		
 			if (engine)
 				engine.GetOnDamageStateChanged().Insert(OnVehicleDamaged);
 		
-			ScriptedHitZone gearbox = ScriptedHitZone.Cast(damageManager.GetHitZoneByName("Gearbox_01"));
+			SCR_HitZone gearbox = SCR_HitZone.Cast(damageManager.GetHitZoneByName("Gearbox_01"));
 		
 			if (gearbox)
 				gearbox.GetOnDamageStateChanged().Insert(OnVehicleDamaged);
@@ -912,6 +1013,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void ResetStage_VehiclesHeavy()
 	{
 		m_RepairTruck = Vehicle.Cast(SpawnAsset("Truck",TRUCK_PREFAB ));
@@ -939,7 +1041,16 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 				transform[0] = m_HummerRepairable.GetOrigin();
 				transform[1] = vector.Forward;
 				transform[2] = vector.Up;
-				damageManagerBroken.HandleDamage(EDamageType.TRUE, engineHitZone.GetMaxHealth(), transform, m_HummerRepairable, engineHitZone, Instigator.CreateInstigator(null), null, -1, -1);
+
+				DamageManagerComponent engineDamageManager = DamageManagerComponent.Cast(engineHitZone.GetHitZoneContainer());
+				if (engineDamageManager)
+				{
+					SCR_DamageContext damageContext1 = new SCR_DamageContext(EDamageType.TRUE, engineHitZone.GetMaxHealth(), transform, engineDamageManager.GetOwner(), engineHitZone, Instigator.CreateInstigator(null), null, -1, -1);
+					SCR_DamageContext damageContext2 = new SCR_DamageContext(EDamageType.INCENDIARY, 50, transform, engineDamageManager.GetOwner(), engineHitZone, Instigator.CreateInstigator(null), null, -1, -1);
+
+					engineDamageManager.HandleDamage(damageContext1);
+					engineDamageManager.HandleDamage(damageContext2);
+				}
 			}
 		}
 		
@@ -948,12 +1059,12 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 		{
 			damageManager.GetOnDamageStateChanged().Insert(OnTruckDamaged);
 		
-			ScriptedHitZone engine = ScriptedHitZone.Cast(damageManager.GetHitZoneByName("Engine_01"));
+			SCR_HitZone engine = SCR_HitZone.Cast(damageManager.GetHitZoneByName("Engine_01"));
 		
 			if (engine)
 				engine.GetOnDamageStateChanged().Insert(OnTruckDamaged);
 		
-			ScriptedHitZone gearbox = ScriptedHitZone.Cast(damageManager.GetHitZoneByName("Gearbox_01"));
+			SCR_HitZone gearbox = SCR_HitZone.Cast(damageManager.GetHitZoneByName("Gearbox_01"));
 		
 			if (gearbox)
 				gearbox.GetOnDamageStateChanged().Insert(OnTruckDamaged);
@@ -968,12 +1079,12 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 		{
 			damageManager.GetOnDamageStateChanged().Insert(OnHmwDamaged);
 		
-			ScriptedHitZone engine = ScriptedHitZone.Cast(damageManager.GetHitZoneByName("Engine_01"));
+			SCR_HitZone engine = SCR_HitZone.Cast(damageManager.GetHitZoneByName("Engine_01"));
 		
 			if (engine)
 				engine.GetOnDamageStateChanged().Insert(OnHmwDamaged);
 		
-			ScriptedHitZone gearbox = ScriptedHitZone.Cast(damageManager.GetHitZoneByName("Gearbox_01"));
+			SCR_HitZone gearbox = SCR_HitZone.Cast(damageManager.GetHitZoneByName("Gearbox_01"));
 		
 			if (gearbox)
 				gearbox.GetOnDamageStateChanged().Insert(OnHmwDamaged);
@@ -985,14 +1096,24 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void ResetStage_ShootingRange()
 	{
-		IEntity ambulance = SpawnAsset("Ambulance", "{3B1EB924602C7A07}Prefabs/Vehicles/Wheeled/M998/M997_maxi_ambulance_MERDC.et");
-		if (!ambulance)
+		IEntity m16 = SpawnAsset("M16", "{3E413771E1834D2F}Prefabs/Weapons/Rifles/M16/Rifle_M16A2.et");
+		if (!m16)
+			return;	
+			
+		IEntity m249 = SpawnAsset("M249", "{D2B48DEBEF38D7D7}Prefabs/Weapons/MachineGuns/M249/MG_M249.et");
+		if (!m249)
+			return;
+		
+		IEntity m21 = SpawnAsset("M21", "{81EB948E6414BD6F}Prefabs/Weapons/Rifles/M14/Rifle_M21_ARTII.et");
+		if (!m21)
 			return;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void ResetStage_CampaignBuilding()
 	{
 		//Delete built compositions.
@@ -1003,6 +1124,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void RefreshVictimResilience()
 	{
 		IEntity victim = GetGame().GetWorld().FindEntityByName("Victim");
@@ -1017,6 +1139,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void RefreshVictimBloodLevel()
 	{
 		IEntity victim = GetGame().GetWorld().FindEntityByName("Victim");
@@ -1031,16 +1154,19 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_CharacterDamageManagerComponent GetVictimDamageManager()
 	{
 		IEntity victim = GetGame().GetWorld().FindEntityByName("Victim");
 		if (!victim)
-			return NULL;
+			return null;
 		
 		return SCR_CharacterDamageManagerComponent.Cast(victim.FindComponent(SCR_CharacterDamageManagerComponent));
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] forcePlayerReset
 	void ResetStage(bool forcePlayerReset = false)
 	{
 		if (!m_Player.IsInVehicle() || forcePlayerReset)
@@ -1051,18 +1177,25 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	Vehicle GetHummer()
 	{
 		return m_HummerRepairable;
 	}
 		
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	Vehicle GetRepairTruck()
 	{
 		return m_RepairTruck;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] name
+	//! \param[in] type
+	//! \param[in] spawnpoint
+	//! \return
 	IEntity SpawnAsset(string name, ResourceName type, IEntity spawnpoint = null)
 	{
 		string posName;
@@ -1109,6 +1242,8 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] veh
 	void DeleteVehicleWhenEmpty(Vehicle veh)
 	{
 		SCR_CompartmentAccessComponent compartmentAccessComponent = SCR_CompartmentAccessComponent.Cast(m_Player.FindComponent(SCR_CompartmentAccessComponent));
@@ -1139,48 +1274,58 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	array<SCR_FiringRangeTarget> GetAllTargets()
 	{
 		return m_aFiringRangeTargets;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetTargetHits()
 	{
 		return m_iCountOfHits;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] check
 	void SetCheckLeaning(bool check)
 	{
 		m_bCheckLeaning = check;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] stance
 	void SetPlayerStanceToCheck(ECharacterStance stance)
 	{
 		m_ePlayerStance = stance;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] check
 	void SetPlayerDeployedCheck(bool check)
 	{
 		m_bCheckIsDeployed = check;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] check
 	void SetPlayerDeployedBipodCheck(bool check)
 	{
 		m_bCheckIsDeployedBipod = check;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ECharacterStance GetPlayerStanceToCheck()
 	{
 		return m_ePlayerStance;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] state
+	//! \param[in] target
 	void CountTargetHit(ETargetState state, SCR_FiringRangeTarget target)
 	{
 		if (state != ETargetState.TARGET_DOWN)
@@ -1209,6 +1354,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] mode
 	void SetWaypointTruckPosition(SCR_ETutorialArlandSupplyTruckWaypointMode mode)
 	{
 		m_eWaypointTruckPosition = mode;
@@ -1230,10 +1376,14 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 		ForcePlayerFaction(playerController);
 		
 		while (m_aTutorialBool.Count() < NUMBER_OF_TUTORIALS)
+		{
 			m_aTutorialBool.Insert(false);
+	}
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] pc
 	void ForcePlayerFaction(notnull PlayerController pc)
 	{
 		if (!m_CampaignGamemode)
@@ -1272,7 +1422,6 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 		SCR_PlayerLoadoutComponent playerLoadout = SCR_PlayerLoadoutComponent.Cast(pc.FindComponent(SCR_PlayerLoadoutComponent));
 		SCR_RespawnComponent respawnComp = SCR_RespawnComponent.Cast(pc.FindComponent(SCR_RespawnComponent));
 
-		
 		playerFactionAffiliation.GetOnPlayerFactionResponseInvoker_S().Insert(OnPlayerFactionResponse);
 		playerLoadout.GetOnPlayerLoadoutResponseInvoker_S().Insert(OnPlayerLoadoutResponse);
 		respawnComp.GetOnRespawnResponseInvoker_S().Insert(OnPlayerSpawnResponse);
@@ -1327,7 +1476,6 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 			respawnComp.GetOnRespawnResponseInvoker_S().Remove(OnPlayerSpawnResponse);
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
 	protected void TrySetPlayerFaction(notnull PlayerController playerController, Faction faction)
 	{
@@ -1361,7 +1509,6 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	protected void TrySpawnPlayer(notnull PlayerController playerController, notnull SCR_SpawnPoint spawnPoint)
 	{
-		
 		SCR_RespawnComponent spawnComponent = SCR_RespawnComponent.Cast(playerController.FindComponent(SCR_RespawnComponent));
 		SCR_PlayerLoadoutComponent loadoutComponent = SCR_PlayerLoadoutComponent.Cast(playerController.FindComponent(SCR_PlayerLoadoutComponent));
 		
@@ -1380,30 +1527,39 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}		 
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] config
 	void OnMapOpen(MapConfiguration config)
 	{
 		m_bIsMapOpen = true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] config
 	void OnMapClose(MapConfiguration config)
 	{
 		m_bIsMapOpen = false;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetIsMapOpen()
 	{
 		return m_bIsMapOpen;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	BaseRadioComponent GetPlayerRadio()
 	{
 		return m_Radio;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] waypoint
+	//! \param[in] useTruck
+	//! \param[in] contextName
+	//! \param[in] offset
 	void UpdateSupplyTruckWaypoint(IEntity waypoint, bool useTruck, string contextName, vector offset = vector.Zero)
 	{
 		if (contextName.IsEmpty() || !m_SupplyTruckComponent)
@@ -1415,12 +1571,10 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 			ent = ent.GetParent();
 		
 		ActionsManagerComponent amc = ActionsManagerComponent.Cast(ent.FindComponent(ActionsManagerComponent));
-			
 		if (!amc)
 			return;
 			
 		UserActionContext context = amc.GetContext(contextName);
-				
 		if (!context)
 			return;
 				
@@ -1430,12 +1584,18 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] item
+	//! \param[in] storageOwner
 	void CheckRadioPickup(IEntity item, BaseInventoryStorageComponent storageOwner)
 	{
 		m_Radio = BaseRadioComponent.Cast(item.FindComponent(BaseRadioComponent));
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] command
+	//! \return
 	bool CheckCharacterStance(ECharacterCommandIDs command)
 	{
 		CharacterAnimationComponent comp = CharacterAnimationComponent.Cast(m_Player.FindComponent(CharacterAnimationComponent));
@@ -1444,7 +1604,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 		if (!comp)
 			return false;
 		
-		CharacterMovementState mState = new CharacterMovementState;
+		CharacterMovementState mState = new CharacterMovementState();
 		comp.GetMovementState(mState);
 		
 		if (mState)
@@ -1455,18 +1615,22 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetFirstRun()
 	{
 		return m_bIsFirstRun;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] firstRun
 	void SetFirstRun(bool firstRun)
 	{
 		m_bIsFirstRun = firstRun;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	bool IsCharacterLeaning()
 	{
 		SCR_CharacterControllerComponent comp = SCR_CharacterControllerComponent.Cast(m_Player.FindComponent(SCR_CharacterControllerComponent));
@@ -1477,13 +1641,13 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void Check3rdPersonViewUsed()
 	{
 		if (!m_Player)
 			return;
 		
 		CameraHandlerComponent comp = CameraHandlerComponent.Cast(m_Player.FindComponent(CameraHandlerComponent));
-		
 		if (!comp)
 			return;
 		
@@ -1498,12 +1662,16 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetWas3rdPersonViewUsed()
 	{
 		return m_bUsed3PV;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] vehName
+	//! \param[in] seat
 	void MoveInVehicle(string vehName, ECompartmentType seat)
 	{
 		Vehicle veh = Vehicle.Cast(GetGame().GetWorld().FindEntityByName(vehName));
@@ -1532,6 +1700,9 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] seat
+	//! \return
 	bool CheckCharacterInVehicle(ECompartmentType seat)
 	{
 		CompartmentAccessComponent compartmentAccessComponent = CompartmentAccessComponent.Cast(m_Player.FindComponent(CompartmentAccessComponent));
@@ -1544,10 +1715,11 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 		if (!compartmentSlot)
 			return false;
 		
-		return SCR_CompartmentAccessComponent.GetCompartmentType(compartmentSlot) == seat;
+		return compartmentSlot.GetType() == seat;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] vehicle
 	void OnSupplyTruckLeft(IEntity vehicle)
 	{
 		if (m_bMovedOutOfVehicleByScript)
@@ -1576,15 +1748,16 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] newPos
+	//! \param[in] loadoutResourceName
 	void MovePlayer(notnull IEntity newPos, ResourceName loadoutResourceName)
 	{		
 		GetGame().GetCallqueue().CallLater(ResetPlayerCharacter, FADE_SPEED*100, false, newPos, loadoutResourceName);
 		
 		if (m_wFadeOut)
-		{
 			AnimateWidget.Opacity(m_wFadeOut, 0, FADE_SPEED);
 		}
-	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void ResetPlayerCharacter(IEntity newPos, ResourceName loadoutResourceName)
@@ -1634,12 +1807,22 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] text
+	//! \param[in] subtitle
+	//! \param[in] duration
+	//! \param[in] param1
+	//! \param[in] param2
+	//! \param[in] subtitleParam1
+	//! \param[in] subtitleParam2
 	void DelayedPopup(string text = "", string subtitle = "", float duration = SCR_PopUpNotification.DEFAULT_DURATION, string param1 = "", string param2 = "", string subtitleParam1 = "", string subtitleParam2 = "")
 	{
 		SCR_PopUpNotification.GetInstance().PopupMsg(text, duration, text2: subtitle, param1: param1, param2: param2, text2param1: subtitleParam1, text2param2: subtitleParam2, category: SCR_EPopupMsgFilter.TUTORIAL);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] base
+	//! \param[in] structure
 	void OnStructureBuilt(SCR_CampaignMilitaryBaseComponent base, IEntity structure)
 	{
 		if (m_Stage)
@@ -1681,10 +1864,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 			SCR_MapDescriptorComponent mobileTruckDescr = SCR_MapDescriptorComponent.Cast(WP_mobileHQ.FindComponent(SCR_MapDescriptorComponent));
 			cottageDescr.Item().SetVisible(false);
 			mobileTruckDescr.Item().SetVisible(false);
-			
-			while (m_CampaignGamemode.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR).GetActiveRespawnRadios() < m_CampaignGamemode.GetMaxRespawnRadios())
-				m_CampaignGamemode.AddActiveRespawnRadio(m_CampaignGamemode.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR));
-			
+
 			m_wFadeOut = ImageWidget.Cast(GetGame().GetHUDManager().CreateLayout("{265245C299401BF6}UI/layouts/Menus/ContentBrowser/DownloadManager/ScrollBackground.layout", EHudLayers.OVERLAY));
 			m_wFadeOut.SetOpacity(1);
 			int stage = m_eStage;
@@ -1706,6 +1886,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------	
+	//!
 	void CreateWaypoint()
 	{
 		Widget waypointFrame = GetGame().GetHUDManager().CreateLayout("{825C6D728AC3E029}UI/layouts/Tutorial/TutorialWaypointEdited.layout", EHudLayers.BACKGROUND);
@@ -1715,30 +1896,37 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 		ImageWidget image = ImageWidget.Cast(waypointFrame.FindAnyWidget("Icon"));
 		image.SetOpacity(0);
 		image.LoadImageFromSet(0, m_WaypointWidget, "MISC");
-		image.SetColor(Color.Yellow);
+		image.SetColor(Color.FromInt(Color.YELLOW));
 		
 		//setup distance
 		RichTextWidget text = RichTextWidget.Cast(waypointFrame.FindAnyWidget("Distance"));
 		text.SetOpacity(0);
-		text.SetColor(Color.Yellow);
+		text.SetColor(Color.FromInt(Color.YELLOW));
 		
 		//setup misc
 		image = ImageWidget.Cast(waypointFrame.FindAnyWidget("IconExtra"));
 		image.SetOpacity(0);
 		image.SetVisible(false);
 		image.LoadImageFromSet(0, m_WaypointWidget, "CUSTOM");
-		image.SetColor(Color.Yellow);
+		image.SetColor(Color.FromInt(Color.YELLOW));
 	}
 	
 	//------------------------------------------------------------------------------------------------	
+	//!
 	void FlushWaypoints()
 	{
 		foreach (Widget waypoints : m_aWaypoints)
+		{
 			waypoints.RemoveFromHierarchy();
+		}
+
 		m_aWaypoints.Clear();
 	}	
 	
 	//------------------------------------------------------------------------------------------------	
+	//! \param[in] imageName
+	//! \param[in] visible
+	//! \param[in] index
 	void SetWaypointMiscImage(string imageName, bool visible, int index = 0)
 	{
 		ImageWidget waypointMisc;
@@ -1752,6 +1940,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] stage
 	void SetResumeStage(SCR_ECampaignTutorialArlandStage stage)
 	{
 		IEntity playerPos;
@@ -1766,23 +1955,29 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 				m_eStage = stage;
 				return;
 			}
+
 			stage--;
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_ECampaignTutorialArlandStage GetStage()
 	{
 		return m_eStage;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetStageDuration()
 	{
 		return GetGame().GetWorld().GetWorldTime() - m_fStageTimestamp;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] stage
+	//! \param[in] nextStage
 	void FinishStage(SCR_BaseCampaignTutorialArlandStage stage, SCR_ECampaignTutorialArlandStage nextStage = -1)
 	{	
 		SetPlayerStanceToCheck(-1);
@@ -1810,10 +2005,14 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 				SetActiveConfig(0);
 		}
 		else
-			SetStage(nextStage);	
+		{
+			SetStage(nextStage);
+	}
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] stage
+	//! \param[in] lastStage
 	void SetStage(SCR_ECampaignTutorialArlandStage stage, SCR_ECampaignTutorialArlandStage lastStage = 0)
 	{	
 		m_eStage = stage;
@@ -1842,11 +2041,11 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 				m_Stage = SCR_BaseCampaignTutorialArlandStage.Cast(GetGame().SpawnEntity(stageInfo.GetClassName().ToType()));
 				break;
 			}
-			
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void ResetPlayerPosition()
 	{
 		IEntity playerPos;
@@ -1874,6 +2073,8 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] hide
 	void ToggleWaypoints(bool hide)
 	{
 		foreach(Widget waypoint: m_aWaypoints)
@@ -1883,15 +2084,20 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] waypoints
+	//! \param[in] heightOffset
 	void UpdateWaypoints(array<IEntity> waypoints, float heightOffset)
 	{
 		int x = 0;
 		if (waypoints.IsEmpty())
 			return;
+
 		foreach (IEntity waypoint : waypoints)
 		{
 			if (!waypoint)
 				continue;
+
 			vector WPPos = waypoint.GetOrigin();
 			ImageWidget markerPos;
 			ImageWidget markerExtra;
@@ -1934,8 +2140,6 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 				distShown = dist - (dist % 50);
 			}
 			
-			
-			
 			float opacity = 1;
 			float distanceOpacity = 1;
 			
@@ -1968,12 +2172,16 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_CampaignSuppliesComponent GetSupplyTruckComponent()
 	{
 		return m_SupplyTruckComponent;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] ent
+	//! \return
 	bool FindSupplyTruck(IEntity ent)
 	{
 		SCR_CampaignSuppliesComponent supplyTruckComponent = SCR_CampaignSuppliesComponent.Cast(ent.FindComponent(SCR_CampaignSuppliesComponent));
@@ -2049,17 +2257,14 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 #endif
 		
 		Resource holder = BaseContainerTools.LoadContainer(m_sStagesConfigAdvanced);
-		
 		if (!holder)
 			return;
 		
 		BaseContainer container = holder.GetResource().ToBaseContainer();
-		
 		if (!container)
 			return;
 		
 		SCR_CampaignTutorialArlandStagesConfig configsConf = SCR_CampaignTutorialArlandStagesConfig.Cast(BaseContainerTools.CreateInstanceFromContainer(container));
-		
 		if (!configsConf)
 			return;
 		
@@ -2083,19 +2288,23 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void CleanUpWaypoints()
 	{
 		if (m_aWaypoints.IsEmpty())
 			return;
+
 		foreach (Widget waypoint : m_aWaypoints)
 		{
 			if (!waypoint)
 				continue;
+
 			waypoint.RemoveFromHierarchy();
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_CampaignTutorialArlandComponent()
 	{	
 		if (m_wFadeOut)
@@ -2105,398 +2314,4 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 		
 		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 	}
-	
-};
-
-//------------------------------------------------------------------------------------------------
-[BaseContainerProps(configRoot: true)]
-class SCR_CampaignTutorialArlandStagesConfig
-{
-	[Attribute()]
-	private ref array<ref SCR_CampaignTutorialArlandStages> m_TutorialArlandStagesConfigs;
-	
-	//------------------------------------------------------------------------------------------------
-	void GetConfigs(out notnull array<ref SCR_CampaignTutorialArlandStages> TutorialArlandStagesConfigs)
-	{
-		TutorialArlandStagesConfigs = m_TutorialArlandStagesConfigs;
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-[BaseContainerProps()]
-class SCR_CampaignTutorialArlandStages
-{
-	[Attribute()]
-	private ref array<ref SCR_CampaignTutorialArlandStageInfo> m_TutorialArlandStages;
-	
-	[Attribute(defvalue: "0", uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_ETutorialArlandStageMasters))]
-	protected SCR_ETutorialArlandStageMasters m_ConfigClassName;
-	
-	[Attribute(defvalue :"{D54A817EA5E7184F}Prefabs/Characters/Campaign/Final/Campaign_US_Player_Tutorial.et", UIWidgets.ResourceNamePicker, "Player loadout for specified stage", "et")]
-	protected ResourceName m_sPlayerLoadoutName;
-	
-	//------------------------------------------------------------------------------------------------
-	SCR_ETutorialArlandStageMasters GetConfigClassName()
-	{
-		return m_ConfigClassName;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void GetStages(out notnull array<ref SCR_CampaignTutorialArlandStageInfo> TutorialArlandStages)
-	{
-		TutorialArlandStages = m_TutorialArlandStages;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	SCR_ETutorialArlandStageMasters GetStagesFromConfig()
-	{
-		return m_ConfigClassName;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	ResourceName GetPlayerLoadout()
-	{
-		return m_sPlayerLoadoutName;
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-[BaseContainerProps(), SCR_BaseContainerCustomTitleField("m_sStageClassName")]
-class SCR_CampaignTutorialArlandStageInfo
-{
-	[Attribute("", UIWidgets.EditBox)]
-	protected string m_sStageClassName;
-	
-	[Attribute(defvalue: "0", uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_ECampaignTutorialArlandStage))]
-	protected SCR_ECampaignTutorialArlandStage m_eStage;
-	
-	//------------------------------------------------------------------------------------------------
-	SCR_ECampaignTutorialArlandStage GetIndex()
-	{
-		return m_eStage;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	string GetClassName()
-	{
-		return m_sStageClassName;
-	}
-}
-
-//------------------------------------------------------------------------------------------------
-enum SCR_ETutorialArlandSupplyTruckWaypointMode
-{
-	NONE,
-	DRIVER,
-	BACK
-}
-
-//------------------------------------------------------------------------------------------------
-enum SCR_ETutorialArlandStageMasters
-{
-	HUB,
-	BASIC_TUTORIAL_SIMPLE,
-	WEAPONS_TUTORIAL_SIMPLE,
-	CONFLICT_TUTORIAL_BASE_BUILDING,
-	CONFLICT_TUTORIAL_BESIEGING,
-	CONFLICT_TUTORIAL_BASE_TOUR,
-	MEDICAL,
-	HELICOPTERS_SIMPLE,
-	HELICOPTERS_ADVANCED,
-	DRIVING_SIMPLE,
-	DRIVING_ADVANCED,
-	WEAPONS_ARSENAL,
-	NAVIGATION,
-	HELICOPTERS,
-	FALLBACKS,
-}
-	
-
-//------------------------------------------------------------------------------------------------
-enum SCR_ECampaignTutorialArlandStage
-{
-	// HUB
-	START = 0,
-	RESTART,
-	
-	// MOVEMENT
-	ZIGZAG_1,
-	ZIGZAG_2,
-	ZIGZAG_3,
-	OVERPASS,
-	WIREMESH,
-	VAULT,
-	VAULT2,
-	WINDOW,
-	FLAG,
-	WALL,
-	WALL2,
-	LADDER_UP,
-	LADDER_PLATFORM,
-	LADDER_DOWN,
-	LADDER_OFF,
-	OBSTACLE_END,
-	
-	// SHOOTING RANGE
-	WEAPON_PICK,
-	MAGAZINE_PICK,
-	WEAPON_RELOAD,
-	FIREPOZ_1,
-	SHOOTING,
-	SHOOTING_CROUCH,
-	SHOOTING_PRONE,
-	FIREPOZ_2,
-	SHOOTING_LEANING,
-	GRENADE_PICK,
-	GRENADE_THROW,
-	WEAPON_REST,
-	WEAPON_BIPOD_PICK,
-	WEAPON_BIPOD,
-	MINE_PICK,
-	MINE_PLANT,
-	MINE_DETONATE,
-	STATIC_GETIN,
-	STATIC_SHOOTING,
-	BOARDING,
-	DRIVING_0,
-	SWITCHING_SEATS,
-	VEHICLE_SHOOTING,
-	MOVE_TO_BALISTIC_PROTECTION,
-	BALLISTIC_PROTECTION,
-	WEAPON_PICK_SNIPER,
-	SNIPER_SHOOT_CLOSER,
-	SNIPER_SHOOT_FAR,
-	FIREPOZ_3,
-	SHOOTING_END,
-	
-	
-	DRIVING_1,
-	DRIVING_2,
-	DRIVING_3,
-	DRIVING_4,
-	DRIVING_5,
-	DRIVING_6,
-	DRIVING_7,
-	DRIVING_SERPENTINE,
-	DRIVING_8,
-	DRIVING_PRE_BASE,
-	DRIVING_9,
-	DISMOUNTING,
-	MAP_INFO,
-	CONFLICT_TOUR_GARAGE,
-	CONFLICT_TOUR_END,
-	CONFLICT_REQUESTING_TRUCK,
-	CONFLICT_LOADING_SUPPLIES,
-	DRIVING_10,
-	DRIVING_11,
-	DRIVING_12,
-	DRIVING_13,
-	DRIVING_14,
-	DRIVING_15,
-	CONFLICT_UNLOADING_SUPPLIES,
-	CONFLICT_BUILD_SERVICE,
-	CONFLICT_BUILDING_EXIT,
-	CONFLICT_EQUIP_ENTRENCHING_TOOL,
-	CONFLICT_CONSTRUCT_SERVICE,
-	CONFLICT_BUILD_BUNKER,
-	CONFLICT_MOVE_TO_VEHICLE_DEPOT,
-	CONFLICT_BUILDING_LOAD_SUPPLY,
-	CONFLICT_BOARD_TRUCK,
-	CONFLICT_BUILDING_QUIT,
-	CONFLICT_BUILDING_TO_FAR,
-	CONFLICT_BUILDING_CHECKPOINT,
-	CONFLICT_BUILDING_QUIT2,
-	DRIVING_16,
-	DRIVING_17,
-	DRIVING_18,
-	CONFLICT_BASE_SEIZING,
-	RETURN_TO_RESPAWN,
-	BREAKER_STAGE,
-	END_STAGE,
-	DRIVING_INTRODUCTION,
-	DRIVING_SPAWNING,
-	DRIVING_REQUESTING,
-	DRIVING_TRAINING_0,
-	DRIVING_TRAINING_1, 
-	DRIVING_TRAINING_2,
-	DRIVE,
-	GETIN,
-	CAROVERVIEW,
-	DRIVING_19,
-	DRIVING_20,
-	DRIVING_21,
-	DRIVING_22,
-	DRIVING_23,
-	DRIVING_24,
-	DRIVING_25,
-	DRIVING_26,
-	DRIVING_27,
-	DRIVING_28,
-	DRIVEBASIC,
-	GETIN2,
-	CAROVERVIEW2,
-	DRIVING_31,
-	DRIVING_32,
-	DRIVING_33,
-	DRIVING_34,
-	DRIVING_35,
-	DRIVING_36,
-	DRIVING_37,
-	DRIVING_38,
-	DRIVING_39,
-	DRIVING_40,
-	DRIVING_41,
-	DRIVING_42,
-	DRIVING_43,
-	DRIVING_44,
-	DRIVING_45,
-	DRIVING_46,
-	DRIVING_47,
-	DRIVING_48,
-	DRIVING_49,
-	DRIVING_50,
-	DRIVING_51,
-	DRIVING_52,
-	DRIVING_53,
-	
-	// MEDICAL
-	MEDICAL_START,
-	MEDICAL_GETIN_AMBULANCE,
-	MEDICAL_DRIVE_1,
-	MEDICAL_DRIVE_2,
-	MEDICAL_DRIVE_3,
-	MEDICAL_DRIVE_4,
-	MEDICAL_PULLOUT_PATIENT,
-	MEDICAL_SHOW_PATIENT_STATUS,
-	MEDICAL_SHOW_PATIENT_STATUS_2,
-	MEDICAL_EQUIP_TOURNIQUET,
-	MEDICAL_USE_TOURNIQUET,
-	MEDICAL_EQUIP_BANDAGE,
-	MEDICAL_USE_BANDAGE_CHEST,
-	MEDICAL_USE_BANDAGE_LEG,
-	MEDICAL_EQUIP_SALINE,
-	MEDICAL_USE_SALINE,
-	MEDICAL_EQUIP_MORPHINE,
-	MEDICAL_USE_MORPHINE,
-	MEDICAL_END,
-	
-	// CONFLICT CAPTURING
-	CONFLICT_CAPTURING_START,
-	CONFLICT_CAPTURING_OPEN_MAP,
-	CONFLICT_TASKS_MENU,
-	CONFLICT_TASKS_INFO,
-	CONFLICT_VOLUNTEERING,
-	CONFLICT_VOLUNTEERING_INFO,
-	CONFLICT_CAPTURING_MOVE_1,
-	CONFLICT_BASE_NEARBY,
-	CONFLICT_BASE_SEIZING_INFO,
-	CONFLICT_SHOW_COMPAS,
-	CONFLICT_COMPAS_DIRECTION_NORTH,
-	CONFLICT_COMPAS_DIRECTION_2,
-	CONFLICT_COMPAS_MOVE,
-	CONFLICT_MAP_MOVE,
-	CONFLICT_RADIO_PICKUP,
-	CONFLICT_VOIP_SETUP,
-	CONFLICT_VOIP_USE,
-	CONFLICT_VOIP_INFO,
-	CONFLICT_MHQ_DEPLOY,
-	CONFLICT_MHQ_INFO,
-	CONFLICT_SEIZE_ENEMY_HQ,
-	CONFLICT_CAPTURING_END,
-
-	// NAVIGATION
-	NAVIGATION_INTRODUCTION,
-	NAVIGATION_OPEN_MAP,
-	NAVIGATION_MAP_INTRODUCTION,
-	NAVIGATION_MAP_GRIDS,
-	NAVIGATION_MAP_TOOLBAR,
-	NAVIGATION_MAP_TOOLBAR_COMPASS,
-	NAVIGATION_MAP_TOOLBAR_RULER,
-	NAVIGATION_MAP_TOOLBAR_WATCH,
-	NAVIGATION_MAP_CLOSE,
-	NAVIGATION_COMPASS_EQUIP,
-	NAVIGATION_COMPASS_FIND_NORTH,
-	NAVIGATION_COMPASS_FIND_LIGHTHOUSE,
-	NAVIGATION_COMPASS_FIND_CHURCH,
-	NAVIGATION_COMPASS_FIND_VILLAGE,
-	NAVIGATION_COMPASS_FIND_HILL_TOWER,
-	NAVIGATION_OPEN_MAP_2,
-	NAVIGATION_CREATING_MARKER,
-	NAVITATION_CREATING_MARKER2,
-	NAVIGATION_MOVE,
-	NAVIGATION_END,
-	
-	// NAVIGATION FALLBACKS
-	NAVIGATION_MAP_CLOSED_FALLBACK,
-	NAVIGATION_MARKER_HELPER,
-	
-	// HELICOURSE
-	HELI_START,
-	HELI_GETIN,
-	HELI_START_ENGINE,
-	HELI_GAINING_RPM,
-	HELI_LIFT_OFF,
-	HELI_FLIGHT_1,
-	HELI_FLIGHT_2,
-	HELI_FLIGHT_3,
-	HELI_FLIGHT_AUTOHOOVER,
-	HELI_FLIGHT_AUTOHOOVER_DESCRIPTION,
-	HELI_FLIGHT_LAND,
-	HELI_TURN_OFF_ENGINE,
-	HELI_GETOUT,
-	HELI_END,
-	
-	//
-	DRIVING_HEAVY_START,
-	DRIVING_HEAVY_1,
-	DRIVING_HEAVY_2,
-	DRIVING_HEAVY_3,
-	DRIVING_HEAVY_4,
-	DRIVING_HEAVY_5,
-	DRIVING_HEAVY_6,
-	DRIVING_HEAVY_7,
-	DRIVING_HEAVY_8,
-	DRIVING_HEAVY_9,
-	DRIVING_HEAVY_10,
-	DRIVING_HEAVY_11,
-	DRIVING_HEAVY_GETIN,
-	DRIVING_HEAVY_12,
-	DRIVING_HEAVY_13,
-	DRIVING_HEAVY_14,
-	DRIVING_HEAVY_15,
-	DRIVING_HEAVY_16,
-	DRIVING_HEAVY_17,
-	DRIVING_HEAVY_18,
-	DRIVING_HEAVY_GETOUT,
-	DRIVING_HEAVY_REPAIR,
-	DRIVING_HEAVY_END,
-
-	// CONFLICT BASE TOUR 
-	CONFLICT_BASE_TOUR_START,
-	
-	// CONFLICT BASEBUILDING 
-	CONFLICT_BUILDING_START,
-	CONFLICT_BUILDING_ENTER_BUILDING,
-	CONFLICT_BUILDING_PLACE_SERVICE,
-	CONFLICT_BUILDING_EXIT_BUILDING,
-	CONFLICT_BUILDING_EQUIP_TOOL,
-	CONFLICT_BUILDING_CONSTRUCT_SERVICE,
-	CONFLICT_BUILDING_INFO_LOW_SUPPLIES,
-	CONFLICT_BUILDING_GET_INTO_TRUCK,
-	CONFLICT_BUILDING_MOVE_TO_FIA_DEPOT,
-	CONFLICT_BUILDING_EXIT_TRUCK,
-	CONFLICT_BUILDING_LOAD_SUPPLIES,
-	CONFLICT_BUILDING_EQUIP_TOOL2,
-	CONFLICT_BUILDING_DECONSTRUCT,
-	CONFLICT_BUILDING_GET_INTO_TRUCK2,
-	CONFLICT_BUILDING_MOVE_TO_START,
-	CONFLICT_BUILDING_EXIT_TRUCK2,
-	CONFLICT_BUILDING_UNLOAD_SUPPLIES,
-	CONFLICT_BUILDING_END,
-};
-
-//------------------------------------------------------------------------------------------------
-enum SCR_ECampaignTutorialArlandConfig
-{
-	
 }

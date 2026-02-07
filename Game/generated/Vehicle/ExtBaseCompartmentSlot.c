@@ -14,6 +14,7 @@ class ExtBaseCompartmentSlot: ScriptAndConfig
 	proto external int GetAddUserActions(out notnull array<CompartmentUserAction> outAddUserActions);
 	proto external IEntity GetOwner();
 	proto external BaseControllerComponent GetController();
+	proto external ECompartmentType GetType();
 	// returns door index with entry position that is closest to provided point (in world space)
 	proto external int PickDoorIndexForPoint(vector point);
 	proto external IEntity AttachedOccupant();

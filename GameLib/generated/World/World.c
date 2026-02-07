@@ -47,6 +47,8 @@ sealed class World: BaseWorld
 	\return Decal pointer for static decals or null if the decal is dynamic or wasn't created for some reason (invalid material, NoDecal flag, ...)
 	*/
 	proto external Decal CreateDecal2(notnull IEntity entity, vector matrix[4], float nearclip, float farclip, float size, float stretch, string materialName, float lifetime, int color, int atlasNum = 0);
+	//! Reload all systems, by deleting all current systems, and create them again
+	proto external void ReloadSystems();
 	//! Find a system from his type
 	proto external BaseSystem FindSystem(typename type);
 }

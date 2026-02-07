@@ -1,6 +1,6 @@
 class SCR_TourniquetStorageComponentClass : SCR_EquipmentStorageComponentClass
 {
-};
+}
 
 class SCR_TourniquetMovedCallback : ScriptedInventoryOperationCallback
 {
@@ -24,25 +24,36 @@ class SCR_TourniquetMovedCallback : ScriptedInventoryOperationCallback
 			if (itemComp && itemComp.GetParentSlot())
 			{
 				BaseInventoryStorageComponent tqStorage = itemComp.GetParentSlot().GetStorage();
+				if (tqStorage)
+				{
+					SCR_InventoryStorageBaseUI storageUI = menu.GetStorageUIByBaseStorageComponent(tqStorage);
+					if (storageUI)
+						storageUI.Refresh();
+				}
+			}
+
+			if (m_Storage)
+			{
 				SCR_InventoryStorageBaseUI storageUI = menu.GetStorageUIByBaseStorageComponent(m_Storage);
 				if (storageUI)
 					storageUI.Refresh();
-			}
-
-			SCR_InventoryStorageBaseUI storageUI = menu.GetStorageUIByBaseStorageComponent(m_Storage);
-			if (storageUI)
-				storageUI.Refresh();
-
-			m_OnTourniquetMoved.Invoke(m_iSlotId);
+			}	
 		}
+		
+		if (m_OnTourniquetMoved)
+			m_OnTourniquetMoved.Invoke(m_iSlotId);
 	}
-};
+}
 
 class SCR_TourniquetStorageComponent : SCR_EquipmentStorageComponent
 {
-	ref SCR_TourniquetMovedCallback m_TourniquetMovedCallback = new SCR_TourniquetMovedCallback();
+	protected ref SCR_TourniquetMovedCallback m_TourniquetMovedCallback = new SCR_TourniquetMovedCallback();
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] target
+	//! \param[in] eHitZoneGroup
+	//! \param[in] tourniquet
 	void AddTourniquetToSlot(IEntity target, ECharacterHitZoneGroup eHitZoneGroup, IEntity tourniquet)
 	{
 		SCR_TourniquetStorageComponent tourniquetStorageComp = SCR_TourniquetStorageComponent.Cast(target.FindComponent(SCR_TourniquetStorageComponent));
@@ -88,13 +99,32 @@ class SCR_TourniquetStorageComponent : SCR_EquipmentStorageComponent
 		m_TourniquetMovedCallback.m_iSlotId = eHitZoneGroup;
 
 		InventoryItemComponent itemComp = InventoryItemComponent.Cast(tourniquet.FindComponent(InventoryItemComponent));
-		m_TourniquetMovedCallback.m_Storage = itemComp.GetParentSlot().GetStorage();
+		if (itemComp.GetParentSlot())
+			m_TourniquetMovedCallback.m_Storage = itemComp.GetParentSlot().GetStorage();
+		else
+			m_TourniquetMovedCallback.m_Storage = null;
+		
 		m_TourniquetMovedCallback.m_bRemove = true;
 		
-		storageMan.TryMoveItemToStorage(tourniquet, tourniquetStorageComp, tqTargetSlot.GetID(), m_TourniquetMovedCallback);
+		if (storageMan.TryMoveItemToStorage(tourniquet, tourniquetStorageComp, tqTargetSlot.GetID(), m_TourniquetMovedCallback))
+			return;
+		
+		InventoryItemComponent invComp = InventoryItemComponent.Cast(tourniquet.FindComponent(InventoryItemComponent));
+		if (!invComp)
+			return;
+		
+		if (!invComp.GetParentSlot())
+		{
+			if (storageMan.TryInsertItemInStorage(tourniquet, tourniquetStorageComp, tqTargetSlot.GetID(), m_TourniquetMovedCallback))
+				return;
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] eHitZoneGroup
+	//! \param[in] retrievingCharacter
+	//! \return
 	bool RemoveTourniquetFromSlot(ECharacterHitZoneGroup eHitZoneGroup, IEntity retrievingCharacter = null)
 	{
 		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
@@ -134,10 +164,29 @@ class SCR_TourniquetStorageComponent : SCR_EquipmentStorageComponent
 		BaseInventoryStorageComponent targetStorage = storageMan.FindStorageForItem(targetTourniquet, EStoragePurpose.PURPOSE_DEPOSIT);
 		m_TourniquetMovedCallback.m_Storage = targetStorage;
 		m_TourniquetMovedCallback.m_bRemove = false;
-
-		return storageMan.TryMoveItemToStorage(targetTourniquet, targetStorage, -1, m_TourniquetMovedCallback);		
+		
+		if (storageMan.TryMoveItemToStorage(targetTourniquet, targetStorage, tqTargetSlot.GetID(), m_TourniquetMovedCallback))
+			return true;
+		
+		InventoryItemComponent invComp = InventoryItemComponent.Cast(targetTourniquet.FindComponent(InventoryItemComponent));
+		if (!invComp)
+			return false;
+		
+		if (!invComp.GetParentSlot())
+		{
+			if (storageMan.TryInsertItemInStorage(targetTourniquet, targetStorage, tqTargetSlot.GetID(), m_TourniquetMovedCallback))
+				return true;
+		}
+		else
+		{
+			if (storageMan.TryMoveItemToStorage(targetTourniquet, targetStorage, tqTargetSlot.GetID(), m_TourniquetMovedCallback))
+				return true;
+		}
+		
+		return false;	
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnAddedToSlot(IEntity item, int slotID)
 	{
 		ChimeraCharacter char = ChimeraCharacter.Cast(GetOwner());
@@ -155,6 +204,7 @@ class SCR_TourniquetStorageComponent : SCR_EquipmentStorageComponent
 		damageMgr.SetTourniquettedGroup(tqSlot.GetAssociatedHZGroup(), true);		
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnRemovedFromSlot(IEntity item, int slotID)
 	{
 		ChimeraCharacter char = ChimeraCharacter.Cast(GetOwner());
@@ -172,10 +222,13 @@ class SCR_TourniquetStorageComponent : SCR_EquipmentStorageComponent
 		damageMgr.SetTourniquettedGroup(tqSlot.GetAssociatedHZGroup(), false);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnTourniquetMoved()
 	{
 		if (!m_TourniquetMovedCallback.m_OnTourniquetMoved)
 			m_TourniquetMovedCallback.m_OnTourniquetMoved = new ScriptInvoker();
+
 		return m_TourniquetMovedCallback.m_OnTourniquetMoved;
 	}
-};
+}

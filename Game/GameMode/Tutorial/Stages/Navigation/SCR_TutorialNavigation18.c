@@ -10,6 +10,9 @@ class SCR_TutorialNavigation18 : SCR_BaseCampaignTutorialArlandStage
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
 	{
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		
 		m_Waypoint = GetGame().GetWorld().FindEntityByName("WP_GREENHOUSE");
 		if (!m_Waypoint)
 			return;
@@ -23,6 +26,7 @@ class SCR_TutorialNavigation18 : SCR_BaseCampaignTutorialArlandStage
 		
 		m_fWaypointCompletionRadius = 50;
 		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		PlaySoundSystem("Navigation_OrientationCarGetIn", true);
+		HintOnVoiceOver();
 	}
 };

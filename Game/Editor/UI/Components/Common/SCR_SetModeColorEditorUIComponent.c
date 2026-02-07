@@ -1,9 +1,10 @@
-class SCR_SetModeColorEditorUIComponent: ScriptedWidgetComponent
+class SCR_SetModeColorEditorUIComponent : ScriptedWidgetComponent
 {
 	[Attribute()]
 	protected bool m_bUpdateOnModeChanged;
 	protected Widget m_wRoot;
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnModeChanged(SCR_EditorModeEntity currentModeEntity, SCR_EditorModeEntity prevModeEntity)
 	{
 		if (!currentModeEntity)
@@ -22,12 +23,14 @@ class SCR_SetModeColorEditorUIComponent: ScriptedWidgetComponent
 		
 		SetColor(color);
 	}
-		
+
+	//------------------------------------------------------------------------------------------------
 	protected void SetColor(Color color)
 	{
 		m_wRoot.SetColor(color);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		m_wRoot = w;
@@ -45,6 +48,7 @@ class SCR_SetModeColorEditorUIComponent: ScriptedWidgetComponent
 			editorManager.GetOnModeChange().Insert(OnModeChanged);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
@@ -54,4 +58,4 @@ class SCR_SetModeColorEditorUIComponent: ScriptedWidgetComponent
 		if (m_bUpdateOnModeChanged)
 			editorManager.GetOnModeChange().Remove(OnModeChanged);
 	}
-};
+}

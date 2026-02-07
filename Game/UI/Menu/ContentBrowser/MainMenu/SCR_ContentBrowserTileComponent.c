@@ -1,100 +1,209 @@
 //#define WORKSHOP_DEBUG
 
-//------------------------------------------------------------------------------------------------
 //! Component for a tile in the content browser
-//! It is designed to be fairly autonomous, for instance it doesn't depend on other code or callbacks if something else starts download
-//! of the addon without notifying this tile.
 //! You must call SetWorkshopItem() after tile creation to activate it
 class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 {
 	// Event Handlers
-	ref ScriptInvoker m_OnFocus = new ScriptInvoker(); // (SCR_ContentBrowserTileComponent tile, SCR_WorkshopItem item)
+	protected ref ScriptInvokerScriptedWidgetComponent m_OnFocus = new ScriptInvokerScriptedWidgetComponent();
 
-	// Constants
-	protected const float MAIN_BUTTON_FADE_SPEED = 1 / 0.07;
+	protected ref SCR_WorkshopTileWidgets m_Widgets = new SCR_WorkshopTileWidgets();
 
-	protected const vector TOOLTIP_OFFSET = "15 0 0";
+	protected bool m_bFocused;
+	protected bool m_bUpdatingContinuously;
 
-	// Main button modes
-	// It's not perfect that it's a string, but it directly matches to the tags of button effects in the layout.
-	protected const string MAIN_BUTTON_MODE_DOWNLOAD			= "download";
-	protected const string MAIN_BUTTON_MODE_DOWNLOADING			= "downloading";
-	protected const string MAIN_BUTTON_MODE_REPAIR				= "repair";
-	protected const string MAIN_BUTTON_MODE_UPDATE				= "update";
-	protected const string MAIN_BUTTON_ALL						= "all";
-
-	protected const string MAIN_BUTTON_COLOR_MODE_NEUTRAL 		= "neutral";
-	protected const string MAIN_BUTTON_COLOR_MODE_MODERATE		= "moderate";
-	protected const string MAIN_BUTTON_COLOR_MODE_CRITICAL		= "critical";
-	protected const string MAIN_BUTTON_COLOR_MODE_DOWNLOADING	= "downloading";
-
-	// Other
-	protected ResourceName ICON_IMAGE_SET = "{2EFEA2AF1F38E7F0}UI/Textures/Icons/icons_wrapperUI-64.imageset";
 	protected ref SCR_WorkshopItem m_Item;
-	protected bool m_bShowRestricted;
-	protected bool m_bRatingVisible = true;
-	protected bool m_bFocus = false;
-	protected bool m_bMouseOver = false;
-	protected bool m_bDownloading = false;
-	protected bool m_bAnyIssue = false;			// Any issue at all
 
-	protected ref SCR_ContentBrowserTileWidgets widgets = new SCR_ContentBrowserTileWidgets;
-
-	// Animators
-	ref SCR_FadeInOutAnimator m_AnimatorFadeIn;
-	ref SCR_FadeInOutAnimator m_AnimatorFadeOut;
-
-	// Flag to prevent checking image all the time, because there is some bug when image is first shown as loaded by WorkshopItem, but later isn't
-	protected bool m_bImageLoaded;
-
-	[Attribute()]
-	protected ref SCR_ContentBrowser_ColorScheme m_ColorScheme;
-
+	protected SCR_WorkshopItemBackendImageComponent m_BackendImageComponent;
 	protected ref SCR_WorkshopDownloadSequence m_DownloadRequest;
 
-	// ------------------- Public -------------------
-	//------------------------------------------------------------------------------------------------
-	// If a null pointer is passed, tile becomes hidden (invisible)
-	// - showRestricted - when false and if item is reported, the tile will switch to restricted appearance (image, name, author name will be hidden).
-	void SetWorkshopItem(SCR_WorkshopItem workshopItem, bool showRestricted = false)
-	{
-		m_bShowRestricted = showRestricted;
+	protected SCR_ERevisionAvailability m_eRevisionAvailability;
 
-		// Uregister from previous item
-		if (m_Item)
+	protected SCR_EWorkshopTileErrorState m_eErrorState;
+	protected SCR_EWorkshopTileActionState m_eMainActionState;
+
+	protected const int CONTINUOUS_UPDATE_DELAY = 1000;
+	protected const string MAIN_ACTION_MESSAGE_DECORATION = "[%1]";
+
+	//------------------------------------------------------------------------------------------------
+	override void HandlerAttached(Widget w)
+	{
+		super.HandlerAttached(w);
+
+		if (!GetGame().InPlayMode())
+			return;
+
+		m_Widgets.Init(m_wRoot);
+
+		m_Widgets.m_EnableAddonButtonComponent.m_OnToggled.Insert(OnEnableButtonToggled);
+		m_Widgets.m_FavouriteButtonComponent0.m_OnToggled.Insert(OnFavouriteButtonToggled);
+
+		Widget backendImage = m_wRoot.FindAnyWidget("m_BackendImage");
+		if (backendImage)
+			m_BackendImageComponent = SCR_WorkshopItemBackendImageComponent.Cast(backendImage.FindHandler(SCR_WorkshopItemBackendImageComponent));
+
+		UpdateWarningOverlay();
+		m_Widgets.m_WarningOverlayComponent.GetOnWarningIconButtonClicked().Insert(OnWarningButtonClicked);
+
+		UpdateHeader();
+		m_Widgets.m_MainActionButtonComponent0.m_OnClicked.Insert(OnMainActionButtonClicked);
+
+		SCR_DownloadManager downloadManager = SCR_DownloadManager.GetInstance();
+		if (downloadManager)
 		{
-			m_Item.m_OnChanged.Remove(Callback_OnItemChanged);
-			m_Item = null; // Release the old item
+			downloadManager.m_OnNewDownload.Insert(OnAnyNewDownload);
+			downloadManager.m_OnDownloadFailed.Insert(OnAnyDownloadError);
+			downloadManager.m_OnDownloadCanceled.Insert(OnAnyDownloadCompleted);
+			downloadManager.m_OnDownloadComplete.Insert(OnAnyDownloadCompleted);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void HandlerDeattached(Widget w)
+	{
+		SCR_ScriptedWidgetTooltip.GetOnTooltipShow().Remove(OnTooltipShow);
+
+		SCR_DownloadManager downloadManager = SCR_DownloadManager.GetInstance();
+		if (downloadManager)
+		{
+			downloadManager.m_OnNewDownload.Remove(OnAnyNewDownload);
+			downloadManager.m_OnDownloadFailed.Remove(OnAnyDownloadError);
+			downloadManager.m_OnDownloadCanceled.Remove(OnAnyDownloadCompleted);
+			downloadManager.m_OnDownloadComplete.Remove(OnAnyDownloadCompleted);
 		}
 
-		if (workshopItem)
+		StopContinuousUpdate();
+
+		super.HandlerDeattached(w);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override bool OnFocus(Widget w, int x, int y)
+	{
+		m_OnFocus.Invoke(this);
+		m_bFocused = true;
+
+		UpdateFavouriteButton();
+		UpdateNamesScrolling();
+		UpdateHeader();
+
+		// Tooltips
+		SCR_ScriptedWidgetTooltip.GetOnTooltipShow().Insert(OnTooltipShow);
+
+		return super.OnFocus(w, x, y);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override bool OnFocusLost(Widget w, int x, int y)
+	{
+		m_bFocused = false;
+
+		UpdateFavouriteButton();
+		UpdateNamesScrolling();
+		UpdateHeader();
+
+		// Tooltips
+		SCR_ScriptedWidgetTooltip.GetOnTooltipShow().Remove(OnTooltipShow);
+
+		return super.OnFocusLost(w, x, y);
+	}
+
+	// ---- Protected ----
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateStateFlags()
+	{
+		if (!m_Item)
+			return;
+
+		SCR_AddonManager addonManager = SCR_AddonManager.GetInstance();
+
+		WorkshopItem item = m_Item.GetWorkshopItem();
+		m_eRevisionAvailability = SCR_ERevisionAvailability.ERA_UNKNOWN_AVAILABILITY;
+		if (item)
+			m_eRevisionAvailability = addonManager.ItemAvailability(item);
+
+		EWorkshopItemProblem itemProblem = m_Item.GetHighestPriorityProblem();
+
+		// --- Download States ---
+		// Downloading is true if we are downloading anything for this addon or if we have started a download for any of its dependencies through this item
+		if (m_Item.GetDownloadAction() || m_Item.GetDependencyCompositeAction())
+			m_eMainActionState = SCR_EWorkshopTileActionState.DOWNLOADING;
+		else if (itemProblem != EWorkshopItemProblem.NO_PROBLEM)
 		{
-			m_Item = workshopItem;
-			m_Item.m_OnChanged.Insert(Callback_OnItemChanged);
-			m_bImageLoaded = false;
+			switch (itemProblem)
+			{
+				case EWorkshopItemProblem.UPDATE_AVAILABLE:		m_eMainActionState = SCR_EWorkshopTileActionState.UPDATE;					break;
+				case EWorkshopItemProblem.DEPENDENCY_MISSING:	m_eMainActionState = SCR_EWorkshopTileActionState.DEPENDENCIES_DOWNLOAD;	break;
+				case EWorkshopItemProblem.DEPENDENCY_OUTDATED:	m_eMainActionState = SCR_EWorkshopTileActionState.DEPENDENCIES_UPDATE;		break;
+				case EWorkshopItemProblem.DEPENDENCY_DISABLED:	m_eMainActionState = SCR_EWorkshopTileActionState.DEPENDENCIES_ENABLE;		break;
+			}
+		}
+		else if (!m_Item.GetOffline())
+			m_eMainActionState = SCR_EWorkshopTileActionState.DOWNLOAD;
+		else
+			m_eMainActionState = SCR_EWorkshopTileActionState.DOWNLOADED;
+
+		// --- Error States ---
+		if (m_Item.GetRestricted())
+			m_eErrorState = SCR_EWorkshopTileErrorState.RESTRICTED;
+		else if (m_eRevisionAvailability != SCR_ERevisionAvailability.ERA_AVAILABLE && m_eRevisionAvailability != SCR_ERevisionAvailability.ERA_UNKNOWN_AVAILABILITY)
+			m_eErrorState = SCR_EWorkshopTileErrorState.REVISION_AVAILABILITY_ISSUE;
+		else if (itemProblem == EWorkshopItemProblem.DEPENDENCY_MISSING || itemProblem == EWorkshopItemProblem.DEPENDENCY_DISABLED)
+			m_eErrorState = SCR_EWorkshopTileErrorState.DEPENDENCIES_ISSUE;
+		else
+			m_eErrorState = SCR_EWorkshopTileErrorState.NONE;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateNames()
+	{
+		m_Widgets.m_wAddonName.SetText(m_Item.GetName());
+		m_Widgets.m_wAddonAuthor.SetText(WidgetManager.Translate("#AR-Workshop_AddonAuthorPrefix", m_Item.GetAuthorName()));
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateNamesScrolling()
+	{
+		if (m_bFocused)
+		{
+			if (!m_Widgets.m_FrameNameComponent.GetContentFit())
+				m_Widgets.m_FrameNameComponent.AnimationStart();
+
+			if (!m_Widgets.m_FrameAuthorComponent.GetContentFit())
+				m_Widgets.m_FrameAuthorComponent.AnimationStart();
+		}
+		else
+		{
+			m_Widgets.m_FrameNameComponent.AnimationStop();
+			m_Widgets.m_FrameNameComponent.ResetPosition();
+
+			m_Widgets.m_FrameAuthorComponent.AnimationStop();
+			m_Widgets.m_FrameAuthorComponent.ResetPosition();
 		}
 
-		this.UpdateAllWidgets();
-
-		// Since we reuse those tiles, when we assign a new workshop item to this tile, we should not animate the effects,
-		// but we must force them into final value
-		// so far it only matters for this button
-		widgets.m_EnableButtonComponent.InvokeAllEnabledEffects(instant: true);
+		// TODO: additional authors
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void SetRatingVisible(bool visible)
+	protected void UpdateRating()
 	{
-		m_bRatingVisible = visible;
+		m_Widgets.m_wRating.SetVisible(m_eErrorState != SCR_EWorkshopTileErrorState.RESTRICTED);
+		if (!m_Widgets.m_wRating.IsVisible())
+			return;
+
+		int rating = Math.Ceil(100 * m_Item.GetAverageRating());
+		m_Widgets.m_RatingComponent1.SetTitle(WidgetManager.Translate("#AR-ValueUnit_Percentage", rating));
 	}
 
 	//------------------------------------------------------------------------------------------------
-	SCR_WorkshopItem GetWorkshopItem()
+	protected void UpdateImage()
 	{
-		return m_Item;
+		if (!m_BackendImageComponent)
+			return;
+
+		m_BackendImageComponent.SetWorkshopItemAndImage(m_Item, m_Item.GetThumbnail());
 	}
 
-	// ------------- Protected -----------------------
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateDependencyCountWidgets()
 	{
@@ -102,188 +211,63 @@ class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 			return;
 
 		bool offline = m_Item.GetOffline();
-		//widgets.m_DependencyCountText.SetVisible(offline);
-		widgets.m_DependencyCountText.SetVisible(false); // For now disabled
-
-		if (!offline)
-		{
-			widgets.m_DependentHover.SetVisible(false);
-			widgets.m_DependencyHover.SetVisible(false);
-			return;
-		}
 
 		int nDependencies = SCR_AddonManager.CountItemsBasic(m_Item.GetLatestDependencies(), EWorkshopItemQuery.OFFLINE);
 		int nDependent = SCR_AddonManager.CountItemsBasic(m_Item.GetDependentAddons(), EWorkshopItemQuery.OFFLINE);
 
-		if (nDependencies == 0 && nDependent == 0)
-			widgets.m_DependencyCountText.SetText(string.Empty);
-		else
-		{
-			// "99 > [  ] > 99"
-			string strLeft, strRight;
-			string strCenter = "[  ]";
-			if (nDependent > 0)
-				strLeft = string.Format("%1 > ", nDependent);
-			if (nDependencies > 0)
-				strRight = string.Format(" > %1", nDependencies);
-			widgets.m_DependencyCountText.SetText(strLeft + strCenter + strRight);
-		}
-
-		// Images
-		widgets.m_DependentHover.SetVisible(nDependent > 0);
-		widgets.m_DependencyHover.SetVisible(nDependencies > 0);
+		// Displays
+		m_Widgets.m_wDependent.SetVisible(nDependent > 0);
+		m_Widgets.m_wDependencies.SetVisible(nDependencies > 0);
+		
+		m_Widgets.m_DependentComponent1.SetTitle(Math.ClampInt(nDependent, 0, 999).ToString());
+		m_Widgets.m_DependenciesComponent1.SetTitle(Math.ClampInt(nDependencies, 0, 999).ToString());
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void UpdateDownloadProgressWidgets()
+	protected void UpdateDownloadProgressBar()
 	{
-		if (m_bDownloading)
-		{
-			float progress = GetDownloadProgress();
-			widgets.m_DownloadProgressBar.SetCurrent(progress);
-		}
-		else
-		{
-			widgets.m_DownloadProgressBar.SetCurrent(0);
-		}
+		float progress;
+
+		if (m_Item && m_eMainActionState == SCR_EWorkshopTileActionState.DOWNLOADING)
+			progress = GetDownloadProgress();
+
+		m_Widgets.m_wDownloadProgressBar.SetCurrent(progress);
+		m_Widgets.m_wDownloadProgressBarOverlay.SetVisible(progress > 0);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void UpdateEnableButtonVisible()
+	//! Returns download progress of current action or of current composite action
+	protected float GetDownloadProgress()
 	{
-		// Visible only if offline
-		bool visible = m_Item.GetOffline() && m_bFocus;
-		widgets.m_EnableButton.SetVisible(visible);
+		return SCR_DownloadManager.GetItemDownloadActionsProgress(m_Item);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void UpdateEnableButtonToggled()
+	protected void UpdateEnableButton()
 	{
-		bool toggled = m_Item.GetEnabled();
-		widgets.m_EnableButtonComponent.SetToggled(toggled, false);
+		m_Widgets.m_EnableAddonButtonComponent.SetVisible(m_Item.GetOffline());
+		m_Widgets.m_EnableAddonButtonComponent.SetToggled(m_Item.GetEnabled(), false);
+
+		if (!m_Item.GetOffline())
+			return;
+
+		m_Widgets.m_EnableAddonButtonComponent.SetEnabled(m_eMainActionState != SCR_EWorkshopTileActionState.DOWNLOADING);
+
+		string enableButtonMode = "no_problems";
+		if (m_eMainActionState == SCR_EWorkshopTileActionState.DEPENDENCIES_DOWNLOAD || m_eMainActionState == SCR_EWorkshopTileActionState.DEPENDENCIES_ENABLE)
+			enableButtonMode = "problems";
+
+		m_Widgets.m_EnableAddonButtonComponent.SetEffectsWithAnyTagEnabled({"all", enableButtonMode});
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void UpdateFavouriteButtonToggled()
-	{
-		bool toggled = m_Item.GetFavourite();
-		widgets.m_FavouriteButtonComponent.SetToggled(toggled, false);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void UpdateFavouriteButtonVisible()
-	{
-		bool visible = m_bFocus || m_Item.GetFavourite();
-		widgets.m_FavouriteButton.SetVisible(visible);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	// Updates the state of widgets which depend on addon state much
-	protected void UpdateStateWidgets()
+	protected void UpdateFavouriteButton()
 	{
 		if (!m_Item)
 			return;
-
-		bool mainButtonAlwaysVisible = false;
-		string mainButtonMode;
-		string mainButtonColorMode;
-		string hintText;
-		bool criticalProblem = false;
-		string problemDescription;
-		bool anyProblem = SCR_WorkshopUiCommon.GetHighestPriorityProblemDescription(m_Item, problemDescription, criticalProblem);
-
-		if (m_bDownloading)
-		{
-			// Downloading
-
-			mainButtonAlwaysVisible = true;
-			mainButtonMode = MAIN_BUTTON_MODE_DOWNLOADING;
-			mainButtonColorMode = MAIN_BUTTON_COLOR_MODE_DOWNLOADING;
-
-			hintText = string.Format("%1 %2%%",
-				WidgetManager.Translate("#AR-Workshop_ButtonDownloading"),
-				Math.Round(100.0 * GetDownloadProgress()));
-		}
-		else
-		{
-			// Not downloading
-
-			hintText = SCR_WorkshopUiCommon.GetPrimaryActionName(m_Item);
-
-			if (m_Item.GetOffline())
-			{
-				// Offline
-				EWorkshopItemProblem problem = m_Item.GetHighestPriorityProblem();
-
-				switch (problem)
-				{
-					case EWorkshopItemProblem.DEPENDENCY_MISSING:
-					case EWorkshopItemProblem.DEPENDENCY_DISABLED:
-					{
-						mainButtonAlwaysVisible = true;
-						mainButtonMode = MAIN_BUTTON_MODE_REPAIR;
-						mainButtonColorMode = MAIN_BUTTON_COLOR_MODE_CRITICAL;
-						break;
-					}
-
-					case EWorkshopItemProblem.UPDATE_AVAILABLE:
-					case EWorkshopItemProblem.DEPENDENCY_OUTDATED:
-					{
-						mainButtonAlwaysVisible = true;
-						mainButtonMode = MAIN_BUTTON_MODE_UPDATE;
-						mainButtonColorMode = MAIN_BUTTON_COLOR_MODE_MODERATE;
-						break;
-					}
-
-					case EWorkshopItemProblem.NO_PROBLEM:
-					{
-						mainButtonAlwaysVisible = false;
-					}
-				}
-			}
-			else
-			{
-				// Not downloaded
-				mainButtonMode = MAIN_BUTTON_MODE_DOWNLOAD;
-				mainButtonColorMode = MAIN_BUTTON_COLOR_MODE_NEUTRAL;
-			}
-		}
-
-		// Main button
-		// When item is restricted, hide the button anyway, even if addon has issues (which should not be possible since it should not be downloaded).
-		bool mainButtonVisible = !mainButtonMode.IsEmpty() && (mainButtonAlwaysVisible || m_bFocus) && !m_Item.GetRestricted();
-		widgets.m_MainButton.SetVisible(mainButtonVisible);
-		widgets.m_HintText.SetText(hintText);
-
-		if (mainButtonVisible)
-		{
-			widgets.m_MainButtonComponent.SetEffectsWithAnyTagEnabled({MAIN_BUTTON_ALL, mainButtonMode, mainButtonColorMode});
-		}
-
-		// Enable button
-		widgets.m_EnableButton.SetVisible(m_Item.GetOffline());
-		if (m_Item.GetOffline())
-		{
-
-			string enableButtonMode = "no_problems";
-			if (criticalProblem)
-				enableButtonMode = "problems";
-
-			widgets.m_EnableButtonComponent.SetEnabled(!m_bDownloading);
-			widgets.m_EnableButtonComponent.SetEffectsWithAnyTagEnabled({"all", enableButtonMode});
-		}
-
-
-		// Visibility of addon size
-		bool addonSizeVisible = m_Item.GetOffline() || m_bFocus || m_Item.GetSizeBytes() > ContentBrowserUI.GetSmallDownloadThreshold();
-		widgets.m_AddonSizeOverlay.SetVisible(addonSizeVisible);
-
-		// Visibility of addon rating
-		widgets.m_RatingOverlay.SetVisible(m_bRatingVisible);
-
-		ShowBackendEnv();
-
-		return;
+		
+		m_Widgets.m_FavouriteButtonComponent0.SetToggled(m_Item.GetFavourite(), false);
+		m_Widgets.m_FavouriteButtonComponent0.SetVisible((m_bFocused || m_Item.GetFavourite()) && m_eErrorState != SCR_EWorkshopTileErrorState.RESTRICTED);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -295,251 +279,244 @@ class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 		bool display = (modEnv != "local") && (modEnv != "ask") && (modEnv != "invalid");
 		bool envMatch = gameEnv == modEnv;
 
-		widgets.m_BackendSource.SetVisible(display && !envMatch);
+		m_Widgets.m_wBackendSource.SetVisible(display && !envMatch);
 		if (!display)
 			return;
 
-		widgets.m_BackendSourceText.SetText(modEnv);
+		m_Widgets.m_BackendSourceComponent1.SetTitle(modEnv);
 
 		if (envMatch)
-			widgets.m_BackendSourceIcon.SetColor(UIColors.CONFIRM);
+			m_Widgets.m_BackendSourceComponent0.SetIconColor(UIColors.CONFIRM);
 		else
-			widgets.m_BackendSourceIcon.SetColor(UIColors.WARNING);
+			m_Widgets.m_BackendSourceComponent0.SetIconColor(UIColors.WARNING);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnFrame(float tDelta)
+	protected void UpdateWarningOverlay()
 	{
-		bool mouseOverMainButton = widgets.m_MainButtonComponent.GetMouseOver();
-		m_AnimatorFadeIn.ForceVisible(mouseOverMainButton);
-		m_AnimatorFadeOut.ForceVisible(!mouseOverMainButton);
+		// No error, hide
+		if (!m_Item || m_eErrorState == SCR_EWorkshopTileErrorState.NONE)
+		{
+			m_Widgets.m_WarningOverlayComponent.SetWarningVisible(false);
+			
+			if (m_BackendImageComponent)
+				m_BackendImageComponent.SetImageSaturation(UIConstants.ENABLED_WIDGET_SATURATION);
+			
+			return;
+		}
 
-		m_AnimatorFadeIn.Update(tDelta);
-		m_AnimatorFadeOut.Update(tDelta);
+		// Errors, show and desaturate the image
+		m_Widgets.m_WarningOverlayComponent.SetWarningVisible(true);
+		
+		if (m_BackendImageComponent)
+			m_BackendImageComponent.SetImageSaturation(UIConstants.DISABLED_WIDGET_SATURATION);
+
+		// Update Message
+		switch (m_eErrorState)
+		{
+			case SCR_EWorkshopTileErrorState.RESTRICTED:
+			{
+				m_Widgets.m_WarningOverlayComponent.SetWarning("#AR-Workshop_State_Restricted", "reportedByMe");
+				break;
+			}
+
+			case SCR_EWorkshopTileErrorState.DEPENDENCIES_ISSUE:
+			{
+				m_Widgets.m_WarningOverlayComponent.SetWarning("#AR-Workshop_State_MissingDependencies", "dependencies");
+				break;
+			}
+
+			case SCR_EWorkshopTileErrorState.REVISION_AVAILABILITY_ISSUE:
+			{
+				m_Widgets.m_WarningOverlayComponent.SetWarning(
+					SCR_WorkshopUiCommon.GetRevisionAvailabilityErrorMessage(m_eRevisionAvailability),
+					SCR_WorkshopUiCommon.GetRevisionAvailabilityErrorTexture(m_eRevisionAvailability)
+				);
+				break;
+			}
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Updates widgets which represent some state of the item
+	protected void UpdateHeader()
+	{
+		if (!m_Item)
+			return;
+
+		m_Widgets.m_wMainActionButton.SetVisible(
+			(m_bFocused || (m_eMainActionState != SCR_EWorkshopTileActionState.DOWNLOAD)) &&
+			m_eMainActionState != SCR_EWorkshopTileActionState.DOWNLOADED &&
+			m_eErrorState != SCR_EWorkshopTileErrorState.RESTRICTED
+		);
+
+		if (!m_Widgets.m_wMainActionButton.IsVisible())
+			return;
+
+		SCR_ButtonEffectColor iconColor = SCR_ButtonEffectColor.Cast(m_Widgets.m_MainActionButtonComponent0.FindEffect("IconColor"));
+		if (!iconColor)
+			return;
+		
+		SCR_ButtonEffectColor messageColor = SCR_ButtonEffectColor.Cast(m_Widgets.m_MainActionButtonComponent0.FindEffect("MessageColor"));
+		if (!iconColor)
+			return;
+
+		string icon;
+		string message;
+
+		switch (m_eMainActionState)
+		{
+			case SCR_EWorkshopTileActionState.DOWNLOAD:
+			{
+				iconColor.m_cDefault = UIColors.IDLE_ACTIVE;
+				icon = "download";
+
+				message = SCR_ByteFormat.GetReadableSize(m_Item.GetSizeBytes());
+				message = string.Format(MAIN_ACTION_MESSAGE_DECORATION, message);
+
+				messageColor.m_cDefault = UIColors.IDLE_ACTIVE;
+				break;
+			}
+
+			case SCR_EWorkshopTileActionState.DOWNLOADING:
+			{
+				iconColor.m_cDefault = UIColors.CONTRAST_COLOR;
+				icon = "downloading";
+
+				string percentage = WidgetManager.Translate("#AR-ValueUnit_Percentage", Math.Round(100.0 * GetDownloadProgress()));
+				string label = "#AR-DownloadManager_State_Downloading";
+				message = WidgetManager.Translate("%1 %2", label, percentage);
+
+				messageColor.m_cDefault = UIColors.NEUTRAL_INFORMATION;
+				break;
+			}
+
+			case SCR_EWorkshopTileActionState.UPDATE:
+			{
+				if (m_eRevisionAvailability != SCR_ERevisionAvailability.ERA_COMPATIBLE_UPDATE_AVAILABLE)
+				{
+					iconColor.m_cDefault = UIColors.SLIGHT_WARNING;
+					messageColor.m_cDefault = UIColors.IDLE_ACTIVE;
+				}
+				else
+				{
+					iconColor.m_cDefault = UIColors.WARNING;
+					messageColor.m_cDefault = UIColors.WARNING;
+				}
+
+				icon = "update";
+				//TODO: update size
+				message = string.Format(MAIN_ACTION_MESSAGE_DECORATION, SCR_WorkshopUiCommon.GetPrimaryActionName(m_Item));
+				break;
+			}
+
+			case SCR_EWorkshopTileActionState.DEPENDENCIES_UPDATE:
+			{
+				iconColor.m_cDefault = UIColors.SLIGHT_WARNING;
+				icon = "update";
+				message = string.Format(MAIN_ACTION_MESSAGE_DECORATION, SCR_WorkshopUiCommon.GetPrimaryActionName(m_Item));
+				messageColor.m_cDefault = UIColors.IDLE_ACTIVE;
+				break;
+			}
+
+			case SCR_EWorkshopTileActionState.DEPENDENCIES_DOWNLOAD:
+			{
+				iconColor.m_cDefault = UIColors.SLIGHT_WARNING;
+				icon = "download";
+				message = string.Format(MAIN_ACTION_MESSAGE_DECORATION, SCR_WorkshopUiCommon.GetPrimaryActionName(m_Item));
+				messageColor.m_cDefault = UIColors.IDLE_ACTIVE;
+				break;
+			}
+
+			case SCR_EWorkshopTileActionState.DEPENDENCIES_ENABLE:
+			{
+				iconColor.m_cDefault = UIColors.SLIGHT_WARNING;
+				icon = "repairCircle";
+				message = string.Format(MAIN_ACTION_MESSAGE_DECORATION, SCR_WorkshopUiCommon.GetPrimaryActionName(m_Item));
+				messageColor.m_cDefault = UIColors.IDLE_ACTIVE;
+				break;
+			}
+		}
+
+		m_Widgets.m_MainActionButtonComponent0.InvokeAllEnabledEffects(false);
+		m_Widgets.m_MainActionButtonComponent1.SetImage(icon);
+		m_Widgets.m_wMainActionText.SetText(message);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateAllWidgets()
 	{
-		//Print("UpdateAllWidgets()");
-
+		// Tile visibility
 		if (!m_Item)
 		{
-			// This tile is disabled
 			m_wRoot.SetVisible(false);
 			return;
 		}
-		else
-		{
-			m_wRoot.SetVisible(true);
-		}
 
-		// If the item is blocked for a whatever reason
-		if (m_Item.GetRestricted() && !m_bShowRestricted)
-		{
-			widgets.m_BlockedMode.SetVisible(true);
-			widgets.m_NormalMode.SetVisible(false);
-			return;
-		}
-		else
-		{
-			widgets.m_BlockedMode.SetVisible(false);
-			widgets.m_NormalMode.SetVisible(true);
-		}
+		m_wRoot.SetVisible(true);
 
-		// Update state of downloads
+		// Check states and update dynamic elements
+		HandleDownloadChanges();
+
+		// Update static elements
+		UpdateNames();
+		UpdateNamesScrolling();
+		UpdateRating();
+		UpdateImage();
+		ShowBackendEnv();
+		UpdateEnableButton();
+		UpdateFavouriteButton();
+		UpdateDependencyCountWidgets();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void HandleDownloadChanges()
+	{
 		UpdateStateFlags();
 
-		SCR_WorkshopItem item = m_Item;
+		UpdateDownloadProgressBar();
+		UpdateWarningOverlay();
+		UpdateHeader();
 
-		// Name and its animation
-		widgets.m_NameText.SetText(item.GetName());
-		if (m_bFocus && !widgets.m_NamesHorizontalAnimationComponent.GetContentFit())
-		{
-			widgets.m_NamesHorizontalAnimationComponent.AnimationStart();
-		}
+		if (m_Item && m_eMainActionState == SCR_EWorkshopTileActionState.DOWNLOADING)
+			StartContinuousUpdate();
 		else
-		{
-			widgets.m_NamesHorizontalAnimationComponent.AnimationStop();
-			widgets.m_NamesHorizontalAnimationComponent.ResetPosition(); // Move text back to default pos.
-		}
-
-		// Author name
-		widgets.m_AuthorNameText.SetText(item.GetAuthorName());
-
-		// Rating - Text
-		// Rating overlay visibility is updated separately!
-		int rating = Math.Ceil(item.GetAverageRating() * 100.0); // Must be more positive (:
-		widgets.m_RatingText.SetText(rating.ToString() + " %");
-
-		// Image
-		widgets.m_BackendImageComponent.SetWorkshopItemAndImage(m_Item, m_Item.GetThumbnail());
-
-		// Addon size - Text
-		// Addon size visibility is updated separately!
-		float sizef = item.GetSizeBytes();
-		string sizeStr = SCR_ByteFormat.GetReadableSizeMb(sizef);
-		widgets.m_AddonSizeText.SetText(sizeStr);
-
-		// Other UI elements
-		UpdateEnableButtonVisible();
-		UpdateEnableButtonToggled();
-		UpdateFavouriteButtonToggled();
-		UpdateFavouriteButtonVisible();
-		UpdateDownloadProgressWidgets();
-		UpdateDependencyCountWidgets();
-
-		UpdateStateWidgets();
+			StopContinuousUpdate();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void UpdateStateFlags()
+	protected void StartContinuousUpdate()
 	{
-		if (!m_Item)
+		if (m_bUpdatingContinuously || !m_Item)
 			return;
 
-		// Downloading is true if we are downloading anything for this addon or
-		// if we have started a download for any of its dependencies through this item
-		SCR_WorkshopItemActionDownload actionThisItem = m_Item.GetDownloadAction();
-		SCR_WorkshopItemActionComposite actionDependencies = m_Item.GetDependencyCompositeAction();
+		GetGame().GetCallqueue().CallLater(ContinuousUpdate, CONTINUOUS_UPDATE_DELAY, true);
 
-		m_bDownloading = actionThisItem || actionDependencies;
-
-		//m_Item.LogState();
-		EWorkshopItemProblem problem = m_Item.GetHighestPriorityProblem();
-
-		m_bAnyIssue = problem != EWorkshopItemProblem.NO_PROBLEM;
+		m_bUpdatingContinuously = true;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void InitWidgets()
+	protected void StopContinuousUpdate()
 	{
-		widgets.Init(m_wRoot);
+		if (m_bUpdatingContinuously)
+			GetGame().GetCallqueue().Remove(ContinuousUpdate);
 
-		widgets.m_EnableButtonComponent.m_OnToggled.Insert(OnEnableButtonToggled);
-		widgets.m_FavouriteButtonComponent.m_OnToggled.Insert(OnFavouriteButtonToggled);
-		widgets.m_MainButtonComponent.m_OnClicked.Insert(OnMainButton);
+		m_bUpdatingContinuously = false;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Returns download progress of current action or of current composite action
-	protected float GetDownloadProgress()
+	protected void ContinuousUpdate()
 	{
-		return SCR_DownloadManager.GetItemDownloadActionsProgress(m_Item);
-	}
+		if (!m_Item || m_eMainActionState != SCR_EWorkshopTileActionState.DOWNLOADING)
+			StopContinuousUpdate();
 
-	// ---------------- Event Handlers --------------------
-	//------------------------------------------------------------------------------------------------
-	override void HandlerAttached(Widget w)
-	{
-		super.HandlerAttached(w);
-
-		if (!GetGame().InPlayMode())
-			return;
-
-		InitWidgets();
-
-		// Create animators
-		m_AnimatorFadeIn = new SCR_FadeInOutAnimator(widgets.m_ShowOnMainButtonHover, MAIN_BUTTON_FADE_SPEED, MAIN_BUTTON_FADE_SPEED, 0);
-		m_AnimatorFadeOut = new SCR_FadeInOutAnimator(widgets.m_HideOnMainButtonHover, MAIN_BUTTON_FADE_SPEED, MAIN_BUTTON_FADE_SPEED, 0);
-
-		ChimeraMenuBase parentMenu = ChimeraMenuBase.GetOwnerMenu(w);
-		if (parentMenu)
-		{
-			parentMenu.m_OnUpdate.Insert(OnFrame);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void HandlerDeattached(Widget w)
-	{
-		ChimeraMenuBase parentMenu = ChimeraMenuBase.GetOwnerMenu(w);
-		if (parentMenu)
-		{
-			parentMenu.m_OnUpdate.Remove(OnFrame);
-		}
-
-		SCR_ScriptedWidgetTooltip.GetOnTooltipShow().Remove(OnTooltipShow);
-
-		super.HandlerDeattached(w);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override bool OnUpdate(Widget w)
-	{
-		// This will also get called on updates of children, ignore them
-		if (w != m_wRoot)
-			return true;
-
-		GetGame().GetCallqueue().CallLater(UpdateSize, 0);
-
-		return super.OnUpdate(w);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void UpdateSize()
-	{
-		// Bail if it's called after all widgets are destroyed.
-		if (!m_wRoot || !widgets.m_MainAreaSizeRatio)
-			return;
-
-		// Resize the height of the main area, it must keep a fixed aspect ratio
-		float sizex, sizey;
-		m_wRoot.GetScreenSize(sizex, sizey);
-		float sizexUnscaled = GetGame().GetWorkspace().DPIUnscale(sizex);
-		widgets.m_MainAreaSizeRatio.EnableHeightOverride(true);
-		widgets.m_MainAreaSizeRatio.SetHeightOverride(sizexUnscaled / SCR_WorkshopUiCommon.IMAGE_SIZE_RATIO);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override bool OnFocus(Widget w, int x, int y)
-	{
-		m_OnFocus.Invoke(this, m_Item);
-		m_bFocus = true;
-
-		AnimateWidget.Opacity(widgets.m_BorderPanel, 1, UIConstants.FADE_RATE_DEFAULT);
-		UpdateAllWidgets();
-
-		// Tooltips
-		SCR_ScriptedWidgetTooltip.GetOnTooltipShow().Insert(OnTooltipShow);
-
-		return super.OnFocus(w, x, y);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override bool OnFocusLost(Widget w, int x, int y)
-	{
-		m_bFocus = false;
-		AnimateWidget.Opacity(widgets.m_BorderPanel, 0, UIConstants.FADE_RATE_DEFAULT);
-		UpdateAllWidgets();
-
-		// Tooltips
-		SCR_ScriptedWidgetTooltip.GetOnTooltipShow().Remove(OnTooltipShow);
-
-		return super.OnFocusLost(w, x, y);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	// Focus on this widget when mouse enters it
-	// By default a widget is focused after we click on it
-	override bool OnMouseEnter(Widget w, int x, int y)
-	{
-		if (GetGame().GetInputManager().GetLastUsedInputDevice() == EInputDeviceType.MOUSE)
-			GetGame().GetWorkspace().SetFocusedWidget(m_wRoot);
-		return super.OnMouseEnter(w, x, y);
+		UpdateDownloadProgressBar();
+		UpdateHeader();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnEnableButtonToggled(SCR_ModularButtonComponent comp)
 	{
 		SCR_WorkshopUiCommon.OnEnableAddonToggleButton(m_Item, comp);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnMouseEnter_SetFocus()
-	{
-		GetGame().GetWorkspace().SetFocusedWidget(m_wRoot);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -552,21 +529,46 @@ class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnMainButton()
+	protected void OnWarningButtonClicked(ScriptInvokerScriptedWidgetComponent comp)
 	{
 		SCR_WorkshopUiCommon.ExecutePrimaryAction(m_Item, m_DownloadRequest);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! SCR_WorkshopItem.m_OnChanged
-	protected void Callback_OnItemChanged(SCR_WorkshopItem item)
+	protected void OnMainActionButtonClicked(SCR_ModularButtonComponent comp)
+	{
+		SCR_WorkshopUiCommon.ExecutePrimaryAction(m_Item, m_DownloadRequest);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnWorkshopItemChange(SCR_WorkshopItem item)
 	{
 		UpdateAllWidgets();
 	}
 
-	// -------------- Hovering over dependency icons ------------------
+	// --- Any downloads ---
+	// We need to update the progress bar and main action display if we start downloading this item or any of it's dependencies
 	//------------------------------------------------------------------------------------------------
-	void OnTooltipShow(SCR_ScriptedWidgetTooltip tooltipClass, Widget tooltipWidget, Widget hoverWidget, SCR_ScriptedWidgetTooltipPreset preset, string tag)
+	protected void OnAnyNewDownload(SCR_WorkshopItem item, SCR_WorkshopItemActionDownload action)
+	{
+		HandleDownloadChanges();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnAnyDownloadError(SCR_WorkshopItemActionDownload action, int reason)
+	{
+		HandleDownloadChanges();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnAnyDownloadCompleted(SCR_WorkshopItemActionDownload action)
+	{
+		HandleDownloadChanges();
+	}
+
+	// ---- Dependency icons Tooltips ----
+	//------------------------------------------------------------------------------------------------
+	protected void OnTooltipShow(SCR_ScriptedWidgetTooltip tooltipClass, Widget tooltipWidget, Widget hoverWidget, SCR_ScriptedWidgetTooltipPreset preset, string tag)
 	{
 		if (!m_Item || !tooltipWidget)
 			return;
@@ -589,10 +591,40 @@ class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 			comp.Init(addons);
 	}
 
+	// ---- Public ----
 	//------------------------------------------------------------------------------------------------
-	SCR_ContentBrowserTileWidgets GetWidgets()
+	//! If a null pointer is passed, tile becomes hidden
+	void SetWorkshopItem(SCR_WorkshopItem workshopItem)
 	{
-		return widgets;
+		// Unregister from previous item
+		if (m_Item)
+		{
+			m_Item.m_OnChanged.Remove(OnWorkshopItemChange);
+			m_Item = null; // Release the old item
+		}
+
+		if (workshopItem)
+		{
+			m_Item = workshopItem;
+			m_Item.m_OnChanged.Insert(OnWorkshopItemChange);
+		}
+
+		UpdateAllWidgets();
+
+		// Since we reuse these tiles, when we assign a new workshop item we should not animate the effects, but we must force them into the correct value
+		m_Widgets.m_EnableAddonButtonComponent.InvokeAllEnabledEffects(true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	SCR_WorkshopItem GetWorkshopItem()
+	{
+		return m_Item;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerScriptedWidgetComponent GetOnFocus()
+	{
+		return m_OnFocus;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -600,4 +632,25 @@ class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 	{
 		return SCR_ContentBrowserTileComponent.Cast(w.FindHandler(SCR_ContentBrowserTileComponent));
 	}
+}
+
+// Displayed in the warning overlay
+enum SCR_EWorkshopTileErrorState
+{
+	NONE,
+	RESTRICTED,
+	REVISION_AVAILABILITY_ISSUE,
+	DEPENDENCIES_ISSUE
+}
+
+// Displayed in the header
+enum SCR_EWorkshopTileActionState
+{
+	DOWNLOAD,
+	UPDATE,
+	DEPENDENCIES_UPDATE,
+	DEPENDENCIES_DOWNLOAD,	// Missing
+	DEPENDENCIES_ENABLE,	// Disabled
+	DOWNLOADING,
+	DOWNLOADED
 }

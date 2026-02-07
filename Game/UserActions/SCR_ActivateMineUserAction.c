@@ -101,7 +101,18 @@ class SCR_ActivateMineUserAction : ScriptedUserAction
 			charWorldMat[3] = pOwnerEntity.GetOrigin();
 			PointInfo ptWS = new PointInfo();
 			ptWS.Set(null, "", charWorldMat);
-			charController.TryUseItemOverrideParams(pOwnerEntity, false, false, itemActionId, 3, 0, 15.0, 0, 0, false, ptWS);
+
+			ItemUseParameters params = new ItemUseParameters();
+			params.SetEntity(pOwnerEntity);
+			params.SetAllowMovementDuringAction(false);
+			params.SetKeepInHandAfterSuccess(true);
+			params.SetCommandID(itemActionId);
+			params.SetCommandIntArg(3);
+			params.SetCommandFloatArg(0.0);
+			params.SetMaxAnimLength(15.0);
+			params.SetAlignmentPoint(ptWS);
+
+			charController.TryUseItemOverrideParams(params);
 		}
 		
 		pOwnerEntity.GetTransform(mat);

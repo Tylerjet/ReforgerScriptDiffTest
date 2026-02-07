@@ -15,10 +15,13 @@ class SCR_MultiOccupantVehcileTooltipDetail: SCR_EntityTooltipDetail
 	[Attribute("0", UIWidgets.ComboBox, "Compartment type to Check", "The type of compartment that this tooltip checks to see if they are filled", ParamEnumArray.FromEnum(ECompartmentType) )]
 	protected ECompartmentType m_iCompartmentTypeToCheck;
 	
+	//------------------------------------------------------------------------------------------------
 	override bool NeedUpdate()
 	{
 		return m_CompartmentManager != null;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void UpdateDetail(SCR_EditableEntityComponent entity)
 	{
 		if (!m_CompartmentManager || !m_MultiLineTextWidget)
@@ -26,10 +29,9 @@ class SCR_MultiOccupantVehcileTooltipDetail: SCR_EntityTooltipDetail
 		
 		m_MultiLineTextWidget.ClearAllText();
 		
-		array<BaseCompartmentSlot> compartments = new array<BaseCompartmentSlot>;
+		array<BaseCompartmentSlot> compartments = {};
 		m_CompartmentManager.GetCompartmentsOfType(compartments, m_iCompartmentTypeToCheck);
 		int total = compartments.Count();
-		
 		
 		IEntity occupant;
 		SCR_EditableEntityComponent editableGunner;
@@ -55,6 +57,8 @@ class SCR_MultiOccupantVehcileTooltipDetail: SCR_EntityTooltipDetail
 			}
 		}	
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool InitDetail(SCR_EditableEntityComponent entity, Widget widget)
 	{
 		m_MultiLineTextWidget = SCR_MultiTextTooltipUIComponent.Cast(widget.FindHandler(SCR_MultiTextTooltipUIComponent));
@@ -66,7 +70,7 @@ class SCR_MultiOccupantVehcileTooltipDetail: SCR_EntityTooltipDetail
 		if (!m_CompartmentManager)
 			return false;
 		
-		array<BaseCompartmentSlot> compartments = new array<BaseCompartmentSlot>;
+		array<BaseCompartmentSlot> compartments = {};
 		m_CompartmentManager.GetCompartmentsOfType(compartments, m_iCompartmentTypeToCheck);
 		
 		if (compartments.IsEmpty())
@@ -80,4 +84,4 @@ class SCR_MultiOccupantVehcileTooltipDetail: SCR_EntityTooltipDetail
 
 		return true;
 	}
-};
+}

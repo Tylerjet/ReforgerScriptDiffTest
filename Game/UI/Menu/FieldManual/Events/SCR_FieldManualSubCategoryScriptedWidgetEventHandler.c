@@ -2,6 +2,9 @@ class SCR_FieldManualSubCategoryScriptedWidgetEventHandler : ScriptedWidgetEvent
 {
 	protected SCR_FieldManualUI m_UI;
 
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] ui
 	void SCR_FieldManualSubCategoryScriptedWidgetEventHandler(notnull SCR_FieldManualUI ui)
 	{
 		m_UI = ui;
@@ -15,4 +18,4 @@ class SCR_FieldManualSubCategoryScriptedWidgetEventHandler : ScriptedWidgetEvent
 
 		return m_UI != null;
 	}
-};
+}

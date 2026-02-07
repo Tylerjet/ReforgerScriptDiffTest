@@ -21,8 +21,8 @@ sealed class Widget: Managed
 	//!Returns next sibling in hierarchy, or NULL
 	proto external Widget GetSibling();
 	//! Adds given widget as a child. Possible only if this widget accepts more children.
-	proto external void AddChild(Widget child);
-	proto external void RemoveChild(Widget child);
+	proto external void AddChild(notnull Widget child);
+	proto external void RemoveChild(notnull Widget child);
 	proto external void SetName(string name);
 	proto external string GetName();
 	/*!

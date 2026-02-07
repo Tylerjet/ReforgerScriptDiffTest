@@ -4,12 +4,13 @@ class SCR_SlotServiceComponentClass : SCR_ServicePointComponentClass
 	protected float m_fMaxSlotDistance;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetMaxSlotDistance()
 	{
 		return m_fMaxSlotDistance;
 	}
 }
-//------------------------------------------------------------------------------------------------
+
 //! Service with basic slot handling functionalities. 
 class SCR_SlotServiceComponent : SCR_ServicePointComponent
 {
@@ -18,8 +19,9 @@ class SCR_SlotServiceComponent : SCR_ServicePointComponent
 	protected ref array<SCR_EntitySpawnerSlotComponent> m_aNearSlots = {};
 	
 	//------------------------------------------------------------------------------------------------
-	//! Register slot to be used for service. Slots that doesn't met conditions in CanBeSlotRegistered are ignored. So are already known slots.
-	//! \param slot Slot to be registered
+	//! Register slot to be used for service.
+	//! Slots that do not meet conditions in CanBeSlotRegistered are ignored, so are already known slots.
+	//! \param[in] slot Slot to be registered
 	void RegisterSlot(SCR_EntitySpawnerSlotComponent slot)
 	{
 		if (!CanBeSlotRegistered(slot))
@@ -31,6 +33,8 @@ class SCR_SlotServiceComponent : SCR_ServicePointComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Prevents registration of slots that are too far from service, or are already child of another slot service
+	//! \param[in] slot
+	//! \return
 	protected bool CanBeSlotRegistered(notnull SCR_EntitySpawnerSlotComponent slot)
 	{
 		IEntity slotOwner = slot.GetOwner();

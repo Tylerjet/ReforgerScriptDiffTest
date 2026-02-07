@@ -36,10 +36,9 @@ class SCR_LoginProcessDialogUI : SCR_ConfigurableDialogUi
 	protected bool m_bForceConfirmButtonDisabled;
 	protected bool m_bIsLoading;
 	
-	protected const int CODE_TWO_FA = 422;
-	protected const int CODE_BAD_REQUEST = 400;
-	
 	protected ref SCR_BackendCallback m_Callback;
+	
+	protected const int ON_FAIL_DELAY = 2000;
 	
 	protected static const ResourceName DIALOG_CONFIG = "{9381BF296A0E273B}Configs/Dialogs/LoginDialogs.conf";
 
@@ -83,6 +82,7 @@ class SCR_LoginProcessDialogUI : SCR_ConfigurableDialogUi
 		SCR_ConfigurableDialogUi.CreateFromPreset(DIALOG_CONFIG, "2FA", dialog);
 	}
 	
+	// Generic account related feedback dialogs
 	// We use the SCR_ConfigurableDialogUi because confirming must close the dialog and there's no need for SCR_LoginProcessDialogUI functionalities
 	//------------------------------------------------------------------------------------------------
 	static SCR_ConfigurableDialogUi CreateLoginSuccessDialog()
@@ -94,6 +94,15 @@ class SCR_LoginProcessDialogUI : SCR_ConfigurableDialogUi
 	static SCR_ConfigurableDialogUi CreateLoginTimeoutDialog()
 	{
 		return SCR_ConfigurableDialogUi.CreateFromPreset(DIALOG_CONFIG, "LOGIN_TIMEOUT");
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static SCR_AccountLockedDialogUi CreateAccountLockedDialog()
+	{
+		SCR_AccountLockedDialogUi dialog = new SCR_AccountLockedDialogUi();
+		SCR_ConfigurableDialogUi.CreateFromPreset(DIALOG_CONFIG, "ACCOUNT_LOCKED", dialog);
+		
+		return dialog;
 	}
 	
 	// Overrides
@@ -141,6 +150,7 @@ class SCR_LoginProcessDialogUI : SCR_ConfigurableDialogUi
 		super.OnMenuClose();
 		
 		SCR_ServicesStatusHelper.GetOnCommStatusCheckFinished().Remove(OnCommStatusCheckFinished);
+		
 		GetGame().GetCallqueue().Remove(OnTimeoutScripted);
 	}
 	
@@ -161,10 +171,10 @@ class SCR_LoginProcessDialogUI : SCR_ConfigurableDialogUi
 	{	
 		string service = SCR_ServicesStatusHelper.SERVICE_ACCOUNT_PROFILE;
 		
-		SCR_ServicesStatusHelper.ForceConnectionButtonEnabled(m_TOSButton, SCR_ServicesStatusHelper.IsBackendConnectionAvailable(), false);
-		SCR_ServicesStatusHelper.ForceConnectionButtonEnabled(m_CreateAccount, SCR_ServicesStatusHelper.IsBackendConnectionAvailable(), false);
+		SCR_InputButtonComponent.ForceConnectionButtonEnabled(m_TOSButton, SCR_ServicesStatusHelper.IsBackendConnectionAvailable(), false);
+		SCR_InputButtonComponent.ForceConnectionButtonEnabled(m_CreateAccount, SCR_ServicesStatusHelper.IsBackendConnectionAvailable(), false);
 
-		SCR_ServicesStatusHelper.SetConnectionButtonEnabled(m_ConfirmButton, service, m_bForceConfirmButtonDisabled || ! SCR_ServicesStatusHelper.IsBackendConnectionAvailable(), false);
+		SCR_InputButtonComponent.SetConnectionButtonEnabled(m_ConfirmButton, service, m_bForceConfirmButtonDisabled || ! SCR_ServicesStatusHelper.IsBackendConnectionAvailable(), false);
 	
 		string identity;
 		BackendApi backendAPI = GetGame().GetBackendApi();
@@ -208,6 +218,13 @@ class SCR_LoginProcessDialogUI : SCR_ConfigurableDialogUi
 		System.ExportToClipboard(m_wPIDText.GetText());
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! Override in children
+	protected bool VerifyFormatting(string text)
+	{
+		return true;
+	}
+	
 	// Events
 	//------------------------------------------------------------------------------------------------
 	protected void OnCommStatusCheckFinished(SCR_ECommStatus status, float responseTime, float lastSuccessTime, float lastFailTime)
@@ -227,7 +244,6 @@ class SCR_LoginProcessDialogUI : SCR_ConfigurableDialogUi
 		GetGame().GetPlatformService().OpenBrowser(GetGame().GetBackendApi().GetLinkItem(REGISTER_LINK));
 	}
 	
-	// Ovverridden in children either for the Login or Logout callbacks
 	//------------------------------------------------------------------------------------------------
 	protected void OnSuccess(SCR_BackendCallback callback)
 	{
@@ -238,22 +254,19 @@ class SCR_LoginProcessDialogUI : SCR_ConfigurableDialogUi
 	//------------------------------------------------------------------------------------------------
 	protected void OnFail(SCR_BackendCallback callback, int code, int restCode, int apiCode)
 	{
-		if (restCode == CODE_BAD_REQUEST)
-		{
-			CreateLoginTimeoutDialog();
-			return;
-		}
+		GetGame().GetCallqueue().Remove(OnTimeoutScripted);
 		
-		//TODO: remove
-		PrintFormat("SCR_LoginProcessDialogUI - OnFail | code %1, restCode %2, apiCode %3");
-		
-		ShowLoadingAnim(false);
-		ShowWarningMessage(true);
+		// Add a delay to prevent the backend from being overwhelmed
+		// TODO: change this into a cooldown after the response has been received to make the UI as responsive as possible
+		GetGame().GetCallqueue().Remove(OnFailDelayed);
+		GetGame().GetCallqueue().CallLater(OnFailDelayed, ON_FAIL_DELAY, false, callback, code, restCode, apiCode);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnTimeout(SCR_BackendCallback callback)
 	{
+		GetGame().GetCallqueue().Remove(OnTimeoutScripted);
+		
 		ShowLoadingAnim(false);
 		ShowWarningMessage(false);
 		
@@ -261,8 +274,96 @@ class SCR_LoginProcessDialogUI : SCR_ConfigurableDialogUi
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected void OnFailDelayed(SCR_BackendCallback callback, int code, int restCode, int apiCode)
+	{
+		GetGame().GetCallqueue().Remove(OnFailDelayed);
+
+		ShowLoadingAnim(false);
+		ShowWarningMessage(false);
+		
+		// Based on restCode
+		// wrong credentials: 401
+		if (restCode == SCR_ELoginFailReason.INVALID_CREDENTIALS)
+		{
+			ShowWarningMessage(true);
+			return;
+		}
+		
+		// bad request: 400
+		// user not found: EApiCode.EACODE_ERROR_USER_NOT_FOUND -> player wrote wrong credentials
+		if (apiCode == EApiCode.EACODE_ERROR_USER_NOT_FOUND)
+			ShowWarningMessage(true);
+		
+		// account locked: EApiCode.EACODE_ERROR_USER_LOCKED
+		else if (apiCode == EApiCode.EACODE_ERROR_USER_LOCKED)
+			CreateAccountLockedDialog();
+		
+		else
+			CreateLoginTimeoutDialog();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void OnTimeoutScripted()
 	{
 		OnTimeout(m_Callback);
 	}
+}
+
+//------------------------------------------------------------------------------------------------
+class SCR_AccountLockedDialogUi : SCR_ConfigurableDialogUi
+{
+	protected const string MAIN_MESSAGE = "#AR-Account_Locked_Message";
+	protected const string CONTENT_MESSAGE = "#AR-CoreMenus_Support";
+	protected const string MINUTES = "#AR-ValueUnit_Short_Minutes";
+	protected const string SECONDS = "#AR-ValueUnit_Short_Seconds";
+	
+	protected const string SUPPORT = "Link_SupportEmail";
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuOpen(SCR_ConfigurableDialogUiPreset preset)
+	{
+		super.OnMenuOpen(preset);
+		
+		if (!SCR_ServicesStatusHelper.IsBackendConnectionAvailable())
+			return;
+
+		RichTextWidget widget = RichTextWidget.Cast(GetContentWidget(m_wRoot).FindAnyWidget("ContentText"));
+		if (!widget)
+			return;
+		
+		string message = string.Format("<color rgba=%1>%2</color>", UIColors.SRGBAFloatToInt(UIColors.CONTRAST_COLOR), GetGame().GetBackendApi().GetLinkItem(SUPPORT));
+		widget.SetText(WidgetManager.Translate(CONTENT_MESSAGE, message));
+		
+		UpdateMessage();
+		GetGame().GetCallqueue().CallLater(UpdateMessage, 1000, true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuClose()
+	{
+		super.OnMenuClose();
+		
+		GetGame().GetCallqueue().Remove(UpdateMessage);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateMessage()
+	{
+		int seconds = GetGame().GetBackendApi().RemainingAccountLockedTime();
+		int minutes = seconds / 60;
+		
+		string time = WidgetManager.Translate(MINUTES, minutes) + " " + WidgetManager.Translate(SECONDS, seconds - (60 * minutes));
+		if (seconds < 60)
+			time = WidgetManager.Translate(SECONDS, seconds);
+		
+		SetMessage(WidgetManager.Translate(MAIN_MESSAGE, time));
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+enum SCR_ELoginFailReason
+{
+	BAD_REQUEST = 400,
+	INVALID_CREDENTIALS = 401,
+	TWO_FACTOR_AUTHENTICATION = 422,
 }

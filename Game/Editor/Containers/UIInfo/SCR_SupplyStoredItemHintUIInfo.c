@@ -6,19 +6,20 @@ class SCR_SupplyStoredItemHintUIInfo : SCR_BaseSupplyItemHintUIInfo
 	{
 		if (!super.CanBeShown(item, focusedSlot))
 			return false;
-	
-		return GetConsumer(GetResourceComponent(item));
+		
+		float totalResources, maxResources;
+		return SCR_ResourceSystemHelper.GetStoredAndMaxResources(m_ResourceComponent, totalResources, maxResources);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override string GetItemHintName(InventoryItemComponent item)
 	{
-		if (!item)
+		if (!m_ResourceComponent)
 			return super.GetItemHintName(item);
 		
-		float supplies, maxSupplies;
-		GetSupplyAmounts(item, supplies, maxSupplies);
-		
-		return WidgetManager.Translate(GetName(), supplies, maxSupplies);
+		float totalResources, maxResources;
+		SCR_ResourceSystemHelper.GetStoredAndMaxResources(m_ResourceComponent, totalResources, maxResources);
+
+		return WidgetManager.Translate(GetName(), SCR_ResourceSystemHelper.SuppliesToString(totalResources), SCR_ResourceSystemHelper.SuppliesToString(maxResources));
 	}
 }

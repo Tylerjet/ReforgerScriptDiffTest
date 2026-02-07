@@ -6,12 +6,10 @@
 //! to methods OnCancel and OnConfirm
 #define DEBUG_CONFIGURABLE_DIALOGS
 
-//-------------------------------------------------------------------------------------------
 void ScriptInvokerConfigurableDialogMethod(SCR_ConfigurableDialogUi dialog);
 typedef func ScriptInvokerConfigurableDialogMethod;
 typedef ScriptInvokerBase<ScriptInvokerConfigurableDialogMethod> ScriptInvokerConfigurableDialog;
 
-//-------------------------------------------------------------------------------------------
 class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 {
 	static const ResourceName NAVIGATION_BUTTON_LAYOUT = "{87037226B1A2064B}UI/layouts/WidgetLibrary/Buttons/WLib_NavigationButtonSuperSmall.layout";
@@ -50,6 +48,8 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 	protected ref map<string, SCR_InputButtonComponent> m_aButtonComponents = new map<string, SCR_InputButtonComponent>;
 	protected Widget m_wRoot;
 	protected OverlayWidget m_wDialogBase;
+	
+	protected SCR_DynamicFooterComponent m_DynamicFooter;
 	
 	// Menu handler which performs menu-specific actions.
 	protected MenuBase m_ProxyMenu;
@@ -215,6 +215,18 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	static bool IsPresetValid(ResourceName presetsResourceName, string tag)
+	{
+		// Create presets
+		Resource rsc = BaseContainerTools.LoadContainer(presetsResourceName);
+		BaseContainer container = rsc.GetResource().ToBaseContainer();
+		SCR_ConfigurableDialogUiPresets presets = SCR_ConfigurableDialogUiPresets.Cast(BaseContainerTools.CreateInstanceFromContainer(container));
+		
+		// Find preset
+		return presets.FindPreset(tag);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	// Closes the dialogue with a fade-out animation
 	void Close()
 	{
@@ -245,6 +257,13 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 			m_wMessage.SetVisible(true);
 			m_wMessage.SetText(text);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetMessageColor(Color color)
+	{
+		if (m_wMessage)
+			m_wMessage.SetColor(color);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -293,21 +312,25 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 			return;
 		
 		// Select color
-		Color color = Color.White;
+		Color color = Color.FromInt(Color.WHITE);
 		
 		switch (type)
 		{
 			case EConfigurableDialogStyle.ACTION:
-			color = UIColors.CONTRAST_COLOR;
-			break;
+				color = Color.FromInt(UIColors.CONTRAST_COLOR.PackToInt());
+				break;
 			
 			case EConfigurableDialogStyle.WARNING:
-			color = UIColors.WARNING;
-			break;
+				color = Color.FromInt(UIColors.WARNING.PackToInt());
+				break;
 			
 			case EConfigurableDialogStyle.POSITIVE:
-			color = UIColors.CONFIRM;
-			break;
+				color = Color.FromInt(UIColors.CONFIRM.PackToInt());
+				break;
+			
+			case EConfigurableDialogStyle.ONLINE:
+				color = Color.FromInt(UIColors.ONLINE.PackToInt());
+				break;
 		}
 		
 		// Set colors 
@@ -458,7 +481,7 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 	void OnMenuClose();
 	
 	//----------------------------------------------------------------------------------------
-	void CreateButton(SCR_ConfigurableDialogUiButtonPreset buttonPreset)
+	SCR_InputButtonComponent CreateButton(SCR_ConfigurableDialogUiButtonPreset buttonPreset)
 	{
 		HorizontalLayoutWidget wLayout;
 		float padding, paddingLeft, paddingRight;
@@ -500,7 +523,7 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 		SCR_InputButtonComponent comp = SCR_InputButtonComponent.Cast(wButton.FindHandler(SCR_InputButtonComponent));
 			
 		if (!comp)
-			return;
+			return null;
 		
 		comp.SetVisible(buttonPreset.m_bShowButton, false);
 		comp.SetLabel(buttonPreset.m_sLabel);
@@ -513,6 +536,8 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 		
 		//! Cache
 		m_aButtonComponents.Insert(buttonPreset.m_sTag, comp);
+		
+		return comp;
 	}
 	
 	//----------------------------------------------------------------------------------------
@@ -521,7 +546,6 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 	{
 		return m_aButtonComponents.Get(tag);
 	}
-	
 	
 	//----------------------------------------------------------------------------------------
 	//! Returns a button's tag
@@ -533,13 +557,11 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 		return m_aButtonComponents.GetKeyByValue(button);
 	}
 	
-	
 	//----------------------------------------------------------------------------------------
 	void ClearButtons()
 	{
 		m_aButtonComponents.Clear();
 	}
-	
 	
 	//----------------------------------------------------------------------------------------
 	protected void Init(Widget root, SCR_ConfigurableDialogUiPreset preset, MenuBase proxyMenu)
@@ -570,7 +592,10 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 		{
 			SetTitleIcon(preset.m_sTitleIconTexture, preset.m_sTitleIconImageName);
 		}
-			
+		
+		// Footer
+		m_DynamicFooter = SCR_DynamicFooterComponent.FindComponentInHierarchy(GetRootWidget());
+		
 		// Create buttons
 		HorizontalLayoutWidget wLeft =		HorizontalLayoutWidget.Cast(GetRootWidget().FindAnyWidget(m_sWidgetNameButtonsLeft));
 		HorizontalLayoutWidget wRight =		HorizontalLayoutWidget.Cast(GetRootWidget().FindAnyWidget(m_sWidgetNameButtonsRight));
@@ -710,14 +735,18 @@ class SCR_ConfigurableDialogUiProxy : DialogUI
 	override void OnMenuHide()
 	{
 		super.OnMenuHide();
-		m_Dlg.OnMenuHide();
+		
+		if (m_Dlg)
+			m_Dlg.OnMenuHide();
 	}
 	
 	//-------------------------------------------------------------------------------------------
 	override void OnMenuClose()
 	{
 		super.OnMenuClose();
-		m_Dlg.OnMenuClose();
+		
+		if (m_Dlg)
+			m_Dlg.OnMenuClose();
 	}
 };
 
@@ -739,7 +768,8 @@ enum EConfigurableDialogStyle
 	NEUTRAL,
 	ACTION,
 	WARNING,
-	POSITIVE
+	POSITIVE,
+	ONLINE
 };
 
 

@@ -4,27 +4,27 @@ Dialog containing all addons manager tools:
 
 Might get extended with other mod related tools
 */
+enum SCR_EModPresetsDialogTabs
+{
+	PRESETS,
+	EXPORT_JSON,
+	EXPORT_CLI
+}
 
-//------------------------------------------------------------------------------------------------
 class AddonsToolsUI : SCR_TabDialog
 {
-	protected SCR_InputButtonComponent m_NavOpenWorkshop;
-
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuOpen()
+	override void OnMenuOpen(SCR_ConfigurableDialogUiPreset preset)
 	{
-		super.OnMenuOpen();
+		super.OnMenuOpen(preset);
 		
 		// Setup workshop button 
-		Widget wsBtn = GetRootWidget().FindAnyWidget("NavOpenWorkshop");
+		SCR_InputButtonComponent workshopButton = FindButton("NavOpenWorkshop");
 		
-		if (wsBtn)
-			m_NavOpenWorkshop = SCR_InputButtonComponent.Cast(wsBtn.FindHandler(SCR_InputButtonComponent));
-		
-		if (m_NavOpenWorkshop)
+		if (workshopButton)
 		{
-			m_NavOpenWorkshop.SetVisible(!IsAddonManagerOpened());
-			m_NavOpenWorkshop.m_OnActivated.Insert(OnOpenWorkshopButton);
+			workshopButton.SetVisible(!IsAddonManagerOpened());
+			workshopButton.m_OnActivated.Insert(OnOpenWorkshopButton);
 		}
 		
 		// Mod enabled callback
@@ -39,14 +39,6 @@ class AddonsToolsUI : SCR_TabDialog
 		
 		SCR_AddonManager.GetInstance().m_OnAddonsEnabledChanged.Remove(EnableExportTabs);
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void OnMenuUpdate(float tDelta)
-	{
-		super.OnMenuUpdate(tDelta);
-		
-		GetGame().GetInputManager().ActivateContext("InteractableDialogContext");
-	}	
 	
 	//------------------------------------------------------------------------------------------------	
 	//! Return true if workshop is opened on tab "Mod manager"
@@ -65,7 +57,7 @@ class AddonsToolsUI : SCR_TabDialog
 	protected void OnOpenWorkshopButton()
 	{	
 		SCR_MenuToolsLib.GetEventOnAllMenuClosed().Insert(AllMenuClosed);
-		SCR_MenuToolsLib.CloseAllMenus( {MainMenuUI, ContentBrowserUI} );
+		SCR_MenuToolsLib.CloseAllMenus({MainMenuUI, ContentBrowserUI});
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -88,28 +80,28 @@ class AddonsToolsUI : SCR_TabDialog
 		
 		// Open tab
 		if (workshopUI)
-			workshopUI.OpenSubMenu(2);
+			workshopUI.OpenModManager();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Enable export tabs only if player has enabled mods
 	protected void EnableExportTabs()
 	{
-		SCR_TabViewComponent tabView = m_SuperMenu.GetTabView();
+		SCR_TabViewComponent tabView = m_SuperMenuComponent.GetTabView();
 		if (!tabView)
 			return;
 		
 		if (GetGame().IsPlatformGameConsole())
 		{
-			tabView.SetTabVisible(1, false, false);
-			tabView.SetTabVisible(2, false, false);
+			tabView.SetTabVisible(SCR_EModPresetsDialogTabs.EXPORT_JSON, false, false);
+			tabView.SetTabVisible(SCR_EModPresetsDialogTabs.EXPORT_CLI, false, false);
 			tabView.SetPagingButtonsVisible(false, false);
 			return;
 		}
 		
 		bool enable = (SCR_AddonManager.GetInstance().CountOfEnabledAddons() > 0);
 		
-		tabView.EnableTab(1, enable);
-		tabView.EnableTab(2, enable);
+		tabView.EnableTab(SCR_EModPresetsDialogTabs.EXPORT_JSON, enable);
+		tabView.EnableTab(SCR_EModPresetsDialogTabs.EXPORT_CLI, enable);
 	}
-};
+}

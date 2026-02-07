@@ -3,7 +3,6 @@ class SCR_CampaignBuildingCompositionComponentClass : ScriptComponentClass
 {
 }
 
-//------------------------------------------------------------------------------------------------
 class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 {
 	[Attribute()]
@@ -68,6 +67,9 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] prefabId
+	//! \param[in] entity
 	void SpawnCompositionLayout(int prefabId, SCR_EditableEntityComponent entity)
 	{
 		if (!entity)
@@ -138,7 +140,7 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Set the destroy event to root entity, when all direct child are destructible
+	//! Set the destroy event to root entity, when all direct child are destructible
 	void SetDestroyEvents()
 	{
 		if (SCR_EntityHelper.GetMainParent(GetOwner(), true) != GetOwner())
@@ -171,11 +173,12 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 			child = child.GetSibling();
 		}
 
-		SCR_DestructionBaseComponent.GetOnDestructibleDestroyedInvoker().Insert(DestructibleEntityDestroyed);
+		SCR_DestructionDamageManagerComponent.GetOnDestructibleDestroyedInvoker().Insert(DestructibleEntityDestroyed);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// A destructible entity in composition was destroyed. Evaluate if there is any other left.
+	//! A destructible entity in composition was destroyed. Evaluate if there is any other left.
+	//! \param[in] component
 	void DestructibleEntityDestroyed(SCR_DestructionMultiPhaseComponent component)
 	{
 		// Calling one frame later as by the end of this one, the entity that triggered this can still exist.
@@ -201,7 +204,13 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 			CompositionBuildSound();
 
 		if (!IsProxy())
+		{
+			SCR_EditableEntityComponent editable = SCR_EditableEntityComponent.Cast(GetOwner().FindComponent(SCR_EditableEntityComponent));
+			if (editable)
+				editable.SetEntityFlag(EEditableEntityFlag.SPAWN_UNFINISHED, false);
+			
 			SetDestroyEvents();
+		}
 
 		if (m_OnCompositionSpawned)
 			m_OnCompositionSpawned.Invoke(true);
@@ -218,6 +227,7 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvokerBool GetOnCompositionSpawned()
 	{
 		if (!m_OnCompositionSpawned)
@@ -227,7 +237,8 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Gets the composition cost from editable entity component.
+	//! Gets the composition cost from editable entity component.
+	//! \param[in] editableEnt
 	protected void SetCompositionCost(notnull SCR_EditableEntityComponent editableEnt)
 	{
 		array<ref SCR_EntityBudgetValue> outBudgets = {};
@@ -243,6 +254,7 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] prefabId
 	// Set composition ID which is used to identify composition by building mode.
 	void SetPrefabId(int prefabId)
 	{
@@ -250,24 +262,29 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetCompositionCost()
 	{
 		return m_iCost;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetPrefabId()
 	{
 		return m_iPrefabId;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	bool IsCompositionSpawned()
 	{
 		return m_bCompositionIsSpawned;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvokerVoid GetOnBuilderSet()
 	{
 		if (!m_OnBuilderSet)
@@ -277,6 +294,7 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] newOwner
 	void SetProviderEntity(IEntity newOwner)
 	{
 		m_ProviderEntity = newOwner;
@@ -285,6 +303,7 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	IEntity GetProviderEntity()
 	{
 		return m_ProviderEntity;
@@ -298,19 +317,22 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] id
 	void SetBuilderId(int id)
 	{
 		m_iBuilderId = id;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetBuilderId()
 	{
 		return m_iBuilderId;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Set the lock of the composition. When set, the composition can't be moved or deleted from Free Roam mode anymore.
+	//! Set the lock of the composition. When set, the composition can't be moved or deleted from Free Roam mode anymore.
+	//! \param[in] lockState
 	void SetInteractionLock(bool lockState)
 	{
 		m_bInteractionLock = lockState;
@@ -318,6 +340,7 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] lockState
 	void SetInteractionLockServer(bool lockState)
 	{
 		SetInteractionLock(lockState);
@@ -325,12 +348,15 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsInteractionLocked()
 	{
 		return m_bInteractionLock;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] lockState
 	// Run evaluation if the entity still pass the given filter.
 	void AfterLockChanged(bool lockState)
 	{
@@ -366,6 +392,7 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] newOwner
 	void SetProviderEntityServer(IEntity newOwner)
 	{
 		SetProviderEntity(newOwner);
@@ -394,6 +421,7 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Set an event to remove a provider from composition component when the building mode is terminated.
+	//! \param[in] ent
 	void SetClearProviderEvent(notnull SCR_EditorModeEntity ent)
 	{
 		m_EditorModeEntity = ent;

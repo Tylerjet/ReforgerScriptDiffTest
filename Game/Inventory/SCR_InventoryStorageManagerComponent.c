@@ -1,7 +1,7 @@
 [EntityEditorProps(category: "GameScripted/UI/Inventory", description: "[MOD] Inventory Slot UI class")]
-class SCR_InventoryStorageManagerComponentClass: ScriptedInventoryStorageManagerComponentClass
+class SCR_InventoryStorageManagerComponentClass : ScriptedInventoryStorageManagerComponentClass
 {
-};
+}
 
 enum EInventoryRetCode
 {
@@ -9,7 +9,7 @@ enum EInventoryRetCode
 	RETCODE_ITEM_TOO_BIG = 2,
 	RETCODE_ITEM_TOO_HEAVY = 4,
 	RETCODE_DEFAULT_STATE = 0xFFFF
-};
+}
 
 enum ECallbackState
 {
@@ -18,12 +18,11 @@ enum ECallbackState
 	MOVE = 2,
 	DELETE = 3,
 	FINAL = 4
-};
+}
 
-//------------------------------------------------------------------------------------------------
 enum EResupplyUnavailableReason
 {
-	//~ If multiple reasons for Resupply Unavailible than the Highst enum will be used
+	//~ If multiple reasons for Resupply Unavailable than the Highst enum will be used
 	NONE,
 	NO_VALID_WEAPON = 10,
 	ENOUGH_ITEMS = 20,
@@ -32,46 +31,56 @@ enum EResupplyUnavailableReason
 
 	//~ Resupply was valid. Add invalid reasons above
 	RESUPPLY_VALID = 99999,
-};
+}
 
-class SCR_HoldableItemPredicate: InventorySearchPredicate
+class SCR_HoldableItemPredicate : InventorySearchPredicate
 {
     ECommonItemType wanted;
+
+	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_HoldableItemPredicate()
 	{
         QueryAttributeTypes.Insert(SCR_ItemOfInterestAttribute);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
 	{
         SCR_ItemOfInterestAttribute optionalAttribute = SCR_ItemOfInterestAttribute.Cast(queriedAttributes[0]);
 		return optionalAttribute.GetInterestType() == wanted;
 	}
-};
+}
 
-class SCR_BandagePredicate: InventorySearchPredicate
+class SCR_BandagePredicate : InventorySearchPredicate
 {
+	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_BandagePredicate()
 	{
 		QueryComponentTypes.Insert(SCR_ConsumableItemComponent);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
 	{		
 		return (SCR_ConsumableItemComponent.Cast(queriedComponents[0])).GetConsumableType() == SCR_EConsumableType.BANDAGE;
 	}
-};
+}
 
 class SCR_ApplicableMedicalItemPredicate : InventorySearchPredicate
 {
 	IEntity characterEntity;
 	ECharacterHitZoneGroup hitZoneGroup;
 
+	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_ApplicableMedicalItemPredicate()
 	{
 		QueryComponentTypes.Insert(SCR_ConsumableItemComponent);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
 	{
 		SCR_EConsumableType type = SCR_ConsumableItemComponent.Cast(queriedComponents[0]).GetConsumableType();
@@ -91,35 +100,44 @@ class SCR_ApplicableMedicalItemPredicate : InventorySearchPredicate
 
 		return effect.CanApplyEffectToHZ(characterEntity, characterEntity, hitZoneGroup);
 	}
-};
+}
 
 class SCR_ItemTypeSearchPredicate : InventorySearchPredicate
 {
 	int m_iItemType = -1;
 	IEntity m_iOriginalItem;
 	
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] type
+	//! \param[in] wantedItemType
+	//! \param[in] originalItem
 	void SCR_ItemTypeSearchPredicate(typename type, int wantedItemType, IEntity originalItem)
 	{
 		QueryComponentTypes.Insert(type);
 		m_iItemType = wantedItemType;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
 	{
 		return (item != m_iOriginalItem) && (SCR_CharacterInventoryStorageComponent.GetItemType(item) == m_iItemType);
 	}
-};
+}
 
-// Searches for attachments of the defined atttachmentType
-class SCR_CompatibleAttachmentPredicate: InventorySearchPredicate
+//! Searches for attachments of the defined atttachmentType
+class SCR_CompatibleAttachmentPredicate : InventorySearchPredicate
 {
 	typename attachmentType;
 
+	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_CompatibleAttachmentPredicate()
 	{
 		QueryComponentTypes.Insert(InventoryItemComponent);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
 	{
 		InventoryItemComponent itemComp = InventoryItemComponent.Cast(queriedComponents[0]);
@@ -128,36 +146,35 @@ class SCR_CompatibleAttachmentPredicate: InventorySearchPredicate
 			return false;
 
 		ItemAttributeCollection itemAttributes = itemComp.GetAttributes();
-
 		if (!itemAttributes)
 			return false;
 
 		WeaponAttachmentAttributes itemAttribute = WeaponAttachmentAttributes.Cast(itemAttributes.FindAttribute(WeaponAttachmentAttributes));
-
 		if (!itemAttribute)
 			return false;
 
 		BaseAttachmentType itemAttachmentType = itemAttribute.GetAttachmentType();
-
 		if (!itemAttachmentType)
 			return false;
 
 		typename itemAttachmentTypename = itemAttachmentType.Type();
-
 		if (!itemAttachmentTypename)
 			return false;
 
-		return (itemAttachmentTypename.IsInherited(attachmentType)); // Check if attachment types match
+		return itemAttachmentTypename.IsInherited(attachmentType); // Check if attachment types match
 	}
-};
+}
 
 class SCR_SalinePredicate : InventorySearchPredicate
 {
+	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_SalinePredicate()
 	{
 		QueryComponentTypes.Insert(SCR_ConsumableItemComponent);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
 	{
 		if (storage.Type().IsInherited(EquipmentStorageComponent))
@@ -165,59 +182,61 @@ class SCR_SalinePredicate : InventorySearchPredicate
 		
 		return false;
 	}
-		
 }
 
-// Searches for magazines with certain mag well
-class SCR_MagazinePredicate: InventorySearchPredicate
+//! Searches for magazines with certain mag well
+class SCR_MagazinePredicate : InventorySearchPredicate
 {
 	typename magWellType;
 	
+	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_MagazinePredicate()
 	{
 		QueryComponentTypes.Insert(BaseMagazineComponent);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
 	{
 		BaseMagazineComponent iMag = BaseMagazineComponent.Cast(queriedComponents[0]);
-		
 		if (!iMag)
 			return false;
 		
 		BaseMagazineWell iMagWell = iMag.GetMagazineWell();
-		
 		if (!iMagWell)
 			return false;
 		
 		return (iMagWell.IsInherited(magWellType)); // Check if magwells match
 	}
-};
+}
 
-// Searches for items with same prefab name
-class SCR_PrefabNamePredicate: InventorySearchPredicate
+//! Searches for items with same prefab name
+class SCR_PrefabNamePredicate : InventorySearchPredicate
 {
 	string prefabName;
 	
+	//------------------------------------------------------------------------------------------------
 	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
 	{
 		EntityPrefabData pd = item.GetPrefabData();
 		return pd.GetPrefabName() == this.prefabName;
 	}
-};
+}
 
-// Searches for items with same prefab data (prefer this to prefab name if you have prefab data already)
-class SCR_PrefabDataPredicate: InventorySearchPredicate
+//! Searches for items with same prefab data (prefer this to prefab name if you have prefab data already)
+class SCR_PrefabDataPredicate : InventorySearchPredicate
 {
 	EntityPrefabData prefabData;
 	
+	//------------------------------------------------------------------------------------------------
 	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
 	{
 		return item.GetPrefabData() == this.prefabData;
 	}
-};
+}
 
-class DropAndMoveOperationCallback: ScriptedInventoryOperationCallback
+class DropAndMoveOperationCallback : ScriptedInventoryOperationCallback
 {
 	InventoryItemComponent m_ItemBefore;
 	InventoryItemComponent m_ItemAfter;
@@ -239,21 +258,25 @@ class DropAndMoveOperationCallback: ScriptedInventoryOperationCallback
 				OnDropComplete();
 			}
 			break;
+
 			case ECallbackState.INSERT:
 			{
 				OnInsertComplete();
 			}
 			break;
+
 			case ECallbackState.MOVE:
 			{
 				OnMoveComplete();
 			}
 			break;
+
 			case ECallbackState.DELETE:
 			{
 				OnDeleteComplete();
 			}
 			break;
+
 			case ECallbackState.FINAL:
 			{
 				OnFinalState();
@@ -265,7 +288,7 @@ class DropAndMoveOperationCallback: ScriptedInventoryOperationCallback
 	//------------------------------------------------------------------------------------------------
 	protected void OnDropComplete()
 	{
-		m_ECurrentState += 1;
+		m_ECurrentState++;
 		m_Manager.TryMoveItemToStorage(m_ItemAfter.GetOwner(), m_TargetSlot.GetStorage(), m_TargetSlot.GetID(), this);
 	}
 	
@@ -288,22 +311,18 @@ class DropAndMoveOperationCallback: ScriptedInventoryOperationCallback
 	//------------------------------------------------------------------------------------------------
 	protected void OnMoveComplete()
 	{
-		/* Temporarily disabled for performance reasons. Once it gets fixed the transfer of items can be reenabled.
-		if (m_aItemsToMove.Count() == 0)
-		{
-			m_ECurrentState++;
-			OnDeleteComplete();
-			return;
-		}
-		IEntity item = m_aItemsToMove[m_aItemsToMove.Count() - 1];
-		m_aItemsToMove.Resize(m_aItemsToMove.Count() - 1);
-		BaseInventoryStorageComponent storage = m_Manager.FindStorageForItem(item, EStoragePurpose.PURPOSE_ANY);
-		if (!m_Manager.TryMoveItemToStorage(item, storage, -1, this))
-		{
-			OnMoveComplete();
-		}
-		*/
-		
+		// Temporarily disabled for performance reasons. Once it gets fixed the transfer of items can be reenabled.
+//		if (m_aItemsToMove.Count() == 0)
+//		{
+//			m_ECurrentState++;
+//			OnDeleteComplete();
+//			return;
+//		}
+//		IEntity item = m_aItemsToMove[m_aItemsToMove.Count() - 1];
+//		m_aItemsToMove.Resize(m_aItemsToMove.Count() - 1);
+//		BaseInventoryStorageComponent storage = m_Manager.FindStorageForItem(item, EStoragePurpose.PURPOSE_ANY);
+//		if (!m_Manager.TryMoveItemToStorage(item, storage, -1, this))
+//			OnMoveComplete();
 		
 		if (m_bDeleteItemIfEmpty)
 		{
@@ -327,9 +346,7 @@ class DropAndMoveOperationCallback: ScriptedInventoryOperationCallback
 		m_Manager.GetAllItems(m_aItemsToMove, itemIsStorage);
 			
 		if (m_aItemsToMove.IsEmpty())
-		{
 			m_Manager.AskServerToDeleteEntity(m_ItemBefore.GetOwner());
-		}
 		
 		OnFinalState();
 	}
@@ -340,23 +357,32 @@ class DropAndMoveOperationCallback: ScriptedInventoryOperationCallback
 		if (m_FinalCB)
 			m_FinalCB.InternalComplete();
 	}
-};
-class SCR_ResupplyMagazinesCallback: ScriptedInventoryOperationCallback
+}
+
+class SCR_ResupplyMagazinesCallback : ScriptedInventoryOperationCallback
 {
 	protected SCR_InventoryStorageManagerComponent m_Manager;
 	protected ref map<ResourceName, int> m_MagazinesToSpawn = new map<ResourceName, int>();
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] prefab
+	//! \param[in] count
 	void Insert(ResourceName prefab, int count)
 	{
 		int currentCount;
 		m_MagazinesToSpawn.Find(prefab, currentCount);
 		m_MagazinesToSpawn.Insert(prefab, currentCount + count);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
 	void Start()
 	{
 		OnComplete();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override protected void OnComplete()
 	{
 		if (!m_Manager)
@@ -382,40 +408,43 @@ class SCR_ResupplyMagazinesCallback: ScriptedInventoryOperationCallback
 			OnFailed();
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void OnFailed()
 	{
 		//--- Delete itself (after a delay - can't delete itself at this frame)
 		GetGame().GetCallqueue().CallLater(m_Manager.EndResupplyMagazines, 1, false);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] manager
 	void SCR_ResupplyMagazinesCallback(SCR_InventoryStorageManagerComponent manager)
 	{
 		m_Manager = manager;
 	}
-};
+}
 
 class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComponent
 {
-	private SCR_CharacterInventoryStorageComponent				m_pStorage;
-	private SCR_CharacterControllerComponent					m_pCharacterController;
-	private	ref SCR_BandagePredicate 							m_bandagePredicate = new SCR_BandagePredicate();
+	private SCR_CharacterInventoryStorageComponent				m_Storage;
+	private SCR_CharacterControllerComponent					m_CharacterController;
+	private	ref SCR_BandagePredicate 							m_BandagePredicate = new SCR_BandagePredicate();
 	protected EInventoryRetCode									m_ERetCode;
 	protected int												m_iHealthEquipment	=	0;
 	protected bool 												m_bIsInventoryLocked = false;
 	protected ref SCR_WeaponSwitchingBaseUI						m_pWeaponSwitchingUI;
 	private bool												m_bWasRaised;
-	private IEntity 											m_pStorageToOpen;
+	private IEntity 											m_StorageToOpen;
 	protected ref SCR_ResupplyMagazinesCallback						m_ResupplyMagazineCallback;
 	
-	ref ScriptInvoker<bool> 									m_OnInventoryOpenInvoker	= new ref ScriptInvoker<bool>();
-	ref ScriptInvoker<bool> 									m_OnQuickBarOpenInvoker		= new ref ScriptInvoker<bool>();
+	ref ScriptInvokerBool 									m_OnInventoryOpenInvoker	= new ScriptInvokerBool();
+	ref ScriptInvokerBool 									m_OnQuickBarOpenInvoker		= new ScriptInvokerBool();
 
-	
 	//------------------------------------------------------------------------------------------------
-	/*
-	Get an array of all root items in the inventory storage.
-	\param[out] rootItems All root items without going in the sub inventory of the items or attachments
-	\return Count of root items
-	*/
+	//! Get an array of all root items in the inventory storage.
+	//! \param[out] rootItems All root items without going in the sub inventory of the items or attachments
+	//! \return Count of root items
 	int GetAllRootItems(out notnull array<IEntity> rootItems)
 	{
 		rootItems.Clear();
@@ -426,6 +455,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		GetStorages(storages, EStoragePurpose.PURPOSE_WEAPON_PROXY);
 		
 		array<IEntity> items = {};
+		array<BaseInventoryStorageComponent> clothStorages;
 		foreach (BaseInventoryStorageComponent storage : storages)
 		{
 			//~ If backpack or jacked or any other cloth storage only get what is inside the storage
@@ -434,7 +464,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 				if (!storage)
 					continue;
 				
-				array<BaseInventoryStorageComponent> clothStorages = {};
+				clothStorages = {};
 				storage.GetOwnedStorages(clothStorages, 1, false);
 			
 				foreach (BaseInventoryStorageComponent clothStorage : clothStorages)
@@ -457,50 +487,29 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		
 		return rootItems.Count();
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	// Callback when item is added (will be performed locally after server completed the Insert/Move operation)
 	override protected void OnItemAdded(BaseInventoryStorageComponent storageOwner, IEntity item)
 	{		
 		super.OnItemAdded(storageOwner, item);
-		
-		auto consumable = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
+
+		SCR_ConsumableItemComponent consumable = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
 		if ( consumable && consumable.GetConsumableType() == SCR_EConsumableType.BANDAGE )
 			m_iHealthEquipment++;	//store count of the health components
-		
-		// Withdraw item from gc collection
-		ChimeraWorld world = ChimeraWorld.CastFrom(item.GetWorld());
-		if (world)
-		{
-			GarbageManager garbageManager = world.GetGarbageManager();
-			if (garbageManager)
-			{
-				if (item.FindComponent(InventoryItemComponent))
-					garbageManager.Withdraw(item);
-			}
-		}
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	// Callback when item is removed (will be performed locally after server completed the Remove/Move operation)
 	override protected void OnItemRemoved(BaseInventoryStorageComponent storageOwner, IEntity item)
 	{
 		super.OnItemRemoved(storageOwner, item);
-		
-		auto consumable = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
+
+		SCR_ConsumableItemComponent consumable = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
 		if ( consumable && consumable.GetConsumableType() == SCR_EConsumableType.BANDAGE )
 			m_iHealthEquipment--;	//store count of the health components
-
-		// Insert item into gc collection
-		ChimeraWorld world = ChimeraWorld.CastFrom(item.GetWorld());
-		if (world)
-		{
-			GarbageManager garbageManager = world.GetGarbageManager();
-			if (garbageManager)
-			{
-				if (item.FindComponent(InventoryItemComponent))
-					garbageManager.Insert(item);
-			}
-		}
 	}
+
 	//------------------------------------------------------------------------------------------------
 	override protected bool ShouldForbidRemoveByInstigator(InventoryStorageManagerComponent instigatorManager, BaseInventoryStorageComponent fromStorage, IEntity item)
 	{
@@ -509,13 +518,16 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		if (consumableItemComp)
 			return false;
 		
-		if (m_pCharacterController && m_pCharacterController.GetLifeState() == ECharacterLifeState.ALIVE)
+		if (m_CharacterController && m_CharacterController.GetLifeState() == ECharacterLifeState.ALIVE)
 			return true;
 		
 		return false;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] entity
+	//! \param[in] soundEvent
 	void PlayItemSound(IEntity entity, string soundEvent)
 	{	
 		if (!entity)
@@ -523,7 +535,9 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 
 		RplComponent rplComp = RplComponent.Cast(entity.FindComponent(RplComponent));
 		if (rplComp)
+		{
 			Rpc(RpcAsk_PlaySound, rplComp.Id(), soundEvent);
+		}
 		else
 		{
 			SoundComponent soundComp = SoundComponent.Cast(entity.FindComponent(SoundComponent));
@@ -543,6 +557,9 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] targetRplId
+	//! \param[in] soundAction
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RpcAsk_PlaySound(RplId targetRplId, string soundAction)
 	{
@@ -551,6 +568,9 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] targetRplId
+	//! \param[in] soundAction
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	void RpcDo_PlaySound(RplId targetRplId, string soundAction)
 	{
@@ -580,16 +600,25 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 #ifndef DISABLE_INVENTORY
 
 	//------------------------------------------------------------------------------------------------
-	SCR_CharacterInventoryStorageComponent GetCharacterStorage() { return m_pStorage; }
+	//! \return
+	SCR_CharacterInventoryStorageComponent GetCharacterStorage()
+	{
+		return m_Storage;
+	}
 	
 	//------------------------------------------------------------------------------------------------
-	// ! TODO: make this method as native ( cannot override the proto native CanMoveItemToStorage )
+	//!
+	//! \param[in] item
+	//! \param[in] storage
+	//! \param[in] slotID
+	//! \return
+	// TODO: make this method as native (cannot override the proto native CanMoveItemToStorage)
 	bool CanInsertItemInActualStorage(IEntity item, BaseInventoryStorageComponent storage, int slotID = -1)
 	{
 		if (!IsAnimationReady() || IsInventoryLocked())
 			return false;
 
-		array<BaseInventoryStorageComponent> pStorages = new array<BaseInventoryStorageComponent>();
+		array<BaseInventoryStorageComponent> pStorages = {};
 		storage.GetOwnedStorages( pStorages, 1, false );
 		pStorages.Insert( storage );
 
@@ -606,6 +635,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	//------------------------------------------------------------------------------------------------
 	// ! The return code informs about the state of the operation ( i.e. cannot insert item, since it is too large )
 	// ! it clear the flag
+	//! \param[in] ERetCode
 	void SetReturnCode( EInventoryRetCode ERetCode ) 
 	{ 
 		m_ERetCode &= ~ERetCode; 
@@ -620,37 +650,45 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// ! 
-	EInventoryRetCode GetReturnCode() { return m_ERetCode; }
+	//! \return
+	EInventoryRetCode GetReturnCode()
+	{
+		return m_ERetCode;
+	}
 	
 	//------------------------------------------------------------------------------------------------
-	// !
+	//! \return
 	float GetTotalWeightOfAllStorages()
 	{
-		ref array<BaseInventoryStorageComponent> storages = new array<BaseInventoryStorageComponent>();
+		array<BaseInventoryStorageComponent> storages = {};
 		float fTotalWeight = 0.0;
 
 		//TODO: actually not a very good way how to get storages, but using the GetStorages() method causes the weight being doubled. We need to get just the "parent" storages
-		storages.Insert( m_pStorage.GetWeaponStorage() );
-		storages.Insert( m_pStorage );
+		storages.Insert(m_Storage.GetWeaponStorage());
+		storages.Insert(m_Storage);
 				
-		foreach ( BaseInventoryStorageComponent storage: storages )
+		foreach (BaseInventoryStorageComponent storage : storages)
 		{
 			fTotalWeight += storage.GetTotalWeight();
 		}
+
 		return fTotalWeight;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// !
+	//! \param[in] pOwner
 	void SetLootStorage( IEntity pOwner )
 	{
-		if( m_pStorage )
-			m_pStorage.SetLootStorage( pOwner );
+		if (m_Storage)
+			m_Storage.SetLootStorage(pOwner);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! try insert the item into the storage (not slot)
+	//! Try to insert the item into the storage (not slot)
+	//! \param[in] pItem
+	//! \param[in] pStorageTo
+	//! \param[in] pStorageFrom
+	//! \param[in] cb
 	void InsertItem( IEntity pItem, BaseInventoryStorageComponent pStorageTo = null, BaseInventoryStorageComponent pStorageFrom = null, SCR_InvCallBack cb = null  )
 	{
 		if (!pItem || !IsAnimationReady() || IsInventoryLocked())
@@ -668,7 +706,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 				if ( !TryInsertItem( pItem, EStoragePurpose.PURPOSE_DEPOSIT, cb ) )
 				{
 					if ( !TryMoveItemToStorage( pItem, FindStorageForItem( pItem, EStoragePurpose.PURPOSE_ANY ), -1, cb ) )
-						canInsert = TryMoveItemToStorage( pItem, m_pStorage, -1, cb ); 				// clothes from storage in vicinity
+						canInsert = TryMoveItemToStorage(pItem, m_Storage, -1, cb); 				// clothes from storage in vicinity
 					else
 						soundEvent = SCR_SoundEvent.SOUND_PICK_UP;	// play pick up sound for everything else
 				
@@ -683,7 +721,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		}
 		else
 		{
-			if ( pStorageTo == m_pStorage )
+			if (pStorageTo == m_Storage)
 			{
 				canInsert = TryReplaceItem( pStorageTo, pItem, 0, cb );
 				if (canInsert)
@@ -722,9 +760,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 			}
 			
 			if ( !pStorageFrom )
-			{
 				canInsert = TryInsertItemInStorage( pItem, pStorageTo, -1, cb );	// if we move item from ground to opened storage
-			}
 			else
 				canInsert = TryMoveItemToStorage( pItem, pStorageTo, -1, cb );		// if we move item between storages
 		}
@@ -734,16 +770,18 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		else
 			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_CONTAINER_DIFR_DROP);
 		
-		if (m_pCharacterController && canInsert)
-		{
-			m_pCharacterController.TryPlayItemGesture(EItemGesture.EItemGesturePickUp);
-		}
+		if (m_CharacterController && canInsert && !pStorageFrom)
+			m_CharacterController.TryPlayItemGesture(EItemGesture.EItemGesturePickUp);
 
 		SetInventoryLocked(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Locks the inventory for the duration of the item removal process
+	//! \param[in] pItem
+	//! \param[in] storage
+	//! \param[in] cb
+	//! \return
 	bool TryRemoveItemFromInventory(IEntity pItem, BaseInventoryStorageComponent storage = null, InventoryOperationCallback cb = null)
 	{
 		if (!CanMoveItem(pItem))
@@ -769,6 +807,8 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	
 	//------------------------------------------------------------------------------------------------
 	//! Checks whether it is possible to move the item
+	//! \param[in] item
+	//! \return
 	bool CanMoveItem(IEntity item)
 	{
 		if (!item || !IsAnimationReady() || IsInventoryLocked())
@@ -777,32 +817,32 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		return true;
 	}
 	
-	//------------------------------------------------------------------------------------------------
-	//! 
-	/*
-	override bool TryInsertItemInStorageScr( IEntity pItem, BaseInventoryStorageComponent pStorageTo, int slotID = -1, InventoryOperationCallback cb = null )
-	{
-		
-		if ( !pStorageTo )
-			return;
-		
-		array<BaseInventoryStorageComponent> pStorages = new array<BaseInventoryStorageComponent>();
-		pStorage.GetOwnedStorages( pStorages, 1, false );	// get all the storages, the storage has attached to it
-		pStorages.Insert( pStorage );						// and put there also the storage
-		foreach ( BaseInventoryStorageComponent tmpStorage : pStorages )
-		{
-			if ( MoveOperation( itemComponent, tmpStorage ) )
-			{
-				bRet = true;
-				break;
-			}
-		}			
-	}
-	*/
-	
+//	//------------------------------------------------------------------------------------------------
+//	override bool TryInsertItemInStorageScr( IEntity pItem, BaseInventoryStorageComponent pStorageTo, int slotID = -1, InventoryOperationCallback cb = null )
+//	{
+//
+//		if ( !pStorageTo )
+//			return;
+//
+//		array<BaseInventoryStorageComponent> pStorages = {};
+//		pStorage.GetOwnedStorages( pStorages, 1, false );	// get all the storages, the storage has attached to it
+//		pStorages.Insert( pStorage );						// and put there also the storage
+//		foreach ( BaseInventoryStorageComponent tmpStorage : pStorages )
+//		{
+//			if ( MoveOperation( itemComponent, tmpStorage ) )
+//			{
+//				bRet = true;
+//				break;
+//			}
+//		}
+//	}
 	
 	//------------------------------------------------------------------------------------------------
 	//!
+	//! \param[in] pOwnerEntity
+	//! \param[in] pStorageTo
+	//! \param[in] cb
+	//! \return
 	bool TrySwapItems( IEntity pOwnerEntity, BaseInventoryStorageComponent pStorageTo, SCR_InvCallBack cb = null )
 	{
 		if ( !pStorageTo )
@@ -811,6 +851,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		InventoryStorageSlot slot =  pStorageTo.FindSuitableSlotForItem( pOwnerEntity );
 		if ( !slot )
 			return false;
+
 		if ( slot.GetAttachedEntity() )
 		{
 			if (!TrySwapItemStorages( pOwnerEntity, slot.GetAttachedEntity(), cb ))
@@ -832,18 +873,23 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 			return true;
 		}
 		else
+		{
 			return TryMoveItemToStorage( pOwnerEntity, pStorageTo, slot.GetID(), cb );
+		}
 
 		return false;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! try equip the item into the slot (weapon)
+	//! Try to equip the item into the slot (weapon)
+	//! \param[in] pOwnerEntity
+	//! \param[in] cb
+	//! \param[in] bFromVicinity
 	void EquipWeapon( IEntity pOwnerEntity, SCR_InvCallBack cb = null, bool bFromVicinity = true )
 	{
 		if ( !bFromVicinity )
 		{
-			if (!TrySwapItems( pOwnerEntity, m_pStorage.GetWeaponStorage(), cb ))
+			if (!TrySwapItems(pOwnerEntity, m_Storage.GetWeaponStorage(), cb))
 				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_DROP_ERROR);
 			else
 				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_CONTAINER_DIFR_DROP);
@@ -859,12 +905,12 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		if (!weaponManager)
 			return;
 	
-		auto slot = weaponManager.GetCurrentSlot();
-		int prefered = 0;
+		WeaponSlotComponent slot = weaponManager.GetCurrentSlot();
+		int preferred = 0;
 		if ( slot )
-			prefered = slot.GetWeaponSlotIndex();
+			preferred = slot.GetWeaponSlotIndex();
 		
-		if (!EquipAny( m_pStorage.GetWeaponStorage(), pOwnerEntity, prefered, cb ))
+		if (!EquipAny(m_Storage.GetWeaponStorage(), pOwnerEntity, preferred, cb))
 			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_DROP_ERROR);
 		
 		if (cb && cb.m_pStorageFrom != cb.m_pStorageTo)
@@ -877,19 +923,25 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! try equip the item into the slot (weapon)
+	//! Try to equip the item into the slot (weapon)
+	//! \param[in] pOwnerEntity
+	//! \param[in] pUserEntity
+	//! \param[in] cb
 	void EquipWeaponAttachment( IEntity pOwnerEntity, IEntity pUserEntity, SCR_InvCallBack cb = null )
 	{
-		auto weaponManager = BaseWeaponManagerComponent.Cast(pUserEntity.FindComponent(BaseWeaponManagerComponent));
+		BaseWeaponManagerComponent weaponManager = BaseWeaponManagerComponent.Cast(pUserEntity.FindComponent(BaseWeaponManagerComponent));
 		if (!weaponManager)
 			return;
-		auto slot = weaponManager.GetCurrentSlot();
+
+		WeaponSlotComponent slot = weaponManager.GetCurrentSlot();
 		if (!slot)
 			return;
-		auto weaponEntity = slot.GetWeaponEntity();
+
+		IEntity weaponEntity = slot.GetWeaponEntity();
 		if (!weaponEntity)
 			return;
-		auto storage = BaseInventoryStorageComponent.Cast(weaponEntity.FindComponent(BaseInventoryStorageComponent));
+
+		BaseInventoryStorageComponent storage = BaseInventoryStorageComponent.Cast(weaponEntity.FindComponent(BaseInventoryStorageComponent));
 		if (!storage)
 			return;
 		
@@ -900,7 +952,9 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! try equip the item into the slot (gadget)
+	//! Try to equip the item into the slot (gadget)
+	//! \param[in] pOwnerEntity
+	//! \param[in] cb
 	void EquipGadget( IEntity pOwnerEntity, SCR_InvCallBack cb = null )
 	{
 		//(kamil) the gadget slots are now present directly on individual clothing items - will have to revise logic here if swapping is wanted
@@ -915,19 +969,25 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! try equip the item into the slot (cloth)
+	//! Try to equip the item into the slot (cloth)
+	//! \param[in] pOwnerEntity
 	void EquipCloth( IEntity pOwnerEntity )
 	{
 		// m_pStorage because character storage is inherited from SCR_EquipedLoadoutStorageComponent
-		EquipAny(m_pStorage, pOwnerEntity);
+		EquipAny(m_Storage, pOwnerEntity);
 		
 		// Play sound
 		PlayItemSound(pOwnerEntity, SCR_SoundEvent.SOUND_EQUIP);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! try equip the item into the storage at provided slot
-	bool EquipAny(BaseInventoryStorageComponent storage, IEntity item, int prefered = -1, SCR_InvCallBack cb = null)
+	//! Try to equip the item into the storage at provided slot
+	//! \param[in] storage
+	//! \param[in] item
+	//! \param[in] preferred
+	//! \param[in] cb
+	//! \return
+	bool EquipAny(BaseInventoryStorageComponent storage, IEntity item, int preferred = -1, SCR_InvCallBack cb = null)
 	{
 		if (!storage || !item)
 			return false;
@@ -940,15 +1000,10 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		if (!m_TargetSlot)
 			return false;
 
-		if (prefered > 0 && prefered < storage.GetSlotsCount())
-		{
-			m_TargetSlot = storage.GetSlot(prefered);
-		}
+		if (preferred > 0 && preferred < storage.GetSlotsCount())
+			m_TargetSlot = storage.GetSlot(preferred);
 		else
-		{
-			prefered = m_TargetSlot.GetID();
-		}
-		
+			preferred = m_TargetSlot.GetID();
 
 		InventoryStorageSlot sourceSlot = itemComp.GetParentSlot();
 		// Item is on the ground as it does not belong to any storage (eg is not in the slot)
@@ -957,18 +1012,19 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 			// we are picking up item from ground
 			// if target slot is not empty return the result of replace operation
 			if (m_TargetSlot.GetAttachedEntity())
-				return TryReplaceItem(item, storage, prefered, cb);
+				return TryReplaceItem(item, storage, preferred, cb);
+
 			// we are picking up item from ground into empty slot, simply return result of the insert operation
-			return TryInsertItemInStorage(item, storage, prefered, cb);
+			return TryInsertItemInStorage(item, storage, preferred, cb);
 		}
 
 		// our target slot is empty and we moving item from another storage
 		// simply return the result of move operation
 		if (!m_TargetSlot.GetAttachedEntity())
-			return TryMoveItemToStorage(item, storage, prefered, cb);
+			return TryMoveItemToStorage(item, storage, preferred, cb);
 
 		BaseInventoryStorageComponent sourceStorage = sourceSlot.GetStorage();
-		bool istakenFromArsenal = sourceStorage.GetOwner().FindComponent(SCR_ArsenalComponent);
+		bool isTakenFromArsenal = sourceStorage.GetOwner().FindComponent(SCR_ArsenalComponent);
 		bool isTakenFromBody = false;
 		
 		ChimeraCharacter lootedBodyCharacter = ChimeraCharacter.Cast(sourceStorage.GetOwner());
@@ -980,7 +1036,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		if (lootedBodyDamageManager)
 			isTakenFromBody = lootedBodyDamageManager.GetState() == EDamageState.DESTROYED;
 		
-		bool performDropOfOriginalItem = isTakenFromBody || istakenFromArsenal || sourceStorage.GetOwner().FindComponent(SCR_CampaignArmoryStorageComponent) ;
+		bool performDropOfOriginalItem = isTakenFromBody || isTakenFromArsenal || sourceStorage.GetOwner().FindComponent(SCR_CampaignArmoryStorageComponent) ;
 		
 		// If we don't want to drop item
 		if (performDropOfOriginalItem)
@@ -1003,7 +1059,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 			chainedCallback.m_TargetSlot = m_TargetSlot;
 			chainedCallback.m_FinalCB = cb;
 			chainedCallback.m_bDeleteItemIfEmpty = true;
-			chainedCallback.m_bIstakenFromArsenal = istakenFromArsenal;
+			chainedCallback.m_bIstakenFromArsenal = isTakenFromArsenal;
 	
 			return TryRemoveItemFromStorage(m_TargetSlot.GetAttachedEntity(), m_TargetSlot.GetStorage(), chainedCallback);
 		}
@@ -1013,7 +1069,14 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	} 
 	
 	//------------------------------------------------------------------------------------------------
-	//! try to drop the original item and replace it by itemToReplace at the slot specified by slotID
+	//! Try to drop the original item and replace it by itemToReplace at the slot specified by slotID
+	//! \param[in] storage
+	//! \param[in] item
+	//! \param[in] slotID
+	//! \param[in] cb
+	//! \param[in] isTakenFromArsenal
+	//! \param[in] deleteOriginalItemIfEmpty
+	//! \return
 	bool TryReplaceAndDropItemAtSlot(BaseInventoryStorageComponent storage, IEntity item, int slotID, SCR_InvCallBack cb = null, bool isTakenFromArsenal = false, bool deleteOriginalItemIfEmpty = false)
 	{
 		if (!storage || !item)
@@ -1044,7 +1107,6 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		if (!m_TargetSlot.GetAttachedEntity())
 			return TryMoveItemToStorage(item, storage, slotID, cb);
 
-
 		// if we want to drop originally equipped item
 		// here sequence would be as follows:
 		// 1 - drop original item
@@ -1069,25 +1131,33 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! try replace at prefered slot
-	bool TryReplaceItem( BaseInventoryStorageComponent storage, IEntity item, int prefered, SCR_InvCallBack cb )
+	//! Try to replace at preferred slot
+	//! \param[in] storage
+	//! \param[in] item
+	//! \param[in] preferred
+	//! \param[in] cb
+	//! \return
+	bool TryReplaceItem( BaseInventoryStorageComponent storage, IEntity item, int preferred, SCR_InvCallBack cb )
 	{
 		int slotCount = storage.GetSlotsCount();
 		
 		for ( int i = 0; i < slotCount; i++ )
 		{
-			int j = ( i + prefered ) % slotCount;
+			int j = ( i + preferred ) % slotCount;
 			if ( CanReplaceItem( item, storage, j ) )
 			{
 				if ( TryReplaceItem( item, storage, j, cb ) )
 					return true;
 			}
 		}
+
 		return false;
 	} 
 	
 	//------------------------------------------------------------------------------------------------
-	//! try equip the item into the slot (weapon)
+	//! Try to equip the item into the slot (weapon)
+	//! \param[in] weaponStorage
+	//! \param[in] weapon
 	void EquipItem( EquipedWeaponStorageComponent weaponStorage, IEntity weapon )
 	{
 		// There are empty suitable slots at weapon storage
@@ -1096,20 +1166,21 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 			TryInsertItemInStorage( weapon, weaponStorage, -1 );
 			return;
 		}
+
 		// Otherwise try replace weapon at suitable slot
 		BaseWeaponManagerComponent weaponManager = BaseWeaponManagerComponent.Cast( GetOwner().FindComponent(BaseWeaponManagerComponent) );
 		if (!weaponManager)
 			return;
-		auto slot = weaponManager.GetCurrentSlot();
+
+		WeaponSlotComponent slot = weaponManager.GetCurrentSlot();
 		int slotCount = weaponStorage.GetSlotsCount();
-		int prefered = 0;
+		int preferred = 0;
 		if ( slot )
-		{
-			prefered = slot.GetWeaponSlotIndex();
-		}
+			preferred = slot.GetWeaponSlotIndex();
+
 		for ( int i = 0; i < slotCount; i++ )
 		{
-			int j = ( i + prefered ) % slotCount;
+			int j = ( i + preferred ) % slotCount;
 			if ( CanReplaceItem( weapon, weaponStorage, j ) )
 			{
 				TryReplaceItem( weapon, weaponStorage, j );
@@ -1119,15 +1190,13 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get if resupply magazines action is availible with the given magazine count.
-	Note it does not check if inventory has free space
-	\param resupplyMagazineCount How many magazines will be resupplied
-	\param[out] resupplyUnavailibleReason The reason why the Resupplied failed if it failed
-	\param muzzleType (optional) If you want the Resupply to only check specific muzzle types. -1 to Ignore
-	\param mustBeInStorage (Optional) If storage is given than it will check if the item you try to resupply is in the storage. Used in tadum with Arsenal to give player magazines that are in that arsenal.
-	\return true if resupply is availible.
-	*/
+	//! Get if resupply magazines action is available with the given magazine count.
+	//! Note it does not check if inventory has free space
+	//! \param[in] resupplyMagazineCount How many magazines will be resupplied
+	//! \param[out] resupplyUnavailableReason The reason why the Resupplied failed if it failed
+	//! \param[in] muzzleType (optional) If you want the Resupply to only check specific muzzle types. -1 to Ignore
+	//! \param[in] mustBeInStorage (Optional) If storage is given than it will check if the item you try to resupply is in the storage. Used in tadum with Arsenal to give player magazines that are in that arsenal.
+	//! \return true if resupply is available.
 	bool IsResupplyMagazinesAvailable(int resupplyMagazineCount = 4, out EResupplyUnavailableReason resupplyUnavailableReason = EResupplyUnavailableReason.NONE, EMuzzleType muzzleType = -1, InventoryStorageManagerComponent mustBeInStorage = null)
 	{
 		BaseWeaponManagerComponent weaponsManager = BaseWeaponManagerComponent.Cast(GetOwner().FindComponent(BaseWeaponManagerComponent));
@@ -1141,9 +1210,13 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		ResourceName magazineOrProjectilePrefab;
 		IEntity spawnedMagazine;
 
+		BaseWeaponComponent comp;
+		array<BaseMuzzleComponent> muzzles;
+		SCR_MuzzleInMagComponent inMagMuzzle;
+		SCR_ArsenalInventoryStorageManagerComponent arsenalStorage;
 		foreach (IEntity weapon : weaponList)
 		{
-			BaseWeaponComponent comp = BaseWeaponComponent.Cast(weapon.FindComponent(BaseWeaponComponent));
+			comp = BaseWeaponComponent.Cast(weapon.FindComponent(BaseWeaponComponent));
 			if (!comp)
 				continue;
 
@@ -1153,7 +1226,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 			if ((weaponSlotType != "primary" && weaponSlotType != "secondary"))
 				continue;
 
-			array<BaseMuzzleComponent> muzzles = {};
+			muzzles = {};
 
 			//~ Get base muzzle to only supply magazines
 			comp.GetMuzzlesList(muzzles);
@@ -1162,7 +1235,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 				if (muzzleType != -1 && muzzle.GetMuzzleType() != muzzleType)
 					continue;
 
-				SCR_MuzzleInMagComponent inMagMuzzle = SCR_MuzzleInMagComponent.Cast(muzzle);
+				inMagMuzzle = SCR_MuzzleInMagComponent.Cast(muzzle);
 				if (inMagMuzzle && !inMagMuzzle.CanBeReloaded())
 					continue;
 
@@ -1176,7 +1249,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 				//~ If storage is given check if magazine or projectile is in storage and only allow resupply if it is (Does not care for amount and intended use is with Arsenal)
 				if (mustBeInStorage)
 				{
-					SCR_ArsenalInventoryStorageManagerComponent arsenalStorage = SCR_ArsenalInventoryStorageManagerComponent.Cast(mustBeInStorage);
+					arsenalStorage = SCR_ArsenalInventoryStorageManagerComponent.Cast(mustBeInStorage);
 					if ((arsenalStorage && !arsenalStorage.IsPrefabInArsenalStorage(magazineOrProjectilePrefab)) || (!arsenalStorage && mustBeInStorage.GetDepositItemCountByResource(magazineOrProjectilePrefab) < 1))
 					{
 						if (resupplyUnavailableReason < EResupplyUnavailableReason.NOT_IN_GIVEN_STORAGE)
@@ -1194,26 +1267,18 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 
 					continue;
 				}
-
-				//~ Spawn magazine and check if it can be stored
-				spawnedMagazine = GetGame().SpawnEntityPrefabLocal(Resource.Load(magazineOrProjectilePrefab));
-				if (spawnedMagazine)
+				
+				//~ If it can be stored
+				if (!FindStorageForResourceInsert(magazineOrProjectilePrefab, m_Storage))
 				{
-					//~ Not enough storage so set Unavalible reason to Inventory full
-					if (!FindStorageForInsert(spawnedMagazine, m_pStorage))
-					{
-						if (resupplyUnavailableReason < EResupplyUnavailableReason.INVENTORY_FULL)
-							resupplyUnavailableReason = EResupplyUnavailableReason.INVENTORY_FULL;
-
-						delete spawnedMagazine;
-						continue;
-					}
-
-					delete spawnedMagazine;
+					if (resupplyUnavailableReason < EResupplyUnavailableReason.INVENTORY_FULL)
+						resupplyUnavailableReason = EResupplyUnavailableReason.INVENTORY_FULL;
+					
+					continue;
 				}
 
 				//~ Passes all the checks
-				//~ Set reason none just in case as resupply is availible
+				//~ Set reason none just in case as resupply is available
 				resupplyUnavailableReason = EResupplyUnavailableReason.NONE;
 
 				//~ All checks passed and at least one magazine can be added so function returns true
@@ -1221,7 +1286,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 			}
 		}
 
-		//~ Did not have any valid weapons so set unavailible reason to no valid weapon
+		//~ Did not have any valid weapons so set unavailable reason to no valid weapon
 		if (!foundValidWeapon)
 			resupplyUnavailableReason = EResupplyUnavailableReason.NO_VALID_WEAPON;
 
@@ -1229,12 +1294,11 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get map of all items (ResourceName) and count to add to inventory on resupply
-	\param maxMagazineCount Desired number of magazines
-	\param muzzleType (optional) If you want to Resupply only check specific muzzle types. -1 to Ignore
-	\param mustBeInStorage (Optional) If storage is given than it will check if the item you try to check is in the storage. Used in tadum with Arsenal to give player magazines that are in that arsenal.
-	*/
+	//! Get map of all items (ResourceName) and count to add to inventory on resupply
+	//! \param[out] validResupplyItems
+	//! \param[in] maxMagazineCount Desired number of magazines
+	//! \param[in] muzzleType (optional) If you want to Resupply only check specific muzzle types. -1 to Ignore
+	//! \param[in] mustBeInStorage (Optional) If storage is given than it will check if the item you try to check is in the storage. Used in tadum with Arsenal to give player magazines that are in that arsenal.
 	void GetValidResupplyItemsAndCount(out notnull map<ResourceName, int> validResupplyItems, int maxMagazineCount = 4, EMuzzleType muzzleType = -1, InventoryStorageManagerComponent mustBeInStorage = null)
 	{
 		validResupplyItems.Clear();
@@ -1246,16 +1310,20 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		array<IEntity> weaponList = {};
 		weaponsManager.GetWeaponsList(weaponList);
 
+		BaseWeaponComponent comp;
+		array<BaseMuzzleComponent> muzzles;
+		SCR_MuzzleInMagComponent inMagMuzzle;
+		SCR_ArsenalInventoryStorageManagerComponent arsenalStorage;
 		foreach (IEntity weapon : weaponList)
 		{
-			BaseWeaponComponent comp = BaseWeaponComponent.Cast(weapon.FindComponent(BaseWeaponComponent));
+			comp = BaseWeaponComponent.Cast(weapon.FindComponent(BaseWeaponComponent));
 			string weaponSlotType = comp.GetWeaponSlotType();
 
 			// Only refill primary and secondary weapons
 			if (!(weaponSlotType == "primary" || weaponSlotType == "secondary"))
 				continue;
 
-			array<BaseMuzzleComponent> muzzles = {};
+			muzzles = {};
 
 			//~ Get base muzzle to only supply magazines
 			comp.GetMuzzlesList(muzzles);
@@ -1264,7 +1332,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 				if (muzzleType != -1 && muzzle.GetMuzzleType() != muzzleType)
 					continue;
 
-				SCR_MuzzleInMagComponent inMagMuzzle = SCR_MuzzleInMagComponent.Cast(muzzle);
+				inMagMuzzle = SCR_MuzzleInMagComponent.Cast(muzzle);
 				if (inMagMuzzle && !inMagMuzzle.CanBeReloaded())
 					continue;
 
@@ -1280,7 +1348,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 				//~ If storage is given check if magazine or projectile is in storage and only allow resupply if it is (Does not care for amount and intended use is with Arsenal)
 				if (mustBeInStorage)
 				{
-					SCR_ArsenalInventoryStorageManagerComponent arsenalStorage = SCR_ArsenalInventoryStorageManagerComponent.Cast(mustBeInStorage);
+					arsenalStorage = SCR_ArsenalInventoryStorageManagerComponent.Cast(mustBeInStorage);
 					if ((arsenalStorage && !arsenalStorage.IsPrefabInArsenalStorage(magazineOrProjectilePrefab)) || (!arsenalStorage && mustBeInStorage.GetDepositItemCountByResource(magazineOrProjectilePrefab) < 1))
 						continue;
 				}
@@ -1296,10 +1364,8 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Resupply all weapons in map with the given number of magazines.
-	\param validResupplyItems Map of ResourceNames and amount to add to inventory
-	*/
+	//! Resupply all weapons in map with the given number of magazines.
+	//! \param[in] validResupplyItems Map of ResourceNames and amount to add to inventory
 	void ResupplyMagazines(notnull map<ResourceName, int> validResupplyItems)
 	{
 		//~ Nothing to resupply
@@ -1319,12 +1385,10 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Resupply all weapons so they have given number of magazines.
-	\param maxMagazineCount Desired number of magazines
-	\param muzzleType (optional) If you want to Resupply only check specific muzzle types. -1 to Ignore
-	\param mustBeInStorage (Optional) If storage is given than it will check if the item you try to check is in the storage. Used in tadum with Arsenal to give player magazines that are in that arsenal.
-	*/
+	//! Resupply all weapons so they have given number of magazines.
+	//! \param[in] maxMagazineCount Desired number of magazines
+	//! \param[in] muzzleType (optional) If you want to Resupply only check specific muzzle types. -1 to Ignore
+	//! \param[in] mustBeInStorage (Optional) If storage is given than it will check if the item you try to check is in the storage. Used in tadum with Arsenal to give player magazines that are in that arsenal.
 	void ResupplyMagazines(int maxMagazineCount = 4, EMuzzleType muzzleType = -1, InventoryStorageManagerComponent mustBeInStorage = null)
 	{
 		//~ Get resupply prefabs
@@ -1336,12 +1400,19 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void EndResupplyMagazines()
 	{
 		delete m_ResupplyMagazineCallback;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] muzzle
+	//! \param[in] maxMagazineCount
+	//! \param[in] mustBeInStorage
+	//! \param[out] currentMagazineAmount
+	//! \return
 	EResupplyUnavailableReason CanResupplyMuzzle(notnull BaseMuzzleComponent muzzle, int maxMagazineCount = -1, InventoryStorageManagerComponent mustBeInStorage = null, out int currentMagazineAmount = -1)
 	{
 		//~ Cannot resupply weapons that cannot be ressupplied like the US rocket Launcer
@@ -1367,24 +1438,20 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		if (maxMagazineCount > 0 && currentMagazineAmount >= maxMagazineCount)
 			return EResupplyUnavailableReason.ENOUGH_ITEMS;
 		
-		//~ Spawn item and check if it can be stored
-		IEntity spawnMagazine = GetGame().SpawnEntityPrefabLocal(Resource.Load(magazineToResupply));
-		if (spawnMagazine)
-		{
-			//~ Not enough storage so set Unavalible reason to Inventory full
-			if (!FindStorageForInsert(spawnMagazine, m_pStorage))
-			{
-				delete spawnMagazine;
-				return EResupplyUnavailableReason.INVENTORY_FULL;
-			}
-
-			delete spawnMagazine;
-		}
+		//~ Check if there is space in the inventory
+		if (!FindStorageForResourceInsert(magazineToResupply, m_Storage))
+			return EResupplyUnavailableReason.INVENTORY_FULL;
 				
 		return EResupplyUnavailableReason.RESUPPLY_VALID;	
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] itemToResupply
+	//! \param[in] maxItemCount
+	//! \param[in] mustBeInStorage
+	//! \param[out] currentItemAmount
+	//! \return
 	EResupplyUnavailableReason CanResupplyItem(ResourceName itemToResupply, int maxItemCount = -1, InventoryStorageManagerComponent mustBeInStorage = null, out int currentItemAmount = -1)
 	{
 		//~ Check if it is in arsenal or in the storage
@@ -1400,65 +1467,57 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		if (maxItemCount > 0 && currentItemAmount >= maxItemCount)
 			return EResupplyUnavailableReason.ENOUGH_ITEMS;
 			
-		//~ Spawn item and check if it can be stored
-		IEntity spawnedItem = GetGame().SpawnEntityPrefabLocal(Resource.Load(itemToResupply));
-		if (spawnedItem)
-		{
-			//~ Not enough storage so set Unavalible reason to Inventory full
-			if (!FindStorageForInsert(spawnedItem, m_pStorage))
-			{
-				delete spawnedItem;
-				return EResupplyUnavailableReason.INVENTORY_FULL;
-			}
-			delete spawnedItem;
-		}
+		//~ Check if there is space in the inventory
+		if (!FindStorageForResourceInsert(itemToResupply, m_Storage))
+			return EResupplyUnavailableReason.INVENTORY_FULL;
 	
 		return EResupplyUnavailableReason.RESUPPLY_VALID;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! try to move item from owner's storage to vicinity. It might be moved to ground or to a storage in the vicinity
-	void MoveItemToVicinity( IEntity pItem, BaseInventoryStorageComponent pStorageTo = null ) 
-	{
-	}
-	
+	//! \param[in] pItem
+	//! \param[in] pStorageTo
+	void MoveItemToVicinity(IEntity pItem, BaseInventoryStorageComponent pStorageTo = null);
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void OpenInventory()
 	{
-		if (m_pCharacterController && m_pCharacterController.GetLifeState() != ECharacterLifeState.ALIVE)
+		if (m_CharacterController && m_CharacterController.GetLifeState() != ECharacterLifeState.ALIVE)
 			return;
 
-		auto menuManager = GetGame().GetMenuManager();
-		auto menu = ChimeraMenuPreset.Inventory20Menu;
+		MenuManager menuManager = GetGame().GetMenuManager();
+		ChimeraMenuPreset menu = ChimeraMenuPreset.Inventory20Menu;
 		
-		auto inventoryMenu = menuManager.FindMenuByPreset( menu );
+		MenuBase inventoryMenu = menuManager.FindMenuByPreset(menu);
 		if (inventoryMenu)
 			return;
 		
 		menuManager.OpenMenu( menu );
 		m_OnInventoryOpenInvoker.Invoke(true);
 		
-		if (!m_pCharacterController)
+		if (!m_CharacterController)
 			return;
 		
 		// Quit ADS
-		m_pCharacterController.SetWeaponADS(false);
-		m_pCharacterController.SetGadgetRaisedModeWanted(false);
+		m_CharacterController.SetWeaponADS(false);
+		m_CharacterController.SetGadgetRaisedModeWanted(false);
 		
 		// Pin grenade
-		if(m_pCharacterController.GetInputContext() && m_pCharacterController.GetInputContext().GetThrow())
-			m_pCharacterController.SetThrow(false, true);
+		if (m_CharacterController.GetInputContext() && m_CharacterController.GetInputContext().GetThrow())
+			m_CharacterController.SetThrow(false, true);
 				
 		// Inspection or lowered weapon stance
-		m_bWasRaised = m_pCharacterController.IsWeaponRaised();
-		m_pCharacterController.SetWeaponRaised(false);
+		m_bWasRaised = m_CharacterController.IsWeaponRaised();
+		m_CharacterController.SetWeaponRaised(false);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void CloseInventory()
 	{
-		auto menuManager = GetGame().GetMenuManager();
+		MenuManager menuManager = GetGame().GetMenuManager();
 		if (!menuManager)
 			return;
 		
@@ -1466,24 +1525,27 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	IEntity GetStorageToOpen()
 	{
-		IEntity result = m_pStorageToOpen;
-		m_pStorageToOpen = null;
+		IEntity result = m_StorageToOpen;
+		m_StorageToOpen = null;
 		
 		return result;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] storage
 	void SetStorageToOpen(IEntity storage)
 	{
-		m_pStorageToOpen = storage;
+		m_StorageToOpen = storage;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void Action_OpenInventory()
 	{
-		CompartmentAccessComponent cac = m_pCharacterController.GetCharacter().GetCompartmentAccessComponent();
+		CompartmentAccessComponent cac = m_CharacterController.GetCharacter().GetCompartmentAccessComponent();
 		if (cac && cac.IsInCompartment())
 		{
 			IEntity owner = cac.GetCompartment().GetOwner();
@@ -1509,42 +1571,45 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		m_OnInventoryOpenInvoker.Invoke(false);
 		
 		// Revert inspection or lowered weapon stance
-		if (m_pCharacterController)
-			m_pCharacterController.SetWeaponRaised(m_bWasRaised);
+		if (m_CharacterController)
+			m_CharacterController.SetWeaponRaised(m_bWasRaised);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnStorageAdded(BaseInventoryStorageComponent storage) 
 	{ 
-		return;
+		// do nothing
  	}
 	
+//	//------------------------------------------------------------------------------------------------
+//	//! Even after physics update
+//	//! \param[in] owner The owner entity
+//	//! \param[in] frameNumber Time passed since last frame
+//	override void EOnPostFrame(IEntity owner, float timeSlice)
+//	{
+//		m_OnPostFrameInvoker.Invoke(timeSlice);
+//	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Even after physics update
-	//! \param owner The owner entity
-	//! \param frameNumber Time passed since last frame
-	/*override void EOnPostFrame(IEntity owner, float timeSlice)
-	{
-		m_OnPostFrameInvoker.Invoke(timeSlice);
-	}*/
-	
-	//------------------------------------------------------------------------------------------------
+	//!
 	void DebugListAllItemsInInventory()
 	{
-		array<IEntity> items = new array<IEntity>();
+		array<IEntity> items = {};
 		GetItems(items);
-		PrintFormat( "INV: %1", "no item" );
+		Print("INV: no item", LogLevel.NORMAL);
+		InventoryItemComponent pInvComp;
+		ItemAttributeCollection attribs;
 		foreach (IEntity item : items)
 		{
-			InventoryItemComponent pInvComp = InventoryItemComponent.Cast(  item .FindComponent( InventoryItemComponent ) );
+			pInvComp = InventoryItemComponent.Cast(  item .FindComponent( InventoryItemComponent ) );
 			if( pInvComp )
 			{
-				ItemAttributeCollection attribs = pInvComp.GetAttributes();
+				attribs = pInvComp.GetAttributes();
 				if( !attribs )
 					break;
+
 				string sName = attribs.GetUIInfo().GetName();
-				PrintFormat( "INV: %1", sName );
+				Print("INV: " + sName, LogLevel.NORMAL);
 
 			}
 		}
@@ -1557,18 +1622,20 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	    RplComponent rplComp = RplComponent.Cast(Replication.FindItem(targetRplId));
         if (!rplComp)
             return;
+
         IEntity entity = rplComp.GetEntity();
         if (!entity)
             return;
+
       	RplComponent.DeleteRplEntity(entity, false);	
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] ent
 	void AskServerToDeleteEntity(IEntity ent)
 	{
 		RplComponent rplComp = RplComponent.Cast(ent.FindComponent(RplComponent));
-		
 		if (!rplComp)
 			return;
 			
@@ -1587,43 +1654,53 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// !
-	int GetHealthComponentCount() { return m_iHealthEquipment; }
+	//! \return
+	int GetHealthComponentCount()
+	{
+		return m_iHealthEquipment;
+	}
 	
 	//------------------------------------------------------------------------------------------------	
 	//!
 	IEntity GetBandageItem()
 	{	
-		return FindItem(m_bandagePredicate, EStoragePurpose.PURPOSE_DEPOSIT);
+		return FindItem(m_BandagePredicate, EStoragePurpose.PURPOSE_DEPOSIT);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_InventoryStorageManagerComponent()
 	{
 		m_ERetCode = EInventoryRetCode.RETCODE_DEFAULT_STATE;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsAnimationReady()
 	{
-		if (m_pCharacterController)
-			return m_pCharacterController.CanPlayItemGesture() || m_pCharacterController.IsPlayingItemGesture();
+		if (m_CharacterController)
+			return m_CharacterController.CanPlayItemGesture() || m_CharacterController.IsPlayingItemGesture();
 		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsInventoryLocked()
 	{
 		return m_bIsInventoryLocked;	
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] isLocked
 	void SetInventoryLocked(bool isLocked)
 	{
 		m_bIsInventoryLocked = isLocked;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in,out] items
+	//! \param[in] storage
+	//! \return
 	int GetAllItems(inout array<IEntity> items, BaseInventoryStorageComponent storage)
 	{
 		if (!storage || !items)
@@ -1632,21 +1709,16 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		int count = 0;
 		
 		if (!ClothNodeStorageComponent.Cast(storage))
-		{
 			count = storage.GetAll(items);
-		}
+
 		array<BaseInventoryStorageComponent> itemToReplaceAttachedStorages = {};
 		storage.GetOwnedStorages(itemToReplaceAttachedStorages, 1, false);
 		foreach (BaseInventoryStorageComponent attachedStorage : itemToReplaceAttachedStorages)
 		{			
 			if (ClothNodeStorageComponent.Cast(attachedStorage))
-			{
 				attachedStorage.GetOwnedStorages(itemToReplaceAttachedStorages, 1, false);
-			}
 			else
-			{
 				count += attachedStorage.GetAll(items);
-			}
 		}
 			
 		return count;
@@ -1654,11 +1726,14 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	
 	//------------------------------------------------------------------------------------------------	
 	//! Get available prefabs of weapons of specified types
+	//! \param[in] weapons
+	//! \param[in] weaponType
+	//! \param[out] prefabs
 	void GetWeaponPrefabsOfType(notnull array<IEntity> weapons, EWeaponType weaponType, notnull out array<EntityPrefabData> prefabs)
 	{
 		BaseWeaponComponent weapon;
 		EntityPrefabData prefabData;
-		foreach (IEntity item: weapons)
+		foreach (IEntity item : weapons)
 		{
 			weapon = BaseWeaponComponent.Cast(item.FindComponent(BaseWeaponComponent));
 			if (weapon.GetWeaponType() != weaponType)
@@ -1673,6 +1748,10 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	
 	//------------------------------------------------------------------------------------------------	
 	//! Find next weapon of specified types, excluding currentItem, but including it in sorting
+	//! \param[in] weaponType
+	//! \param[in] currentItem
+	//! \param[in] allowCurrentPrefab
+	//! \return
 	IEntity FindNextWeaponOfType(EWeaponType weaponType, IEntity currentItem = null, bool allowCurrentPrefab = false)
 	{
 		array<EntityPrefabData> prefabs = {};
@@ -1701,10 +1780,10 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		// TODO: better sorting, perhaps by name
 		prefabs.Sort();
 		
-		/*
-		foreach (EntityPrefabData prefab: prefabs)
-			Print(prefab.GetPrefabName(), LogLevel.WARNING);
-		*/
+//		foreach (EntityPrefabData prefab : prefabs)
+//		{
+//			Print(prefab.GetPrefabName(), LogLevel.WARNING);
+//		}
 		
 		// Select next prefab
 		int nextPrefabID = (prefabs.Find(currentPrefab) + 1) % prefabs.Count();
@@ -1715,7 +1794,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 			return null;
 		
 		// Select the weapon that matches the type to be selected
-		foreach (IEntity item: items)
+		foreach (IEntity item : items)
 		{
 			if (item && item.GetPrefabData() == nextPrefab)
 				return item;
@@ -1725,26 +1804,95 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	}
 
 #else
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] ERetCode
 	void SetReturnCode( EInventoryRetCode ERetCode ) ;
+
+	//------------------------------------------------------------------------------------------------
 	void SetReturnCodeDefault() ;
-	EInventoryRetCode GetReturnCode() { return m_ERetCode; };
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	EInventoryRetCode GetReturnCode()
+	{
+		return m_ERetCode;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetTotalWeightOfAllStorages();
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] pOwner
 	void SetLootStorage( IEntity pOwner );
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] pItem
 	void InsertItem( IEntity pItem );
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] pOwnerEntity
+	//! \param[in] cb
+	//! \param[in] bFromVicinity
 	void EquipWeapon( IEntity pOwnerEntity, SCR_InvCallBack cb = null, bool bFromVicinity = true );
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] pOwnerEntity
 	void EquipGadget( IEntity pOwnerEntity );
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] pOwnerEntity
 	void EquipCloth( IEntity pOwnerEntity );
-	void EquipAny(BaseInventoryStorageComponent storage, IEntity item, int prefered = 0);
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] storage
+	//! \param[in] item
+	//! \param[in] preferred
+	void EquipAny(BaseInventoryStorageComponent storage, IEntity item, int preferred = 0);
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] weaponStorage
+	//! \param[in] weapon
 	void EquipItem( EquipedWeaponStorageComponent weaponStorage, IEntity weapon );
+
+	//------------------------------------------------------------------------------------------------
+	//!
 	void OpenInventory();
+
+	//------------------------------------------------------------------------------------------------
+	//!
 	void Action_OpenInventory();
+
+	//------------------------------------------------------------------------------------------------
 	override void OnStorageAdded(BaseInventoryStorageComponent storage);
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] enable
 	void EnablePostFrame(bool enable);
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetHealthComponentCount();
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	IEntity GetBandageItem();
 	
 #endif	
 	
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_InventoryStorageManagerComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		#ifndef DISABLE_INVENTORY
@@ -1752,8 +1900,8 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		//ChimeraCharacter pChimeraChar = ChimeraCharacter.Cast( ent );
 		//pChimeraChar.s_OnCharacterCreated.Insert( DebugListAllItemsInInventory );
 		
-		m_pStorage = SCR_CharacterInventoryStorageComponent.Cast( ent.FindComponent( CharacterInventoryStorageComponent ) );
-		m_pCharacterController = SCR_CharacterControllerComponent.Cast(ent.FindComponent(SCR_CharacterControllerComponent));
+		m_Storage = SCR_CharacterInventoryStorageComponent.Cast(ent.FindComponent(CharacterInventoryStorageComponent));
+		m_CharacterController = SCR_CharacterControllerComponent.Cast(ent.FindComponent(SCR_CharacterControllerComponent));
 		#endif
 	}
-};
+}

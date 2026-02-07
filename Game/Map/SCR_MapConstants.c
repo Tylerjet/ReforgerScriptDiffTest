@@ -52,7 +52,9 @@ enum EMapCursorState
 	CS_MODIFIER			= 1<<10,
 	CS_ROTATE			= 1<<11,
 	CS_ASSIGN_WP		= 1<<12,
-	CS_LAST				= 1<<13
+	CS_SUB_MENU			= 1<<13,
+	CS_DIALOG			= 1<<14,
+	CS_LAST				= 1<<15
 };
 
 //------------------------------------------------------------------------------------------------

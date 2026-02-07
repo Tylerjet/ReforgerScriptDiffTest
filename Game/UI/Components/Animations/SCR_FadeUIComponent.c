@@ -1,4 +1,4 @@
-class SCR_FadeUIComponent: ScriptedWidgetComponent
+class SCR_FadeUIComponent : ScriptedWidgetComponent
 {
 	[Attribute("", desc: "Leave empty if root is faded")]
 	protected string m_sFadeWidgetName;
@@ -39,12 +39,11 @@ class SCR_FadeUIComponent: ScriptedWidgetComponent
 	protected bool m_bIsFadingIn;
 	protected bool m_bCheckingForFadeOutDestroy = false;
 	
-	protected ref ScriptInvoker Event_OnFadeDone = new ScriptInvoker; //Var SCR_FadeUIComponent, Bool isFadeIn
+	protected ref ScriptInvoker Event_OnFadeDone; //Var SCR_FadeUIComponent, Bool isFadeIn
 	
-	/*!
-	Fade in widget
-	\param bool will set opacity to 0 if this is true. Else keeps current opacity
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Fade in widget
+	//! \param[in] setOpacityZero will set opacity to 0 if this is true. Else keeps current opacity
 	void FadeIn(bool setOpacityZero = true)
 	{	
 		m_bIsWaitingForDelayedFadeIn = false;
@@ -68,12 +67,10 @@ class SCR_FadeUIComponent: ScriptedWidgetComponent
 		StartListenToFadeDone(true);
 	}
 	
-	
-	/*!
-	Fade in with delay (in miliseconds)
-	\param delay how long will the delay be fore fading
-	\param bool will set opacity to 0 if this is true. Else keeps current opacity
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Fade in with delay (in miliseconds)
+	//! \param[in] delay how long will the delay be fore fading
+	//! \param[in]setOpacityZero will set opacity to 0 if this is true. Else keeps current opacity
 	void DelayedFadeIn(int delay, bool setOpacityZero = true)
 	{
 		if (!m_wFadeWidget)
@@ -88,10 +85,9 @@ class SCR_FadeUIComponent: ScriptedWidgetComponent
 		GetGame().GetCallqueue().CallLater(FadeIn, delay, false, false);
 	}
 	
-	/*!
-	Fade out widget
-	\param bool will destroy widget if fade out animation is done
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Fade out widget
+	//! \param[in] destroyOnFadeOut will destroy widget if fade out animation is done
 	void FadeOut(bool destroyOnFadeOut)
 	{
 		m_bIsWaitingForDelayedFadeOut = false;
@@ -113,11 +109,11 @@ class SCR_FadeUIComponent: ScriptedWidgetComponent
 		StartListenToFadeDone(false);
 	}
 	
-	/*!
-	Fade out with delay (in miliseconds)
-	\param delay how long will the delay be fore fading
-	\param bool will set opacity to the given fade in amount if this is true. Else keeps current opacity
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Fade out with delay (in milliseconds)
+	//! \param[in] delay how long will fading take
+	//! \param[in] destroyOnFadeOut will destroy widget if fade out animation is done
+	//! \param[in] setOpacityTofadeInTarget will set opacity to the given fade in amount if this is true. Else keeps current opacity
 	void DelayedFadeOut(int delay, bool destroyOnFadeOut, bool setOpacityTofadeInTarget = true)
 	{
 		if (!m_wFadeWidget)
@@ -130,10 +126,9 @@ class SCR_FadeUIComponent: ScriptedWidgetComponent
 		GetGame().GetCallqueue().CallLater(FadeOut, delay, false, destroyOnFadeOut);
 	}
 	
-	/*!
-	Cancel current fade
-	\param if true it will still call the fade done event
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Cancel current fade
+	//! \param[in] callFadeDone if true it will still call the fade done event
 	void CancelFade(bool callFadeDone)
 	{
 		if (m_bIsWaitingForDelayedFadeIn)
@@ -159,69 +154,62 @@ class SCR_FadeUIComponent: ScriptedWidgetComponent
 		AnimateWidget.StopAllAnimations(m_wFadeWidget);
 	}
 	
-	/*!
-	Set the fade in speed 
-	\param float new fade in speed
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Set the fade in speed
+	//! \param[in] fadeInSpeed new fade in speed
 	void SetFadeInSpeed(float fadeInSpeed)
 	{
 		m_fFadeInAnimationSpeed = fadeInSpeed;
 	}
 	
-	/*!
-	Get Fade widget
-	\return m_wFadeWidget widget to be faded
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get Fade widget
+	//! \return the widget to be faded
 	Widget GetFadeWidget()
 	{
 		return m_wFadeWidget;
 	}
 
-	/*!
-	Returns if the widget is being faded by the this specific component
-	\return if fading
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return if the widget is being faded by the this specific component
 	bool IsFading()
 	{
 		return m_bIsFading;
 	}
 	
-	/*!
-	Returns if the currently fading and if the fade is a fade in
-	\return if fading in (true)
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return true if the currently fading and if the fade is a fade in, false otherwise
 	bool IsFadingIn()
 	{
-		return IsFading() && m_bIsFadingIn; 
+		return m_bIsFadingIn && IsFading();
 	}
 	
-	/*!
-	Returns if the currently fading and if the fade is a fade out
-	\return if fading out (true)
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return true if the currently fading and if the fade is a fade out, false otherwise
 	bool IsFadingOut()
 	{
-		return IsFading() && !m_bIsFadingIn; 
+		return !m_bIsFadingIn && IsFading();
 	}
 	
-	/*!
-	Returns the target fade in opactity
-	\return fade in target opacity
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return fade in opacity target
 	float GetTargetFadeInOpacity()
 	{
 		return m_fFadeInOpacitytarget;
 	}
 	
-	/*!
-	Get Fade done Script Invoker
-	\return Event_OnFadeDones script invoker when fade is done. Vars: SCR_FadeUIComponent bool isFadeIn
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get Fade done Script Invoker
+	//! \return script invoker triggering when fade is done. Vars: SCR_FadeUIComponent bool isFadeIn
 	ScriptInvoker GetOnFadeDone()
 	{
+		if (!Event_OnFadeDone)
+			Event_OnFadeDone = new ScriptInvoker();
+
 		return Event_OnFadeDone;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void StartListenToFadeDone(bool isFadeIn)
 	{
 		m_bIsFadingIn = isFadeIn;
@@ -233,6 +221,7 @@ class SCR_FadeUIComponent: ScriptedWidgetComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void FadeDoneCheck()
 	{
 		if (AnimateWidget.IsAnimating(m_wFadeWidget))
@@ -243,7 +232,8 @@ class SCR_FadeUIComponent: ScriptedWidgetComponent
 		else if (!m_bIsFadingIn && m_wFadeWidget.GetOpacity() != 0)
 			return;
 		
-		Event_OnFadeDone.Invoke(this, m_bIsFadingIn);
+		if (Event_OnFadeDone)
+			Event_OnFadeDone.Invoke(this, m_bIsFadingIn);
 		
 		m_bIsFading = false;
 		GetGame().GetCallqueue().Remove(FadeDoneCheck);
@@ -257,6 +247,7 @@ class SCR_FadeUIComponent: ScriptedWidgetComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		if (SCR_Global.IsEditMode()) 
@@ -277,10 +268,10 @@ class SCR_FadeUIComponent: ScriptedWidgetComponent
 			FadeIn();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		if (m_bIsFading && GetGame())
 			GetGame().GetCallqueue().Remove(FadeDoneCheck);
 	}
-};
-
+}

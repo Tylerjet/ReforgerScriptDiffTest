@@ -1,5 +1,6 @@
 class SCR_CampaignBuildingRefreshUIComponent : ScriptedWidgetComponent
 {
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		SCR_ExternalPaginationUIComponent pagUIComp = SCR_ExternalPaginationUIComponent.Cast(w.FindHandler(SCR_ExternalPaginationUIComponent));
@@ -20,13 +21,11 @@ class SCR_CampaignBuildingRefreshUIComponent : ScriptedWidgetComponent
 
 		resourceComponent.TEMP_GetOnInteractorReplicated().Insert(pagUIComp.RefreshPage);
 
-		SCR_ResourceConsumer consumer = resourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
-		if (consumer)
-			consumer.GetOnResourcesChanged().Insert(pagUIComp.RefreshPage);
-
 		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(provider.FindComponent(SCR_CampaignBuildingProviderComponent));
 		if (!providerComponent)
 			return;
+		
+		providerComponent.GetOnCooldownLockUpdated().Insert(pagUIComp.RefreshPage);
 
 		SCR_MilitaryBaseComponent base = providerComponent.GetMilitaryBaseComponent();
 		if (!base)
@@ -56,13 +55,11 @@ class SCR_CampaignBuildingRefreshUIComponent : ScriptedWidgetComponent
 
 		resourceComponent.TEMP_GetOnInteractorReplicated().Remove(pagUIComp.RefreshPage);
 
-		SCR_ResourceConsumer consumer = resourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
-		if (consumer)
-			consumer.GetOnResourcesChanged().Remove(pagUIComp.RefreshPage);
-
 		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(provider.FindComponent(SCR_CampaignBuildingProviderComponent));
 		if (!providerComponent)
 			return;
+		
+		providerComponent.GetOnCooldownLockUpdated().Remove(pagUIComp.RefreshPage);
 
 		SCR_MilitaryBaseComponent base = providerComponent.GetMilitaryBaseComponent();
 		if (!base)

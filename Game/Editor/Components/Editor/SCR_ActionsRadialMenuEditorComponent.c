@@ -1,16 +1,12 @@
-/*!
-\addtogroup EditorRadialMenu
-\{
-*/
+//! \addtogroup EditorRadialMenu
+//! \{
 
 [ComponentEditorProps(category: "GameScripted/Editor", description: "Responsible for controlling radial menus used within GameMaster", icon: "WBData/ComponentEditorProps/componentEditor.png")]
 class SCR_ActionsRadialMenuEditorComponentClass : SCR_BaseEditorComponentClass
 {
-};
+}
 
-/*!
-Responsible for controlling and managing radial menus used within GameMaster.
-*/
+//! Responsible for controlling and managing radial menus used within GameMaster.
 class SCR_ActionsRadialMenuEditorComponent : SCR_BaseEditorComponent
 {
 	[Attribute()]
@@ -21,9 +17,8 @@ class SCR_ActionsRadialMenuEditorComponent : SCR_BaseEditorComponent
 
 	[Attribute()]
 	protected ref SCR_RadialMenuController m_AddCommandsMenuController;
-
-	protected SCR_MenuLayoutEditorComponent m_EditorMenuComponent;
-	protected ref array<ref SCR_EditorActionSelectionMenuEntry> m_aMenuEntries = {};
+	
+	// Action names 
 
 	[Attribute()]
 	protected string m_sActionName;
@@ -33,43 +28,47 @@ class SCR_ActionsRadialMenuEditorComponent : SCR_BaseEditorComponent
 
 	[Attribute()]
 	protected string m_sAddCommandActionName;
-
+	
 	//------------------------------------------------------------------------------------------------
-	void OnInputDeviceChanged(EInputDeviceType oldDevice, EInputDeviceType newDevice)
+	//! \param[in] oldDevice
+	//! \param[in] newDevice
+	void OnInputDeviceChanged(bool isGamepad)
 	{	
-		if (newDevice != EInputDeviceType.GAMEPAD)
+		// Clearup and close radial menu if not using gamepad
+		if (!isGamepad)
 		{
 			CleanMenu();
 
 			if (m_ActionsMenuController)
 			{
 				m_ActionsMenuController.SetEnableControl(false);
-				m_ActionsMenuController.StopControl();
+				m_ActionsMenuController.StopControl(true);
 			}
 			
 			if (m_CommandsMenuController)
 			{
 				m_CommandsMenuController.SetEnableControl(false);
-				m_CommandsMenuController.StopControl();
+				m_CommandsMenuController.StopControl(true);
 			}
 
 			if (m_AddCommandsMenuController)
 			{
 				m_AddCommandsMenuController.SetEnableControl(false);
-				m_AddCommandsMenuController.StopControl();
+				m_AddCommandsMenuController.StopControl(true);
 			}
+			
+			return;
 		}
-		else
-		{
-			if (m_ActionsMenuController)
-				m_ActionsMenuController.SetEnableControl(true);
 		
-			if (m_CommandsMenuController)
-				m_CommandsMenuController.SetEnableControl(true);
+		// Gamepad
+		if (m_ActionsMenuController)
+			m_ActionsMenuController.SetEnableControl(true);
+		
+		if (m_CommandsMenuController)
+			m_CommandsMenuController.SetEnableControl(true);
 
-			if (m_AddCommandsMenuController)
-				m_AddCommandsMenuController.SetEnableControl(true);
-		}
+		if (m_AddCommandsMenuController)
+			m_AddCommandsMenuController.SetEnableControl(true);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -126,14 +125,13 @@ class SCR_ActionsRadialMenuEditorComponent : SCR_BaseEditorComponent
 
 		radialMenu.GetOnClose().Insert(CleanMenu);
 		radialMenu.AddEntries(radialMenuEntries, true);
-			
+		
 		menuController.OnInputOpen();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void CleanMenu()
 	{
-		m_aMenuEntries.Clear();
 		SCR_RadialMenu radialMenu = null;
 
 		if (m_ActionsMenuController)
@@ -169,7 +167,7 @@ class SCR_ActionsRadialMenuEditorComponent : SCR_BaseEditorComponent
 	{
 		if (!m_ActionsMenuController)
 			return;
-
+		
 		m_ActionsMenuController.Control(GetOwner());
 
 		SCR_ContextActionsEditorComponent editorActionsComponent = SCR_ContextActionsEditorComponent.Cast(SCR_ContextActionsEditorComponent.GetInstance(SCR_ContextActionsEditorComponent, true));
@@ -186,7 +184,7 @@ class SCR_ActionsRadialMenuEditorComponent : SCR_BaseEditorComponent
 			return;
 		
 		m_CommandsMenuController.Control(GetOwner());
-			
+
 		SCR_CommandActionsEditorComponent editorCommandsComponent = SCR_CommandActionsEditorComponent.Cast(SCR_CommandActionsEditorComponent.GetInstance(SCR_CommandActionsEditorComponent, true));
 		if (!editorCommandsComponent)
 			return;
@@ -199,9 +197,9 @@ class SCR_ActionsRadialMenuEditorComponent : SCR_BaseEditorComponent
 	{
 		if (!m_AddCommandsMenuController)
 			return;
-
+		
 		m_AddCommandsMenuController.Control(GetOwner());
-
+		
 		SCR_CommandActionsEditorComponent editorCommandsComponent = SCR_CommandActionsEditorComponent.Cast(SCR_CommandActionsEditorComponent.GetInstance(SCR_CommandActionsEditorComponent, true));
 		if (!editorCommandsComponent)
 			return;
@@ -210,19 +208,28 @@ class SCR_ActionsRadialMenuEditorComponent : SCR_BaseEditorComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected override void EOnEditorInit()
+	protected override void EOnEditorActivate()
 	{
 #ifdef WORKBENCH
 		if (SCR_Global.IsEditMode())
 			return;
 #endif
-		GetGame().OnInputDeviceUserChangedInvoker().Insert(OnInputDeviceChanged);
-
-		GetGame().GetInputManager().AddActionListener(m_sActionName, EActionTrigger.DOWN, OnActionRadialMenuOpen);
-		GetGame().GetInputManager().AddActionListener(m_sCommandActionName, EActionTrigger.DOWN, OnCommandsRadialMenu);
-		GetGame().GetInputManager().AddActionListener(m_sAddCommandActionName, EActionTrigger.DOWN, OnAddCommandsRadialMenu);
+		
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceChanged);
+		
+		InputManager inputManager =	GetGame().GetInputManager();
+		
+		// Clearup
+		inputManager.RemoveActionListener(m_sActionName, EActionTrigger.DOWN, OnActionRadialMenuOpen);
+		inputManager.RemoveActionListener(m_sCommandActionName, EActionTrigger.DOWN, OnCommandsRadialMenu);
+		inputManager.RemoveActionListener(m_sAddCommandActionName, EActionTrigger.DOWN, OnAddCommandsRadialMenu);
+		
+		// Setup
+		inputManager.AddActionListener(m_sActionName, EActionTrigger.DOWN, OnActionRadialMenuOpen);
+		inputManager.AddActionListener(m_sCommandActionName, EActionTrigger.DOWN, OnCommandsRadialMenu);
+		inputManager.AddActionListener(m_sAddCommandActionName, EActionTrigger.DOWN, OnAddCommandsRadialMenu);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	protected override void EOnEditorDelete()
 	{
@@ -230,17 +237,6 @@ class SCR_ActionsRadialMenuEditorComponent : SCR_BaseEditorComponent
 		if (SCR_Global.IsEditMode())
 			return;
 #endif
-
-		if (m_ActionsMenuController)
-			m_ActionsMenuController.GetOnInputOpen().Remove(OnActionRadialMenuOpen);
-
-		if (m_CommandsMenuController)
-			m_CommandsMenuController.GetOnInputOpen().Remove(OnCommandsRadialMenu);
-
-		if (m_AddCommandsMenuController)
-			m_AddCommandsMenuController.GetOnInputOpen().Remove(OnAddCommandsRadialMenu);
 	}
-};
-/*!
-\}
-*/
+}
+//! \}

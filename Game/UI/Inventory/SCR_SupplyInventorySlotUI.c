@@ -103,11 +103,11 @@ class SCR_SupplyInventorySlotUI : SCR_InventorySlotUI
 		float totalResources, maxResources;
 		
 		//~ Stored supplies
-		bool showUI = SCR_ResourceSystemHelper.GetMaxAndStoredResources(m_ResourceComponent, totalResources, maxResources, m_eResourceType);
+		bool showUI = SCR_ResourceSystemHelper.GetStoredAndMaxResources(m_ResourceComponent, totalResources, maxResources, m_eResourceType);
 		UpdateStoredResources(showUI, totalResources, maxResources);
 		
 		//~ Available Supplies
-		showUI = SCR_ResourceSystemHelper.GetAvailableResources(m_ResourceComponent, totalResources, m_eResourceType);
+		showUI = m_ResourceComponent.IsResourceTypeEnabled() && SCR_ResourceSystemHelper.GetAvailableResources(m_ResourceComponent, totalResources, m_eResourceType);
 		UpdateAvailableResources(showUI, totalResources);
 	}
 	
@@ -124,7 +124,7 @@ class SCR_SupplyInventorySlotUI : SCR_InventorySlotUI
 		}
 		
 		//~ Update supplies
-		m_StoredResourcesText.SetTextFormat(m_sCurrentAndMaxResourceFormat, totalResources.ToString(), maxResources.ToString());
+		m_StoredResourcesText.SetTextFormat(m_sCurrentAndMaxResourceFormat, SCR_ResourceSystemHelper.SuppliesToString(totalResources), SCR_ResourceSystemHelper.SuppliesToString(maxResources));
 		m_StoredResourcesHolder.SetVisible(true);
 	}
 	
@@ -141,7 +141,7 @@ class SCR_SupplyInventorySlotUI : SCR_InventorySlotUI
 		}
 		
 		//~ Update supplies
-		m_AvailableResourcesText.SetText(totalResources.ToString());
+		m_AvailableResourcesText.SetText(SCR_ResourceSystemHelper.SuppliesToString(totalResources));
 		m_AvailableResourcesHolder.SetVisible(true);
 	}
 	

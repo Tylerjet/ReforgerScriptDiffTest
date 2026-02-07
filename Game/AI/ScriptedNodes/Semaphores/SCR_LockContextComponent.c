@@ -1,20 +1,20 @@
 [ComponentEditorProps(category: "GameScripted/AIComponent", description: "Scripted component for synchronization", icon: HYBRID_COMPONENT_ICON)]
-class SCR_LockContextComponentClass: AIComponentClass
+class SCR_LockContextComponentClass : AIComponentClass
 {	
-};
+}
 
-class SCR_Key : Managed
+class SCR_Key
 {
 	string m_key;
 	int m_numOfKeyHolders;
 	int m_maxAllowedHolders = 1;
-};
-
+}
 
 class SCR_LockContextComponent : AIComponent
 {
 	private ref array<ref SCR_Key> m_aKeys;	
 	
+	//------------------------------------------------------------------------------------------------
 	private int IsKeyRegistered (string key)
 	{
 		for (int i, lenght = m_aKeys.Count(); i < lenght; i++)
@@ -25,22 +25,31 @@ class SCR_LockContextComponent : AIComponent
 		return -1;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_LockContextComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
-		m_aKeys = new ref array<ref SCR_Key>;
+		m_aKeys = {};
 	}
 	
-	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] key
+	//! \param[in] maxAllowedHolders
+	//! \return
 	bool JoinKey (string key, int maxAllowedHolders)
 	{
 		int keyIndex = IsKeyRegistered(key);
 		if ( keyIndex > -1 )
 		{
-			if ( m_aKeys[keyIndex].m_maxAllowedHolders >= m_aKeys[keyIndex].m_numOfKeyHolders + 1 )
+			if (m_aKeys[keyIndex].m_maxAllowedHolders >= m_aKeys[keyIndex].m_numOfKeyHolders + 1)
 			{	
-				if ( maxAllowedHolders != m_aKeys[keyIndex].m_maxAllowedHolders )
+				if (maxAllowedHolders != m_aKeys[keyIndex].m_maxAllowedHolders)
 				{
-					Print("Error: key is used with different max allowed holders!");
+					Print("Error: key is used with different max allowed holders!", LogLevel.NORMAL);
 					return false;
 				}
 				m_aKeys[keyIndex].m_numOfKeyHolders++;
@@ -53,12 +62,12 @@ class SCR_LockContextComponent : AIComponent
 		}
 		else
 		{
-			ref SCR_Key newKey = new ref SCR_Key;
+			SCR_Key newKey = new SCR_Key();
 			newKey.m_key = key;
 			newKey.m_maxAllowedHolders = maxAllowedHolders;
 			if (maxAllowedHolders < 1) 
 			{
-				Print("Error: key is set with no holders allowed!");
+				Print("Error: key is set with no holders allowed!", LogLevel.NORMAL);
 				return false;
 			}	
 			newKey.m_numOfKeyHolders = 1;
@@ -68,6 +77,10 @@ class SCR_LockContextComponent : AIComponent
 		} 	
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] key
+	//! \return
 	bool LeaveKey (string key)
 	{
 		int keyIndex = IsKeyRegistered(key);
@@ -85,13 +98,7 @@ class SCR_LockContextComponent : AIComponent
 				return true;
 			}
 		}
-		Print("Error: key that should be returned was not found!");
+		Print("Error: key that should be returned was not found!", LogLevel.NORMAL);
 		return false;
 	}
-	
-	void ~SCR_LockContextComponent()
-	{
-		if (m_aKeys) m_aKeys.Clear();
-		m_aKeys = null;
-	}
-};
+}

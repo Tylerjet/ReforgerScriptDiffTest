@@ -12,4 +12,4 @@ class SCR_ArsenalWeaponsEditorAttribute : SCR_ArsenalBaseEditorAttribute
 		
 		super.UpdateInterlinkedVariables(var, manager, isInit);
 	}
-};
+}

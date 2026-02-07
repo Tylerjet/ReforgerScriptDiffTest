@@ -1,9 +1,8 @@
 [EntityEditorProps(insertable: false)]
-class SCR_SpawnerSlotManagerClass: GenericEntityClass
+class SCR_SpawnerSlotManagerClass : GenericEntityClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Class used for managing changes and removals of slots present in world
 class SCR_SpawnerSlotManager : GenericEntity
 {
@@ -17,6 +16,7 @@ class SCR_SpawnerSlotManager : GenericEntity
 	protected ref ScriptInvoker m_OnSlotUpdated;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnSlotCreated()
 	{
 		if (!m_OnSlotCreated)
@@ -26,6 +26,7 @@ class SCR_SpawnerSlotManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnSlotRemoved()
 	{
 		if (!m_OnSlotRemoved)
@@ -35,6 +36,7 @@ class SCR_SpawnerSlotManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnSlotUpdated()
 	{
 		if (!m_OnSlotUpdated)
@@ -44,7 +46,8 @@ class SCR_SpawnerSlotManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	static notnull SCR_SpawnerSlotManager GetInstance()
+	//! \return the SCR_SpawnerSlotManager instance - cannot be null
+	static SCR_SpawnerSlotManager GetInstance()
 	{
 		if (s_Instance)
 			return s_Instance;
@@ -66,6 +69,8 @@ class SCR_SpawnerSlotManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] slot
 	void RegisterSlot(SCR_EntitySpawnerSlotComponent slot)
 	{
 		m_aSlots.Insert(slot);
@@ -78,6 +83,8 @@ class SCR_SpawnerSlotManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] slot
 	void UnregisterSlot(notnull SCR_EntitySpawnerSlotComponent slot)
 	{	
 		if (m_aSlots.Contains(slot))
@@ -88,6 +95,7 @@ class SCR_SpawnerSlotManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] editableComponent
 	void OnSlotUpdated(notnull SCR_EditableEntityComponent editableComponent)
 	{
 		IEntity slotOwner = editableComponent.GetOwner();
@@ -112,6 +120,7 @@ class SCR_SpawnerSlotManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_SpawnerSlotManager()
 	{
 		if (s_Instance == this)

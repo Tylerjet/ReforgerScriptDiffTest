@@ -622,7 +622,7 @@ class SCR_RadialMenuDisplay : SCR_SelectionMenuDisplay
 
 		Widget divider = GetGame().GetWorkspace().CreateWidget(WidgetType.ImageWidgetTypeID,
 			WidgetFlags.VISIBLE | WidgetFlags.STRETCH | WidgetFlags.BLEND | WidgetFlags.INHERIT_CLIPPING,
-			Color.White,
+			Color.FromInt(Color.WHITE),
 			0,
 			m_wDividersParent
 		);

@@ -1,4 +1,3 @@
-#include "scripts/Game/config.c"
 //------------------------------------------------------------------------------------------------
 class SCR_CampaignInfoDisplay : SCR_InfoDisplayExtended
 {
@@ -99,22 +98,17 @@ class SCR_CampaignInfoDisplay : SCR_InfoDisplayExtended
 			m_wCountdownOverlay.SetVisible(false);
 			m_wLeftScore.SetDesiredFontSize(SIZE_NORMAL);
 			m_wRightScore.SetDesiredFontSize(SIZE_NORMAL);
-			m_wWinScoreSideRight.SetColor(Color.White);
-			m_wWinScoreSideLeft.SetColor(Color.White);
-			m_wRightScore.SetColor(Color.White);
-			m_wLeftScore.SetColor(Color.White);
-			m_wWinScore.SetColor(Color.White);
+			m_wWinScoreSideRight.SetColor(Color.FromInt(Color.WHITE));
+			m_wWinScoreSideLeft.SetColor(Color.FromInt(Color.WHITE));
+			m_wRightScore.SetColor(Color.FromInt(Color.WHITE));
+			m_wLeftScore.SetColor(Color.FromInt(Color.WHITE));
+			m_wWinScore.SetColor(Color.FromInt(Color.WHITE));
 			SCR_PopUpNotification.GetInstance().Offset(false);
 		}
 		else
 		{
-			#ifndef AR_CAMPAIGN_TIMESTAMP
-			float victoryTimestamp = m_Campaign.GetVictoryTimestamp();
-			float pauseTimestamp = m_Campaign.GetVictoryPauseTimestamp();
-			#else
 			WorldTimestamp victoryTimestamp = m_Campaign.GetVictoryTimestamp();
 			WorldTimestamp pauseTimestamp = m_Campaign.GetVictoryPauseTimestamp();
-			#endif
 			bool isPaused = (pauseTimestamp != 0);
 			float winCountdown;
 			
@@ -122,22 +116,14 @@ class SCR_CampaignInfoDisplay : SCR_InfoDisplayExtended
 			
 			if (isPaused)
 			{
-				#ifndef AR_CAMPAIGN_TIMESTAMP
-				winCountdown = victoryTimestamp - pauseTimestamp;
-				#else
 				winCountdown = victoryTimestamp.DiffMilliseconds(pauseTimestamp);
-				#endif
-				m_wCountdown.SetColor(Color.Gray);
+				m_wCountdown.SetColor(Color.FromInt(Color.GRAY));
 			}
 			else
 			{
-				#ifndef AR_CAMPAIGN_TIMESTAMP
-				winCountdown = victoryTimestamp - Replication.Time();
-				#else
 				ChimeraWorld world = GetGame().GetWorld();
 				winCountdown = victoryTimestamp.DiffMilliseconds(world.GetServerTimestamp());
-				#endif
-				m_wCountdown.SetColor(Color.White);
+				m_wCountdown.SetColor(Color.FromInt(Color.WHITE));
 				m_bPeriodicRefresh = true;
 			}
 			
@@ -148,21 +134,21 @@ class SCR_CampaignInfoDisplay : SCR_InfoDisplayExtended
 			SCR_PopUpNotification.GetInstance().Offset(true);
 			
 			m_wFlavour.SetTextFormat("#AR-ConflictHUD_FlavourText_IsWinning", winner.GetFactionName());
-			m_wWinScore.SetColor(UIColors.CONTRAST_COLOR);
-			m_wWinScoreSideRight.SetColor(UIColors.CONTRAST_COLOR);
-			m_wWinScoreSideLeft.SetColor(UIColors.CONTRAST_COLOR);
+			m_wWinScore.SetColor(Color.FromInt(UIColors.CONTRAST_COLOR.PackToInt()));
+			m_wWinScoreSideRight.SetColor(Color.FromInt(UIColors.CONTRAST_COLOR.PackToInt()));
+			m_wWinScoreSideLeft.SetColor(Color.FromInt(UIColors.CONTRAST_COLOR.PackToInt()));
 			
 			if (winner == factionOPFOR)
 			{
-				m_wRightScore.SetColor(UIColors.CONTRAST_COLOR);
-				m_wLeftScore.SetColor(Color.White);
+				m_wRightScore.SetColor(Color.FromInt(UIColors.CONTRAST_COLOR.PackToInt()));
+				m_wLeftScore.SetColor(Color.FromInt(Color.WHITE));
 				m_wRightScore.SetDesiredFontSize(SIZE_WINNER);
 				m_wLeftScore.SetDesiredFontSize(SIZE_NORMAL);
 			}
 			else
 			{
-				m_wLeftScore.SetColor(UIColors.CONTRAST_COLOR);
-				m_wRightScore.SetColor(Color.White);
+				m_wLeftScore.SetColor(Color.FromInt(UIColors.CONTRAST_COLOR.PackToInt()));
+				m_wRightScore.SetColor(Color.FromInt(Color.WHITE));
 				m_wLeftScore.SetDesiredFontSize(SIZE_WINNER);
 				m_wRightScore.SetDesiredFontSize(SIZE_NORMAL);
 			}
@@ -195,7 +181,7 @@ class SCR_CampaignInfoDisplay : SCR_InfoDisplayExtended
 		
 		UpdateHUDValues();
 		
-		if (!m_bPeriodicRefresh)
+		if (!m_bPeriodicRefresh && !m_Campaign.GetVictoryTimestamp())
 			GetGame().GetCallqueue().CallLater(HideHUD, HUD_DURATION);
 	}
 };

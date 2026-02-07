@@ -1,11 +1,9 @@
-#include "scripts/Game/config.c"
 [EntityEditorProps(category: "GameScripted/GameMode", description: "Takes care of player penalties, kicks, bans etc.", color: "0 0 255 255")]
-class SCR_LocalPlayerPenaltyClass: Managed
+class SCR_LocalPlayerPenaltyClass : Managed
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
-class SCR_LocalPlayerPenalty: Managed
+class SCR_LocalPlayerPenalty : Managed
 {
 	//[Attribute("3", desc: "Penalty score for killing a friendly player.")]
 	protected int m_iFriendlyPlayerKillPenalty;
@@ -31,6 +29,7 @@ class SCR_LocalPlayerPenalty: Managed
 	protected ref array<ref SCR_LocalPlayerPenaltyData> m_aPlayerPenaltyData = {};
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] playerId
 	void OnPlayerConnected(int playerId)
 	{
 		//GetPlayerPenaltyData creates the PlayerPenaltyStandaloneData for this playerId if it doesn't exist
@@ -38,6 +37,9 @@ class SCR_LocalPlayerPenalty: Managed
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] entity
+	//! \param[in] killerEntity
+	//! \param[in] instigator
 	void OnControllableDestroyed(IEntity entity, IEntity killerEntity, Instigator instigator)
 	{
 		if (instigator.GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER || (m_iFriendlyAIKillPenalty == 0 && m_iFriendlyPlayerKillPenalty == 0))
@@ -76,12 +78,16 @@ class SCR_LocalPlayerPenalty: Managed
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	static SCR_LocalPlayerPenalty GetInstance()
 	{
 		return s_Instance;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] veh
+	//! \param[in] gunner
+	//! \return
 	//IT SHOULD NOT BE STATIC. TODO: IMPROVE THIS
 	static SCR_ChimeraCharacter GetInstigatorFromVehicle(IEntity veh, bool gunner = false)
 	{
@@ -146,20 +152,14 @@ class SCR_LocalPlayerPenalty: Managed
 	//------------------------------------------------------------------------------------------------
 	protected void EvaluatePlayerPenalties()
 	{
-		#ifdef AR_LOCAL_PLAYER_PENALTY_TIMESTAMP
 		ChimeraWorld world = GetGame().GetWorld();
 		WorldTimestamp currentTime = world.GetServerTimestamp();
-		#endif
 		for (int i = 0, count = m_aPlayerPenaltyData.Count(); i < count; i++)
 		{
 			SCR_LocalPlayerPenaltyData playerPenaltyData = m_aPlayerPenaltyData[i];
 			
 			// Periodically forgive a portion of penalty score, don't go below zero
-			#ifndef AR_LOCAL_PLAYER_PENALTY_TIMESTAMP
-			if (playerPenaltyData.GetPenaltyScore() > 0 && playerPenaltyData.GetNextPenaltySubtractionTimestamp() < Replication.Time())
-			#else
 			if (playerPenaltyData.GetPenaltyScore() > 0 && playerPenaltyData.GetNextPenaltySubtractionTimestamp().Less(currentTime))
-			#endif
 			{
 				int forgivenScore;
 				
@@ -192,6 +192,10 @@ class SCR_LocalPlayerPenalty: Managed
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerId
+	//! \param[in] duration
+	//! \param[in] reason
 	void KickPlayer(int playerId, int duration, SCR_PlayerManagerKickReason reason)
 	{	
 		SCR_LocalPlayerPenaltyData playerPenaltyData = GetPlayerPenaltyData(playerId);
@@ -203,12 +207,20 @@ class SCR_LocalPlayerPenalty: Managed
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetPenaltySubtractionPeriod()
 	{
 		return m_iPenaltySubtractionPeriod * 1000;	// Converting s to ms
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] friendlyPlayerKillPenalty
+	//! \param[in] friendlyAIKillPenalty
+	//! \param[in] penaltyLimit
+	//! \param[in] banDuration
+	//! \param[in] penaltySubtractionPeriod
+	//! \param[in] penaltySubtractionPoints
 	void SCR_LocalPlayerPenalty(int friendlyPlayerKillPenalty, int friendlyAIKillPenalty, int penaltyLimit, int banDuration, int penaltySubtractionPeriod, int penaltySubtractionPoints)
 	{		
 		m_iFriendlyPlayerKillPenalty = friendlyPlayerKillPenalty;
@@ -225,72 +237,61 @@ class SCR_LocalPlayerPenalty: Managed
 		//Looping every EVALUATION_PERIOD seconds and don't need other EOn events
 		GetGame().GetCallqueue().CallLater(EvaluatePlayerPenalties, EVALUATION_PERIOD, true);
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_LocalPlayerPenaltyData
 {
 	protected int m_iPlayerId;
 	protected int m_iPenaltyScore;
-	#ifndef AR_LOCAL_PLAYER_PENALTY_TIMESTAMP
-	protected float m_fNextPenaltySubtractionTimestamp;
-	#else
 	protected WorldTimestamp m_fNextPenaltySubtractionTimestamp;
-	#endif
 	protected SCR_PlayerManagerKickReason m_eKickReason = SCR_PlayerManagerKickReason.DISRUPTIVE_BEHAVIOUR;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] playerId
 	void SetPlayerId(int playerId)
 	{
 		m_iPlayerId = playerId;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetPlayerId()
 	{
 		return m_iPlayerId;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] points
 	void AddPenaltyScore(int points)
 	{
 		m_iPenaltyScore += points;
 		
 		// Start the timer on penalty substraction when player was penalized while the timer was stopped
-		#ifndef AR_LOCAL_PLAYER_PENALTY_TIMESTAMP
-		if ((points > 0 && m_fNextPenaltySubtractionTimestamp < Replication.Time()) || (points < 0 && m_iPenaltyScore > 0))
-			m_fNextPenaltySubtractionTimestamp = Replication.Time() + SCR_LocalPlayerPenalty.GetInstance().GetPenaltySubtractionPeriod();
-		#else
 		ChimeraWorld world = GetGame().GetWorld();
 		WorldTimestamp currentTime = world.GetServerTimestamp();
 		if ((points > 0 && m_fNextPenaltySubtractionTimestamp.Less(currentTime)) || (points < 0 && m_iPenaltyScore > 0))
 			m_fNextPenaltySubtractionTimestamp = currentTime.PlusMilliseconds(SCR_LocalPlayerPenalty.GetInstance().GetPenaltySubtractionPeriod());
-		#endif
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetPenaltyScore()
 	{
 		return m_iPenaltyScore;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	#ifndef AR_LOCAL_PLAYER_PENALTY_TIMESTAMP
-	void SetNextPenaltySubstractionTimestamp(float timestamp)
-	#else
+	//! \param[in] timestamp
 	void SetNextPenaltySubstractionTimestamp(WorldTimestamp timestamp)
-	#endif
 	{
 		m_fNextPenaltySubtractionTimestamp = timestamp;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	#ifndef AR_LOCAL_PLAYER_PENALTY_TIMESTAMP
-	float GetNextPenaltySubtractionTimestamp()
-	#else
+	//! \return
 	WorldTimestamp GetNextPenaltySubtractionTimestamp()
-	#endif
 	{
 		return m_fNextPenaltySubtractionTimestamp;
 	}
-};
+}

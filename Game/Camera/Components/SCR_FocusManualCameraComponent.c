@@ -1,10 +1,7 @@
-[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
-/** @ingroup ManualCamera
-*/
+//! @ingroup ManualCamera
 
-/*!
-Focus camera on cursor position.
-*/
+//! Focus camera on cursor position.
+[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
 class SCR_FocusManualCameraComponent : SCR_BaseManualCameraComponent
 {
 	[Attribute(params: "layout")]
@@ -26,11 +23,10 @@ class SCR_FocusManualCameraComponent : SCR_BaseManualCameraComponent
 	protected ref ScriptInvoker m_OnFocusChange = new ScriptInvoker();
 	protected ref ScriptInvoker m_OnFocusDistanceChange = new ScriptInvoker();
 	
-	/*!
-	Get focus position in the world.
-	\param[out] outPos Focus position
-	\return True if focus is set
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get focus position in the world.
+	//! \param[out] outPos Focus position
+	//! \return True if focus is set
 	bool GetFocusPos(out vector outPos)
 	{
 		if (!m_bIsFocus)
@@ -39,17 +35,16 @@ class SCR_FocusManualCameraComponent : SCR_BaseManualCameraComponent
 		outPos = m_vFocusPosWorld;
 		return true;
 	}
-	/*!
-	\return Distance to focused position.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \return Distance to focused position.
 	float GetFocusDistance()
 	{
 		return m_fFocusDistance;
 	}
 	
-	/*!
-	Set focus to cursor position
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Set focus to cursor position
 	void SetFocusToCursor()
 	{
 		if (!IsEnabled())
@@ -65,18 +60,23 @@ class SCR_FocusManualCameraComponent : SCR_BaseManualCameraComponent
 			ResetFocus();
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] pos
+	//! \param[in] entity
 	void SetFocus(vector pos, IEntity entity = null)
 	{
 		m_vFocusPos = pos;
 		m_FocusEntity = entity;
 		m_bIsFocusRequsted = true;
 	}
-	/*!
-	Reset focus
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Reset focus
 	void ResetFocus()
 	{
-		if ((!IsEnabled() || !m_bIsFocus) && m_bIsInit)
+		if (m_bIsInit && (!m_bIsFocus || !IsEnabled()))
 			return;
 		
 		if (m_bIsInit)
@@ -96,29 +96,33 @@ class SCR_FocusManualCameraComponent : SCR_BaseManualCameraComponent
 		m_vFocusPos = vector.Zero;
 		m_vFocusPosWorld = vector.Zero;
 		m_FocusEntity = null;
-		if (m_Widget) m_Widget.SetVisible(false);
+		if (m_Widget)
+			m_Widget.SetVisible(false);
 	}
-	/*!
-	Get event called when focus is set or cleared.
-	\return Script invoker
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get event called when focus is set or cleared.
+	//! \return Script invoker
 	ScriptInvoker GetOnFocusChange()
 	{
 		return m_OnFocusChange;
 	}
-	/*!
-	Get event called when focus distance changes.
-	\return Script invoker
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get event called when focus distance changes.
+	//! \return Script invoker
 	ScriptInvoker GetOnFocusDistanceChange()
 	{
 		return m_OnFocusDistanceChange;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraReset()
 	{
 		ResetFocus();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraFrame(SCR_ManualCameraParam param)
 	{
 		if (!param.isManualInputEnabled)
@@ -135,7 +139,8 @@ class SCR_FocusManualCameraComponent : SCR_BaseManualCameraComponent
 			
 			m_bIsFocus = true;
 			m_bIsFocusPosLocal = m_FocusEntity != null;
-			if (m_bIsFocusPosLocal) m_vFocusPos = m_FocusEntity.CoordToLocal(m_vFocusPos);
+			if (m_bIsFocusPosLocal)
+				m_vFocusPos = m_FocusEntity.CoordToLocal(m_vFocusPos);
 			
 			m_Effect.SetParam("FocalLength", 500);
 			m_Effect.SetParam("FocalLengthNear", 500);
@@ -147,7 +152,8 @@ class SCR_FocusManualCameraComponent : SCR_BaseManualCameraComponent
 		}
 		
 		//--- Ignore when no custom focus was set
-		if (!m_bIsFocus) return;
+		if (!m_bIsFocus)
+			return;
 	
 		//--- Get focus position
 		m_vFocusPosWorld = m_vFocusPos;
@@ -177,9 +183,12 @@ class SCR_FocusManualCameraComponent : SCR_BaseManualCameraComponent
 		{
 			m_Widget.SetVisible(true);
 			vector screenPos = m_Widget.GetWorkspace().ProjWorldToScreen(m_vFocusPosWorld, param.world);
-			if (screenPos[2] > 0) FrameSlot.SetPos(m_Widget, screenPos[0], screenPos[1]);
+			if (screenPos[2] > 0)
+				FrameSlot.SetPos(m_Widget, screenPos[0], screenPos[1]);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraSave(SCR_ManualCameraComponentSave data)
 	{
 		if (!m_bIsFocus)
@@ -188,10 +197,14 @@ class SCR_FocusManualCameraComponent : SCR_BaseManualCameraComponent
 		data.m_aValues = {m_vFocusPosWorld[0], m_vFocusPosWorld[1], m_vFocusPosWorld[2]};
 		data.m_Target = m_FocusEntity;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraLoad(SCR_ManualCameraComponentSave data)
 	{
 		SetFocus(Vector(data.m_aValues[0], data.m_aValues[1], data.m_aValues[2]), data.m_Target);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool EOnCameraInit()
 	{
 		SCR_PostProcessCameraComponent postProcessManager = SCR_PostProcessCameraComponent.Cast(GetCameraEntity().FindComponent(SCR_PostProcessCameraComponent));
@@ -209,7 +222,8 @@ class SCR_FocusManualCameraComponent : SCR_BaseManualCameraComponent
 		}
 		
 		InputManager inputManager = GetInputManager();
-		if (!inputManager) return false;
+		if (!inputManager)
+			return false;
 		
 		inputManager.AddActionListener("ManualCameraFocus", EActionTrigger.DOWN, SetFocusToCursor);
 		inputManager.AddActionListener("ManualCameraFocusReset", EActionTrigger.DOWN, ResetFocus);
@@ -223,14 +237,18 @@ class SCR_FocusManualCameraComponent : SCR_BaseManualCameraComponent
 		
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraExit()
 	{
 		InputManager inputManager = GetInputManager();
-		if (!inputManager) return;
+		if (!inputManager)
+			return;
 		
 		inputManager.RemoveActionListener("ManualCameraFocus", EActionTrigger.DOWN, SetFocusToCursor);
 		inputManager.RemoveActionListener("ManualCameraFocusReset", EActionTrigger.DOWN, ResetFocus);
 
-		if (m_Widget) m_Widget.RemoveFromHierarchy();
+		if (m_Widget)
+			m_Widget.RemoveFromHierarchy();
 	}
-};
+}

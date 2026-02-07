@@ -12,20 +12,19 @@ class SCR_EditableVehicleUIInfo: SCR_EditableEntityUIInfo
 	
 	[Attribute("", category: "Editable Entity", desc: "Auto filled by plugin. Contains budget costs of default prefabs for passenger slots")]
 	private ref array<ref SCR_EntityBudgetValue> m_aPassengerEntityBudgetCost;
-	/*!
-	Get bool if spawned characters should be placed as one if placing the vehicle with crew and passenger flags 
-	\return If editor should place as one group or not
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get bool if spawned characters should be placed as one if placing the vehicle with crew and passenger flags
+	//! \return If editor should place as one group or not
 	bool GetEditorPlaceAsOneGroup()
 	{
 		return m_bEditorPlaceAsOneGroup;
 	}
-	
-	/*!
-	Get an array of compart ment types this vehicle can be filled with
-	\param[out] array of compartment types
-	\return count of array
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get an array of compart ment types this vehicle can be filled with
+	//! \param[out] array of compartment types
+	//! \return count of array
 	int GetOccupantFillCompartmentTypes(out notnull array<ECompartmentType> compartmentTypes)
 	{
 		compartmentTypes.Clear();
@@ -33,30 +32,27 @@ class SCR_EditableVehicleUIInfo: SCR_EditableEntityUIInfo
 		
 		return compartmentTypes.Count();
 	}
-	
-	/*!
-	Checks if editor is allowed to fill vehicle with given Crew
-	\return Returns true if can fill with Crew
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Checks if editor is allowed to fill vehicle with given Crew
+	//! \return Returns true if can fill with Crew
 	bool CanFillWithCrew()
 	{
 		return CanFillWithGivenTypes(SCR_BaseCompartmentManagerComponent.CREW_COMPARTMENT_TYPES);
 	}
-		
-	/*!
-	Checks if editor is allowed to fill vehicle with given Passengers
-	\return Returns true if can fill with Passengers
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Checks if editor is allowed to fill vehicle with given Passengers
+	//! \return Returns true if can fill with Passengers
 	bool CanFillWithPassengers()
 	{
 		return CanFillWithGivenTypes(SCR_BaseCompartmentManagerComponent.PASSENGER_COMPARTMENT_TYPES);
 	}
-	
-	/*!
-	Checks if editor is allowed to fill vehicle with given occupant types
-	\param typesToCheck given Occupant types
-	\return Returns true if at least one of the given occupent types is true
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Checks if editor is allowed to fill vehicle with given occupant types
+	//! \param typesToCheck given Occupant types
+	//! \return Returns true if at least one of the given occupent types is true
 	bool CanFillWithGivenTypes(array<ECompartmentType> typesToCheck)
 	{
 		if (m_aOccupantFillCompartmentTypes.IsEmpty() || !typesToCheck || typesToCheck.IsEmpty())
@@ -73,11 +69,10 @@ class SCR_EditableVehicleUIInfo: SCR_EditableEntityUIInfo
 		
 		return false;
 	}
-	
-	/*!
-	Returns an array of of budgets for crew
-	\param[out] budgetCosts Crew budget costs
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns an array of of budgets for crew
+	//! \param[out] budgetCosts Crew budget costs
 	void GetFillBudgetCostsOfCrew(out notnull array<ref SCR_EntityBudgetValue> budgetCosts)
 	{
 		budgetCosts.Clear();
@@ -88,11 +83,10 @@ class SCR_EditableVehicleUIInfo: SCR_EditableEntityUIInfo
 		foreach(SCR_EntityBudgetValue budget: m_aCrewEntityBudgetCost)
 			budgetCosts.Insert(budget);
 	}
-	
-	/*!
-	Returns an array of of budgets for crew
-	\param[out] budgetCosts Crew budget costs
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns an array of of budgets for crew
+	//! \param[out] budgetCosts Crew budget costs
 	void GetFillBudgetCostsOfPassengers(out notnull array<ref SCR_EntityBudgetValue> budgetCosts)
 	{
 		budgetCosts.Clear();

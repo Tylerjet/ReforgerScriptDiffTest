@@ -31,18 +31,19 @@ typedef ScriptInvokerBase<OnBeforePossessed> OnBeforePossessedInvoker;
 class SCR_PlayerController : PlayerController
 {
 	static PlayerController s_pLocalPlayerController;
-	static const float WALK_SPEED = 0.5;
-	static const float FOCUS_ACTIVATION = 0.1;
-	static const float FOCUS_DEACTIVATION = 0.05;
-	static const float FOCUS_TIMEOUT = 0.3;
-	static const float FOCUS_TOLERANCE = 0.005;
-	static float s_fADSFocus = 0.7;
-	static float s_fFocusTimeout;
-	static float s_fFocusAnalogue;
+	protected static const float WALK_SPEED = 0.5;
+	protected static const float FOCUS_ACTIVATION = 0.1;
+	protected static const float FOCUS_DEACTIVATION = 0.05;
+	protected static const float FOCUS_TIMEOUT = 0.3;
+	protected static const float FOCUS_TOLERANCE = 0.005;
+	protected static float s_fADSFocus = 0.7;
+	protected static float s_fFocusTimeout;
+	protected static float s_fFocusAnalogue;
+	protected static bool s_bWasADS;
 
-	CharacterControllerComponent m_CharacterController;
-	private bool m_bIsLocalPlayerController;
-	private bool m_bIsPaused;
+	protected CharacterControllerComponent m_CharacterController;
+	protected bool m_bIsLocalPlayerController;
+	protected bool m_bIsPaused;
 	bool m_bRetain3PV;
 	protected bool m_bGadgetFocus;
 	protected bool m_bFocusToggle;
@@ -594,10 +595,35 @@ class SCR_PlayerController : PlayerController
 			inputAnalogue = s_fFocusAnalogue;
 		}
 
+		bool isADS = m_CharacterController.GetWeaponADSInput();
+
+		// Check gadget ADS
+		if (!isADS && m_CharacterController.IsGadgetInHands())
+			isADS = m_CharacterController.IsGadgetRaisedModeWanted();
+
+		// Verify turrets
+		if (!isADS && character)
+		{
+			CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();
+
+			BaseCompartmentSlot compartment;
+			if (compartmentAccess)
+				compartment = compartmentAccess.GetCompartment();
+
+			TurretControllerComponent turretController;
+			if (compartment)
+				turretController = TurretControllerComponent.Cast(compartment.GetController());
+
+			if (turretController)
+				isADS = turretController.IsWeaponADS();
+		}
+
 		// Prevent focus warping back while toggling ADS on controller
 		// analogue: track timeout as we have no input filter that has thresholds or delays and returns axis value yet
 		if (inputAnalogue < FOCUS_DEACTIVATION)
 			s_fFocusTimeout = FOCUS_TIMEOUT; // Below deactivation threshold
+		else if (s_bWasADS != isADS && s_fFocusTimeout > 0)
+			s_fFocusTimeout = FOCUS_TIMEOUT; // ADS toggled
 		else if (inputAnalogue < FOCUS_ACTIVATION && s_fFocusTimeout > 0)
 			s_fFocusTimeout = FOCUS_TIMEOUT;  // Below activation threshold and not active
 		else if (s_fFocusTimeout > dt)
@@ -608,6 +634,8 @@ class SCR_PlayerController : PlayerController
 		// Cancel toggle focus with analogue input
 		if (m_bFocusToggle && s_fFocusTimeout == 0)
 			m_bFocusToggle = false;
+
+		s_bWasADS = isADS;
 
 		// Combine all valid input sources
 		float input;
@@ -696,6 +724,7 @@ class SCR_PlayerController : PlayerController
 
 		m_fCharacterSpeed = m_CharacterController.GetDynamicSpeed();
 		m_CharacterController.SetDynamicSpeed(WALK_SPEED);
+		m_CharacterController.SetShouldApplyDynamicSpeedOverride(true);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -705,6 +734,7 @@ class SCR_PlayerController : PlayerController
 			return;
 
 		m_CharacterController.SetDynamicSpeed(m_fCharacterSpeed);
+		m_CharacterController.SetShouldApplyDynamicSpeedOverride(false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -744,4 +774,17 @@ class SCR_PlayerController : PlayerController
 			m_CharacterController.StopCharacterGesture();
 		}
 	}
-};
+
+	//------------------------------------------------------------------------------------------------
+	override void EOnInit(IEntity owner)
+	{
+		super.EOnInit(owner);
+
+		//HACK: SCR_PlayerController must insert SCR_InteractionHandlerComponent OnControlledEntityChanged into script invoker due to fact that the latter calls its OnInit only for the host
+		SCR_InteractionHandlerComponent handler = SCR_InteractionHandlerComponent.Cast(owner.FindComponent(SCR_InteractionHandlerComponent));
+		if (!handler)
+			return;
+
+		m_OnControlledEntityChanged.Insert(handler.OnControlledEntityChanged);
+	}
+}

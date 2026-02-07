@@ -1,12 +1,11 @@
-/**
-Arsenal Faction Attribute for getting and setting varriables in Editor Attribute window
-*/
+//! Arsenal Faction Attribute for getting and setting varriables in Editor Attribute window
 [BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
 class SCR_ArsenalFactionEditorAttribute : SCR_BaseFactionEditableAttribute
 {	
+	//------------------------------------------------------------------------------------------------
 	protected override bool ValidEntity(GenericEntity entity)
 	{
-		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.Cast(entity.FindComponent(SCR_ArsenalComponent));
+		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.FindArsenalComponent(entity);
 		if (!arsenalComponent)
 			return false;
 		
@@ -21,11 +20,13 @@ class SCR_ArsenalFactionEditorAttribute : SCR_BaseFactionEditableAttribute
 		return true;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected override Faction GetFaction(GenericEntity entity)
 	{
 		return SCR_FactionAffiliationComponent.Cast(entity.FindComponent(SCR_FactionAffiliationComponent)).GetAffiliatedFaction();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected override void SetFaction(GenericEntity entity, Faction faction)
 	{
 		SCR_FactionAffiliationComponent factionComponent = SCR_FactionAffiliationComponent.Cast(entity.FindComponent(SCR_FactionAffiliationComponent));
@@ -34,4 +35,4 @@ class SCR_ArsenalFactionEditorAttribute : SCR_BaseFactionEditableAttribute
 		
 		factionComponent.SetAffiliatedFaction(faction);
 	}
-};
+}

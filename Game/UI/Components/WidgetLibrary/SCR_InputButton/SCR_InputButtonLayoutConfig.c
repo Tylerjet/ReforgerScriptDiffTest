@@ -26,4 +26,6 @@ class SCR_InputButtonLayoutEntry: InputButtonLayoutEntry
 [BaseContainerProps()]
 class SCR_InputButtonStyle: InputButtonStyle
 {
+	[Attribute("hold_triangle")]
+	string m_sHoldIndicator;
 }

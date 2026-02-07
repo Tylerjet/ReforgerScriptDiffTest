@@ -16,7 +16,10 @@ class SCR_BuildingTutorialStage17 : SCR_BaseCampaignTutorialArlandStage
 		
 		SetupSupplyConsumer();
 
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("Building_Unload");
+		HintOnVoiceOver();
 	}
 	
 	//------------------------------------------------------------------------------------------------

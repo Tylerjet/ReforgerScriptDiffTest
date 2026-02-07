@@ -10,16 +10,23 @@ class SCR_CampaignTutorialArlandStageMedical7: SCR_BaseCampaignTutorialArlandSta
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
 	{
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		
 		m_bCheckWaypoint = false;
 
 		RegisterWaypoint("AccidentJeep");
-		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
-		
+	
 		m_Jeep = Vehicle.Cast(GetGame().GetWorld().FindEntityByName("AccidentJeep"));
 		m_TutorialComponent.SetWaypointMiscImage("HEAL", true);
-	}
 		
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("FirstAid_ExtractUncon", true);
+		HintOnVoiceOver();
+	}
+	
+	//------------------------------------------------------------------------------------------------	
 	override protected bool GetIsFinished()
 	{		
 		return m_Jeep && !m_Jeep.GetPilot();

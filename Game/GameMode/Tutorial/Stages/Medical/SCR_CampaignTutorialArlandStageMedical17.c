@@ -14,9 +14,12 @@ class SCR_CampaignTutorialArlandStageMedical17: SCR_BaseCampaignTutorialArlandSt
 		RegisterWaypoint("Ambulance");
 		m_fWaypointHeightOffset = 0.5;
 		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
-		
 		m_PlayerInventoryManager = SCR_CharacterInventoryStorageComponent.Cast(m_Player.FindComponent(SCR_CharacterInventoryStorageComponent));
+		
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("FirstAid_Morphine");
+		HintOnVoiceOver();
 	}
 	
 	//------------------------------------------------------------------------------------------------

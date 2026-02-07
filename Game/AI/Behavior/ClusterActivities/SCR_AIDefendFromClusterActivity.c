@@ -60,6 +60,9 @@ class SCR_AIDefendFromClusterActivity : SCR_AIFireteamsClusterActivity
 				if (!agent)
 					continue;
 				
+				if (SCR_AICompartmentHandling.IsInCompartment(agent))
+					continue;
+				
 				// Now we send attack message, but forbit investigation there
 				SCR_AIMessage_AttackCluster msg = SCR_AIMessage_AttackCluster.Create(m_ClusterState, false);
 				msg.m_RelatedGroupActivity = this;

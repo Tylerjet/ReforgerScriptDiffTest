@@ -22,8 +22,10 @@ class SCR_CampaignTutorialArlandStageShooting18 : SCR_BaseCampaignTutorialArland
 				target.Event_TargetChangeState.Insert(m_TutorialComponent.CountTargetHit);
 			}
 		}
-		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("RangeMiddle", false);
+		HintOnVoiceOver();
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -1,4 +1,3 @@
-#include "scripts/Game/config.c"
 //------------------------------------------------------------------------------------------------
 class SCR_CampaignFaction : SCR_Faction
 {
@@ -25,15 +24,9 @@ class SCR_CampaignFaction : SCR_Faction
 	
 	protected SCR_CampaignMobileAssemblyStandaloneComponent m_MobileAssembly;
 	
-	#ifndef AR_CAMPAIGN_TIMESTAMP
-	protected float m_fVictoryTimestamp;
-	protected float m_fPauseByBlockTimestamp;
-	#else
 	protected WorldTimestamp m_fVictoryTimestamp;
 	protected WorldTimestamp m_fPauseByBlockTimestamp;
-	#endif
-	
-	protected int m_iActiveRespawnRadios;
+
 	protected int m_iControlPointsHeld;
 	
 	//------------------------------------------------------------------------------------------------
@@ -103,19 +96,7 @@ class SCR_CampaignFaction : SCR_Faction
 	{
 		return m_iControlPointsHeld;
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	void SetActiveRespawnRadios(int count)
-	{
-		m_iActiveRespawnRadios = count;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	int GetActiveRespawnRadios()
-	{
-		return m_iActiveRespawnRadios;
-	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SetMainBase(SCR_CampaignMilitaryBaseComponent mainBase)
 	{
@@ -229,41 +210,25 @@ class SCR_CampaignFaction : SCR_Faction
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	#ifndef AR_CAMPAIGN_TIMESTAMP
-	void SetVictoryTimestamp(float timestamp)
-	#else
 	void SetVictoryTimestamp(WorldTimestamp timestamp)
-	#endif
 	{
 		m_fVictoryTimestamp = timestamp;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	#ifndef AR_CAMPAIGN_TIMESTAMP
-	float GetVictoryTimestamp()
-	#else
 	WorldTimestamp GetVictoryTimestamp()
-	#endif
 	{
 		return m_fVictoryTimestamp;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	#ifndef AR_CAMPAIGN_TIMESTAMP
-	void SetPauseByBlockTimestamp(float timestamp)
-	#else
 	void SetPauseByBlockTimestamp(WorldTimestamp timestamp)
-	#endif
 	{
 		m_fPauseByBlockTimestamp = timestamp;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	#ifndef AR_CAMPAIGN_TIMESTAMP
-	float GetPauseByBlockTimestamp()
-	#else
 	WorldTimestamp GetPauseByBlockTimestamp()
-	#endif
 	{
 		return m_fPauseByBlockTimestamp;
 	}

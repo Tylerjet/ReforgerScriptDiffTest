@@ -18,7 +18,11 @@ class SCR_CampaignBuildingPlacingObstructionEditorComponent : SCR_BaseEditorComp
 	[Attribute(defvalue: "25", desc: "A difference between max and min tilt of two entities in composition to trigger a warning")]
 	protected float m_fTiltDifferenceWarning;
 
+	protected ResourceName m_sCompositionResourceName;
+
 	protected bool m_bCanBeCreated = true;
+	protected bool m_bSuperiorCanBeCreated = false;
+	protected bool m_bTraceEntityPosition;
 	protected SCR_CampaignBuildingEditorComponent m_CampaignBuildingComponent;
 	protected SCR_FreeRoamBuildingClientTriggerEntity m_AreaTrigger;
 	protected ECantBuildNotificationType m_eBlockingReason;
@@ -33,8 +37,10 @@ class SCR_CampaignBuildingPlacingObstructionEditorComponent : SCR_BaseEditorComp
 
 	// The heigh above the ground where the trace stops means it will ignore an entities that are close to surface like sidewalks so they don't block the placement.
 	protected const float HEIGHT_ABOVE_GROUND_BUFFER = 0.3;
+	protected const float HEIGHT_ABOVE_GROUND_VEHICLE_BUFFER = 1;
 
 	protected const float BOUNDING_BOX_FACTOR = 0.5;
+	protected const float BOUNDING_BOX_VEHICLE_FACTOR = 0.8;
 	protected const float MINIMAL_PROTECTION_RADIUS_TO_EVALUATE = 0.2;
 	protected const float MAXIMAL_HEIGHT_ABOVE_TERRAIN_TO_EVALUATE = 1;
 	protected const int MINIMAL_ENTITY_RADIUS_TO_EVALUATE_TILT = 1;
@@ -44,6 +50,7 @@ class SCR_CampaignBuildingPlacingObstructionEditorComponent : SCR_BaseEditorComp
 	protected float m_fRollMax;
 	protected float m_fPitchMin;
 	protected float m_fPitchMax;
+	protected bool m_bIsVehicle;
 
 	protected vector m_vTraceOffset = Vector(0, 10, 0);
 	protected vector m_vCylinderVectorOffset = Vector(0, m_fCylinderHeight * 0.5, 0);
@@ -64,6 +71,22 @@ class SCR_CampaignBuildingPlacingObstructionEditorComponent : SCR_BaseEditorComp
 	override protected void EOnEditorOpen()
 	{
 		InitVariables();
+		
+		SCR_CampaignBuildingEditorComponent CampaignBuildingEditorComponent = SCR_CampaignBuildingEditorComponent.Cast(SCR_CampaignBuildingEditorComponent.GetInstance(SCR_CampaignBuildingEditorComponent));
+		if (!CampaignBuildingEditorComponent)
+			return;
+		
+		CampaignBuildingEditorComponent.GetOnObstructionEventTriggered().Insert(SetSuperiorCanBeCreated);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override protected void EOnEditorClose()
+	{
+		SCR_CampaignBuildingEditorComponent CampaignBuildingEditorComponent = SCR_CampaignBuildingEditorComponent.Cast(SCR_CampaignBuildingEditorComponent.GetInstance(SCR_CampaignBuildingEditorComponent));
+		if (!CampaignBuildingEditorComponent)
+			return;
+		
+		CampaignBuildingEditorComponent.GetOnObstructionEventTriggered().Remove(SetSuperiorCanBeCreated);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -79,10 +102,16 @@ class SCR_CampaignBuildingPlacingObstructionEditorComponent : SCR_BaseEditorComp
 		SCR_PreviewEntityEditorComponent PreviewEntityComponent = SCR_PreviewEntityEditorComponent.Cast(SCR_PreviewEntityEditorComponent.GetInstance(SCR_PreviewEntityEditorComponent));
 		if (PreviewEntityComponent)
 			PreviewEntityComponent.SetLastPreviewState(SCR_EPreviewState.NONE);
-		
+
 		m_PreviewEnt = previewEnt;
 		SetInitialCanBeCreatedState(previewEnt);
 		GetAllEntitiesToEvaluate(previewEnt);
+
+		SCR_CampaignBuildingPlacingEditorComponent placingComponent = SCR_CampaignBuildingPlacingEditorComponent.Cast(FindEditorComponent(SCR_CampaignBuildingPlacingEditorComponent, true, true));
+		if (!placingComponent)
+			return;
+
+		m_sCompositionResourceName = placingComponent.GetSelectedPrefab();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -90,6 +119,13 @@ class SCR_CampaignBuildingPlacingObstructionEditorComponent : SCR_BaseEditorComp
 	bool CanBeCreated()
 	{
 		return m_bCanBeCreated;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set if the entity can be created, outside of the obstruction system. This is superior to internal m_bCanBeCreated
+	void SetSuperiorCanBeCreated(bool val)
+	{
+		m_bSuperiorCanBeCreated = val;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -146,6 +182,9 @@ class SCR_CampaignBuildingPlacingObstructionEditorComponent : SCR_BaseEditorComp
 
 		foreach (IEntity ent : compositionEntities)
 		{
+			if (IsPreviewVehicle(ent))
+				m_bIsVehicle = true;
+
 			// Center of the entity is burrided under the ground (fondations) skip it)
 			vector entityCenter;
 			entityCenter = SCR_EntityHelper.GetEntityCenterWorld(ent);
@@ -172,14 +211,47 @@ class SCR_CampaignBuildingPlacingObstructionEditorComponent : SCR_BaseEditorComp
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Check the given preview is vehicle
+	bool IsPreviewVehicle(IEntity ent)
+	{
+		SCR_EditablePreviewComponent previewEditableEntity = SCR_EditablePreviewComponent.Cast(ent.FindComponent(SCR_EditablePreviewComponent));
+		if (!previewEditableEntity)
+			return false;
+
+		SCR_EditableEntityUIInfo editableUiInfo = SCR_EditableEntityUIInfo.Cast(previewEditableEntity.GetInfo());
+
+		return editableUiInfo && editableUiInfo.HasEntityLabel(EEditableEntityType.VEHICLE) && !editableUiInfo.HasEntityLabel(EEditableEntityLabel.VEHICLE_HELICOPTER);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Check the preview position. Is suitable to build the composition here?
 	bool CanCreate(out ENotification outNotification = -1, out SCR_EPreviewState previewStateToShow = SCR_EPreviewState.PLACEABLE)
 	{
+		// superior can be created was set to false which means some external condition block placing the composition. No need to continue with any evaluation.
+		if (m_bSuperiorCanBeCreated)
+		{
+			outNotification = ENotification.EDITOR_PLACING_BLOCKED;
+			previewStateToShow = SCR_EPreviewState.BLOCKED;
+			return false;
+		}
+			
 		m_bCanBeCreated = true;
 		m_fRollMin = 0;
 		m_fRollMax = 0;
 		m_fPitchMin = 0;
 		m_fPitchMax = 0;
+
+		if (m_bIsVehicle)
+		{
+			if (!CheckVehiclePosition())
+			{
+				m_bCanBeCreated = false;
+				outNotification = ENotification.EDITOR_PLACING_BLOCKED;
+				previewStateToShow = SCR_EPreviewState.BLOCKED;
+			}
+		
+			return m_bCanBeCreated;
+		}
 
 		foreach (Tuple3<IEntity, float, vector> compositionEntity : m_aCompositionEntities)
 		{
@@ -197,10 +269,10 @@ class SCR_CampaignBuildingPlacingObstructionEditorComponent : SCR_BaseEditorComp
 			if (IsCompositionTilted(compositionEntity.param1, compositionEntity.param2, compositionEntity.param3, previewStateToShow))
 				break;
 		}
-		
+
 		if (Math.AbsFloat(m_fRollMax - m_fRollMin) > m_fTiltDifferenceWarning)
 			previewStateToShow = SCR_EPreviewState.WARNING;
-		
+
 		if (Math.AbsFloat(m_fPitchMax - m_fPitchMin) > m_fTiltDifferenceWarning)
 			previewStateToShow = SCR_EPreviewState.WARNING;
 
@@ -255,8 +327,11 @@ class SCR_CampaignBuildingPlacingObstructionEditorComponent : SCR_BaseEditorComp
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Check entity position in given radius.
 	protected bool CheckEntityPosition(vector pos, float safeZoneRadius)
 	{
+		m_bTraceEntityPosition = true;
+
 		BaseWorld world = GetGame().GetWorld();
 		if (!world)
 			return false;
@@ -273,18 +348,45 @@ class SCR_CampaignBuildingPlacingObstructionEditorComponent : SCR_BaseEditorComp
 			return false;
 
 		// Check for solid obstacles such as houses, vehciles, other palyers etc.
-		if (TraceEntityOnPosition(pos, world, safeZoneRadius))
+		if (m_bTraceEntityPosition && TraceEntityOnPosition(pos, world, safeZoneRadius))
 			return false;
 
-		// Check if the placing isn't blocked because the origin of the preview is in water.		
+		// Check if the placing isn't blocked because the origin of the preview is in water.
 		return !ChimeraWorldUtils.TryGetWaterSurfaceSimple(world, pos);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Check entity position in given bounding box.
+	protected bool CheckVehiclePosition()
+	{
+		if (!m_PreviewEnt)
+			return false;
+
+		BaseWorld world = GetGame().GetWorld();
+		if (!world)
+			return false;
+
+		vector transform[4];
+		m_PreviewEnt.GetTransform(transform);
+
+		vector outBoundMin, outBoundMax;
+		m_PreviewEnt.GetPreviewBounds(outBoundMin, outBoundMax);
+		outBoundMin[1] = HEIGHT_ABOVE_GROUND_VEHICLE_BUFFER;
+		outBoundMin[0] = outBoundMin[0] * BOUNDING_BOX_VEHICLE_FACTOR;
+		outBoundMin[2] = outBoundMin[2] * BOUNDING_BOX_VEHICLE_FACTOR;
+
+		return world.QueryEntitiesByOBB(outBoundMin, outBoundMax, transform, EvaluateBlockingEntityVehicle);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Evaluate the entity query found if it really can blocks the spawning of the composition.
+	//! \param[in] ent Entity found during query as potential obstacel to placing.
 	bool EvaluateBlockingEntity(IEntity ent)
 	{
 		if (!ent)
+			return true;
+
+		if (HasObstructionException(ent))
 			return true;
 
 		IEntity rootEnt = SCR_EntityHelper.GetMainParent(ent);
@@ -298,6 +400,42 @@ class SCR_CampaignBuildingPlacingObstructionEditorComponent : SCR_BaseEditorComp
 		SCR_EditablePreviewEntity ePrevEnt = SCR_EditablePreviewEntity.Cast(rootEnt);
 
 		return ePrevEnt && m_PreviewEnt == ePrevEnt;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Evaluate blocking entities for vehicles.
+	//! \param[in] ent Entity found during query as potential obstacel to placing.
+	bool EvaluateBlockingEntityVehicle(IEntity ent)
+	{
+		if (!ent)
+			return true;
+
+		SCR_BasePreviewEntity previewEnt = SCR_BasePreviewEntity.Cast(ent);
+		if (previewEnt)
+			return true;
+
+		if (!ent.GetPhysics())
+			return true;
+
+		return HasObstructionException(ent);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if detected entity has set any obstruction exception rulles.
+	bool HasObstructionException(notnull IEntity ent)
+	{
+		SCR_CampaignBuildingObstructionExceptionComponent obstructionException = SCR_CampaignBuildingObstructionExceptionComponent.Cast(ent.FindComponent(SCR_CampaignBuildingObstructionExceptionComponent));
+		if (!obstructionException)
+			return false;
+
+		// the whitelist is empty means any prefab can colide with this entity. If set check if this entity is on the list of those that can colide.
+		if (obstructionException.IsWhitelistEmpty() || obstructionException.IsOnWhitelist(m_sCompositionResourceName))
+		{
+			m_bTraceEntityPosition = false;
+			return true;
+		}
+
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------

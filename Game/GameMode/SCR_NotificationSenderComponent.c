@@ -1,8 +1,7 @@
 [ComponentEditorProps(category: "GameScripted/GameMode/Components", description: "Base for gamemode scripted component.")]
-class SCR_NotificationSenderComponentClass: SCR_BaseGameModeComponentClass
+class SCR_NotificationSenderComponentClass : SCR_BaseGameModeComponentClass
 {
-};
-
+}
 
 class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 {		
@@ -31,6 +30,7 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 	//States
 	protected bool m_bListeningToWeatherChanged;
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnControllableDestroyed(IEntity entity, IEntity killerEntity, notnull Instigator killer)
 	{
 		//~ hot fix for On Controllable Destroyed issues \/
@@ -61,7 +61,7 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 		//~ hot fix for On Controllable Destroyed issues /\
 	}
 	
-	
+	//------------------------------------------------------------------------------------------------
 	//~ Todo: This is a hot a hotfix for On Controllable Destroyed issues \/
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void OnControllableDestroyedBroadCast(RplId entityRplId, RplId instigatorRplId)
@@ -82,6 +82,7 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 	}
 	//~ hot fix for On Controllable Destroyed  issues /\
 	
+	//------------------------------------------------------------------------------------------------
 	//~ Todo: hot fix for On Controllable Destroyed  issues - Move logic to OnControllableDestroyed if fixed
 	protected void OnControllableDestroyedHotfix(IEntity entity, IEntity instigator)
 	{		
@@ -146,6 +147,7 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 					
 					break;
 				}
+
 				//~ Check if the same faction
 				case EKillFeedReceiveType.SAME_FACTION_ONLY :
 				{
@@ -163,6 +165,7 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 					
 					break;
 				}
+
 				//~ Check if allies
 				case EKillFeedReceiveType.ALLIES_ONLY :
 				{
@@ -176,6 +179,7 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 					
 					break;
 				}
+
 				//~ Check if enemies
 				case EKillFeedReceiveType.ENEMIES_ONLY :
 				{
@@ -231,7 +235,7 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 			if (killerId > 0)
 				killerIsPossessed = possesionManager.IsPossessing(killerId);
 		}
-			
+
 		//Death notification	
 		//Suicide	
 		if (playerId == killerId || !instigator)
@@ -296,7 +300,7 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 		if (!compartmentManager)
 			return null;
 		
-		array<BaseCompartmentSlot> compartments = new array <BaseCompartmentSlot>();
+		array<BaseCompartmentSlot> compartments = {};
 		
 		for (int i = 0, compart = compartmentManager.GetCompartments(compartments); i < compart; i++)
 		{
@@ -334,6 +338,7 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 			SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_PLAYER_BECAME_GM, playerID);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnPlayerRegistered(int playerId) 
 	{
 		//Join notification
@@ -352,9 +357,7 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 		//~ Get editorManager if has any
 		SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
 		if (core)
-		{
-			 editorManager = core.GetEditorManager(playerId);
-		}
+			editorManager = core.GetEditorManager(playerId);
 
 		bool hasUnlimitedEditor = editorManager && !editorManager.IsLimited();
 		
@@ -437,15 +440,13 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 			}
 		}
 	}	
-	
-	
 
-	
 	//======================================== WEATHER SET TO LOOPING ========================================\\
-	/*!
-	Called when weather is set to looping or when weather itself is changed (which auto sets it on looping)
-	This is to make sure the notification, that weather is set, is only called once
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Called when weather is set to looping or when weather itself is changed (which auto sets it on looping)
+	//! This is to make sure the notification, that weather is set, is only called once
+	//! \param[in] playerID
 	void OnWeatherChangedNotification(int playerID)
 	{
 		if (Replication.IsClient())
@@ -458,6 +459,7 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnWeatherChangedNotificationDelay(int playerID)
 	{
 		m_bListeningToWeatherChanged = false;
@@ -478,50 +480,49 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 		SCR_NotificationsComponent.SendToUnlimitedEditorPlayers(ENotification.EDITOR_ATTRIBUTES_WEATHER_CHANGED, playerID, currentState.GetStateID());
 	}
 	
-	
 	//======================================== KILLFEED ========================================\\	
-	/*!
-	Get an list of all killfeed types and the localized name
-	\param killFeedTypeNames list of killfeed type and name
-	\return the amount of names in the list
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get an list of all killfeed types and the localized name
+	//! \param[in] killFeedTypeNames list of killfeed type and name
+	//! \return the amount of names in the list
 	int GetKillFeedTypeNames(notnull array<ref SCR_NotificationKillfeedTypeName> killFeedTypeNames)
 	{
 		killFeedTypeNames.Clear();
 		foreach (SCR_NotificationKillfeedTypeName killfeedTypeName: m_aKillfeedTypeNames)
+		{
 			killFeedTypeNames.Insert(killfeedTypeName);
+		}
 		
 		return killFeedTypeNames.Count();
 	}
 	
-	/*!
-	Get an list of all killfeed receive types and the localized name
-	\param killFeedReceiveTypeNames list of killfeed receive type and name
-	\return the amount of names in the list
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get an list of all killfeed receive types and the localized name
+	//! \param[in] killFeedReceiveTypeNames list of killfeed receive type and name
+	//! \return the amount of names in the list
 	int GetKillFeedReceiveTypeNames(notnull array<ref SCR_NotificationKillfeedreceiveTypeName> killFeedReceiveTypeNames)
 	{
 		killFeedReceiveTypeNames.Clear();
 		foreach (SCR_NotificationKillfeedreceiveTypeName killfeedReceiveTypeName: m_aKillfeedReceiveTypeNames)
+		{
 			killFeedReceiveTypeNames.Insert(killfeedReceiveTypeName);
+		}
 		
 		return killFeedReceiveTypeNames.Count();
 	}
 	
-	/*!
-	Get the current killfeed type
-	\return the type of killfeed that is displayed
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return the type of killfeed that is currently displayed
 	EKillFeedType GetKillFeedType()
 	{
 		return m_iKillFeedType;
 	}
 	
-	/*!
-	Server set killfeed type
-	\param killFeedType new killfeed type to set
-	\param playerNotificationId add player ID of player that changed the type to display a notification
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Server set killfeed type
+	//! \param[in] killFeedType new killfeed type to set
+	//! \param[in] playerNotificationId add player ID of player that changed the type to display a notification
 	void SetKillFeedType(EKillFeedType killFeedType, int playerNotificationId = -1)
 	{
 		if (!GetGameMode().IsMaster() || killFeedType == m_iKillFeedType)
@@ -534,23 +535,20 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 			SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_CHANGED_KILLFEED_TYPE, playerNotificationId, killFeedType, false);
 	}
 	
-	/*!
-	Get the current killfeed receive type
-	\return the type from whom the player receives killfeed
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return the current killfeed receive type
 	EKillFeedReceiveType GetReceiveKillFeedType()
 	{
 		return m_iReceiveKillFeedType;
 	}
 	
-	/*!
-	Server set killfeed receive type
-	\param receiveKillFeedType new killfeed reveive type to set
-	\param playerNotificationId add player ID of player that changed the type to display a notification
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Server set killfeed receive type
+	//! \param[in] receiveKillFeedType new killfeed reveive type to set
+	//! \param[in] playerNotificationId add player ID of player that changed the type to display a notification
 	void SetReceiveKillFeedType(EKillFeedReceiveType receiveKillFeedType, int playerNotificationId = -1)
 	{
-		if (!GetGameMode().IsMaster() || receiveKillFeedType == m_iReceiveKillFeedType)
+		if (receiveKillFeedType == m_iReceiveKillFeedType || !GetGameMode().IsMaster())
 			return;
 		
 		SetReceiveKillFeedTypeBroadcast(receiveKillFeedType);
@@ -560,12 +558,14 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 			SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_CHANGED_KILLFEED_RECEIVE_TYPE, playerNotificationId, receiveKillFeedType, true);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void SetKillFeedTypeBroadcast(EKillFeedType killFeedType)
 	{
 		m_iKillFeedType = killFeedType;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void SetReceiveKillFeedTypeBroadcast(EKillFeedReceiveType receiveKillFeedType)
 	{
@@ -573,29 +573,34 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 	}
 	
 	//======================================== RPL ========================================\\
+
+	//------------------------------------------------------------------------------------------------
 	override bool RplSave(ScriptBitWriter writer)
-    {	
-       	writer.WriteInt(m_iKillFeedType); 
-       	writer.WriteInt(m_iReceiveKillFeedType); 
+	{
+		writer.WriteInt(m_iKillFeedType);
+		writer.WriteInt(m_iReceiveKillFeedType);
 		
-        return true;
-    }
-     
-    override bool RplLoad(ScriptBitReader reader)
-    {
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override bool RplLoad(ScriptBitReader reader)
+	{
 		EKillFeedType killFeedType;
 		EKillFeedReceiveType receiveKillFeedType;
 		
-        reader.ReadInt(killFeedType);
-        reader.ReadInt(receiveKillFeedType);
+		reader.ReadInt(killFeedType);
+		reader.ReadInt(receiveKillFeedType);
 
 		SetKillFeedTypeBroadcast(killFeedType);
 		SetReceiveKillFeedTypeBroadcast(receiveKillFeedType);
 		
-        return true;
-    }
+		return true;
+	}
 	
 	//======================================== INIT ========================================\\
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
 		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
@@ -607,6 +612,7 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 		super.EOnInit(owner);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		SetEventMask(owner, EntityEvent.INIT);
@@ -614,8 +620,9 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 		super.OnPostInit(owner);
 	}
 	
-	
 	//======================================== DELETE ========================================\\
+
+	//------------------------------------------------------------------------------------------------
 	protected override void OnDelete(IEntity owner)
 	{
 		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
@@ -624,38 +631,31 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 		
 		super.OnDelete(owner);
 	}
-};
+}
 
-/*!
-What kind of killfeed will be displayed in the gamemode. 
-Noted that players with unlimited Editor will always see full killfeed if Editor is open
-*/
+//! What kind of killfeed will be displayed in the gamemode.
+//! Noted that players with unlimited Editor will always see full killfeed if Editor is open
 enum EKillFeedType
 {
 	//~ If changes are made in this enum make sure to change m_aKillfeedTypeNames
-	DISABLED = 0, ///< Killfeed is disabled
-	UNKNOWN_KILLER = 10, ///< Will see killfeed messages but will never know who the killer is
-	FULL = 20, ///< Will see every player (except possessed pawns) killed messages. Including killer
-};
+	DISABLED = 0,			//!< Killfeed is disabled
+	UNKNOWN_KILLER = 10,	//!< Will see killfeed messages but will never know who the killer is
+	FULL = 20,				//!< Will see every player (except possessed pawns) killed messages. Including killer
+}
 
-
-/*!
-From who will players receive kill notifications
-Noted that players with unlimited Editor will always see full killfeed if Editor is open
-*/
+//! From who will players receive kill notifications
+//! Noted that players with unlimited Editor will always see full killfeed if Editor is open
 enum EKillFeedReceiveType
 {
 	//~ If changes are made in this enum make sure to change m_aKillfeedReceiveTypeNames
-	ALL = 0, ///< Will see killfeed from allies and enemies alike
-	ENEMIES_ONLY = 10, ///< Will see killfeed from enemies only
-	ALLIES_ONLY = 20, ///< Will see killfeed from allies only
-	SAME_FACTION_ONLY = 30, ///< Will see killfeed from same faction only
-	GROUP_ONLY = 40, ///< Will see killfeed from group members only
-};
+	ALL = 0,				//!< Will see killfeed from allies and enemies alike
+	ENEMIES_ONLY = 10,		//!< Will see killfeed from enemies only
+	ALLIES_ONLY = 20,		//!< Will see killfeed from allies only
+	SAME_FACTION_ONLY = 30,	//!< Will see killfeed from same faction only
+	GROUP_ONLY = 40,		//!< Will see killfeed from group members only
+}
 
-/*!
-Class to get Killfeed type name
-*/
+//! Class to get Killfeed type name
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EKillFeedType, "m_iKillfeedType")]
 class SCR_NotificationKillfeedTypeName
 {
@@ -665,28 +665,22 @@ class SCR_NotificationKillfeedTypeName
 	[Attribute(desc: "Name displayed in Notification", uiwidget: UIWidgets.LocaleEditBox)]
 	protected LocalizedString m_sKillfeedTypeName;
 	
-	/*!
-	Get the killfeed type
-	\return the killfeed type enum
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return the killfeed type enum
 	EKillFeedType GetKillfeedType()
 	{
 		return m_iKillfeedType;
 	}
 	
-	/*!
-	Get the killfeed Type name
-	\return the killfeed type name as string
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return the killfeed type name as string
 	string GetName()
 	{
 		return m_sKillfeedTypeName;
 	}
-};
+}
 
-/*!
-Class to get Killfeed receive type name
-*/
+//! Class to get Killfeed receive type name
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EKillFeedReceiveType, "m_iKillfeedreceiveType")]
 class SCR_NotificationKillfeedreceiveTypeName
 {
@@ -696,22 +690,17 @@ class SCR_NotificationKillfeedreceiveTypeName
 	[Attribute(desc: "Name displayed in Notification", uiwidget: UIWidgets.LocaleEditBox)]
 	protected LocalizedString m_sKillfeedReceiveTypeName;
 	
-	/*!
-	Get the killfeed receive Type
-	\return the killfeed receive type enum
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return the killfeed receive type enum
 	EKillFeedType GetKillfeedReceiveType()
 	{
 		return m_iKillfeedreceiveType;
 	}
 	
-	/*!
-	Get the killfeed receive type name
-	\return the killfeed receive type name as string
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return the killfeed receive type name as string
 	string GetName()
 	{
 		return m_sKillfeedReceiveTypeName;
 	}
-};
-
+}

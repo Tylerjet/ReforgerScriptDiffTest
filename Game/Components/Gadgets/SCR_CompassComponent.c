@@ -1,9 +1,16 @@
 //------------------------------------------------------------------------------------------------
+//! Compass type 
+enum SCR_ECompassType
+{
+	SY183,		// US
+	ADRIANOV	// Soviet
+}
+
 //! Prefab data class for compass component
 [EntityEditorProps(category: "GameScripted/Gadgets", description: "Compass", color: "0 0 255 255")]
-class SCR_CompassComponentClass: SCR_GadgetComponentClass
+class SCR_CompassComponentClass : SCR_GadgetComponentClass
 {
-	[Attribute(defvalue: "0", UIWidgets.ComboBox, "Set compass type", "", ParamEnumArray.FromEnum(ECompassType), category: "Compass")]
+	[Attribute(defvalue: "0", UIWidgets.ComboBox, "Set compass type", "", ParamEnumArray.FromEnum(SCR_ECompassType), category: "Compass")]
 	int m_iCompassType;
 
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Approximate time (in seconds) for the needle to reach a new direction", params: "0.1 10 0.1", category: "Compass")]
@@ -55,20 +62,13 @@ class SCR_CompassComponentClass: SCR_GadgetComponentClass
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] prefab
 	void SCR_CompassComponentClass(BaseContainer prefab)
 	{
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
-//! Compass type 
-enum ECompassType
-{
-	SY183,		// US
-	ADRIANOV	// Soviet
-};
-
-//------------------------------------------------------------------------------------------------
 //! Compass component
 class SCR_CompassComponent : SCR_GadgetComponent
 {			
@@ -109,7 +109,7 @@ class SCR_CompassComponent : SCR_GadgetComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Updates the needle angle around the Y axis, to pointing north
-	//! \param timeSlice is OnFrame timeslice
+	//! \param[in] timeSlice is OnFrame timeslice
 	protected void UpdateNeedleDirection(float timeSlice)
 	{
 		vector angles = GetOwner().GetYawPitchRoll();
@@ -133,7 +133,7 @@ class SCR_CompassComponent : SCR_GadgetComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Applies shake to the needle based on rotations
-	//! \param timeSlice is OnFrame timeslice
+	//! \param[in] timeSlice is OnFrame timeslice
 	protected void UpdateNeedleShake(float timeSlice)
 	{
 		vector angles = GetOwner().GetYawPitchRoll();
@@ -213,10 +213,13 @@ class SCR_CompassComponent : SCR_GadgetComponent
 	//! Update state of compass active/inactive
 	protected void UpdateCompassState()
 	{		
+		if (System.IsConsoleApp())
+			return;
+		
 		if (m_bActivated)
-			ActivateGadgetFlag();
+			ActivateGadgetUpdate();
 		else 
-			DeactivateGadgetFlag();
+			DeactivateGadgetUpdate();
 				
 		if (!m_PrefabData.m_bSignalInit)
 			m_PrefabData.InitSignals(GetOwner());
@@ -227,7 +230,7 @@ class SCR_CompassComponent : SCR_GadgetComponent
 			m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalInMap, 1);
 			m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalInHand, 0);
 			
-			if (m_PrefabData.m_iCompassType == ECompassType.SY183)
+			if (m_PrefabData.m_iCompassType == SCR_ECompassType.SY183)
 				m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalClose, 0);
 		}
 		// Hand
@@ -235,7 +238,7 @@ class SCR_CompassComponent : SCR_GadgetComponent
 		{
 			m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalInHand, 1);
 			
-			if (m_PrefabData.m_iCompassType == ECompassType.SY183)
+			if (m_PrefabData.m_iCompassType == SCR_ECompassType.SY183)
 				m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalClose, 0);
 		}
 		// Ground
@@ -243,14 +246,14 @@ class SCR_CompassComponent : SCR_GadgetComponent
 		{
 			m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalInHand, 0);
 			
-			if (m_PrefabData.m_iCompassType == ECompassType.SY183)
+			if (m_PrefabData.m_iCompassType == SCR_ECompassType.SY183)
 				m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalClose, 1);
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Get damping ratiot from overshoot percentage
-	//! \param overshootPercentage is % overshoot of the needle when settling
+	//! \param[in] overshootPercentage is % overshoot of the needle when settling
 	protected float GetDampingRatio(float overshootPercentage)
 	{
 		float logOvershoot = Math.Log2(Math.Max(0.001, overshootPercentage / 100.0)) / Math.Log2(E);
@@ -302,6 +305,26 @@ class SCR_CompassComponent : SCR_GadgetComponent
 			UpdateCompassState();
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void ActivateGadgetUpdate()
+	{
+		super.ActivateGadgetUpdate();
+		
+		InventoryItemComponent itemComponent = InventoryItemComponent.Cast(GetOwner().FindComponent(InventoryItemComponent));
+		if (itemComponent)
+			itemComponent.ActivateOwner(true);	// required for the procedural animations to function
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void DeactivateGadgetUpdate()
+	{
+		super.DeactivateGadgetUpdate();
+		
+		InventoryItemComponent itemComponent = InventoryItemComponent.Cast(GetOwner().FindComponent(InventoryItemComponent));
+		if (itemComponent)
+			itemComponent.ActivateOwner(false);
+	}
 		
 	//------------------------------------------------------------------------------------------------
 	override EGadgetType GetType()
@@ -344,29 +367,7 @@ class SCR_CompassComponent : SCR_GadgetComponent
 		
 		return true;
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void ActivateGadgetFlag()
-	{
-		super.ActivateGadgetFlag();
-		
-		if (System.IsConsoleApp())
-			return;
-
-		ConnectToGadgetsSystem();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void DeactivateGadgetFlag()
-	{
-		super.DeactivateGadgetFlag();
-		
-		if (System.IsConsoleApp())
-			return;
-		
-		DisconnectFromGadgetsSystem();
-	}
-						
+							
 	//------------------------------------------------------------------------------------------------
 	override void Update(float timeSlice)
 	{						
@@ -385,4 +386,4 @@ class SCR_CompassComponent : SCR_GadgetComponent
 		CalculateConstants();
 		UpdateCompassState();
 	}
-};
+}

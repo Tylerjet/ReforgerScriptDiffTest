@@ -1,7 +1,11 @@
+void ScriptInvoker_GroupMoveFailed_Callback(int moveResult, IEntity vehicleUsed, bool isWaypointRelated, vector moveLocation);
+typedef func ScriptInvoker_GroupMoveFailed_Callback;
+typedef ScriptInvokerBase<ScriptInvoker_GroupMoveFailed_Callback> ScriptInvoker_GroupMoveFailed;
+
 [ComponentEditorProps(category: "GameScripted/AI", description: "Component for utility AI system for groups")]
-class SCR_AIGroupUtilityComponentClass: SCR_AIBaseUtilityComponentClass
+class SCR_AIGroupUtilityComponentClass : SCR_AIBaseUtilityComponentClass
 {
-};
+}
 
 class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 {
@@ -9,7 +13,9 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 	SCR_AIConfigComponent m_ConfigComponent;
 	SCR_AIGroupInfoComponent m_GroupInfo;
 	SCR_MailboxComponent m_Mailbox;
-	ref array<SCR_AIInfoComponent> m_aInfoComponents = new ref array<SCR_AIInfoComponent>;
+	ref array<SCR_AIInfoComponent> m_aInfoComponents = {};
+	
+	ref ScriptInvoker_GroupMoveFailed m_OnMoveFailed;
 	
 	protected float m_fLastUpdateTime = -1.0;
 	protected float m_fPerceptionUpdateTimer_ms;
@@ -34,10 +40,13 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 	// Used by SCR_AIGetMemberByGoal nodes
 	int m_iGetMemberByGoalNextIndex = 0;
 	
-	//---------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[out] restartActivity
+	//! \return
 	SCR_AIActionBase EvaluateActivity(out bool restartActivity)
 	{
-		ref SCR_AIActionBase activity;
+		SCR_AIActionBase activity;
 		restartActivity = false;
 		
 		if (!m_ConfigComponent)
@@ -154,10 +163,10 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		
 		return m_CurrentActivity;
 	}
-	
 
-	//---------------------------------------------------------------------------------------------------
-	// Updates info of group members to planner - should be called when adding or removing group member 	
+	//------------------------------------------------------------------------------------------------
+	//! Updates info of group members to planner - should be called when adding or removing group member
+	//! \param[in] agent
 	void OnAgentAdded(AIAgent agent)
 	{
 		// Add to array of AIInfo
@@ -179,7 +188,9 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		return;
 	}
 	
-	//---------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] group
+	//! \param[in] agent
 	void OnAgentRemoved(SCR_AIGroup group, AIAgent agent)
 	{
 		// Remove from array of AIInfo
@@ -200,7 +211,8 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		m_FireteamMgr.OnAgentRemoved(agent);
 	}
 	
-	//---------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] waypoint
 	void OnWaypointCompleted(AIWaypoint waypoint)
 	{
 		if (m_WaypointState && waypoint)
@@ -209,7 +221,9 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		m_WaypointState = null;
 	}
 	
-	//---------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] waypoint
+	//! \param[in] isCurrentWaypoint
 	void OnWaypointRemoved(AIWaypoint waypoint, bool isCurrentWaypoint)
 	{
 		// Remove old wp state, if it existed
@@ -222,7 +236,9 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		}
 	}
 	
-	//---------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] currentWp
+	//! \param[in] prevWp
 	void OnCurrentWaypointChanged(AIWaypoint currentWp, AIWaypoint prevWp)
 	{
 		// Remove old wp state, if it existed
@@ -247,14 +263,14 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		}
 	}
 		
-	//---------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	void OnExecuteWaypointTree()
 	{
 		if (m_WaypointState)
 			m_WaypointState.OnExecuteWaypointTree();
 	}
 	
-	//---------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Called from m_Perception
 	void OnEnemyDetectedFiltered(SCR_AIGroup group, SCR_AITargetInfo target, AIAgent reporter)
 	{
@@ -269,11 +285,14 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 			return;
 		
 		SCR_AITalkRequest rq = new SCR_AITalkRequest(ECommunicationType.REPORT_CONTACT, target.m_Entity, target.m_vWorldPos,
-			enumSignal: 0, transmitIfNoReceivers: true, preset: SCR_EAITalkRequestPreset.MEDIUM);
+			enumSignal: 0, transmitIfNoReceivers: true, transmitIfPassenger: true, preset: SCR_EAITalkRequestPreset.MEDIUM);
 		commsHandler.AddRequest(rq);
 	}
 	
-	//---------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] state
+	//! \param[in] prevState
+	//! \param[in] newState
 	void OnTargetClusterStateChanged(SCR_AITargetClusterState state, EAITargetClusterState prevState, EAITargetClusterState newState)
 	{
 		// If we've lost enemies at some place, make the assigned fireteams report that
@@ -297,14 +316,17 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 					if (commsHandler.CanBypass())
 						continue;
 					
-					SCR_AITalkRequest rq = new SCR_AITalkRequest(ECommunicationType.REPORT_CLEAR, null, vector.Zero, 0, 0, SCR_EAITalkRequestPreset.MEDIUM);
+					SCR_AITalkRequest rq = new SCR_AITalkRequest(ECommunicationType.REPORT_CLEAR, null, vector.Zero, 0, false, false, SCR_EAITalkRequestPreset.MEDIUM);
 					commsHandler.AddRequest(rq);
 				}
 			}
 		}
 	}
 	
-	//---------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] waypoint
+	//! \param[in] activityType
 	void CancelActivitiesRelatedToWaypoint(notnull AIWaypoint waypoint, typename activityType = typename.Empty)
 	{
 		array<ref AIActionBase> actions = {};
@@ -322,7 +344,7 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		}
 	}
 	
-	//---------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Determines when we can rebalance fireteams. We don't want to do that when fighting for example.
 	protected bool CanRebalanceFireteams()
 	{
@@ -350,6 +372,21 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		return true;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	void OnMoveFailed(int moveResult, IEntity vehicleUsed, bool isWaypointReleated, vector moveLocation)
+	{
+		if (m_OnMoveFailed)
+			m_OnMoveFailed.Invoke(moveResult, vehicleUsed, isWaypointReleated, moveLocation);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker_GroupMoveFailed GetOnMoveFailed()
+	{
+		if (!m_OnMoveFailed)
+			m_OnMoveFailed = new ScriptInvoker_GroupMoveFailed();
+		
+		return m_OnMoveFailed;
+	}
 
 	//---------------------------------------------------------------------------------------------------	
 	override void EOnInit(IEntity owner)
@@ -385,7 +422,7 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		m_fPerceptionUpdateTimer_ms = Math.RandomFloat(0, PERCEPTION_UPDATE_TIMER_MS);
 	}
 	
-	//---------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	override void EOnDiag(IEntity owner, float timeSlice)
 	{
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AI_TARGET_CLUSTERS))
@@ -395,7 +432,9 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 			m_FireteamMgr.DiagDrawFireteams();
 	}
 	
-	//---------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] currentAction
 	void UpdateGroupControlMode(SCR_AIActionBase currentAction)
 	{
 		#ifdef AI_DEBUG
@@ -415,8 +454,9 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		}
 	}
 	
-	//---------------------------------------------------------------------------
-	// Iterates all clusters and updates their state
+	//------------------------------------------------------------------------------------------------
+	//! Iterates all clusters and updates their state
+	//! \param[in] deltaTime_ms
 	void UpdateClustersState(float deltaTime_ms)
 	{
 		foreach (SCR_AIGroupTargetCluster cluster : m_Perception.m_aTargetClusters)
@@ -425,8 +465,10 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		}
 	}
 	
-	//---------------------------------------------------------------------------
-	// Decides whether we are allowed to go to this position
+	//------------------------------------------------------------------------------------------------
+	//! Decides whether we are allowed to go to this position
+	//! \param[in] pos
+	//! \return
 	bool IsPositionAllowed(vector pos)
 	{		
 		AIWaypoint wp = m_Owner.GetCurrentWaypoint();
@@ -443,8 +485,5 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		return true;
 	}
 	
-	//---------------------------------------------------------------------------
-	// Diagnostics and debugging
-	
-	
-};
+	// Diagnostics and debugging below
+}

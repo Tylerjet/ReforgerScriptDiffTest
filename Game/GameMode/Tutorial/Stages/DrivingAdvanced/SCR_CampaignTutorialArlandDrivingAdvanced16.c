@@ -11,11 +11,9 @@ class SCR_CampaignTutorialArlandDrivingAdvanced16 : SCR_BaseCampaignTutorialArla
 	{
 		RegisterWaypoint("WP_DRIVINGHEAVY_14");
 		m_fWaypointCompletionRadius = 10;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override protected bool GetIsFinished()
-	{
-		return m_Player.IsInVehicle();
+		if (!m_TutorialComponent.GetVoiceSystem().IsPlaying())
+			PlaySoundSystem("SlowClimb");
+		else
+			GetGame().GetCallqueue().CallLater(PlaySoundSystem, 1000, false, "SlowClimb", false);
 	}
 };

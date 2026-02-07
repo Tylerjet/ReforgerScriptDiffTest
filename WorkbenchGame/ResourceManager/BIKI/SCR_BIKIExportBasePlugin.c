@@ -1,5 +1,4 @@
 #ifdef WORKBENCH
-
 class SCR_BIKIExportBasePlugin : WorkbenchPlugin
 {
 	//------------------------------------------------------------------------------------------------
@@ -51,5 +50,4 @@ class SCR_BIKIExportPlugin_Result
 		m_sResult = result;
 	}
 }
-
 #endif // WORKBENCH

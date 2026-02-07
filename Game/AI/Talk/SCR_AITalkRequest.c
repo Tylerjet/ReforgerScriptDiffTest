@@ -8,10 +8,11 @@ enum SCR_EAITalkRequestState
 
 enum SCR_EAITalkRequestPreset
 {
-	IRRELEVANT,		// Small priority, small timeout. For almost irrelevant phrases.
-	MEDIUM,			// Medium priority, medium timeout.
-	MANDATORY,		// Highest priority, infinite timeout. For phrases related to orders and similar.
-	IMMEDIATE		// Same as MANDATORY, but also ignores channel state
+	IRRELEVANT_IMMEDIATE,	// Small priority, tiny timeout. For almost irrelevant phrases, which become irrelevant in a second.
+	IRRELEVANT,				// Small priority, small timeout. For almost irrelevant phrases.
+	MEDIUM,					// Medium priority, medium timeout.
+	MANDATORY,				// Highest priority, infinite timeout. For phrases related to orders and similar.
+	IMMEDIATE				// Same as MANDATORY, but also ignores channel state
 }
 
 class SCR_AITalkRequest : Managed
@@ -27,12 +28,13 @@ class SCR_AITalkRequest : Managed
 	int m_iPriority;							// Priority of request, higher priority gets processed sooner
 	bool m_bTransmitIfChannelBusy;				// If true, we will not care to wait for channel to be free and transmit over others
 	bool m_bTransmitIfNoReceivers;				// If true, will transmit even if we know noone's listening
+	bool m_bTransmitIfPassenger;				// If true, will transmit if inside vehicle as passenger (gunner is not affected)
 	
 	SCR_EAITalkRequestState m_eState;			// READ ONLY - CommsHandler sets this when it processes the request. This can be read to know the outcome of request.
 	
 	//-------------------------------------------------------------------------------------
 	// Some parameters are initialized in constructor, others from InitFromPreset
-	void SCR_AITalkRequest(ECommunicationType type, IEntity entity, vector pos, int enumSignal, bool transmitIfNoReceivers, SCR_EAITalkRequestPreset preset)
+	void SCR_AITalkRequest(ECommunicationType type, IEntity entity, vector pos, int enumSignal, bool transmitIfNoReceivers, bool transmitIfPassenger, SCR_EAITalkRequestPreset preset)
 	{
 		m_fCreatedTimestamp_ms = GetGame().GetWorld().GetWorldTime();
 		
@@ -41,6 +43,7 @@ class SCR_AITalkRequest : Managed
 		m_vPosition = pos;
 		m_EnumSignal = enumSignal;
 		m_bTransmitIfNoReceivers = transmitIfNoReceivers;
+		m_bTransmitIfPassenger = transmitIfPassenger;
 		
 		InitFromPreset(preset);
 	}
@@ -54,6 +57,13 @@ class SCR_AITalkRequest : Managed
 		bool transmitIfBusy = false;
 		switch (preset)
 		{
+			case SCR_EAITalkRequestPreset.IRRELEVANT_IMMEDIATE:
+			{ 
+				prio = 5;
+				timeout = 500.0;
+				break;
+			}
+			
 			case SCR_EAITalkRequestPreset.IRRELEVANT:
 			{ 
 				prio = 10;

@@ -58,7 +58,7 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 	protected bool m_bRotateArrow;
 	
 	protected InputManager m_InputManager;
-	protected ref array<Widget> m_aElementWidgets = new ref array<Widget>();
+	protected ref array<Widget> m_aElementWidgets = new array<Widget>();
 	protected Widget m_wButton;
 	protected ImageWidget m_wArrowImage;
 	protected TextWidget m_wText;
@@ -501,9 +501,9 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override int AddItem(string item, Managed data = null)
+	override int AddItem(string item, bool last = false, Managed data = null)
 	{
-		int i = super.AddItem(item, data);
+		int i = super.AddItem(item, last, data);
 		UpdateName();
 		if (m_bOpened)
 			CreateEntries();
@@ -521,9 +521,9 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void RemoveItem(int item)
+	override void RemoveItem(int item, bool last = false)
 	{
-		super.RemoveItem(item);
+		super.RemoveItem(item, last);
 		UpdateName();
 		if (m_bOpened)
 			CreateEntries();

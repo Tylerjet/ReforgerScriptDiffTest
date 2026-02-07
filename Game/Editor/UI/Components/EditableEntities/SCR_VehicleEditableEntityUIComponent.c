@@ -15,6 +15,7 @@ class SCR_VehicleEditableEntityUIComponent : SCR_BaseEditableEntityUIComponent
 	protected SCR_RenderedEditableEntityFilter m_RenderFilter;
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void DetermineNameVisibility()
 	{
 		if (!m_World || !m_VehicleComponent || !m_VehicleOwningPlayer || !m_wNameTextWidget || !m_RenderFilter)
@@ -84,6 +85,7 @@ class SCR_VehicleEditableEntityUIComponent : SCR_BaseEditableEntityUIComponent
 			m_wNameTextWidget.SetText(playerName);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override bool OnUpdate(Widget w)
 	{
 		// Making changes to the Widget during OnUpdate() isn't advised by Peter Čimo.

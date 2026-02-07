@@ -97,7 +97,7 @@ class SCR_TreePartV2 : Tree
 	private float m_fLerpTargetQuat[4];
 	private float m_fLerpAmountPos = -1;
 	private float m_fLerpAmountRot = -1;
-	private ref array<IEntity> m_aQuerriedEnts = new ref array<IEntity>();
+	private ref array<IEntity> m_aQuerriedEnts = new array<IEntity>();
 	private float m_fSynchTime = 0;
 	vector m_vLockedOrigin;
 	SCR_DestructibleTreeV2 m_ParentTree = null;
@@ -141,7 +141,7 @@ class SCR_TreePartV2 : Tree
 	//JOINTS//
 	//******//
 	private bool m_bCreatedJoints = false;
-	private ref array<PhysicsJoint> m_aChildrenJoints = new ref array<PhysicsJoint>();
+	private ref array<PhysicsJoint> m_aChildrenJoints = new array<PhysicsJoint>();
 	private PhysicsJoint m_ParentJoint;
 	
 	//***************//

@@ -11,9 +11,12 @@ enum SCR_EJournalEntryType
 [BaseContainerProps(configRoot: true)]
 class SCR_JournalSetupConfig
 {
+	[Attribute(defvalue: "-1", desc: "Which entry should be shown when the journal is opened (0 to number of entries)", params: "-1 inf")]
+	protected int m_iJournalEntryToShowOnStart;
+	
 	[Attribute("")]
 	protected ref array<ref SCR_JournalConfig> m_aJournals;
-
+		
 	SCR_JournalConfig GetJournalConfig(FactionKey factionKey = FactionKey.Empty)
 	{
 		SCR_JournalConfig empty;
@@ -28,6 +31,13 @@ class SCR_JournalSetupConfig
 		}
 
 		return empty;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return the index of the journal entry which is configured to be shown
+	int GetJournalEntryToBeShown()
+	{
+		return m_iJournalEntryToShowOnStart;
 	}
 };
 

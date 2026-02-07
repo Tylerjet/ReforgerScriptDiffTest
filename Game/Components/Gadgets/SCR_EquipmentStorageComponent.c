@@ -1,9 +1,7 @@
-//------------------------------------------------------------------------------------------------
 class SCR_EquipmentStorageComponentClass: EquipmentStorageComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Equipment storage are slots which are part of their parent entity but not taking up the standard cargo space, such as slot for flashlight in the form of a strap on the vest or belt 
 class SCR_EquipmentStorageComponent : EquipmentStorageComponent
 {	
@@ -13,9 +11,8 @@ class SCR_EquipmentStorageComponent : EquipmentStorageComponent
 	{
 		return false;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_EquipmentStorageSlot : EquipmentStorageSlot
 {
 	//------------------------------------------------------------------------------------------------
@@ -33,4 +30,4 @@ class SCR_EquipmentStorageSlot : EquipmentStorageSlot
 		
 		return false; 
 	}
-};
+}

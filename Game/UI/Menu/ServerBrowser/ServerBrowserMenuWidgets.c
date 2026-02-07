@@ -1,13 +1,13 @@
 /*
 Class for storing server browser menu widget references
 */
-//------------------------------------------------------------------------------------------------
+
 class ServerBrowserMenuWidgets
 {
 	const string WIDGET_CONTENT = "ServerBrowserContent";
 
 	// Constant names of widgets
-	const string WIDGET_TAB_VIEW = "TabViewRoot0";
+	const string WIDGET_TAB_VIEW = "TabView";
 	const string WIDGET_FILTER = "FilterPanel";
 	const string WIDGET_SERVER_HEADER = "SortingHeader";
 	const string WIDGET_SORT_SESSION_NAME = "sortName";
@@ -47,6 +47,7 @@ class ServerBrowserMenuWidgets
 	Widget m_wSortSessionFavorite;
 
 	Widget m_wHostNewServerButton;
+	SCR_HostButtonComponent m_HostButton;
 
 	SCR_InputButtonComponent m_JoinButton;
 	SCR_InputButtonComponent m_DetailsButton;
@@ -75,6 +76,8 @@ class ServerBrowserMenuWidgets
 		m_wSortSessionFavorite = m_wRoot.FindAnyWidget(WIDGET_SORT_SESSION_FAVORITE);
 
 		m_wHostNewServerButton = m_wRoot.FindAnyWidget(WIDGET_BUTTON_HOST);
+		if (m_wHostNewServerButton)
+			m_HostButton = SCR_HostButtonComponent.FindComponent(m_wHostNewServerButton);
 
 		//! Entry Buttons
 		m_JoinButton = FindButton(WIDGET_BUTTON_JOIN);

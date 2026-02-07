@@ -32,9 +32,9 @@ class SCR_ScenarioTileComponent : SCR_ButtonBaseComponent
 	
 	ContentBrowserUI m_ParentContentBrowserMenu;
 	
-	ref ScriptInvoker m_OnPlayClicked = new ref ScriptInvoker();
-	ref ScriptInvoker m_OnHostClicked = new ref ScriptInvoker();
-	ref ScriptInvoker m_OnJoinClicked = new ref ScriptInvoker();
+	ref ScriptInvoker m_OnPlayClicked = new ScriptInvoker();
+	ref ScriptInvoker m_OnHostClicked = new ScriptInvoker();
+	ref ScriptInvoker m_OnJoinClicked = new ScriptInvoker();
 	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -240,7 +240,7 @@ class SCR_ScenarioTileComponent : SCR_ButtonBaseComponent
 					m_ModParentComp.SetContent(owner.Name());
 				}
 				else
-					m_ScenarioName.SetColor(UIColors.CONTRAST_COLOR);
+					m_ScenarioName.SetColor(Color.FromInt(UIColors.CONTRAST_COLOR.PackToInt()));
 				
 			}
 			else
@@ -352,7 +352,7 @@ class SCR_ScenarioTileComponent : SCR_ButtonBaseComponent
 			AnimateWidget.Color(m_wWhiteFrame, COLOR_BACKGROUND_HOVERED, m_fAnimationRate);
 		else
 		{*/
-			AnimateWidget.Color(m_wWhiteFrame, UIColors.TRANSPARENT, m_fAnimationRate);
+			AnimateWidget.Color(m_wWhiteFrame, Color.FromInt(UIColors.TRANSPARENT.PackToInt()), m_fAnimationRate);
 			AnimateWidget.Opacity(m_wPlayableButtom, 0, m_fAnimationRate);
 			AnimateWidget.Opacity(m_wGamepadModNameButton, 0, m_fAnimationRate);
 		//}

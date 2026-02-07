@@ -40,6 +40,11 @@ class SCR_UnconsciousScreenEffect : SCR_BaseScreenEffect
 			return;
 		
 		m_pDamageManager = SCR_CharacterDamageManagerComponent.Cast(m_pCharacterEntity.GetDamageManager());
+		
+		// In case player became unconscious before invokers were established, check if already bleeding
+		CharacterControllerComponent controller = m_pCharacterEntity.GetCharacterController();
+		if (controller && controller.GetLifeState() == ECharacterLifeState.INCAPACITATED)
+			DisplayConsciousnessChanged(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -51,13 +56,10 @@ class SCR_UnconsciousScreenEffect : SCR_BaseScreenEffect
 	//------------------------------------------------------------------------------------------------
 	protected void UnconsciousnessEffect(bool conscious)
 	{
-		if (!m_wDeath)
-			return;
-		
 		if (!conscious)
 			PlayUnconAnim(UNCONSCIOUS_EFFECT_DURATION);
 		else
-			StopBloodDropAnim();
+			StopUnconAnim();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -99,11 +101,12 @@ class SCR_UnconsciousScreenEffect : SCR_BaseScreenEffect
 	//------------------------------------------------------------------------------------------------
 	protected void OnAnimCycleComplete(WidgetAnimationBase anim)
 	{
-		anim.Stop();
-
 		if (anim)
+		{
+			anim.Stop();
 			anim.GetOnCycleCompleted().Remove(OnAnimCycleComplete);
-
+		}
+		
 		GetGame().GetCallqueue().CallLater(PlayUnconAnim, param1: UNCONSCIOUS_EFFECT_DURATION);
 	}	
 
@@ -125,7 +128,7 @@ class SCR_UnconsciousScreenEffect : SCR_BaseScreenEffect
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void StopBloodDropAnim()
+	protected void StopUnconAnim()
 	{
 		if (m_UnconMaskAnim)
 			m_UnconMaskAnim.GetOnCycleCompleted().Remove(OnAnimCycleComplete);
@@ -140,6 +143,9 @@ class SCR_UnconsciousScreenEffect : SCR_BaseScreenEffect
 	//------------------------------------------------------------------------------------------------
 	protected override void ClearEffects()
 	{
+		if (m_UnconMaskAnim)
+			m_UnconMaskAnim.GetOnCycleCompleted().Remove(OnAnimCycleComplete);
+		
 		if (m_wDeath)
 		{
 			AnimateWidget.StopAllAnimations(m_wDeath);

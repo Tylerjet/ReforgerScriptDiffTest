@@ -1,9 +1,7 @@
-#include "scripts/Game/config.c"
-[EntityEditorProps(category: "GameScripted/ScriptWizard", description: "ScriptWizard generated script file.")]
+[EntityEditorProps(category: "GameScripted/ScenarioFramework/Layer", description: "")]
 class SCR_ScenarioFrameworkLayerTaskDefendClass : SCR_ScenarioFrameworkLayerTaskClass
 {
-	// prefab properties here
-};
+}
 
 class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 {
@@ -65,12 +63,28 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	protected RichTextWidget m_wFlavour;
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
+	float GetDefendTime()
+	{
+		return m_fDefendTime;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] time
+	void SetDefendTime(float time)
+	{
+		m_fDefendTime = time;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_CharacterTriggerEntity GetCharacterTriggerEntity()
 	{
 		return m_CharacterTriggerEntity;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void FindCharacterTriggerEntity()
 	{
 		IEntity foundEntity = GetGame().GetWorld().FindEntityByName(m_sTriggerName);
@@ -101,6 +115,10 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_ScenarioFrameworkLayerTaskDefend(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		m_eTypeOfTask = SCR_ESFTaskType.DEFEND;
@@ -132,6 +150,7 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void EvaluateStatus()
 	{
 		m_bTaskEvaluated = true;
@@ -245,7 +264,7 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void DynamicDespawn()
+	override void DynamicDespawn(SCR_ScenarioFrameworkLayerBase layer)
 	{
 	}
 
@@ -256,13 +275,28 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 			return;
 		
 		if (!m_bDynamicallyDespawned && activation != m_eActivationType)
-			return;
+		{
+			if (m_ParentLayer)
+				m_ParentLayer.CheckAllChildrenSpawned(this);
+		}
+		
+		foreach (SCR_ScenarioFrameworkActivationConditionBase activationCondition : m_aActivationConditions)
+		{
+			//If just one condition is false, we don't continue and interrupt the init
+			if (!activationCondition.Init(GetOwner()))
+			{
+				if (m_ParentLayer)
+				m_ParentLayer.CheckAllChildrenSpawned(this);
+				
+				return;
+			}
+		}
 
 		super.Init(area, activation);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void AfterAllChildrenSpawned()
+	override void AfterAllChildrenSpawned(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		m_bInitiated = true;
 		
@@ -272,7 +306,7 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 			plugin.Init(this);
 		}
 		
-		foreach(SCR_ScenarioFrameworkActionBase activationAction : m_aActivationActions)
+		foreach (SCR_ScenarioFrameworkActionBase activationAction : m_aActivationActions)
 		{
 			activationAction.Init(GetOwner());
 		}
@@ -304,6 +338,7 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void InitHUD()
 	{
 		SCR_HUDManagerComponent hudManager = GetGame().GetHUDManager();
@@ -345,6 +380,7 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void UpdateHUD()
 	{
 		m_fTempTimeSlice = 0;
@@ -387,6 +423,9 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] countdown
+	//! \param[in] taskID
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	void RpcDo_UpdateHUD(float countdown, int taskID)
 	{
@@ -434,6 +473,7 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void CheckAttackerLayers()
 	{
 		m_fTempTimeSlice = 0;
@@ -467,6 +507,7 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void RemovePeriodicUpdates()
 	{
 		if (!m_bShowDebugShapesDuringRuntime)
@@ -502,7 +543,7 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 				EvaluateStatus();
 		}
 	}
-};
+}
 
 //------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_ContainerActionTitle()]
@@ -515,6 +556,7 @@ class SCR_ScenarioFrameworkTaskDefendFactionSettings
 	protected bool				m_bCountOnlyPlayers;
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	Faction GetFaction()
 	{
 		FactionManager factionManager = GetGame().GetFactionManager();
@@ -525,20 +567,22 @@ class SCR_ScenarioFrameworkTaskDefendFactionSettings
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] factionKey
 	void SetFactionKey(FactionKey factionKey)
 	{
 		m_sFactionKey = factionKey;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetCountOnlyPlayers()
 	{
 		return m_bCountOnlyPlayers;
 	}
-};
+}
 
 //------------------------------------------------------------------------------------------------
-class SCR_ScenarioFrameworkTaskDefendDefendingFactionTitle: BaseContainerCustomTitle
+class SCR_ScenarioFrameworkTaskDefendDefendingFactionTitle : BaseContainerCustomTitle
 {
 	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
 	{
@@ -548,7 +592,7 @@ class SCR_ScenarioFrameworkTaskDefendDefendingFactionTitle: BaseContainerCustomT
 }
 
 //------------------------------------------------------------------------------------------------
-class SCR_ScenarioFrameworkTaskDefendAttackingFactionTitle: BaseContainerCustomTitle
+class SCR_ScenarioFrameworkTaskDefendAttackingFactionTitle : BaseContainerCustomTitle
 {
 	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
 	{
@@ -561,10 +605,10 @@ class SCR_ScenarioFrameworkTaskDefendAttackingFactionTitle: BaseContainerCustomT
 [BaseContainerProps(), SCR_ScenarioFrameworkTaskDefendDefendingFactionTitle()]
 class SCR_ScenarioFrameworkTaskDefendDefendingFaction : SCR_ScenarioFrameworkTaskDefendFactionSettings
 {
-};
+}
 
 //------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_ScenarioFrameworkTaskDefendAttackingFactionTitle()]
 class SCR_ScenarioFrameworkTaskDefendAttackingFaction : SCR_ScenarioFrameworkTaskDefendFactionSettings
 {
-};
+}

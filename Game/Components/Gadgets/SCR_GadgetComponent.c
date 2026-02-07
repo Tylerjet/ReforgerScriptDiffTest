@@ -1,25 +1,26 @@
 [EntityEditorProps(category: "GameScripted/Gadgets", description: "Gadget base", color: "0 0 255 255")]
-class SCR_GadgetComponentClass: ScriptGameComponentClass
+class SCR_GadgetComponentClass : ScriptGameComponentClass
 {
-};
+}
 
 //------------------------------------------------------------------------------------------------
 //! Gadget type 
 enum EGadgetType
 {
-	MAP = 1,
-	COMPASS = 2,
-	BINOCULARS = 4,
-	FLASHLIGHT = 8,
-	RADIO = 16,
-	RADIO_BACKPACK = 32,
-	WRISTWATCH = 64,
-	CONSUMABLE = 128,
-	BUILDING_TOOL = 256,
-	SUPPORT_STATION = 512
-};
+	NONE 			= 1,
+	MAP 			= 1 << 1,
+	COMPASS 		= 1 << 2,
+	BINOCULARS 		= 1 << 3,
+	FLASHLIGHT 		= 1 << 4,
+	RADIO 			= 1 << 5,
+	RADIO_BACKPACK 	= 1 << 6,
+	WRISTWATCH 		= 1 << 7,
+	CONSUMABLE 		= 1 << 8,
+	BUILDING_TOOL 	= 1 << 9,
+	SPECIALIST_ITEM = 1 << 10,
+	NIGHT_VISION 	= 1 << 11,
+}
 
-//------------------------------------------------------------------------------------------------
 //! Gadget mode
 enum EGadgetMode
 {
@@ -28,9 +29,8 @@ enum EGadgetMode
 	IN_SLOT,		// in equipment slot
 	IN_HAND,		// held in left hand
 	LAST
-};
+}
 
-//------------------------------------------------------------------------------------------------
 // @NOTE(Leo) : short term animation solution
 // from conversation with @Théo Escamez: //for now we have 4 items> compass adrianov, compass SY183, Radio ANPRC68 and Radio R148
 //! Gadget anim variable
@@ -46,11 +46,9 @@ enum EGadgetAnimVariable
 	M22 = 7,
 	B12 = 8,
 	MAP = 9
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Gadget base class
-//------------------------------------------------------------------------------------------------
 class SCR_GadgetComponent : ScriptGameComponent
 {			
 	[Attribute("", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EGadgetAnimVariable), desc: "Gadget anim variable", category: "Gadget")]
@@ -65,6 +63,7 @@ class SCR_GadgetComponent : ScriptGameComponent
 	protected IEntity m_CharacterOwner;						// current entity in posession of this gadget
 				
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	EGadgetAnimVariable GetAnimVariable()
 	{
 		return m_eAnimVariable;
@@ -80,9 +79,8 @@ class SCR_GadgetComponent : ScriptGameComponent
 		
 	//------------------------------------------------------------------------------------------------
 	//! Event called from SCR_GadgetManagerComponent through RPC request
-	//! \param state is gadget state: true - active / false - inactive
-	void OnToggleActive(bool state)
-	{}
+	//! \param[in] state is gadget state: true - active / false - inactive
+	void OnToggleActive(bool state);
 	
 	//------------------------------------------------------------------------------------------------
 	//! InventoryItemComponent event
@@ -135,7 +133,8 @@ class SCR_GadgetComponent : ScriptGameComponent
 		
 	//------------------------------------------------------------------------------------------------
 	//! Gadget mode change event
-	//! \param mode is the target mode being switched to
+	//! \param[in] mode is the target mode being switched to
+	//! \param[in] charOwner
 	void OnModeChanged(EGadgetMode mode, IEntity charOwner)
 	{
 		// Clear last mode
@@ -150,7 +149,8 @@ class SCR_GadgetComponent : ScriptGameComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Set gadget mode 
-	//! \param mode is the target mode being switched to
+	//! \param[in] mode is the target mode being switched to
+	//! \param[in] charOwner
 	protected void ModeSwitch(EGadgetMode mode, IEntity charOwner)
 	{
 		UpdateVisibility(mode);
@@ -160,54 +160,33 @@ class SCR_GadgetComponent : ScriptGameComponent
 			m_CharacterOwner = null;
 		else
 			m_CharacterOwner = charOwner;
-				
-		if (mode == EGadgetMode.IN_HAND)
-		{
-			ActivateGadgetFlag();		// TODO not needed for everything? could leave this to individual gadget decision
-		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Clear gadget mode
-	//! \param mode is the mode being cleared
+	//! \param[in] mode is the mode being cleared
 	protected void ModeClear(EGadgetMode mode)
 	{
-		if (mode == EGadgetMode.IN_HAND)
-		{	
-			DeactivateGadgetFlag();
-		}
 	}
 						
 	//------------------------------------------------------------------------------------------------
-	//! Set gadget active flag
-	void ActivateGadgetFlag()
+	//! Activate gadget frame update
+	void ActivateGadgetUpdate()
 	{
-		IEntity owner = GetOwner();
-		if (!owner)
-			return;
-		
-		InventoryItemComponent itemComponent = InventoryItemComponent.Cast(owner.FindComponent(InventoryItemComponent));
-		if (itemComponent)
-			itemComponent.ActivateOwner(true);
+		ConnectToGadgetsSystem();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Unset gadget active flag
-	void DeactivateGadgetFlag()
+	//! Deactivate gadget frame flag
+	void DeactivateGadgetUpdate()
 	{
-		IEntity owner = GetOwner();
-		if (!owner)
-			return;
-		
-		InventoryItemComponent itemComponent = InventoryItemComponent.Cast(owner.FindComponent(InventoryItemComponent));
-		if (itemComponent)
-			itemComponent.ActivateOwner(false);
+		DisconnectFromGadgetsSystem();
 	}
 	
 
 	//------------------------------------------------------------------------------------------------
 	//! Set visibility when show/hide hand animation starts/finishes
-	// \param inHand states whether the gadget is currently held in hand
+	// \param[in] inHand states whether the gadget is currently held in hand
 	void UpdateVisibility(EGadgetMode mode)
 	{		
 		// mode1
@@ -252,8 +231,8 @@ class SCR_GadgetComponent : ScriptGameComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Synchronize gadget state
-	//! \param state is target state true = active, false = inactive
+	//! Synchronise gadget state
+	//! \param[in] state is target state true = active, false = inactive
 	void ToggleActive(bool state)
 	{		
 		if (!m_CharacterOwner)
@@ -275,18 +254,21 @@ class SCR_GadgetComponent : ScriptGameComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Action listener callback
-	void ActivateAction()
-	{}
+	void ActivateAction();
 	
 	//------------------------------------------------------------------------------------------------
 	//! Toggle gadget focus state
-	//! \param enable is target state
+	//! \param[in] enable is target state
 	void ToggleFocused(bool enable)
-	{	
-		if (enable)
-			m_bFocused = true;
-		else
-			m_bFocused = false;
+	{
+		m_bFocused = enable;
+
+		if (m_CharacterOwner != SCR_PlayerController.GetLocalControlledEntity())
+			return;
+
+		SCR_PlayerController controller = SCR_PlayerController.Cast(GetGame().GetPlayerController());
+		if (controller)
+			controller.SetGadgetFocus(enable);
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -302,7 +284,7 @@ class SCR_GadgetComponent : ScriptGameComponent
 	//! \return Returns gadget type
 	EGadgetType GetType()
 	{
-		return 0;
+		return EGadgetType.NONE;
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -353,9 +335,14 @@ class SCR_GadgetComponent : ScriptGameComponent
 		return false;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] timeSlice
 	//Called by Gadgets system
 	void Update(float timeSlice);
 	
+	//------------------------------------------------------------------------------------------------
+	//! Starts on frame update event
 	protected void ConnectToGadgetsSystem()
 	{
 		World world = GetOwner().GetWorld();
@@ -366,6 +353,7 @@ class SCR_GadgetComponent : ScriptGameComponent
 		gadgetSystem.Register(this);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void DisconnectFromGadgetsSystem()
 	{
 		World world = GetOwner().GetWorld();
@@ -411,4 +399,4 @@ class SCR_GadgetComponent : ScriptGameComponent
 		if (invComp)
 			invComp.m_OnParentSlotChangedInvoker.Insert(OnParentSlotChanged);
 	}
-};
+}

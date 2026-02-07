@@ -26,7 +26,7 @@ class SCR_WeaponRackEntity : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//Called periodically to spawn weapons in the queue
+	//! Called periodically to spawn weapons in the queue
 	void PeriodicalSpawn(notnull SCR_Faction faction)
 	{
 		Faction assignedFaction;
@@ -44,6 +44,7 @@ class SCR_WeaponRackEntity : GenericEntity
 		m_ArsenalDisplayComponent.RefreshArsenal(faction);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
 		if (SCR_Global.IsEditMode())
@@ -69,4 +70,4 @@ class SCR_WeaponRackEntity : GenericEntity
 	{
 	}
 
-};
+}

@@ -1,18 +1,17 @@
-#include "scripts/Game/config.c"
 [EntityEditorProps(category: "GameScripted/Campaign", description: "Allow respawning at this vehicle in Campaign", color: "0 0 255 255")]
-class SCR_CampaignMobileAssemblyComponentClass: ScriptComponentClass
+class SCR_CampaignMobileAssemblyComponentClass : ScriptComponentClass
 {
 	[Attribute("{6D282026AB95FC81}Prefabs/MP/Campaign/CampaignMobileAssemblySpawnpoint.et", UIWidgets.ResourceNamePicker, "", "et")]
 	protected ResourceName m_sSpawnpointPrefab;
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetSpawnpointPrefab()
 	{
 		return m_sSpawnpointPrefab;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 {
 	static const float MAX_WATER_DEPTH = 2.5;
@@ -80,10 +79,11 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void UpdateBasesInRadioRange()
 	{
 		array<SCR_MilitaryBaseComponent> bases = {};
-		SCR_MilitaryBaseManager.GetInstance().GetBases(bases);
+		SCR_MilitaryBaseSystem.GetInstance().GetBases(bases);
 		
 		float radioRange = GetRadioRange();
 		radioRange = radioRange * radioRange;	// We're checking square distance
@@ -108,6 +108,8 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] base
+	//! \return
 	bool CanReachByRadio(notnull SCR_CampaignMilitaryBaseComponent base)
 	{
 		return m_aBasesInRadioRange.Contains(base);
@@ -120,6 +122,7 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] factionID
 	void SetParentFactionID(int factionID)
 	{
 		m_iParentFaction = factionID;
@@ -141,24 +144,29 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetParentFactionID()
 	{
 		return m_iParentFaction;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_CampaignFaction GetParentFaction()
 	{
 		return m_ParentFaction;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[out] basesInRange
+	//! \return
 	int GetBasesInRange(notnull out array<SCR_CampaignMilitaryBaseComponent> basesInRange)
 	{
 		return basesInRange.Copy(m_aBasesInRadioRange);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetRadioRange()
 	{
 		IEntity truck = GetOwner().GetParent();
@@ -180,6 +188,10 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] status
+	//! \param[in] playerId
+	//! \return
 	bool Deploy(SCR_EMobileAssemblyStatus status, int playerId = 0)
 	{
 		if (!m_bIsInRadioRange && status == SCR_EMobileAssemblyStatus.DEPLOYED)
@@ -266,6 +278,7 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void CheckStatus()
 	{
 		IEntity truck = GetOwner().GetParent();
@@ -311,6 +324,7 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void RegisterSpawnpoint()
 	{
 		// On server the assignment is done in CreateSpawnpoint()
@@ -326,30 +340,35 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_SpawnPoint GetSpawnPoint()
 	{
 		return m_SpawnPoint;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_CampaignMobileAssemblyStandaloneComponent GetStandaloneComponent()
 	{
 		return m_StandaloneComponent;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsDeployed()
 	{
 		return m_bIsDeployed;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsInRadioRange()
 	{
 		return m_bIsInRadioRange;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void UpdateRadioCoverage()
 	{
 		if (!m_ParentFaction)
@@ -361,6 +380,7 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void CreateSpawnpoint()
 	{
 		SCR_CampaignMobileAssemblyComponentClass componentData = SCR_CampaignMobileAssemblyComponentClass.Cast(GetComponentData(GetOwner()));
@@ -398,6 +418,7 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_CampaignMobileAssemblyComponent()
 	{
 		if (Replication.IsClient())
@@ -411,11 +432,11 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 		
 		Deploy(SCR_EMobileAssemblyStatus.DISMANTLED);
 	}
-};
+}
 
 enum SCR_EMobileAssemblyStatus
 {
 	DEPLOYED,
 	DISMANTLED,
 	DESTROYED
-};
+}

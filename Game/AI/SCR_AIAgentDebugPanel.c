@@ -96,8 +96,10 @@ class SCR_AIAgentDebugPanel : Managed
 			{
 				EAICombatType combatType = combatComp.GetCombatType();
 				BaseTarget currentEnemy = combatComp.GetCurrentTarget();
+				EAICombatActions allowedActions = combatComp.GetAllowedActions();
 				DbgUI.Text(string.Format("Combat Type: %1", typename.EnumToString(EAICombatType, combatType)));
 				DbgUI.Text(string.Format("Enemy: %1", currentEnemy.ToString()));
+				DbgUI.Text(string.Format("Allowed actions: %1", EnumFlagsToString(EAICombatActions, allowedActions)));
 			}
 			
 			if (mailboxComp)
@@ -231,6 +233,17 @@ class SCR_AIAgentDebugPanel : Managed
 					ShowPerceptionEnemies(m_Entity, perception, combatComp);
 				}
 			}
+			
+			// Show combat move state
+			if (unitUtilityComp && unitUtilityComp.m_CombatMoveState)
+			{
+				bool showCombatMoveState;
+				DbgUI.Check("Show combat move state", showCombatMoveState);
+				if (showCombatMoveState)
+				{
+					ShowCombatMoveState(unitUtilityComp.m_CombatMoveState);
+				}
+			}
 		}
 		
 		// Close button
@@ -249,7 +262,7 @@ class SCR_AIAgentDebugPanel : Managed
 				ent = m_Group;
 			else
 				ent = m_Entity;
-			SCR_AIDebugVisualization.VisualizeMessage(ent, locateTexts.GetRandomElement(), EAIDebugCategory.NONE, 0.75, Color.Red, fontSize: 20, ignoreCategory: true);
+			SCR_AIDebugVisualization.VisualizeMessage(ent, locateTexts.GetRandomElement(), EAIDebugCategory.NONE, 0.75, Color.FromInt(Color.RED), fontSize: 20, ignoreCategory: true);
 		}
 		
 		// Kill button
@@ -290,21 +303,33 @@ class SCR_AIAgentDebugPanel : Managed
 	{
 		vector myPos = myEntity.GetOrigin();
 		
-		array<ETargetCategory> targetCategories = {
-			ETargetCategory.UNKNOWN,
-			ETargetCategory.ENEMY,
-			ETargetCategory.DETECTED,
-			//ETargetCategory.FRIENDLY,
-			//ETargetCategory.FACTIONLESS,
-			ETargetCategory.STATIC,
-		};
+		
+		// Resolve which types to show
+		bool showUnknown;
+		bool showFriendly;
+		bool showEnemy;
+		DbgUI.Check("  Show Unknown", showUnknown);
+		DbgUI.Check("  Show Friendly", showFriendly);
+		DbgUI.Check("  Show Enemy", showEnemy);
+		
+		
+		array<ETargetCategory> targetCategories = {};
+		if (showUnknown)
+			targetCategories.Insert(ETargetCategory.UNKNOWN);
+		if (showFriendly)
+			targetCategories.Insert(ETargetCategory.FRIENDLY);
+		if (showEnemy)
+		{
+			targetCategories.Insert(ETargetCategory.DETECTED);
+			targetCategories.Insert(ETargetCategory.ENEMY);
+		}
 		
 		FactionAffiliationComponent myFactionComp = FactionAffiliationComponent.Cast(myEntity.FindComponent(FactionAffiliationComponent));
 		Faction myFaction = myFactionComp.GetAffiliatedFaction();
 		
 		BaseTarget selectedTarget = combatComponent.GetCurrentTarget();
 		
-		DbgUI.Text("[ID Category TimeSinceSeen Dngr Type Exp Detect Ident Sound]");
+		DbgUI.Text("[ID Category TimeSinceSeen Dngr Type (Exp TraceFraction) (Detect Ident Sound)]");
 		
 		array<BaseTarget> targets = {};
 		int targetId = 0;
@@ -319,12 +344,12 @@ class SCR_AIAgentDebugPanel : Managed
 					continue;
 				
 				// Don't list target if it has same faction as we do
-				FactionAffiliationComponent targetFactionComp = FactionAffiliationComponent.Cast(targetEntity.FindComponent(FactionAffiliationComponent));
-				if (targetFactionComp)
-				{
-					if (targetFactionComp.GetAffiliatedFaction() == myFaction)
-						continue;
-				}
+				//FactionAffiliationComponent targetFactionComp = FactionAffiliationComponent.Cast(targetEntity.FindComponent(FactionAffiliationComponent));
+				//if (targetFactionComp)
+				//{
+				//	if (targetFactionComp.GetAffiliatedFaction() == myFaction)
+				//		continue;
+				//}
 				
 				EntityPrefabData prefabData = targetEntity.GetPrefabData();
 				ResourceName prefabName = prefabData.GetPrefabName();
@@ -386,9 +411,15 @@ class SCR_AIAgentDebugPanel : Managed
 				float observedSoundIntensity = -999;
 				if (targetDistance != 0)
 					observedSoundIntensity = emittedSoundPower / (4.0 * Math.PI * targetDistance * targetDistance);
-				string strSoundIntensity = string.Format("%1 dB", (10*Math.Log10(observedSoundIntensity/1e-12)).ToString(5,1));
+				string strSoundIntensity;
+				if (observedSoundIntensity != 0)
+					strSoundIntensity = string.Format("%1 dB", (10*Math.Log10(observedSoundIntensity/1e-12)).ToString(5,1));
+				else
+					strSoundIntensity = "-inf dB";
 				
-				string strRecognition = string.Format("%1 %2 %3", recognitionDetect.ToString(3, 2), recognitionIdentify.ToString(3, 2), strSoundIntensity);
+				string strExposure = string.Format("(%1 %2) ", baseTarget.GetExposure().ToString(3,2), baseTarget.GetTraceFraction().ToString(3, 2));
+				
+				string strRecognition = string.Format("(%1 %2 %3)", recognitionDetect.ToString(3, 2), recognitionIdentify.ToString(3, 2), strSoundIntensity);
 				
 				string str = string.Format("%1 %2 %3 %4s %5 %6 %7 %8",
 					targetId,												// 1
@@ -397,7 +428,7 @@ class SCR_AIAgentDebugPanel : Managed
 					strTimeSinceSeenOrDetected,								// 4
 					strState,												// 5
 					strType,												// 6
-					baseTarget.GetExposure().ToString(3,2),					// 7
+					strExposure,											// 7
 					strRecognition);										// 8
 				DbgUI.Text(str);
 				
@@ -411,9 +442,9 @@ class SCR_AIAgentDebugPanel : Managed
 					DbgUI.Text(string.Format("%1   Exp: %2, Rec: Detect: %3 Identify: %4",
 						targetId, baseTarget.GetExposure().ToString(3, 2), recognitionDetect.ToString(3, 2), recognitionIdentify.ToString(3, 2)));
 					
-					const int plotWidth = 200;
-					const int plotHeight = 150;
-					const int plotHistory = 800;
+					int plotWidth = 200;
+					int plotHeight = 150;
+					int plotHistory = 800;
 					DbgUI.PlotLive(string.Format("%1 Detection", targetId), plotWidth, plotHeight, recognitionDetect, 300);
 					DbgUI.PlotLive(string.Format("%1 Identification", targetId), plotWidth, plotHeight, recognitionIdentify, 300);
 				}
@@ -431,6 +462,39 @@ class SCR_AIAgentDebugPanel : Managed
 		DbgUI.Text(string.Format("  Sound pwr: %1 dB", 10*Math.Log10(p.GetSoundPower()/1e-12)));
 		DbgUI.Text(string.Format("Est. visual size: %1", p.GetEstimatedVisualSize()));
 		DbgUI.Text(string.Format("Ambient LV: %1", p.GetAmbientLV()));
+	}
+	
+	void ShowCombatMoveState(SCR_AICombatMoveState s)
+	{
+		string strRqType;
+		string strRqState;
+		
+		if (s.GetRequest())
+		{
+			strRqType = s.GetRequest().ToString();
+			strRqState = typename.EnumToString(SCR_EAICombatMoveRequestState, s.GetRequest().m_eState);
+		}
+		else
+		{
+			strRqType = "-";
+			strRqState = "-";
+		}
+		
+		DbgUI.Text(string.Format("Request Type:  %1", strRqType));
+		DbgUI.Text(string.Format("Request State: %1", strRqState));
+		DbgUI.Text(string.Format("TimerRequest:  %1", s.m_fTimerRequest_s.ToString(5,2)));
+		DbgUI.Text(string.Format("TimerInCover:  %1", s.m_fTimerInCover_s.ToString(5,2)));
+		DbgUI.Text(string.Format("TimerStopped:  %1", s.m_fTimerStopped_s.ToString(5,2)));
+		
+		string str;
+		if (s.m_bInCover)
+			str = str + "IN_COVER ";
+		if (s.m_bExposedInCover)
+			str = str + "EXPOSED_IN_COVER ";
+		if (s.m_bAimAtTarget)
+			str = str + "AIM_AT_TARGET";
+		if (!str.IsEmpty())
+			DbgUI.Text(str);
 	}
 	
 	//! Returns agent name based on faction and callsign

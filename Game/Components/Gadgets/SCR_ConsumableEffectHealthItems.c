@@ -1,15 +1,14 @@
 [BaseContainerProps()]
 class SCR_ConsumableEffectHealthItems : SCR_ConsumableEffectBase
 {
-
 	//------------------------------------------------------------------------------------------------	
-	override bool ActivateEffect(IEntity target, IEntity user, IEntity item, SCR_ConsumableEffectAnimationParameters animParams = null)
+	override bool ActivateEffect(IEntity target, IEntity user, IEntity item, ItemUseParameters animParams = null)
 	{
-		SCR_ConsumableEffectAnimationParameters localAnimParams = animParams;
+		ItemUseParameters localAnimParams = animParams;
 		if (!localAnimParams)
 		{
 			//user-held healthitem needs to get data from target to perform anim
-			localAnimParams = GetAnimationParameters(target);
+			localAnimParams = GetAnimationParameters(item, target);
 		}
 		
 		if (!localAnimParams)
@@ -26,7 +25,7 @@ class SCR_ConsumableEffectHealthItems : SCR_ConsumableEffectBase
 		if (!controller)
 			return false;
 			
-		if (localAnimParams.m_intParam == EBandagingAnimationBodyParts.LeftLeg || localAnimParams.m_intParam == EBandagingAnimationBodyParts.RightLeg)
+		if (localAnimParams.GetIntParam() == EBandagingAnimationBodyParts.LeftLeg || localAnimParams.GetIntParam() == EBandagingAnimationBodyParts.RightLeg)
 		{
 			if (controller.GetStance() == ECharacterStance.STAND)
 				controller.SetStanceChange(ECharacterStanceChange.STANCECHANGE_TOCROUCH);
@@ -36,7 +35,7 @@ class SCR_ConsumableEffectHealthItems : SCR_ConsumableEffectBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void ApplyEffect(notnull IEntity target, notnull IEntity user, IEntity item, SCR_ConsumableEffectAnimationParameters animParams)
+	override void ApplyEffect(notnull IEntity target, notnull IEntity user, IEntity item, ItemUseParameters animParams)
 	{
 		InventoryItemComponent itemComp = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
  	 	if (itemComp)
@@ -67,17 +66,19 @@ class SCR_ConsumableEffectHealthItems : SCR_ConsumableEffectBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Condition whther this effect can be applied to the specific hitzone
-	//! /param target is the character who is having the effect applied
-	//! /param EHitZoneGroup is the hitzonegroup which is having the effect applied
-	bool CanApplyEffectToHZ(notnull IEntity target, notnull IEntity user, ECharacterHitZoneGroup group, out SCR_EConsumableFailReason failReason = SCR_EConsumableFailReason.NONE)
-	{}
+	//! Condition whether this effect can be applied to the specific hit zone
+	//! \param[in] target is the character who is having the effect applied
+	//! \param[in] user
+	//! \param[in] group the hitzonegroup which is having the effect applied
+	//! \param[in] failReason
+	bool CanApplyEffectToHZ(notnull IEntity target, notnull IEntity user, ECharacterHitZoneGroup group, out SCR_EConsumableFailReason failReason = SCR_EConsumableFailReason.NONE);
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] user
+	//! \return
 	TAnimGraphCommand GetReviveAnimCmnd(IEntity user)
 	{
 		UpdateAnimationCommands(user);
 		return m_iPlayerReviveCmdId;
 	}
-	
-};
-
+}

@@ -277,12 +277,12 @@ class SCR_ResourceGenerator : SCR_ResourceInteractor
 			return;
 		
 		vector origin	= GetOwnerOrigin();
-		Color color		= Color.FromInt(m_ResourceComponent.GetDebugColor().PackToInt());
-		Color color2	= Color.FromInt(m_ResourceComponent.GetDebugColor().PackToInt());
+		Color color		= m_ResourceComponent.GetDebugColor();
+		Color color2	= m_ResourceComponent.GetDebugColor();
 		
 		color.Scale(0.2);
 		color.SetA(1.0);
-		color2.Lerp(Color.White, 0.5);
+		color2.Lerp(Color.FromInt(Color.WHITE), 0.5);
 		color2.SetA(1.0);
 		Shape.CreateSphere(m_ResourceComponent.GetDebugColor().PackToInt(), ShapeFlags.ONCE | ShapeFlags.NOZWRITE | ShapeFlags.WIREFRAME, origin, m_fStorageRange);
 		DebugTextWorldSpace.Create(GetGame().GetWorld(), string.Format("  %1  \n  %2 containers  \n  %3 / %4 resources  \n  %5 m  ", m_sDebugName, GetContainerCount(), GetAggregatedResourceValue(), GetAggregatedMaxResourceValue(), m_fStorageRange), DebugTextFlags.ONCE | DebugTextFlags.CENTER | DebugTextFlags.FACE_CAMERA, origin[0], origin[1] + m_fStorageRange, origin[2], 10.0, color.PackToInt(), color2.PackToInt());

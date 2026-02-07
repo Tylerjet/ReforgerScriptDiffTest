@@ -4,7 +4,24 @@ class SCR_AIActivityBase : SCR_AIActionBase
 	ref SCR_BTParam<bool> m_bIsWaypointRelated = new SCR_BTParam<bool>(SCR_AIActionTask.WAYPOINT_RELATED_PORT);
 	AIWaypoint m_RelatedWaypoint = null;
 	bool m_bAllowFireteamRebalance = true;	// Allows rebalancing of fireteams while this activity exists
+
+	array<ref SCR_AIActivityFeatureBase> GetActivityFeatures()
+	{
+		return null;
+	}
 	
+	SCR_AIActivityFeatureBase FindActivityFeature(typename featureType)
+	{
+		array<ref SCR_AIActivityFeatureBase> features = GetActivityFeatures();
+		if (!features) return null;
+		
+		foreach (SCR_AIActivityFeatureBase feature : features)
+			if (feature && feature.IsInherited(featureType))
+				return feature;
+		
+		return null;
+	}
+		
 	//---------------------------------------------------------------------------------------------------------------------------------
 	void InitParameters(AIWaypoint relatedWaypoint)
 	{

@@ -11,8 +11,9 @@ class SCR_CampaignTutorialArlandDrivingAdvanced22 : SCR_BaseCampaignTutorialArla
 	{
 		m_bCheckWaypoint = false;
 		RegisterWaypoint("Hummer2");	
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
 		m_TutorialComponent.SetWaypointMiscImage("CUSTOM", true);
+		
+		SCR_HintManagerComponent.HideHint();
 		
 		array<IEntity> rootItems = {};
 		
@@ -43,11 +44,20 @@ class SCR_CampaignTutorialArlandDrivingAdvanced22 : SCR_BaseCampaignTutorialArla
 			if (repairComp)
 				component.StoreItemToQuickSlot(item, 4, true);
 		}
+		if (!m_TutorialComponent.GetVoiceSystem().IsPlaying())
+			PlaySoundSystem("Repair");
+		else
+			GetGame().GetCallqueue().CallLater(PlaySoundSystem, 1000, false, "Repair", false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override protected bool GetIsFinished()
 	{
+		if (!m_TutorialComponent.GetVoiceSystem().IsPlaying())
+		{
+			SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		}
+
 		Vehicle hmw = m_TutorialComponent.GetHummer();
 		if (hmw)
 		{

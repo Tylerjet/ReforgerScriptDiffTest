@@ -1,15 +1,13 @@
 [ComponentEditorProps(category: "GameScripted/Callsign", description: "")]
-class SCR_CallsignBaseComponentClass: ScriptComponentClass
+class SCR_CallsignBaseComponentClass : ScriptComponentClass
 {
-};
+}
 
-//~ ScriptEnvokers
+//~ ScriptInvokers
 void SCR_CallsignBaseComponent_OnCallsignChanged(int companyIndex, int platoonIndex, int squadIndex, int characterNumber, ERoleCallsign characterRole);
 typedef func SCR_CallsignBaseComponent_OnCallsignChanged;
 
-/*!
-Component of assigning and storing squad names
-*/
+//! Component of assigning and storing squad names
 class SCR_CallsignBaseComponent : ScriptComponent
 {
 	protected Faction m_Faction;
@@ -29,36 +27,32 @@ class SCR_CallsignBaseComponent : ScriptComponent
 	//Will always return int Company, int Platoon, int squad, int character number and character role (See GetCallsignIndexes() comments for more information). Also called when assigning callsigns for first time
 	protected ref ScriptInvokerBase<SCR_CallsignBaseComponent_OnCallsignChanged> Event_OnCallsignChanged = new ScriptInvokerBase<SCR_CallsignBaseComponent_OnCallsignChanged>();
 
-	
-	//======================================== GET CALLSIGN NAMES ========================================\\
-	/*!
-	Get the callsign names assigned
-	\param[out] company Company name
-	\param[out] platoon Platoon name
-	\param[out] squad Squad name
-	\param[out] character Character name (Optional if callsign assigned to a character). Will return Role name if any role is assigned to the character
-	\param[out] format Format of callsign
-	\return bool returns true if names are succesfully found
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get the callsign names assigned
+	//! \param[out] company Company name
+	//! \param[out] platoon Platoon name
+	//! \param[out] squad Squad name
+	//! \param[out] character Character name (Optional if callsign assigned to a character). Will return Role name if any role is assigned to the character
+	//! \param[out] format Format of callsign
+	//! \return returns true if names are succesfully found
 	bool GetCallsignNames(out string company, out string platoon, out string squad, out string character, out string format)
 	{	
 		return false;
 	}
 	
-	//======================================== GET CALLSIGN INDEXES ========================================\\
-	/*!
-	Get the callsign indexes assigned
-	\param[out] companyIndex company index. Eg: Company Alpha is index 0 and Beta is index 1
-	\param[out] platoonIndex platoon index. Is an index similar to how Company works.
-	\param[out] squadIndex squad index. Is an index similar to how Company works.
-	\param[out] characterNumber character callsign number. This is not an index. Soldier 1 will have character 1. The second soldier in the group will have character 2. Will return -1 if component is on a group
-	\param[out] characterRole Character role number, roles can be checked with ERoleCallsign eg: characterRole == ERoleCallsign.SQUAD_LEADER will let you know if the character is a squad leader etc. Will return -1 if component is on a group
-	\return bool returns false if indexes are not assigned
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get the callsign indexes assigned
+	//! \param[out] companyIndex company index. Eg: Company Alpha is index 0 and Beta is index 1
+	//! \param[out] platoonIndex platoon index. Is an index similar to how Company works.
+	//! \param[out] squadIndex squad index. Is an index similar to how Company works.
+	//! \param[out] characterNumber character callsign number. This is not an index. Soldier 1 will have character 1. The second soldier in the group will have character 2. Will return -1 if component is on a group
+	//! \param[out] characterRole Character role number, roles can be checked with ERoleCallsign eg: characterRole == ERoleCallsign.SQUAD_LEADER will let you know if the character is a squad leader etc. Will return -1 if component is on a group
+	//! \return returns false if indexes are not assigned
 	bool GetCallsignIndexes(out int companyIndex, out int platoonIndex, out int squadIndex, out int characterNumber = -1, out ERoleCallsign characterRole = ERoleCallsign.NONE)
 	{
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void ClearCallsigns()
 	{
 		m_CallsignInfo = null;
@@ -68,7 +62,7 @@ class SCR_CallsignBaseComponent : ScriptComponent
 		m_iSquadCallsign = -1;
 	}
 	
-	//======================================== SET CALLSIGN INFO ========================================\\
+	//------------------------------------------------------------------------------------------------
 	protected bool SetCallsignInfo()
 	{
 		Faction currentFaction;
@@ -103,19 +97,19 @@ class SCR_CallsignBaseComponent : ScriptComponent
 		return m_CallsignInfo != null;
 	}
 	
-	//======================================== GETTERS ========================================\\
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvokerBase<SCR_CallsignBaseComponent_OnCallsignChanged> GetOnCallsignChanged()
 	{
 		return Event_OnCallsignChanged;
 	}
 	
-	//======================================== INIT ========================================\\
-	//---------------------------------------- Server Init ----------------------------------------\\
+	//------------------------------------------------------------------------------------------------
 	protected void InitOnServer(IEntity owner)
 	{
 	}
 	
-	//---------------------------------------- On Init ----------------------------------------\\
+	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
 		if (SCR_Global.IsEditMode(owner))
@@ -140,10 +134,9 @@ class SCR_CallsignBaseComponent : ScriptComponent
 		GetGame().GetCallqueue().CallLater(InitOnServer, 1, false, owner);
 	}
 	
-	//---------------------------------------- Post Init ----------------------------------------\\
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		SetEventMask(owner, EntityEvent.INIT);
 	}
-};
-
+}

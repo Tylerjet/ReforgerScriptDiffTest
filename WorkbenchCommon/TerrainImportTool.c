@@ -28,6 +28,12 @@ class TerrainImportPlugin: ResourceManagerPlugin
 		"{227D050FF312DA41}configs/ResourceTypes/PS4/TextureTerrainSuper.conf"
 		});
 		
+		textureConfigs.Insert("PS5", {
+		"{BA3AFE83BEFD6794}configs/ResourceTypes/PS5/TextureTerrainLayer.conf",
+		"{5CEA2418C9F889F8}configs/ResourceTypes/PS5/TextureTerrainNormal.conf",
+		"{D404EBBAB892F08D}configs/ResourceTypes/PS5/TextureTerrainSuper.conf"
+		});
+		
 		textureConfigs.Insert("XBOX_ONE", {
 		"{9843D16A29542D5A}configs/ResourceTypes/XBOX_ONE/TextureTerrainLayer.conf",
 		"{6C5EFFA712A52100}configs/ResourceTypes/XBOX_ONE/TextureTerrainNormal.conf",

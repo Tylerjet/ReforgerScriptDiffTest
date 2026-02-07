@@ -1,7 +1,7 @@
-//------------------------------------------------------------------------------------------------
 // hack incoming! just for prototype to see what gadgets in deploy map will look like
 class SCR_MapWatchUIDeploy : SCR_MapWatchUI
 {
+	//------------------------------------------------------------------------------------------------
 	protected ResourceName GetGadgetForFaction()
 	{
 		SCR_PlayerFactionAffiliationComponent factionAffil = SCR_PlayerFactionAffiliationComponent.Cast(
@@ -18,13 +18,15 @@ class SCR_MapWatchUIDeploy : SCR_MapWatchUI
 		return gadgetRes;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected override string GetPrefabResource()
 	{
 		return GetGadgetForFaction();
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override IEntity FindRelatedGadget()
 	{
 		return m_MapEntity;
 	}
-};
+}

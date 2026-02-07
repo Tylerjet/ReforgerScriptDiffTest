@@ -1,8 +1,7 @@
-//------------------------------------------------------------------------------------------------
 //! Map line
 class MapLine
 {
-	const ref Color BUTTON_RED = Color.FromSRGBA(197, 75, 75, 255);
+	protected static const ref Color BUTTON_RED = Color.FromSRGBA(197, 75, 75, 255);
 	
 	bool m_bIsLineDrawn;		// if line is drawn when closing the map, redraw it on reopen
 	bool m_bIsDrawMode;
@@ -17,6 +16,9 @@ class MapLine
 	SCR_MapDrawingUI m_OwnerComponent;
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] rootW
+	//! \param[in] drawStart
 	void CreateLine(notnull Widget rootW, bool drawStart = false)
 	{
 		m_wRootW = rootW;
@@ -59,7 +61,7 @@ class MapLine
 	//------------------------------------------------------------------------------------------------
 	protected void OnButtonFocus()
 	{
-		m_DeleteButtonComp.GetImageWidget().SetColor(UIColors.CONTRAST_COLOR);
+		m_DeleteButtonComp.GetImageWidget().SetColor(Color.FromInt(UIColors.CONTRAST_COLOR.PackToInt()));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -81,21 +83,16 @@ class MapLine
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] target
 	void SetButtonVisible(bool target)
 	{
-		if (target)
-		{
-			m_wDeleteButton.SetEnabled(true);
-			m_wDeleteButton.SetVisible(true);
-		}
-		else 
-		{
-			m_wDeleteButton.SetEnabled(false);
-			m_wDeleteButton.SetVisible(false);
-		}
+		m_wDeleteButton.SetEnabled(target);
+		m_wDeleteButton.SetVisible(target);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] cacheDrawn
 	void DestroyLine(bool cacheDrawn = false)
 	{
 		if (m_wLine)
@@ -112,6 +109,8 @@ class MapLine
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] updateEndPos
 	void UpdateLine(bool updateEndPos)
 	{			
 		if (!m_wLine)	// can happen due to callater used for update
@@ -132,6 +131,8 @@ class MapLine
 		vector angles = lineVector.VectorToAngles();
 		if (angles[0] == 90)
 			angles[1] =  180 - angles[1]; 	// reverse angles when passing vertical axis
+		else if (angles[0] == 0)
+			angles[1] =  180 + angles[1];	// fix for case for when line is vertically straight
 		
 		m_wLineImage.SetRotation(angles[1]);
 		
@@ -140,24 +141,28 @@ class MapLine
 		
 		FrameSlot.SetPos(m_wLine, GetGame().GetWorkspace().DPIUnscale(screenX), GetGame().GetWorkspace().DPIUnscale(screenY));	// needs unscaled coords
 		
-		lineVector = vector.Zero;
-		lineVector[0] =  GetGame().GetWorkspace().DPIUnscale((screenX + endX) / 2);
-		lineVector[1] =  GetGame().GetWorkspace().DPIUnscale((screenY + endY) / 2);
+		lineVector = {
+			GetGame().GetWorkspace().DPIUnscale((screenX + endX) * 0.5),
+			GetGame().GetWorkspace().DPIUnscale((screenY + endY) * 0.5),
+			0
+		};
 		FrameSlot.SetPos(m_wDeleteButton, lineVector[0], lineVector[1]);	//del button
 
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] mapEnt
+	//! \param[in] ownerComp
 	void MapLine(SCR_MapEntity mapEnt, SCR_MapDrawingUI ownerComp)
 	{
 		m_MapEntity = mapEnt;
 		m_OwnerComponent = ownerComp;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Temporary drawing substitute so the protractor can be utilized properly
-class SCR_MapDrawingUI: SCR_MapUIBaseComponent
+class SCR_MapDrawingUI : SCR_MapUIBaseComponent
 {	
 	[Attribute("editor", UIWidgets.EditBox, desc: "Toolmenu imageset quad name")]
 	string m_sToolMenuIconName;
@@ -177,6 +182,8 @@ class SCR_MapDrawingUI: SCR_MapUIBaseComponent
 	protected SCR_MapToolEntry m_ToolMenuEntry;
 	protected ref array<ref MapLine> m_aLines = new array <ref MapLine>();
 	
+	protected const string m_aDrawableElements[1] = {"RulerFrame"}; // widgets we are allow to draw over
+	
 	//------------------------------------------------------------------------------------------------
 	//! Toggle draw mode
 	protected void ToggleDrawMode()
@@ -189,6 +196,8 @@ class SCR_MapDrawingUI: SCR_MapUIBaseComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Start/stop draw mode
+	//! \param[in] state
+	//! \param[in] cacheDrawn
 	protected void SetDrawMode(bool state, bool cacheDrawn = false)
 	{
 		m_bIsDrawModeActive = state;
@@ -219,9 +228,13 @@ class SCR_MapDrawingUI: SCR_MapUIBaseComponent
 					m_iLineID = -1;
 				}
 				else if (cacheDrawn)						// map is closing, cache drawn lines and destroy
+				{
 					m_aLines[i].DestroyLine(true);
+				}
 				else if (m_aLines[i].m_bIsLineDrawn)
+				{
 					m_aLines[i].SetButtonVisible(false);	// only draw mode disabled
+				}
 			}
 		}
 		
@@ -231,6 +244,7 @@ class SCR_MapDrawingUI: SCR_MapUIBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------		
+	//!
 	void UpdateLineCount()
 	{
 		m_ToolMenuEntry.m_ButtonComp.SetText(m_iLinesDrawn.ToString() + "/" + m_iLineCount.ToString());
@@ -245,6 +259,36 @@ class SCR_MapDrawingUI: SCR_MapUIBaseComponent
 			return;
 		}
 		
+		array<Widget> tracedW = SCR_MapCursorModule.GetMapWidgetsUnderCursor(); // check if the line isnt being drawn over buttons or other elements
+		EMapEntityMode mode = m_MapEntity.GetMapConfig().MapEntityMode;
+		
+		bool allowed = true;
+		int expectedCount;
+		
+		if (mode == EMapEntityMode.SPAWNSCREEN)
+			expectedCount = 1;
+		else
+			expectedCount = 0;
+			
+		if (tracedW.Count() != expectedCount)
+		{	
+			allowed = false;
+			foreach(string widgetName : m_aDrawableElements)
+			{
+				if (tracedW.IsIndexValid(0) && tracedW[0].GetName() == widgetName)
+				{
+					allowed = true;
+					break;
+				}
+			}
+		}
+		
+		if (!allowed)
+		{
+			SetDrawMode(false);
+			return;
+		}	
+
 		if (m_bIsLineBeingDrawn)	// state 2, line drawing in progress
 		{
 			m_bIsLineBeingDrawn = false;
@@ -252,6 +296,7 @@ class SCR_MapDrawingUI: SCR_MapUIBaseComponent
 			m_iLineID = -1;
 			
 			m_CursorModule.HandleDraw(false);
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_MAP_GADGET_MARKER_DRAW_STOP);
 			
 			return;
 		}
@@ -269,6 +314,7 @@ class SCR_MapDrawingUI: SCR_MapUIBaseComponent
 				m_aLines[i].CreateLine(m_wDrawingContainer, true);
 				m_bIsLineBeingDrawn = true;
 				m_iLineID = i;
+				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_MAP_GADGET_MARKER_DRAW_START);
 				
 				return;
 			}
@@ -278,6 +324,9 @@ class SCR_MapDrawingUI: SCR_MapUIBaseComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! SCR_MapEntity event
+	//! \param[in] x
+	//! \param[in] y
+	//! \param[in] adjustedPan
 	protected void OnMapPan(float x, float y, bool adjustedPan)
 	{	
 		for (int i; i < m_iLineCount; i++)
@@ -289,6 +338,8 @@ class SCR_MapDrawingUI: SCR_MapUIBaseComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! SCR_MapEntity event
+	//! \param[in] x
+	//! \param[in] y
 	protected void OnMapPanEnd(float x, float y)
 	{
 		for (int i; i < m_iLineCount; i++)
@@ -300,6 +351,7 @@ class SCR_MapDrawingUI: SCR_MapUIBaseComponent
 	
 	//------------------------------------------------------------------------------------------------	
 	//! SCR_MapToolEntry event
+	//! \param[in] entry
 	protected void OnEntryToggled(SCR_MapToolEntry entry)
 	{
 		if (m_bIsDrawModeActive && entry != m_ToolMenuEntry)
@@ -321,12 +373,13 @@ class SCR_MapDrawingUI: SCR_MapUIBaseComponent
 		
 		m_iLinesDrawn = 0;
 		
+		ScriptCallQueue callQueue = GetGame().GetCallqueue();
 		for (int i; i < m_iLineCount; i++)
 		{
 			if (m_aLines[i].m_bIsLineDrawn)
 			{
 				m_aLines[i].CreateLine(m_wDrawingContainer);
-				GetGame().GetCallqueue().CallLater(m_aLines[i].UpdateLine, 0, false, false);
+				callQueue.CallLater(m_aLines[i].UpdateLine, 0, false, false);
 				m_aLines[i].SetButtonVisible(false);
 			}
 		}
@@ -377,4 +430,4 @@ class SCR_MapDrawingUI: SCR_MapUIBaseComponent
 			m_aLines.Insert(line);
 		}
 	}
-};
+}

@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkLogicInput
 {
@@ -12,8 +11,9 @@ class SCR_ScenarioFrameworkLogicInput
 	protected IEntity		m_Entity;
 	protected SCR_ScenarioFrameworkLogic		m_MasterLogic;
 	
-		
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] logic
 	void Init(SCR_ScenarioFrameworkLogic logic)
 	{
 		m_MasterLogic = logic;
@@ -22,20 +22,20 @@ class SCR_ScenarioFrameworkLogicInput
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] bSignal
+	//! \param[in] entity
 	void OnActivate(bool bSignal, IEntity entity)
 	{
 		if (m_MasterLogic)
 			m_MasterLogic.OnInput(bSignal, entity);
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
-class SCR_ScenarioFrameworkLogicClass: GenericEntityClass
+class SCR_ScenarioFrameworkLogicClass : GenericEntityClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
-class SCR_ScenarioFrameworkLogic: GenericEntity
+class SCR_ScenarioFrameworkLogic : GenericEntity
 {
 	
 	[Attribute(defvalue: "1", desc: "What causes the increase", UIWidgets.Auto, category: "Input")];
@@ -47,6 +47,7 @@ class SCR_ScenarioFrameworkLogic: GenericEntity
 	protected bool												m_bIsTerminated; //Marks if this was terminated - either by death or deletion
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void Init()
 	{
 		if (m_bIsTerminated)
@@ -57,21 +58,26 @@ class SCR_ScenarioFrameworkLogic: GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] state
 	void SetIsTerminated(bool state)
 	{
 		m_bIsTerminated = state;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetIsTerminated()
 	{
 		return m_bIsTerminated;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] pSignal
+	//! \param[in] entity
 	void OnInput(bool pSignal = true, IEntity entity = null);
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] entity
 	void OnActivate(IEntity entity)
 	{
 		foreach (SCR_ScenarioFrameworkActionBase action : m_aActions)
@@ -83,16 +89,15 @@ class SCR_ScenarioFrameworkLogic: GenericEntity
 	override void _WB_OnCreate(IEntitySource src)
 	{
 		WorldEditorAPI api = _WB_GetEditorAPI();
-		api.RenameEntity(this, api.GenerateDefaultEntityName(api.EntityToSource(this)));
+		IEntitySource thisSrc = api.EntityToSource(this);
+		api.RenameEntity(thisSrc, api.GenerateDefaultEntityName(thisSrc));
 	}
 #endif
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_ScenarioFrameworkLogicCounterClass : SCR_ScenarioFrameworkLogicClass
 {
-	// prefab properties here
-};
+}
 
 class SCR_ScenarioFrameworkLogicCounter : SCR_ScenarioFrameworkLogic
 {	
@@ -111,18 +116,22 @@ class SCR_ScenarioFrameworkLogicCounter : SCR_ScenarioFrameworkLogic
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetCounterValue()
 	{
 		return m_iCnt;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] value
 	void SetCounterValue(int value)
 	{
 		m_iCnt = value;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] entity
 	void Increase(IEntity entity)
 	{
 		m_iCnt++;
@@ -133,24 +142,24 @@ class SCR_ScenarioFrameworkLogicCounter : SCR_ScenarioFrameworkLogic
 		else
 		{
 			foreach (SCR_ScenarioFrameworkActionBase increaseAction : m_aOnIncreaseActions)
+			{
 				increaseAction.OnActivate(entity);
+			}
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void Reset()
 	{
 		m_iCnt = 0;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_ScenarioFrameworkLogicORClass : SCR_ScenarioFrameworkLogicClass
 {
-	// prefab properties here
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_ScenarioFrameworkLogicOR : SCR_ScenarioFrameworkLogic
 {
 	protected int			m_iActivations = 0;
@@ -163,15 +172,12 @@ class SCR_ScenarioFrameworkLogicOR : SCR_ScenarioFrameworkLogic
 		else
 			m_iActivations--;
 	}	
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_ScenarioFrameworkLogicSwitchClass : SCR_ScenarioFrameworkLogicClass
 {
-	// prefab properties here
-};
+}
 
 class SCR_ScenarioFrameworkLogicSwitch : SCR_ScenarioFrameworkLogic
 {
-		
-};
+}

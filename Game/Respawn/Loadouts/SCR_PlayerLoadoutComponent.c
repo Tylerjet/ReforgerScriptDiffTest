@@ -1,8 +1,7 @@
 [ComponentEditorProps(category: "GameScripted/Respawn/PlayerController")]
 class SCR_PlayerLoadoutComponentClass : ScriptComponentClass
 {
-};
-
+}
 
 void PlayerLoadoutRequestDelegate(SCR_PlayerLoadoutComponent component, int loadoutIndex);
 typedef func PlayerLoadoutRequestDelegate;
@@ -12,11 +11,8 @@ void PlayerLoadoutResponseDelegate(SCR_PlayerLoadoutComponent component, int loa
 typedef func PlayerLoadoutResponseDelegate;
 typedef ScriptInvokerBase<PlayerLoadoutResponseDelegate> OnPlayerLoadoutResponseInvoker;
 
-//------------------------------------------------------------------------------------------------
-/*!
-	This component should be attached to a PlayerController.
-	It manages player-specific loadout and the communication between player and authority regarding so.
-*/
+//! This component should be attached to a PlayerController.
+//! It manages player-specific loadout and the communication between player and authority regarding so.
 class SCR_PlayerLoadoutComponent : ScriptComponent
 {
 	private PlayerController m_PlayerController;
@@ -29,121 +25,109 @@ class SCR_PlayerLoadoutComponent : ScriptComponent
 	protected SCR_BasePlayerLoadout m_Loadout;
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Returns owner PlayerController this component is attached to.
-	*/
+	//! \return owner PlayerController this component is attached to.
 	PlayerController GetPlayerController()
 	{
 		return m_PlayerController;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Returns owner player PlayerController id.
-	*/
+	//! \return owner player PlayerController id.
 	int GetPlayerId()
 	{
 		return GetPlayerController().GetPlayerId();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Returns owner PlayerController lock component (if any).
-	*/
+	//! \return owner PlayerController lock component (if any).
 	protected SCR_SpawnLockComponent GetLock()
 	{
 		return m_Lock;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Returns player faction affiliation, if any is present.
-	*/
+	//! \return player faction affiliation, if any is present.
 	protected SCR_PlayerFactionAffiliationComponent GetPlayerFactionAffiliationComponent()
 	{
 		return m_FactionAffiliation;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Returns player faction affiliation, if any is present.
-	*/
+	//! \return player faction affiliation, if any is present.
 	SCR_BasePlayerLoadout GetLoadout()
 	{
 		return m_Loadout;
 	}
-	
-	//------------------------------------------------------------------------------------------------
+
 	// ON CAN LOADOUT REQUEST
 	protected ref OnPlayerLoadoutRequestInvoker m_OnCanPlayerLoadoutRequestInvoker_O = new OnPlayerLoadoutRequestInvoker();
-	/*!
-		Returns an invoker that is invoked after this component requests a loadout change from the authority.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \return an invoker that is invoked after this component requests a loadout change from the authority.
 	OnPlayerLoadoutRequestInvoker GetOnCanPlayerLoadoutRequestInvoker_O()
 	{
 		return m_OnCanPlayerLoadoutRequestInvoker_O;
 	}
+
 	protected ref OnPlayerLoadoutRequestInvoker m_OnCanPlayerLoadoutRequestInvoker_S = new OnPlayerLoadoutRequestInvoker();
-	/*!
-		Returns an invoker that is invoked after this component requests a loadout change from the authority.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \return an invoker that is invoked after this component requests a loadout change from the authority.
 	OnPlayerLoadoutRequestInvoker GetOnCanPlayerLoadoutRequestInvoker_S()
 	{
 		return m_OnCanPlayerLoadoutRequestInvoker_S;
 	}
 
-	//------------------------------------------------------------------------------------------------
 	// ON CAN LOADOUT RESPONSE
 	protected ref OnPlayerLoadoutResponseInvoker m_OnCanPlayerLoadoutResponseInvoker_O = new OnPlayerLoadoutResponseInvoker();
-	/*!
-		Returns an invoker that is invoked after this component receives a response from the authority regarding loadout change.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \return an invoker that is invoked after this component receives a response from the authority regarding loadout change.
 	OnPlayerLoadoutResponseInvoker GetOnCanPlayerLoadoutResponseInvoker_O()
 	{
 		return m_OnCanPlayerLoadoutResponseInvoker_O;
 	}
+
 	protected ref OnPlayerLoadoutResponseInvoker m_OnCanPlayerLoadoutResponseInvoker_S = new OnPlayerLoadoutResponseInvoker();
-	/*!
-		Returns an invoker that is invoked after this component receives a response from the authority regarding loadout change.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return an invoker that is invoked after this component receives a response from the authority regarding loadout change.
 	OnPlayerLoadoutResponseInvoker GetOnCanPlayerLoadoutResponseInvoker_S()
 	{
 		return m_OnCanPlayerLoadoutResponseInvoker_S;
 	}
 
-	//------------------------------------------------------------------------------------------------
 	// ON LOADOUT REQUEST
 	protected ref OnPlayerLoadoutRequestInvoker m_OnPlayerLoadoutRequestInvoker_O = new OnPlayerLoadoutRequestInvoker();
-	/*!
-		Returns an invoker that is invoked after this component requests a loadout change from the authority.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \return an invoker that is invoked after this component requests a loadout change from the authority.
 	OnPlayerLoadoutRequestInvoker GetOnPlayerLoadoutRequestInvoker_O()
 	{
 		return m_OnPlayerLoadoutRequestInvoker_O;
 	}
+
 	protected ref OnPlayerLoadoutRequestInvoker m_OnPlayerLoadoutRequestInvoker_S = new OnPlayerLoadoutRequestInvoker();
-	/*!
-		Returns an invoker that is invoked after this component requests a loadout change from the authority.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return an invoker that is invoked after this component requests a loadout change from the authority.
 	OnPlayerLoadoutRequestInvoker GetOnPlayerLoadoutRequestInvoker_S()
 	{
 		return m_OnPlayerLoadoutRequestInvoker_S;
 	}
 
-	//------------------------------------------------------------------------------------------------
 	// ON LOADOUT RESPONSE
 	protected ref OnPlayerLoadoutResponseInvoker m_OnPlayerLoadoutResponseInvoker_O = new OnPlayerLoadoutResponseInvoker();
-	/*!
-		Returns an invoker that is invoked after this component receives a response from the authority regarding loadout change.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \return an invoker that is invoked after this component receives a response from the authority regarding loadout change.
 	OnPlayerLoadoutResponseInvoker GetOnPlayerLoadoutResponseInvoker_O()
 	{
 		return m_OnPlayerLoadoutResponseInvoker_O;
 	}
+
 	protected ref OnPlayerLoadoutResponseInvoker m_OnPlayerLoadoutResponseInvoker_S = new OnPlayerLoadoutResponseInvoker();
-	/*!
-		Returns an invoker that is invoked after this component receives a response from the authority regarding loadout change.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \return an invoker that is invoked after this component receives a response from the authority regarding loadout change.
 	OnPlayerLoadoutResponseInvoker GetOnPlayerLoadoutResponseInvoker_S()
 	{
 		return m_OnPlayerLoadoutResponseInvoker_S;
@@ -160,7 +144,6 @@ class SCR_PlayerLoadoutComponent : ScriptComponent
 	{
 		return m_RplComponent && m_RplComponent.IsProxy();
 	}
-
 
 	//------------------------------------------------------------------------------------------------
 	protected override void OnPostInit(IEntity owner)
@@ -206,6 +189,7 @@ class SCR_PlayerLoadoutComponent : ScriptComponent
 				Print("Loadout manager is missing in the world!", LogLevel.ERROR);
 				return;
 			}
+
 			int previous = loadoutManager.GetLoadoutIndex(m_Loadout);	
 			
 			// Loadout is existant, see whether it is possible to be kept,
@@ -225,22 +209,19 @@ class SCR_PlayerLoadoutComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Authority:
-			Returns assigned loadout for this player.
-	*/
+	//! Authority
+	//! \return assigned loadout for this player.
 	SCR_BasePlayerLoadout GetAssignedLoadout()
 	{
 		return m_Loadout;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Sends a request to get assignedf provided loadout.
-		\return True if request was sent, false if request was caught (on owner, still!) because it was invalid.
-		NOTE: This is not the final result of the assignation. That result is can be listened to by hooking
-		onto GetOnPlayerLoadoutResponseInvoker(), successful request will have a response of SCR_ESpawnResult.OK.
-	*/
+	//! Sends a request to get assignedf provided loadout.
+	//! \param[in] loadout
+	//! \return True if request was sent, false if request was caught (on owner, still!) because it was invalid.
+	//! NOTE: This is not the final result of the assignation. That result is can be listened to by hooking
+	//! onto GetOnPlayerLoadoutResponseInvoker(), successful request will have a response of SCR_ESpawnResult.OK.
 	bool RequestLoadout(SCR_BasePlayerLoadout loadout)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
@@ -268,9 +249,8 @@ class SCR_PlayerLoadoutComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Ask the authority to assign provided loadout.
-	*/
+	//! Ask the authority to assign provided loadout.
+	//! \param[in] loadoutIndex
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void Rpc_RequestLoadout_S(int loadoutIndex)
 	{
@@ -324,11 +304,10 @@ class SCR_PlayerLoadoutComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Authority:
-			Sends response to the owner whether loadout assignation was successfull or not.
-			\param response Was loadout assigned?
-	*/
+	//! Authority:
+	//! 	Sends response to the owner whether loadout assignation was successfull or not.
+	//! \param[in] loadoutIndex
+	//! \param[in] response Was loadout assigned?
 	protected void SendRequestLoadoutResponse_S(int loadoutIndex, bool response)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
@@ -351,10 +330,10 @@ class SCR_PlayerLoadoutComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Owner:
-			Response from the authority about whether loadout was set successfully or not.
-	*/
+	//! Owner:
+	//! 	Response from the authority about whether loadout was set successfully or not.
+	//! \param[in] loadoutIndex
+	//! \param[in] response
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void RequestLoadoutResponse_O(int loadoutIndex, bool response)
 	{
@@ -379,20 +358,17 @@ class SCR_PlayerLoadoutComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		/*!
-		Sends a can-ask request to the authority.
-		\return True if request was sent, false if request was caught (on owner, still!) because it was invalid.
-		NOTE: This is not the final result of the assignation. That result is can be listened to by hooking
-		onto GetOnCanPlayerLoadoutResponseInvoker(), successful request will have a response of SCR_ESpawnResult.OK.
-	*/
+	//! Sends a can-ask request to the authority.
+	//! \param[in] loadout
+	//! \return True if request was sent, false if request was caught (on owner, still!) because it was invalid.
+	//! NOTE: This is not the final result of the assignation. That result is can be listened to by hooking
+	//! onto GetOnCanPlayerLoadoutResponseInvoker(), successful request will have a response of SCR_ESpawnResult.OK.
 	bool CanRequestLoadout(SCR_BasePlayerLoadout loadout)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::CanRequestLoadout(loadout: %2)", Type().ToString(), loadout);
+		Print(string.Format("%1::CanRequestLoadout(loadout: %2)", Type().ToString(), loadout), LogLevel.NORMAL);
 		#endif
 
-		
 		// Lock this
 		SCR_SpawnLockComponent lock = GetLock();
 		if (lock && !lock.TryLock(this, false))
@@ -405,6 +381,7 @@ class SCR_PlayerLoadoutComponent : ScriptComponent
 		// Notify owner
 		if (IsOwner())
 			GetOnCanPlayerLoadoutRequestInvoker_O().Invoke(this, loadoutIndex);
+
 		// Notify authority
 		if (!IsProxy())
 			GetOnCanPlayerLoadoutRequestInvoker_S().Invoke(this, loadoutIndex);
@@ -414,9 +391,8 @@ class SCR_PlayerLoadoutComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Ask the authority to whether provided loadout can be assigned.
-	*/
+	//! Ask the authority to whether provided loadout can be assigned.
+	//! \param[in] loadoutIndex
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void Rpc_CanRequestLoadout_S(int loadoutIndex)
 	{
@@ -446,10 +422,9 @@ class SCR_PlayerLoadoutComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Authority:
-			Returns whether provided loadout can be assigned for this player.
-	*/
+	//! Authority:
+	//! 	Returns whether provided loadout can be assigned for this player.
+	//! \param[in] loadoutIndex
 	protected bool CanAssignLoadout_S(int loadoutIndex)
 	{
 		SCR_LoadoutManager loadoutManager = GetGame().GetLoadoutManager();
@@ -469,9 +444,9 @@ class SCR_PlayerLoadoutComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Returns whether provided loadout is usable by provided faction (if provided).
-	*/
+	//! \param[in] loadout
+	//! \param[in] faction
+	//! \return whether the provided loadout is useable by the provided faction (if provided).
 	protected bool IsLoadoutUseableByFaction(SCR_BasePlayerLoadout loadout, Faction faction)
 	{
 		// Loadout can not belong to any faction
@@ -486,13 +461,11 @@ class SCR_PlayerLoadoutComponent : ScriptComponent
 		return key == factionLoadout.GetFactionKey();
 	}
 
-
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Authority:
-			Sends response to the owner whether loadout assignation can be done or not.
-			\param response Can loadout be assigned?
-	*/
+	//! Authority:
+	//! 	Sends response to the owner whether loadout assignation can be done or not.
+	//! \param[in] loadoutIndex
+	//! \param[in] response Can loadout be assigned?
 	protected void SendCanRequestLoadoutResponse_S(int loadoutIndex, bool response)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
@@ -515,10 +488,10 @@ class SCR_PlayerLoadoutComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Owner:
-			Response from the authority about whether loadout was set successfully or not.
-	*/
+	//! Owner:
+	//! 	Response from the authority about whether loadout was set successfully or not.
+	//! \param[in] loadoutIndex
+	//! \param[in] response
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void CanRequestLoadoutResponse_O(int loadoutIndex, bool response)
 	{
@@ -538,9 +511,8 @@ class SCR_PlayerLoadoutComponent : ScriptComponent
 	}
 
 	#ifdef ENABLE_DIAG
-	/*!
-		Draw diagnostics for this component.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Draw diagnostics for this component.
 	protected void OnDiag()
 	{
 		if (!DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_RESPAWN_PLAYER_LOADOUT_DIAG))
@@ -574,4 +546,4 @@ class SCR_PlayerLoadoutComponent : ScriptComponent
 		DbgUI.End();
 	}
 	#endif
-};
+}

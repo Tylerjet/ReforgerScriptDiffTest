@@ -1,4 +1,4 @@
-class SCR_EntitiesEditorUIComponent: SCR_EditableEntitySlotManagerUIComponent
+class SCR_EntitiesEditorUIComponent : SCR_EditableEntitySlotManagerUIComponent
 {
 	[Attribute()]
 	protected ref array<ref SCR_BaseEntitiesEditorUIEffect> m_aEffects;
@@ -10,7 +10,7 @@ class SCR_EntitiesEditorUIComponent: SCR_EditableEntitySlotManagerUIComponent
 	protected ResourceName m_SlotPrefab;
 	
 	protected SCR_EditableEntityUIConfig m_EditableEntityUIConfig;
-	protected ref map<EEditableEntityState, SCR_BaseEntitiesEditorUIEffect> m_aEffectsMap = new map<EEditableEntityState, SCR_BaseEntitiesEditorUIEffect>;
+	protected ref map<EEditableEntityState, SCR_BaseEntitiesEditorUIEffect> m_aEffectsMap = new map<EEditableEntityState, SCR_BaseEntitiesEditorUIEffect>();
 	protected WorkspaceWidget m_Workspace;
 	protected InputManager m_InputManager;
 	protected SCR_HoverEditableEntityFilter m_HoverManager;
@@ -21,6 +21,9 @@ class SCR_EntitiesEditorUIComponent: SCR_EditableEntitySlotManagerUIComponent
 
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Registration
+	////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	override SCR_EditableEntityBaseSlotUIComponent FindSlot(SCR_EditableEntityComponent entity, bool createIfNull = false)
 	{
 		SCR_EditableEntityBaseSlotUIComponent slot = super.FindSlot(entity, createIfNull);
@@ -62,6 +65,7 @@ class SCR_EntitiesEditorUIComponent: SCR_EditableEntitySlotManagerUIComponent
 				slotSize = slotSizeStruct.GetSize();
 			}
 		}
+
 		if (slotSize != -1)
 			FrameSlot.SetSize(slotWidget, slotSize, slotSize);
 		
@@ -69,7 +73,7 @@ class SCR_EntitiesEditorUIComponent: SCR_EditableEntitySlotManagerUIComponent
 		ApplyAutoEffect(entity, sceneSlot);
 		
 		//--- Add existing dependent icons
-		foreach (SCR_EditableEntityUIRuleTracker ruleTracker: m_RuleTrackers)
+		foreach (SCR_EditableEntityUIRuleTracker ruleTracker : m_RuleTrackers)
 		{
 			if (ruleTracker.GetRule().IsDependent())
 				ruleTracker.AddEntity(entity);
@@ -77,6 +81,8 @@ class SCR_EntitiesEditorUIComponent: SCR_EditableEntitySlotManagerUIComponent
 		
 		return slot;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool DeleteSlot(SCR_EditableEntityComponent entity, bool forced = false)
 	{
 		bool deleted = super.DeleteSlot(entity, forced);
@@ -88,6 +94,9 @@ class SCR_EntitiesEditorUIComponent: SCR_EditableEntitySlotManagerUIComponent
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Mouse interaction
+	////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	override bool OnMouseEnter(Widget w, int x, int y)
 	{
 		SCR_EditableEntityBaseSlotUIComponent entitySlot = GetEntitySlot(w);
@@ -96,6 +105,8 @@ class SCR_EntitiesEditorUIComponent: SCR_EditableEntitySlotManagerUIComponent
 		
 		return false;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
 	{
 		SCR_EditableEntityBaseSlotUIComponent entitySlot = GetEntitySlot(w);
@@ -104,12 +115,15 @@ class SCR_EntitiesEditorUIComponent: SCR_EditableEntitySlotManagerUIComponent
 		
 		return false;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
 		//--- Reset the value, otherwise it would linger on after switching from gamepad to mouse&keyboard
 		m_EntityUnderCursor = null;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnEffect(EEditableEntityState state, set<SCR_EditableEntityComponent> entitiesInsert, set<SCR_EditableEntityComponent> entitiesRemove)
 	{
 		SCR_EditableEntitySceneSlotUIComponent slot;
@@ -117,26 +131,37 @@ class SCR_EntitiesEditorUIComponent: SCR_EditableEntitySlotManagerUIComponent
 		{
 			foreach (SCR_EditableEntityComponent entity: entitiesRemove)
 			{
-				if (!m_EntitySlots.Find(entity, slot)) continue;
+				if (!m_mEntitySlots.Find(entity, slot))
+					continue;
+
 				ApplyAutoEffect(entity, slot);
 			}
 		}
+
 		if (entitiesInsert)
 		{
 			SCR_BaseEntitiesEditorUIEffect effect = null;
 			m_aEffectsMap.Find(state, effect);
-			if (!effect) return;
+			if (!effect)
+				return;
 
 			foreach (SCR_EditableEntityComponent entity: entitiesInsert)
 			{
-				if (!m_EntitySlots.Find(entity, slot)) continue;
+				if (!m_mEntitySlots.Find(entity, slot))
+					continue;
+
 				effect.ApplyOn(slot.GetWidget());
 			}
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] entity
+	//! \param[in] slot
 	void ApplyAutoEffect(SCR_EditableEntityComponent entity, SCR_EditableEntitySceneSlotUIComponent slot)
 	{
-		foreach (EEditableEntityState effectState, SCR_BaseEntitiesEditorUIEffect effect: m_aEffectsMap)
+		foreach (EEditableEntityState effectState, SCR_BaseEntitiesEditorUIEffect effect : m_aEffectsMap)
 		{
 			if (entity.HasEntityState(effectState))
 			{
@@ -148,6 +173,10 @@ class SCR_EntitiesEditorUIComponent: SCR_EditableEntitySlotManagerUIComponent
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Update
+	////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] tDelta
 	void OnMenuUpdate(float tDelta)
 	{
 		//--- No scene interaction when the map is opened
@@ -169,7 +198,7 @@ class SCR_EntitiesEditorUIComponent: SCR_EditableEntitySlotManagerUIComponent
 		if (!m_bInteractive || !m_CursorComponent || (m_InputManager && m_InputManager.IsUsingMouseAndKeyboard()))
 		{
 			//--- Mouse & keyboard (or non-interactive)
-			foreach (SCR_EditableEntityBaseSlotUIComponent entitySlot: m_EntitySlots)
+			foreach (SCR_EditableEntityBaseSlotUIComponent entitySlot : m_mEntitySlots)
 			{
 				entitySlot.UpdateSlot(screenW, screenH, posCenter, posCam);
 			}
@@ -181,7 +210,7 @@ class SCR_EntitiesEditorUIComponent: SCR_EditableEntitySlotManagerUIComponent
 			float nearestDis = m_CursorComponent.GetCursorRadiusSq();
 			vector cursorPos = m_CursorComponent.GetCursorPos();
 			SCR_EditableEntityBaseSlotUIComponent nearestSlot;
-			foreach (SCR_EditableEntityBaseSlotUIComponent entitySlot: m_EntitySlots)
+			foreach (SCR_EditableEntityBaseSlotUIComponent entitySlot : m_mEntitySlots)
 			{
 				dis = vector.DistanceSq(cursorPos, entitySlot.UpdateSlot(screenW, screenH, posCenter, posCam));
 				if (dis < nearestDis && !entitySlot.IsPreview()) //--- Ignore preview entity, it's snapped cursor and would block actual entities under cursor
@@ -199,11 +228,15 @@ class SCR_EntitiesEditorUIComponent: SCR_EditableEntitySlotManagerUIComponent
 		if (m_HoverManager && m_MouseArea.IsMouseOn())
 			m_HoverManager.SetEntityUnderCursor(m_EntityUnderCursor, true);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnMenuFocusLost()
 	{
 		//--- When menu focus is lost, OnMenuUpdate is not called anymore. Keep it updating with low frequency.
 		GetGame().GetCallqueue().CallLater(OnMenuUpdate, 10, true, 0);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnMenuFocusGained()
 	{
 		GetGame().GetCallqueue().Remove(OnMenuUpdate);
@@ -211,12 +244,17 @@ class SCR_EntitiesEditorUIComponent: SCR_EditableEntitySlotManagerUIComponent
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Default functions
+	////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttachedScripted(Widget w)
 	{
-		if (SCR_Global.IsEditMode()) return; //--- Run-time only
+		if (SCR_Global.IsEditMode())
+			return; //--- Run-time only
 		
 		SCR_EntitiesManagerEditorComponent entityManager = SCR_EntitiesManagerEditorComponent.Cast(SCR_EntitiesManagerEditorComponent.GetInstance(SCR_EntitiesManagerEditorComponent, true));
-		if (!entityManager) return;
+		if (!entityManager)
+			return;
 			
 		MenuRootBase menu = GetMenu();
 		if (!menu)
@@ -230,7 +268,8 @@ class SCR_EntitiesEditorUIComponent: SCR_EditableEntitySlotManagerUIComponent
 			OnMenuFocusLost();
 
 		m_Workspace = w.GetWorkspace();
-		if (!m_Workspace) return;
+		if (!m_Workspace)
+			return;
 	
 		m_InputManager = GetGame().GetInputManager();
 		m_HoverManager = SCR_HoverEditableEntityFilter.Cast(entityManager.GetFilter(EEditableEntityState.HOVER));
@@ -248,10 +287,12 @@ class SCR_EntitiesEditorUIComponent: SCR_EditableEntitySlotManagerUIComponent
 		foreach (SCR_BaseEntitiesEditorUIEffect effect: m_aEffects)
 		{
 			EEditableEntityState state = effect.GetState();
-			if (state == 0) continue;
+			if (state == 0)
+				continue;
 			
 			SCR_BaseEditableEntityFilter stateManager = entityManager.GetFilter(state);
-			if (!stateManager) continue;
+			if (!stateManager)
+				continue;
 			
 			stateManager.GetOnChanged().Insert(OnEffect);
 			m_aEffectsMap.Insert(state, effect);
@@ -261,10 +302,13 @@ class SCR_EntitiesEditorUIComponent: SCR_EditableEntitySlotManagerUIComponent
 		
 		super.HandlerAttachedScripted(w);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
-		if (SCR_Global.IsEditMode()) return; //--- Run-time only
+		if (SCR_Global.IsEditMode())
+			return; //--- Run-time only
 		
 		MenuRootBase menu = GetMenu();
 		if (menu)
@@ -291,16 +335,20 @@ class SCR_EntitiesEditorUIComponent: SCR_EditableEntitySlotManagerUIComponent
 			foreach (SCR_BaseEntitiesEditorUIEffect effect: m_aEffects)
 			{
 				EEditableEntityState state = effect.GetState();
-				if (state == 0) continue;
+				if (state == 0)
+					continue;
 				
 				SCR_BaseEditableEntityFilter stateManager = entityManager.GetFilter(state);
-				if (!stateManager) continue;
+				if (!stateManager)
+					continue;
 				
-				if (stateManager && stateManager.GetOnChanged()) stateManager.GetOnChanged().Remove(OnEffect);
+				if (stateManager && stateManager.GetOnChanged())
+					stateManager.GetOnChanged().Remove(OnEffect);
 			}
 		}
 	}
-};
+}
+
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EEditableEntityType, "m_Type")]
 class SCR_EditableEntityUISlotSize
 {
@@ -310,12 +358,17 @@ class SCR_EditableEntityUISlotSize
 	[Attribute("48")]
 	private int m_iSize;
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	EEditableEntityType GetType()
 	{
 		return m_Type;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetSize()
 	{
 		return m_iSize;
 	}
-};
+}

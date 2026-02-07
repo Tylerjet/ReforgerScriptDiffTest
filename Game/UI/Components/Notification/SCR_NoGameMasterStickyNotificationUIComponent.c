@@ -1,18 +1,21 @@
-class SCR_NoGameMasterStickyNotificationUIComponent: SCR_StickyNotificationUIComponent
+class SCR_NoGameMasterStickyNotificationUIComponent : SCR_StickyNotificationUIComponent
 {
 	protected SCR_PlayerDelegateEditorComponent m_DelegateManager;
 	
+	//------------------------------------------------------------------------------------------------
 	protected void CheckShowNotification(bool isInit = false)
 	{
 		//Check if there is at least one GM. If not, set the sticky active else hide the sticky
 		SetStickyActive(!m_DelegateManager.HasPlayerWithUnlimitedEditor(), !isInit);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnLimitedEditorChanged()
 	{
 		CheckShowNotification();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected override void OnButton()
 	{
 		MenuManager menuManager = GetGame().GetMenuManager();
@@ -21,6 +24,7 @@ class SCR_NoGameMasterStickyNotificationUIComponent: SCR_StickyNotificationUICom
 			menuManager.OpenDialog(ChimeraMenuPreset.PlayerListMenu);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnInit(SCR_NotificationsLogComponent notificationLog)
 	{			
 		super.OnInit(notificationLog);
@@ -37,12 +41,14 @@ class SCR_NoGameMasterStickyNotificationUIComponent: SCR_StickyNotificationUICom
 				return;
 			}
 		}
+
 		SetVisible(false);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected override void OnDestroy()
 	{
 		if (m_DelegateManager)
 			m_DelegateManager.GetOnLimitedEditorChanged().Remove(OnLimitedEditorChanged);
 	}
-};
+}

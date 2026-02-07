@@ -1,4 +1,4 @@
-class SCR_PingEffectsEditorUIComponent: ScriptedWidgetComponent
+class SCR_PingEffectsEditorUIComponent : ScriptedWidgetComponent
 {
 	[Attribute("PingBorder")]
 	protected string m_sPingBorderName;
@@ -20,6 +20,7 @@ class SCR_PingEffectsEditorUIComponent: ScriptedWidgetComponent
 	//State
 	protected bool m_bWaitingForFade = true;
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		m_Root = w;
@@ -45,6 +46,7 @@ class SCR_PingEffectsEditorUIComponent: ScriptedWidgetComponent
 		GetGame().GetCallqueue().CallLater(FadeOut, m_iFadeOutDelaySeconds * 1000);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//~Todo: Should delete the widget once fading is done rather then having a seperate delete timer
 	protected void FadeOut()
 	{
@@ -52,12 +54,10 @@ class SCR_PingEffectsEditorUIComponent: ScriptedWidgetComponent
 		AnimateWidget.Opacity(m_Root, 0, 1);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		if (m_bWaitingForFade)
 			GetGame().GetCallqueue().Remove(FadeOut);
 	}
-};
-
-
-
+}

@@ -3,6 +3,7 @@ class SCR_SplitNotificationMessageUIComponent : SCR_NotificationMessageUICompone
 	[Attribute()]
 	protected string m_sSplitNotificationText;
 	
+	//------------------------------------------------------------------------------------------------
 	override void Init(SCR_NotificationData data, SCR_NotificationsLogComponent notificationLog, float fadeDelay)
 	{
 		super.Init(data, notificationLog, fadeDelay);
@@ -18,10 +19,9 @@ class SCR_SplitNotificationMessageUIComponent : SCR_NotificationMessageUICompone
 		SCR_SplitNotificationUIInfo splitUiInfo = SCR_SplitNotificationUIInfo.Cast(displayData.GetNotificationUIInfo());
 		if (!splitUiInfo)
 			return;
-		
 
 		if (splitUiInfo.GetIconPath().IsEmpty())
-			Print(string.Format("SCR_SplitNotificationMessageUIComponent must have an icon assigned for %1!", typename.EnumToString(ENotification, data.GetID())));
+			Print(string.Format("SCR_SplitNotificationMessageUIComponent must have an icon assigned for %1!", typename.EnumToString(ENotification, data.GetID())), LogLevel.NORMAL);
 
 		ENotificationColor leftColorEnum, rightColorEnum;
 		displayData.GetSplitNotificationTextColors(data, leftColorEnum, rightColorEnum);
@@ -47,4 +47,4 @@ class SCR_SplitNotificationMessageUIComponent : SCR_NotificationMessageUICompone
 		
 		rightMessage.SetTextFormat(rightNotificationMessage, param1, param2, param3, param4, param5, param6);
 	}
-};
+}

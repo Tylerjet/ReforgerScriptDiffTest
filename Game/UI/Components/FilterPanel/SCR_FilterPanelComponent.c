@@ -1,17 +1,13 @@
-/*
-Filter panel component which is commonly found in content browser, scenarios menu, and other places.
-
-It controls a filter list box and a set of filter buttons which are added to the top bar when filter items are selected.
-When we click on these buttons, they are removed and the according filter in the list is disabled.
-
-So, this panel just keeps the list box and buttons synchronized. Use the public API to get selected filters.
-*/
-
 void ScriptInvokerFilterMethod(SCR_FilterEntry filter);
 typedef func ScriptInvokerFilterMethod;
 typedef ScriptInvokerBase<ScriptInvokerFilterMethod> ScriptInvokerFilter;
 
-//------------------------------------------------------------------------------------------------
+//! Filter panel component which is commonly found in content browser, scenarios menu, and other places.
+//!
+//! It controls a filter list box and a set of filter buttons which are added to the top bar when filter items are selected.
+//! When we click on these buttons, they are removed and the according filter in the list is disabled.
+//!
+//! So, this panel just keeps the list box and buttons synchronized. Use the public API to get selected filters.
 class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 {
 	[Attribute("{3B47431EF3FA03F0}UI/layouts/Menus/ContentBrowser/Buttons/ContentBrowser_ButtonFilterTopBar.layout", UIWidgets.ResourceNamePicker, params: "layout")]
@@ -94,26 +90,32 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 	protected static ref array<SCR_FilterPanelComponent> m_aActiveFilterPanels = {};
 
 	// --------------- Public API -----------------------
+
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_FilterSet GetFilter()
 	{
 		return m_FilterSet;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Returns the component of the search edit box
+	//! \return the component of the search edit box
 	SCR_EditBoxSearchComponent GetEditBoxSearch()
 	{
 		return m_Widgets.m_FilterSearchComponent;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	bool AnyFilterSelected()
 	{
 		return m_FilterSet.AnyFilterSelected();
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	bool AnyFilterButtonsVisible()
 	{
 		int nButtons = 0;
@@ -129,6 +131,8 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] message
+	//! \return
 	bool SetEditBoxSearchMessage(string message)
 	{
 		if (!m_Widgets.m_FilterSearchComponent)
@@ -138,6 +142,9 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] current
+	//! \param[in] total
+	//! \param[in] enabled
 	void SetItemsFoundMessage(int current, int total, bool enabled = true)
 	{
 		if (!m_Widgets.m_ItemsFoundText)
@@ -156,6 +163,8 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Shows either the main content of the panel or the filter
+	//! \param[in] show
+	//! \param[in] animate
 	void ShowFilterListBox(bool show, bool animate = false)
 	{
 		if (GetFilterListBoxShown() == show)
@@ -166,6 +175,7 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetFilterListBoxShown()
 	{
 		return m_Widgets.m_FilterButtonComponent.GetToggled();
@@ -173,7 +183,10 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Selects or deselects the filter visually.
-	//! !!! Doesn't update the internal state of the filter. You still need to call filter.SetSelected();
+	//! !!! Does not update the internal state of the filter. You still need to call filter.SetSelected();
+	//! \param[in] filter
+	//! \param[in] select
+	//! \param[in] invokeOnChanged
 	void SelectFilter(SCR_FilterEntry filter, bool select, bool invokeOnChanged = true)
 	{
 		Filter_ListBox_EnableFilter(filter, select);
@@ -193,9 +206,8 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Saves the filter configuration in user settings.
-	//! tag - optional parameter, a tag used for saving the filter.
+	//! \param[in] tag optional parameter, a tag used for saving the filter.
 	//! if tag is not provided, the internal m_sFilterSetStorageTag is used from the attribute.
-
 	void Save(string tag = string.Empty)
 	{
 		if (tag.IsEmpty())
@@ -205,13 +217,11 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 			return;
 
 		if (m_sFilterSetStorageTag && m_FilterSet)
-		{
 			SCR_AllFilterSetsStorage.SaveFilterSet(tag, m_FilterSet);
-		}
 	}
 
-
 	//------------------------------------------------------------------------------------------------
+	//!
 	void ResetToDefaultValues()
 	{
 		m_FilterSet.ResetToDefaultValues();
@@ -219,12 +229,15 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] enable
 	void EnableFilterButton(bool enable)
 	{
 		m_Widgets.m_FilterButtonComponent.SetEnabled(enable);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetFilterButtonEnabled()
 	{
 		return m_Widgets.m_FilterButtonComponent.GetEnabled();
@@ -232,8 +245,9 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Tries to load filter values. If fails, it restores the filter to default state.
-	//! tag - optional parameter, a tag used for saving the filter.
+	//! \param[in] tag optional parameter, a tag used for saving the filter.
 	//! if tag is not provided, the internal m_sFilterSetStorageTag is used from the attribute.
+	//! \return
 	bool TryLoad(string tag = string.Empty)
 	{
 		if (tag.IsEmpty())
@@ -243,7 +257,6 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 			return false;
 
 		bool loadSuccess = SCR_AllFilterSetsStorage.TryLoadFilterSet(tag, m_FilterSet);
-
 		if (!loadSuccess)
 			m_FilterSet.ResetToDefaultValues();
 
@@ -253,19 +266,19 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetStorageTag()
 	{
 		return m_sFilterSetStorageTag;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Returns true when anything inside the filter panel is focused
+	//! \return true when anything inside the filter panel is focused
 	bool GetFocused()
 	{
 		// We check if focused widget is within hierarchy of our root widget
 
 		Widget focused = GetGame().GetWorkspace().GetFocusedWidget();
-
 		if (!focused)
 			return false;
 
@@ -289,12 +302,14 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_FilterPanelWidgets GetWidgets()
 	{
 		return m_Widgets;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvokerFilter GetOnFilterChanged()
 	{
 		if (!m_OnFilterChanged)
@@ -304,6 +319,7 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvokerBool GetOnFilterPanelToggled()
 	{
 		if (!m_OnFilterPanelToggled)
@@ -312,8 +328,8 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 		return m_OnFilterPanelToggled;
 	}
 
-
 	// ---------------- Protected / Private --------------
+
 	//------------------------------------------------------------------------------------------------
 	// Conditions for showing the items found message:
 	// 1- a filter is active
@@ -337,21 +353,23 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Enables/disables this filter in the list box
+	//! \param[in] filter
+	//! \param[in] enabled
 	protected void Filter_ListBox_EnableFilter(SCR_FilterEntry filter, bool enabled)
 	{
 		SCR_ListBoxComponent comp = m_Widgets.m_FilterListBoxComponent;
 
 		int item = comp.FindItemWithData(filter);
-
 		if (item == -1)
 			return;
 
 		comp.SetItemSelected(item, enabled, false);
 	}
 
-
 	//------------------------------------------------------------------------------------------------
-	//! Resets filters in category, all except for one filter, if it's not null
+	//! Resets filters in category, all except for one filter, if it is not null
+	//! \param[in] category
+	//! \param[in] filterExclude
 	protected void Filter_ListBox_ResetFiltersInCategory(SCR_FilterCategory category, SCR_FilterEntry filterExclude)
 	{
 		SCR_ListBoxComponent comp = m_Widgets.m_FilterListBoxComponent;
@@ -366,9 +384,9 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 		}
 	}
 
-
 	//------------------------------------------------------------------------------------------------
 	//! Deletes a button which matches given category and filter
+	//! \param[in] filter
 	protected void Filter_TopBar_DeleteButton(SCR_FilterEntry filter)
 	{
 		Widget w = m_Widgets.m_FilterButtonsLayout.GetChildren();
@@ -406,31 +424,30 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 		if (nextFocus)
 			GetGame().GetWorkspace().SetFocusedWidget(nextFocus);
 
-		/*
-		// If we deleted a button which was focused, we need to find a new one
-		if (findNewFocus)
-		{
-			array<Widget> buttons = {};
-			w = m_Widgets.m_FilterButtonsLayout.GetChildren();
-			while (w)
-			{
-				buttons.Insert(w);
-				w = w.GetSibling();
-			}
-
-			if (deletedButtonId < buttons.Count())
-				GetGame().GetWorkspace().SetFocusedWidget(buttons[deletedButtonId]);		// Focus on next button on the list, which now has same position
-			else if (buttons.Count() > 0)
-				GetGame().GetWorkspace().SetFocusedWidget(buttons[deletedButtonId - 1]);	// Focus on prev button if there is a prev button
-			else
-				GetGame().GetWorkspace().SetFocusedWidget(m_Widgets.m_FilterSearch);			// Focus on search bar if there's nothing left
-		}
-		*/
+//		// If we deleted a button which was focused, we need to find a new one
+//		if (findNewFocus)
+//		{
+//			array<Widget> buttons = {};
+//			w = m_Widgets.m_FilterButtonsLayout.GetChildren();
+//			while (w)
+//			{
+//				buttons.Insert(w);
+//				w = w.GetSibling();
+//			}
+//
+//			if (deletedButtonId < buttons.Count())
+//				GetGame().GetWorkspace().SetFocusedWidget(buttons[deletedButtonId]);		// Focus on next button on the list, which now has same position
+//			else if (buttons.Count() > 0)
+//				GetGame().GetWorkspace().SetFocusedWidget(buttons[deletedButtonId - 1]);	// Focus on prev button if there is a prev button
+//			else
+//				GetGame().GetWorkspace().SetFocusedWidget(m_Widgets.m_FilterSearch);			// Focus on search bar if there's nothing left
+//		}
 	}
 
 
 	//------------------------------------------------------------------------------------------------
 	//! Deletes all buttons which are linked to filters of given category
+	//! \param[in] category
 	protected void Filter_TopBar_DeleteButtonsInCategory(SCR_FilterCategory category)
 	{
 		Widget w = m_Widgets.m_FilterButtonsLayout.GetChildren();
@@ -455,9 +472,9 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 		Filter_TopBar_UpdateButtonsVisibility();
 	}
 
-
 	//------------------------------------------------------------------------------------------------
 	//! Adds a top bar filter button, links it with this filter category and filter
+	//! \param[in] filter
 	protected void Filter_TopBar_AddButton(SCR_FilterEntry filter)
 	{
 		// Bail if another button with same filter already exists
@@ -465,14 +482,11 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 		while (layoutContent)
 		{
 			SCR_ModularButtonComponent comp = SCR_ModularButtonComponent.FindComponent(layoutContent);
-			if (comp)
-			{
-				if (comp.GetData() == filter)
-					return;
-			}
+			if (comp && comp.GetData() == filter)
+				return;
+
 			layoutContent = layoutContent.GetSibling();
 		}
-
 
 		Widget w = GetGame().GetWorkspace().CreateWidgets(m_sTopBarFilterButtonLayout, m_Widgets.m_FilterButtonsLayout);
 		SCR_ModularButtonComponent comp = SCR_ModularButtonComponent.FindComponent(w);
@@ -529,6 +543,7 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 			bool visible = i < m_iMaxFilterButtons;
 			b.SetVisible(visible);
 
+			// TODO: filter w/ "if !visible" before all the casts
 			SCR_ModularButtonComponent comp = SCR_ModularButtonComponent.FindComponent(b);
 			if (comp)
 			{
@@ -587,25 +602,22 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 		}
 	}
 
-
 	//------------------------------------------------------------------------------------------------
 	//! Updates internal values from UI
 	protected void SyncUiToInternal()
 	{
 		SCR_ListBoxComponent comp = m_Widgets.m_FilterListBoxComponent;
+		SCR_FilterEntry filter;
 		int nElements = comp.GetItemCount();
 		for (int i = 0; i < nElements; i++)
 		{
-			SCR_FilterEntry filter = SCR_FilterEntry.Cast(comp.GetItemData(i));
+			filter = SCR_FilterEntry.Cast(comp.GetItemData(i));
 			if (filter)
-			{
 				filter.SetSelected(comp.IsItemSelected(i));
-			}
 		}
 		
 		EnableItemsFoundMessage();
 	}
-
 
 	//------------------------------------------------------------------------------------------------
 	//! Updates UI from internal values
@@ -613,9 +625,10 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 	{
 		// Select filters which are selected in the filter set.
 		array<ref SCR_FilterCategory> categories = m_FilterSet.GetFilterCategories();
+		array<ref SCR_FilterEntry> filters;
 		foreach (SCR_FilterCategory category : categories)
 		{
-			array<ref SCR_FilterEntry> filters = category.GetFilters();
+			filters = category.GetFilters();
 			foreach (SCR_FilterEntry filter : filters)
 			{
 				SelectFilter(filter, filter.GetSelected(), false);
@@ -627,6 +640,8 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Shows either the main content of the panel or the filter
+	//! \param[in] show
+	//! \param[in] animate
 	protected void ShowFilterListBox_Internal(bool show, bool animate = false)
 	{
 		m_Widgets.m_MainContent.SetVisible(!show);
@@ -654,7 +669,7 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnTopBarHighlightCycleCompleted()
 	{
-		// This evetn gets called each time an animation reaches it's end, meaning in a looping anim cycle 0 is 0 to 1, cycle 1 is 1 to 0, etc.
+		// This event gets called each time an animation reaches it's end, meaning in a looping anim cycle 0 is 0 to 1, cycle 1 is 1 to 0, etc.
 		if (!m_TopBarAnimation)
 			return;
 
@@ -670,10 +685,10 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 			m_TopBarAnimation.SetRepeat(false);
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
 	//! Called when top bar filter button is clicked
 	//! Button is deleted, according filter in the listbox is unchecked
+	//! \param[in] comp
 	protected void OnTopBarFilterButtonClicked(SCR_ModularButtonComponent comp)
 	{
 		SCR_FilterEntry filter = SCR_FilterEntry.Cast(comp.GetData());
@@ -724,6 +739,9 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Called when filter listbox selection changes
+	//! \param[in] comp
+	//! \param[in] item
+	//! \param[in] newSelected
 	protected void OnFilterListBoxChanged(SCR_ListBoxComponent comp, int item, bool newSelected)
 	{
 		// If filters in this category are mutually exclusive
@@ -748,9 +766,7 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 		{
 			// If it's last item deselected, and it's not allowed to have nothing selected, switch it back.
 			if (preventDeselection)
-			{
 				comp.SetItemSelected(item, true, false);
-			}
 			else
 				Filter_TopBar_DeleteButton(filter);
 		}
@@ -774,6 +790,7 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 	}
 	
 	// ---- Overrides ----
+
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
@@ -812,6 +829,7 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 	}
 
 	// ---- Tooltips ----
+
 	//------------------------------------------------------------------------------------------------
 	protected void OnTooltipShow(SCR_ScriptedWidgetTooltip tooltipClass, Widget tooltipWidget, Widget hoverWidget, SCR_ScriptedWidgetTooltipPreset preset, string tag)
 	{
@@ -875,6 +893,8 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] tooltipClass
 	void FillTooltip(SCR_ScriptedWidgetTooltip tooltipClass)
 	{
 		if (m_bIsTooltipInitialized || !tooltipClass)
@@ -926,12 +946,14 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsTooltipHoverWidgetInHierarchy()
 	{
 		return m_bIsTooltipHoverWidgetInHierarchy;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void ResetTooltipInitializationFlags()
 	{
 		m_bIsTooltipHoverWidgetInHierarchy = false;

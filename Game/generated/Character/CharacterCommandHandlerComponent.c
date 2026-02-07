@@ -26,6 +26,7 @@ class CharacterCommandHandlerComponent: BaseCommandHandlerComponent
 	proto external bool IsItemInspectionAllowed();
 	proto external bool IsWeaponInspectionAllowed();
 	proto external bool IsWeaponDeploymentAllowed();
+	proto external bool IsThrowingAction();
 	proto external bool IsProneStanceTransition();
 	proto external bool IsUsingItem();
 	proto external bool IsItemActionLoopTag();
@@ -107,6 +108,7 @@ class CharacterCommandHandlerComponent: BaseCommandHandlerComponent
 	proto external bool TransitionMove_VehicleDefault(CharacterInputContext pInputCtx);
 	proto external bool TransitionMove_SwimmingDefault(CharacterInputContext pInputCtx);
 	proto external bool TransitionMove_LadderDefault(CharacterInputContext pInputCtx);
+	proto external void DropLiveGrenadeFromHand(bool throwWithForce);
 	proto external void CancelThrowDefault();
 
 	// callbacks

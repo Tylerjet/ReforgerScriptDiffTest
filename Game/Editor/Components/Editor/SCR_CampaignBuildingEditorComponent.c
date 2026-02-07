@@ -12,8 +12,10 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 	protected ref array<RplId> m_aProvidersRplIds = {};
 	protected SCR_ContentBrowserEditorComponent m_ContentBrowserManager;
 	protected SCR_CampaignBuildingProviderComponent m_ForcedProviderComponent;
+	protected bool m_bViewObstructed;
 
 	protected ref ScriptInvoker m_OnProviderChanged;
+	protected ref ScriptInvokerBool m_OnObstructionEventTriggered;
 
 	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetOnProviderChanged()
@@ -22,6 +24,15 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 			m_OnProviderChanged = new ScriptInvoker();
 
 		return m_OnProviderChanged;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerBool GetOnObstructionEventTriggered()
+	{
+		if (!m_OnObstructionEventTriggered)
+			m_OnObstructionEventTriggered = new ScriptInvokerBool();
+
+		return m_OnObstructionEventTriggered;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -53,19 +64,25 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Return provider component of current provider.
-	SCR_CampaignBuildingProviderComponent GetProviderComponent()
+	SCR_CampaignBuildingProviderComponent GetProviderComponent(bool getMasterProviderComponent = false)
 	{
+		SCR_CampaignBuildingProviderComponent temporaryProviderComponent;
 		if (m_ForcedProviderComponent)
-			return m_ForcedProviderComponent;
+			temporaryProviderComponent = m_ForcedProviderComponent;
 
 		if (m_aProvidersComponents.IsEmpty())
 			return null;
 
-		return m_aProvidersComponents[0];
+		temporaryProviderComponent = m_aProvidersComponents[0];
+		
+		if (getMasterProviderComponent && temporaryProviderComponent && temporaryProviderComponent.UseMasterProvider())
+			return SCR_CampaignBuildingProviderComponent.Cast(GetMasterProviderEntity().FindComponent(SCR_CampaignBuildingProviderComponent));
+		
+		return temporaryProviderComponent;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	// Used when player initiate a building mode via user action - forced provider is an entity owning the user action
+	//! Used when player initiate a building mode via user action - forced provider is an entity owning the user action
 	void SetForcedProvider(SCR_CampaignBuildingProviderComponent forcedProviderComponent = null)
 	{
 		m_ForcedProviderComponent = forcedProviderComponent;
@@ -117,6 +134,17 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 		}
 		
 		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Check current provider and return budget marked as a budget to be shown in UI progress bar. If more budgets are marked, the 1st one found is used.
+	EEditableEntityBudget GetShownBudget()
+	{
+		SCR_CampaignBuildingProviderComponent providerComponent = GetProviderComponent();
+		if (!providerComponent)
+			return -1;
+		
+		return providerComponent.GetShownBudget();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -180,7 +208,7 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 			return null;
 		}
 
-		IEntity child = GetProviderEntity().GetChildren();
+		IEntity child = GetProviderEntity(providerComponent.UseMasterProvider()).GetChildren();
 		while (child)
 		{
 			SCR_FreeRoamBuildingClientTriggerEntity trg = SCR_FreeRoamBuildingClientTriggerEntity.Cast(child);
@@ -212,7 +240,11 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 		if (!buildingManagerComponent)
 			return null;
 
-		IEntity provider = GetProviderEntity();
+		SCR_CampaignBuildingProviderComponent providerComponent = GetProviderComponent();
+		if (!providerComponent)
+			return null;
+		
+		IEntity provider = GetProviderEntity(providerComponent.UseMasterProvider());
 		if (!provider)
 			return null;
 
@@ -231,10 +263,10 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 	//! Make the area around where is possible to build composition visible for player
 	override protected void EOnEditorActivate()
 	{
-		SCR_CampaignBuildingProviderComponent providerComponenet = GetProviderComponent();
+		SCR_CampaignBuildingProviderComponent providerComponenet = GetProviderComponent(true);
 		if (!providerComponenet)
 			return;
-
+		
 		if (!System.IsConsoleApp() && GetGame().GetPlayerController())
 		{
 			ScriptedGameTriggerEntity trigger = SpawnClientTrigger();
@@ -251,9 +283,11 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 				}
 
 				trigger.SetFlags(EntityFlags.VISIBLE, false);
-
 			}
 		}
+		
+		if (providerComponenet.ObstrucViewWhenEnemyInRange())
+			SetOnEnterEvent();
 
 		m_ContentBrowserManager = SCR_ContentBrowserEditorComponent.Cast(SCR_ContentBrowserEditorComponent.GetInstance(SCR_ContentBrowserEditorComponent));
 
@@ -338,12 +372,135 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 		if (!gadgetManager)
 			return;
 		
-		SCR_GadgetComponent gadgetComponent = gadgetManager.GetHeldGadgetComponent();
+		SCR_CampaignBuildingGadgetToolComponent gadgetComponent = SCR_CampaignBuildingGadgetToolComponent.Cast(gadgetManager.GetHeldGadgetComponent());
 		if (!gadgetComponent)
 			return;
+				
+		if (mode)
+			gadgetComponent.ToolToHand();
+		else
+			gadgetComponent.ToolToInventory();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set event to obstruct view when enemy character enters a building radius
+	protected void SetOnEnterEvent()
+	{
+		SCR_FreeRoamBuildingClientTriggerEntity trigger = GetTrigger();
+		if (!trigger)
+			return;
 		
-		if (gadgetComponent.GetType() == EGadgetType.BUILDING_TOOL)
-			gadgetManager.ToggleHeldGadget(mode);
+		trigger.GetOnEntityEnterTrigger().Insert(EntityEnterTrigger);
+		trigger.GetOnEntityLeaveTrigger().Insert(EntityLeaveTrigger);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void EntityEnterTrigger(IEntity ent)
+	{
+		if (CanBlockView(ent))
+		{
+			SetOnEntityKilled(ent);
+			
+			// show the notification and rise an event only when this is for the first time.
+			if (!m_bViewObstructed && m_OnObstructionEventTriggered)
+			{
+				m_OnObstructionEventTriggered.Invoke(true);
+				SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_ENEMY_IN_AREA);
+				m_bViewObstructed = true;
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Called when entity leaves the trigger. Can be also when the entity is killed or deleted.
+	//! \param[in] ent entity removed from the trigger. Can be null when event is triggered from deleted or killed entity.
+	protected void EntityLeaveTrigger(IEntity ent)
+	{			
+		if (!ent)
+			return;
+		
+		if (CanBlockView(ent))
+			RemoveOnEntityKilled(ent);
+		
+		SCR_FreeRoamBuildingClientTriggerEntity trigger = GetTrigger();
+		if (!trigger)
+			return;
+		
+		trigger.QueryEntitiesInside();
+		array<IEntity> entitiesInside = {};
+		trigger.GetEntitiesInside(entitiesInside);
+		
+		// Check if in trigger is still present any entity that can block the view. If so, don't continue.
+		foreach (IEntity entity : entitiesInside)
+		{
+			// The entity that triggers an event as the leaving one is still on the list of entities present in trigger, skip it.
+			if (ent == entity)
+				continue;
+			
+			if (entity && CanBlockView(entity))
+				return;
+		}
+		
+		if (m_OnObstructionEventTriggered)
+			m_OnObstructionEventTriggered.Invoke(false);
+		
+		m_bViewObstructed = false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Check the entity can block playeres view in Free Roam Building.
+	//! \param[in] ent entity to evaluate
+	protected bool CanBlockView(notnull IEntity ent)
+	{
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(ent);
+		if (!character)
+			return false;
+		
+		CharacterControllerComponent charControl = character.GetCharacterController();
+		if (!charControl || charControl.GetLifeState() == ECharacterLifeState.DEAD)
+			return false;
+
+		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(ent);
+		if (playerId == 0)
+		{			
+			AIControlComponent ctrComp = charControl.GetAIControlComponent();
+			if (ctrComp && !ctrComp.IsAIActivated())
+				return false;
+		}
+
+		foreach (SCR_CampaignBuildingProviderComponent providerComponent : m_aProvidersComponents)
+		{
+			if (!providerComponent || !providerComponent.IsEnemyFaction(character))
+				continue;
+
+			return true;
+		}
+		
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set an event called when entity which can block view in Free Roam Building enters the area of Free Roam Building.
+	void SetOnEntityKilled(IEntity ent)
+	{
+		SCR_EditableCharacterComponent editableCharacter = SCR_EditableCharacterComponent.Cast(ent.FindComponent(SCR_EditableCharacterComponent));
+		if (!editableCharacter)
+			return;
+		
+		editableCharacter.GetOnDestroyed().Insert(EntityLeaveTrigger);
+		editableCharacter.GetOnDeleted().Insert(EntityLeaveTrigger);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Remove an event called when entity which can block view in Free Roam Building is killed / leave the area of Free Roam Building.
+	void RemoveOnEntityKilled(IEntity ent)
+	{
+		SCR_EditableCharacterComponent editableCharacter = SCR_EditableCharacterComponent.Cast(ent.FindComponent(SCR_EditableCharacterComponent));
+		if (!editableCharacter)
+			return;
+		
+		editableCharacter.GetOnDestroyed().Remove(EntityLeaveTrigger);
+		editableCharacter.GetOnDeleted().Remove(EntityLeaveTrigger);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -439,15 +596,7 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 	{
 		SCR_FreeRoamBuildingClientTriggerEntity trigger = GetTrigger();
 		if (trigger)
-		{
-			trigger.ClearFlags(EntityFlags.VISIBLE, false);
-
-			SCR_CampaignBuildingAreaMeshComponent areaMeshComponent = SCR_CampaignBuildingAreaMeshComponent.Cast(trigger.FindComponent(SCR_CampaignBuildingAreaMeshComponent));
-			if (areaMeshComponent && areaMeshComponent.ShouldEnableFrameUpdateDuringEditor())
-			{
-				areaMeshComponent.DeactivateEveryFrame();
-			}
-		}
+			SCR_EntityHelper.DeleteEntityAndChildren(trigger);
 
 		FactionAffiliationComponent factionComponent = GetProviderFactionComponent();
 		if (factionComponent)
@@ -467,13 +616,29 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 
 	//------------------------------------------------------------------------------------------------
 	// Return the entity which belongs to currently active provider componenet.
-	IEntity GetProviderEntity()
+	//! bool getMasterProvider default false. If true, tries to search for master provider entity.
+	IEntity GetProviderEntity(bool getMasterProvider = false)
 	{
+		if (getMasterProvider)
+			return GetMasterProviderEntity();
+		
 		SCR_CampaignBuildingProviderComponent providerComponent = GetProviderComponent();
 		if (!providerComponent)
 			return null;
 
 		return providerComponent.GetOwner();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Return the HQ entity of the base to which the current provider can be registered to. 
+	//! For an example provider is a living area but this one is registered to a base so the base entity is returned. If the living area is standalone, the entity of living area is returned.
+	IEntity GetMasterProviderEntity()
+	{
+		SCR_CampaignBuildingProviderComponent providerComponent = GetProviderComponent();
+		if (!providerComponent)
+			return null;
+		
+		return providerComponent.GetMasterProviderEntity();
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -1,16 +1,16 @@
 [EntityEditorProps(category: "GameScripted/UI/RadialMenu", description: "Common radial menu.")]
 class SCR_RadialMenuGameModeComponentClass : ScriptComponentClass
 {
-	// prefab properties here
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_RadialMenuGameModeComponent : ScriptComponent
 {
 	[Attribute()]
 	protected ref SCR_RadialMenu m_Menu;
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] timeSlice
 	void Update(float timeSlice)
 	{
 		if (System.IsConsoleApp())
@@ -37,6 +37,7 @@ class SCR_RadialMenuGameModeComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_RadialMenu GetMenu()
 	{
 		return m_Menu;
@@ -61,4 +62,4 @@ class SCR_RadialMenuGameModeComponent : ScriptComponent
 		
 		updateSystem.Unregister(this);
 	}
-};
+}

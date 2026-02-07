@@ -1,6 +1,7 @@
-/** @ingroup Editor_UI Editor_UI_Components
-*/
-class SCR_EntitiesToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
+
+//! @ingroup Editor_UI Editor_UI_Components
+
+class SCR_EntitiesToolbarEditorUIComponent : SCR_BaseToolbarEditorUIComponent
 {
 	[Attribute("-1", uiwidget: UIWidgets.ComboBox, "Which entity types are accepted", enums: SCR_Enum.GetList(EEditableEntityType, new ParamEnum("<ALL>", "-1")) )]
 	protected EEditableEntityType m_Type;
@@ -32,7 +33,8 @@ class SCR_EntitiesToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 	protected bool m_bHasTabs;
 	protected bool m_bHasEntities;
 	protected ref SCR_SortedArray<SCR_EditableEntityComponent> m_Entities = new SCR_SortedArray<SCR_EditableEntityComponent>();
-	protected ref map<SCR_EditableEntityComponent, Widget> m_ItemsMap = new map<SCR_EditableEntityComponent, Widget>; 
+	
+	protected ref map<SCR_EditableEntityComponent, Widget> m_ItemsMap = new map<SCR_EditableEntityComponent, Widget>();
 	protected SCR_HoverEditableEntityFilter m_HoverFilter;
 	protected SCR_EditableEntityComponent m_HoverEntity;
 	protected SCR_EditableEntityComponent m_RepeatEntity;
@@ -41,6 +43,7 @@ class SCR_EntitiesToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 	protected SCR_TabViewComponent m_TabView;
 	protected int m_iTab;
 
+	//------------------------------------------------------------------------------------------------
 	protected Widget CreateItem(SCR_EditableEntityComponent entity)
 	{
 		Widget itemWidget;
@@ -65,15 +68,21 @@ class SCR_EntitiesToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		itemWidget.SetName(entity.ToString());
 		return itemWidget;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void Clear()
 	{
 		m_ItemsMap.Clear();
 		m_SlotManager.ClearSlots();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnChanged(EEditableEntityState state, set<SCR_EditableEntityComponent> entitiesInsert, set<SCR_EditableEntityComponent> entitiesRemove)
 	{
 		Refresh();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnEditorSetSelection()
 	{
 		SCR_EntitiesToolbarEditorUIComponent linkedComponent = SCR_EntitiesToolbarEditorUIComponent.Cast(m_LinkedComponent);
@@ -82,6 +91,8 @@ class SCR_EntitiesToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		
 		CloseDialog();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnTypeTab(SCR_TabViewComponent tabView, SCR_TabViewContent tabContent, int index)
 	{
 		m_iTab = index;
@@ -89,6 +100,8 @@ class SCR_EntitiesToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		m_aEntityTypeTabs[index].GetTypeBlackList(m_aTypeBlackList);
 		Refresh();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void ShowEntries(Widget contentWidget, int indexStart, int indexEnd)
 	{
 		Clear();
@@ -99,22 +112,27 @@ class SCR_EntitiesToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 			CreateItem(m_Entities[i]);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected override bool IsUnique()
 	{
 		return true;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override protected void SetToolbarVisible(bool show)
 	{
 		super.SetToolbarVisible(show || m_bHasEntities);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void Refresh()
 	{
 		if (m_State != -1)
 		{
 			SCR_BaseEditableEntityFilter filter = SCR_BaseEditableEntityFilter.GetInstance(m_State, true);
 			
-			set<SCR_EditableEntityComponent> entities = new set<SCR_EditableEntityComponent>;
+			set<SCR_EditableEntityComponent> entities = new set<SCR_EditableEntityComponent>();
 			int count = filter.GetEntities(entities);
 			
 			m_bHasEntities = false;
@@ -155,6 +173,8 @@ class SCR_EntitiesToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		}
 		super.Refresh();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnRepeat()
 	{
 		if (!m_RepeatEntity)
@@ -166,6 +186,8 @@ class SCR_EntitiesToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		
 		filter.Replace(m_RepeatEntity);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void CopyPage(SCR_DialogEditorUIComponent linkedComponent)
 	{
 		SCR_EntitiesToolbarEditorUIComponent toolbar = SCR_EntitiesToolbarEditorUIComponent.Cast(linkedComponent);
@@ -174,11 +196,15 @@ class SCR_EntitiesToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		
 		super.CopyPage(linkedComponent);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnMenuUpdate(float timeSlice)
 	{
 		super.OnMenuUpdate(timeSlice);
 		m_HoverFilter.SetEntityUnderCursor(m_HoverEntity, true);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool OnFocus(Widget w, int x, int y)
 	{
 		SCR_EditableEntityLinkUIComponent link = SCR_EditableEntityLinkUIComponent.Cast(w.FindHandler(SCR_EditableEntityLinkUIComponent));
@@ -194,29 +220,32 @@ class SCR_EntitiesToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 				if (camera)
 				{
 					SCR_TeleportToCursorManualCameraComponent teleportComponent = SCR_TeleportToCursorManualCameraComponent.Cast(camera.FindCameraComponent(SCR_TeleportToCursorManualCameraComponent));
-					if (teleportComponent) teleportComponent.TeleportCamera(pos);
+					if (teleportComponent)
+						teleportComponent.TeleportCamera(pos);
 				}
 			}
 		}
 
 		return super.OnFocus(w, x, y);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttachedScripted(Widget w)
 	{
 		m_SlotManager = SCR_EditableEntitySlotManagerUIComponent.Cast(w.FindHandler(SCR_EditableEntitySlotManagerUIComponent));
 		m_LayersManager = SCR_LayersEditorComponent.Cast(SCR_LayersEditorComponent.GetInstance(SCR_LayersEditorComponent));
 		
 		m_HoverFilter = SCR_HoverEditableEntityFilter.Cast(SCR_HoverEditableEntityFilter.GetInstance(EEditableEntityState.HOVER, true));
-		if (!m_HoverFilter) return;
+		if (!m_HoverFilter)
+			return;
 		
 		if (m_State != -1)
 		{
 			SCR_BaseEditableEntityFilter filter = SCR_BaseEditableEntityFilter.GetInstance(m_State, true);
 			if (filter)
-			{
 				filter.GetOnChanged().Insert(OnChanged);
-			}
 		}
+
 		foreach (SCR_EntityToolbarStateOffset stateOffset: m_aStateOffsets)
 		{
 			SCR_BaseEditableEntityFilter filter = SCR_BaseEditableEntityFilter.GetInstance(stateOffset.m_State, true);
@@ -226,9 +255,7 @@ class SCR_EntitiesToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		
 		InputManager inputManager = GetGame().GetInputManager();
 		if (inputManager)
-		{
 			inputManager.AddActionListener("EditorSetSelection", EActionTrigger.DOWN, OnEditorSetSelection);
-		}
 		
 		if (m_sTypeTabsWidgetName)
 		{
@@ -237,7 +264,8 @@ class SCR_EntitiesToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 			{
 				m_bHasTabs = true;
 				m_TabView = SCR_TabViewComponent.Cast(typeTabsWidget.FindHandler(SCR_TabViewComponent));
-				m_TabView.m_OnContentSelect.Insert(OnTypeTab);
+
+				m_TabView.GetOnContentSelect().Insert(OnTypeTab);
 				
 				//Init tab
 				if (m_aEntityTypeTabs.Count() > 0)
@@ -254,6 +282,8 @@ class SCR_EntitiesToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 				transformingManager.GetOnTransformationStart().Insert(CloseDialog);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
@@ -262,9 +292,7 @@ class SCR_EntitiesToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		{
 			SCR_BaseEditableEntityFilter filter = SCR_BaseEditableEntityFilter.GetInstance(m_State);
 			if (filter)
-			{
 				filter.GetOnChanged().Remove(OnChanged);
-			}
 		}
 		foreach (SCR_EntityToolbarStateOffset stateOffset: m_aStateOffsets)
 		{
@@ -275,9 +303,7 @@ class SCR_EntitiesToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		
 		InputManager inputManager = GetGame().GetInputManager();
 		if (inputManager)
-		{
 			inputManager.RemoveActionListener("EditorSetSelection", EActionTrigger.DOWN, OnEditorSetSelection);
-		}
 		
 		if (m_bIsInDialog)
 		{
@@ -286,8 +312,7 @@ class SCR_EntitiesToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 				transformingManager.GetOnTransformationStart().Remove(CloseDialog);
 		}
 	}
-};
-
+}
 
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EEditableEntityType, "m_Type")]
 class SCR_EntityToolbarTypeList
@@ -298,16 +323,21 @@ class SCR_EntityToolbarTypeList
 	[Attribute("0", UIWidgets.ComboBox,  "List of entity types who are ignored even if 'm_Type' is valid.", "", ParamEnumArray.FromEnum(EEditableEntityType) )]
 	protected ref array<EEditableEntityType> m_aTypeBlackList;
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	EEditableEntityType GetType()
 	{
 		return m_Type;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[out] blackList
 	void GetTypeBlackList(out notnull array<EEditableEntityType> blackList)
 	{
 		blackList = m_aTypeBlackList;
 	}
-};
+}
+
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EEditableEntityState, "m_State")]
 class SCR_EntityToolbarStateOffset
 {
@@ -316,4 +346,4 @@ class SCR_EntityToolbarStateOffset
 	
 	[Attribute()]
 	int m_iOrderOffset;
-};
+}

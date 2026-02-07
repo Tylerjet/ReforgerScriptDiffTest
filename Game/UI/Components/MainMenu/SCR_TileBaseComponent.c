@@ -1,13 +1,12 @@
-//------------------------------------------------------------------------------------------------
 class SCR_TileBaseComponent : ScriptedWidgetComponent
 {
-	[Attribute("1")]
+	[Attribute(UIConstants.ENABLED_WIDGET_SATURATION.ToString())]
 	float m_fSaturationSelected;
 	
-	[Attribute("0.5")]
+	[Attribute(UIConstants.DISABLED_WIDGET_SATURATION.ToString())]
 	float m_fSaturationDeselected;
 	
-	[Attribute("1 1 1 1", UIWidgets.ColorPicker)]
+	[Attribute(UIColors.GetColorAttribute(UIColors.NEUTRAL_INFORMATION), UIWidgets.ColorPicker)]
 	ref Color m_ColorSelected;
 	
 	[Attribute("0.5 0.5 0.5 1", UIWidgets.ColorPicker)]
@@ -22,6 +21,8 @@ class SCR_TileBaseComponent : ScriptedWidgetComponent
 	Widget m_wRoot;
 	ImageWidget m_wImage;
 	float m_fAnimationRate;
+	
+	bool m_bIsInErrorState;
 	
 	ref ScriptInvoker m_OnFocused = new ScriptInvoker();
 	ref ScriptInvoker m_OnFocusLost = new ScriptInvoker();
@@ -62,8 +63,12 @@ class SCR_TileBaseComponent : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	override bool OnFocus(Widget w, int x, int y)
 	{
-		AnimateWidget.Saturation(m_wImage, m_fSaturationSelected, m_fAnimationRate);
-		AnimateWidget.Color(m_wImage, m_ColorSelected, m_fAnimationRate);
+		if (!m_bIsInErrorState)
+		{
+			AnimateWidget.Saturation(m_wImage, m_fSaturationSelected, m_fAnimationRate);
+			AnimateWidget.Color(m_wImage, m_ColorSelected, m_fAnimationRate);
+		}
+
 		m_OnFocused.Invoke(this);
 		return false;
 	}
@@ -85,8 +90,9 @@ class SCR_TileBaseComponent : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	Widget GetRootWidget()
 	{
 		return m_wRoot;
 	}
-};
+}

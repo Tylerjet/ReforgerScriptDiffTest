@@ -1,10 +1,7 @@
-[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
-/** @ingroup ManualCamera
-*/
+//! @ingroup ManualCamera
 
-/*!
-Instantly set the speed to a value within a sequence
-*/
+//! Instantly set the speed to a value within a sequence
+[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
 class SCR_SetSpeedManualCameraComponent : SCR_BaseManualCameraComponent
 {
 	[Attribute("2.5")]
@@ -16,15 +13,15 @@ class SCR_SetSpeedManualCameraComponent : SCR_BaseManualCameraComponent
 	protected bool m_bIsBoosted;
 	protected bool m_bIsUsingGamepad;
 	
-	/*[Attribute("3")]
-	float m_fLayoutDuration;
-	
-	[Attribute(params: "layout")]
-	private ResourceName m_Layout;
-	private TextWidget m_Widget;
-	private float m_fWidgetAlpha;*/	
-		
+//	[Attribute("3")]
+//	float m_fLayoutDuration;
+//
+//	[Attribute(params: "layout")]
+//	private ResourceName m_Layout;
+//	private TextWidget m_Widget;
+//	private float m_fWidgetAlpha;
 
+	//------------------------------------------------------------------------------------------------
 	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
 		m_bIsUsingGamepad = isGamepad;
@@ -33,51 +30,59 @@ class SCR_SetSpeedManualCameraComponent : SCR_BaseManualCameraComponent
 			m_bIsBoosted = false;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void ManualCameraSpeedToggle()
 	{
-		if (!IsEnabled()) return;
+		if (!IsEnabled())
+			return;
 		
 		m_bIsBoosted = !m_bIsBoosted;
 		
 		//UpdateWidget();
 	}
 	
+//	//------------------------------------------------------------------------------------------------
+//	protected void UpdateWidget()
+//	{
+//		if (!m_Widget) return;
+//
+//		if (!m_bIsBoosted)
+//			m_Widget.SetTextFormat("#AR-ValueUnit_Short_Multiplier", m_fGamepadCameraSpeed);
+//		else
+//			m_Widget.SetTextFormat("#AR-ValueUnit_Short_Multiplier", m_fGamepadCameraSpeedBoosted);
+//
+//		m_Widget.SetVisible(true);
+//		m_fWidgetAlpha = 1 + m_fLayoutDuration;
+//	}
+
+//	//------------------------------------------------------------------------------------------------
+//	protected void FadeOutWidget(float timeSlice)
+//	{
+//		if (!m_Widget || !m_Widget.IsVisible()) return;
+//
+//		m_fWidgetAlpha -= timeSlice;
+//		if (m_fWidgetAlpha > 0)
+//		{
+//			m_Widget.SetOpacity(Math.Clamp(m_fWidgetAlpha, 0, 1));
+//		}
+//		else
+//		{
+//			m_Widget.SetVisible(false);
+//		}
+//	}
 	
-	/*protected void UpdateWidget()
-	{
-		if (!m_Widget) return;
-		
-		if (!m_bIsBoosted)
-			m_Widget.SetTextFormat("#AR-ValueUnit_Short_Multiplier", m_fGamepadCameraSpeed);
-		else
-			m_Widget.SetTextFormat("#AR-ValueUnit_Short_Multiplier", m_fGamepadCameraSpeedBoosted);
-		
-		m_Widget.SetVisible(true);
-		m_fWidgetAlpha = 1 + m_fLayoutDuration;
-	}
-	
-	protected void FadeOutWidget(float timeSlice)
-	{
-		if (!m_Widget || !m_Widget.IsVisible()) return;
-		
-		m_fWidgetAlpha -= timeSlice;
-		if (m_fWidgetAlpha > 0)
-		{
-			m_Widget.SetOpacity(Math.Clamp(m_fWidgetAlpha, 0, 1));
-		}
-		else
-		{
-			m_Widget.SetVisible(false);
-		}
-	}*/
-	
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraFrame(SCR_ManualCameraParam param)
 	{
-		if (!param.isManualInputEnabled || !m_bIsUsingGamepad) return;
+		if (!param.isManualInputEnabled || !m_bIsUsingGamepad)
+			return;
 
 		if (!m_bIsBoosted)
+		{
 			param.multiplier *= m_fGamepadCameraSpeed;
-		else {
+		}
+		else
+		{
 			param.multiplier *= m_fGamepadCameraSpeedBoosted;
 			
 			float lateral = GetInputManager().GetActionValue("ManualCameraMoveLateral");
@@ -90,8 +95,9 @@ class SCR_SetSpeedManualCameraComponent : SCR_BaseManualCameraComponent
 				//UpdateWidget()
 			}
 		}
-			
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool EOnCameraInit()
 	{
 		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
@@ -101,6 +107,8 @@ class SCR_SetSpeedManualCameraComponent : SCR_BaseManualCameraComponent
 		//m_Widget = TextWidget.Cast(GetCameraEntity().CreateCameraWidget(m_Layout, false));
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraExit()
 	{
 		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
@@ -109,4 +117,4 @@ class SCR_SetSpeedManualCameraComponent : SCR_BaseManualCameraComponent
 		
 		//if (m_Widget) m_Widget.RemoveFromHierarchy();
 	}
-};
+}

@@ -24,8 +24,8 @@ class SCR_AIWorld : AIWorld
 {
 	static const float MAX_NAVMESH_REBUILD_SIZE = 100 * 100; //--- Squared value
 	
-	static ref ScriptInvoker s_OnAgentSpawned = new ref ScriptInvoker();
-	static ref ScriptInvoker s_OnAgentRemoved = new ref ScriptInvoker();
+	static ref ScriptInvoker s_OnAgentSpawned = new ScriptInvoker();
+	static ref ScriptInvoker s_OnAgentRemoved = new ScriptInvoker();
 	static bool s_bDiagRegistered;
 	
 	[Attribute("", UIWidgets.Object)]
@@ -45,7 +45,8 @@ class SCR_AIWorld : AIWorld
 #ifdef DEBUG_NAVMESH_REBUILD_AREAS
 	protected ref array<ref Shape> m_DebugNavmeshRebuildAreas = new array<ref Shape>;
 #endif
-	
+	[Attribute("200", UIWidgets.EditBox, "Amount of AIs that can be in simulation", "0 1000 1", NULL, "AILimits")]
+	protected int m_iActiveAILimit;
 	//------------------------------------------------------------------------------------------------
 	/*!
 	Get event called every time any group changes its control mode.
@@ -95,6 +96,7 @@ class SCR_AIWorld : AIWorld
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_DEBUG_COVERS,"","Debug cover search","AIScript");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_COMMS_HANDLERS,"", "Show Comms Handlers","AIScript");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_PERCEPTION_PANEL,"","Show perception panel","AIScript");
+			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_SMOKE_COVER_POSITIONS,"","Show smoke cover positions","AIScript");
 
 #ifdef AI_DEBUG
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SEND_MESSAGE, "", "Show Send Message Menu","AIScript");
@@ -135,6 +137,8 @@ class SCR_AIWorld : AIWorld
 			if(order.m_eUIType != EOrderType_Character.NONE)
 				m_aOrdersPacked[order.m_eUIType] = order;
 		}
+		
+		SetLimitOfActiveAIs(m_iActiveAILimit);
 		
 #ifdef AI_DEBUG
 		SCR_AISendMessageDebugUI.Init();
@@ -265,7 +269,7 @@ class SCR_AIWorld : AIWorld
 				
 				//Check if the entity has a navlink and it has a link that applies to vehicles
 				NavmeshCustomLinkComponent hasNavlink = NavmeshCustomLinkComponent.Cast(entity.FindComponent(NavmeshCustomLinkComponent));
-				bool value = true;
+				bool value = false;
 				if (hasNavlink)
 					value = hasNavlink.HasLinkOfNavmeshType("BTRlike");
 				redoRoads.Insert(!value);

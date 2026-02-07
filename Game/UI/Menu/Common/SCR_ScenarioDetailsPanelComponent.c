@@ -8,12 +8,19 @@ class SCR_ScenarioDetailsPanelComponent : SCR_ContentDetailsPanelBase
 	protected ref MissionWorkshopItem m_Scenario;
 	protected SCR_MissionHeader m_Header;
 	
-	protected ref SCR_ScenarioDetailsPanelWidgets m_Widgets = new SCR_ScenarioDetailsPanelWidgets();
+	protected SCR_ScenarioBackendImageComponent m_BackendImageComponent;
+	
+	//------------------------------------------------------------------------------------------------
+	override void HandlerAttached(Widget w)
+	{	
+		super.HandlerAttached(w);
+		
+		m_BackendImageComponent = SCR_ScenarioBackendImageComponent.Cast(m_CommonWidgets.m_wBackendImage.FindHandler(SCR_ScenarioBackendImageComponent));
+
+		UpdateAllWidgets();
+	}
 	
 	// -------- Public API -----------
-	
-	
-	
 	//-----------------------------------------------------------------------------------
 	void SetScenario(MissionWorkshopItem scenario)
 	{
@@ -32,23 +39,22 @@ class SCR_ScenarioDetailsPanelComponent : SCR_ContentDetailsPanelBase
 		UpdateAllWidgets();
 	}	
 	
-	
-	
 	// -------- Protected / Private -----------
-	
-	
-	
-	
 	//-----------------------------------------------------------------------------------
 	protected void UpdateAllWidgets()
 	{
+		if (!GetGame().InPlayMode())
+			return;
+		
 		if (!m_Scenario && !m_Header)
 		{
-			m_Widgets.m_NameText.SetText(string.Empty);
-			m_Widgets.m_TypeOverlay.SetVisible(false);
-			m_Widgets.m_AuthorNameText.SetText(string.Empty);
+			m_CommonWidgets.m_wNameText.SetText(string.Empty);
+			m_CommonWidgets.m_wAuthorNameText.SetText(string.Empty);
 			SetDescriptionText(string.Empty);
-			m_Widgets.m_BackendImageComponent.SetScenarioAndImage(null, null);
+			
+			if (m_BackendImageComponent)
+				m_BackendImageComponent.SetScenarioAndImage(null, null);
+			
 			return;
 		}
 		
@@ -59,20 +65,11 @@ class SCR_ScenarioDetailsPanelComponent : SCR_ContentDetailsPanelBase
 		else if (m_Scenario)
 			title = m_Scenario.Name();
 
-		m_Widgets.m_NameText.SetText(title);
+		m_CommonWidgets.m_wNameText.SetText(title);
 		
 		// Author name
 		// We don't have author name in scenario header now.
-		if (m_Scenario)
-		{
-			if (m_Scenario.GetOwner() && m_Scenario.GetOwner().Author())
-			{
-				string author = m_Scenario.GetOwner().Author().Name();
-				m_Widgets.m_AuthorNameText.SetText(author);
-			}
-			else
-				m_Widgets.m_AuthorNameText.SetText("Bohemia Interactive");
-		}
+		UpdateAuthorNameText();
 		
 		// Description
 		if (m_Header)
@@ -81,18 +78,37 @@ class SCR_ScenarioDetailsPanelComponent : SCR_ContentDetailsPanelBase
 			SetDescriptionText(m_Scenario.Description());
 		
 		// Image
-		if (m_Scenario)
-			m_Widgets.m_BackendImageComponent.SetScenarioAndImage(m_Scenario, m_Scenario.Thumbnail());
+		if (m_BackendImageComponent)
+		{
+			if (m_Scenario)
+				m_BackendImageComponent.SetScenarioAndImage(m_Scenario, m_Scenario.Thumbnail());
+			else
+				m_BackendImageComponent.SetScenarioAndImage(m_Scenario, null);
+		}
+
+		// Error message
+		bool isInError = SCR_ScenarioEntryHelper.IsModInErrorState(m_Scenario);
+		float saturation = UIConstants.ENABLED_WIDGET_SATURATION;
+		
+		m_CommonWidgets.m_WarningOverlayComponent.SetWarningVisible(isInError, false);
+		m_CommonWidgets.m_WarningOverlayComponent.SetWarning(SCR_ScenarioEntryHelper.GetErrorMessageVerbose(m_Scenario), SCR_ScenarioEntryHelper.GetErrorTexture(m_Scenario));
+	
+		if (isInError)
+			saturation = UIConstants.DISABLED_WIDGET_SATURATION;
+		
+		if (m_BackendImageComponent)
+			m_BackendImageComponent.SetImageSaturation(saturation);
+	}
+	
+	//-----------------------------------------------------------------------------------
+	protected void UpdateAuthorNameText()
+	{
+		if (!m_Scenario)
+			return;
+
+		if (m_Scenario.GetOwner() && m_Scenario.GetOwner().Author())
+			m_CommonWidgets.m_wAuthorNameText.SetText(m_Scenario.Author());
 		else
-			m_Widgets.m_BackendImageComponent.SetScenarioAndImage(m_Scenario, null);
+			m_CommonWidgets.m_wAuthorNameText.SetText(UIConstants.BOHEMIA_INTERACTIVE);
 	}
-	
-	
-	//------------------------------------------------------------------------------------------------
-	override void HandlerAttached(Widget w)
-	{	
-		super.HandlerAttached(w);
-		m_Widgets.Init(w);		
-		UpdateAllWidgets();
-	}
-};
+}

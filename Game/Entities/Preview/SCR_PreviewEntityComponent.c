@@ -1,5 +1,5 @@
 [ComponentEditorProps(category: "GameScripted/Editor", description: "")]
-class SCR_PreviewEntityComponentClass: ScriptComponentClass
+class SCR_PreviewEntityComponentClass : ScriptComponentClass
 {
 	[Attribute("1", desc: "When enabled, preview prefab can be used also in runtime, not only when spawning from prefab.")]
 	protected bool m_bRuntime;
@@ -10,10 +10,17 @@ class SCR_PreviewEntityComponentClass: ScriptComponentClass
 	[Attribute()]
 	protected ref array<ref SCR_BasePreviewEntry> m_aEntries;
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetPreviewPrefab()
 	{
 		return m_PreviewPrefab;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[out] outEntries
+	//! \param[in] entry
+	//! \return
 	int GetPreviewEntries(out notnull array<ref SCR_BasePreviewEntry> outEntries, SCR_BasePreviewEntry entry)
 	{
 		//outEntries.Clear();
@@ -35,15 +42,22 @@ class SCR_PreviewEntityComponentClass: ScriptComponentClass
 		}
 		return count;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	bool IsRuntime()
 	{
 		return m_bRuntime;
 	}
-};
-class SCR_PreviewEntityComponent: ScriptComponent
+}
+
+class SCR_PreviewEntityComponent : ScriptComponent
 {
 	protected const string FILE_SUFFIX = "_Preview";
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetPreviewPrefab()
 	{
 		SCR_PreviewEntityComponentClass prefabData = SCR_PreviewEntityComponentClass.Cast(GetComponentData(GetOwner()));
@@ -52,6 +66,11 @@ class SCR_PreviewEntityComponent: ScriptComponent
 		else
 			return ResourceName.Empty;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[out] outEntries
+	//! \param[in] entry
+	//! \return
 	int GetPreviewEntries(out notnull array<ref SCR_BasePreviewEntry> outEntries, SCR_BasePreviewEntry entry)
 	{
 		SCR_PreviewEntityComponentClass prefabData = SCR_PreviewEntityComponentClass.Cast(GetComponentData(GetOwner()));
@@ -60,6 +79,10 @@ class SCR_PreviewEntityComponent: ScriptComponent
 		else
 			return false;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	bool IsRuntime()
 	{
 		SCR_PreviewEntityComponentClass prefabData = SCR_PreviewEntityComponentClass.Cast(GetComponentData(GetOwner()));
@@ -68,9 +91,13 @@ class SCR_PreviewEntityComponent: ScriptComponent
 		else
 			return false;
 	}
-	
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #ifdef WORKBENCH
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] api
+	//! \param[in] entitySource
 	static void GeneratePreviewEntries(WorldEditorAPI api, IEntitySource entitySource)
 	{
 		//--- Find this component
@@ -104,6 +131,12 @@ class SCR_PreviewEntityComponent: ScriptComponent
 			}
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] api
+	//! \param[in] entitySource
+	//! \param[in] componentSource
 	void GeneratePreviewPrefab(WorldEditorAPI api, IEntitySource entitySource, IEntityComponentSource componentSource = null)
 	{
 		//--- Find this component
@@ -136,11 +169,10 @@ class SCR_PreviewEntityComponent: ScriptComponent
 			absolutePathPreview = FilePath.AppendExtension(FilePath.StripExtension(absolutePath, ext) + FILE_SUFFIX, ext);
 			
 			//--- Create dummy preview prefab
-			IEntity emptyEntity = api.CreateEntity("SCR_PrefabPreviewEntity", string.Empty, 0, null, vector.Zero, vector.Zero);
-			IEntitySource emptyEntitySource = api.EntityToSource(emptyEntity);
-			api.SetVariableValue(emptyEntitySource, {}, "m_SourcePrefab", prefab);
+			IEntitySource emptyEntitySource = api.CreateEntity("SCR_PrefabPreviewEntity", string.Empty, 0, null, vector.Zero, vector.Zero);
+			api.SetVariableValue(emptyEntitySource, null, "m_SourcePrefab", prefab);
 			api.CreateEntityTemplate(emptyEntitySource, absolutePathPreview);
-			api.DeleteEntity(api.SourceToEntity(emptyEntitySource));
+			api.DeleteEntity(emptyEntitySource);
 			
 			//--- Link preview prefab
 			ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
@@ -150,12 +182,13 @@ class SCR_PreviewEntityComponent: ScriptComponent
 			//api.CreateEntityTemplate(entitySource, absolutePath);
 		}
 		
-		SCR_PrefabPreviewEntity previewEntity = SCR_PrefabPreviewEntity.Cast(api.CreateEntity(previewPrefab, "", 0, null, vector.Zero, vector.Zero));
-		IEntitySource previewSource = api.EntityToSource(previewEntity);
+		IEntitySource previewSource = api.CreateEntity(previewPrefab, "", 0, null, vector.Zero, vector.Zero);
+		SCR_PrefabPreviewEntity previewEntity = SCR_PrefabPreviewEntity.Cast(api.SourceToEntity(previewSource));
 		previewEntity.CreatePrefabFromSource(api, prefab);
-		api.DeleteEntity(api.SourceToEntity(previewSource));
+		api.DeleteEntity(previewSource);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void _WB_OnContextMenu(IEntity owner, int id)
 	{
 		switch (id)
@@ -176,6 +209,7 @@ class SCR_PreviewEntityComponent: ScriptComponent
 				api.EndEntityAction();
 				break;
 			}
+
 			case 1:
 			{
 				GenericEntity genericOwner = GenericEntity.Cast(owner);
@@ -188,9 +222,11 @@ class SCR_PreviewEntityComponent: ScriptComponent
 			}
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override array<ref WB_UIMenuItem> _WB_GetContextMenuItems(IEntity owner)
 	{
 		return { new WB_UIMenuItem("Generate preview entries", 0), new WB_UIMenuItem("Generate preview prefab", 1) };
 	}
 #endif
-};
+}

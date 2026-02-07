@@ -1,12 +1,14 @@
-enum ELoiterCommandState
+enum ELoiterCommandState // TODO: SCR_
 {
 	LOITERING = 0,
 	EXITING = 1,
 	DONE = 2
-};
+}
 
 class SCR_CharacterCommandLoiter : CharacterCommandScripted
 {
+	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_CharacterCommandLoiter(BaseAnimPhysComponent pAnimPhysComponent, ChimeraCharacter pCharacter, CharacterInputContext pBaseInputCtx, SCR_ScriptedCharacterInputContext pScrInputCtx, SCR_ScriptedCommandsStaticTable pStaticTable, SCR_CharacterCommandHandlerComponent pScrCommandHandler)
 	{
 		m_pCharAnimComponent = CharacterAnimationComponent.Cast(pAnimPhysComponent);
@@ -17,6 +19,7 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 		m_pCommandHandler = pScrCommandHandler;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnActivate()
 	{
 		m_bWasTag = false;
@@ -30,21 +33,25 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 		SwitchState(ELoiterCommandState.LOITERING);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void OnDeactivate()
 	{
 		m_pScrInputCtx.m_iLoiteringType = -1;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnPossess()
 	{
 		StopLoitering(true);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override bool IsRootMotionControlled()
 	{
 		return m_pScrInputCtx.m_bLoiteringRootMotion;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void PrePhysUpdate(float pDt)
 	{
 		switch (m_eState)
@@ -83,6 +90,9 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param newState
 	void SwitchState(ELoiterCommandState newState)
 	{
 		switch (newState)
@@ -103,12 +113,14 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 		m_eState = newState;
 	}
 	
-	//terminateFast should be true when we are going into alerted or combat state.
+	//------------------------------------------------------------------------------------------------
+	//! \param terminateFast should be true when going into alerted or combat state.
 	void StopLoitering(bool terminateFast)
 	{
 		SwitchState(ELoiterCommandState.EXITING);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void FinishLoiter()
 	{
 		SetFlagFinished(true);
@@ -124,4 +136,4 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 	
 	protected ELoiterCommandState m_eState;
 	protected bool m_bWasTag;
-};
+}

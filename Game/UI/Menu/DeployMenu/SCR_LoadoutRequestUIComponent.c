@@ -45,46 +45,6 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 	protected ref ScriptInvokerInt m_OnPlayerEntryFocused;
 	protected ref ScriptInvokerWidget m_OnPlayerEntryFocusLost;
 
-	//----------------------------------------------------------------------------------------------
-	int GetLoadoutCost(SCR_BasePlayerLoadout playerLoadout)
-	{
-		if (playerLoadout.IsInherited(SCR_PlayerArsenalLoadout))
-		{
-			if (m_ArsenalManagerComp.m_bLocalPlayerLoadoutData)
-				return m_ArsenalManagerComp.m_bLocalPlayerLoadoutData.LoadoutCost;
-		}
-
-		int cost;
-		
-		SCR_EntityCatalogManagerComponent entityCatalogManager = SCR_EntityCatalogManagerComponent.GetInstance();
-		if (!entityCatalogManager)
-			return 0;
-			
-		SCR_Faction faction = SCR_Faction.Cast(m_PlyFactionAffilComp.GetAffiliatedFaction());
-		if (!faction)
-			return 0;
-			
-		ResourceName loadoutResource = playerLoadout.GetLoadoutResource();
-		if (!loadoutResource)
-			return 0;
-			
-		Resource resource = Resource.Load(loadoutResource);
-		if (!resource)
-			return 0;
-			
-		SCR_EntityCatalogEntry entry = entityCatalogManager.GetEntryWithPrefabFromFactionCatalog(EEntityCatalogType.CHARACTER, resource.GetResource().GetResourceName(), faction);
-		if (!entry)
-			return 0;
-			
-		SCR_EntityCatalogSpawnerData data = SCR_EntityCatalogSpawnerData.Cast(entry.GetEntityDataOfType(SCR_EntityCatalogSpawnerData));
-		if (!data)
-			return 0;
-	
-		cost = data.GetSupplyCost();
-		
-		return cost;
-	}
-
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
@@ -153,9 +113,9 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 			m_wSupplies = m_wLoadouty.FindAnyWidget("w_Supplies");
 		
 		if (m_wSupplies)
-		{
+		{			
 			m_wSuppliesText = RichTextWidget.Cast(m_wSupplies.FindAnyWidget("SuppliesText"));
-			m_wSupplies.SetVisible(true);
+			m_wSupplies.SetVisible(!m_wSuppliesText.GetText().IsEmpty());
 		}
 	}
 	
@@ -398,29 +358,30 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		if (m_LoadoutSelector)
 			m_LoadoutSelector.SetSelected(component.GetLoadout());
 	}
+	
+	//----------------------------------------------------------------------------------------------
+	protected float GetLoadoutCost()
+	{
+		//~ TODO: It should know the BASE (Or ResourceComponent of spawnpoint)
+		return SCR_ArsenalManagerComponent.GetLoadoutCalculatedSupplyCost(m_PlyLoadoutComp.GetLoadout(), true, -1, SCR_Faction.Cast(m_PlyFactionAffilComp.GetAffiliatedFaction()), null, null);
+	}
 
 	//! Set a loadout shown in the preview widget.
 	protected void SetLoadoutPreview(SCR_BasePlayerLoadout loadout)
 	{
-		PreviewRenderAttributes attributes;
-
 		if (m_PreviewComp && loadout)
 		{
 			if (m_wLoadoutName)
 				m_wLoadoutName.SetText(loadout.GetLoadoutName());			
-
-			Resource res = Resource.Load(loadout.GetLoadoutResource());
-			IEntityComponentSource source = SCR_BaseContainerTools.FindComponentSource(res, "SCR_CharacterInventoryStorageComponent");
-			if (source)
-			{
-				BaseContainer container = source.GetObject("Attributes");
-				ItemAttributeCollection collection = ItemAttributeCollection.Cast(BaseContainerTools.CreateInstanceFromContainer(container));
-				if (collection)
-					attributes = PreviewRenderAttributes.Cast(collection.FindAttribute(SCR_CharacterInventoryPreviewAttributes));
-			}
-
-			m_PreviewedEntity = m_PreviewComp.SetPreviewedLoadout(loadout, attributes);
+			m_PreviewedEntity = m_PreviewComp.SetPreviewedLoadout(loadout);
 			m_wLoadoutPreview.SetVisible(true);
+
+			if (m_wSuppliesText)
+			{
+				float supplyCost = GetLoadoutCost();
+				m_wSuppliesText.SetText(SCR_ResourceSystemHelper.SuppliesToString(supplyCost));
+				m_wSupplies.SetVisible(supplyCost > 0);
+			}
 		}
 	}
 
@@ -446,7 +407,12 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 			m_wExpandButtonIcon.LoadImageTexture(0, GetUIInfo(loadout).GetIconPath());
 		
 		if (m_wSuppliesText && loadout)
-			m_wSuppliesText.SetText(string.ToString(GetLoadoutCost(loadout)));
+		{
+			int supplyCost = GetLoadoutCost();
+			
+			m_wSuppliesText.SetText(SCR_ResourceSystemHelper.SuppliesToString(supplyCost));			
+			m_wSupplies.SetVisible(supplyCost > 0);
+		}
 	}
 
 	//! Get local player's assigned loadout.
@@ -590,7 +556,8 @@ class SCR_LoadoutButton : SCR_DeployButtonBase
 		if (!group)
 			return;
 
-		SetIsLeader(pid == m_iPlayerId && group.IsPlayerLeader(pid));
+		if (pid == m_iPlayerId)
+			SetIsLeader(group.IsPlayerLeader(pid));
 	}
 
 	protected void SetIsLeader(bool leader)

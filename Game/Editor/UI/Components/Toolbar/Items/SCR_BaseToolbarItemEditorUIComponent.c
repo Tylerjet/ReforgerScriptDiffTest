@@ -1,7 +1,7 @@
-class SCR_BaseToolbarItemEditorUIComponent: ScriptedWidgetComponent
-{	
-
+class SCR_BaseToolbarItemEditorUIComponent : ScriptedWidgetComponent
+{
+	//------------------------------------------------------------------------------------------------
 	void InitToolbarItem(Widget widget)
-	{	
+	{
 	}
-};
+}

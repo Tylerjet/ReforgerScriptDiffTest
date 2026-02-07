@@ -20,8 +20,6 @@ enum VCFlags
 	NOLIGHT,
 	//! Dynamic bounding box
 	DYNAMICBBOX,
-	//! Simple box. AAB is big enough so it contain transforms. No need to compute AAB from OBB
-	SIMPLEBBOX,
 	//! Receives wind emitters
 	WINDRECEIVER,
 	//! Animated by parent entity

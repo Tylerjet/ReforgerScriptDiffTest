@@ -6,9 +6,9 @@ class SCR_ContentBrowserSortingBar : SCR_ServerFilterBarComponent
 	
 	SCR_ButtonImageComponent m_CurrentSelection;
 	protected int m_iCurrentIndex;
-	protected ref array<SCR_ButtonImageComponent> m_aButtons = new ref array<SCR_ButtonImageComponent>();
+	protected ref array<SCR_ButtonImageComponent> m_aButtons = new array<SCR_ButtonImageComponent>();
 	
-	ref ScriptInvoker m_OnSortingChange = new ref ScriptInvoker();
+	ref ScriptInvoker m_OnSortingChange = new ScriptInvoker();
 	
 	override void HandlerAttached(Widget w)
 	{

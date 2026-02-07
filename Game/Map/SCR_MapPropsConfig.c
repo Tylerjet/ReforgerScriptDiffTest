@@ -117,7 +117,7 @@ class SCR_GridPropsConfig : SCR_MapPropsConfig
 		gridProps.SetFont(m_TextFont);
 		gridProps.SetFontsize(m_iTextSize); 
 		gridProps.SetTextColor(m_TextColor);
-		gridProps.SetMainGridLineColor(Color.Black);
+		gridProps.SetMainGridLineColor(Color.FromInt(Color.BLACK));
 		
 		if (m_bBoldText)
 			gridProps.SetTextBold();
@@ -202,9 +202,9 @@ class SCR_LegendPropsConfig : SCR_MapPropsConfig
 [BaseContainerProps()]
 class SCR_ContourPropsConfig : SCR_MapPropsConfig
 {
-	[Attribute("6", UIWidgets.EditBox, desc: "Contours are visible up to this layer, 0 for not visible", "0 100")]
+	[Attribute("3", UIWidgets.EditBox, desc: "Global setting for all contour types. Contours are visible up to this layer, 0 for not visible", "0 100")]
 	int m_iViewLayerVisibility;
-	
+		
 	[Attribute("1.2", UIWidgets.EditBox, desc: "Contour width")]
 	float m_fContourWidth;
 		

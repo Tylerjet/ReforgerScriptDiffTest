@@ -97,8 +97,8 @@ class SCR_ObjectPositionalInsects : SCR_AmbientInsectsEffect
 			return;
 
 		// Using TagManager we get array of closest entities where Insects can spawn
-		TagManager tagManager = world.GetTagManager();
-		if (!tagManager)
+		TagSystem tagSystem = TagSystem.Cast(world.FindSystem(TagSystem));
+		if (!tagSystem)
 		{
 			Print("AMBIENT LIFE: SCR_AmbientInsectsComponent: Missing TagManager in the world", LogLevel.WARNING);
 			m_AmbientInsectsComponent.RemoveInsectEffect(this);
@@ -107,7 +107,7 @@ class SCR_ObjectPositionalInsects : SCR_AmbientInsectsEffect
 		}
 
 		array<IEntity> closestEntities = {};
-		tagManager.GetTagsInRange(closestEntities, cameraPos, m_fSearchDistance, ETagCategory.Insect);
+		tagSystem.GetTagsInRange(closestEntities, cameraPos, m_fSearchDistance, ETagCategory.Insect);
 
 		// Process each entity to add it to the respective Insect type
 		foreach (IEntity entity : closestEntities)

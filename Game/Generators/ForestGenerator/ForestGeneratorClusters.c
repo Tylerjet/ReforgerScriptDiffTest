@@ -1,3 +1,4 @@
+//! This class defines forest generator clusters - which trees with which density should be present in this cluster
 [BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
 class ForestGeneratorCluster
 {
@@ -16,6 +17,8 @@ class ForestGeneratorCluster
 	SCR_EForestGeneratorClusterType m_Type;
 	float m_fRadius;
 
+	//------------------------------------------------------------------------------------------------
+	// constructor
 	void ForestGeneratorCluster()
 	{
 		if (!m_aObjects)

@@ -81,7 +81,7 @@ class SCR_DebrisSmallEntity : GenericEntity
 		// If array is not created, create it
 		if (!s_aDebrisSmallList)
 		{
-			s_aDebrisSmallList = new ref array<SCR_DebrisSmallEntity>();
+			s_aDebrisSmallList = new array<SCR_DebrisSmallEntity>();
 		}
 		// Insert element into the list
 		if (s_aDebrisSmallList)
@@ -177,7 +177,8 @@ class SCR_DebrisSmallEntity : GenericEntity
 		audioSource.SetSignalValue(SCR_AudioSource.ENTITY_SIZE_SIGNAL_NAME, m_RigidBody.GetMass());
 				
 		// Get sound position
-		vector mat[4];		
+		vector mat[4];
+		GetTransform(mat);				
 		mat[3] = pos;		
 		
 		// Play sound
@@ -281,7 +282,7 @@ class SCR_DebrisSmallEntity : GenericEntity
 		
 		// See if this is first entity or not, if so, create the list
 		if (!s_aDebrisSmallList)
-			s_aDebrisSmallList = new ref array<SCR_DebrisSmallEntity>();
+			s_aDebrisSmallList = new array<SCR_DebrisSmallEntity>();
 		
 		// If the list exists, check count. If over limit, replate debris with lower priority by this one.
 		if (s_aDebrisSmallList)
@@ -347,7 +348,8 @@ class SCR_DebrisSmallEntity : GenericEntity
 		// Set debris init position	for sound	
 		vector mins;
 		vector maxs;
-		entity.GetWorldBounds(mins, maxs);			
+		entity.GetWorldBounds(mins, maxs);	
+				
 		entity.m_vSoundPositionLast = vector.Lerp(mins, maxs, 0.5);
 		
 		// Set physics
@@ -363,7 +365,17 @@ class SCR_DebrisSmallEntity : GenericEntity
 					entity.m_RigidBody.SetVelocity(linearVelocity);
 					entity.m_RigidBody.SetAngularVelocity(angularVelocity * Math.DEG2RAD);
 				}
+				
+				//hotfix for debris getting stuck in terrain causing low fps
+				vector entityOrigin = entity.GetOrigin();
+				float terrainY = GetGame().GetWorld().GetSurfaceY(entityOrigin[0], entityOrigin[2]);		
+				if (mins[1] < terrainY && maxs[1] > terrainY)
+				{
+					float newHeight = terrainY - mins[1] + entityOrigin[1] + 0.001;
+					entity.SetOrigin({entityOrigin[0], newHeight, entityOrigin[2]});
+				}
 			}
+			
 			if (entity.m_RigidBody)
 				entity.m_RigidBody.SetInteractionLayer(EPhysicsLayerDefs.Debris);
 		}

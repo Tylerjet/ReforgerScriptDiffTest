@@ -955,7 +955,7 @@ class SCR_DestructibleBuildingEntity : Building
 				return false;
 			
 			// If we have a destructible component then we may be destroyed
-			if (genEnt.FindComponent(SCR_DestructionBaseComponent))
+			if (genEnt.FindComponent(SCR_DestructionDamageManagerComponent))
 				return true;
 			
 			// If we have a ladder component then we may be destroyed
@@ -1196,7 +1196,7 @@ class SCR_DestructibleBuildingEntity : Building
 				GenericEntity genProp = GenericEntity.Cast(prop);
 				if (genProp)
 				{
-					SCR_DestructionBaseComponent destructible = SCR_DestructionBaseComponent.Cast(genProp.FindComponent(SCR_DestructionBaseComponent));
+					SCR_DestructionDamageManagerComponent destructible = SCR_DestructionDamageManagerComponent.Cast(genProp.FindComponent(SCR_DestructionDamageManagerComponent));
 					if (destructible)
 					{
 						vector mat[3];

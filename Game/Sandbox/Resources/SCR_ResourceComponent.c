@@ -4,28 +4,26 @@ enum EResourceDebugVisualizationFlags
 	CONTAINER		= 1 << 1,
 	GENERATOR		= 1 << 2,
 	ENCAPSULATOR	= 1 << 3,
-};
+}
 
-/*!
-Component class with the container configuration on it in order to avoid duplication of data in the
-	container prefabs and the entity catalogs for the container-to-container interaction.
-*/
+//~ ScriptInvokers
+void SCR_Resources_OnResourceEnabledChanged(SCR_ResourceComponent resourceComponent, array<EResourceType> disabledResourceTypes);
+typedef func SCR_Resources_OnResourceEnabledChanged;
+
+//! Component class with the container configuration on it in order to avoid duplication of data in the
+//! container prefabs and the entity catalogs for the container-to-container interaction.
 [ComponentEditorProps(category: "GameScripted/Resources", description: "")]
 class SCR_ResourceComponentClass : ScriptComponentClass
 {	
-	/*!
-	Container prefab base configuration.
-	Warning: This gets copied/duplicated in SCR_ResourceComponent through
-		SCR_ResourceContainer::Initialize(IEntity owner, SCR_ResourceContainer container = null).
-	*/
+	//! Container prefab base configuration.
+	//! Warning: This gets copied/duplicated in SCR_ResourceComponent through
+	//! SCR_ResourceContainer::Initialize(IEntity owner, SCR_ResourceContainer container = null).
 	[Attribute(uiwidget: UIWidgets.Object, category: "Containers")]
 	protected ref array<ref SCR_ResourceContainer> m_aContainers;
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Warning: Only to be used for initializing the container in SCR_ResourceComponent.
-	\return The prefab base container configuration, or null if none.
-	*/
+	//! Warning: Only to be used for initialising the container in SCR_ResourceComponent.
+	//! \return The prefab base container configuration, or null if none.
 	array<ref SCR_ResourceContainer> GetContainers()
 	{
 		return m_aContainers;
@@ -34,24 +32,14 @@ class SCR_ResourceComponentClass : ScriptComponentClass
 	//------------------------------------------------------------------------------------------------
 	override static array<typename> Requires(IEntityComponentSource src)
 	{
-		return {RplComponent};
+		return { RplComponent };
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	override static bool DependsOn(string className)
-	{
-		return className == "RplComponent";
-	}
-};
+}
 
-/*!
-Component used to activate the sandbox resources functionality on an entity.
-This component can enable the functionality for both sandbox container and sandbox consumer in an
-	individual manner.
-The sandbox resources functionality does not require a manager so just the presence of containers
-	being registered into a consumer's queue is enough for it to perform it's functionality.
-The replication component is a requirement for the component to work properly.
-*/
+//! Component used to activate the sandbox resources functionality on an entity.
+//! This component can enable the functionality for both sandbox container and sandbox consumer in an individual manner.
+//! The sandbox resources functionality does not require a manager so just the presence of containers being registered into a consumer's queue is enough for it to perform its functionality.
+//! The replication component is a requirement for the component to work properly.
 class SCR_ResourceComponent : ScriptComponent
 {
 	const float UPDATE_DISTANCE_TRESHOLD = 2.5;
@@ -67,6 +55,7 @@ class SCR_ResourceComponent : ScriptComponent
 	protected vector m_vGridContainersBoundingVolumeMaxs;
 	
 	protected bool m_bIsFlaggedForProcessing;
+
 	//! Refer to SCR_ResourceEncapsulator for documentation.
 	[Attribute(uiwidget: UIWidgets.Object, category: "Encapsulators")]
 	protected ref array<ref SCR_ResourceEncapsulator> m_aEncapsulators;
@@ -79,9 +68,20 @@ class SCR_ResourceComponent : ScriptComponent
 	[Attribute(uiwidget: UIWidgets.Object, category: "Generators"), RplProp(onRplName: "TEMP_OnInteractorReplicated")]
 	protected ref array<ref SCR_ResourceGenerator> m_aGenerators;
 	
-	//! HOTFIX: Until replication issues are resolved.
-	ref ScriptInvoker m_TEMP_OnInteractorReplicated;
+	//~ Any Resource Types that is set here is a disabled resource type
+	[Attribute(desc: "List of all disabled resource types", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(EResourceType)), RplProp(onRplName: "OnResourceTypeEnabledChanged")]
+	protected ref array<EResourceType> m_aDisabledResourceTypes;
 	
+	//~ Any ResourceType that is set here cannot be enabled or disabled in runtime for this entity by editor
+	[Attribute(desc: "Any ResourceType that is set here cannot be enabled or disabled in runtime for this entity by editor", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(EResourceType))]
+	protected ref array<EResourceType> m_aDisallowChangingEnableResource;
+	
+	//! HOTFIX: Until replication issues are resolved.
+	protected ref ScriptInvoker m_TEMP_OnInteractorReplicated;
+	
+	protected ref ScriptInvokerBase<SCR_Resources_OnResourceEnabledChanged> m_OnResourceTypeEnabledChanged;
+	
+	//------------------------------------------------------------------------------------------------
 	//! HOTFIX: Until replication issues are resolved.
 	ScriptInvoker TEMP_GetOnInteractorReplicated()
 	{
@@ -91,6 +91,7 @@ class SCR_ResourceComponent : ScriptComponent
 		return m_TEMP_OnInteractorReplicated;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//! HOTFIX: Until replication issues are resolved.
 	void TEMP_OnInteractorReplicated()
 	{
@@ -113,10 +114,8 @@ class SCR_ResourceComponent : ScriptComponent
 	[RplProp(onRplName: "OnVisibilityChanged")]
 	protected bool m_bIsVisible = true;
 	
-	/*!
-	Defined/Configured through SCR_ResourceComponentClass::m_Container.
-	Refer to SCR_ResourceContainer for documentation.
-	*/
+	//! Defined/Configured through SCR_ResourceComponentClass::m_Container.
+	//! Refer to SCR_ResourceContainer for documentation.
 	protected ref array<ref SCR_ResourceContainer> m_aContainerInstances = {};
 	
 	//! Replication component attached to the owner entity.
@@ -127,18 +126,102 @@ class SCR_ResourceComponent : ScriptComponent
 	protected bool m_bHasParent;
 	protected bool m_bIsOwnerActive;
 	
-	// TODO: Remove after fixing initialization and hierarchy issues.
+	// TODO: Remove after fixing initialisation and hierarchy issues.
 	protected bool m_bIsInitialized;
-	// TODO: Remove after fixing initialization and hierarchy issues.
+
+	// TODO: Remove after fixing initialisation and hierarchy issues.
 	protected bool m_bIsAddedToParentBuffered;
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Use this function to obtain the Resource component instead of IEntity.FindComponent(SCR_ResourceComponent)
-	\param entity Entity to get Resource component from. Will loop through children in entity is a vehicle and no resource component was found on the entity
-	\return Get ResourceComponent from given entity. 
-	*/
-	static SCR_ResourceComponent FindResourceComponent(IEntity entity)
+	//! \param[in] resourceType Type to check
+	//! \return If supplies are enabled or not (Only checked if global supplies are enabled, otherwise it always returns false)
+	bool IsResourceTypeEnabled(EResourceType resourceType = EResourceType.SUPPLIES)
+	{
+		if (!SCR_ResourceSystemHelper.IsGlobalResourceTypeEnabled(resourceType))
+			return false;
+		
+		return !m_aDisabledResourceTypes.Contains(resourceType);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] disabledResourceTypes List of disabled resources
+	//! \return Count of all disabled resource types
+	int GetDisabledResourceTypes(inout notnull array<EResourceType> disabledResourceTypes)
+	{
+		disabledResourceTypes.Copy(m_aDisabledResourceTypes);
+		return disabledResourceTypes.Count();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] resourceType Type to check
+	//! \return If supplies are enabled or not (Only checked if global supplies are enabled, otherwise it always returns false)
+	bool CanResourceTypeEnabledBeChanged(EResourceType resourceType = EResourceType.SUPPLIES)
+	{		
+		return !m_aDisallowChangingEnableResource.Contains(resourceType);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set Resource Type enabled or disabled
+	//! \param[in] enable Set true to enable resource type, set false to disable
+	//! \param[in] resourceType Resource type to enable/disable
+	void SetResourceTypeEnabled(bool enable, EResourceType resourceType = EResourceType.SUPPLIES)
+	{
+		if (!CanResourceTypeEnabledBeChanged(resourceType))
+			return;
+		
+		int index = m_aDisabledResourceTypes.Find(resourceType);
+		
+		//~ Already Enabled/Disabled
+		if ((index < 0) == enable)
+			return;
+		
+		if (!enable)
+			m_aDisabledResourceTypes.Insert(resourceType);
+		else 
+			m_aDisabledResourceTypes.Remove(index);
+		
+		Replication.BumpMe();
+		
+		//~ Enable/Disable resource type for all encapsulated resourceComponents
+		/*array<SCR_ResourceEncapsulator> encapsulators = GetEncapsulators();
+		SCR_ResourceComponent resourceComponent;
+		foreach (SCR_ResourceEncapsulator encapsulator : encapsulators)
+		{
+			resourceComponent = encapsulator.GetComponent();
+			if (!resourceComponent || !resourceComponent.CanResourceTypeEnabledBeChanged(resourceType))
+				continue;
+			
+			resourceComponent.SetResourceTypeEnabled(enable, resourceType);
+		}*/
+
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if ((gameMode && gameMode.IsMaster()) ||  (!gameMode && Replication.IsServer()))
+			OnResourceTypeEnabledChanged();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnResourceTypeEnabledChanged()
+	{
+		if (m_OnResourceTypeEnabledChanged)
+			m_OnResourceTypeEnabledChanged.Invoke(this, m_aDisabledResourceTypes);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return ScriptInvoker OnSupplies Enabled
+	ScriptInvokerBase<SCR_Resources_OnResourceEnabledChanged> GetOnResourceTypeEnabledChanged()
+	{
+		if (!m_OnResourceTypeEnabledChanged)
+			m_OnResourceTypeEnabledChanged = new ScriptInvokerBase<SCR_Resources_OnResourceEnabledChanged>();
+		
+		return m_OnResourceTypeEnabledChanged;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Use this function to obtain the Resource component instead of IEntity.FindComponent(SCR_ResourceComponent)
+	//! \param[in] entity Entity to get Resource component from. Will loop through children in entity is a vehicle and no resource component was found on the entity
+	//! \param[in] ignoreChildIfHasStorage If looping through children and this is true than it will not return the ResourceComponent if that child has an inventory storage
+	//! \return Get ResourceComponent from given entity.
+	static SCR_ResourceComponent FindResourceComponent(IEntity entity, bool ignoreChildIfHasStorage = false)
 	{
 		//~ Function is used in many places. Not all can guarantee that entity is not null
 		if (!entity)
@@ -149,38 +232,71 @@ class SCR_ResourceComponent : ScriptComponent
 		if (resourceComponent)
 			return resourceComponent;
 		
-		//~ Loop over child entities if entity is a vehicle. Note that sloted entities are not yet in hierarchy the moment they are created for clients
+		//~ Loop over slotted entities if entity is a vehicle. Note that slotted entities are not yet in hierarchy the moment they are created for clients
 		if (Vehicle.Cast(entity))
 		{
-			IEntity child = entity.GetChildren();
+			SlotManagerComponent slotManager = SlotManagerComponent.Cast(entity.FindComponent(SlotManagerComponent));
+			if (!slotManager)
+				return null;
 			
-			while (child)
+			array<EntitySlotInfo> outSlotInfos = {};
+			slotManager.GetSlotInfos(outSlotInfos);
+			IEntity slot;
+			
+			foreach (EntitySlotInfo slotInfo : outSlotInfos)
 			{
-				resourceComponent = SCR_ResourceComponent.Cast(child.FindComponent(SCR_ResourceComponent));
-				if (resourceComponent)
-					return resourceComponent;
+				slot = slotInfo.GetAttachedEntity();
 				
-				child = child.GetSibling();
+				if (!slot)
+					continue;
+				
+				resourceComponent = SCR_ResourceComponent.Cast(slot.FindComponent(SCR_ResourceComponent));
+				if (resourceComponent)
+				{					
+					//~ It does not care if the slotted entity has a storage or not
+					if (!ignoreChildIfHasStorage)
+						return resourceComponent;
+					
+					//~ Has no storage so this is a valid resource component
+					if (!slot.FindComponent(ScriptedBaseInventoryStorageComponent))
+						return resourceComponent;
+				}
 			}
+		}
+		//~ Check if parent is vehicle than get resource component from parent or any other slot
+		else if (Vehicle.Cast(entity.GetParent()))
+		{
+			InventoryItemComponent inventoryItem = InventoryItemComponent.Cast(entity.FindComponent(InventoryItemComponent));
+			if (inventoryItem)
+			{
+				//~ Is item in inventory thus ignore getting vehicle parent
+				if (inventoryItem.GetParentSlot())
+					return null;
+			}
+			
+			return SCR_ResourceComponent.FindResourceComponent(entity.GetParent(), ignoreChildIfHasStorage);
 		}
 		
 		return null;
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetGridContainersBoundsMins()
 	{
 		return m_iGridContainersBoundsMins;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetGridContainersBoundsMaxs()
 	{
 		return m_iGridContainersBoundsMaxs;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[out] mins
+	//! \param[out] maxs
 	void GetGridContainersBounds(out int mins, out int maxs)
 	{
 		mins = m_iGridContainersBoundsMins;
@@ -188,6 +304,8 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[out] mins
+	//! \param[out] maxs
 	void GetGridContainersBoundingBox(out vector mins, out vector maxs)
 	{
 		mins = m_vGridContainersBoundingVolumeMins;
@@ -195,6 +313,8 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[out] mins
+	//! \param[out] maxs
 	void GetGridContainersWorldBoundingBox(out vector mins, out vector maxs)
 	{
 		vector ownerOrigin = GetOwner().GetOrigin();
@@ -203,27 +323,29 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsDynamic()
 	{
 		return m_bIsDynamic;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	RplComponent GetReplicationComponent()
 	{
 		return m_ReplicationComponent;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	FactionAffiliationComponent GetFactionAffiliationComponent()
 	{
 		return m_FactionAffiliationComponent;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return The first encapsulator instance of a specified resource type, or null if none.
-	*/
+	//! \param[in] resourceType
+	//! \return The first encapsulator instance of a specified resource type, or null if none.
 	SCR_ResourceEncapsulator GetEncapsulator(EResourceType resourceType)
 	{
 		if (resourceType == EResourceType.INVALID || !m_aEncapsulators)
@@ -252,11 +374,9 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\param[out] encapsulator The first encapsulator instance of a specified resource type, or null if none.
-	
-	\return If a encapsulator instance of a specified resource type has been found.
-	*/
+	//! \param[in] resourceType
+	//! \param[out] encapsulator The first encapsulator instance of a specified resource type, or null if none.
+	//! \return If a encapsulator instance of a specified resource type has been found.
 	bool GetEncapsulator(EResourceType resourceType, out SCR_ResourceEncapsulator encapsulator)
 	{
 		encapsulator = null;
@@ -313,9 +433,7 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return The encapsulator instances, or null if none.
-	*/
+	//! \return The encapsulator instances, or null if none.
 	array<SCR_ResourceEncapsulator> GetEncapsulators()
 	{
 		if (!m_aEncapsulators)
@@ -339,9 +457,9 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return The first container instance of a specified resource type, or null if none.
-	*/
+	//!
+	//! \param[in] resourceType
+	//! \return The first container instance of a specified resource type, or null if none.
 	SCR_ResourceContainer GetContainer(EResourceType resourceType)
 	{
 		if (resourceType == EResourceType.INVALID || !m_aContainerInstances)
@@ -370,11 +488,10 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\param[out] encapsulator The first encapsulator instance of a specified resource type, or null if none.
-	
-	\return If a encapsulator instance of a specified resource type has been found.
-	*/
+	//!
+	//! \param[in] resourceType
+	//! \param[out] container
+	//! \return If a container instance of a specified resource type has been found.
 	bool GetContainer(EResourceType resourceType, out SCR_ResourceContainer container)
 	{
 		container = null;
@@ -383,7 +500,6 @@ class SCR_ResourceComponent : ScriptComponent
 			return false;
 		
 		int higherLimitPosition = m_aContainerInstances.Count();
-		
 		if (higherLimitPosition == 0)
 			return false;
 		
@@ -415,9 +531,13 @@ class SCR_ResourceComponent : ScriptComponent
 		EResourceType compareResourceType = container.GetResourceType();
 		
 		if (resourceType > compareResourceType)
+		{
 			position = comparePosition + 1;
+		}
 		else if (resourceType < compareResourceType)
+		{
 			higherLimitPosition = comparePosition;
+		}
 		else 
 		{
 			container = m_aContainerInstances[comparePosition];
@@ -431,9 +551,7 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return The container instances, or null if none.
-	*/
+	//! \return The container instances, or null if none.
 	array<SCR_ResourceContainer> GetContainers()
 	{
 		int containerCount = m_aContainerInstances.Count();
@@ -454,16 +572,15 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return The first consumer instance of a specified resource type, or null if none.
-	*/
+	//! \param[in] identifier
+	//! \param[in] resourceType
+	//! \return The first consumer instance of a specified resource type, or null if none.
 	SCR_ResourceConsumer GetConsumer(EResourceGeneratorID identifier, EResourceType resourceType)
 	{
 		if (identifier == EResourceGeneratorID.INVALID || resourceType == EResourceType.INVALID || !m_aConsumers)
 			return null;
 		
 		int higherLimitPosition = m_aConsumers.Count();
-		
 		if (higherLimitPosition == 0)
 			return null;
 		
@@ -486,11 +603,11 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\param[out] consumer The first consumer instance of a specified resource type, or null if none.
-	
-	\return If a consumer instance of a specified resource type has been found.
-	*/
+	//!
+	//! \param[in] identifier
+	//! \param[in] resourceType
+	//! \param[in,out] consumer The first consumer instance of a specified resource type, or null if none.
+	//! \return If a consumer instance of a specified resource type has been found.
 	bool GetConsumer(EResourceGeneratorID identifier, EResourceType resourceType, inout SCR_ResourceConsumer consumer)
 	{
 		consumer = null;
@@ -499,7 +616,6 @@ class SCR_ResourceComponent : ScriptComponent
 			return false;
 		
 		int higherLimitPosition = m_aConsumers.Count();
-		
 		if (higherLimitPosition == 0)
 			return false;
 		
@@ -533,13 +649,21 @@ class SCR_ResourceComponent : ScriptComponent
 		EResourceGeneratorID comapareIdentifier	= consumer.GetGeneratorIdentifier();
 		
 		if (identifier > comapareIdentifier)
+		{
 			position = comparePosition + 1;
+		}
 		else if (identifier < comapareIdentifier)
+		{
 			higherLimitPosition = comparePosition;
+		}
 		else if (resourceType > compareResourceType)
+		{
 			position = comparePosition + 1;
+		}
 		else if (resourceType < compareResourceType)
+		{
 			higherLimitPosition = comparePosition;
+		}
 		else 
 		{
 			consumer = m_aConsumers[comparePosition];
@@ -553,18 +677,14 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return The consumer instances, or null if none.
-	*/
+	//! \return The consumer instances, or null if none.
 	array<SCR_ResourceConsumer> GetConsumers()
 	{
 		int consumerCount = m_aConsumers.Count();
-		
 		if (consumerCount == 0)
 			return null;
 		
 		array<SCR_ResourceConsumer> consumers = {};
-		
 		consumers.Reserve(consumerCount);
 		
 		foreach (SCR_ResourceConsumer container: m_aConsumers)
@@ -576,16 +696,15 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return The first generator instance of a specified resource type, or null if none.
-	*/
+	//! \param[in] identifier
+	//! \param[in] resourceType
+	//! \return The first generator instance of a specified resource type, or null if none.
 	SCR_ResourceGenerator GetGenerator(EResourceGeneratorID identifier, EResourceType resourceType)
 	{
 		if (identifier == EResourceGeneratorID.INVALID || resourceType == EResourceType.INVALID || !m_aGenerators)
 			return null;
 		
 		int higherLimitPosition = m_aGenerators.Count();
-		
 		if (higherLimitPosition == 0)
 			return null;
 		
@@ -608,11 +727,10 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\param[out] generator The first generator instance of a specified resource type, or null if none.
-	
-	\return If a generator instance of a specified resource type has been found.
-	*/
+	//! \param[in] identifier
+	//! \param[in] resourceType
+	//! \param[out] generator The first generator instance of a specified resource type, or null if none.
+	//! \return If a generator instance of a specified resource type has been found.
 	bool GetGenerator(EResourceGeneratorID identifier, EResourceType resourceType, out SCR_ResourceGenerator generator)
 	{
 		generator = null;
@@ -621,7 +739,6 @@ class SCR_ResourceComponent : ScriptComponent
 			return false;
 		
 		int higherLimitPosition = m_aGenerators.Count();
-		
 		if (higherLimitPosition == 0)
 			return false;
 		
@@ -655,13 +772,21 @@ class SCR_ResourceComponent : ScriptComponent
 		EResourceGeneratorID comapareIdentifier	= generator.GetIdentifier();
 		
 		if (identifier > comapareIdentifier)
+		{
 			position = comparePosition + 1;
+		}
 		else if (identifier < comapareIdentifier)
+		{
 			higherLimitPosition = comparePosition;
+		}
 		else if (resourceType > compareResourceType)
+		{
 			position = comparePosition + 1;
+		}
 		else if (resourceType < compareResourceType)
+		{
 			higherLimitPosition = comparePosition;
+		}
 		else 
 		{
 			generator = m_aGenerators[comparePosition];
@@ -675,9 +800,9 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return The generator instances, or null if none.
-	*/
+	//!
+	//! \return The generator instances, or null if none.
+	//!
 	array<SCR_ResourceGenerator> GetGenerators()
 	{
 		int generatorCount = m_aGenerators.Count();
@@ -698,62 +823,57 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetGridUpdateId()
 	{
 		return m_iGridUpdateId;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return The last processed world position of the component.
-	*/
+	//! \return The last processed world position of the component.
 	vector GetLastPosition()
 	{
 		return m_LastPosition;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return true if the owner has a parent entity, false otherwise.
-	*/
+	//! \return true if the owner has a parent entity, false otherwise.
 	bool HasParent()
 	{
 		return m_bHasParent;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return The debug base color for the debugging visualization of the container and/or consumer.
-	*/
+	//! \return The debug base color for the debugging visualization of the container and/or consumer.
 	Color GetDebugColor()
 	{
-		return m_DebugColor;
+		return Color.FromInt(m_DebugColor.PackToInt());
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] gridUpdateId
+	//! \return
 	bool IsGridUpdateIdGreaterThan(int gridUpdateId)
 	{
 		return m_iGridUpdateId > gridUpdateId;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return true if the debugging visualization of the container and/or consumer is enabled, false
-		oherwise.
-	*/
+	//! \return true if the debugging visualization of the container and/or consumer is enabled, false oherwise.
 	bool IsDebugVisualizationEnabled()
 	{
 		return m_bEnableDebugVisualization;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsVisible()
 	{
 		return m_bIsVisible;
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsOwnerActive()
 	{
 		return m_bIsOwnerActive;
@@ -772,6 +892,7 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] gridUpdateId
 	void SetGridUpdateId(int gridUpdateId)
 	{
 		if (m_iGridUpdateId > gridUpdateId)
@@ -781,6 +902,7 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] state
 	void SetIsVisible(bool state)
 	{
 		m_bIsVisible = state;
@@ -791,18 +913,22 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] mins
 	void SetGridContainersBoundsMins(int mins)
 	{
 		m_iGridContainersBoundsMins = mins;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] maxs
 	void SetGridContainersBoundsMaxs(int maxs)
 	{
 		m_iGridContainersBoundsMaxs = maxs;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] mins
+	//! \param[in] maxs
 	void SetGridContainersBounds(int mins, int maxs)
 	{
 		m_iGridContainersBoundsMins = mins;
@@ -810,15 +936,14 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Updates the serial number for the current processing call of the resource grid onto this component.
-	*/
+	//! Updates the serial number for the current processing call of the resource grid onto this component.
 	void UpdateLastPosition()
 	{
 		m_LastPosition = GetOwner().GetOrigin();
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void FlagForProcessing()
 	{
 		if (m_bIsFlaggedForProcessing)
@@ -830,6 +955,7 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void UnflagForProcessing()
 	{
 		if (!m_bIsFlaggedForProcessing)
@@ -841,6 +967,7 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void DeleteConsumers()
 	{
 		if (!m_aConsumers)
@@ -850,6 +977,7 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void DeleteGenerators()
 	{
 		if (!m_aGenerators)
@@ -859,6 +987,7 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void DeleteQueryInteractors()
 	{
 		delete m_aConsumers;
@@ -866,29 +995,44 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Initializes the componenet, the consumer and/or the container.
-	Event called after init when all components are initialized.
-	
-	\param owner Entity that owns this component.
-	*/
+	//! Initialises the component, the consumer and/or the container.
+	//! Event called after init when all components are initialised.
+	//! \param[in] owner Entity that owns this component.
 	override event protected void OnPostInit(IEntity owner)
 	{
 		super.OnPostInit(owner);
 		Initialize(owner);
 		SetEventMask(owner, EntityEvent.INIT);
+		
+		//~ Remove any duplicate entries
+		if (m_aDisabledResourceTypes.IsEmpty())
+		{
+			//~ TODO: Make this cleaner
+			
+			set<EResourceType> duplicateRemoveSet = new set<EResourceType>();
+			
+			foreach (EResourceType resourceType : m_aDisabledResourceTypes)
+			{
+				duplicateRemoveSet.Insert(resourceType);
+			}
+			
+			m_aDisabledResourceTypes.Clear();
+			foreach (EResourceType resourceType : duplicateRemoveSet)
+			{
+				m_aDisabledResourceTypes.Insert(resourceType);
+			}
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] owner
 	void Initialize(notnull IEntity owner)
 	{
 		if (m_bIsInitialized)
 			return;
 		
-		/*! 
-		The replication component is a must, as the authority is the only one allowed to perform an
-			update on the container and/or consumer.
-		*/
+		//The replication component is a must, as the authority is the only one allowed to perform an update on the container and/or consumer.
 		m_ReplicationComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
 		FactionAffiliationComponent factionAffiliationComponentTemp;
 		IEntity parentEntity = owner.GetParent();
@@ -903,7 +1047,7 @@ class SCR_ResourceComponent : ScriptComponent
 			parentEntity = parentEntity.GetParent();
 		}
 		
-		//! In the case that no parent has a faction affiliation component, then get the owner's.
+		// In the case that no parent has a faction affiliation component, then get the owner's.
 		if (!m_FactionAffiliationComponent)
 			m_FactionAffiliationComponent = FactionAffiliationComponent.Cast(owner.FindComponent(FactionAffiliationComponent));
 		
@@ -911,18 +1055,14 @@ class SCR_ResourceComponent : ScriptComponent
 		float maxLength;
 		vector tempBoundsMaxs, tempBoundsMins;
 		
-		//! ---------------------------------------------------------------- Container initialization.
-		//! The container is configured through SCR_ResourceComponentClass.
-		//! Note: Order matters, containers should be processed first for the optimization on when
-		//! 	the self resource right is enabled on them. 
+		// ---------------------------------------------------------------- Container initialisation.
+		// The container is configured through SCR_ResourceComponentClass.
+		// Note: Order matters, containers should be processed first for the optimization on when the self resource right is enabled on them.
 		SCR_ResourceComponentClass prefabData = SCR_ResourceComponentClass.Cast(GetComponentData(owner));
 		
 		if (prefabData)
 		{
-			/*!
-			Container instances holding the initial configuration for this component instance's 
-				containers.
-			*/
+			// Container instances holding the initial configuration for this component instance's containers.
 			array<ref SCR_ResourceContainer> containers = prefabData.GetContainers();
 			
 			if (containers)
@@ -938,7 +1078,7 @@ class SCR_ResourceComponent : ScriptComponent
 					
 					containerInstance = SCR_ResourceContainer.Cast(containerInstanceTypename.Spawn());
 					
-					//! The copying of the container configuration in the prefab data happens here.
+					// The copying of the container configuration in the prefab data happens here.
 					containerInstance.Initialize(owner, container);
 					
 					int maxPosition = m_aContainerInstances.Count();
@@ -964,7 +1104,7 @@ class SCR_ResourceComponent : ScriptComponent
 							break;
 					}
 					
-					//! Clean container instance to copy the prefab container configuration to.
+					// Clean container instance to copy the prefab container configuration to.
 					m_aContainerInstances.InsertAt(containerInstance, position);
 					
 					if (container.IsIsolated())
@@ -978,7 +1118,7 @@ class SCR_ResourceComponent : ScriptComponent
 			}
 		}
 		
-		//! ------------------------------------------------------------- Encapsulator initialization.
+		// ------------------------------------------------------------- Encapsulator initialization.
 		if (m_aEncapsulators)
 		{
 			array<ref SCR_ResourceEncapsulator> encapsulators = {};
@@ -1017,7 +1157,7 @@ class SCR_ResourceComponent : ScriptComponent
 			m_aEncapsulators = encapsulators;
 		}
 		
-		//! ----------------------------------------------------------------- Consumer initialization.
+		// ----------------------------------------------------------------- Consumer initialization.
 		if (m_aConsumers)
 		{
 			array<ref SCR_ResourceConsumer> consumers = {};
@@ -1035,7 +1175,7 @@ class SCR_ResourceComponent : ScriptComponent
 				int position;
 				int maxPosition = consumers.Count();
 				EResourceGeneratorID generatorIdentifier = consumer.GetGeneratorIdentifier();
-				EResourceGeneratorID comapareGeneratorIdentifier;
+				EResourceGeneratorID compareGeneratorIdentifier;
 				EResourceType resourceType = consumer.GetResourceType();
 				EResourceType compareResourceType;
 				int comparePosition;
@@ -1045,21 +1185,17 @@ class SCR_ResourceComponent : ScriptComponent
 				{
 					comparePosition	= position + ((maxPosition - position) >> 1);
 					compareConsumer = consumers[comparePosition];
-					comapareGeneratorIdentifier	= compareConsumer.GetGeneratorIdentifier();
+					compareGeneratorIdentifier	= compareConsumer.GetGeneratorIdentifier();
 					compareResourceType	= compareConsumer.GetResourceType();
 					
-					if (generatorIdentifier > comapareGeneratorIdentifier)
+					if (generatorIdentifier > compareGeneratorIdentifier)
 						position = comparePosition + 1;
-					
-					else if (generatorIdentifier < comapareGeneratorIdentifier)
+					else if (generatorIdentifier < compareGeneratorIdentifier)
 						maxPosition = comparePosition;
-					
 					else if (resourceType > compareResourceType)
 						position = comparePosition + 1;
-					
 					else if (resourceType < compareResourceType)
 						maxPosition = comparePosition;
-					
 					else 
 						break;
 				}
@@ -1070,7 +1206,7 @@ class SCR_ResourceComponent : ScriptComponent
 			m_aConsumers = consumers;
 		}
 		
-		//! ---------------------------------------------------------------- Generator initialization.
+		// ---------------------------------------------------------------- Generator initialization.
 		if (m_aGenerators)
 		{
 			array<ref SCR_ResourceGenerator> generators = {};
@@ -1103,16 +1239,12 @@ class SCR_ResourceComponent : ScriptComponent
 					
 					if (identifier > comapareIdentifier)
 						position = comparePosition + 1;
-					
 					else if (identifier < comapareIdentifier)
 						maxPosition = comparePosition;
-					
 					else if (resourceType > compareResourceType)
 						position = comparePosition + 1;
-					
 					else if (resourceType < compareResourceType)
 						maxPosition = comparePosition;
-					
 					else 
 						break;
 				}
@@ -1137,11 +1269,12 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//!Called on parent entity when child entity is added into hierarchy
+	//! Called on parent entity when child entity is added into hierarchy
+	//! \param[in] parent
+	//! \param[in] child
 	override event protected void OnChildAdded(IEntity parent, IEntity child)
 	{
 		SCR_ResourceComponent childResourceComponent = SCR_ResourceComponent.Cast(child.FindComponent(SCR_ResourceComponent));
-		
 		if (!childResourceComponent)
 			return;
 		
@@ -1149,10 +1282,8 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Event after entity is allocated and initialized.
-	\param owner The owner entity
-	*/
+	//! Event after entity is allocated and initialized.
+	//! \param owner The owner entity
 	override event protected void EOnInit(IEntity owner)
 	{
 		SCR_ResourceContainer container;
@@ -1187,7 +1318,6 @@ class SCR_ResourceComponent : ScriptComponent
 		}
 		
 		Vehicle vehicle = Vehicle.Cast(GetOwner().GetRootParent());
-		
 		if (vehicle)
 			vehicle.GetOnPhysicsActive().Insert(OnVehiclePhysicsActive);
 		
@@ -1195,35 +1325,30 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Processes and presents the debugging visualization for the consumer and/or container.
-	Generic/Shared visualization should be processed explicitely here and consumer specific
-		visualization should be processed through SCR_ResourceConsumer::DebugDraw(), similarly for
-		the container with SCR_ResourceContainer::DebugDraw().
-	A white arrow is drawn explicitely from here with the intent of providing a visual cue of the
-		extents of the highest range, that is the storage range of the container or the resource range
-		of the consumer. Whatever is the highest is the height that will be selected for this arrow.
-	*/
+	//! Processes and presents the debugging visualization for the consumer and/or container.
+	//! Generic/Shared visualization should be processed explicitely here and consumer specific
+	//! visualiation should be processed through SCR_ResourceConsumer::DebugDraw(), similarly for
+	//! the container with SCR_ResourceContainer::DebugDraw().
+	//! A white arrow is drawn explicitely from here with the intent of providing a visual cue of the
+	//! extents of the highest range, that is the storage range of the container or the resource range
+	//! of the consumer. Whatever is the highest is the height that will be selected for this arrow.
 	protected void DebugDraw()
 	{
-		//! Height for the white arrow.
+		// Height for the white arrow.
 		float height;
 
-		//! The white arrow will point to this position, the origin of the owner entity in this case.
+		// The white arrow will point to this position, the origin of the owner entity in this case.
 		vector origin = GetOwner().GetOrigin();
 
-		//! TODO: Cache the height value and only change it on a event basis.
+		// TODO: Cache the height value and only change it on a event basis.
 		if (m_aConsumers && m_eDebugVisualizationFlags & EResourceDebugVisualizationFlags.CONSUMER)
 		{
 			foreach (SCR_ResourceConsumer consumer: m_aConsumers)
 			{
-				//! Processes and presents the debugging visualization for the consumer.
+				// Processes and presents the debugging visualization for the consumer.
 				consumer.DebugDraw();
 				
-				/*!
-				Sets the height of the arrow to be the same as the consumer resource range if the
-					current height is less than it.
-				*/
+				// Sets the height of the arrow to be the same as the consumer resource range if the current height is less than it.
 				height = Math.Max(height, consumer.GetResourceRange());
 			}
 		}
@@ -1238,35 +1363,30 @@ class SCR_ResourceComponent : ScriptComponent
 			}
 		}
 		
-		//! TODO: Cache the height value and only change it on a event basis.
+		// TODO: Cache the height value and only change it on a event basis.
 		if (m_aGenerators && m_eDebugVisualizationFlags & EResourceDebugVisualizationFlags.GENERATOR)
 		{
 			foreach (SCR_ResourceGenerator generator: m_aGenerators)
 			{
-				//! Processes and presents the debugging visualization for the generator.
+				// Processes and presents the debugging visualisation for the generator.
 				generator.DebugDraw();
 				
-				/*!
-				Sets the height of the arrow to be the same as the generator resource range if the
-					current height is less than it.
-				*/
+				// Sets the height of the arrow to be the same as the generator resource range if the current height is less than it.
 				height = Math.Max(height, generator.GetStorageRange());
 			}
 		}
 
-		//! TODO: Cache the height value and only change it on a event basis.
+		// TODO: Cache the height value and only change it on a event basis.
 		if (m_aContainerInstances && m_eDebugVisualizationFlags & EResourceDebugVisualizationFlags.CONTAINER)
 		{
 			foreach (SCR_ResourceContainer container: m_aContainerInstances)
 			{
-				//! Processes and presents the debugging visualization for the container.
+				// Processes and presents the debugging visualisation for the container.
 				container.DebugDraw();
-	
-				/*!
-				Sets the height of the arrow to be the same as the container storage range if the
-					current height (Same as resource range of the consumer if a consumer is present on the
-					component or 0.0 otherwise) is less than it.
-				*/
+
+				// Sets the height of the arrow to be the same as the container storage range if the
+				// current height (Same as resource range of the consumer if a consumer is present on the
+				// component or 0.0 otherwise) is less than it.
 				//height = Math.Max(height, container.GetStorageRange());
 			}
 		}
@@ -1276,6 +1396,7 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void Replicate()
 	{
 		if (!m_ReplicationComponent || m_ReplicationComponent.IsProxy())
@@ -1285,13 +1406,10 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Utility method used to replicate the component state.
-	Warning: This is important for the SCR_ResourceConsumer and SCR_ResourceContainer clasess as it is
-		used to cause the component to replicate, so do not add extra functionality here unless it is
-		necesary for the replication functionality of both the SCR_ResourceConsumer and 
-		SCR_ResourceContainer classes.
-	*/
+	//! Utility method used to replicate the component state.
+	//! Warning: This is important for the SCR_ResourceConsumer and SCR_ResourceContainer classes as it is
+	//! used to cause the component to replicate, so do not add extra functionality here unless it is
+	//! necessary for the replication functionality of both the SCR_ResourceConsumer and SCR_ResourceContainer classes.
 	void ReplicateEx()
 	{
 		if (!m_bIsNetDirty)
@@ -1306,13 +1424,10 @@ class SCR_ResourceComponent : ScriptComponent
 	
 #ifdef WORKBENCH 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Called after updating world in Workbench. The entity must be visible in frustum, selected or named. 
-	Used for performing the debug visualization on Workbench Editor's viewport.
-	
-	\param owner Entity that owns this component.
-	\param timeSlice Difference of the previous call of this method and the time of the current call.
-	*/
+	//! Called after updating world in Workbench. The entity must be visible in frustum, selected or named.
+	//! Used for performing the debug visualization on Workbench Editor's viewport.
+	//! \param[in] owner Entity that owns this component.
+	//! \param[in] timeSlice Difference of the previous call of this method and the time of the current call.
 	override event void _WB_AfterWorldUpdate(IEntity owner, float timeSlice)
 	{
 		if (m_bEnableDebugVisualization)
@@ -1320,7 +1435,8 @@ class SCR_ResourceComponent : ScriptComponent
 		
 		super._WB_AfterWorldUpdate(timeSlice);
 	}
-		
+
+	//------------------------------------------------------------------------------------------------
 	//! Any property value has been changed. You can use editor API here and do some additional edit actions which will be part of the same "key changed" action.
 	override event bool _WB_OnKeyChanged(IEntity owner, BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent)
 	{
@@ -1430,10 +1546,11 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] owner
+	//! \param[in] activeState
 	void OnVehiclePhysicsActive(IEntity owner, bool activeState)
 	{
 		ChimeraWorld world = ChimeraWorld.CastFrom(GetGame().GetWorld());
-		
 		if (!world)
 			return;
 		
@@ -1462,12 +1579,10 @@ class SCR_ResourceComponent : ScriptComponent
 		UnflagForProcessing();
 		
 		ArmaReforgerScripted game = GetGame();
-		
 		if (!game)
 			return;
 		
 		ChimeraWorld world = ChimeraWorld.CastFrom(game.GetWorld());
-     	
 		if (!world)
 			return;
 		
@@ -1477,7 +1592,6 @@ class SCR_ResourceComponent : ScriptComponent
 		grid.UnregisterResourceItem(this);
 		
 		SCR_ResourceSystem updateSystem = SCR_ResourceSystem.Cast(world.FindSystem(SCR_ResourceSystem));
-        
 		if (!updateSystem)
 			return;
 		

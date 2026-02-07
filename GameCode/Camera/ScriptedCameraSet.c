@@ -128,6 +128,9 @@ class ScriptedCameraItemResult
 	float 		m_fSmoothingRotationSpeed = Math.PI; //!< max camera smoothing rotation speed rad/s
 	IEntity 	m_pOwner = null;
 	ref PointInfo m_pWSAttachmentReference = null; //!< used with WSAttachment property it is either reference point info... It takes priority over m_pOwner. The owner of the PointInfo will be the new owner of the camera
+	
+	vector		m_vBacktraceDir;			//!< local direction used for backtrace if m_fUseBacktraceDir > 0. Used when m_bAllowCollisionSolver is true
+	float		m_fUseBacktraceDir = 0.0;	//!< [0-1] Blend b/w m_vBacktraceDir and m_CameraTM[2]. default 0.0
 
 	//! cannot be instanced from script (always created from C++)
 	private void ScriptedCameraItemResult()

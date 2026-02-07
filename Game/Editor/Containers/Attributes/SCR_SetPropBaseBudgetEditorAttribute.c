@@ -17,7 +17,7 @@ class SetPropBaseBudgetEditorAttribute : SCR_BaseValueListEditorAttribute
 			return null;
 		
 		//~ Send over current and max value as max value is used in UI to set slider max.
-		return SCR_BaseEditorAttributeVar.CreateFloat((providerComponent.GetCurrentPropValue() / providerComponent.GetMaxPropValue()) * 100);
+		return SCR_BaseEditorAttributeVar.CreateFloat((providerComponent.GetCurrentPropValue() / providerComponent.GetMaxBudgetValue(EEditableEntityBudget.PROPS)) * 100);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -38,7 +38,7 @@ class SetPropBaseBudgetEditorAttribute : SCR_BaseValueListEditorAttribute
 		if (!providerComponent)
 			return;
 		
-		providerComponent.SetPropValue(providerComponent.GetMaxPropValue() * (var.GetFloat() * 0.01));
+		providerComponent.SetPropValue(providerComponent.GetMaxBudgetValue(EEditableEntityBudget.PROPS) * (var.GetFloat() * 0.01));
 	}
 	
 	//------------------------------------------------------------------------------------------------

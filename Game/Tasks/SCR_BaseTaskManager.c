@@ -38,9 +38,9 @@ class SCR_BaseTaskManager : GenericEntity
 	[RplProp()]
 	protected float m_fTimestamp = 0;
 	protected float m_fTimestampTimer = 0;
-	protected ref array<SCR_BaseTask> m_aTaskList = new ref array<SCR_BaseTask>();
+	protected ref array<SCR_BaseTask> m_aTaskList = new array<SCR_BaseTask>();
 	protected ref array<SCR_BaseTask> m_aFinishedTaskList = {};
-	protected ref array<ref SCR_TaskAssignmentData> m_aCachedTaskAssignments = new ref array<ref SCR_TaskAssignmentData>();
+	protected ref array<ref SCR_TaskAssignmentData> m_aCachedTaskAssignments = new array<ref SCR_TaskAssignmentData>();
 	
 	[Attribute("1")]
 	protected float m_fAssigneeCacheTimer;
@@ -55,7 +55,7 @@ class SCR_BaseTaskManager : GenericEntity
 	string m_sAssignPopupGM;
 	
 	protected float m_fAssigneeCacheCheckTimestamp;
-	protected ref map<SCR_BaseTaskExecutor, float> m_mAssigneesAbandoned = new ref map<SCR_BaseTaskExecutor, float>();
+	protected ref map<SCR_BaseTaskExecutor, float> m_mAssigneesAbandoned = new map<SCR_BaseTaskExecutor, float>();
 	
 	protected bool m_bInitialized = false;
 	
@@ -69,23 +69,23 @@ class SCR_BaseTaskManager : GenericEntity
 	//PUBLIC STATIC SCRIPT INVOKERS//
 	//*****************************//
 	
-	static ref ScriptInvoker s_OnTaskUpdate = new ref ScriptInvoker();
-	static ref ScriptInvoker s_OnTaskFinished = new ref ScriptInvoker();
-	static ref ScriptInvoker s_OnTaskFailed = new ref ScriptInvoker();
-	static ref ScriptInvoker s_OnTaskRemoved = new ref ScriptInvoker();
-	static ref ScriptInvoker s_OnTaskCancelled = new ref ScriptInvoker();
+	static ref ScriptInvoker s_OnTaskUpdate = new ScriptInvoker();
+	static ref ScriptInvoker s_OnTaskFinished = new ScriptInvoker();
+	static ref ScriptInvoker s_OnTaskFailed = new ScriptInvoker();
+	static ref ScriptInvoker s_OnTaskRemoved = new ScriptInvoker();
+	static ref ScriptInvoker s_OnTaskCancelled = new ScriptInvoker();
 	
-	static ref ScriptInvoker s_OnTaskAssigned = new ref ScriptInvoker();
-	static ref ScriptInvoker s_OnTaskUnassigned = new ref ScriptInvoker();
+	static ref ScriptInvoker s_OnTaskAssigned = new ScriptInvoker();
+	static ref ScriptInvoker s_OnTaskUnassigned = new ScriptInvoker();
 	
-	static ref ScriptInvoker s_OnTaskFactionAssigned = new ref ScriptInvoker();
+	static ref ScriptInvoker s_OnTaskFactionAssigned = new ScriptInvoker();
 	
-	static ref ScriptInvoker s_OnTaskCreated = new ref ScriptInvoker();
-	static ref ScriptInvoker s_OnTaskDeleted = new ref ScriptInvoker();
+	static ref ScriptInvoker s_OnTaskCreated = new ScriptInvoker();
+	static ref ScriptInvoker s_OnTaskDeleted = new ScriptInvoker();
 	
-	static ref ScriptInvoker s_OnPeriodicalCheck2Second = new ref ScriptInvoker();
-	static ref ScriptInvoker s_OnPeriodicalCheck5Second = new ref ScriptInvoker();
-	static ref ScriptInvoker s_OnPeriodicalCheck60Second = new ref ScriptInvoker();
+	static ref ScriptInvoker s_OnPeriodicalCheck2Second = new ScriptInvoker();
+	static ref ScriptInvoker s_OnPeriodicalCheck5Second = new ScriptInvoker();
+	static ref ScriptInvoker s_OnPeriodicalCheck60Second = new ScriptInvoker();
 	
 	//***************************//
 	//PUBLIC EVENT MEMBER METHODS//
@@ -133,7 +133,61 @@ class SCR_BaseTaskManager : GenericEntity
 	//! An event called when a new task is created.
 	void OnTaskCreated(SCR_BaseTask task)
 	{
+		s_OnTaskFactionAssigned.Insert(RefreshTaskList);
+		
+		SCR_EditorTask editorTask = SCR_EditorTask.Cast(task);
+		if (!editorTask)
+			return;
+		
+		SCR_EditableDescriptorComponent editableDescriptor = SCR_EditableDescriptorComponent.Cast(editorTask.FindComponent(SCR_EditableDescriptorComponent));
+		if (!editableDescriptor)
+			return;
+		
+		editableDescriptor.GetOnChange().Insert(RefreshTaskListCommentComponent);
+		editableDescriptor.GetOnUIRefresh().Insert(RefreshTaskListVoid);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	private void RefreshTaskListCommentComponent(SCR_EditableCommentComponent editableCommentComponent)
+	{
+		RefreshTaskList();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	private void RefreshTaskListVoid()
+	{
+		RefreshTaskList();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Refresh task list.
+	void RefreshTaskList(SCR_BaseTask task = null)
+	{
+		s_OnTaskFactionAssigned.Remove(RefreshTaskList);
+		
+		SCR_UITaskManagerComponent UItaskManager = SCR_UITaskManagerComponent.GetInstance();
+		if (!UItaskManager || !UItaskManager.IsTaskListOpen())
+			return;
+		
+		if (task)
+		{
+			SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+			if (!factionManager)
+				return;
 
+			Faction taskTargetFaction = task.GetTargetFaction();
+			Faction playerFaction = factionManager.GetLocalPlayerFaction();	
+			if (taskTargetFaction != playerFaction)
+				return;
+		}
+			
+		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
+		if (!mapEntity)
+			return;
+		
+		SCR_MapTaskListUI taskListUI = SCR_MapTaskListUI.Cast(mapEntity.GetMapUIComponent(SCR_MapTaskListUI));
+		if (taskListUI)
+			taskListUI.RefreshTaskList();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -659,6 +713,18 @@ class SCR_BaseTaskManager : GenericEntity
 		
 		foreach (SCR_BaseTask taskToDelete : m_aTasksToDelete)
 		{
+			if (!taskToDelete)
+				continue;
+			
+			IEntity taskChild = taskToDelete.GetChildren();
+			while (taskChild)
+			{
+				IEntity childToDelete = taskChild;
+				taskChild = taskChild.GetSibling();
+
+				delete childToDelete;
+			}
+			
 			m_aTaskList.RemoveItem(taskToDelete);
 			delete taskToDelete;
 		}

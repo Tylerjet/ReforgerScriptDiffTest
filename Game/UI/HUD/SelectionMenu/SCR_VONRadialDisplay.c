@@ -177,7 +177,7 @@ class SCR_VONRadialDisplay : SCR_RadialMenuDisplay
 	{
 		foreach ( SCR_RadialMenuSegmentComponent comp : m_aSegments )
 		{
-			comp.GetBackgroundWidget().SetColor(Color.Black);
+			comp.GetBackgroundWidget().SetColor(Color.FromInt(Color.BLACK));
 		}
 		
 		if (m_aSegments.IsIndexValid(id))
@@ -247,7 +247,7 @@ class SCR_VONRadialDisplay : SCR_RadialMenuDisplay
 	//------------------------------------------------------------------------------------------------
 	override protected void OnMenuEntryPerform(SCR_SelectionMenu menu, SCR_SelectionMenuEntry entry)
 	{
-		// TODO this is mostly overriden to avoid secondary resize animation in the parent class
+		// TODO this is mostly overridden to avoid secondary resize animation in the parent class
 		
 		if (m_wSelectedIndicatorFeedback)
 		{

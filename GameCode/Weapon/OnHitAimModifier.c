@@ -98,20 +98,20 @@ class OnHitAimModifier : ScriptedWeaponAimModifier
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnDamage(EDamageType type, float damage, HitZone pHitZone, notnull Instigator instigator, inout vector outMat[3], float speed, int colliderID, int nodeID)
+	void OnDamage(BaseDamageContext damageContext)
 	{
 		float div;
 		if (m_fEffectScale > 0.0)
 			div = 1.0 / m_fEffectScale;
 
-		float scaleFactor = damage * div;
+		float scaleFactor = damageContext.damageValue * div;
 		scaleFactor = Math.Clamp(scaleFactor, 0.0, 1.0);
 
 		if (scaleFactor > 0)
 			m_bIsSleeping = false;
 
 
-		vector direction = outMat[1];
+		vector direction = damageContext.hitDirection;
 
 		// Scale the input so it's slightly larger at lower values,
 		// and not linear, that would mean almost no visible effect at low damage values
@@ -205,7 +205,10 @@ class OnHitAimModifier : ScriptedWeaponAimModifier
 			DbgUI.InputInt("Damage", m_iDiagDamage);
 			if (DbgUI.Button("Apply damage") || Debug.KeyState(KeyCode.KC_B))
 			{
-				OnDamage(m_iDiagDamage, EDamageType.KINETIC, null, null, _, 0, -1, -1);
+				BaseDamageContext damageContext = new BaseDamageContext();
+				damageContext.damageValue = m_iDiagDamage;
+				damageContext.damageType = EDamageType.KINETIC;
+				OnDamage(damageContext);
 				Debug.ClearKey(KeyCode.KC_B);
 			}
 

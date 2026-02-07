@@ -86,7 +86,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	const float FREE_CURSOR_RESET = 3.0;		// seconds, time before free cursor resets to locked mode on controller
 	
 	const EMapCursorState CUSTOM_CURSOR_LOCKED = EMapCursorState.CS_DISABLE;
-	const EMapCursorState STATE_PAN_RESTRICTED	= EMapCursorState.CS_DRAG | EMapCursorState.CS_MODIFIER | EMapCursorState.CS_DRAW | EMapCursorState.CS_CONTEXTUAL_MENU;
+	const EMapCursorState STATE_PAN_RESTRICTED	= EMapCursorState.CS_DRAG | EMapCursorState.CS_MODIFIER | EMapCursorState.CS_DRAW | EMapCursorState.CS_CONTEXTUAL_MENU | EMapCursorState.CS_DIALOG;
 	const EMapCursorState STATE_ZOOM_RESTRICTED = EMapCursorState.CS_DRAG | EMapCursorState.CS_MODIFIER | EMapCursorState.CS_DRAW | EMapCursorState.CS_CONTEXTUAL_MENU;
 	const EMapCursorState STATE_HOVER_RESTRICTED = EMapCursorState.CS_PAN | EMapCursorState.CS_ZOOM | EMapCursorState.CS_MULTI_SELECTION 
 												 | EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW | EMapCursorState.CS_CONTEXTUAL_MENU;
@@ -95,6 +95,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	const EMapCursorState STATE_DRAG_RESTRICTED	= EMapCursorState.CS_CONTEXTUAL_MENU | EMapCursorState.CS_MULTI_SELECTION | EMapCursorState.CS_ROTATE | EMapCursorState.CS_DRAW;
 	const EMapCursorState STATE_ROTATE_RESTRICTED = EMapCursorState.CS_PAN | EMapCursorState.CS_ZOOM | EMapCursorState.CS_CONTEXTUAL_MENU;
 	const EMapCursorState STATE_DRAW_RESTRICTED = EMapCursorState.CS_PAN | EMapCursorState.CS_ZOOM | EMapCursorState.CS_CONTEXTUAL_MENU;
+	const EMapCursorState STATE_SUBMENU_RESTRICTED = EMapCursorState.CS_CONTEXTUAL_MENU | EMapCursorState.CS_DIALOG;
 	const EMapCursorState STATE_CTXMENU_RESTRICTED = EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW | EMapCursorState.CS_ROTATE;
 	const EMapCursorState STATE_RESET_RESTRICTED = EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW | EMapCursorState.CS_ROTATE;
 	
@@ -124,6 +125,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	protected SCR_MapSelectionModule m_SelectionModule;
 	
 	// positioning & sizing
+	protected Widget m_wCrossGrid;		// cross grid root
 	protected ImageWidget m_wCrossLTop;	// top left fill image, width and heigth determined by the cursor pos
 	protected ImageWidget m_wCrossRTop;	// top right fill image, width by (screen reso - cursor pos),  height determined by cursos pos
 	protected ImageWidget m_wCrossLBot;	// bot left fill image, width set by top left fill, height by (screen reso - cursor pos)
@@ -194,10 +196,24 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		if (!m_bEnableMapCrosshairVisuals)
 			return;
 		
+		SCR_CursorVisualState cursorState = GetCursorStateCfg();
+		
 		if (type == EMapCursorState.CS_DISABLE || m_bIsDisabled)
 			m_CustomCursor.SetCursorVisual(null);
 		else
-			m_CustomCursor.SetCursorVisual(GetCursorStateCfg());
+			m_CustomCursor.SetCursorVisual(cursorState);
+		
+		SetCrosshairGridVisible(!cursorState.m_DisableCursorLines);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set visibility of a custom crosshair grid lines
+	protected void SetCrosshairGridVisible(bool state)
+	{
+		if (!m_wCrossGrid || !m_bEnableMapCrosshairVisuals)
+			return;
+		
+		m_wCrossGrid.SetVisible(state);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -419,7 +435,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	protected void HandleMultiSelect(bool activate)
 	{		
 		// multiselect state end or disabled
-		if ( (m_CursorState & STATE_MULTISELECT_RESTRICTED) || !activate)
+		if ( (m_CursorState & STATE_MULTISELECT_RESTRICTED) != 0 || !activate)
 		{
 			// never started
 			if ( ~m_CursorState & EMapCursorState.CS_MULTI_SELECTION )
@@ -523,12 +539,11 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	bool HandleDraw(bool active)
 	{
 		// begin draw state
-		if (active && (~m_CursorState & STATE_DRAW_RESTRICTED))
+		if (active && (m_CursorState & STATE_DRAW_RESTRICTED) == 0)
 		{
 			if ( ~m_CursorState & EMapCursorState.CS_DRAW )
 			{
 				SetCursorState(EMapCursorState.CS_DRAW);
-				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_MAP_GADGET_MARKER_DRAW_START);
 				return true;
 			}
 		}
@@ -536,7 +551,55 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		else if (m_CursorState & EMapCursorState.CS_DRAW)
 		{
 			UnsetCursorState(EMapCursorState.CS_DRAW);
-			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_MAP_GADGET_MARKER_DRAW_STOP);
+		}
+		
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Handle sub menu state
+	bool HandleSubMenu(bool active)
+	{
+		// begin sub menu state
+		if (active && (m_CursorState & STATE_SUBMENU_RESTRICTED) == 0)
+		{			
+			if (~m_CursorState & EMapCursorState.CS_SUB_MENU)
+			{
+				SetCursorState(EMapCursorState.CS_SUB_MENU);			
+				return true;
+			}
+		}
+		// end sub menu state
+		else if (m_CursorState & EMapCursorState.CS_SUB_MENU)
+		{
+			UnsetCursorState(EMapCursorState.CS_SUB_MENU);
+		}
+		
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Handle dialog state
+	bool HandleDialog(bool active)
+	{
+		if (active)
+		{
+			if (~m_CursorState & EMapCursorState.CS_DIALOG)
+			{
+				if (m_CursorInfo.isGamepad)
+					ForceCenterCursor();
+				
+				SetCursorState(EMapCursorState.CS_DIALOG);
+				
+				return true;
+			}
+		}
+		else if (m_CursorState & EMapCursorState.CS_DIALOG)
+		{
+			UnsetCursorState(EMapCursorState.CS_DIALOG);
+
+			if (m_CursorInfo.isGamepad)
+				ForceCenterCursor();
 		}
 		
 		return false;
@@ -558,7 +621,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	bool HandleContextualMenu(bool doClose = false)
 	{
 		//! context menu disabled
-		if ((m_CursorState & STATE_CTXMENU_RESTRICTED) && !doClose)
+		if ((m_CursorState & STATE_CTXMENU_RESTRICTED) != 0 && !doClose)
 			return false;
 		
 		SCR_MapRadialUI radialMenu = SCR_MapRadialUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapRadialUI));
@@ -570,12 +633,14 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 			if (m_CursorState & EMapCursorState.CS_CONTEXTUAL_MENU)
 			{
 				UnsetCursorState(EMapCursorState.CS_CONTEXTUAL_MENU);
+								
 				return false;
 			}
 		}
 		else if (~m_CursorState & EMapCursorState.CS_CONTEXTUAL_MENU) // open
 		{
 			SetCursorState(EMapCursorState.CS_CONTEXTUAL_MENU);
+			
 			return true;
 		}
 		
@@ -1031,25 +1096,25 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	{
 		m_MapWidget = m_MapEntity.GetMapWidget();
 		
-		Widget crossGrid = root.FindAnyWidget("CursorCrosshair");
+		m_wCrossGrid = root.FindAnyWidget("CursorCrosshair");
 		if (m_bEnableMapCrosshairVisuals)
 		{
-			crossGrid.SetVisible(true);
+			SetCrosshairGridVisible(true);
 			// positioning widgets
-			m_wCrossMCenter = root.FindAnyWidget("CrossMCenter");	
-			m_wCrossRTop = ImageWidget.Cast(root.FindAnyWidget("CrossRTop"));	
-			m_wCrossLTop = ImageWidget.Cast(root.FindAnyWidget("CrossLTop"));
-			m_wCrossLBot = ImageWidget.Cast(root.FindAnyWidget("CrossLBot"));
-			m_wGLTop = ImageWidget.Cast(root.FindAnyWidget("GLTop"));
-			m_wGLLeft = ImageWidget.Cast(root.FindAnyWidget("GLLeft"));
+			m_wCrossMCenter = m_wCrossGrid.FindAnyWidget("CrossMCenter");	
+			m_wCrossRTop = ImageWidget.Cast(m_wCrossGrid.FindAnyWidget("CrossRTop"));	
+			m_wCrossLTop = ImageWidget.Cast(m_wCrossGrid.FindAnyWidget("CrossLTop"));
+			m_wCrossLBot = ImageWidget.Cast(m_wCrossGrid.FindAnyWidget("CrossLBot"));
+			m_wGLTop = ImageWidget.Cast(m_wCrossGrid.FindAnyWidget("GLTop"));
+			m_wGLLeft = ImageWidget.Cast(m_wCrossGrid.FindAnyWidget("GLLeft"));
 			// guidelines	
-			m_wGLFadeLeft = ImageWidget.Cast(root.FindAnyWidget("GLFadeLeft"));
-			m_wGLRight = ImageWidget.Cast(root.FindAnyWidget("GLRight"));
-			m_wGLFadeRight = ImageWidget.Cast(root.FindAnyWidget("GLFadeRight"));
-			m_wGLBot = ImageWidget.Cast(root.FindAnyWidget("GLBot"));
-			m_wGLFadeBot = ImageWidget.Cast(root.FindAnyWidget("GLFadeBot"));
-			m_wGLFadeTop = ImageWidget.Cast(root.FindAnyWidget("GLFadeTop"));
-			m_wCoordText = TextWidget.Cast(root.FindAnyWidget("CoordText"));
+			m_wGLFadeLeft = ImageWidget.Cast(m_wCrossGrid.FindAnyWidget("GLFadeLeft"));
+			m_wGLRight = ImageWidget.Cast(m_wCrossGrid.FindAnyWidget("GLRight"));
+			m_wGLFadeRight = ImageWidget.Cast(m_wCrossGrid.FindAnyWidget("GLFadeRight"));
+			m_wGLBot = ImageWidget.Cast(m_wCrossGrid.FindAnyWidget("GLBot"));
+			m_wGLFadeBot = ImageWidget.Cast(m_wCrossGrid.FindAnyWidget("GLFadeBot"));
+			m_wGLFadeTop = ImageWidget.Cast(m_wCrossGrid.FindAnyWidget("GLFadeTop"));
+			m_wCoordText = TextWidget.Cast(m_wCrossGrid.FindAnyWidget("CoordText"));
 			
 			// TODO configuration
 			// Colors
@@ -1069,7 +1134,9 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 				m_wCoordText.SetOpacity(1);	
 		}
 		else 
-			crossGrid.SetVisible(false);
+		{
+			SetCrosshairGridVisible(false);
+		}
 		
 		// cursor 
 		if (!m_CustomCursor)
@@ -1260,6 +1327,9 @@ class SCR_CursorVisualState
 	
 	[Attribute("0.76 0.38 0.08 1", UIWidgets.ColorPicker, desc: "Cursor color")]
 	ref Color m_Color;
+	
+	[Attribute(desc: "Cursor lines are disabled in this state if otherwise active")]
+	bool m_DisableCursorLines;
 };
 
 //------------------------------------------------------------------------------------------------

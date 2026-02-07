@@ -1,4 +1,3 @@
-#include "scripts/Game/config.c"
 void OnSignalChangedDelegate(SCR_CampaignMilitaryBaseComponent base);
 void OnAllBasesInitializedDelegate();
 void OnLocalPlayerEnteredBaseDelegate(SCR_CampaignMilitaryBaseComponent base);
@@ -28,6 +27,8 @@ class SCR_CampaignMilitaryBaseManager
 	protected static const int DEPOT_PLAYER_PRESENCE_CHECK_INTERVAL = 2000;		//ms
 	protected static const float CP_AVG_DISTANCE_TOLERANCE = 0.25;				//highest relative distance tolerance to control points when evaluating main HQs
 	protected static const string ICON_NAME_SUPPLIES = "Slot_Supplies";
+	protected static const float MAX_DIST_TO_BASE = 300;
+	protected static const float PARKED_LIFETIME = 3600;
 
 	protected SCR_GameModeCampaign m_Campaign;
 
@@ -141,7 +142,7 @@ class SCR_CampaignMilitaryBaseManager
 		if (m_Campaign.IsProxy())
 			return;
 
-		SCR_MilitaryBaseManager.GetInstance().GetOnLogicRegisteredInBase().Insert(DisableExtraSeizingComponents);
+		SCR_MilitaryBaseSystem.GetInstance().GetOnLogicRegisteredInBase().Insert(DisableExtraSeizingComponents);
 		ProcessRemnantsPresence();
 		RecalculateRadioCoverage(m_Campaign.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR));
 		RecalculateRadioCoverage(m_Campaign.GetFactionByEnum(SCR_ECampaignFaction.OPFOR));
@@ -176,7 +177,7 @@ class SCR_CampaignMilitaryBaseManager
 	//! Update the list of Conflict bases
 	int UpdateBases()
 	{
-		SCR_MilitaryBaseManager baseManager = SCR_MilitaryBaseManager.GetInstance();
+		SCR_MilitaryBaseSystem baseManager = SCR_MilitaryBaseSystem.GetInstance();
 		array<SCR_MilitaryBaseComponent> bases = {};
 		baseManager.GetBases(bases);
 
@@ -1016,41 +1017,6 @@ class SCR_CampaignMilitaryBaseManager
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Bump supply truck lifetime in garbage manager if it's parked near a base
-	void OnSupplyTruckLeft(IEntity vehicle, BaseCompartmentManagerComponent mgr, IEntity occupant, int managerId, int slotID)
-	{
-		ChimeraWorld world = vehicle.GetWorld();
-		SCR_CampaignGarbageManager garbageManager = SCR_CampaignGarbageManager.Cast(world.GetGarbageManager());
-
-		if (!garbageManager)
-			return;
-
-		if (!garbageManager.IsInserted(vehicle))
-			return;
-
-		int baseDistanceSq = Math.Pow(SCR_CampaignGarbageManager.MAX_BASE_DISTANCE, 2);
-		vector vehPos = vehicle.GetOrigin();
-		float curLifetime = garbageManager.GetRemainingLifetime(vehicle);
-
-		foreach (SCR_CampaignMilitaryBaseComponent base : m_aBases)
-		{
-			if (!base.IsInitialized())
-				continue;
-
-			if (vector.DistanceSqXZ(vehPos, base.GetOwner().GetOrigin()) <= baseDistanceSq)
-			{
-				float curLifeTime = garbageManager.GetRemainingLifetime(vehicle);
-
-				if (curLifetime < SCR_CampaignGarbageManager.PARKED_SUPPLY_TRUCK_LIFETIME)
-				{
-					garbageManager.Bump(vehicle, SCR_CampaignGarbageManager.PARKED_SUPPLY_TRUCK_LIFETIME - curLifetime);
-					return;
-				}
-			}
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
 	// Checks whether some faction is winning the game
 	void EvaluateControlPoints()
 	{
@@ -1060,16 +1026,10 @@ class SCR_CampaignMilitaryBaseManager
 
 		int controlPointsHeld;
 		int controlPointsContested;
-		#ifndef AR_CAMPAIGN_TIMESTAMP
-		float currentTime = Replication.Time();
-		float victoryTimestamp;
-		float blockPauseTimestamp;
-		#else
 		ChimeraWorld world = GetGame().GetWorld();
 		WorldTimestamp currentTime = world.GetServerTimestamp();
 		WorldTimestamp victoryTimestamp;
 		WorldTimestamp blockPauseTimestamp;
-		#endif
 
 		foreach (Faction faction : factions)
 		{
@@ -1109,31 +1069,17 @@ class SCR_CampaignMilitaryBaseManager
 				}
 				else if (blockPauseTimestamp != 0)
 				{
-					#ifndef AR_CAMPAIGN_TIMESTAMP
-					fCast.SetVictoryTimestamp(currentTime + victoryTimestamp - blockPauseTimestamp);
-					fCast.SetPauseByBlockTimestamp(0);
-					#else
 					fCast.SetVictoryTimestamp(currentTime.PlusMilliseconds(victoryTimestamp.DiffMilliseconds(blockPauseTimestamp)));
 					fCast.SetPauseByBlockTimestamp(null);
-					#endif
 				}
 
 				if (victoryTimestamp == 0)
-					#ifndef AR_CAMPAIGN_TIMESTAMP
-					fCast.SetVictoryTimestamp(currentTime + (m_Campaign.GetVictoryTimer() * 1000));
-					#else
 					fCast.SetVictoryTimestamp(currentTime.PlusSeconds(m_Campaign.GetVictoryTimer()));
-					#endif
 			}
 			else
 			{
-				#ifndef AR_CAMPAIGN_TIMESTAMP
-				fCast.SetVictoryTimestamp(0);
-				fCast.SetPauseByBlockTimestamp(0);
-				#else
 				fCast.SetVictoryTimestamp(null);
 				fCast.SetPauseByBlockTimestamp(null);
-				#endif
 			}
 		}
 	}
@@ -1147,7 +1093,7 @@ class SCR_CampaignMilitaryBaseManager
 			if (!base.IsInitialized())
 				continue;
 
-			if (base.GetDefendersGroup() == group)
+			if (base.ContainsGroup(group))
 			{
 				base.NotifyAboutEnemyAttack(target.m_Faction);
 				return;
@@ -1276,7 +1222,7 @@ class SCR_CampaignMilitaryBaseManager
 	//! Clean up ambient patrols around Main Operating Bases, assign parent bases where applicable
 	void ProcessRemnantsPresence()
 	{
-		SCR_AmbientPatrolManager manager = SCR_AmbientPatrolManager.GetInstance();
+		SCR_AmbientPatrolSystem manager = SCR_AmbientPatrolSystem.GetInstance();
 
 		if (!manager)
 			return;
@@ -1392,28 +1338,11 @@ class SCR_CampaignMilitaryBaseManager
 	//------------------------------------------------------------------------------------------------
 	void OnServiceBuilt(SCR_EServicePointStatus state, notnull SCR_ServicePointComponent serviceComponent)
 	{
-		switch (state)
-		{
-			case SCR_EServicePointStatus.ONLINE:
-			{
-				if (m_Campaign.IsProxy())
-					return;
-
-				SCR_CatalogEntitySpawnerComponent spawner = SCR_CatalogEntitySpawnerComponent.Cast(serviceComponent);
-
-				if (spawner)
-					spawner.GetOnEntitySpawned().Insert(m_Campaign.OnEntityRequested);
-
-				SCR_DefenderSpawnerComponent defenderSpawner = SCR_DefenderSpawnerComponent.Cast(serviceComponent);
-
-				if (defenderSpawner)
-					defenderSpawner.GetOnDefenderGroupSpawned().Insert(OnDefenderGroupSpawned);
-			}
-		}
+		
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnServiceRemoved(notnull SCR_MilitaryBaseComponent base, notnull SCR_ServicePointComponent service)
+	void OnServiceRemoved(notnull SCR_MilitaryBaseComponent base, notnull SCR_MilitaryBaseLogicComponent service)
 	{
 		SCR_CampaignMilitaryBaseComponent campaignBase = SCR_CampaignMilitaryBaseComponent.Cast(base);
 
@@ -1431,7 +1360,8 @@ class SCR_CampaignMilitaryBaseManager
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnDefenderGroupSpawned(notnull SCR_DefenderSpawnerComponent spawner, notnull SCR_AIGroup group)
+	//! Called when a new AI group is spawned by Free Roam Building.
+	void OnDefenderGroupSpawned(notnull SCR_MilitaryBaseLogicComponent service, notnull SCR_AIGroup group)
 	{
 		SCR_AIGroupUtilityComponent comp = SCR_AIGroupUtilityComponent.Cast(group.FindComponent(SCR_AIGroupUtilityComponent));
 
@@ -1446,7 +1376,7 @@ class SCR_CampaignMilitaryBaseManager
 		onEnemyDetected.Insert(OnEnemyDetectedByDefenders);
 
 		array<SCR_MilitaryBaseComponent> bases = {};
-		spawner.GetBases(bases);
+		service.GetBases(bases);
 
 		foreach (SCR_MilitaryBaseComponent base : bases)
 		{
@@ -1468,12 +1398,12 @@ class SCR_CampaignMilitaryBaseManager
 	void SCR_CampaignMilitaryBaseManager(notnull SCR_GameModeCampaign campaign)
 	{
 		m_Campaign = campaign;
-		SCR_MilitaryBaseManager baseManager = SCR_MilitaryBaseManager.GetInstance();
+		SCR_MilitaryBaseSystem baseManager = SCR_MilitaryBaseSystem.GetInstance();
 
 		if (!baseManager)
 			return;
 
-		baseManager.GetOnServiceUnregisteredInBase().Insert(OnServiceRemoved);
+		baseManager.GetOnLogicUnregisteredInBase().Insert(OnServiceRemoved);
 		baseManager.GetOnBaseFactionChanged().Insert(OnBaseFactionChanged);
 
 		m_Campaign.GetOnStarted().Insert(OnConflictStarted);
@@ -1483,11 +1413,11 @@ class SCR_CampaignMilitaryBaseManager
 	void ~SCR_CampaignMilitaryBaseManager()
 	{
 		//Unregister from script invokers
-		SCR_MilitaryBaseManager baseManager = SCR_MilitaryBaseManager.GetInstance(false);
+		SCR_MilitaryBaseSystem baseManager = SCR_MilitaryBaseSystem.GetInstance();
 
 		if (baseManager)
 		{
-			baseManager.GetOnServiceUnregisteredInBase().Remove(OnServiceRemoved);
+			baseManager.GetOnLogicUnregisteredInBase().Remove(OnServiceRemoved);
 			baseManager.GetOnBaseFactionChanged().Remove(OnBaseFactionChanged);
 		}
 

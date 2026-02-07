@@ -7,11 +7,9 @@ class SCR_FuelSupportStationComponentClass : SCR_BaseSupportStationComponentClas
 	protected ref SCR_AudioSourceConfiguration m_OnUpdateAudioSourceConfiguration;
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get Audio config to play
-	Will create it if it not yet exists. Returns null if no SoundFile or SoundEvent is set
-	\return Sound Config
-	*/
+	//! Get Audio config to play
+	//! Will create it if it not yet exists. Returns null if no SoundFile or SoundEvent is set
+	//! \return Sound Config
 	SCR_AudioSourceConfiguration GetOnUpdateAudioConfig()
 	{		
 		//~ Create Audio source if it does not yet exist
@@ -31,9 +29,8 @@ class SCR_FuelSupportStationComponentClass : SCR_BaseSupportStationComponentClas
 		}
 		
 		return m_OnUpdateAudioSourceConfiguration;
-	}	
-	
-};
+	}
+}
 
 class SCR_FuelSupportStationComponent : SCR_BaseSupportStationComponent
 {		
@@ -174,7 +171,7 @@ class SCR_FuelSupportStationComponent : SCR_BaseSupportStationComponent
 		if (maxFlowCapacityOut <= 0)
 			return;
 		
-		array<BaseFuelNode> nodes = new array<BaseFuelNode>;
+		array<BaseFuelNode> nodes = {};
 		targetFuelManager.GetFuelNodesList(nodes);
 		
 		float fuelToAdded = maxFlowCapacityOut;
@@ -266,7 +263,6 @@ class SCR_FuelSupportStationComponent : SCR_BaseSupportStationComponent
 		Rpc(OnExecuteFuelBroadcast, ownerId, userId, playerId, fuelTankFillPercentage, currentTankFull, action.GetActionID());
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
 	//~ called by Server to convert ReplicationIDs to entity and player
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
@@ -281,15 +277,18 @@ class SCR_FuelSupportStationComponent : SCR_BaseSupportStationComponent
 			ActionsManagerComponent actionManager = ActionsManagerComponent.Cast(actionOwner.FindComponent(ActionsManagerComponent));
 			if (actionManager)
 				action = SCR_BaseUseSupportStationAction.Cast(actionManager.FindAction(actionId));
-		}
 			
-		OnExecuteFuel(actionOwner, actionUser, userPlayerId, fuelTankFillPercentage, currentTankFull, action);
+			OnExecuteFuel(actionOwner, actionUser, userPlayerId, fuelTankFillPercentage, currentTankFull, action);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//~ Called by fuel only on server and client
 	protected void OnExecuteFuel(IEntity actionOwner, IEntity actionUser, int playerId, float fuelPercentage, bool currentTankFull, SCR_BaseUseSupportStationAction action)
 	{		
+		//~ On succesfully executed
+		OnSuccessfullyExecuted(actionOwner, actionUser, action);
+		
 		//~ Refuel not done
 		if (fuelPercentage < 1 && !currentTankFull)
 		{
@@ -337,6 +336,13 @@ class SCR_FuelSupportStationComponent : SCR_BaseSupportStationComponent
 				SCR_NotificationsComponent.SendLocal(ENotification.SUPPORTSTATION_REFUELED_BY_OTHER_DONE, userRplId);
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected override void OnExecute(IEntity actionOwner, IEntity actionUser, int playerId, SCR_BaseUseSupportStationAction action)
+	{
+		//~ Clear on execute so it does not call on complete
+	}
+	
 	
 	//------------------------------------------------------------------------------------------------
 	protected void PlayRefuelUpdateSound(IEntity actionOwner, SCR_BaseUseSupportStationAction action)

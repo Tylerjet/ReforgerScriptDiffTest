@@ -70,6 +70,10 @@ class SCR_CompartmentAccessComponent : CompartmentAccessComponent
 		if (!playerManager || !character)
 			return;
 		
+		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
+		if (controller)
+			controller.m_OnLifeStateChanged.Insert(OnLifeStateChanged);
+		
 		//--- Check if the character is a player
 		int playerId = playerManager.GetPlayerIdFromControlledEntity(character);
 		if (playerId == 0)
@@ -83,7 +87,7 @@ class SCR_CompartmentAccessComponent : CompartmentAccessComponent
 	override void OnCompartmentLeft(IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move)
 	{
 		if (m_OnCompartmentLeft)
-		m_OnCompartmentLeft.Invoke( targetEntity, manager, mgrID, slotID, move );
+			m_OnCompartmentLeft.Invoke( targetEntity, manager, mgrID, slotID, move );
 
 		PlayerManager playerManager = GetGame().GetPlayerManager();
 		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
@@ -98,6 +102,20 @@ class SCR_CompartmentAccessComponent : CompartmentAccessComponent
 
 		if (m_OnPlayerExitCompartment)
 			m_OnPlayerExitCompartment.Invoke(character, targetEntity);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnLifeStateChanged(ECharacterLifeState previousLifeState, ECharacterLifeState newLifeState)
+	{
+		IEntity vehicle = GetVehicle();
+		if (!vehicle)
+			return;
+		
+		SCR_VehicleFactionAffiliationComponent vehicleFactionAff = SCR_VehicleFactionAffiliationComponent.Cast(vehicle.FindComponent(SCR_VehicleFactionAffiliationComponent));
+		if (!vehicleFactionAff)
+			return;
+		
+		vehicleFactionAff.OnOccupantLifeStateChanged(previousLifeState, newLifeState);	
 	}
 	
 	/*!
@@ -123,7 +141,7 @@ class SCR_CompartmentAccessComponent : CompartmentAccessComponent
 				return null;
 			if (customSlot.GetOccupant())
 				return null;
-			if (compartmentType != GetCompartmentType(customSlot))
+			if (compartmentType != customSlot.GetType())
 				return null;
 			
 			return customSlot;
@@ -137,7 +155,7 @@ class SCR_CompartmentAccessComponent : CompartmentAccessComponent
 				continue;
 			if (compartment.GetOccupant())
 				continue;
-			if (compartmentType != GetCompartmentType(compartment))
+			if (compartmentType != compartment.GetType())
 				continue;
 			
 			return compartment;
@@ -261,13 +279,27 @@ class SCR_CompartmentAccessComponent : CompartmentAccessComponent
 			return null;
 	}
 	
+	void ~SCR_CompartmentAccessComponent()
+	{
+		ChimeraCharacter char = ChimeraCharacter.Cast(GetOwner());
+		if (!char)
+			return;
+		
+		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(char.GetCharacterController());
+		if (!controller)
+			return;
+		
+		controller.m_OnLifeStateChanged.Remove(OnLifeStateChanged);
+	}
+	
 	/*!
 	Get type of a compartment.
 	\param compartment Queried compartment
 	\return Compartment type, or -1 if invalid
 	*/
+	[Obsolete("Use GetType() on the compartment instance directly.")]
 	static ECompartmentType GetCompartmentType(notnull BaseCompartmentSlot compartment)
 	{
-		return compartment.GetType();		
+		return compartment.GetType();
 	}
 };

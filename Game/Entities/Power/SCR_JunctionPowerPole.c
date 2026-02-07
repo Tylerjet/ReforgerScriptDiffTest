@@ -1,9 +1,8 @@
 [EntityEditorProps(category: "GameScripted/Power", description: "This is the power pole entity.", color: "0 255 0 255", visible: false, dynamicBox: true)]
-class SCR_JunctionPowerPoleClass: SCR_PowerPoleClass
+class SCR_JunctionPowerPoleClass : SCR_PowerPoleClass
 {
 }
 
-//------------------------------------------------------------------------------------------------
 class SCR_JunctionPowerPole : SCR_PowerPole
 {
 	[Attribute(desc: "Slots for connecting with other power poles in a junction", category: "Power Cable Slots")]
@@ -17,7 +16,7 @@ class SCR_JunctionPowerPole : SCR_PowerPole
 		if (!m_bDrawDebugShapes)
 			return;
 
-		foreach (SCR_PowerPoleSlotBase slot: m_aJunctionSlots)
+		foreach (SCR_PowerPoleSlotBase slot : m_aJunctionSlots)
 		{
 			slot.DrawDebugShapes(m_aDebugShapes, this);
 		}
@@ -83,6 +82,8 @@ class SCR_JunctionPowerPole : SCR_PowerPole
 
 	//------------------------------------------------------------------------------------------------
 	// constructor
+	//! \param[in] src
+	//! \param[in] parent
 	void SCR_JunctionPowerPole(IEntitySource src, IEntity parent)
 	{
 	}

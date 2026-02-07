@@ -11,8 +11,8 @@ class SCR_EditboxDialogUi : SCR_ConfigurableDialogUi
 	
 	protected SCR_EditBoxComponent m_Editbox;
 	
-	ref ScriptInvokerString m_OnTextChange = new ref ScriptInvokerString();
-	ref ScriptInvokerString m_OnWriteModeLeave = new ref ScriptInvokerString();
+	ref ScriptInvokerString m_OnTextChange = new ScriptInvokerString();
+	ref ScriptInvokerString m_OnWriteModeLeave = new ScriptInvokerString();
 	
 	//-------------------------------------
 	// Override functions 

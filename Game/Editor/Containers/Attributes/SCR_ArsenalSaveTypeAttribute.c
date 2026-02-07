@@ -1,5 +1,5 @@
 [BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
-class SCR_ArsenalSaveTypeAttribute: SCR_BaseFloatValueHolderEditorAttribute
+class SCR_ArsenalSaveTypeAttribute : SCR_BaseFloatValueHolderEditorAttribute
 {
 	protected SCR_ArsenalSaveTypeInfoHolder m_ArsenalSaveTypeHolder;
 	
@@ -10,13 +10,10 @@ class SCR_ArsenalSaveTypeAttribute: SCR_BaseFloatValueHolderEditorAttribute
 		if (!editableEntity)
 			return null;
 		
-		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.Cast(editableEntity.GetOwner().FindComponent(SCR_ArsenalComponent));
-		if (!arsenalComponent && editableEntity.GetEntityType() == EEditableEntityType.VEHICLE)
-		{
-			//~ If vehicle check if arsenal is on children
-			arsenalComponent = SCR_ArsenalComponent.GetArsenalComponentFromChildren(editableEntity.GetOwner());
-		}
-					
+		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.FindArsenalComponent(editableEntity.GetOwner());
+		if (!arsenalComponent)
+			return null;
+
 		if (!arsenalComponent || !arsenalComponent.HasSaveArsenalAction())
 			return null;
 		
@@ -29,11 +26,11 @@ class SCR_ArsenalSaveTypeAttribute: SCR_BaseFloatValueHolderEditorAttribute
 		
 		//~ Set var to type. If arsenal type is not valid than don't show attribute
 		for (int i = 0; i < count; i++)
-        {
-           	if (arsenalSaveTypeUIInfoList[i].GetSaveType() == arsenalComponent.GetArsenalSaveType())
+		{
+			if (arsenalSaveTypeUIInfoList[i].GetSaveType() == arsenalComponent.GetArsenalSaveType())
 				return SCR_BaseEditorAttributeVar.CreateInt(i);
-        }
-		
+		}
+
 		return null;
 	}
 	
@@ -72,21 +69,20 @@ class SCR_ArsenalSaveTypeAttribute: SCR_BaseFloatValueHolderEditorAttribute
 		SCR_EditorAttributeFloatStringValueHolder value;
 		SCR_ArsenalSaveTypeUIInfo uiInfo;
 		
-		
 		for(int i = 0; i < count; i++)
-        {
+		{
 			uiInfo = arsenalSaveTypeUIInfoList[i].GetUIInfo();
 			if (!uiInfo)
 				continue;
 			
-           	value = new SCR_EditorAttributeFloatStringValueHolder();
+			value = new SCR_EditorAttributeFloatStringValueHolder();
 			value.SetName(uiInfo.GetName());
 			value.SetFloatValue(arsenalSaveTypeUIInfoList[i].GetSaveType());
 			
 			m_aValues.Insert(value);
-        }
+		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)
 	{
@@ -97,13 +93,10 @@ class SCR_ArsenalSaveTypeAttribute: SCR_BaseFloatValueHolderEditorAttribute
 		if (!editableEntity)
 			return;
 		
-		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.Cast(editableEntity.GetOwner().FindComponent(SCR_ArsenalComponent));
-		if (!arsenalComponent && editableEntity.GetEntityType() == EEditableEntityType.VEHICLE)
-		{
-			//~ If vehicle check if arsenal is on children
-			arsenalComponent = SCR_ArsenalComponent.GetArsenalComponentFromChildren(editableEntity.GetOwner());
-		}
-					
+		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.FindArsenalComponent(editableEntity.GetOwner());
+		if (!arsenalComponent)
+			return;
+
 		if (!arsenalComponent || !arsenalComponent.HasSaveArsenalAction())
 			return;
 		

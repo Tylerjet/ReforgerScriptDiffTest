@@ -1,6 +1,6 @@
-/** @ingroup Editor_UI Editor_UI_Components
-*/
-class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
+//! @ingroup Editor_UI Editor_UI_Components
+
+class SCR_CursorEditorUIComponent : SCR_BaseEditorUIComponent
 {
 	protected const float TRACE_DIS_SINGLE = 10000;
 	protected const float TRACE_DIS_REPEATED = 250;
@@ -11,13 +11,13 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 	[Attribute()]
 	private ref array<ref SCR_CursorEditor> m_Cursors;
 	
-	private ref map<EEditorCursor, ref SCR_CursorEditor> m_CursorsMap = new map<EEditorCursor, ref SCR_CursorEditor>;
+	private ref map<EEditorCursor, ref SCR_CursorEditor> m_CursorsMap = new map<EEditorCursor, ref SCR_CursorEditor>();
 	private SCR_CursorEditor m_CurrentCursor;
 	private vector m_vGamepadCursorSize;
-	private float m_vGamepadCursorRadius;
-	private float m_vGamepadCursorRadiusSq;
+	private float m_fGamepadCursorRadius;
+	private float m_fGamepadCursorRadiusSq;
 	private InputManager m_InputManager;
-	private WorkspaceWidget m_Workspace;
+	private WorkspaceWidget m_wWorkspace;
 	private SCR_EditorManagerEntity m_EditorManager;
 	private SCR_StatesEditorComponent m_StatesManager;
 	private SCR_EditableEntityComponent m_EntityUnderCursor;
@@ -41,20 +41,22 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 	private SCR_MouseAreaEditorUIComponent m_MouseArea;
 	protected TraceFlags m_DefaultWorldTraceFlags = TraceFlags.WORLD | TraceFlags.OCEAN | TraceFlags.ENTS;
 	
-	/*!
-	Set cursor position.
-	\param vector Cursor position
-	\param DPIScale True if the position is in reference resolution, false if in native (current)
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Set cursor position.
+	//! \param[in] pos Cursor position
+	//! \param[in] DPIScale True if the position is in reference resolution, false if in native (current)
 	void SetCursorPos(vector pos, bool DPIScale = false)
 	{
-		if (!m_InputManager || !m_InputManager.IsUsingMouseAndKeyboard()) return;
+		if (!m_InputManager || !m_InputManager.IsUsingMouseAndKeyboard())
+			return;
 		
 		ArmaReforgerScripted game = GetGame();
-		if (!game) return;
+		if (!game)
+			return;
 		
 		WorkspaceWidget workspace = game.GetWorkspace();
-		if (!workspace) return;
+		if (!workspace)
+			return;
 		
 		float mouseX = pos[0];
 		float mouseY = pos[1];
@@ -63,59 +65,63 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 			mouseX = workspace.DPIScale(mouseX);
 			mouseY = workspace.DPIScale(mouseY);
 		}
+
 		m_InputManager.SetCursorPosition(mouseX, mouseY);
 		
 		m_iCursorPosX = mouseX;
 		m_iCursorPosY = mouseY;
-		m_vCursorPos = Vector(m_Workspace.DPIUnscale(m_iCursorPosX), m_Workspace.DPIUnscale(m_iCursorPosY), 0);
+		m_vCursorPos = Vector(m_wWorkspace.DPIUnscale(m_iCursorPosX), m_wWorkspace.DPIUnscale(m_iCursorPosY), 0);
 		m_iFrameUpdate = m_iFrameIndex + 1;
 	}
-	/*!
-	Get cached cursor position in reference resolution.
-	\return Unscaled screen coordinates
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get cached cursor position in reference resolution.
+	//! \return Unscaled screen coordinates
 	vector GetCursorPos()
 	{
 		//--- Get cached position
 		if (m_iFrameUpdate == m_iFrameIndex)
-		{
 			return m_vCursorPos;
-		}
+
 		m_iFrameUpdate = m_iFrameIndex;
 		
 		//--- Calculate new position
 		if (m_InputManager && m_InputManager.IsUsingMouseAndKeyboard())
 		{
 			WidgetManager.GetMousePos(m_iCursorPosX, m_iCursorPosY);
-			m_vCursorPos = Vector(m_Workspace.DPIUnscale(m_iCursorPosX), m_Workspace.DPIUnscale(m_iCursorPosY), 0);
+			m_vCursorPos = Vector(m_wWorkspace.DPIUnscale(m_iCursorPosX), m_wWorkspace.DPIUnscale(m_iCursorPosY), 0);
 		}
 		else
 		{
 			float cursorX, cursorY;
 			//if (m_GamepadCursorWidget) m_GamepadCursorWidget.GetScreenPos(cursorX, cursorY);
-			if (m_CurrentCursor && m_CurrentCursor.GetWidget()) m_CurrentCursor.GetWidget().GetScreenPos(cursorX, cursorY);
-			m_vCursorPos = Vector(m_Workspace.DPIUnscale(cursorX), m_Workspace.DPIUnscale(cursorY), 0) + m_vGamepadCursorSize;
+			if (m_CurrentCursor && m_CurrentCursor.GetWidget())
+				m_CurrentCursor.GetWidget().GetScreenPos(cursorX, cursorY);
+
+			m_vCursorPos = Vector(m_wWorkspace.DPIUnscale(cursorX), m_wWorkspace.DPIUnscale(cursorY), 0) + m_vGamepadCursorSize;
 			m_iCursorPosX = cursorX;
 			m_iCursorPosY = cursorY;
 		}
+
 		return m_vCursorPos;
 	}
-	/*!
-	Get cached cursor position as integers in native (current) resolution.
-	\param[out] posX
-	\param[out] posY
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get cached cursor position as integers in native (current) resolution.
+	//! \param[out] posX
+	//! \param[out] posY
 	void GetCursorPos(out int posX, out int posY)
 	{
 		posX = m_iCursorPosX;
 		posY = m_iCursorPosY;
 	}
-	/*!
-	Get world position below cursor.
-	\param[out] worldPos Vector to be filled with world position
-	\param flags Trace flags to be used (send -1 for default flags)
-	\return True if the cursor is above world position (e.g., not pointing at sky)
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get world position below cursor.
+	//! \param[out] worldPos Vector to be filled with world position
+	//! \param[in] isNormalized
+	//! \param[in] flags Trace flags to be used (send -1 for default flags)
+	//! \return True if the cursor is above world position (e.g., not pointing at sky)
 	bool GetCursorWorldPos(out vector worldPos, bool isNormalized = false, TraceFlags flags = -1)
 	{
 		//--- Get cached position
@@ -125,18 +131,22 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 				worldPos = m_vCursorPosWorldNormalized;
 			else
 				worldPos = m_vCursorPosWorld;
+
 			return true;
 		}
 		m_iFrameUpdateWorld = m_iFrameIndex;
 		
 		ArmaReforgerScripted game = GetGame();
-		if (!game) return false;
+		if (!game)
+			return false;
 		
 		WorkspaceWidget workspace = game.GetWorkspace();
-		if (!workspace) return false;
+		if (!workspace)
+			return false;
 		
 		BaseWorld world = game.GetWorld();
-		if (!world) return false;
+		if (!world)
+			return false;
 		
 		// If map is open return map cursor world position
 		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
@@ -153,7 +163,6 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 			return true;
 		}
 		
-		
 		vector cursorPos = GetCursorPos();
 		vector outDir;
 		vector startPos = workspace.ProjScreenToWorld(cursorPos[0], cursorPos[1], outDir, world, -1);
@@ -167,7 +176,7 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 		if (startPos[1] < world.GetOceanBaseHeight())
 			flags = flags & ~TraceFlags.OCEAN;
 	
-		autoptr TraceParam trace = new TraceParam();
+		TraceParam trace = new TraceParam();
 		trace.Start = startPos;
 		trace.End = startPos + outDir;
 		trace.Flags = flags;
@@ -193,10 +202,15 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 		}
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	IEntity GetTraceEntity()
 	{
 		return m_TraceEntity;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void SetCursorType(EEditorCursor type)
 	{
 		SCR_CursorEditor cursor;
@@ -216,31 +230,50 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 			opacity = m_CurrentCursor.GetWidget().GetOpacity();
 			m_CurrentCursor.GetWidget().SetOpacity(0);
 		}
-		if (cursor.GetWidget()) cursor.GetWidget().SetOpacity(opacity);
+
+		if (cursor.GetWidget())
+			cursor.GetWidget().SetOpacity(opacity);
+
 		m_CurrentCursor = cursor;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void ResetCursor()
 	{
 		WidgetManager.SetCursor(EEditorCursor.DEFAULT);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetCursorRadius()
 	{
-		return m_vGamepadCursorRadius;
+		return m_fGamepadCursorRadius;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetCursorRadiusSq()
 	{
-		return m_vGamepadCursorRadiusSq;
+		return m_fGamepadCursorRadiusSq;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] alpha
+	//! \param[in] strength
 	void SetCursorAlpha(float alpha, float strength = 1)
 	{
 		m_fTargetAlpha = alpha;
 		m_fTargetAlphaStrength = strength;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateCursorDebug()
 	{
 		Print("Debug");
 		UpdateCursor();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateCursor()
 	{
 		//--- Map is using its own custom cursors, don't overwrite them
@@ -248,7 +281,8 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 			return;
 		
 		EEditorState editorState;
-		if (m_StatesManager) editorState = m_StatesManager.GetState();
+		if (m_StatesManager)
+			editorState = m_StatesManager.GetState();
 		
 		bool isEditing = m_PreviewManager && m_PreviewManager.IsEditing();
 		
@@ -263,16 +297,19 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 				SetCursorType(EEditorCursor.WAITING);
 				break;
 			}
+
 			case (isEditing && !m_PreviewManager.IsChange()):
 			{
 				SetCursorType(EEditorCursor.TRANSFORM_DISABLED);
 				break;
 			}
+
 			case (isEditing && m_PreviewManager.IsRotating()):
 			{
 				SetCursorType(EEditorCursor.ROTATE);
 				break;
 			}
+
 			case (isEditing && (m_PreviewManager.GetTarget() || m_PreviewManager.IsFixedPosition())):
 			{
 				if (m_PreviewManager.GetTargetInteraction() == EEditableEntityInteraction.NONE)
@@ -281,11 +318,13 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 					SetCursorType(EEditorCursor.TRANSFORM_SNAP);
 				break;
 			}
+
 			case (isEditing && !m_PreviewManager.CanMoveInRoot()):
 			{
 				SetCursorType(EEditorCursor.TRANSFORM_DISABLED);
 				break;
 			}
+
 			case (editorState == EEditorState.TRANSFORMING):
 			{
 				if (m_PreviewManager.GetVerticalMode() == EEditorTransformVertical.GEOMETRY && m_PreviewManager.GetVerticalMode() == m_PreviewManager.GetVerticalModeReal())
@@ -294,6 +333,7 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 					SetCursorType(EEditorCursor.TRANSFORM);	
 				break;
 			}
+
 			case (editorState == EEditorState.PLACING):
 			{
 				if (m_PreviewManager.GetVerticalMode() == EEditorTransformVertical.GEOMETRY && m_PreviewManager.GetVerticalMode() == m_PreviewManager.GetVerticalModeReal())
@@ -302,43 +342,56 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 					SetCursorType(EEditorCursor.PLACE);
 				break;
 			}
+
 			case (m_CommandManager && m_CommandManager.GetCommandState() & EEditorCommandActionFlags.WAYPOINT):
 			{
 				SetCursorType(EEditorCursor.WAYPOINT);
 				break;
 			}
+
 			case (m_CommandManager && m_CommandManager.GetCommandState() & EEditorCommandActionFlags.OBJECTIVE):
 			{
 				SetCursorType(EEditorCursor.OBJECTIVE);
 				break;
 			}
+
 			case (editorState == EEditorState.SELECTING && m_HoverManager && m_HoverManager.GetInteractiveEntityUnderCursor()):
 			{
 				SetCursorType(EEditorCursor.FOCUS);
 				break;
 			}
+
 			default:
 			{
 				SetCursorType(EEditorCursor.DEFAULT);
 			}
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] state
+	//! \param[in] entitiesInsert
+	//! \param[in] entitiesRemove
 	void OnFilterChange(EEditableEntityState state, set<SCR_EditableEntityComponent> entitiesInsert, set<SCR_EditableEntityComponent> entitiesRemove)
 	{
 		UpdateCursor();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected bool TraceFilter(Class target)
 	{
 		GenericEntity genericTarget = GenericEntity.Cast(target);
 		return genericTarget.FindComponent(SCR_EditableEntityComponent) != null;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected SCR_EditableEntityComponent TraceEntity(vector cursorPos)
 	{
 		vector outDir;
-		vector camPos = m_Workspace.ProjScreenToWorld(cursorPos[0], cursorPos[1], outDir, GetGame().GetWorld(), -1);
+		vector camPos = m_wWorkspace.ProjScreenToWorld(cursorPos[0], cursorPos[1], outDir, GetGame().GetWorld(), -1);
 
 		//--- Trace cursor position
-		autoptr TraceParam trace = new TraceParam();
+		TraceParam trace = new TraceParam();
 		trace.Start = camPos;
 		trace.End = camPos + outDir * TRACE_DIS_REPEATED;
 		trace.Flags = TraceFlags.ENTS | TraceFlags.WORLD | TraceFlags.OCEAN;
@@ -355,16 +408,23 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 		while (genericEntity)
 		{
 			SCR_EditableEntityComponent entity = SCR_EditableEntityComponent.Cast(genericEntity.FindComponent(SCR_EditableEntityComponent));
-			if (entity) return entity;
+			if (entity)
+				return entity;
+
 			genericEntity = GenericEntity.Cast(genericEntity.GetParent());
-		}		
+		}
+
 		return null;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
 		// use InputManager! instead of ShowCursor
 		//ShowCursor(!isGamepad);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnMenuUpdate(float tDelta)
 	{
 		//if (!GetWidget().IsEnabledInHierarchy()) return;
@@ -379,40 +439,46 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 				m_HoverManager.SetEntityUnderCursor(entityUnderCursor);
 		}
 
-		if (!m_CurrentCursor) return;
+		if (!m_CurrentCursor)
+			return;
+
 		Widget currentCursorWidget = m_CurrentCursor.GetWidget();
-		if (!currentCursorWidget) return;
+		if (!currentCursorWidget)
+			return;
+
 		float currentAlpha = currentCursorWidget.GetOpacity();
 		if (currentAlpha != m_fTargetAlpha)
 			currentCursorWidget.SetOpacity(Math.Lerp(currentAlpha, m_fTargetAlpha, m_fTargetAlphaStrength * tDelta));
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] config
 	void OnMapToggled(MapConfiguration config)
 	{
 		UpdateCursor();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttachedScripted(Widget w)
 	{	
 		super.HandlerAttachedScripted(w);
 		if (SCR_Global.IsEditMode()) return; //--- Run-time only
 		
 		MenuRootBase menu = GetMenu();
-		if (!menu) return;
+		if (!menu)
+			return;
 		
-		m_Workspace = GetGame().GetWorkspace();
+		m_wWorkspace = GetGame().GetWorkspace();
 		m_InputManager = GetGame().GetInputManager();
 		m_MapEntity = SCR_MapEntity.GetMapInstance();
-		/*
-		if (m_InputManager)
-		{
-			m_InputManager.AddActionListener("ManualCameraRotateYaw", EActionTrigger.PRESSED, UpdateCursor);
-			m_InputManager.AddActionListener("ManualCameraRotateYaw", EActionTrigger.UP, UpdateCursor);
-			m_InputManager.AddActionListener("ManualCameraRotatePitch", EActionTrigger.PRESSED, UpdateCursor);
-			m_InputManager.AddActionListener("ManualCameraRotatePitch", EActionTrigger.UP, UpdateCursor);
-		}
-		*/
+
+//		if (m_InputManager)
+//		{
+//			m_InputManager.AddActionListener("ManualCameraRotateYaw", EActionTrigger.PRESSED, UpdateCursor);
+//			m_InputManager.AddActionListener("ManualCameraRotateYaw", EActionTrigger.UP, UpdateCursor);
+//			m_InputManager.AddActionListener("ManualCameraRotatePitch", EActionTrigger.PRESSED, UpdateCursor);
+//			m_InputManager.AddActionListener("ManualCameraRotatePitch", EActionTrigger.UP, UpdateCursor);
+//		}
 		
 		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 		
@@ -420,7 +486,8 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 		SCR_MapEntity.GetOnMapClose().Insert(OnMapToggled);
 		
 		m_EditorManager = SCR_EditorManagerEntity.GetInstance();
-		if (m_EditorManager) m_EditorManager.GetOnModeChangeRequest().Insert(UpdateCursor);
+		if (m_EditorManager)
+			m_EditorManager.GetOnModeChangeRequest().Insert(UpdateCursor);
 		
 		m_StatesManager = SCR_StatesEditorComponent.Cast(SCR_StatesEditorComponent.GetInstance(SCR_StatesEditorComponent));
 		if (m_StatesManager)
@@ -443,12 +510,14 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 		if (entitiesManager)
 		{
 			m_HoverManager = SCR_HoverEditableEntityFilter.Cast(entitiesManager.GetFilter(EEditableEntityState.HOVER));
-			if (m_HoverManager) m_HoverManager.GetOnChanged().Insert(OnFilterChange);
+			if (m_HoverManager)
+				m_HoverManager.GetOnChanged().Insert(OnFilterChange);
 		}
 		
 		//--- Track commanding
 		m_CommandManager = SCR_CommandActionsEditorUIComponent.Cast(GetRootComponent().FindComponent(SCR_CommandActionsEditorUIComponent));
-		if (m_CommandManager) m_CommandManager.GetOnCommandStateChange().Insert(UpdateCursor);
+		if (m_CommandManager)
+			m_CommandManager.GetOnCommandStateChange().Insert(UpdateCursor);
 
 		m_MouseArea = SCR_MouseAreaEditorUIComponent.Cast(GetRootComponent().FindComponent(SCR_MouseAreaEditorUIComponent));
 		
@@ -470,8 +539,8 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 				m_vGamepadCursorSize = FrameSlot.GetSize(defaultCursor.GetWidget());
 				m_vGamepadCursorSize[0] = m_vGamepadCursorSize[0] * alignment[0];
 				m_vGamepadCursorSize[1] = m_vGamepadCursorSize[1] * alignment[1];
-				m_vGamepadCursorRadius = Math.Max(m_vGamepadCursorSize[0], m_vGamepadCursorSize[1]);
-				m_vGamepadCursorRadiusSq = Math.Pow(m_vGamepadCursorRadius, 2);
+				m_fGamepadCursorRadius = Math.Max(m_vGamepadCursorSize[0], m_vGamepadCursorSize[1]);
+				m_fGamepadCursorRadiusSq = Math.Pow(m_fGamepadCursorRadius, 2);
 			}
 		}
 		else
@@ -484,28 +553,34 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 		menu.GetOnMenuHide().Insert(UpdateCursor);
 		menu.GetOnMenuUpdate().Insert(OnMenuUpdate);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
 		
 		ResetCursor();
-		/*
-		if (m_InputManager)
-		{
-			m_InputManager.RemoveActionListener("ManualCameraRotateYaw", EActionTrigger.PRESSED, UpdateCursor);
-			m_InputManager.RemoveActionListener("ManualCameraRotateYaw", EActionTrigger.UP, UpdateCursor);
-			m_InputManager.RemoveActionListener("ManualCameraRotatePitch", EActionTrigger.PRESSED, UpdateCursor);
-			m_InputManager.RemoveActionListener("ManualCameraRotatePitch", EActionTrigger.UP, UpdateCursor);
-		}
-		*/
+
+//		if (m_InputManager)
+//		{
+//			m_InputManager.RemoveActionListener("ManualCameraRotateYaw", EActionTrigger.PRESSED, UpdateCursor);
+//			m_InputManager.RemoveActionListener("ManualCameraRotateYaw", EActionTrigger.UP, UpdateCursor);
+//			m_InputManager.RemoveActionListener("ManualCameraRotatePitch", EActionTrigger.PRESSED, UpdateCursor);
+//			m_InputManager.RemoveActionListener("ManualCameraRotatePitch", EActionTrigger.UP, UpdateCursor);
+//		}
+
 		if (GetGame().OnInputDeviceIsGamepadInvoker())
 			GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 		
 		SCR_MapEntity.GetOnMapOpen().Remove(OnMapToggled);
 		SCR_MapEntity.GetOnMapClose().Remove(OnMapToggled);
 		
-		if (m_EditorManager) m_EditorManager.GetOnModeChangeRequest().Remove(UpdateCursor);
-		if (m_HoverManager) m_HoverManager.GetOnChanged().Remove(OnFilterChange);
+		if (m_EditorManager)
+			m_EditorManager.GetOnModeChangeRequest().Remove(UpdateCursor);
+
+		if (m_HoverManager)
+			m_HoverManager.GetOnChanged().Remove(OnFilterChange);
+
 		if (m_PreviewManager)
 		{
 			m_PreviewManager.GetOnPreviewCreate().Remove(UpdateCursor);
@@ -513,6 +588,7 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 			m_PreviewManager.GetOnPreviewDelete().Remove(UpdateCursor);
 			m_PreviewManager.GetOnTargetChange().Remove(UpdateCursor);
 		}
+
 		if (m_StatesManager)
 		{
 			m_StatesManager.GetOnStateChange().Remove(UpdateCursor);
@@ -521,11 +597,10 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 		
 		SCR_TransformingEditorComponent transformingManager = SCR_TransformingEditorComponent.Cast(SCR_TransformingEditorComponent.GetInstance(SCR_TransformingEditorComponent));
 		if (transformingManager)
-		{
 			transformingManager.GetOnTransformationStart().Remove(UpdateCursor);
-		}
 		
-		if (m_CommandManager) m_CommandManager.GetOnCommandStateChange().Remove(UpdateCursor);
+		if (m_CommandManager)
+			m_CommandManager.GetOnCommandStateChange().Remove(UpdateCursor);
 		
 		MenuRootBase menu = GetMenu();
 		if (menu)
@@ -535,7 +610,7 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 			menu.GetOnMenuUpdate().Remove(OnMenuUpdate);
 		}
 	}
-};
+}
 
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EEditorCursor, "m_Type")]
 class SCR_CursorEditor
@@ -546,36 +621,48 @@ class SCR_CursorEditor
 	[Attribute()]
 	private string m_sName;
 	
-	private Widget m_Widget; 
+	private Widget m_wWidget;
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	EEditorCursor GetType()
 	{
 		return m_Type;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetID()
 	{
 		return m_Type;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetName()
 	{
 		return m_sName;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	Widget GetWidget()
 	{
-		return m_Widget;
+		return m_wWidget;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] root
 	void InitWidget(Widget root)
 	{
-		if (m_sName.IsEmpty()) return;
+		if (m_sName.IsEmpty())
+			return;
 		
-		m_Widget = root.FindAnyWidget(m_sName);
-		if (m_Widget)
-		{
-			m_Widget.SetOpacity(0);
-		}
+		m_wWidget = root.FindAnyWidget(m_sName);
+		if (m_wWidget)
+			m_wWidget.SetOpacity(0);
 		else
-		{
 			Print(string.Format("Gamepad cursor '%1' for type %2 not found!", m_sName, m_Type), LogLevel.ERROR);
-		}
 	}
-};
+}

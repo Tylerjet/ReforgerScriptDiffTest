@@ -22,4 +22,6 @@ enum EEditableEntityFlag
 	HAS_AREA			= 1 << 15, ///< Entity has an area, e.g., a trigger or a spawn point
 	DIRTY_HIERARCHY		= 1 << 16, ///< Entity was changed by the user
 	LINKED_CHILDREN		= 1 << 17, ///< Entity spawns children using SCR_EditorLinkComponent
+	SPAWN_UNFINISHED	= 1 << 18, ///< Should entity spawning be handled by Editor or some external system
+	FREE_ROAM_BUILDING_AI	= 1 << 19, ///< AI spawned by Free Roam Building.
 };

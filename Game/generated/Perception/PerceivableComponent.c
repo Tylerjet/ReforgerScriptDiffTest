@@ -30,8 +30,13 @@ class PerceivableComponent: GameComponent
 	//! Returns the number of output elements.
 	proto external int GetAimpoints(out notnull array<vector> outPoints);
 	proto external int GetAimpointsOfType(out notnull array<ref AimPoint> outPoints, EAimPointType type);
-	//! Returns true when this perceivable is considered disarmed. This value is updated periodically.
+	//! Returns true when this perceivable is considered disarmed
 	proto external bool IsDisarmed();
+	proto external void SetDisarmed(bool disarmed);
+
+	// callbacks
+
+	event void EOnInit(IEntity owner);
 }
 
 /*!

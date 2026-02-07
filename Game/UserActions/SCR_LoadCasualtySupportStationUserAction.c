@@ -3,7 +3,7 @@ class SCR_LoadCasualtySupportStationUserAction : SCR_BaseUseSupportStationAction
 	[Attribute("#AR-UserAction_LoadCasualty_NoSpace", desc: "Text shown when character can not be loaded as there is no space in the vehicle", uiwidget: UIWidgets.LocaleEditBox)]
 	protected LocalizedString m_sInvalidNoSpace;
 	
-	protected SCR_CharacterControllerComponent m_CharacterController;
+	protected CharacterControllerComponent m_CharacterController;
 	protected FactionAffiliationComponent m_FactionAffiliation;
 		
 	//------------------------------------------------------------------------------------------------
@@ -24,7 +24,7 @@ class SCR_LoadCasualtySupportStationUserAction : SCR_BaseUseSupportStationAction
 		if (!character)
 			return;
 		
-		m_CharacterController = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
+		m_CharacterController = character.GetCharacterController();
 		m_FactionAffiliation = FactionAffiliationComponent.Cast(owner.FindComponent(FactionAffiliationComponent));
 	}
 	

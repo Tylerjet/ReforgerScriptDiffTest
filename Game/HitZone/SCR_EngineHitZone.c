@@ -45,19 +45,19 @@ class SCR_EngineHitZone : SCR_VehicleHitZone
 	This is also called when transmitting the damage to parent hitzones!
 	\param type Type of damage
 	\param damage Amount of damage received
-	\param pOriginalHitzone Original hitzone that got dealt damage, as this might be transmitted damage.
+	\param struckHitZone Original hitzone that got dealt damage, as this might be transmitted damage.
 	\param instigator Damage source parent (soldier, vehicle, ...)
 	\param hitTransform [hitPosition, hitDirection, hitNormal]
 	\param speed Projectile speed in time of impact
 	\param colliderID ID of the collider receiving damage
 	\param nodeID ID of the node of the collider receiving damage
 	*/
-	override void OnDamage(EDamageType type, float damage, HitZone pOriginalHitzone, notnull Instigator instigator, inout vector hitTransform[3], float speed, int colliderID, int nodeID)
+	override void OnDamage(notnull BaseDamageContext damageContext)
 	{
-		super.OnDamage(type, damage, pOriginalHitzone, instigator, hitTransform, speed, colliderID, nodeID);
+		super.OnDamage(damageContext);
 
 		// Powerful impact should always stop engine
-		if (damage < GetCriticalDamageThreshold()*GetMaxHealth())
+		if (damageContext.damageValue < GetCriticalDamageThreshold()*GetMaxHealth())
 			return;
 
 		BaseVehicleNodeComponent node = BaseVehicleNodeComponent.Cast(GetOwner().FindComponent(BaseVehicleNodeComponent));

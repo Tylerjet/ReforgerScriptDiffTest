@@ -16,7 +16,7 @@ class SCR_AIVisualizeDebug : SCR_AIDebugTask
 	protected override void PrintInternal(string in)
 	{
 		if (m_AgentForVisualize)
-			SCR_AIDebugVisualization.VisualizeMessage(m_AgentForVisualize.GetControlledEntity(), in, m_eAICategory, m_fShowTime, UIColors.CONTRAST_COLOR, m_fFontSize);
+			SCR_AIDebugVisualization.VisualizeMessage(m_AgentForVisualize.GetControlledEntity(), in, m_eAICategory, m_fShowTime, Color.FromInt(UIColors.CONTRAST_COLOR.PackToInt()), m_fFontSize);
 	}
 	
 	//------------------------------------------------------------------------------------------------

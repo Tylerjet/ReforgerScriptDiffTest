@@ -103,7 +103,7 @@ class SCR_RemoveCasualtyUserAction : SCR_CompartmentUserAction
 		if (!casualty)
 			return false;
 
-		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(casualty.GetCharacterController());
+		CharacterControllerComponent controller = casualty.GetCharacterController();
 		if (!controller)
 			return false;
 

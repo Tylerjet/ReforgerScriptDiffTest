@@ -1,6 +1,4 @@
-#include "scripts/Game/config.c"
-//------------------------------------------------------------------------------------------------
-class SCR_AmbientPatrolSpawnPointComponentClass: ScriptComponentClass
+class SCR_AmbientPatrolSpawnPointComponentClass : ScriptComponentClass
 {
 	[Attribute("{35BD6541CBB8AC08}Prefabs/AI/Waypoints/AIWaypoint_Cycle.et", UIWidgets.ResourceNamePicker, "Cycle waypoint to be used for waypoints in hierarchy.", "et")]
 	protected ResourceName m_sCycleWaypointPrefab;
@@ -9,19 +7,20 @@ class SCR_AmbientPatrolSpawnPointComponentClass: ScriptComponentClass
 	protected ResourceName m_sDefaultWaypointPrefab;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetCycleWaypointPrefab()
 	{
 		return m_sCycleWaypointPrefab;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetDefaultWaypointPrefab()
 	{
 		return m_sDefaultWaypointPrefab;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 {
 	[Attribute("0", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_EGroupType))]
@@ -37,18 +36,14 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 	protected float m_fAILimitThreshold;
 	
 	protected bool m_bSpawned;
+	protected bool m_bActive = false;
 	protected bool m_bPaused;
 	
 	protected int m_iID;
 	protected int m_iMembersAlive = -1;
 	
-	#ifndef AR_CAMPAIGN_TIMESTAMP
-	protected float m_fRespawnTimestamp;
-	protected float m_fDespawnTimer = -1;
-	#else
 	protected WorldTimestamp m_fRespawnTimestamp;
 	protected WorldTimestamp m_fDespawnTimer;
-	#endif
 	
 	protected AIWaypoint m_Waypoint;
 	
@@ -59,36 +54,42 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 	protected Faction m_SavedFaction;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] ID
 	void SetID(int ID)
 	{
 		m_iID = ID;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetID()
 	{
 		return m_iID;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] count
 	void SetMembersAlive(int count)
 	{
 		m_iMembersAlive = count;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetMembersAlive()
 	{
 		return m_iMembersAlive;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] spawned
 	void SetIsSpawned(bool spawned)
 	{
 		m_bSpawned = spawned;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetIsSpawned()
 	{
 		return m_bSpawned;
@@ -96,70 +97,63 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Pause this spawnpoint so a group will not be spawned unless players leave and re-enter the area
+	//! \param[in] paused
 	void SetIsPaused(bool paused)
 	{
 		m_bPaused = paused;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetIsPaused()
 	{
 		return m_bPaused;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetAILimitThreshold()
 	{
 		return m_fAILimitThreshold;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	#ifndef AR_CAMPAIGN_TIMESTAMP
-	void SetDespawnTimer(float time)
-	#else
+	//! \param[in] time
 	void SetDespawnTimer(WorldTimestamp time)
-	#endif
 	{
 		m_fDespawnTimer = time;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	#ifndef AR_CAMPAIGN_TIMESTAMP
-	float GetDespawnTimer()
-	#else
+	//! \return
 	WorldTimestamp GetDespawnTimer()
-	#endif
 	{
 		return m_fDespawnTimer;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	#ifndef AR_CAMPAIGN_TIMESTAMP
-	void SetRespawnTimestamp(float timestamp)
-	#else
+	//! \param[in] timestamp
 	void SetRespawnTimestamp(WorldTimestamp timestamp)
-	#endif
 	{
 		m_fRespawnTimestamp = timestamp;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	#ifndef AR_CAMPAIGN_TIMESTAMP
-	float GetRespawnTimestamp()
-	#else
+	//! \return
 	WorldTimestamp GetRespawnTimestamp()
-	#endif
 	{
 		return m_fRespawnTimestamp;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_AIGroup GetSpawnedGroup()
 	{
 		return m_Group;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	AIWaypoint GetWaypoint()
 	{
 		return m_Waypoint;
@@ -326,6 +320,7 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void PrepareWaypoints()
 	{
 		EntitySpawnParams params = EntitySpawnParams();
@@ -363,6 +358,7 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void SpawnPatrol()
 	{
 		SCR_FactionAffiliationComponent comp = SCR_FactionAffiliationComponent.Cast(GetOwner().FindComponent(SCR_FactionAffiliationComponent));
@@ -379,6 +375,7 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 			Update(faction);
 		
 		m_bSpawned = true;
+		m_bActive = true;
 		
 		if (m_sPrefab.IsEmpty())
 			return;
@@ -425,13 +422,10 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void DespawnPatrol()
 	{
-		#ifndef AR_CAMPAIGN_TIMESTAMP
-		m_fDespawnTimer = -1;
-		#else
 		m_fDespawnTimer = null;
-		#endif
 		m_bSpawned = false;
 		
 		if (!m_Group)
@@ -448,26 +442,45 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	void ActivateGroup()
+	{
+		if (m_Group)
+		{
+			m_bActive = true;
+			m_Group.ActivateAllMembers();
+		}
+	}
+	//------------------------------------------------------------------------------------------------
+	//!
+	void DeactivateGroup()
+	{
+		if (m_Group)
+		{
+			m_bActive = false;
+			m_Group.DeactivateAllMembers();
+		}
+	}
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
+	bool IsGroupActive()
+	{
+		return m_bActive;
+	}
+	//------------------------------------------------------------------------------------------------
+
 	void OnAgentRemoved()
 	{
-		#ifndef AR_CAMPAIGN_TIMESTAMP
-		if (!m_Group || m_Group.GetAgentsCount() > 0 || m_fRespawnTimestamp >= Replication.Time())
-			return;
-		#else
 		if (!m_Group || m_Group.GetAgentsCount() > 0)
 			return;
 
 		ChimeraWorld world = GetOwner().GetWorld();
 		if (m_fRespawnTimestamp.GreaterEqual(world.GetServerTimestamp()))
 			return;
-		#endif
 		
 		// Set up respawn timestamp, convert s to ms, reset original group size
-		#ifndef AR_CAMPAIGN_TIMESTAMP
-		m_fRespawnTimestamp = (Replication.Time() + (m_iRespawnPeriod * 1000));
-		#else
 		m_fRespawnTimestamp = world.GetServerTimestamp().PlusSeconds(m_iRespawnPeriod);
-		#endif
 		m_iMembersAlive = -1;
 		m_bSpawned = false;
 	}
@@ -489,18 +502,23 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
-		if (!GetGame().InPlayMode() || Replication.IsClient())
+		SCR_AmbientPatrolSystem manager = SCR_AmbientPatrolSystem.GetInstance();
+
+		if (!manager)
 			return;
-		
-		SCR_AmbientPatrolManager.GetInstance().RegisterPatrol(this);
+
+		manager.RegisterPatrol(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_AmbientPatrolSpawnPointComponent()
 	{
-		SCR_AmbientPatrolManager manager = SCR_AmbientPatrolManager.GetInstance(false);
+		SCR_AmbientPatrolSystem manager = SCR_AmbientPatrolSystem.GetInstance();
+
+		if (!manager)
+			return;
 		
-		if (manager)
-			manager.UnregisterPatrol(this);
+		manager.UnregisterPatrol(this);	
 	}
-};
+}

@@ -11,13 +11,21 @@ class SCR_CampaignTutorialArlandDrivingAdvanced13 : SCR_BaseCampaignTutorialArla
 	{
 		RegisterWaypoint("Truck");
 		m_fWaypointCompletionRadius = 10;
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
 		m_TutorialComponent.SetWaypointMiscImage("GETIN", true);
+		if (!m_TutorialComponent.GetVoiceSystem().IsPlaying())
+			PlaySoundSystem("GetInTruck", true);
+		else
+			GetGame().GetCallqueue().CallLater(PlaySoundSystem, 1000, false, "GetInTruck", true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override protected bool GetIsFinished()
 	{
-		return m_Player.IsInVehicle();
+		if (!m_TutorialComponent.GetVoiceSystem().IsPlaying())
+		{
+			SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		}
+		return m_Player.IsInVehicle() && !m_TutorialComponent.GetVoiceSystem().IsPlaying();
 	}
+
 };

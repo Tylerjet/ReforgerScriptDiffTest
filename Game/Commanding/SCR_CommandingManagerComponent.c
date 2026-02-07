@@ -1,7 +1,7 @@
 [EntityEditorProps(category: "GameScripted/Commanding", description: "Commanding manager, attach to game mode entity!.")]
 class SCR_CommandingManagerComponentClass : SCR_BaseGameModeComponentClass
 {
-};
+}
 
 //------------------------------------------------------------------------------------------------
 class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
@@ -19,24 +19,30 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 	
 	protected static SCR_CommandingManagerComponent s_Instance;
 	
-	protected ref array<ref SCR_BaseGroupCommand> m_aCommands;
-	protected ref map<string, ref SCR_BaseGroupCommand> m_mNameCommand = new map<string, ref SCR_BaseGroupCommand>();
+	protected ref array<ref SCR_BaseRadialCommand> m_aCommands;
+	protected ref map<string, ref SCR_BaseRadialCommand> m_mNameCommand = new map<string, ref SCR_BaseRadialCommand>();
 
 	protected static const int NORMAL_PRIORITY = 50;
 	
-	//------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	static SCR_CommandingManagerComponent GetInstance()
 	{
 		return s_Instance;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetGroupPrefab()
 	{
 		return m_sAIGroupPrefab;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_CommandingManagerComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		if (!s_Instance)
@@ -58,6 +64,7 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void InitiateCommandMaps()
 	{
 		SCR_PlayerCommandsConfig commandsConfig = GetCommandsConfig();
@@ -66,13 +73,16 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 		
 		m_aCommands = commandsConfig.GetCommands();
 		
-		foreach (int i, SCR_BaseGroupCommand command : m_aCommands)
+		foreach (SCR_BaseRadialCommand command : m_aCommands)
+		{
 			m_mNameCommand.Insert(command.GetCommandName(), command);
-			
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! gets called when player respawns so the newly recruited AIs dont follow the old waypoints from orders
+	//! Gets called when player respawns so the newly recruited AIs dont follow the old waypoints from orders
+	//! \param[in] playerId
+	//! \param[in] player
 	void ResetSlaveGroupWaypoints(int playerId, IEntity player)
 	{	
 		PlayerController pc = GetGame().GetPlayerManager().GetPlayerController(playerId);
@@ -144,7 +154,12 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! called on server
+	//! Called on server
+	//! \param[in] commandIndex
+	//! \param[in] cursorTargetID
+	//! \param[in] groupRplID
+	//! \param[in] targetPosition
+	//! \param[in] playerID
 	void RequestCommandExecution(int commandIndex, RplId cursorTargetID, RplId groupRplID, vector targetPosition, int playerID)
 	{
 		//check if the passed arguments are valid, if yes, send a callback RPC to commanders playercontroller so he can make a gesture.	
@@ -153,6 +168,12 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] commandIndex
+	//! \param[in] cursorTargetID
+	//! \param[in] groupRplID
+	//! \param[in] targetPosition
+	//! \param[in] playerID
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	void RPC_DoExecuteCommand(int commandIndex, RplId cursorTargetID, RplId groupRplID, vector targetPosition, int playerID)
 	{
@@ -169,7 +190,7 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 		rplComp = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
 		if (rplComp)
 		{
-			SCR_BaseGroupCommand command = FindCommand(FindCommandNameFromIndex(commandIndex));
+			SCR_BaseRadialCommand command = FindCommand(FindCommandNameFromIndex(commandIndex));
 			if (command.Execute(cursorTarget, group, targetPosition, playerID, rplComp.IsProxy()))
 			{
 				PlayCommanderSound(playerID, commandIndex);
@@ -190,6 +211,9 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerID
+	//! \param[in] commandIndex
 	void PlayCommanderSound(int playerID, int commandIndex)
 	{
 		SCR_ChimeraCharacter playerCharacter = SCR_ChimeraCharacter.Cast(GetGame().GetPlayerManager().GetPlayerControlledEntity(playerID));
@@ -203,27 +227,33 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 		SCR_CommunicationSoundComponent soundComponent = SCR_CommunicationSoundComponent.Cast(playerCharacter.FindComponent(SCR_CommunicationSoundComponent));
 		if (!soundComponent)
 			return;
-		
-		int signalSoldierCalled = signalManager.FindSignal("SoldierCalled");
-		
+
 		string soundEventName = GetCommandSoundEventName(commandIndex);
 		if (soundEventName.IsEmpty())
 			return;
+
+		int signalSoldierCalled = signalManager.FindSignal("SoldierCalled");
 		
 		signalManager.SetSignalValue(signalSoldierCalled, 1000);
 		soundComponent.SoundEventPriority(soundEventName, NORMAL_PRIORITY);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	SCR_BaseGroupCommand FindCommand(string commandName)
+	//!
+	//! \param[in] commandName
+	//! \return
+	SCR_BaseRadialCommand FindCommand(string commandName)
 	{
 		return m_mNameCommand.Get(commandName);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] commandName
+	//! \return
 	int FindCommandIndex(string commandName)
 	{
-		SCR_BaseGroupCommand command = FindCommand(commandName);
+		SCR_BaseRadialCommand command = FindCommand(commandName);
 		if (!command)
 			return -1;
 		
@@ -231,19 +261,26 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] commandIndex
+	//! \return
 	string GetCommandSoundEventName(int commandIndex)
 	{
-		SCR_BaseGroupCommand command = m_aCommands.Get(commandIndex);
-		if (!command)
+		SCR_BaseRadialCommand command = m_aCommands.Get(commandIndex);
+		SCR_BaseGroupCommand groupCommand = SCR_BaseGroupCommand.Cast(command);
+		if (!groupCommand)
 			return string.Empty;
 		
-		return command.GetSoundEventName();
+		
+		return groupCommand.GetSoundEventName();
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] commandIndex
+	//! \return
 	string FindCommandNameFromIndex(int commandIndex)
 	{
-		SCR_BaseGroupCommand command = m_aCommands.Get(commandIndex);
+		SCR_BaseRadialCommand command = m_aCommands.Get(commandIndex);
 		if (!command)
 			return string.Empty;
 		
@@ -251,9 +288,12 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] commandName
+	//! \return
 	bool CanShowCommand(string commandName)
 	{
-		SCR_BaseGroupCommand command = FindCommand(commandName);
+		SCR_BaseRadialCommand command = FindCommand(commandName);
 		if (!command)
 			return false;
 		
@@ -261,9 +301,12 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] commandName
+	//! \return
 	bool CanShowOnMap(string commandName)
 	{
-		SCR_BaseGroupCommand command = FindCommand(commandName);
+		SCR_BaseRadialCommand command = FindCommand(commandName);
 		if (!command)
 			return false;
 		
@@ -271,6 +314,7 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_PlayerCommandsConfig GetCommandsConfig()
 	{
 		if (m_CommandsConfig)
@@ -293,12 +337,14 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetMaxAIPerGroup()
 	{
 		return m_iMaxAIPerGroup;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] max
 	void SetMaxAIPerGroup(int max)
 	{
 		m_iMaxAIPerGroup = max;

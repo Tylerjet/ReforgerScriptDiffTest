@@ -20,8 +20,6 @@ enum EMessageType_Goal
 	ATTACK_CLUSTER_DONE,
 	COVER_CLUSTER,
 	MOVE_IN_FORMATION,
-	ATTACK_STATIC,
-	ATTACK_STATIC_DONE,	
 	SEEK_DESTROY,
 	FLEE,
 	GET_IN_VEHICLE,
@@ -345,22 +343,6 @@ class SCR_AIMessage_CoverCluster : SCR_AIMessageGoal
 	}
 }
 
-class SCR_AIMessage_AttackStatic : SCR_AIMessage_Attack // MESSAGE_CLASS(GenerateSendGoalMessage, SCR_AISendGoalMessage_AttackStatic)
-{
-	void SCR_AIMessage_AttackStatic() 
-	{
-		m_MessageType = EMessageType_Goal.ATTACK_STATIC;
-	}
-};
-
-class SCR_AIMessage_AttackStaticDone : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSendGoalMessage, SCR_AISendGoalMessage_AttackStaticDone)
-{
-	void SCR_AIMessage_AttackStaticDone() 
-	{
-		m_MessageType = EMessageType_Goal.ATTACK_STATIC_DONE;
-	}
-};
-
 class SCR_AIMessage_KeepFormation : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSendGoalMessage, SCR_AISendGoalMessage_KeepFormation)
 {
 	void SCR_AIMessage_KeepFormation() 
@@ -615,23 +597,21 @@ class SCR_AIMessage_Flee : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSendGoalMe
 
 class SCR_AIMessage_ThrowGrenadeTo : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSendGoalMessage, SCR_AISendGoalMessage_ThrowGrenadeTo)
 {
-	IEntity m_TargetEntity; // VARIABLE(NodePort, TargetEntity)
 	vector m_vTargetPosition; // VARIABLE(NodePort, TargetPosition)
+	EWeaponType e_WeaponType; // VARIABLE(NodePort, WeaponType)
+	float m_fDelay; // VARIABLE(NodePort, Delay)
 	
 	void SCR_AIMessage_ThrowGrenadeTo()
 	{
 		m_MessageType = EMessageType_Goal.THROW_GRENADE_TO;
 	}
-	
 
-	override void SetMessageParameters(SCR_AISendGoalMessage node, SCR_AIActivityBase relatedActivity)
+	static SCR_AIMessage_ThrowGrenadeTo Create(vector position, EWeaponType weaponType, float delay)
 	{
-		super.SetMessageParameters(node);
-		
-		SCR_AISendMessageGeneric genericNode = node;
-		
-		genericNode.GetVariableIn(genericNode.PORT_ENTITY, m_TargetEntity);
-		if (!genericNode.GetVariableIn(genericNode.PORT_VECTOR, m_vTargetPosition))
-			m_vTargetPosition = genericNode.m_vector;
+		SCR_AIMessage_ThrowGrenadeTo msg = new SCR_AIMessage_ThrowGrenadeTo();
+		msg.m_vTargetPosition = position;
+		msg.e_WeaponType = weaponType;
+		msg.m_fDelay = delay;
+		return msg;
 	}
 };

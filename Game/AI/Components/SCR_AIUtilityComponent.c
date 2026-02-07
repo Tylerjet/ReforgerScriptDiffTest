@@ -1,9 +1,8 @@
 [ComponentEditorProps(category: "GameScripted/AI", description: "Component for utility AI system calculations")]
-class SCR_AIUtilityComponentClass: SCR_AIBaseUtilityComponentClass
+class SCR_AIUtilityComponentClass : SCR_AIBaseUtilityComponentClass
 {	
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 {
 	GenericEntity m_OwnerEntity;
@@ -17,20 +16,22 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 	ref SCR_AIThreatSystem m_ThreatSystem;
 	ref SCR_AILookAction m_LookAction;
 	ref SCR_AICommsHandler m_CommsHandler;
-	ref SCR_AIBehaviorBase m_CurrentBehavior; // Used for avoiding constant casting, outside of this class use GetCurrentBehavior()
-
-	protected ref BaseTarget m_UnknownTarget;
-	protected float m_fReactionUnknownTargetTime_ms; // WorldTime timestamp
-
+	ref SCR_AIBehaviorBase m_CurrentBehavior; //!< Used for avoiding constant casting, outside of this class use GetCurrentBehavior()
+	ref SCR_AICombatMoveState m_CombatMoveState;
 	
+	protected ref BaseTarget m_UnknownTarget;
+	protected float m_fReactionUnknownTargetTime_ms; //!< WorldTime timestamp
+
 	protected float m_fLastUpdateTime;
 	
-	
-	protected static const float DISTANCE_HYSTERESIS_FACTOR = 0.45; 	// how bigger must be old distance to new in IsInvestigationRelevant()
-	protected static const float NEARBY_DISTANCE_SQ = 2500; 			// what is the minimal distance of new vs old in IsInvestigationRelevant()
-	protected static const float REACTION_TO_SAME_UNKNOWN_TARGET_INTERVAL_MS = 2500; // How often to react to same unknown target if it didn't change
+	protected static const float DISTANCE_HYSTERESIS_FACTOR = 0.45; 	//!< how bigger must be old distance to new in IsInvestigationRelevant()
+	protected static const float NEARBY_DISTANCE_SQ = 2500; 			//!< what is the minimal distance of new vs old in IsInvestigationRelevant()
+	protected static const float REACTION_TO_SAME_UNKNOWN_TARGET_INTERVAL_MS = 2500; //!< how often to react to same unknown target if it didn't change
 		
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] unknownTarget
+	//! \return
 	SCR_AIBehaviorBase EvaluateBehavior(BaseTarget unknownTarget)
 	{
 		if (!m_OwnerController || !m_ConfigComponent || !m_OwnerEntity)
@@ -40,7 +41,7 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 		AddDebugMessage("EvaluateBehavior START");
 		if (m_bEvaluationBreakpoint)
 		{
-			Print("EvaluateBehavior breakpoint triggered");
+			Print("EvaluateBehavior breakpoint triggered", LogLevel.NORMAL);
 			debug;
 			m_bEvaluationBreakpoint = false;
 		}
@@ -121,46 +122,43 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 		}
 		m_UnknownTarget = unknownTarget;
 		
-		
+		//------------------------------------------------------------------------------------------------
 		// Evaluate current weapon and target
+		
 		bool weaponEvent;
 		bool selectedTargetChanged;
 		bool retreatTargetChanged;
 		bool compartmentChanged;
-		m_CombatComponent.EvaluateWeaponAndTarget(weaponEvent, selectedTargetChanged, retreatTargetChanged, compartmentChanged);
+		BaseTarget prevTarget;
+		BaseTarget selectedTarget;
+		m_CombatComponent.EvaluateWeaponAndTarget(weaponEvent, selectedTargetChanged,
+			prevTarget, selectedTarget, retreatTargetChanged, compartmentChanged);
 		
-		BaseTarget selectedTarget = m_CombatComponent.GetCurrentTarget();
-		if (selectedTargetChanged || compartmentChanged)
+		if (selectedTargetChanged && m_ConfigComponent.m_Reaction_SelectedTargetChanged)
 		{
-			// If we have some target valid for attack, we attack it
-			// Otherwise if there is a target we can't attack, we retreat
-			if (selectedTarget)
-			{
-				if (m_ConfigComponent.m_Reaction_EnemyTarget)
-				{
-					#ifdef AI_DEBUG
-					AddDebugMessage(string.Format("PerformReaction: Selected Target: %1", selectedTarget));
-					#endif
-					m_ConfigComponent.m_Reaction_EnemyTarget.PerformReaction(this, m_ThreatSystem, selectedTarget, selectedTarget.GetLastSeenPosition());
-				}
-			}
+			#ifdef AI_DEBUG
+			AddDebugMessage(string.Format("PerformReaction: Selected Target Changed: %1", selectedTarget));
+			#endif
+			
+			m_ConfigComponent.m_Reaction_SelectedTargetChanged.PerformReaction(this, prevTarget, selectedTarget);
 		}
-		if (!selectedTarget)
+		
+		BaseTarget retreatTarget = m_CombatComponent.GetRetreatTarget();
+		if (retreatTarget && 
+			((selectedTargetChanged && !selectedTarget && retreatTarget) || // Nothing to attack any more and must retreat from some target
+			(!selectedTarget && retreatTargetChanged))) // Not attacking anything and must retreat from a different target
 		{
-			BaseTarget retreatTarget = m_CombatComponent.GetRetreatTarget();
-			if (retreatTarget)
+			if (m_ConfigComponent.m_Reaction_RetreatFromTarget)
 			{
-				if (m_ConfigComponent.m_Reaction_RetreatFromTarget)
-				{
-					// We can't attack anything. Shall we retreat?
-					#ifdef AI_DEBUG
-					AddDebugMessage(string.Format("PerformReaction: Retreat From Target: %1", retreatTarget));
-					#endif
-					m_ConfigComponent.m_Reaction_RetreatFromTarget.PerformReaction(this, m_ThreatSystem, retreatTarget, retreatTarget.GetLastSeenPosition());
-				}
+				#ifdef AI_DEBUG
+				AddDebugMessage(string.Format("PerformReaction: Retreat From Target: %1", retreatTarget));
+				#endif
+				
+				m_ConfigComponent.m_Reaction_RetreatFromTarget.PerformReaction(this, m_ThreatSystem, retreatTarget, retreatTarget.GetLastSeenPosition());
 			}
 		}
 		
+		//------------------------------------------------------------------------------------------------
 		// Update combat component
 		m_CombatComponent.Update(deltaTime);
 		
@@ -187,6 +185,10 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 		if (m_CommsHandler.m_bNeedUpdate)
 			m_CommsHandler.Update(deltaTime);
 		
+		// Update combat move state
+		if (m_CombatMoveState.m_bInCover && m_CombatMoveState.GetAssignedCover())
+			m_CombatMoveState.VerifyCurrentCover(m_OwnerEntity.GetOrigin());
+		
 		#ifdef AI_DEBUG
 		AddDebugMessage("EvaluateBehavior END\n");
 		#endif
@@ -194,8 +196,10 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 		return m_CurrentBehavior;
 	}
 	
-	// Independent attacking with movement is allowed only when group combat move is not present or unit state is EUnitState.IN_TURRET
 	//------------------------------------------------------------------------------------------------
+	//! Independent attacking with movement is allowed only when group combat move is not present or unit state is EUnitState.IN_TURRET
+	//!
+	//! \return
 	bool CanIndependentlyMove()
 	{
 		if (m_AIInfo && m_AIInfo.HasUnitState(EUnitState.IN_TURRET))
@@ -205,12 +209,15 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_AIBehaviorBase GetCurrentBehavior()
 	{
 		return m_CurrentBehavior;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] action
 	void WrapBehaviorOutsideOfVehicle(SCR_AIActionBase action)
 	{
 		
@@ -252,12 +259,13 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 		m_CombatComponent = SCR_AICombatComponent.Cast(m_OwnerEntity.FindComponent(SCR_AICombatComponent));
 		m_PerceptionComponent = PerceptionComponent.Cast(m_OwnerEntity.FindComponent(PerceptionComponent));
 		m_OwnerController = SCR_CharacterControllerComponent.Cast(m_OwnerEntity.FindComponent(SCR_CharacterControllerComponent));
-		m_ThreatSystem = new ref SCR_AIThreatSystem(this);
+		m_ThreatSystem = new SCR_AIThreatSystem(this);
 		m_AIInfo.InitThreatSystem(m_ThreatSystem); // let the AIInfo know about the threat system - move along with creating threat system instance!
-		m_LookAction = new ref SCR_AILookAction(this, false); // LookAction is not regular behavior and is evaluated separately
+		m_LookAction = new SCR_AILookAction(this, false); // LookAction is not regular behavior and is evaluated separately
 		m_ConfigComponent.AddDefaultBehaviors(this);
 		m_Mailbox = SCR_MailboxComponent.Cast(owner.FindComponent(SCR_MailboxComponent));
 		m_CommsHandler = new SCR_AICommsHandler(m_OwnerEntity, agent);
+		m_CombatMoveState = new SCR_AICombatMoveState();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -267,77 +275,9 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	vector GetOrigin()
 	{
 		return m_OwnerEntity.GetOrigin();
 	}
-	
-	//----------------------------------------------------------------------------------------------------
-	bool ShouldAttackEnd(out BaseTarget enemyTarget, out bool shouldInvestigateFurther = false, out string context = string.Empty)
-	{
-		SCR_AIAttackBehavior attackBehavior;
-		// do I have currently run attack behavior?
-		attackBehavior = SCR_AIAttackBehavior.Cast(m_CurrentBehavior);
-		if (attackBehavior)
-		{
-			enemyTarget = attackBehavior.m_Target.m_Value;
-			if (m_CombatComponent.ShouldAttackEndForTarget(enemyTarget,shouldInvestigateFurther,context))
-				return true;
-			else 
-			{
-#ifdef AI_DEBUG
-				context = "Attack in progress.";
-#endif
-				return false;
-			}
-		};
-		
-		
-		attackBehavior = SCR_AIAttackBehavior.Cast(FindActionOfInheritedType(SCR_AIAttackBehavior));
-		if (attackBehavior)
-		{
-			enemyTarget = attackBehavior.m_Target.m_Value;
-			if (m_CombatComponent.ShouldAttackEndForTarget(enemyTarget,shouldInvestigateFurther,context))
-				return true;
-		}
-				
-#ifdef AI_DEBUG
-		context = "No attack.";
-#endif
-		return false;
-	}
-	
-	
-	//------------------------------------------------------------------------------------------------
-	bool FinishAttackForTarget(BaseTarget target, ENodeResult behaviorResult)
-	{
-		if (!target)
-			return false;
-		
-		bool returnValue = false;
-		
-		auto attack = SCR_AIAttackBehavior.Cast(FindActionOfInheritedType(SCR_AIAttackBehavior)); // also find Attack_Static behavior
-		if (attack && attack.GetActionState() != EAIActionState.COMPLETED && attack.GetActionState() != EAIActionState.FAILED)
-		{
-			if (attack.m_Target.m_Value == target)
-			{
-				if (behaviorResult == ENodeResult.SUCCESS)
-				{
-					attack.Complete();
-				}
-				else
-				{
-					attack.Fail();
-				}
-				
-				returnValue = true; 
-			}
-		}
-		
-		if(!attack)
-			return false;
-		
-		return returnValue;
-	}
-};
-
+}

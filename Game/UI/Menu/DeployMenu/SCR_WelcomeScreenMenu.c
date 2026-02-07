@@ -171,8 +171,20 @@ class SCR_WelcomeScreenMenu : SCR_DeployMenuBase
 	protected void OnChatToggle()
 	{
 		if (!m_ChatPanel)
+		{
+			Widget chat = GetRootWidget().FindAnyWidget("ChatPanel");
+			if (chat)
+				m_ChatPanel = SCR_ChatPanel.Cast(chat.FindHandler(SCR_ChatPanel));
+		}
+		
+		if (!m_ChatPanel || m_ChatPanel.IsOpen())
 			return;
 
+		SCR_ChatPanelManager chatPanelManager = SCR_ChatPanelManager.GetInstance();
+		
+		if (!chatPanelManager)
+			return;
+		
 		SCR_ChatPanelManager.GetInstance().ToggleChatPanel(m_ChatPanel);
 	}
 

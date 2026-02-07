@@ -1,12 +1,19 @@
 #ifdef WORKBENCH
-/*!
-	\brief A Basic Code Formatter - use Ctrl+Shift+K to trigger.
-*/
+//
+//! \brief A Basic Code Formatter - use Ctrl+Shift+K to trigger.
+//! Ctrl+Alt+Shift+K can be used to force processing all the lines of the currently opened file.
+//! \see SCR_BasicCodeFormatterForcedPlugin
+//
 // ###############
 // It is recommended to be VERY CAREFUL with breakpoints here
 // as GetCurrentFile, GetLinesCount, GetLineText, SETLineText etc may target this file
 // Once a breakpoint is hit (without FileIO), switch back to the edited file and press F5
 // ###############
+
+// TODO: ref/notnull method (?? e.g ref notnull ScriptInvoker GetOnHealthChanged(bool createNew = true))
+// TODO: detect methods without separator (beware of comments / doxygen comments)
+// TODO: detect unused private/protected class variables / methods (method variables... later.)
+
 [WorkbenchPluginAttribute(
 	name: "Basic Code Formatter",
 	shortcut: "Ctrl+Shift+K",
@@ -36,7 +43,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 	[Attribute(defvalue: "1", desc: "Add one final line return if the file is missing one", category: "Formatting")]
 	protected bool m_bAddFinalLineReturn;
 
-	[Attribute(desc: "Accepted prefixes (e.g 'SCR_', 'TAG_', etc) note that an underscore is automatically added if missing. 'SCR_' is automatically whitelisted", category: "Formatting")]
+	[Attribute(desc: "Accepted class/enum prefixes (e.g 'SCR_', 'TAG_', etc) - an underscore is automatically added if missing. 'SCR_' is automatically whitelisted.\nCase-sensitive", category: "Formatting")]
 	protected ref array<string> m_aAcceptedScriptPrefixes;
 
 	/*
@@ -74,6 +81,12 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 	[Attribute(defvalue: "1", desc: "Show potential improvements report", category: "Options")]
 	protected bool m_bReportFindings;
 
+	[Attribute(defvalue: "scripts/xxx/generated/", desc: "Directories in which to avoid formatting (case-insensitive, no wildcards)", category: "Options")]
+	protected ref array<string> m_aExcludedDirectories;
+
+	[Attribute(defvalue: "<misspelt word>", desc: "Words that cannot be found in comments - usually helpful to find typos (e.g solider, lenght, etc)" /* f-bombs, etc */ + "\nA word cannot contain a space\nCase-insensitive", category: "Options")]
+	protected ref array<string> m_aForbiddenCommentWords; // no auto-fix because casing matters
+
 	/*
 		Category: Advanced
 	*/
@@ -88,9 +101,10 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 	protected ref array<ref array<string>> m_aGeneralFormatting_End;
 
 	protected ref array<string> m_aForbiddenDivisions;
-	protected ref array<string> m_aForbiddenPrefixes;
-	protected ref array<string> m_aPrefixLineChecks;
+	protected ref array<string> m_aPrefixLineChecks;			//!< what should be followed by a TAG_ prefix
 	protected ref array<string> m_aPrefixChecks;
+
+	protected ref array<string> m_aForbiddenDirectories;
 
 	protected ref array<string> m_aForForEachWhileArray;
 	protected ref array<string> m_aIfForForEachWhileArray;
@@ -102,7 +116,8 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 	protected ref map<string, string> m_mVariableTypePrefixesStart;
 	protected ref map<string, string> m_mVariableTypePrefixesEnd;
 
-	protected static const int LINE_NUMBER_LIMIT = 10;	//!< used by JoinLineNumbers to limit the amount of shown line numbers
+	protected static const int LINE_NUMBER_LIMIT = 10;			//!< used by JoinLineNumbers to limit the amount of shown line number groups
+	protected static const string LINE_NUMBER_RANGE = "%1-%2";	//!< used by JoinLineNumbers to give a line range (e.g 5-17, 2001-2013, etc)
 
 	protected static const string SPACE = SCR_StringHelper.SPACE;
 	protected static const string TWO_SPACES = SPACE + SPACE;
@@ -110,19 +125,29 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 	protected static const string TAB = SCR_StringHelper.TAB;
 	protected static const string BRACKET_OPEN = "{";			// avoids {} Script Editor indent shenanigans
 	protected static const string BRACKET_CLOSE = "}";
-	protected static const string TWO_SLASHES = "/" + "/";		// avoids Script Editor // highlight shenanigans
+	protected static const string TWO_SLASHES = "/" + "/";		// avoids Script Editor "//" highlight shenanigans
+	protected static const string MEMBER_PREFIX = "m_";
+	protected static const string STATIC_PREFIX = "s_";
 
-	// "varName' '= 42", "varName\t= 42", "varName, otherVarName", "varName= 42", "varName;"
-	protected static const ref array<string> VARIABLE_NAME_ENDING = { SPACE, TAB, ",", "=", ";" }; // technically, "everything but [a-zA-Z0-9_]"
+	// "varName' '= 42", "varName, otherVarName", "varName= 42", "varName;" - tabs are replaced by spaces in HasBadVariableNaming
+	protected static const ref array<string> VARIABLE_NAME_ENDING = { SPACE, ",", "=", ";" }; // technically, "everything but [a-zA-Z0-9_] and []"
 
 	protected static const string METHOD_SEPARATOR = TWO_SLASHES + "------------------------------------------------------------------------------------------------";
 	protected static const string DIFF_FILENAME = "tempDiffFile.txt";
 	protected static const string DEFAULT_DIFF_CMD = "cmd /c svn diff \"%1\" > \"%2\""; // %1 = absolute target filepath, %2 = absolute destination filepath
 	protected static const ref array<string> FORMAT_IGNORE = { TWO_SLASHES, "/" + "*", "\"" };	// avoids Script Editor comment shenanigans
+	protected static const ref array<string> FORCED_PREFIXES = { "SCR_" };
+	protected static const ref array<string> EXCLUDED_DIRECTORIES = {
+		"scripts/Core/generated/",
+		"scripts/GameLib/generated/",
+		"scripts/Game/generated/",
+		"scripts/WorkbenchGameCommon/generated/",
+	};
+	protected static const string GENERATED_SCRIPT_WARNING = "Do not modify, this script is generated"; // must be the exact line, tabs included if any
 
 	//------------------------------------------------------------------------------------------------
 	//! Running method
-	override void Run()
+	protected override void Run()
 	{
 		if (m_bBatchProcessAddon || !m_bSilentExecution)
 		{
@@ -136,6 +161,25 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			RunAddonFilesBatchProcess();
 		else
 			RunCurrentFile();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Run the code formatter forced (formats all lines of the currently-opened file)
+	void RunForced()
+	{
+		bool batchProcessAddon = m_bBatchProcessAddon;
+		bool demoMode = m_bDemoMode;
+		bool onlyFormatModifiedLines = m_bOnlyFormatModifiedLines;
+
+		m_bBatchProcessAddon = false;
+		m_bOnlyFormatModifiedLines = false;
+		m_bDemoMode = false;
+
+		Run();
+
+		m_bBatchProcessAddon = batchProcessAddon;
+		m_bDemoMode = demoMode;
+		m_bOnlyFormatModifiedLines = onlyFormatModifiedLines;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -157,7 +201,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 		for (int i = m_aAcceptedScriptPrefixes.Count() - 1; i >= 0; i--)
 		{
 			string prefix = m_aAcceptedScriptPrefixes[i].Trim();
-			if (prefix.IsEmpty())
+			if (!prefix) // !IsEmpty for perf
 			{
 				m_aAcceptedScriptPrefixes.RemoveOrdered(i);
 				continue;
@@ -167,18 +211,87 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 				m_aAcceptedScriptPrefixes[i] = prefix + "_";
 		}
 
-		array<string> acceptedScriptPrefixes = {};
-		acceptedScriptPrefixes.Copy(m_aAcceptedScriptPrefixes); // avoid having SCR_ added to the user UI
+		array<string> toRemove = {};
+		foreach (string forcedPrefix : FORCED_PREFIXES)
+		{
+			if (!m_aAcceptedScriptPrefixes.Contains(forcedPrefix))
+			{
+				m_aAcceptedScriptPrefixes.Insert(forcedPrefix);
+				toRemove.Insert(forcedPrefix);
+			}
+		}
 
-		if (!acceptedScriptPrefixes.Contains("SCR_"))
-			acceptedScriptPrefixes.InsertAt("SCR_", 0);
-
-		foreach (string prefix : acceptedScriptPrefixes)
+		foreach (string prefix : m_aAcceptedScriptPrefixes)
 		{
 			foreach (string prefixLineCheck : m_aPrefixLineChecks)
 			{
 				m_aPrefixChecks.Insert(prefixLineCheck + prefix);
 			}
+		}
+
+		foreach (string forcedPrefix : toRemove)
+		{
+			m_aAcceptedScriptPrefixes.RemoveItem(forcedPrefix);
+		}
+
+		// excluded directories
+		m_aForbiddenDirectories = {};
+		m_aForbiddenDirectories.Copy(EXCLUDED_DIRECTORIES);
+		foreach (int i, string excludedDirectory : m_aExcludedDirectories)
+		{
+			if (!excludedDirectory)
+				continue;
+
+			if (!excludedDirectory.EndsWith("/"))			// add final slash
+				excludedDirectory += "/";
+
+			m_aExcludedDirectories[i] = excludedDirectory;	// update user setting
+
+			excludedDirectory.ToLower();
+			m_aForbiddenDirectories.Insert(excludedDirectory);
+		}
+
+		// lowercase detection
+		if (!m_aForbiddenCommentWords || m_aForbiddenCommentWords.IsEmpty())
+		{
+			m_aForbiddenCommentWords = {
+				"availible",		// available
+				"availibles",		// availables
+				"comit",			// commit
+				"comited",			// committed
+				"comitted",			// committed
+				"commited",			// committed
+				"hitzone",			// hit zone
+				"hitzones",			// hit zones
+				"informations",		// information (uncountable)
+				"inherented",		// inherited
+				"inherenting",		// inheriting
+				"lenght",			// length
+				"lenghts",			// lengths
+				"overidden",		// overridden
+				"overiden",			// overridden
+				"overriden",		// overridden
+				"plazer",			// player (QWERTZ)
+				"solider",			// soldier
+			};
+		}
+		else
+		{
+			string value;
+			for (int i = m_aForbiddenCommentWords.Count() - 1; i >= 0; --i)
+			{
+				value = m_aForbiddenCommentWords[i];
+				if (!value.Trim())
+				{
+					m_aForbiddenCommentWords.RemoveOrdered(i);
+					continue;
+				}
+
+				value.ToLower();
+				m_aForbiddenCommentWords[i] = value;
+			}
+
+			m_aForbiddenCommentWords.Sort();
 		}
 	}
 
@@ -253,28 +366,31 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 
 	//------------------------------------------------------------------------------------------------
 	//! Process multiple files (using ProcessFile)
-	//! \param relativeFilePaths multiple relative file paths
+	//! \param[in] relativeFilePaths multiple relative file paths
+	//! \param[in] useFileIO true = use FileIO's API (no Ctrl+Z available, but does not open a Script Editor tab),\n
+	//! false = use ScriptEditor API method (opens a tab, allows for Ctrl+Z)
 	//! \return array of reports (in the order of relativeFilePaths)
 	protected array<ref SCR_BasicCodeFormatterPluginFileReport> ProcessFiles(array<string> relativeFilePaths, bool useFileIO)
 	{
 		string currentFile;
 		m_ScriptEditor.GetCurrentFile(currentFile);
 
-		array<ref SCR_BasicCodeFormatterPluginFileReport> result = {};
 		SCR_BasicCodeFormatterPluginFileReport report;
+		array<ref SCR_BasicCodeFormatterPluginFileReport> result = {};
 		foreach (string relativeFilePath : relativeFilePaths)
 		{
 			report = ProcessFile(relativeFilePath, useFileIO && relativeFilePath != currentFile); // do NOT use FileIO on the current file - the Script Editor may lose edits track
 			result.Insert(report);
 		}
+
 		return result;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Process a single file
-	//! \param relativeFilePath the file's relative path
-	//! \param useFileIO true = use FileIO's API (no Ctrl+Z available, but does not open a Script Editor tab),
-	//!                  false = use ScriptEditor API method (opens a tab, allows for Ctrl+Z)
+	//! \param[in] relativeFilePath the file's relative path
+	//! \param[in] useFileIO true = use FileIO's API (no Ctrl+Z available, but does not open a Script Editor tab),\n
+	//! false = use ScriptEditor API method (opens a tab, allows for Ctrl+Z)
 	//! \return provided file's report, null on error
 	protected SCR_BasicCodeFormatterPluginFileReport ProcessFile(string relativeFilePath, bool useFileIO)
 	{
@@ -282,6 +398,15 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 		{
 			Print("Provided relative file path is empty", LogLevel.WARNING);
 			return null;
+		}
+
+		foreach (string forbiddenDir : m_aForbiddenDirectories)
+		{
+			if (relativeFilePath.StartsWith(forbiddenDir))
+			{
+				Print("File is in excluded directory, skipping (" + forbiddenDir + ") - " + relativeFilePath, LogLevel.NORMAL);
+				return null;
+			}
 		}
 
 		bool isReadOnly = false;
@@ -318,17 +443,34 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 		/*
 			Start
 		*/
-		int startTick = System.GetTickCount();
+		const int startTick = System.GetTickCount();
 
 		array<string> lines = ReadFileContent(relativeFilePath, useFileIO);
-		int linesCount = lines.Count(); // get array count instead of incrementing a variable
+		report.m_iReadTime = System.GetTickCount(startTick);
 
+		if (lines.Contains(GENERATED_SCRIPT_WARNING))
+		{
+			Print("Skipping " + relativeFilePath, LogLevel.NORMAL);
+		}
+
+		int linesCount = lines.Count(); // get array count instead of incrementing a variable
+		report.m_iLinesTotal = linesCount;
+
+		bool prevFormatThisLine;
+		string prevFullLine;
+		string prevContent;
+		array<string> commentPieces = {};
 		foreach (int lineNumber, string fullLine : lines)
 		{
 			int lineNumberPlus1 = lineNumber + 1;
 			bool formatThisLine = !report.m_aDiffLines || report.m_aDiffLines.Contains(lineNumberPlus1); // null = format everything
 			if (!formatThisLine && !reportFindings)
+			{
+				prevFormatThisLine = formatThisLine; // false
+				prevFullLine = fullLine;
+				prevContent = SCR_StringHelper.TrimLeft(fullLine.Trim());
 				continue;
+			}
 
 			string indentation;
 			GetIndentAndLineContentAsPieces(fullLine, indentation, pieces);
@@ -376,7 +518,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 
 				if (m_bFixMethodSeparators)
 				{
-					if (piecesCount == 1 && pieces[0].StartsWith(TWO_SLASHES + "---") && pieces[piecesCount - 1].EndsWith("---") && pieces[0] != METHOD_SEPARATOR)
+					if (piecesCount == 1 && pieces[0].StartsWith(TWO_SLASHES + "---") && pieces[0].EndsWith("---") && pieces[0] != METHOD_SEPARATOR)
 					{
 						pieces.Set(0, METHOD_SEPARATOR);
 						report.m_iMethodSeparatorFixedTotal++;
@@ -387,40 +529,61 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 					report.m_iGeneralFormattingTotal += GeneralFormatting(indentation, pieces);
 			}
 
-			string finalContent = SCR_StringHelper.Join("", pieces);
-
+			string finalContent = SCR_StringHelper.Join(string.Empty, pieces);
 			if (reportFindings)
 			{
-				string findingsString = finalContent.Trim();
+				if (indentation != TAB && finalContent.StartsWith(TWO_SLASHES + "---") && finalContent.EndsWith("---"))
+					report.m_aBadSeparatorFound.Insert(lineNumberPlus1);
 
-				bool isCurrentLineEmpty = findingsString.IsEmpty();
-				if (isPreviousLineEmptyLine && isCurrentLineEmpty)
+				string findingsString = finalContent.Trim();
+				bool isCurrentLineEmpty = !findingsString; // !IsEmpty for perf
+				if (!emptyLineGroupLogged && isPreviousLineEmptyLine && isCurrentLineEmpty)
 				{
-					if (!emptyLineGroupLogged)
-					{
-						report.m_aDoubleEmptyLineFound.Insert(lineNumber /* -1 */);
-						emptyLineGroupLogged = true;
-					}
+					report.m_aDoubleEmptyLineFound.Insert(lineNumber); // previous line number
+					emptyLineGroupLogged = true;
 				}
 
 				isPreviousLineEmptyLine = isCurrentLineEmpty;
-				if (!emptyLineGroupLogged)
-					emptyLineGroupLogged = false;
+
+				emptyLineGroupLogged = false;
 
 				findingsString = string.Empty;
+				bool forbiddenWordFound = false;
 				foreach (string piece : pieces)
 				{
-					if (!SCR_StringHelper.StartsWithAny(piece, FORMAT_IGNORE))
+					if (SCR_StringHelper.StartsWithAny(piece, FORMAT_IGNORE)) // check comment words
+					{
+						if (forbiddenWordFound)
+							continue;
+
+						piece.ToLower();
+						piece.Split(" ", commentPieces, true);
+						foreach (string forbiddenCommentWord : m_aForbiddenCommentWords)
+						{
+							if (commentPieces.Contains(forbiddenCommentWord))
+							{
+								report.m_aForbiddenCommentWordFound.Insert(lineNumberPlus1);
+								forbiddenWordFound = true;
+								break;
+							}
+						}
+					}
+					else // just add for below checks
+					{
 						findingsString += piece;
+					}
 				}
 
-				if (!findingsString.IsEmpty())
+				if (findingsString) // !IsEmpty for perf
 				{
+					if (findingsString.Contains(" = new ") && !findingsString.Contains("(")) // )
+						report.m_aNewWithoutParentheseFound.Insert(lineNumberPlus1);
+
 					if (SCR_StringHelper.ContainsAny(findingsString, m_aNewArrayNewRefArray))
 						report.m_aNewArrayFound.Insert(lineNumberPlus1);
-					else // to not have both 'new ref array' and 'new ref'
-					if (findingsString.Contains("new ref "))
-						report.m_aNewRefFound.Insert(lineNumberPlus1);
+
+					if (indentation.StartsWith("\t\t") && findingsString.StartsWith("ref "))
+						report.m_aUselessRefFound.Insert(lineNumberPlus1);
 
 					if (findingsString.Contains("auto "))
 						report.m_aAutoKeywordFound.Insert(lineNumberPlus1);
@@ -437,7 +600,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 						}
 					}
 
-					if (SCR_StringHelper.StartsWithAny(findingsString, m_aForForEachWhileArray) && lineNumber < linesCount - 1)
+					if (lineNumber < linesCount - 1 && SCR_StringHelper.StartsWithAny(findingsString, m_aForForEachWhileArray))
 					{
 						string nextLine = lines[lineNumberPlus1];
 						if (!nextLine.Trim().StartsWith(BRACKET_OPEN))
@@ -447,15 +610,14 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 					if (SCR_StringHelper.StartsWithAny(findingsString, m_aIfForForEachWhileArray) && SCR_StringHelper.EndsWithAny(findingsString, m_aEndBracketSemicolonArray))
 						report.m_aOneLinerFound.Insert(lineNumberPlus1);
 
-					if (HasBadVariableNaming(indentation + findingsString))
+					if ((prevFormatThisLine || !prevContent.StartsWith("[Attribute(")) && HasBadVariableNaming(indentation, findingsString)) // )] // do not suggest renaming existing attributes, they are most likely public by now
 						report.m_aBadVariableNamingFound.Insert(lineNumberPlus1);
 
 					if (SCR_StringHelper.ContainsAny(findingsString, m_aScriptInvokerArray))
 						report.m_aBadScriptInvokerFound.Insert(lineNumberPlus1);
 
-					if (
-						findingsString.EndsWith(";") &&
-						(findingsString.StartsWith("Print(") && !findingsString.Contains("LogLevel.")) || findingsString.StartsWith("PrintFormat"))
+					if (findingsString.EndsWith(";") &&
+						(findingsString.StartsWith("Print(") && !(findingsString.Contains("LogLevel.") || findingsString.Contains("logLevel)"))) || findingsString.StartsWith("PrintFormat("))
 						report.m_aWildPrintFound.Insert(lineNumberPlus1);
 
 					if (SCR_StringHelper.StartsWithAny(findingsString, m_aPrefixLineChecks) && !SCR_StringHelper.StartsWithAny(findingsString, m_aPrefixChecks))
@@ -464,6 +626,11 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			}
 
 			string finalLine = indentation + finalContent;
+
+			prevFormatThisLine = formatThisLine;
+			prevFullLine = finalLine;
+			prevContent = finalContent;
+
 			if (finalLine == fullLine)
 				continue;
 
@@ -473,9 +640,14 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 				continue;
 
 			if (useFileIO)
+			{
 				lines[lineNumber] = finalLine;
+			}
 			else
-				m_ScriptEditor.SetLineText(finalLine, lineNumber); // directly use Script Editor to avoid going through lines twice
+			{
+				if (m_ScriptEditor.SetOpenedResource(relativeFilePath))		// forces the edited file to be focused
+					m_ScriptEditor.SetLineText(finalLine, lineNumber);		// directly use Script Editor to avoid going through lines twice
+			}
 		}
 		/*
 			Finish
@@ -502,93 +674,45 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 
 		// write time!
 		if (!demoMode && useFileIO)
-			WriteFileContent(relativeFilePath, lines);
+			SCR_FileIOHelper.WriteFileContent(relativeFilePath, lines);
 
-		report.m_iFormatTime = System.GetTickCount(startTick);
+		report.m_iFormatTime = System.GetTickCount(startTick) - report.m_iReadTime; // startTick happens before read time measurement
 
 		return report;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Get relative file's content lines as array of strings
-	//! \param relativeFilePath the file's relative path
-	//! \param useFileIO use FileIO API, otherwise use Script Editor API (opening the file in a tab)
+	//! \param[in] relativeFilePath the file's relative path
+	//! \param[in] useFileIO use FileIO API, otherwise use Script Editor API (opening the file in a tab)
 	//! \return file lines
 	protected array<string> ReadFileContent(string relativeFilePath, bool useFileIO)
 	{
+		if (useFileIO)
+			return SCR_FileIOHelper.ReadFileContent(relativeFilePath);
+
+		// open file in Script Editor otherwise
 		array<string> result = {};
+		m_ScriptEditor.SetOpenedResource(relativeFilePath); // open tab
 
-		if (useFileIO)		// FileIO
+		for (int lineNumber, linesCount = m_ScriptEditor.GetLinesCount(); lineNumber < linesCount; lineNumber++)
 		{
-			FileHandle fileHandle = FileIO.OpenFile(relativeFilePath, FileMode.READ);
-			if (!fileHandle)
-			{
-				Print("File could not be opened: " + relativeFilePath, LogLevel.ERROR);
-				return null;
-			}
-
-			while (!fileHandle.IsEOF())
-			{
-				string line;
-				fileHandle.ReadLine(line);
-				result.Insert(line);
-			}
-
-			fileHandle.Close();
-		}
-		else				// Script Editor
-		{
-			m_ScriptEditor.SetOpenedResource(relativeFilePath); // open tab
-			for (int lineNumber, linesCount = m_ScriptEditor.GetLinesCount(); lineNumber < linesCount; lineNumber++)
-			{
-				string line;
+			string line;
+			// forces the read file to be focused - HEAVY on performance (e.g from 100 to 900ms) - use only for breakpoint debug
+			// if (m_ScriptEditor.SetOpenedResource(relativeFilePath))
 				m_ScriptEditor.GetLineText(line, lineNumber);
-				result.Insert(line);
-			}
+
+			result.Insert(line);
 		}
 
 		return result;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Overwrite file with provided lines - the file is cleared and content gets replaced, and is created if it does not exist
-	//! The final line return is -not- added automatically (using FileHandle.Write for the last line)
-	//! \param relativeFilePath
-	//! \param lines the file content
-	//! \return operation success
-	// TODO: check what happens if there are less lines than in the original file
-	protected bool WriteFileContent(string relativeFilePath, notnull array<string> lines)
-	{
-		// let's not delete for metadata sake
-//		if (FileIO.FileExists(relativeFilePath))
-//			FileIO.DeleteFile(relativeFilePath);
-
-		FileHandle fileHandle = FileIO.OpenFile(relativeFilePath, FileMode.WRITE);
-		if (!fileHandle)
-		{
-			Print("Could not write content in file \"" + relativeFilePath + "\"", LogLevel.ERROR);
-			return false;
-		}
-
-		int linesToWriteWithWriteLine = lines.Count() - 1;
-		for (int i = 0; i < linesToWriteWithWriteLine; i++)
-		{
-			fileHandle.WriteLine(lines[i]);
-		}
-
-		// avoid automatic line return due to WriteLine
-		fileHandle.Write(lines[linesToWriteWithWriteLine]); // because of the earlier --
-
-		fileHandle.Close();
-
-		return true;
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! Output fixes and findings in the log console
-	//! \param report the generated report
-	//! \param printFixes print applied fixes (edited lines, trimmings, formatting etc)
-	//! \param printFindings print findings that may require user attention (one-liners, bad variable naming, etc)
+	//! \param[in] report the generated report
+	//! \param[in] printFixes print applied fixes (edited lines, trimmings, formatting etc)
+	//! \param[in] printFindings print findings that may require user attention (one-liners, bad variable naming, etc)
 	protected void PrintReport(notnull SCR_BasicCodeFormatterPluginFileReport report, bool printFixes, bool printFindings)
 	{
 		if (printFixes)
@@ -615,42 +739,57 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			if (report.m_bHasAddedFinalLineReturn)
 				reportArray.Insert("added final newline");
 
-			string reportString;
+			string reportLine;
 			if (m_bDemoMode && !reportArray.IsEmpty())
-				reportString = "[DEMO] ";
-
-			reportString += FilePath.StripPath(report.m_sRelativeFilePath) + " - ";
-
-			if (reportArray.IsEmpty())
-				reportString += "no fixes to report";
-			else
-				reportString += SCR_StringHelper.Join(", ", reportArray, false);
-
-			Print("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -", LogLevel.NORMAL);
-
-			string reportLine = reportString + " (formatting: " + report.m_iFormatTime + " ms";
-			if (report.m_iDiffTime > 0)
-				reportLine += ", diff: " + report.m_iDiffTime + " ms - total: " + (report.m_iFormatTime + report.m_iDiffTime) + " ms";
-			reportLine += ")";
+				reportLine = "[DEMO] ";
 
 			if (report.m_bIsPluginFile)
-				reportLine += " - [PLUGIN FILE]";
+				reportLine += "[PLUGIN FILE] ";
 
-			Print("" + reportLine, LogLevel.NORMAL);
+			reportLine += FilePath.StripPath(report.m_sRelativeFilePath) + " - ";
+
+			if (reportArray.IsEmpty())
+				reportLine += "no fixes to report";
+			else
+				reportLine += SCR_StringHelper.Join(", ", reportArray, false);
+
+			reportLine += " (read: " + report.m_iReadTime + " ms, format: " + report.m_iFormatTime + " ms";
+
+			if (report.m_iDiffTime > 0)
+				reportLine += ", diff: " + report.m_iDiffTime + " ms";
+			else
+				report.m_iDiffTime = 0; // default value = -1
+
+			reportLine += " - total: " + (report.m_iReadTime + report.m_iFormatTime + report.m_iDiffTime) + " ms)";
+
+			Print("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -", LogLevel.NORMAL);
+			Print((string)reportLine, LogLevel.NORMAL); // cast prevents "string reportLine = " print prefix
 
 			if (report.m_aDiffLines && !report.m_aDiffLines.IsEmpty())
-				Print("Checking (" + report.m_aDiffLines.Count() + "×) edited lines " + JoinLineNumbers(report.m_aDiffLines), LogLevel.NORMAL);
+			{
+				int diffLinesCount = report.m_aDiffLines.Count();
+				float percentage = diffLinesCount / report.m_iLinesTotal * 100;
+				Print("Checking (" + diffLinesCount + "/" + report.m_iLinesTotal + ") edited lines " + JoinLineNumbers(report.m_aDiffLines) + " (" + percentage.ToString(lenDec: 2) + "%)", LogLevel.NORMAL); // not really ISO 31-0 compatible...
+			}
 			else
-				Print("Checking all lines", LogLevel.NORMAL);
+			{
+				Print("Checking all " + report.m_iLinesTotal + " lines (100% of the file)", LogLevel.NORMAL);
+			}
 		}
 
 		if (printFindings && !report.m_bIsPluginFile)
 		{
-			if (!report.m_aNewRefFound.IsEmpty())
-				PrintFinding("'new ref'", report.m_aNewRefFound, "no 'ref' is needed on creation, only on declaration");
+			if (!report.m_aNewWithoutParentheseFound.IsEmpty())
+				PrintFinding("new instance(s) without ()", report.m_aNewWithoutParentheseFound, "always use parentheses when instanciating a class");
+
+			if (!report.m_aUselessRefFound.IsEmpty())
+				PrintFinding("ref something", report.m_aUselessRefFound, "ref is not needed in script scope, only on class declaration");
 
 			if (!report.m_aNewArrayFound.IsEmpty())
-				PrintFinding("'new (ref) array<>'", report.m_aNewArrayFound, "replace by {} whenever possible");
+				PrintFinding("'new array<>'", report.m_aNewArrayFound, "replace by {} whenever possible");
+
+			if (!report.m_aBadSeparatorFound.IsEmpty())
+				PrintFinding("bad separator(s) detected", report.m_aBadSeparatorFound, "use separators only for methods, not for classes or anything else - keep the minimum amount of classes per file");
 
 			if (!report.m_aDoubleEmptyLineFound.IsEmpty())
 				PrintFinding("multiple consecutive empty lines", report.m_aDoubleEmptyLineFound, "leave only one");
@@ -681,13 +820,16 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 
 			if (!report.m_aNonPrefixedClassOrEnumFound.IsEmpty())
 				PrintFinding("non-prefixed class/enum", report.m_aNonPrefixedClassOrEnumFound, "classes and enums should be prefixed; see the settings to setup accepted prefixes (current " + SCR_StringHelper.Join(", ", m_aAcceptedScriptPrefixes) + ")");
+
+			if (!report.m_aForbiddenCommentWordFound.IsEmpty())
+				PrintFinding("forbidden comment word", report.m_aForbiddenCommentWordFound, "an invalid word has been spotted (see Options -> Forbidden Comment Words)");
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! General formatting like spacing, "NULL" → "null", ";;" → ";", etc
-	//! \param indentation used to determine the scope level
-	//! \param[inout] pieces text pieces input/output
+	//! \param[in] indentation used to determine the scope level
+	//! \param[in,out] pieces text pieces input/output
 	//! \return number of replacements that happened
 	protected int GeneralFormatting(string indentation, inout notnull array<string> pieces)
 	{
@@ -696,7 +838,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			return 0;
 
 		// a semicolon was needed at one point due to Doxygen, now not anymore (reverting such changes)
-		if (indentation.IsEmpty() && pieces[0].StartsWith(BRACKET_CLOSE + ";"))
+		if (!indentation && pieces[0].StartsWith(BRACKET_CLOSE + ";")) // !IsEmpty for perf
 		{
 			pieces[0] = SCR_StringHelper.ReplaceTimes(pieces[0], BRACKET_CLOSE + ";", BRACKET_CLOSE, 1);
 			return 1;
@@ -724,7 +866,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			}
 		}
 
-		if (!startPiece.IsEmpty())
+		if (startPiece) // !IsEmpty for perf
 		{
 			format = m_aGeneralFormatting_Start;
 			for (int i, cnt = format.Count(); i < cnt; i++)
@@ -829,7 +971,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			}
 		}
 
-		if (!endPiece.IsEmpty())
+		if (endPiece) // !IsEmpty for perf
 		{
 			format = m_aGeneralFormatting_End;
 			for (int i, cnt = format.Count(); i < cnt; i++)
@@ -848,6 +990,20 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 				{
 					endPiece = endPiece.Substring(0, endPiece.Length() - toReplace.Length()) + replaceWith;
 					hasChanged = true;
+				}
+
+				// start & end
+				if (startPiece) // well, I hope a start piece exists if an end piece exists
+				{
+					if (startPiece.StartsWith("["))
+					{
+						if (endPiece.Trim().EndsWith(")];"))
+						{
+							int count = SCR_StringHelper.CountOccurrences(endPiece, ")];");
+							endPiece = SCR_StringHelper.ReplaceTimes(endPiece, ")];", ")]", 1, count - 1);
+							hasChanged = true;
+						}
+					}
 				}
 
 				if (hasChanged)
@@ -875,7 +1031,9 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 				string prevChar;
 				if (i > 0)
 					prevChar = piece[i - 1];
+
 				string character = piece[i];
+
 				string nextChar;
 				if (i < length - 1)
 					nextChar = piece[i + 1];
@@ -923,55 +1081,53 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 		return replacements;
 	}
 
-/*
-	//------------------------------------------------------------------------------------------------
-	protected void RemoveEmptyLinesInCurrentFile()
-	{
-		// remove double empty lines
-		int actualLine;
-		bool isCurrentLineEmpty;
-		bool wasPreviousLineEmpty;
-		for (int i, cnt = m_ScriptEditor.GetLinesCount(); i < cnt; i++)
-		{
-			m_ScriptEditor.GetLineText(fullLine, i);
-			isCurrentLineEmpty = fullLine.IsEmpty();
-
-			if (!isCurrentLineEmpty || !wasPreviousLineEmpty)
-			{
-				if (i != actualLine)
-					m_ScriptEditor.SetLineText(fullLine, actualLine);
-				actualLine++;
-			}
-
-			wasPreviousLineEmpty = isCurrentLineEmpty;
-		}
-
-		// Print("last line with actual content = " + actualLine, LogLevel.NORMAL);
-
-		// delete trailing lines
-		for (int cnt = m_ScriptEditor.GetLinesCount() - 1; actualLine <= cnt; cnt--)
-		{
-			m_ScriptEditor.RemoveLine(cnt);
-		}
-
-		// remove top empty lines
-		m_ScriptEditor.GetLineText(fullLine, 0);
-		for (int i = 0; i < 50; i++)
-		{
-			if (!fullLine.IsEmpty())
-				break;
-
-			m_ScriptEditor.RemoveLine(0);
-			m_ScriptEditor.GetLineText(fullLine, 0);
-		}
-
-		// remove bottom empty lines
-		for (int i; i < 500; i++)
-		{
-			m_ScriptEditor.RemoveLine(actualLine);
-		}
-	}
-// */
+//	//------------------------------------------------------------------------------------------------
+//	protected void RemoveEmptyLinesInCurrentFile()
+//	{
+//		// remove double empty lines
+//		int actualLine;
+//		bool isCurrentLineEmpty;
+//		bool wasPreviousLineEmpty;
+//		for (int i, cnt = m_ScriptEditor.GetLinesCount(); i < cnt; i++)
+//		{
+//			m_ScriptEditor.GetLineText(fullLine, i);
+//			isCurrentLineEmpty = !fullLine; // !IsEmpty for perf
+//
+//			if (!isCurrentLineEmpty || !wasPreviousLineEmpty)
+//			{
+//				if (i != actualLine)
+//					m_ScriptEditor.SetLineText(fullLine, actualLine);
+//				actualLine++;
+//			}
+//
+//			wasPreviousLineEmpty = isCurrentLineEmpty;
+//		}
+//
+//		// Print("last line with actual content = " + actualLine, LogLevel.NORMAL);
+//
+//		// delete trailing lines
+//		for (int cnt = m_ScriptEditor.GetLinesCount() - 1; actualLine <= cnt; cnt--)
+//		{
+//			m_ScriptEditor.RemoveLine(cnt);
+//		}
+//
+//		// remove top empty lines
+//		m_ScriptEditor.GetLineText(fullLine, 0);
+//		for (int i = 0; i < 50; i++)
+//		{
+//			if (fullLine) // !IsEmpty for perf
+//				break;
+//
+//			m_ScriptEditor.RemoveLine(0);
+//			m_ScriptEditor.GetLineText(fullLine, 0);
+//		}
+//
+//		// remove bottom empty lines
+//		for (int i; i < 500; i++)
+//		{
+//			m_ScriptEditor.RemoveLine(actualLine);
+//		}
+//	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Add the final line return to a file (to end with a line return instead of the usual closing bracket)
@@ -996,7 +1152,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 
 	//------------------------------------------------------------------------------------------------
 	//! Split line between indentation and content (trailing spaces included if any)
-	//! \param fullLine the line's content
+	//! \param[in] fullLine the line's content
 	//! \param[out] indentation gets the left spacing (tabs and spaces)
 	//! \param[out] content gets the text
 	protected static void GetIndentAndLineContent(string fullLine, out string indentation, out string content)
@@ -1040,17 +1196,17 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 
 	//------------------------------------------------------------------------------------------------
 	//! Get line content as array of strings. Cannot return an empty array
-	//! \param fullLine the line to analyse
+	//! \param[in] fullLine the line to analyse
 	//! \param[out] indentation gets the left spacing (tabs and spaces)
 	//! \param[out] pieces the line as split in code, string, comment parts - first element being indentation (empty when none). can be provided null, result is never null or empty
-	static void GetIndentAndLineContentAsPieces(string fullLine, out string indentation, out array<string> pieces)
+	protected static void GetIndentAndLineContentAsPieces(string fullLine, out string indentation, out array<string> pieces)
 	{
 		pieces = {};
 
 		string content;
 		GetIndentAndLineContent(fullLine, indentation, content);
 
-		if (content.IsEmpty())
+		if (!content) // !IsEmpty for perf
 			return;
 
 		bool isInCommentBlock;
@@ -1118,7 +1274,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 					else
 					if (nextChar == "/" && !isInString) // the rest is comment
 					{
-						if (!currentContent.IsEmpty())
+						if (currentContent) // !IsEmpty for perf
 							pieces.Insert(currentContent);
 
 						pieces.Insert(content.Substring(i, contentLength - i));
@@ -1129,80 +1285,118 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 
 			currentContent += currentChar;
 
-			if (i == contentLength - 1 && !currentContent.IsEmpty())
+			if (i == contentLength - 1 && currentContent) // !IsEmpty for perf
 				pieces.Insert(currentContent);
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Checks for bad prefixes and non-uppercased consts
-	//! \param fullLine the line to check - indentation is used to determine the variable's level (1 tab = member variable)
+	//! \param[in] fullLine the line to check - indentation is used to determine the variable's level (1 tab = member variable)
 	//! \return true if a badly-named variable has been spotted
-	protected bool HasBadVariableNaming(string fullLine)
+	protected bool HasBadVariableNaming(string indentation, string findingsString)
 	{
 		// only interested in one-tab variables :) (aka member variables)
-		if (fullLine.Length() < 2 || fullLine[0] != TAB || fullLine[1] == TAB || fullLine.Contains("("))
+		if (indentation != TAB)
 			return false;
 
-		bool isConst = fullLine.Contains("const ");
-		if (isConst)
-			fullLine = SCR_StringHelper.ReplaceTimes(fullLine, "const ", "", 1);
-
-		string rest;
-		if (fullLine.StartsWith("	protected ") || fullLine.StartsWith("	protected	")) // ending with space or tab
-			rest = fullLine.Substring(11, fullLine.Length() - 11).Trim();
-		else if (fullLine.StartsWith("	private ") || fullLine.StartsWith("	private	")) // ending with space or tab
-			rest = fullLine.Substring(9, fullLine.Length() - 9).Trim();
-		else
-			rest = fullLine.Trim();
-
-		// "protected static", not "static protected" you monsters
-		string expectedPrefix = "m_";
-		if (rest.StartsWith("static ") || rest.StartsWith("static	")) // ending with space or tab
-		{
-			rest = rest.Substring(7, rest.Length() - 7).Trim();
-			expectedPrefix = "s_";
-		}
-
-		if (rest.StartsWith("ref ") || rest.StartsWith("ref	")) // ending with space or tab
-			rest = rest.Substring(4, rest.Length() - 4).Trim();
-
-		int index;
-		if (isConst)
-		{
-			index = SCR_StringHelper.IndexOf(rest, VARIABLE_NAME_ENDING);
-			if (index < 0)
-				return false; // can't create a false positive on e.g protected string\n m_sValue;
-			index++;
-		}
-		else
-		{
-			index = rest.IndexOf(expectedPrefix);
-			if (index < 0)
-				return false; // can't create a false positive on e.g protected string\n m_sValue;
-		}
-
-		if (index == 0)
+		if (findingsString.StartsWith("[")
+			|| findingsString.StartsWith("#")
+			|| findingsString.EndsWith(")")
+			|| findingsString.EndsWith(",")
+			|| findingsString.Contains(":"))
 			return false;
 
-		string type = rest.Substring(0, index - 1);
+		findingsString.Replace(TAB, SPACE);
+		array<string> pieces = {};
+		findingsString.Split(SPACE, pieces, true);
+		int piecesCount = pieces.Count();
+		if (piecesCount < 2)
+			return false;
 
-		int indexEnd = SCR_StringHelper.IndexOfFrom(rest, index, VARIABLE_NAME_ENDING);
+		if (pieces[1] == "=") // that's an enum or something alike
+			return false;
+
+		if (pieces.Contains("override")
+			|| pieces.Contains("void")
+			|| pieces.Contains("event")
+			|| pieces.Contains("proto")
+			|| pieces.Contains("external") // that's a method
+			|| pieces.Contains("new")
+			|| pieces.Contains("return")) // that's a global method's assignation
+			return false;
+
+		bool isProtected = pieces.RemoveItemOrdered("protected");
+		if (isProtected)
+			piecesCount--;
+
+		bool isPrivate = pieces.RemoveItemOrdered("private");
+		if (isPrivate)
+			piecesCount--;
+
+		bool isStatic = pieces.RemoveItemOrdered("static");
+		if (isStatic)
+			piecesCount--;
+
+		bool isConst = pieces.RemoveItemOrdered("const");
+		if (isConst)
+			piecesCount--;
+
+		bool isRef = pieces.RemoveItemOrdered("ref");
+		if (isRef)
+			piecesCount--;
+
+		string type;
+		for (int i; i < piecesCount; i++)
+		{
+			type += pieces[0];
+			pieces.RemoveOrdered(0);
+			if (SCR_StringHelper.CountOccurrences(type, "<") - SCR_StringHelper.CountOccurrences(type, ">") == 0)
+				break;
+		}
+
+		string rest = SCR_StringHelper.Join(" ", pieces, false).Trim();
+		if (!rest)
+			return false; // can't create a false positive on e.g protected string\n m_sValue;
+
+		string varName;
+		int indexEnd = SCR_StringHelper.IndexOf(rest, VARIABLE_NAME_ENDING);
 		if (indexEnd < 0)
-			indexEnd = rest.Length(); // out of options
+		{
+			varName = rest.Trim(); // out of options
+		}
+		else
+		{
+			varName = rest.Substring(0, indexEnd).Trim();
+			rest = rest.Substring(indexEnd, rest.Length() - indexEnd).Trim();
+			if (!rest.Contains("=") && !rest.Contains(";")) // should cut most of it
+				return false;
+		}
 
-		string varName = rest.Substring(index, indexEnd - index);
+		if (varName.Length() < 3)
+			return true;
 
-		if (SCR_StringHelper.IsEmptyOrWhiteSpace(varName))
+		if (!varName || !SCR_StringHelper.CheckCharacters(varName, true, true, true, true))
 			return false;
 
 		if (isConst)
 			return varName != SCR_StringHelper.Filter(varName, SCR_StringHelper.UPPERCASE + SCR_StringHelper.DIGITS + "_"); // varName is not in format [A-Z0-9_]+
 
-		if (SCR_StringHelper.StartsWithAny(varName, m_aForbiddenPrefixes))
+		// m_ or s_ variables from now on
+
+		string expectedPrefix;
+		if (isStatic)
+			expectedPrefix = STATIC_PREFIX;
+		else
+			expectedPrefix = MEMBER_PREFIX;
+
+		if (!varName.StartsWith(expectedPrefix))				// myVar
 			return true;
 
-		if (varName.Contains("[") && varName.Contains("]"))
+		if (!SCR_StringHelper.ContainsUppercase(varName))		// m_ivalue
+			return true;
+
+		if (varName.Contains("[") && varName.Contains("]"))		// m_aMyVar[5]
 			type = "array<x>"; // inner type is not important
 
 		if (m_mVariableTypePrefixes.Contains(type))
@@ -1220,7 +1414,6 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			}
 		}
 
-		// ends with?
 		foreach (string key, string value : m_mVariableTypePrefixesEnd)
 		{
 			if (type.EndsWith(key))
@@ -1230,42 +1423,79 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			}
 		}
 
+		if (SCR_StringHelper.ContainsLowercase(varName[2])) // m_zSomething
+			return true;
+
+		// all good? return OK
+
 		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Joins the ints together with commas and ampersand for the last element
-	//! examples:
-	//! {} = ""
-	//! { 1 } = "1"
-	//! { 1, 2 } = "1 & 2"
-	//! { 1, 2, 3 } = "1, 2 & 3"
-	//! { 1, 2, 3, 4 } = "1, 2, 3 & 4"
-	//! { 1, 2, ... , 10, 11 } = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ..."
-	//! \param lineNumbers said line numbers
-	//! \param maxNumbers maximum number of lines before ellipsis
+	//! Joins the provided line numbers together with commas and ampersand for the last element;
+	//! also groups them by range (e.g 1,2,3,4,6,7,9  = 1-5, 6-7, 9).\n
+	//! examples:\n
+	//! {} = ""\n
+	//! { 1 } = "1"\n
+	//! { 1, 2, 3 } = "1-3"\n
+	//! { 1, 2, ... , 10, 11 } = "1-11"\n
+	//! { 1, 2, 3, 7, 8, 9 } = "1-3 & 7-9"\n
+	//! { 1, 2, 3, 5, 7, 8, 9 } = "1-3, 5 & 7-9"\n
+	//! { 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23 } = "1, 3, 5, 7, 9, 11, 13, 15, 17, 19, ..."
+	//! \param[in] lineNumbers said line numbers in ascending order
+	//! \param[in] maxNumbers maximum number of lines before ellipsis
 	//! \return the joined numbers
-	protected string JoinLineNumbers(notnull array<int> lineNumbers, int maxNumbers = LINE_NUMBER_LIMIT)
+	protected static string JoinLineNumbers(notnull array<int> lineNumbers, int maxNumbers = LINE_NUMBER_LIMIT)
 	{
 		if (lineNumbers.IsEmpty())
 			return string.Empty;
 
-		string result = lineNumbers[0].ToString();
 		int count = lineNumbers.Count();
-		bool hitLimit = maxNumbers > -1 && count > maxNumbers;
-		if (hitLimit)
-			count = maxNumbers;
+		if (count == 1)
+			return lineNumbers[0].ToString();
 
-		for (int i = 1; i < count - 1; i++)
+		int countG;
+		bool wasSequel, isSequel;
+		array<string> groups = {};
+		bool hitLimit;
+		foreach (int i, int currValue : lineNumbers)
 		{
-			result += ", " + lineNumbers[i];
+			wasSequel = isSequel;
+			isSequel = i > 0 && currValue == lineNumbers[i - 1] + 1;
+			if (isSequel)
+			{
+				if (i == count - 1)
+					groups[countG - 1] = string.Format(LINE_NUMBER_RANGE, groups[countG - 1], currValue);
+
+				continue;
+			}
+			else
+			{
+				if (wasSequel)
+					groups[countG - 1] = string.Format(LINE_NUMBER_RANGE, groups[countG - 1], lineNumbers[i - 1]);
+
+				groups.Insert(currValue.ToString());
+				countG++;
+
+				if (maxNumbers > 0 && countG >= maxNumbers) // we have enough, leave
+				{
+					hitLimit = i < count - 1;
+					break;
+				}
+			}
+		}
+
+		string result = groups[0];
+		for (int i = 1; i < countG - 1; i++)
+		{
+			result += ", " + groups[i];
 		}
 
 		if (hitLimit)
-			return result + ", " + lineNumbers[count - 1] + ", ...";
+			return result + ", " + groups[countG - 1] + ", ...";
 
-		if (count > 1)
-			result += " & " + lineNumbers[count - 1];
+		if (countG > 1)
+			result += " & " + groups[countG - 1];
 
 		return result;
 	}
@@ -1277,9 +1507,9 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 	//! "int(s)", {}, "a tip"						= "No int(s) found"
 	//! "int(s)", { 1, 2, 3 }, ""					= "3 int(s) found at line(s) 1, 2 & 3"
 	//! "int(s)", { 1, 2, 3 }, "use longs instead"	= "3 int(s) found at line(s) 1, 2 & 3 - use longs instead"
-	//! \param description the finding(s)' description
-	//! \param lineNumbers the lines where the findings have been found
-	//! \param tip a suggestion to fix the finding
+	//! \param[in] description the finding(s)' description, starting with a lowercase as it is meant to be used in the middle of a sentence
+	//! \param[in] lineNumbers the lines where the findings have been found
+	//! \param[in] tip a suggestion to fix the finding
 	protected void PrintFinding(string description, notnull array<int> lineNumbers, string tip = string.Empty)
 	{
 		description.TrimInPlace();
@@ -1290,7 +1520,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			return;
 		}
 
-		if (!tip.IsEmpty())
+		if (tip) // !IsEmpty for perf
 			tip = " - " + tip;
 
 		Print(lineNumbers.Count().ToString() + "× " + description + " found at line(s) " + JoinLineNumbers(lineNumbers) + tip, LogLevel.NORMAL);
@@ -1300,7 +1530,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 	//! Get the 1-based line numbers of lines that were modified since the last edit (according to the local VCS' diff)
 	//! This method creates a temporary txt file next to the analysed one containing the diff result
 	//! The temporary txt file is deleted (if everything goes well) after its parsing
-	//! \param absoluteFilePath the ABSOLUTE file path (e.g C:/ArmaReforger/Data/scripts/myFile.c)
+	//! \param[in] absoluteFilePath the ABSOLUTE file path (e.g C:/ArmaReforger/Data/scripts/myFile.c)
 	//! \return array of line numbers (first line = 1!), empty on no changes / new file, null on error
 	protected array<int> GetFileModifiedLineNumbers(string absoluteFilePath)
 	{
@@ -1376,17 +1606,17 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 		}
 		else
 		{
-			Print("Could not open the temp diff file", LogLevel.ERROR);
+			Print("Cannot open the temp diff file", LogLevel.ERROR);
 		}
 
 		if (!FileIO.DeleteFile(absoluteCmdOutputFilePath))
-			Print("Temp diff file could NOT be deleted", LogLevel.WARNING); // we have our result, the file will unfortunately stay
+			Print("Cannot delete the temp diff file - " + absoluteCmdOutputFilePath, LogLevel.WARNING); // we have our result, the file will unfortunately stay
 
 		return result;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void Configure()
+	protected override void Configure()
 	{
 		Workbench.ScriptDialog("Configure 'Basic Code formatter' plugin", "Formats code, basically.", this);
 	}
@@ -1406,7 +1636,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Constructor
+	// constructor
 	protected void SCR_BasicCodeFormatterPlugin()
 	{
 		// line start
@@ -1426,7 +1656,9 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 		// m_aGeneralFormatting_Middle.Insert({ " ; ",			"; " });
 		m_aGeneralFormatting_Middle.Insert({ " ,",			"," });
 		m_aGeneralFormatting_Middle.Insert({ " ;",			";" });
-		m_aGeneralFormatting_Middle.Insert({ "NULL",		"null" });
+		m_aGeneralFormatting_Middle.Insert({ " NULL;",		" null;" });
+		m_aGeneralFormatting_Middle.Insert({ " NULL,",		" null," });
+		m_aGeneralFormatting_Middle.Insert({ " NULL)",		" null)" });
 		m_aGeneralFormatting_Middle.Insert({ "{ }",			"{}" });
 		m_aGeneralFormatting_Middle.Insert({ "array <",		"array<" });
 		// m_aGeneralFormatting_Middle.Insert({ "autoptr ",	string.Empty });	// useless as all classes inherit from Managed and are therefore managed by ARC - WARNING - autoptr can be used as a substitute to ref!!
@@ -1450,8 +1682,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			m_aForbiddenDivisions.Insert(" / " + forbiddenDivisor + SPACE);
 		}
 
-		m_aForbiddenPrefixes = { "m_p", "s_p", "Event_" };	// :D
-		m_aPrefixLineChecks = { "class ", "enum " };		//!< what should be followed by a TAG_ prefix
+		m_aPrefixLineChecks = { "class ", "enum " };
 
 		m_aForForEachWhileArray = { "for ", "foreach ", "while " };
 		m_aIfForForEachWhileArray = { "if ", "for ", "foreach ", "while " };
@@ -1471,6 +1702,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 		m_mVariableTypePrefixesStart = new map<string, string>();
 		m_mVariableTypePrefixesStart.Insert("array<", "a");
 		m_mVariableTypePrefixesStart.Insert("map<", "m");
+
 		// enums - Q&D
 		for (int i, count = SCR_StringHelper.UPPERCASE.Length(); i < count; i++)
 		{
@@ -1483,12 +1715,13 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 	}
 }
 
-//! databag
+//! Basic Code Formatter file report - databag
 class SCR_BasicCodeFormatterPluginFileReport
 {
 	string m_sRelativeFilePath;
 	bool m_bIsPluginFile;
 
+	int m_iReadTime = -1;
 	int m_iFormatTime = -1;
 	int m_iDiffTime = -1;
 
@@ -1497,17 +1730,21 @@ class SCR_BasicCodeFormatterPluginFileReport
 	int m_iFourSpacesReplacedTotal;
 	int m_iMethodSeparatorFixedTotal;
 	int m_iGeneralFormattingTotal;
+
 	int m_iLinesEdited;
+	int m_iLinesTotal;
 
 	// fixes
-	ref array<int> m_aDiffLines;		// CAN be null
+	ref array<int> m_aDiffLines;		//!< can be null
 	ref array<int> m_aTrimmings = {};	// content is actually not used, only count... for now?
 	ref array<int> m_aFixedIndentations = {};
 	bool m_bHasAddedFinalLineReturn;
 
 	// reports
+	ref array<int> m_aBadSeparatorFound = {};
 	ref array<int> m_aDoubleEmptyLineFound = {};
-	ref array<int> m_aNewRefFound = {};
+	ref array<int> m_aNewWithoutParentheseFound = {};
+	ref array<int> m_aUselessRefFound = {};
 	ref array<int> m_aNewArrayFound = {};
 	ref array<int> m_aAutoKeywordFound = {};
 	ref array<int> m_aAutoptrKeywordFound = {};
@@ -1518,15 +1755,21 @@ class SCR_BasicCodeFormatterPluginFileReport
 	ref array<int> m_aBadScriptInvokerFound = {};
 	ref array<int> m_aWildPrintFound = {};
 	ref array<int> m_aNonPrefixedClassOrEnumFound = {};
+	ref array<int> m_aForbiddenCommentWordFound = {};
 
 	//------------------------------------------------------------------------------------------------
-	//! does the report have anything... to report
+	//! Check if the report has anything... to report
+	//! \return true if there is nothing to report, false otherise
 	bool IsClean()
 	{
-		return
-			m_iLinesEdited == 0 &&
+		if (m_iLinesEdited != 0)
+			return false;
+
+		bool are15ArraysAllEmpty =
+			m_aBadSeparatorFound.IsEmpty() &&
 			m_aDoubleEmptyLineFound.IsEmpty() &&
-			m_aNewRefFound.IsEmpty() &&
+			m_aNewWithoutParentheseFound.IsEmpty() &&
+			m_aUselessRefFound.IsEmpty() &&
 			m_aNewArrayFound.IsEmpty() &&
 			m_aAutoKeywordFound.IsEmpty() &&
 			m_aAutoptrKeywordFound.IsEmpty() &&
@@ -1536,11 +1779,14 @@ class SCR_BasicCodeFormatterPluginFileReport
 			m_aBadVariableNamingFound.IsEmpty() &&
 			m_aBadScriptInvokerFound.IsEmpty() &&
 			m_aWildPrintFound.IsEmpty() &&
-			m_aNonPrefixedClassOrEnumFound.IsEmpty();
+			m_aNonPrefixedClassOrEnumFound.IsEmpty() &&
+			m_aForbiddenCommentWordFound.IsEmpty();
+
+		return are15ArraysAllEmpty;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Constructor
+	// constructor
 	void SCR_BasicCodeFormatterPluginFileReport(string relativeFilePath, bool isPluginFile)
 	{
 		m_sRelativeFilePath = relativeFilePath;
@@ -1564,4 +1810,34 @@ class SCR_BasicCodeFormatterPluginOKCancelDialog
 		return false;
 	}
 }
-#endif
+
+//
+//! \brief Force Basic Code Formatter - use Ctrl+Alt+Shift+K to trigger.
+//! \see SCR_BasicCodeFormatterPlugin
+//
+[WorkbenchPluginAttribute(
+	name: "Basic Code Formatter - forced",
+	description: "Forces Code Formatting checking ALL lines only for the current file", // unused
+	shortcut: "Ctrl+Alt+Shift+K",
+	wbModules: { "ScriptEditor" },
+	awesomeFontCode: 0xF036)]
+class SCR_BasicCodeFormatterForcedPlugin : WorkbenchPlugin
+{
+	//------------------------------------------------------------------------------------------------
+	protected override void Run()
+	{
+		ScriptEditor scriptEditor = Workbench.GetModule(ScriptEditor);
+		if (!scriptEditor)
+			return;
+
+		SCR_BasicCodeFormatterPlugin formatterPlugin = SCR_BasicCodeFormatterPlugin.Cast(scriptEditor.GetPlugin(SCR_BasicCodeFormatterPlugin));
+		if (!formatterPlugin)
+		{
+			Print("Failed to obtain Basic Code Formatter Plugin", LogLevel.ERROR);
+			return;
+		}
+
+		formatterPlugin.RunForced();
+	}
+}
+#endif // WORKBENCH

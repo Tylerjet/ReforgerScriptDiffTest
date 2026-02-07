@@ -1,6 +1,6 @@
-/** @ingroup Editor_UI Editor_UI_Components
-*/
-class SCR_PlacingToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
+//! @ingroup Editor_UI Editor_UI_Components
+
+class SCR_PlacingToolbarEditorUIComponent : SCR_BaseToolbarEditorUIComponent
 {
 	[Attribute()]
 	protected ref array<ref SCR_ContentBrowserEditorCard> m_aCardPrefabs;
@@ -8,12 +8,19 @@ class SCR_PlacingToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 	[Attribute("0")]
 	protected bool m_bShowBudgetCost;
 	
+	[Attribute(desc: "Value of this budget will be shown directly on prefab card.", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EEditableEntityBudget))]
+	protected EEditableEntityBudget m_eBudgetToShow;
+	
 	protected SCR_PlacingEditorComponent m_PlacingManager;
 	protected SCR_ContentBrowserEditorComponent m_ContentBrowserManager;
 	protected SCR_BudgetEditorComponent m_BudgetManager;
 	protected ResourceName m_RepeatPrefab;
 	protected ResourceName m_DefaultLayout;
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] itemWidget
+	//! \param[in] prefabIndex
+	//! \param[in] enter
 	void OnCardHover(Widget itemWidget, int prefabIndex, bool enter)
 	{
 		// Do not reset preview cost when entity is selected / window closes
@@ -22,9 +29,12 @@ class SCR_PlacingToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		
 		if (!enter)
 			prefabIndex = -1;
+
 		m_ContentBrowserManager.RefreshPreviewCost(prefabIndex);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] itemWidget
 	void OnCardLMB(Widget itemWidget)
 	{
 		SCR_AssetCardFrontUIComponent assetCard = SCR_AssetCardFrontUIComponent.Cast(itemWidget.FindHandler(SCR_AssetCardFrontUIComponent));
@@ -49,6 +59,7 @@ class SCR_PlacingToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected Widget CreateItem(int index)
 	{
 		int prefabID = m_ContentBrowserManager.GetFilteredPrefabID(index);
@@ -87,9 +98,11 @@ class SCR_PlacingToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		
 		SCR_EntityBudgetValue budgetCost;
 		if (m_bShowBudgetCost && !entityBudgetCosts.IsEmpty())
-		{
-			assetCard.UpdateBudgetCost(entityBudgetCosts.Get(0));
-		}
+			foreach (SCR_EntityBudgetValue budgetValue: entityBudgetCosts)
+			{
+				if (budgetValue.GetBudgetType() == m_eBudgetToShow)
+					assetCard.UpdateBudgetCost(budgetValue);
+			}
 		
 		ButtonActionComponent.GetOnAction(itemWidget, true, 0).Insert(OnCardLMB);
 		
@@ -100,6 +113,7 @@ class SCR_PlacingToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		return itemWidget;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override protected void OnPageChanged(int page)
 	{
 		if (m_ContentBrowserManager.GetPageEntryCount() > 0)
@@ -108,9 +122,11 @@ class SCR_PlacingToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 			int contentBrowserPageIndex = m_iFirstShownIndex / m_ContentBrowserManager.GetPageEntryCount();
 			m_ContentBrowserManager.SetPageIndex(contentBrowserPageIndex);
 		}
+
 		super.OnPageChanged(page);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override protected void ShowEntries(Widget contentWidget, int indexStart, int indexEnd)
 	{
 		for (int i = indexStart; i < indexEnd; i++)
@@ -119,6 +135,7 @@ class SCR_PlacingToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnBudgetMaxReached(EEditableEntityBudget entityBudget, bool maxReached)
 	{
 		if (!m_ContentBrowserManager || !m_Pagination)
@@ -127,6 +144,7 @@ class SCR_PlacingToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		m_Pagination.RefreshPage();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnBrowserEntriesChanged()
 	{
 		if (!m_ContentBrowserManager || !m_Pagination)
@@ -138,6 +156,13 @@ class SCR_PlacingToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		Refresh();
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected void OnResourceTypeEnabledChanged(array<EResourceType> disabledResourceTypes)
+	{
+		Refresh();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override protected void Refresh()
 	{		
 		m_Pagination.SetEntryCount(m_ContentBrowserManager.GetFilteredPrefabCount());
@@ -148,23 +173,29 @@ class SCR_PlacingToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		
 		m_Pagination.SetPage(toolbarPageIndex);
 		
-		/*
-		SCR_EditorContentBrowserDisplayConfig displayConfig = m_ContentBrowserManager.GetContentBrowserDisplayConfig();
-		if (displayConfig)
-			m_bShowBudgetCost = displayConfig.GetShowAvailableBudgetCost();
-		else
-			m_bShowBudgetCost = false;
-		
-		*/
+//		SCR_EditorContentBrowserDisplayConfig displayConfig = m_ContentBrowserManager.GetContentBrowserDisplayConfig();
+//		if (displayConfig)
+//			m_bShowBudgetCost = displayConfig.GetShowAvailableBudgetCost();
+//		else
+//			m_bShowBudgetCost = false;
+
 		super.Refresh();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnRepeat()
 	{
 		if (m_RepeatPrefab)
 			m_PlacingManager.SetSelectedPrefab(m_RepeatPrefab, showBudgetMaxNotification: true);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttachedScripted(Widget w)
 	{
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (gameMode)
+			gameMode.GetOnResourceTypeEnabledChanged().Insert(OnResourceTypeEnabledChanged);
+		
 		m_PlacingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent, true, true));
 		if (!m_PlacingManager)
 			return;
@@ -178,9 +209,7 @@ class SCR_PlacingToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		
 		m_BudgetManager = SCR_BudgetEditorComponent.Cast(SCR_BudgetEditorComponent.GetInstance(SCR_BudgetEditorComponent, false, true));
 		if (m_BudgetManager)
-		{
 			m_BudgetManager.Event_OnBudgetMaxReached.Insert(OnBudgetMaxReached);
-		}
 		
 		//--- Find default card layout
 		foreach (SCR_ContentBrowserEditorCard defaultLayoutCandidate: m_aCardPrefabs)
@@ -194,19 +223,23 @@ class SCR_PlacingToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		
 		super.HandlerAttachedScripted(w);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
+		
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (gameMode)
+			gameMode.GetOnResourceTypeEnabledChanged().Remove(OnResourceTypeEnabledChanged);
 		
 		if (m_ContentBrowserManager)
 		{
 			m_ContentBrowserManager.GetOnBrowserStatesSaved().Remove(OnBrowserEntriesChanged);
 			m_ContentBrowserManager.GetOnBrowserEntriesFiltered().Remove(OnBrowserEntriesChanged);
 		}
+
 		if (m_BudgetManager)
-		{
 			m_BudgetManager.Event_OnBudgetMaxReached.Remove(OnBudgetMaxReached);
-		}
-		
 	}
 }

@@ -25,7 +25,7 @@ class SCR_AIFindTurrets: AITaskScripted
 			m_groupOwner = SCR_AIGroup.Cast(owner.GetParentGroup());
 			if (!m_groupOwner)
 				NodeError(this, owner, "Node is not run on SCR_AIGroup agent or owner is not member of SCR_AIGroup!");
-		}		
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -35,7 +35,7 @@ class SCR_AIFindTurrets: AITaskScripted
 		{
 			ClearVariable(PORT_TURRET_NUMBER);
 			ClearVariable(PORT_TURRET_FOUND);
-			return ENodeResult.FAIL;			
+			return ENodeResult.FAIL;
 		}	
 		vector center;
 		float radius;
@@ -50,7 +50,7 @@ class SCR_AIFindTurrets: AITaskScripted
 		else 
 			ClearVariable(PORT_TURRET_NUMBER);
 		SetVariableOut(PORT_TURRET_FOUND, m_turretsFound);
-		return ENodeResult.SUCCESS;		
+		return ENodeResult.SUCCESS;
 	}
 	
 	bool GetFirstEntity(IEntity ent) 
@@ -65,8 +65,8 @@ class SCR_AIFindTurrets: AITaskScripted
 		{
 			TurretCompartmentSlot turretComp = TurretCompartmentSlot.Cast(slot);
 			if (turretComp)
-			{				
-				if (!turretComp.AttachedOccupant() && turretComp.IsCompartmentAccessible())
+			{
+				if (!turretComp.AttachedOccupant() && turretComp.IsCompartmentAccessible() && !turretComp.IsReserved())
 				{
 					//turretComp.GetCompartmentSlotID();
 					m_turretCount += 1;
@@ -80,12 +80,11 @@ class SCR_AIFindTurrets: AITaskScripted
 		return true; //continue search to next turret
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	bool FilterEntities(IEntity ent) 
 	{
 		return Turret.Cast(ent) != null;
 	}
-	
-	//------------------------------------------------------------------------------------------------
 	
 	//------------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsOut = {

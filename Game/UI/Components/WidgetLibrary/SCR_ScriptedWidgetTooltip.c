@@ -31,6 +31,8 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 	protected RichTextWidget m_wMessage;
 
 	// Const
+	protected const string WIDGET_MESSAGE = "Message";
+	
 	private const float DISTANCE_THRESHOLD = 0.001;
 
 	// Static
@@ -56,8 +58,7 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 	//------------------------------------------------------------------------------------------------
 	override void Show(WorkspaceWidget pWorkspace, Widget pToolTipWidget, float desiredPosX, float desiredPosY)
 	{
-		if (m_CurrentTooltip)
-			m_CurrentTooltip.ForceHidden();
+		ForceHideCurrentTooltip();
 		
 		m_CurrentTooltip = this;
 		
@@ -72,6 +73,8 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 		if (!m_Preset)
 			return;
 
+		m_Preset.Init();
+		
 		// Setup
 		m_wWorkspace = pWorkspace;
 		m_wTooltipProxy = pToolTipWidget;
@@ -112,8 +115,7 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 		UpdatePosition(true, false, true);
 
 		// Content widgets setup
-		m_wMessage = RichTextWidget.Cast(pToolTipWidget.FindAnyWidget("Message"));
-		SetMessage(m_Preset.m_sMessageText);
+		InitContents();
 
 		// Fade in
 		if (m_Preset.m_fFadeInSpeed > 0)
@@ -203,9 +205,6 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 	//------------------------------------------------------------------------------------------------
 	protected void InitContentPosition()
 	{
-		if (!m_Preset || !m_wTooltipContent)
-			return;
-		
 		SCR_TooltipPositionPreset positionPreset = m_Preset.GetInputPositionSettings();
 		if (!positionPreset)
 			return;
@@ -217,7 +216,14 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 		FrameSlot.SetAnchorMin(m_wTooltipContent, targetX, targetY);
 		FrameSlot.SetAnchorMax(m_wTooltipContent, targetX, targetY);
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	protected void InitContents()
+	{
+		m_wMessage = RichTextWidget.Cast(m_wTooltipProxy.FindAnyWidget(WIDGET_MESSAGE));
+		SetMessage(m_Preset.m_sMessageText);
+	}
+	
 	//! ---- PUBLIC ----
 	//------------------------------------------------------------------------------------------------
 	void UpdatePosition(bool followTarget = true, bool animate = true, bool force = false)
@@ -268,6 +274,12 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 
 		m_wMessage.SetText(message);
 		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool ResetMessage()
+	{
+		return SetMessage(GetDefaultMessage());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -340,6 +352,16 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 	Widget GetContentWrapper()
 	{
 		return m_wTooltipProxy;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static bool ForceHideCurrentTooltip()
+	{
+		if (!m_CurrentTooltip)
+			return false;
+			
+		m_CurrentTooltip.ForceHidden();
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -425,7 +447,7 @@ class SCR_ScriptedWidgetTooltipPreset
 	string m_sDefaultMessage;
 
 	//------------------------------------------------------------------------------------------------
-	void SCR_ScriptedWidgetTooltipPreset()
+	void Init()
 	{
 		m_sDefaultMessage = m_sMessageText;
 	}

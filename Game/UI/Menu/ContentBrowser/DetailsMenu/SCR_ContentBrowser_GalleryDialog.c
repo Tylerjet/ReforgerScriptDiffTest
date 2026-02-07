@@ -25,9 +25,11 @@ class SCR_ContentBrowser_GalleryDialog : MenuBase
 	{
 		m_Widgets.m_SpinBoxComponent.ClearAll();
 		m_aImages.Clear();
-		foreach (auto img : images)
+		
+		int total = images.Count();
+		foreach (int i, BackendImage img : images)
 		{
-			m_Widgets.m_SpinBoxComponent.AddItem(string.Empty);
+			m_Widgets.m_SpinBoxComponent.AddItem(string.Empty, i == total - 1);
 			m_aImages.Insert(img);		
 		}
 		

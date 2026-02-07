@@ -6,7 +6,7 @@ typedef func ScriptInvokerActionMethod;
 typedef ScriptInvokerBase<ScriptInvokerActionMethod> ScriptInvokerAction;
 
 //------------------------------------------------------------------------------------------------
-class SCR_MenuActionsComponent : MenuRootSubComponent
+class SCR_MenuActionsComponent : SCR_ScriptedWidgetComponent
 {
 	[Attribute(desc: "Actions to be shown in the Tooltip")]
 	protected ref array<ref SCR_MenuActionPreset> m_aActions;
@@ -24,17 +24,10 @@ class SCR_MenuActionsComponent : MenuRootSubComponent
 		super.HandlerAttached(w);
 
 		AddActionListenersDelayed(m_iDelay);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void HandlerAttachedScripted(Widget w)
-	{
-		super.HandlerAttachedScripted(w);
-
-		AddActionListenersDelayed(m_iDelay);
-
-		GetMenu().GetOnMenuFocusGained().Insert(OnMenuFocusGained);
-		GetMenu().GetOnMenuFocusLost().Insert(OnMenuFocusLost);
+		
+		SCR_MenuHelper().GetOnMenuFocusLost().Insert(OnMenuDeactivated);
+		SCR_MenuHelper().GetOnMenuHide().Insert(OnMenuDeactivated);
+		SCR_MenuHelper().GetOnMenuClose().Insert(OnMenuDeactivated);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -43,25 +36,22 @@ class SCR_MenuActionsComponent : MenuRootSubComponent
 		super.HandlerDeattached(w);
 
 		RemoveActionListeners();
+		
+		SCR_MenuHelper().GetOnMenuFocusLost().Remove(OnMenuDeactivated);
+		SCR_MenuHelper().GetOnMenuHide().Remove(OnMenuDeactivated);
+		SCR_MenuHelper().GetOnMenuClose().Remove(OnMenuDeactivated);
 	}
-
 
 	//------------------------------------------------------------------------------------------------
 	// Owner Menu Events
 	//------------------------------------------------------------------------------------------------
 	//------------------------------------------------------------------------------------------------
-	protected void OnMenuFocusGained()
+	protected void OnMenuDeactivated(ChimeraMenuBase menu)
 	{
-		AddActionListenersDelayed(m_iDelay);
+		if (menu == ChimeraMenuBase.GetOwnerMenu(m_wRoot))
+			RemoveActionListeners();
 	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnMenuFocusLost()
-	{
-		RemoveActionListeners();
-	}
-
-
+	
 	//------------------------------------------------------------------------------------------------
 	// Events
 	//------------------------------------------------------------------------------------------------
@@ -70,8 +60,7 @@ class SCR_MenuActionsComponent : MenuRootSubComponent
 	protected void OnAction(float multiplier)
 	{
 		//! We might be in a hidden tab or menu, in which case we don't want the invoker to trigger
-		//! TODO: perhaps remove the action listeners when invisible, using OnUpdate()?
-		if (!GetWidget().IsVisible())
+		if (!m_wRoot.IsVisible())
 			return;
 
 		InputManager inputManager = GetGame().GetInputManager();
@@ -81,7 +70,6 @@ class SCR_MenuActionsComponent : MenuRootSubComponent
 				m_OnAction.Invoke(action.m_sActionName, multiplier);
 		}
 	}
-
 
 	//------------------------------------------------------------------------------------------------
 	// Action Listeners
@@ -150,7 +138,6 @@ class SCR_MenuActionsComponent : MenuRootSubComponent
 	{
 		RemoveActionListeners();
 	}
-
 
 	//------------------------------------------------------------------------------------------------
 	// Utility

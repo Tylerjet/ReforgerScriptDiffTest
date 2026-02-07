@@ -3,7 +3,6 @@ class SCR_SpawnProtectionComponentClass : SCR_BaseGameModeComponentClass
 {
 }
 
-//------------------------------------------------------------------------------------------------
 class SCR_SpawnProtectionComponent : SCR_BaseGameModeComponent
 {
 	[Attribute(defvalue: "0.1", desc: "How long should be player protected?")]
@@ -16,9 +15,11 @@ class SCR_SpawnProtectionComponent : SCR_BaseGameModeComponent
 	protected bool m_bAllowPlayerSpawnpoints;
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Begin spawn protection immediately after entity is spawned.
-	*/
+	//! Begin spawn protection immediately after entity is spawned.
+	//! \param[in] requestComponent
+	//! \param[in] handlerComponent
+	//! \param[in] data
+	//! \param[in] entity
 	override bool PreparePlayerEntity_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, SCR_SpawnData data, IEntity entity)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
@@ -82,6 +83,11 @@ class SCR_SpawnProtectionComponent : SCR_BaseGameModeComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Callback to be used by eventHandler in PreparePlayerEntity_S.
+	//! \param[in] currentWeapon
+	//! \param[in] currentMuzzle
+	//! \param[in] magazine
+	//! \param[in] ammoCount
+	//! \param[in] isChambered
 	protected void OnPlayerAmmoChangeCallback(BaseWeaponComponent currentWeapon, BaseMuzzleComponent currentMuzzle, BaseMagazineComponent magazine, int ammoCount, bool isChambered)
 	{
 		if (!currentWeapon)

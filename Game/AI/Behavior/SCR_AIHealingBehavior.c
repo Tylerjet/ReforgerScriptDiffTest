@@ -6,11 +6,12 @@ class SCR_AIHealBehavior : SCR_AIBehaviorBase
 	IEntity m_EntityToHeal;
 	
 	SCR_AIInfoComponent m_AIInfo;
-	
-	ScriptedDamageManagerComponent m_DamageManager;
+	SCR_DamageManagerComponent m_DamageManager;
 	
 	protected const float PRIORITY_DELAY_MIN_MS = 800.0; // Delay until action returns its max priority
 	protected const float PRIORITY_DELAY_MAX_MS = 1200.0;
+	
+	protected const float MAX_TIME_TO_UNCON_HIGH_PRIORITY_S = 30; // Time in seconds to losing consciousness below which we treat healing ourselves as high priority
 	
 	protected float m_fTimeCreated_ms;
 	protected float m_fPriorityDelay_ms;
@@ -29,10 +30,12 @@ class SCR_AIHealBehavior : SCR_AIBehaviorBase
 		SCR_AIUtilityComponent aiUtilComp = SCR_AIUtilityComponent.Cast(utility);
 		if (!aiUtilComp)
 			return;
+		
 		IEntity owner =	aiUtilComp.m_OwnerEntity;
 		if (owner)
 		{
-			m_DamageManager = ScriptedDamageManagerComponent.Cast(owner.FindComponent(ScriptedDamageManagerComponent));
+			m_DamageManager = SCR_DamageManagerComponent.Cast(owner.FindComponent(SCR_DamageManagerComponent));
+			m_AIInfo = aiUtilComp.m_AIInfo;
 		}
 	}
 	
@@ -46,10 +49,16 @@ class SCR_AIHealBehavior : SCR_AIBehaviorBase
 	
 	override float CustomEvaluate()
 	{
-		if ((GetGame().GetWorld().GetWorldTime() - m_fTimeCreated_ms > m_fPriorityDelay_ms) &&
-			(m_Utility.m_ThreatSystem.GetThreatMeasureWithoutInjuryFactor() < SCR_AIThreatSystem.VIGILANT_THRESHOLD))
+		if (!(GetGame().GetWorld().GetWorldTime() - m_fTimeCreated_ms > m_fPriorityDelay_ms))
+			return 0;
+		
+		// We should heal ourselves with high priority if time to uncon is lower then treshold
+		if (m_AIInfo && m_AIInfo.GetBleedTimeToUnconscious() < MAX_TIME_TO_UNCON_HIGH_PRIORITY_S)
+			return PRIORITY_BEHAVIOR_HEAL_HIGH_PRIORITY;
+		
+		if (m_Utility.m_ThreatSystem.GetThreatMeasureWithoutInjuryFactor() < SCR_AIThreatSystem.VIGILANT_THRESHOLD)
 			return GetPriority();
-		else
+		
 			return 0;
 	}
 };

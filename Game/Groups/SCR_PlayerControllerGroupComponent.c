@@ -1,15 +1,14 @@
 [EntityEditorProps(category: "GameScripted/Groups", description: "This component should be attached to player controller and is used by groups to send requests to server.")]
 class SCR_PlayerControllerGroupComponentClass : ScriptComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_PlayerControllerGroupComponent : ScriptComponent
 {
 	protected int m_iGroupID = -1;
 	// Map with playerID and list of groups the player was invited to
 	protected ref map<int, ref array<int>> m_mPlayerInvitesToGroups;
-	protected ref ScriptInvoker<int, int> m_OnInviteReceived = new ScriptInvoker<int, int>();
+	protected ref ScriptInvoker<int, int> m_OnInviteReceived;
 	protected ref ScriptInvoker<int> m_OnInviteAccepted;
 	protected ref ScriptInvoker<int> m_OnInviteCancelled;
 	protected ref ScriptInvoker<int> m_OnGroupChanged;
@@ -19,10 +18,11 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	protected int m_iGroupInviteFromPlayerID = -1;
 	protected string m_sGroupInviteFromPlayerName; //Player name is saved to get the name of the one who invited even if that player left the server	
 	
-	const ref Color DEFAULT_COLOR = new Color(0, 0, 0, 0.4);
-	
+	protected const ref Color DEFAULT_COLOR = new Color(0, 0, 0, 0.4);
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] playerID
+	//! \return
 	static SCR_PlayerControllerGroupComponent GetPlayerControllerComponent(int playerID)
 	{
 		PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(playerID);
@@ -33,6 +33,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	static SCR_PlayerControllerGroupComponent GetLocalPlayerControllerGroupComponent()
 	{
 		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
@@ -43,42 +44,56 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetGroupID()
 	{
 		return m_iGroupID;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void RequestCreateGroup()
 	{
 		Rpc(RPC_AskCreateGroup);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerID
 	void RequestKickPlayer(int playerID)
 	{
 		Rpc(RPC_AskKickPlayer, playerID);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerID
 	void RequestPromoteLeader(int playerID)
 	{
 		Rpc(RPC_AskPromoteLeader, playerID);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerID
+	//! \param[in] isPrivate
 	void RequestPrivateGroupChange(int playerID, bool isPrivate)
 	{
 		Rpc(RPC_ChangePrivateGroup, playerID, isPrivate);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerID
+	//! \param[in] groupID
 	void PlayerRequestToJoinPrivateGroup(int playerID, RplId groupID)
 	{		
 		Rpc(RPC_PlayerRequestToJoinPrivateGroup, playerID, groupID);	
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] groupID
 	void ClearAllRequesters(RplId groupID)
 	{		
 		Rpc(RPC_ClearAllRequesters, groupID);	
@@ -86,6 +101,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetPlayerID()
 	{
 		PlayerController playerController = PlayerController.Cast(GetOwner());
@@ -96,8 +112,69 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerID
+	//! \param[in] group
+	//! \return
 	bool CanPlayerJoinGroup(int playerID, notnull SCR_AIGroup group)
 	{
+		/*
+			Assumed issue:
+				SCR_FactionManager have cache mapping playerIds to factions.
+				This cache may not be in sysnc with the FactionAffiliation, because of different replication hieararchies and methods
+			Fix:
+				We do not use cache, but instead ask directly SCR_PlayerFactionAffiliationComponent.
+				This should work on client asking for its own PlayerId or server for any IDs.
+		*/
+		
+		// Flipping comment for quick switch of implementation
+		//*
+		Faction groupFaction = group.GetFaction();
+		if (!groupFaction)
+		{
+			#ifdef DEPLOY_MENU_DEBUG
+				Print(string.Format("SCR_PlayerControllerGroupComponent.CanPlayerJoinGroup(%1, %2) - No group faction", playerID, group), LogLevel.ERROR);
+			#endif
+			return false;
+		}
+		
+		PlayerController pc = GetGame().GetPlayerManager().GetPlayerController(playerID);
+		if (!pc)
+		{
+			#ifdef DEPLOY_MENU_DEBUG
+				Print(string.Format("SCR_PlayerControllerGroupComponent.CanPlayerJoinGroup(%1, %2) - No player controller", playerID, group), LogLevel.ERROR);
+			#endif
+			return false;
+		}
+		
+		SCR_PlayerFactionAffiliationComponent playerAffiliation
+			= SCR_PlayerFactionAffiliationComponent.Cast(pc.FindComponent(SCR_PlayerFactionAffiliationComponent));
+		if (!playerAffiliation)
+		{
+			// Happen only if PlayerController prefab is poorly configured
+			#ifdef DEPLOY_MENU_DEBUG
+				Print(string.Format("SCR_PlayerControllerGroupComponent.CanPlayerJoinGroup(%1, %2) - No SCR_PlayerFactionAffiliationComponent", playerID, group), LogLevel.ERROR);
+			#endif
+			return false;
+		}
+		
+		Faction playerFaction = playerAffiliation.GetAffiliatedFaction();
+		if (playerFaction != groupFaction)
+		{
+			#ifdef DEPLOY_MENU_DEBUG
+			Print(string.Format("SCR_PlayerControllerGroupComponent.CanPlayerJoinGroup(%1, %2) - Faction mis-match! See, below:", playerID, group), LogLevel.ERROR);
+			Print(playerFaction, LogLevel.NORMAL);
+			if (playerFaction)
+				Print(playerFaction.GetFactionKey(), LogLevel.NORMAL);
+
+			Print(groupFaction, LogLevel.NORMAL);
+			if (groupFaction)
+				Print(groupFaction.GetFactionKey(), LogLevel.NORMAL);
+			#endif
+			return false;
+		}
+		
+		/*/
 		// First we check the player is in the faction of the group
 		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 		if (factionManager)
@@ -109,13 +186,13 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 			{
 				#ifdef DEPLOY_MENU_DEBUG
 				Print(string.Format("SCR_PlayerControllerGroupComponent.CanPlayerJoinGroup(%1, %2) - Faction mis-match! See, below:", playerID, group), LogLevel.ERROR);
-				Print(playerFaction);
+				Print(playerFaction, LogLevel.NORMAL);
 				if (playerFaction)
-					Print(playerFaction.GetFactionKey());
+					Print(playerFaction.GetFactionKey(), LogLevel.NORMAL);
 
-				Print(groupFaction);
+				Print(groupFaction, LogLevel.NORMAL);
 				if (groupFaction)
-					Print(groupFaction.GetFactionKey());
+					Print(groupFaction.GetFactionKey(), LogLevel.NORMAL);
 				#endif
 
 				return false;
@@ -127,6 +204,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 			Print(string.Format("SCR_PlayerControllerGroupComponent.CanPlayerJoinGroup(%1, %2) - No SCR_FactionManager!", playerID, group), LogLevel.ERROR);
 			#endif
 		}
+		//*/
 
 		// Groups manager doesn't exist, no point in continuing, cannot join
 		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
@@ -155,18 +233,24 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerID
+	//! \param[in] group
+	//! \return
 	bool IsPlayerLeader(int playerID, notnull SCR_AIGroup group)
 	{
 		return playerID == group.GetLeaderID();
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	bool IsPlayerLeaderOwnGroup()
 	{
 		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
 		if (!groupManager)
 			return false;
-			
+
 		//get controller from owner, because if this is used on server we cannot get local players player controller :wesmart:
 		SCR_PlayerController controller = SCR_PlayerController.Cast(GetOwner());
 		if (!controller)
@@ -181,6 +265,9 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerID
+	//! \return
 	bool CanInvitePlayer(int playerID)
 	{
 		// Our group id is not valid -> cannot invite anyone
@@ -194,7 +281,6 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		
 		// We get our group
 		SCR_AIGroup group = groupsManager.GetPlayerGroup(GetPlayerID());
-		
 		if (!group)
 			return false;
 		
@@ -210,9 +296,12 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerID
+	//! \return
 	bool WasAlreadyInvited(int playerID)
 	{
-		// The map is not initialized -> didn't invite anyone yet
+		// The map is not initialised -> didn't invite anyone yet
 		if (!m_mPlayerInvitesToGroups)
 			return false;
 		
@@ -226,6 +315,9 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerID
+	//! \param[in] accept
 	void AcceptJoinPrivateGroup(int playerID, bool accept)
 	{
 		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
@@ -236,25 +328,26 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 			
 		group.GetOnJoinPrivateGroupConfirm().Invoke(DEFAULT_COLOR); // Saphyr TODO: temporary before definition from art dept.
 		
-		if (accept)		
+		if (accept)
 			Rpc(RPC_ConfirmJoinPrivateGroup,playerID, group.GetGroupID());
-		else 
-			Rpc(RPC_CancelJoinPrivateGroup, playerID, group.GetGroupID());	
-			
-	}	
+		else
+			Rpc(RPC_CancelJoinPrivateGroup, playerID, group.GetGroupID());
+	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerID
 	void InvitePlayer(int playerID)
 	{
 		// When group id is not valid, return
 		if (m_iGroupID < 0)
 			return;
 		
-		// Init map if not initialized yet
+		// Init map if not initialised yet
 		if (!m_mPlayerInvitesToGroups)
 			m_mPlayerInvitesToGroups = new map<int, ref array<int>>();
 		
-		// Init array of groups the playerID was invited to if not initialized yet
+		// Init array of groups the playerID was invited to if not initialised yet
 		if (!m_mPlayerInvitesToGroups.Contains(playerID))
 			m_mPlayerInvitesToGroups.Insert(playerID, {});
 		
@@ -272,12 +365,16 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] groupID
+	//! \param[in] fromPlayerID
 	void InviteThisPlayer(int groupID, int fromPlayerID)
 	{
 		Rpc(RPC_DoInvitePlayer, groupID, fromPlayerID)
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void AcceptInvite()
 	{
 		if (m_iGroupInviteID >= 0)
@@ -300,11 +397,17 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnInviteReceived()
 	{
+		if (!m_OnInviteReceived)
+			m_OnInviteReceived = new ScriptInvoker<int, int>();
+
 		return m_OnInviteReceived;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] group
 	void OnGroupDeleted(SCR_AIGroup group)
 	{
 		if (!group)
@@ -316,6 +419,9 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerID
+	//! \param[in] groupID
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RPC_PlayerRequestToJoinPrivateGroup(int playerID, RplId groupID)
 	{	
@@ -328,6 +434,9 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerID
+	//! \param[in] groupID
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RPC_ConfirmJoinPrivateGroup(int playerID, int groupID)
 	{	
@@ -353,6 +462,9 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerID
+	//! \param[in] groupID
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RPC_CancelJoinPrivateGroup(int playerID, int groupID)
 	{
@@ -371,6 +483,9 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}	
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] groupID
+	//! \param[in] fromPlayerID
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	void RPC_DoInvitePlayer(int groupID, int fromPlayerID)
 	{
@@ -382,10 +497,13 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		if (playerManager)
 			m_sGroupInviteFromPlayerName = playerManager.GetPlayerName(fromPlayerID);
 		
-		m_OnInviteReceived.Invoke(groupID, fromPlayerID);
+		if (m_OnInviteReceived)
+			m_OnInviteReceived.Invoke(groupID, fromPlayerID);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerID
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RPC_AskInvitePlayer(int playerID)
 	{
@@ -401,6 +519,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RPC_AskCreateGroup()
 	{
@@ -441,6 +560,8 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerID
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RPC_AskKickPlayer(int playerID)
 	{
@@ -464,6 +585,8 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerID
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RPC_AskPromoteLeader(int playerID)
 	{
@@ -480,6 +603,9 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerID
+	//! \param[in] isPrivate
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RPC_ChangePrivateGroup(int playerID, bool isPrivate)
 	{
@@ -493,12 +619,16 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] groupID
 	void RequestJoinGroup(int groupID)
 	{
 		Rpc(RPC_AskJoinGroup, groupID);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] groupID
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	void RPC_DoChangeGroupID(int groupID)
 	{
@@ -521,6 +651,8 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] groupID
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RPC_AskJoinGroup(int groupID)
 	{
@@ -546,6 +678,12 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerID
+	//! \param[out] groupsManager
+	//! \param[out] playerGroupController
+	//! \param[out] group
+	//! \return
 	bool InitiateComponents(int playerID, out SCR_GroupsManagerComponent groupsManager, out SCR_PlayerControllerGroupComponent playerGroupController , out SCR_AIGroup group)
 	{
 		groupsManager = SCR_GroupsManagerComponent.GetInstance();
@@ -561,78 +699,97 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 			return false;
 		return true;
 	}
+
 	//------------------------------------------------------------------------------------------------
-		int GetSelectedGroupID()
+	//! \return
+	int GetSelectedGroupID()
 	{
 		return m_iUISelectedGroupID;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnInviteAccepted()
 	{
 		if (!m_OnInviteAccepted)
 			m_OnInviteAccepted =  new ScriptInvoker<int>();
+
 		return m_OnInviteAccepted;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnGroupChanged()
 	{
 		if (!m_OnGroupChanged)
 			m_OnGroupChanged =  new ScriptInvoker<int>();
+
 		return m_OnGroupChanged;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnInviteCancelled()
 	{
 		if (!m_OnInviteCancelled)
 			m_OnInviteCancelled =  new ScriptInvoker<int>();
+
 		return m_OnInviteCancelled;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetGroupInviteID()
 	{
 		return m_iGroupInviteID;
 	}	
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] value
 	void SetGroupInviteID(int value)
 	{
 		m_iGroupInviteID = value;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetGroupInviteFromPlayerID()
 	{
 		return m_iGroupInviteFromPlayerID;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetGroupInviteFromPlayerName()
 	{
 		return m_sGroupInviteFromPlayerName;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] groupID
 	void SetSelectedGroupID(int groupID)
 	{
 		m_iUISelectedGroupID = groupID;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] groupID
+	//! \param[in] desc
 	void RequestSetCustomGroupDescription(int groupID, string desc)
 	{
 		Rpc(RPC_AskSetCustomDescription, groupID, desc, SCR_PlayerController.GetLocalPlayerId());
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] groupID
+	//! \param[in] desc
+	//! \param[in] authorID
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RPC_AskSetCustomDescription(int groupID, string desc, int authorID)
 	{
 		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
-
 		if (!groupsManager)
 			return;
 		
@@ -644,6 +801,9 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] groupID
+	//! \param[in] maxMembers
 	void RequestSetGroupMaxMembers(int groupID, int maxMembers)
 	{
 		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
@@ -661,6 +821,9 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] groupID
+	//! \param[in] maxMembers
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RPC_AskSetGroupMaxMembers(int groupID, int maxMembers)
 	{
@@ -679,9 +842,11 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! sets custom frequency (KHz) for a group. Can set frequency that is already claimed. 
+	//! Sets custom frequency (KHz) for a group. Can set frequency that is already claimed.
 	//! Claims set frequency if not already claimed.
 	//! Frequency set by this method will not be used by automatically created groups.
+	//! \param[in] groupID
+	//! \param[in] frequency
 	void RequestSetCustomFrequency(int groupID, int frequency)
 	{
 		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
@@ -692,13 +857,15 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		if (!group)
 			return;
 		
-		if (group.GetRadioFrequency() == frequency || frequency < 0)
+		if (frequency < 0 || group.GetRadioFrequency() == frequency)
 			return;
 		
 		Rpc(RPC_AskSetFrequency, groupID, frequency);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] isAllowed
 	void RequestSetNewGroupsAllowed(bool isAllowed)
 	{
 		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
@@ -709,6 +876,8 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] isAllowed
 	void RequestSetCanPlayersChangeAttributes(bool isAllowed)
 	{
 		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
@@ -719,12 +888,19 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] groupID
+	//! \param[in] name
 	void RequestSetCustomGroupName(int groupID, string name)
 	{
 		Rpc(RPC_AskSetCustomName, groupID, name, SCR_PlayerController.GetLocalPlayerId());
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] groupID
+	//! \param[in] name
+	//! \param[in] authorID
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RPC_AskSetCustomName(int groupID, string name, int authorID)
 	{
@@ -740,6 +916,8 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] isAllowed
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RPC_AskSetNewGroupsAllowed(bool isAllowed)
 	{
@@ -751,6 +929,8 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] isAllowed
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RPC_AskSetCanPlayersChangeAttributes(bool isAllowed)
 	{
@@ -762,6 +942,9 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] groupID
+	//! \param[in] frequency
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RPC_AskSetFrequency(int groupID, int frequency)
 	{
@@ -773,7 +956,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		if (!group)
 			return;
 		
-		if (group.GetRadioFrequency() == frequency || frequency < 0)
+		if (frequency < 0 || group.GetRadioFrequency() == frequency)
 			return;
 		
 		SCR_Faction groupFaction = SCR_Faction.Cast(group.GetFaction());
@@ -804,12 +987,20 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] groupID
+	//! \param[in] flagIndex
+	//! \param[in] isFromImageset
 	void RequestSetGroupFlag(int groupID, int flagIndex, bool isFromImageset)
 	{
 		Rpc(RPC_AskSetGroupFlag, groupID, flagIndex, isFromImageset);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] groupID
+	//! \param[in] flagIndex
+	//! \param[in] isFromImageset
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RPC_AskSetGroupFlag(int groupID, int flagIndex, bool isFromImageset)
 	{
@@ -824,8 +1015,9 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		group.SetGroupFlag(flagIndex, isFromImageset);		
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] groupID
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RPC_ClearAllRequesters(RplId groupID)
 	{
@@ -842,12 +1034,16 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] rplCompID
 	void RequestCreateSlaveGroup(RplId rplCompID)
 	{
 		Rpc(RPC_AskCreateSlaveGroup, rplCompID);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] rplCompID
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RPC_AskCreateSlaveGroup(RplId rplCompID)
 	{
@@ -863,7 +1059,6 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		if (!groupEntity)
 			return;
 		
-		
 		SCR_AIGroup group = SCR_AIGroup.Cast(groupEntity);
 		if (!group)
 			return;
@@ -873,11 +1068,13 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 			return;
 		
 		groupManager.RequestSetGroupSlave(rplCompID, slaveRplComp.Id());
-		return;
 	}
 	
-		
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] character
+	//! \param[in] faction
+	//! \return
 	bool IsAICharacterInAnyGroup(SCR_ChimeraCharacter character, SCR_Faction faction)
 	{
 		//TODO: kuceramar: come up with better solution that doesnt include going through all groups
@@ -885,20 +1082,22 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
 		if (!groupManager)
 			return false;
+
 		array<SCR_AIGroup> groups = groupManager.GetPlayableGroupsByFaction(faction);
 		
-		bool isMember = false;
 		foreach(SCR_AIGroup group : groups)
 		{
-			isMember = group.IsAIControlledCharacterMember(character);
-			if (isMember)
-				return isMember;
+			if (group.IsAIControlledCharacterMember(character))
+				return true;
 		}
 		
-		return isMember;
+		return false;
 	}
 		
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] character
+	//! \param[in] playerID
 	void RequestAddAIAgent(SCR_ChimeraCharacter character, int playerID)
 	{
 		RplComponent rplComp = RplComponent.Cast(character.FindComponent(RplComponent));
@@ -908,7 +1107,10 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		Rpc(RPC_AskAddAIAgent, rplComp.Id(), playerID);
 	} 
 	
-		//------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] characterID
+	//! \param[in] playerID
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RPC_AskAddAIAgent(RplId characterID, int playerID)
 	{
@@ -923,18 +1125,19 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 			return;
 		
 		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(rplComp.GetEntity());
-		
 		if (!character)
-			return;		
+			return;
+
 		if (!group.IsPlayerLeader(playerID))
 			return;
 		 
 		AddAIToSlaveGroup(character, group);
 	}
 	
-			
 	//------------------------------------------------------------------------------------------------
 	//! Should be only called on the server
+	//! \param[in] controlledEntity
+	//! \param[in] group
 	void AddAIToSlaveGroup(notnull IEntity controlledEntity, SCR_AIGroup group)
 	{
 		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
@@ -946,7 +1149,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 			return;
 		
 		if (!slaveGroup.IsAIActivated())
-			slaveGroup.Activate();
+			slaveGroup.ActivateAI();
 		
 		slaveGroup.AddAgentFromControlledEntity(controlledEntity);
 		
@@ -962,8 +1165,10 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		groupManager.AskAddAiMemberToGroup(groupCompID, characterCompID);
 	}
 	
-		
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] characterID
+	//! \param[in] playerID
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RPC_AskRemoveAIAgent(RplId characterID, int playerID)
 	{
@@ -978,7 +1183,6 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 			return;
 		
 		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(rplComp.GetEntity());
-		
 		if (!character)
 			return;		
 		
@@ -990,6 +1194,8 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Should be only called on the server
+	//! \param[in] controlledEntity
+	//! \param[in] group
 	void RemoveAiFromSlaveGroup(notnull IEntity controlledEntity, SCR_AIGroup group)
 	{
 		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
@@ -1019,6 +1225,9 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] character
+	//! \param[in] playerID
 	void RequestRemoveAgent(SCR_ChimeraCharacter character, int playerID)
 	{
 		RplComponent rplComp = RplComponent.Cast(character.FindComponent(RplComponent));
@@ -1056,6 +1265,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_AIGroup GetPlayersGroup()
 	{
 		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
@@ -1066,6 +1276,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetActualGroupFrequency()
 	{
 		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
@@ -1114,7 +1325,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		if (group)
 		{
 			DbgUI.Text("." + group.ToString());
-			Print(group.ToString());
+			Print(group.ToString(), LogLevel.NORMAL);
 		}
 		DbgUI.Spacer(2);
 		
@@ -1126,17 +1337,18 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] faction
 	void ListGroupsFromFaction(Faction faction)
 	{
-		array<SCR_AIGroup> groups = {};
 		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
-		groups = groupsManager.GetPlayableGroupsByFaction(faction);
+		array<SCR_AIGroup> groups = groupsManager.GetPlayableGroupsByFaction(faction);
 		if (!groups)
 		{
 			DbgUI.Text("No groups for your faction!!");
 			return;
 		}
-	
+
 		foreach(SCR_AIGroup group : groups)
 		{
 			DbgUI.Text(group.ToString());			
@@ -1144,6 +1356,8 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] faction
 	void CreateAndJoinGroup(Faction faction)
 	{
 		SCR_PlayerControllerGroupComponent playerGroupController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
@@ -1159,6 +1373,5 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 			playerGroupController.RequestJoinGroup(group.GetGroupID());
 		else
 			playerGroupController.RequestCreateGroup(); //requestCreateGroup automatically puts player to the newly created group
-		
 	}
-};
+}

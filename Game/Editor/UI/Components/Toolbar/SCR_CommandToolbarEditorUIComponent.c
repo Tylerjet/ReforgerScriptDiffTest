@@ -1,6 +1,6 @@
-/** @ingroup Editor_UI Editor_UI_Components
-*/
-class SCR_CommandToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
+//! @ingroup Editor_UI Editor_UI_Components
+
+class SCR_CommandToolbarEditorUIComponent : SCR_BaseToolbarEditorUIComponent
 {
 	[Attribute("", uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EEditorActionGroup))]
 	protected ref array<EEditorActionGroup> m_ActionGroups;
@@ -12,8 +12,9 @@ class SCR_CommandToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 	protected SCR_BaseEditableEntityFilter m_Filter;
 	protected ref array<ref SCR_EditorActionData> m_aActionData = {};
 	protected ref array<ref SCR_BaseEditorAction> m_aShortcuts = {};
-	protected ref map<Widget, SCR_BaseEditorAction> m_Actions = new map<Widget, SCR_BaseEditorAction>;
+	protected ref map<Widget, SCR_BaseEditorAction> m_Actions = new map<Widget, SCR_BaseEditorAction>();
 	
+	//------------------------------------------------------------------------------------------------
 	protected void CreateItem(SCR_EditorActionData actionData, int shortcutIndex)
 	{
 		Widget itemWidget;
@@ -36,6 +37,7 @@ class SCR_CommandToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		m_Actions.Insert(itemWidget, action);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnEditorQuickCommand(int index)
 	{
 		if (m_aShortcuts.Count() >= index)
@@ -54,6 +56,7 @@ class SCR_CommandToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 	//protected void OnEditorQuickCommand11() { OnEditorQuickCommand(11); }
 	//protected void OnEditorQuickCommand12() { OnEditorQuickCommand(12); }
 	
+	//------------------------------------------------------------------------------------------------
 	override protected void ShowEntries(Widget contentWidget, int indexStart, int indexEnd)
 	{
 		if (!GetGame().GetInputManager().IsUsingMouseAndKeyboard())
@@ -75,6 +78,8 @@ class SCR_CommandToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 			}
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void Refresh()
 	{
 		int actionFlags;
@@ -127,14 +132,23 @@ class SCR_CommandToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		
 		super.Refresh();
 	}
-	void OnFilterChange(EEditableEntityState state, set<SCR_EditableEntityComponent> entitiesInsert, set<SCR_EditableEntityComponent> entitiesRemove)
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] state
+	//! \param[in] entitiesInsert
+	//! \param[in] entitiesRemove
+	protected void OnFilterChange(EEditableEntityState state, set<SCR_EditableEntityComponent> entitiesInsert, set<SCR_EditableEntityComponent> entitiesRemove)
 	{
 		Refresh();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool IsUnique()
 	{
 		return false;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnInputDeviceIsGamepad(bool isGamepad)
 	{
 		if (!isGamepad)
@@ -150,6 +164,8 @@ class SCR_CommandToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		
 		super.OnInputDeviceIsGamepad(isGamepad);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool OnClick(Widget w, int x, int y, int button)
 	{
 		if (button != 0)
@@ -162,6 +178,8 @@ class SCR_CommandToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		}
 		return false;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttachedScripted(Widget w)
 	{
 		m_EditorActionsComponent = SCR_CommandActionsEditorComponent.Cast(SCR_CommandActionsEditorComponent.GetInstance(SCR_CommandActionsEditorComponent, true));
@@ -191,6 +209,8 @@ class SCR_CommandToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		
 		super.HandlerAttachedScripted(w);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		if (m_Filter)
@@ -198,4 +218,4 @@ class SCR_CommandToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		
 		super.HandlerDeattached(w);
 	}
-};
+}

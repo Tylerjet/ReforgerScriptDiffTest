@@ -1,6 +1,6 @@
-/** @ingroup Editor_UI Editor_UI_Components
-*/
-class SCR_EditorToggleUIComponent: ScriptedWidgetComponent
+//! @ingroup Editor_UI Editor_UI_Components
+
+class SCR_EditorToggleUIComponent : ScriptedWidgetComponent
 {
 	[Attribute()]
 	protected string m_sProgressWidgetName;
@@ -33,6 +33,7 @@ class SCR_EditorToggleUIComponent: ScriptedWidgetComponent
 	//State
 	protected bool m_bCharging;
 	
+	//------------------------------------------------------------------------------------------------
 	protected void ChargeStart()
 	{
 		if (m_MenuManager.IsAnyDialogOpen())
@@ -49,6 +50,8 @@ class SCR_EditorToggleUIComponent: ScriptedWidgetComponent
 		m_ProgressWidget.SetVisible(true);
 		m_LoadingWidget.GetFadeWidget().SetVisible(false);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void ChargeFail()
 	{
 		m_bCharging = false;
@@ -60,6 +63,8 @@ class SCR_EditorToggleUIComponent: ScriptedWidgetComponent
 		m_RadialProcessBar.InstantProgressMaxMin(false);
 		m_Widget.SetVisible(false);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void WaitStart()
 	{
 		SCR_EditorModeEntity mode = m_EditorManager.GetCurrentModeEntity();
@@ -80,6 +85,8 @@ class SCR_EditorToggleUIComponent: ScriptedWidgetComponent
 		if (m_EditorManager.IsAutoInit())
 			m_InitLoadingWidget.FadeIn();		
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void WaitEnd()
 	{	
 		m_RadialProcessBar.SetProgress(m_RadialProcessBar.GetMinProgress());
@@ -96,6 +103,7 @@ class SCR_EditorToggleUIComponent: ScriptedWidgetComponent
 		m_LoadingWidget.FadeOut(false);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnRadialProgressFadeDone(SCR_ImageRadialProgressBarUIComponent radial, bool isFadeIn)
 	{				
 		if (!m_bCharging && !isFadeIn)
@@ -104,7 +112,8 @@ class SCR_EditorToggleUIComponent: ScriptedWidgetComponent
 			m_Widget.SetVisible(false);
 		}
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnEditorToggleValue(float value, EActionTrigger reason)
 	{
 		if (m_MenuManager.IsAnyDialogOpen())
@@ -139,6 +148,7 @@ class SCR_EditorToggleUIComponent: ScriptedWidgetComponent
 			m_RadialProcessBar.SetProgress(value);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnEditorToggleDone()
 	{
 		//Editor failed to open, terminate
@@ -148,36 +158,41 @@ class SCR_EditorToggleUIComponent: ScriptedWidgetComponent
 		m_bCharging = false;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnRequest()
 	{
 		WaitStart();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnRequestEnd()
 	{
 		m_bCharging = false;
 		WaitEnd();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnAsyncLoad(float progress)
 	{
 		if (progress < 1)
-		{
 			WaitStart();
-		}
 		else
-		{
 			WaitEnd();
-		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		if (SCR_Global.IsEditMode())
 			return;
 		
 		m_EditorManager = SCR_EditorManagerEntity.GetInstance();
-		if (!m_EditorManager) return;
+		if (!m_EditorManager)
+			return;
 		
 		InputManager inputManager = GetGame().GetInputManager();
-		if (!inputManager) return;
+		if (!inputManager)
+			return;
 		
 		m_ProgressWidget = w.FindWidget(m_sProgressWidgetName);
 		if (!m_ProgressWidget)
@@ -187,7 +202,6 @@ class SCR_EditorToggleUIComponent: ScriptedWidgetComponent
 		}
 		
 		m_RadialProcessBar = SCR_ImageRadialProgressBarUIComponent.Cast(m_ProgressWidget.GetChildren().FindHandler(SCR_ImageRadialProgressBarUIComponent));
-		
 		if (!m_RadialProcessBar)
 			return;
 		
@@ -218,6 +232,7 @@ class SCR_EditorToggleUIComponent: ScriptedWidgetComponent
 		m_MenuManager = GetGame().GetMenuManager();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		if (m_EditorManager)
@@ -239,4 +254,4 @@ class SCR_EditorToggleUIComponent: ScriptedWidgetComponent
 		if (m_RadialProcessBar)
 			m_RadialProcessBar.GetOnFadeDone().Remove(OnRadialProgressFadeDone);
 	}
-};
+}

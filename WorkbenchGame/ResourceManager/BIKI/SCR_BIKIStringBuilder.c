@@ -3,12 +3,17 @@ class SCR_BIKIStringBuilder
 	protected string m_sContent;
 
 	//------------------------------------------------------------------------------------------------
+	//! Add text line that gets ended by a line return
+	//! \param[in] line
 	void AddLine(string line)
 	{
 		m_sContent += line + "\n";
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Add a wiki title (e.g == title lv 2 ==)
+	//! \param[in] titleLevel in range 1..6
+	//! \param[in] text can be empty (e.g ==  ==)
 	void AddTitle(int titleLevel, string text)
 	{
 		if (titleLevel < 1)
@@ -40,6 +45,9 @@ class SCR_BIKIStringBuilder
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Begin a wiki table
+	//! \see EndTable()
+	//! \param[in] style
 	void BeginTable(string style = string.Empty)
 	{
 		if (style == string.Empty)
@@ -62,7 +70,10 @@ class SCR_BIKIStringBuilder
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Add a table line of header cells
 	//! This method forbids empty headers and stops on the first encountered one
+	//! \see BeginTable()
+	//! \see EndTable()
 	void AddTableHeadersLine(string title1, string title2 = string.Empty, string title3 = string.Empty, string title4 = string.Empty, string title5 = string.Empty)
 	{
 		array<string> titles = { title1, title2, title3, title4, title5 };
@@ -77,6 +88,8 @@ class SCR_BIKIStringBuilder
 
 	//------------------------------------------------------------------------------------------------
 	//! This method allows an empty header
+	//! \param[in] title
+	//! \param[in] style
 	void AddTableHeader(string title, string style = string.Empty)
 	{
 		if (style == string.Empty)
@@ -86,7 +99,11 @@ class SCR_BIKIStringBuilder
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Add a table line of cells
 	//! This method allows empty data cells
+	//! \see BeginTable()
+	//! \see EndTable()
+	//! \param[in] data
 	void AddTableDataCellsLine(notnull array<string> data)
 	{
 		m_sContent += "|-\n";
@@ -97,7 +114,15 @@ class SCR_BIKIStringBuilder
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Add a table line of cells
 	//! This method forbids empty data cells and stops on the first encountered one
+	//! \see BeginTable()
+	//! \see EndTable()
+	//! \param[in] data1
+	//! \param[in] data2
+	//! \param[in] data3
+	//! \param[in] data4
+	//! \param[in] data5
 	void AddTableDataCellsLine(string data1, string data2 = string.Empty, string data3 = string.Empty, string data4 = string.Empty, string data5 = string.Empty)
 	{
 		m_sContent += "|-\n";
@@ -113,15 +138,25 @@ class SCR_BIKIStringBuilder
 
 	//------------------------------------------------------------------------------------------------
 	//! This method allows an empty data cell
+	//! \param[in] datum
+	//! \param[in] style cell's CSS
 	void AddTableDataCell(string datum, string style = string.Empty)
 	{
-		if (style == string.Empty)
+		if (style != string.Empty)
+			m_sContent += "| style=\"" + style + "\" ";
+
+		if (datum)
 			m_sContent += "| " + datum + "\n";
 		else
-			m_sContent += "| style=\"" + style + "\" | " + datum + "\n";
+			m_sContent += "|\n";
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Add a title header followed by provided data (horizontal, line)
+	//! \see BeginTable()
+	//! \see EndTable()
+	//! \param[in] title
+	//! \param[in] data
 	void AddHeaderAndDataCellsLine(string title, notnull array<string> data)
 	{
 		m_sContent += "|-\n" +
@@ -134,12 +169,20 @@ class SCR_BIKIStringBuilder
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Add the end of a previously opened table
+	//! \see BeginTable()
 	void EndTable()
 	{
 		m_sContent += "|}\n";
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Add {{GameCategory|armaR}} wiki category directly after the current content (empty lines not managed)
+	//! \param[in] catLv1
+	//! \param[in] catLv2
+	//! \param[in] catLv3
+	//! \param[in] catLv4
+	//! \param[in] catLv5
 	void AddCategory(string catLv1 = string.Empty, string catLv2 = string.Empty, string catLv3 = string.Empty, string catLv4 = string.Empty, string catLv5 = string.Empty)
 	{
 		if (catLv1 == string.Empty)
@@ -157,12 +200,14 @@ class SCR_BIKIStringBuilder
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return the content so far
 	string GetContent()
 	{
 		return m_sContent;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Empty the String Builder's content
 	void Clear()
 	{
 		m_sContent = string.Empty;

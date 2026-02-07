@@ -32,7 +32,9 @@ class SCR_PlayInstrument : ScriptedUserAction
 			return;
 		
 		vector mat[4];
-		mat[3] = GetOwner().CoordToParent(m_vSoundOffset);
+		IEntity owner = GetOwner();
+		owner.GetTransform(mat);		
+		mat[3] = owner.CoordToParent(m_vSoundOffset);
 					
 		AudioSystem.TerminateSound(m_AudioHandle);
 		soundManagerEntity.PlayAudioSource(audioSource, mat);			
@@ -61,6 +63,7 @@ class SCR_PlayInstrument : ScriptedUserAction
 			return;
 		
 		vector mat[4];
+		pOwnerEntity.GetTransform(mat);
 		mat[3] = pOwnerEntity.CoordToParent(m_vSoundOffset);
 					
 		soundManagerEntity.PlayAudioSource(audioSource, mat);			

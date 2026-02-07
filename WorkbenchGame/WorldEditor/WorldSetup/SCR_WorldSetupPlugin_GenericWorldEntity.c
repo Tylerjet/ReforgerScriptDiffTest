@@ -1,5 +1,4 @@
 #ifdef WORKBENCH
-
 //! This Plugin is experimental because it directly writes in the layer file, expecting a certain directory structure and file format.
 //! An engine solution should be provided for this matter.
 [WorkbenchPluginAttribute(
@@ -61,43 +60,18 @@ class SCR_WorldSetupPlugin_GenericWorldEntity : SCR_WorldSetupPluginBasePlugin
 			return;
 		}
 
-		string defaultLayerAbsFilePath = GetDefaultLayerAbsoluteFilePath(worldEditorAPI, worldPath, worldName);
-		if (!FileIO.FileExists(defaultLayerAbsFilePath))
-		{
-			Print("The default layer file could not be found - please save the world first", LogLevel.WARNING);
-			return;
-		}
-
-		Print("Reading " + defaultLayerAbsFilePath, LogLevel.NORMAL);
-		array<string> lines = SCR_FileIOHelper.ReadFileContent(defaultLayerAbsFilePath);
-
-		bool found;
-		for (int i, count = lines.Count(); i < count; i++)
-		{
-			if (lines[i].EndsWith(" {") && lines[i].StartsWith(WORLD_ENTITY_CLASS + " "))
-			{
-				"}";
-				lines[i] = WORLD_ENTITY_CLASS + " world : \"" + worldEntityPrefab + "\" {";
-				"}";
-				found = true;
-				break;
-			}
-		}
-
-		if (!found)
-		{
-			Print("No " + WORLD_ENTITY_CLASS + " class could be found in " + defaultLayerAbsFilePath, LogLevel.WARNING);
-			return;
-		}
-
-		if (SCR_FileIOHelper.WriteFileContent(defaultLayerAbsFilePath, lines))
+		if (SCR_WorldFilesHelper.ReplaceWorldEntity(worldPath, worldEntityPrefab))
 			Print("File written successfully. Please LOAD the world to see the changes applied", LogLevel.NORMAL);
 		else
 			Print("File could not be written", LogLevel.WARNING);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected string GetDefaultLayerAbsoluteFilePath(notnull WorldEditorAPI worldEditorAPI, string worldPath, string worldName)
+	//! Get the path to the default layer (worldDir/worldName_Layers/default.layer)
+	//! \param[in] worldPath world's directory
+	//! \param[in] worldName world's name (used to determine layers directory)
+	//! \return path to the default layer
+	protected string GetDefaultLayerAbsoluteFilePath(string worldPath, string worldName)
 	{
 		string defaultLayerAbsFilePath;
 		if (!Workbench.GetAbsolutePath(worldPath, defaultLayerAbsFilePath))
@@ -127,5 +101,4 @@ class SCR_WorldSetupPlugin_GenericWorldEntity : SCR_WorldSetupPluginBasePlugin
 		return false;
 	}
 }
-
 #endif // WORKBENCH

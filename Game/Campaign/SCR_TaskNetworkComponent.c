@@ -1,9 +1,8 @@
 [EntityEditorProps(category: "GameScripted/Tasks", description: "Handles client > server communication for tasks. Should be attached to PlayerController.", color: "0 0 255 255")]
-class SCR_TaskNetworkComponentClass: ScriptComponentClass
+class SCR_TaskNetworkComponentClass : ScriptComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Takes care of tasks-specific server <> client communication and requests
 class SCR_TaskNetworkComponent : ScriptComponent
 {
@@ -19,6 +18,7 @@ class SCR_TaskNetworkComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Allows the requester to cancel a task requested by them.
+	//! \param[in] taskID
 	void CancelTask(int taskID)
 	{
 		Rpc(RPC_CancelTask, taskID);
@@ -26,6 +26,7 @@ class SCR_TaskNetworkComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Allows the local player to abandon a task assigned to them.
+	//! \param[in] taskID
 	void AbandonTask(int taskID)
 	{
 		if (m_RplComponent && m_RplComponent.Role() == RplRole.Authority)
@@ -48,6 +49,7 @@ class SCR_TaskNetworkComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Allows the local player to request assignment to a task.
+	//! \param[in] taskID
 	void RequestAssignment(int taskID)
 	{
 		if (m_RplComponent && m_RplComponent.Role() == RplRole.Authority)
@@ -69,6 +71,10 @@ class SCR_TaskNetworkComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] gmID
+	//! \param[in] taskID
+	//! \param[in] playerID
 	void AssignTaskToPlayer(int gmID, int taskID, int playerID)
 	{
 		//Check if the player is game master
@@ -123,6 +129,7 @@ class SCR_TaskNetworkComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! An RPC executed on the server, tells task manager to cancel given task by given player
+	//! \param[in] taskID
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void RPC_CancelTask(int taskID)
 	{
@@ -136,6 +143,8 @@ class SCR_TaskNetworkComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! An RPC executed on the server, tells task manager to abandon given task by given player
+	//! \param[in] taskID
+	//! \param[in] playerID
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void RPC_AbandonTask(int taskID, int playerID)
 	{
@@ -154,6 +163,8 @@ class SCR_TaskNetworkComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! An RPC executed on the server, tells task manager to assign given task to given player
+	//! \param[in] taskID
+	//! \param[in] playerID
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void RPC_RequestAssignment(int taskID, int playerID)
 	{
@@ -171,7 +182,6 @@ class SCR_TaskNetworkComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// Init
 	override void EOnInit(IEntity owner)
 	{
 		m_PlayerController = SCR_PlayerController.Cast(PlayerController.Cast(owner));
@@ -181,14 +191,11 @@ class SCR_TaskNetworkComponent : ScriptComponent
 			Print("SCR_TaskNetworkComponent must be attached to SCR_PlayerController!", LogLevel.ERROR);
 			return;
 		}
-		else
-		{
-			m_RplComponent = RplComponent.Cast(m_PlayerController.FindComponent(RplComponent));
-		}
+
+		m_RplComponent = RplComponent.Cast(m_PlayerController.FindComponent(RplComponent));
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// PostInit
 	override void OnPostInit(IEntity owner)
 	{
 		super.OnPostInit(owner);
@@ -196,14 +203,8 @@ class SCR_TaskNetworkComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// Constructor
+	// constructor
 	void SCR_TaskNetworkComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 	}
-
-	//------------------------------------------------------------------------------------------------
-	// Destructor
-	void ~SCR_TaskNetworkComponent()
-	{
-	}
-};
+}

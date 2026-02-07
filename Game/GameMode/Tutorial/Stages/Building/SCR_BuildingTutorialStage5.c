@@ -12,7 +12,10 @@ class SCR_BuildingTutorialStage5: SCR_BaseCampaignTutorialArlandStage
 	{
 		m_PlayerInventory = SCR_CharacterInventoryStorageComponent.Cast(m_Player.FindComponent(SCR_CharacterInventoryStorageComponent));
 		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("Building_Lopatka");
+		HintOnVoiceOver();
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -27,8 +27,9 @@ enum ENameTagFlags
 	FADE_TIMER 			= 1<<8,		// run fade timer for obstruction check
 	OBSTRUCTED			= 1<<9,		// LOS trace result obstructed 
 	VEHICLE 			= 1<<10,	// tag owner is in a vehicle
-	NAME_UPDATE 		= 1<<11,	// request name update
-	ENT_TYPE_UPDATE 	= 1<<12		// request entity type update
+	TURRET 				= 1<<11,	// tag owner in in a turret which is not part of a vehicle
+	ENT_TYPE_UPDATE 	= 1<<12,	// request entity type update
+	NAME_UPDATE			= 1<<13		// request name update
 };
 
 //------------------------------------------------------------------------------------------------
@@ -52,7 +53,6 @@ enum ENameTagEntityType
 //! Nametag data
 class SCR_NameTagData : Managed
 {	
-	const string W_NAMETAG = "NameTag";
 	const string HEAD_BONE = "head";
 	const string SPINE_BONE = "Neck1";
 	const vector HEAD_OFFSET = "0 0.3 0";			// tag visual position offset for head
@@ -196,7 +196,7 @@ class SCR_NameTagData : Managed
 			m_Flags |= ENameTagFlags.VISIBLE;
 			m_Flags &= ~ENameTagFlags.UPDATE_DISABLE;
 			m_Flags &= ~ENameTagFlags.DISABLED;
-			targetVal = visibleOpacity * m_fOpacityFade;
+			targetVal = visibleOpacity;
 		}
 		else 
 			targetVal = 0;
@@ -343,9 +343,9 @@ class SCR_NameTagData : Managed
 	
 	//------------------------------------------------------------------------------------------------
 	//! Add this tag as occupant to a vehicle tag
-	protected void AddAsVehicleOccupant(IEntity vehicle, BaseCompartmentSlot slot)
+	protected void AddAsVehicleOccupant(IEntity vehicle, BaseCompartmentSlot slot, ENameTagFlags flag)
 	{
-		m_Flags |= ENameTagFlags.VEHICLE;
+		m_Flags |= flag;
 		m_VehicleCompartment = slot;
 		m_NTDisplay.OnNewVehicleOccupant(vehicle, this);
 	}
@@ -367,17 +367,25 @@ class SCR_NameTagData : Managed
 		if (!compSlot)
 			return;
 	
+		IEntity occupant = compSlot.GetOccupant();	// only add if the added entity is the owner of this tag
+		if (occupant != m_Entity)
+			return;
+		
 		while (vehicle)		// compartments such as turrets have vehicles as parents
 		{
-			if ( Vehicle.Cast(vehicle) )
+			if (Vehicle.Cast(vehicle))
+			{
+				AddAsVehicleOccupant(vehicle, compSlot, ENameTagFlags.VEHICLE);
 				break;
-			else 
+			}
+			else if (Turret.Cast(vehicle) && !vehicle.GetParent())	// f.e. deployed machinegun position can be a turret without parent vehicle
+			{
+				m_Flags |= ENameTagFlags.TURRET;
+				break;
+			}
+			else
 				vehicle = vehicle.GetParent();
 		}
-		
-		IEntity occupant = compSlot.GetOccupant();
-		if (occupant == m_Entity)
-			AddAsVehicleOccupant(vehicle, compSlot);	// only add if the added entity is the owner of this tag
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -386,16 +394,24 @@ class SCR_NameTagData : Managed
 	{		
 		BaseCompartmentSlot compSlot = manager.FindCompartment(slotID, mgrID);
 		
+		if (compSlot != m_VehicleCompartment)			// only remove if the comp slot subject is this tag's compartment
+			return;
+				
 		while (vehicle)
 		{
-			if ( Vehicle.Cast(vehicle) )
+			if (Vehicle.Cast(vehicle))
+			{
+				RemoveVehicleOccupant(vehicle);
 				break;
+			}
+			else if (Turret.Cast(vehicle) && !vehicle.GetParent())	// f.e. deployed machinegun position can be a turret without parent vehicle
+			{
+				m_Flags &= ~ENameTagFlags.TURRET;
+				break;
+			}
 			else 
 				vehicle = vehicle.GetParent();
 		}
-		
-		if (compSlot == m_VehicleCompartment)			// only remove if the comp slot subject is this tag's compartment
-			RemoveVehicleOccupant(vehicle);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -415,11 +431,11 @@ class SCR_NameTagData : Managed
 	
 	//------------------------------------------------------------------------------------------------
 	//! SCR_CharacterController event
-	void OnLifeStateChanged(ECharacterLifeState lifeState)
+	void OnLifeStateChanged(ECharacterLifeState previousLifeState, ECharacterLifeState newLifeState)
 	{
-		if (lifeState == ECharacterLifeState.INCAPACITATED)
+		if (newLifeState == ECharacterLifeState.INCAPACITATED)
 			ActivateEntityState(ENameTagEntityState.UNCONSCIOUS);
-		else if (lifeState == ECharacterLifeState.ALIVE)
+		else
 			DeactivateEntityState(ENameTagEntityState.UNCONSCIOUS);
 	}
 	
@@ -461,14 +477,21 @@ class SCR_NameTagData : Managed
 			
 			while (vehicle)		// compartments such as turrets have vehicles as parents
 			{
-				if ( Vehicle.Cast(vehicle) )
+				if (Vehicle.Cast(vehicle))
+				{
+					AddAsVehicleOccupant(vehicle, compSlot, ENameTagFlags.VEHICLE);
 					break;
+				}
+				else if (Turret.Cast(vehicle) && !vehicle.GetParent())	// f.e. deployed machinegun position can be a turret without parent vehicle
+				{
+					m_Flags |= ENameTagFlags.TURRET;
+					break;
+				}
 				else 
+				{
 					vehicle = vehicle.GetParent();
+				}
 			}
-			
-			if (vehicle)
-				AddAsVehicleOccupant(vehicle, compSlot);
 		}	
 				
 		if (m_CharController && m_CharController.IsUnconscious())

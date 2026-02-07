@@ -53,6 +53,13 @@ class SCR_MapUISpawnPoint : SCR_MapUIElement
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override void SetName(string name)
+	{
+		if (m_wSpawnPointName)
+			m_wSpawnPointName.SetText(name);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override vector GetPos()
 	{
 		return m_SpawnPoint.GetOrigin();

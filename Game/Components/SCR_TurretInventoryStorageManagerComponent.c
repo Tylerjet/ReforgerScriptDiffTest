@@ -1,7 +1,7 @@
 [EntityEditorProps(category: "GameScripted/UI/Inventory")]
 class SCR_TurretInventoryStorageManagerComponentClass : SCR_InventoryStorageManagerComponentClass
 {
-};
+}
 
 class SCR_TurretInventoryStorageManagerComponent : SCR_InventoryStorageManagerComponent
 {
@@ -22,9 +22,10 @@ class SCR_TurretInventoryStorageManagerComponent : SCR_InventoryStorageManagerCo
 			IEntity ent = weaponSlotComponent.GetWeaponEntity();
 			if (!ent)
 				continue;
+
 			BaseInventoryStorageComponent invComp = BaseInventoryStorageComponent.Cast(ent.FindComponent(BaseInventoryStorageComponent));
 			if (invComp)
 				storagesToAdd.Insert(invComp);
 		}
 	}
-};
+}

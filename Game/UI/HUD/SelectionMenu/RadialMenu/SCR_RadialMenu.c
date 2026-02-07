@@ -8,6 +8,7 @@ Can be interacted with mouse or gamepad thumbsticks
 class SCR_RadialMenu : SCR_SelectionMenu
 {
 	protected static SCR_RadialMenu m_GlobalRadialMenu;
+	protected static SCR_RadialMenu m_OpenedRadialMenu;  // reference to any currently open radial menu inheriting from this class
 	
 	const float SIZE_LARGE = 580;
 	protected const float SIZE_SMALL = 400;
@@ -96,6 +97,12 @@ class SCR_RadialMenu : SCR_SelectionMenu
 		return m_GlobalRadialMenu;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected void OnMenuOpened(ChimeraMenuBase menu)
+	{
+		if (m_OpenedRadialMenu)
+			m_OpenedRadialMenu.Close();
+	}
 
 	//------------------------------------------------------------------------------------------------
 	// Override
@@ -106,12 +113,17 @@ class SCR_RadialMenu : SCR_SelectionMenu
 	{
 		super.OnOpen(owner);
 		
+		if (m_OpenedRadialMenu)
+			m_OpenedRadialMenu.Close();
+		
 		// Setup controls
 		m_Inputs.Init();
 		AddActionListeners();
 
 		GetGame().GetCallqueue().Remove(ReleaseContext);
 		m_bActivateContext = true;
+		
+		m_OpenedRadialMenu = this;
 
 		DeselectEntry();
 	}
@@ -121,6 +133,8 @@ class SCR_RadialMenu : SCR_SelectionMenu
 	{
 		super.OnClose(owner);
 		RemoveActionListeners();
+		
+		m_OpenedRadialMenu = null;
 
 		// Allow to stop using context after split of a second to prevent unwanted input
 		if (m_RadialInputs)
@@ -267,6 +281,8 @@ class SCR_RadialMenu : SCR_SelectionMenu
 	{
 		super.AddActionListeners();
 		
+		SCR_MenuHelper.GetOnMenuOpened().Insert(OnMenuOpened);
+		
 		// Quick actions 1-9
 		if (!m_RadialControllerInputs.m_bUseQuickActions)
 			return;
@@ -287,6 +303,8 @@ class SCR_RadialMenu : SCR_SelectionMenu
 	override protected void RemoveActionListeners()
 	{
 		super.RemoveActionListeners();
+		
+		SCR_MenuHelper.GetOnMenuOpened().Remove(OnMenuOpened);
 		
 		// Quick actions 1-9
 		if (!m_RadialControllerInputs.m_bUseQuickActions)

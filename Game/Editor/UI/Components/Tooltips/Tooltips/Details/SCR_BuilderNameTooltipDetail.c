@@ -1,7 +1,8 @@
 
 [BaseContainerProps(), BaseContainerCustomTitleField("m_sDisplayName")]
-class SCR_BuilderNameTooltipDetail: SCR_EntityTooltipDetail
-{	
+class SCR_BuilderNameTooltipDetail : SCR_EntityTooltipDetail
+{
+	//------------------------------------------------------------------------------------------------
 	override bool InitDetail(SCR_EditableEntityComponent entity, Widget widget)
 	{		
 		TextWidget text = TextWidget.Cast(widget.FindAnyWidget("Text"));

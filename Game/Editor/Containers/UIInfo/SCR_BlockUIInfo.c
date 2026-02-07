@@ -1,12 +1,12 @@
 [BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
-class SCR_BlockUIInfo: SCR_UIInfo
+class SCR_BlockUIInfo : SCR_UIInfo
 {
 	[Attribute()]
 	protected ref array<ref SCR_SubBlockUIName> m_aDescriptionBlocks;
 	
 	override bool HasDescription()
 	{
-		return super.HasDescription() || !m_aDescriptionBlocks.IsEmpty();
+		return super.HasDescription() || m_aDescriptionBlocks && !m_aDescriptionBlocks.IsEmpty();
 	}
 	override LocalizedString GetDescription()
 	{
@@ -112,7 +112,7 @@ class SCR_ActionBlockUIName: SCR_DeviceBlockUIName
 	override LocalizedString GetName()
 	{
 		//--- ToDo: Turn color conversion to general function
-		Color sRGBA = UIColors.CONTRAST_COLOR;	
+		Color sRGBA = Color.FromInt(UIColors.CONTRAST_COLOR.PackToInt());	
 
 		return m_sDelimiter + super.GetName() + "<br/><br/>" + string.Format("<color rgba=%2><action name='%1' scale='1.7'/></color>", m_sActionName, UIColors.SRGBAFloatToInt(sRGBA)) + "</br>";
 	}
@@ -132,7 +132,7 @@ class SCR_KeyBlockUIName: SCR_DeviceBlockUIName
 	override LocalizedString GetName()
 	{
 		//--- ToDo: Turn color conversion to general function
-		Color sRGBA = UIColors.CONTRAST_COLOR;
+		Color sRGBA = Color.FromInt(UIColors.CONTRAST_COLOR.PackToInt());
 		
 		LocalizedString keys;
 		foreach (int i, SCR_KeyBlockEntry entry: m_aKeys)

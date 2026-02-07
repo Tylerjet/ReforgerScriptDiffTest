@@ -1,61 +1,28 @@
-//------------------------------------------------------------------------------------------------
+/* 
+Component for SCR_SuperMenuComponent tab.
+Relies on a SCR_DynamicFooterComponent somewhere in the layout under the menuRoot widget passed on creation to handle input buttons of the tab
+*/
+
 class SCR_SubMenuBase : SCR_ScriptedWidgetComponent
 {
-	protected SCR_SuperMenuBase m_ParentMenu;
-	//! Alternative super menu component used when menu is not available
-	protected SCR_SuperMenuComponent m_AltParentMenuComponent;
-	protected ref array<SCR_InputButtonComponent> m_aNavigationButtons  = new ref array<SCR_InputButtonComponent>();
+	protected ResourceName m_sNavigationButtonLayout;
+	
+	protected SCR_DynamicFooterComponent m_DynamicFooter;
+	protected ref array<SCR_InputButtonComponent> m_aNavigationButtons = {};
+	protected ref map<SCR_InputButtonComponent, bool> m_aNavigationButtonsVisibilityFlags = new map<SCR_InputButtonComponent, bool>();
+	
+	Widget m_wMenuRoot;
+	int m_iIndex;
+	
 	protected bool m_bShown;
 	protected bool m_bFocused;
+	
+	// Menu requests
+	protected ref ScriptInvokerVoid m_OnRequestCloseMenu;
+	protected ref ScriptInvokerInt2 m_OnRequestTabChange;
 
 	//------------------------------------------------------------------------------------------------
-	void OnMenuUpdate(SCR_SuperMenuBase parentMenu, float tDelta);
-
-	//------------------------------------------------------------------------------------------------
-	void OnMenuOpen(SCR_SuperMenuBase parentMenu)
-	{
-		m_ParentMenu = parentMenu;
-
-		//! Invoker for menu focus
-		if (m_ParentMenu)
-		{
-			m_ParentMenu.GetOnMenuFocusGained().Insert(OnMenuFocusGained);
-			m_ParentMenu.GetOnMenuFocusLost().Insert(OnMenuFocusLost);
-		}
-
-		// Add navigation buttons through parent menu and insert into a listener
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void OnMenuShow(SCR_SuperMenuBase parentMenu)
-	{
-		ShowNavigationButtons(true);
-		m_bShown = true;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void OnMenuHide(SCR_SuperMenuBase parentMenu)
-	{
-		ShowNavigationButtons(false);
-		m_bShown = false;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void OnMenuClose(SCR_SuperMenuBase parentMenu)
-	{
-		foreach (SCR_InputButtonComponent comp : m_aNavigationButtons)
-		{
-			if (!comp)
-				continue;
-
-			Widget w = comp.GetRootWidget();
-			if (!w)
-				continue;
-
-			w.RemoveFromHierarchy();
-		}
-	}
-
+	// --- Menu events ---
 	//------------------------------------------------------------------------------------------------
 	void OnMenuFocusGained()
 	{
@@ -69,73 +36,176 @@ class SCR_SubMenuBase : SCR_ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnTabChange(SCR_SuperMenuBase parentMenu);
-
+	void OnMenuShow();
+	void OnMenuHide();
+	void OnMenuUpdate(float tDelta);
+	
 	//------------------------------------------------------------------------------------------------
-	//! Returns true when this submenu is shown.
-	bool GetShown()
+	// --- Tab events ---
+	//------------------------------------------------------------------------------------------------
+	// Tab initialization, depending on SCR_TabViewComponent settings it can happen before or after OnMenuOpen, or even when the tab is first selected 
+	void OnTabCreate(Widget menuRoot, ResourceName buttonsLayout, int index)
 	{
-		return m_bShown;
+		m_iIndex = index;
+		m_wMenuRoot = menuRoot;
+		m_DynamicFooter = SCR_DynamicFooterComponent.FindComponentInHierarchy(menuRoot);
+		m_sNavigationButtonLayout = buttonsLayout;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Tab has actively been selected, or it's the default one after creation
+	void OnTabShow()
+	{
+		ShowNavigationButtons(true);
+		m_bShown = true;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Set super menu component used as alternative when super menu is not based on chimera menu
-	void SetParentMenuComponent(SCR_SuperMenuComponent superMenu)
+	// Another tab has been selected
+	void OnTabHide()
 	{
-		m_AltParentMenuComponent = superMenu;
+		ShowNavigationButtons(false);
+		m_bShown = false;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void CloseParent()
-	{
-		if (m_ParentMenu)
-			m_ParentMenu.CloseMenu();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void ShowNavigationButtons(bool show)
+	// Tab destruction
+	void OnTabRemove()
 	{
 		foreach (SCR_InputButtonComponent comp : m_aNavigationButtons)
 		{
-			if (!comp)
-				continue;
-
 			Widget w = comp.GetRootWidget();
 			if (!w)
 				continue;
 
-			w.SetVisible(show);
+			w.RemoveFromHierarchy();
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Generic, happens anytime a tab is selected
+	void OnTabChange();
+
+	//------------------------------------------------------------------------------------------------
+	// --- Protected ---
+	//------------------------------------------------------------------------------------------------
+	protected void ShowNavigationButtons(bool show)
+	{
+		bool visible;
+		
+		foreach (SCR_InputButtonComponent comp : m_aNavigationButtons)
+		{
+			if (m_aNavigationButtonsVisibilityFlags.Contains(comp))
+				visible = m_aNavigationButtonsVisibilityFlags.Get(comp);
+			
+			visible = visible && show;
+			
+			comp.SetVisible(visible, false);
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected SCR_ButtonComponent GetButtonComponent(string name, Widget parent = null)
+	// Flags a button to be set visible the next time ShowNavigationButtons() is called, like on TabShow
+	protected void FlagNavigationButtonVisibility(SCR_InputButtonComponent button, bool show)
 	{
-		if (parent == null)
-			parent = m_wRoot;
-
-		Widget w = parent.FindAnyWidget(name);
-		if (!w)
+		if (!button)
+			return;
+		
+		if (!m_aNavigationButtonsVisibilityFlags.Contains(button) || !m_aNavigationButtons.Contains(button))
+		{
+			PrintFormat(
+				"SCR_SubMenuBase - FlagNavigationButtonVisibility() - button %1, %2 is not a sub menu footer button as it was not created with CreateNavigationButton() method", 
+				button,
+				button.GetRootWidget().GetName()
+			);
+			
+			return;
+		}
+		
+		m_aNavigationButtonsVisibilityFlags.Set(button, show);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Use this to control the visibility of buttons created with CreateNavigationButton() method
+	protected void SetNavigationButtonVisibile(SCR_InputButtonComponent button, bool show, bool animate = false)
+	{
+		if (!button)
+			return;
+		
+		if (!m_aNavigationButtonsVisibilityFlags.Contains(button) || !m_aNavigationButtons.Contains(button))
+		{
+			PrintFormat(
+				"SCR_SubMenuBase - SetFooterButtonVisibile() - button %1, %2 is not a sub menu footer button as it was not created with CreateNavigationButton() method", 
+				button,
+				button.GetRootWidget().GetName()
+			);
+			
+			return;
+		}
+		
+		FlagNavigationButtonVisibility(button, show);
+		button.SetVisible(m_bShown && show, animate);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// If used on tab show, make sure to avoid creating duplicates
+ 	protected SCR_InputButtonComponent CreateNavigationButton(string actionName, string label, bool rightFooter = false, bool show = true)
+	{
+		if (!m_DynamicFooter)
 			return null;
 
-		SCR_ButtonComponent comp = SCR_ButtonComponent.Cast(w.FindHandler(SCR_ButtonComponent));
-		return comp;
-	}
+		SCR_EDynamicFooterButtonAlignment alignment = SCR_EDynamicFooterButtonAlignment.LEFT;
+		if (rightFooter)
+			alignment = SCR_EDynamicFooterButtonAlignment.RIGHT;
 
-	//------------------------------------------------------------------------------------------------
-	protected SCR_InputButtonComponent CreateNavigationButton(string actionName, string label, bool rightFooter = false)
-	{
-		SCR_InputButtonComponent comp = null;
-
-		if (m_ParentMenu)
-			comp = m_ParentMenu.AddNavigationButton(actionName, label, rightFooter);
-		else if (m_AltParentMenuComponent)
-			comp = 	m_AltParentMenuComponent.AddNavigationButton(actionName, label, rightFooter);
+		SCR_InputButtonComponent comp = m_DynamicFooter.CreateButton(m_sNavigationButtonLayout, label + m_iIndex, label, actionName, alignment, show);
 
 		if (!comp)
 			return null;
 
 		m_aNavigationButtons.Insert(comp);
+		m_aNavigationButtonsVisibilityFlags.Insert(comp, show);
 		return comp;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void RequestCloseMenu()
+	{
+		if (m_OnRequestCloseMenu)
+			m_OnRequestCloseMenu.Invoke();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Provides the desired tab and the current index
+	protected void RequestTabChange(int newTabIndex)
+	{
+		if (m_OnRequestTabChange)
+			m_OnRequestTabChange.Invoke(newTabIndex, m_iIndex);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// --- Public ---
+	//------------------------------------------------------------------------------------------------
+	bool GetShown()
+	{
+		return m_bShown;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerVoid GetOnRequestCloseMenu()
+	{
+		if (!m_OnRequestCloseMenu)
+			m_OnRequestCloseMenu = new ScriptInvokerVoid();
+		
+		return m_OnRequestCloseMenu;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerInt2 GetOnRequestTabChange()
+	{
+		if (!m_OnRequestTabChange)
+			m_OnRequestTabChange = new ScriptInvokerInt2();
+		
+		return m_OnRequestTabChange;
 	}
 }

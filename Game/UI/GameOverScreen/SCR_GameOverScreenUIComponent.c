@@ -36,6 +36,9 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 	[Attribute("ButtonHolder")]
 	protected string m_sButtonHolderName;
 	
+	[Attribute("RestartTimeHolder")]
+	protected string m_sRestartTimerHolderName;
+	
 	[Attribute("0.05")]
 	protected float m_fBackgroundColorOverlayOpacity;
 	
@@ -52,6 +55,7 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 	protected SCR_FadeUIComponent m_ContentFadeComponent;
 	protected SCR_FadeUIComponent m_TabViewFadeComponent;
 	protected SCR_FadeUIComponent m_ButtonHolderFadeComponent;
+	protected SCR_FadeUIComponent m_RestartTimerFadeComponent;
 	protected ref SCR_GameOverScreenUIContentData m_EndScreenUIContentInfo;
 	
 	//~ On tab changed
@@ -61,7 +65,7 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 	}
 	
 	//~ On Tab created
-	protected void OnTabCreated(SCR_TabViewComponent tabView, Widget w)
+	protected void OnTabCreated(SCR_TabViewComponent tabView, Widget w, int index)
 	{
 		if (!w)
 			return;
@@ -130,6 +134,8 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 			m_ButtonHolderFadeComponent.FadeIn();
 		if (m_OverlayBackgroundColorFadeUIComponent)
 			m_OverlayBackgroundColorFadeUIComponent.FadeIn();
+		if (m_RestartTimerFadeComponent)
+			m_RestartTimerFadeComponent.FadeIn();
 		
 		Widget returnToMenuBtn = m_wRoot.FindAnyWidget(m_sBackButtonName);
 		if (returnToMenuBtn)
@@ -247,6 +253,22 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 			}
 		}
 		
+		Widget restartTimerHolder = w.FindAnyWidget(m_sRestartTimerHolderName);
+		if (restartTimerHolder)
+		{
+			SCR_ServerRestartTimerUIComponent restartTimer = SCR_ServerRestartTimerUIComponent.Cast(restartTimerHolder.FindHandler(SCR_ServerRestartTimerUIComponent));
+			
+			if (restartTimer && restartTimer.IsValid())
+			{
+				m_RestartTimerFadeComponent = SCR_FadeUIComponent.Cast(restartTimerHolder.FindHandler(SCR_FadeUIComponent));
+				if (m_RestartTimerFadeComponent)
+				{
+					m_RestartTimerFadeComponent.SetFadeInSpeed(m_fContentFadeInSpeed);
+					restartTimerHolder.SetVisible(false);
+				}
+			}
+		}
+		
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());	
 		if (gameMode)
 			gameMode.GetOnGameEnd().Insert(OnGameEnd);
@@ -272,8 +294,8 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 			if (m_TabViewFadeComponent)
 				m_TabViewComponent.EnableAllTabs(false);
 			
-			m_TabViewComponent.m_OnChanged.Insert(OnTabChanged);
-			m_TabViewComponent.m_OnContentCreate.Insert(OnTabCreated);
+			m_TabViewComponent.GetOnChanged().Insert(OnTabChanged);
+			m_TabViewComponent.GetOnContentCreate().Insert(OnTabCreated);
 		}
 	}
 	

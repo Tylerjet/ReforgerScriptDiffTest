@@ -1,9 +1,3 @@
-[EntityEditorProps(category: "GameScripted/Gadgets", description: "Flashlight", color: "0 0 255 255")]
-class SCR_FlashlightComponentClass: SCR_GadgetComponentClass
-{
-};
-
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(), BaseContainerCustomTitleField("m_sDescription")]
 class SCR_LenseColor
 {
@@ -15,9 +9,13 @@ class SCR_LenseColor
 	
 	[Attribute("5.0", UIWidgets.Slider, desc: "Light Value", "-8.0 20 1", category: "Flashlight")]
 	float m_fLightValue;
-};
+}
 
-//------------------------------------------------------------------------------------------------
+[EntityEditorProps(category: "GameScripted/Gadgets", description: "Flashlight", color: "0 0 255 255")]
+class SCR_FlashlightComponentClass : SCR_GadgetComponentClass
+{
+}
+
 class SCR_FlashlightComponent : SCR_GadgetComponent
 {		
 	[Attribute("50", UIWidgets.EditBox, desc: "Intensity of the emmissive texture", params: "0 1000", category: "Flashlight")]
@@ -79,6 +77,7 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Switch flashlight lenses
+	//! \param[in] filter
 	protected void SwitchLenses(int filter)
 	{
 		m_iCurrentLenseColor = filter;
@@ -114,13 +113,13 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 		if (m_EmissiveMaterial)
 			m_EmissiveMaterial.SetEmissiveMultiplier(0);
 		
-		DeactivateGadgetFlag();
+		DeactivateGadgetUpdate();
 	}
-	
+		
 	//------------------------------------------------------------------------------------------------
 	//! Set near plane of light shadow to avoid blocking the light with arm/weapon
-	//! \param state determines mode: false - in hand / true - strapped
-	//! \param isLeavingVehicle is signal for removing vehicle near plane mode
+	//! \param[in] state determines mode: false - in hand / true - strapped
+	//! \param[in] isLeavingVehicle is signal for removing vehicle near plane mode
 	protected void SetShadowNearPlane(bool state, bool isLeavingVehicle = false)
 	{				
 		float nearPlane;
@@ -133,13 +132,12 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 			{
 					nearPlane = m_fLightNearPlaneVehicle;
 					m_bIsSlottedVehicle = true;
-				DeactivateGadgetFlag();
-				}
+					DeactivateGadgetUpdate();
+			}
 			else if (m_bActivated)
 			{
-				ActivateGadgetFlag();
-				AdjustTransform(m_vFlashlightAdjustOffset);
-		}
+				ActivateGadgetUpdate();
+			}
 		}
 		else		// in hand mode
 		{
@@ -147,9 +145,7 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 		}
 		
 		if (m_Light)
-		{
 			m_Light.SetNearPlane(nearPlane);
-		}
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -282,34 +278,31 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 		
 		super.ToggleActive(state);
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void ActivateGadgetFlag()
-	{
-		super.ActivateGadgetFlag();
-
-		ConnectToGadgetsSystem();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void DeactivateGadgetFlag()
-	{
-		super.DeactivateGadgetFlag();
-		
-		DisconnectFromGadgetsSystem();
-		
-		if (m_iMode == EGadgetMode.IN_SLOT )	// reset slot position of the gadget back to its default
-			AdjustTransform();
-	}
-	
+			
 	//------------------------------------------------------------------------------------------------
 	override void ActivateAction()
 	{
-		SCR_CharacterControllerComponent scrCharacterController = SCR_CharacterControllerComponent.Cast(m_CharController);
-		if (scrCharacterController && scrCharacterController.GetLifeState() != ECharacterLifeState.ALIVE)	// if in chars inventory && char is dead/uncon
+		if (m_CharController && m_CharController.GetLifeState() != ECharacterLifeState.ALIVE)	// if in chars inventory && char is dead/uncon
 			return;
 		
 		ToggleActive(!m_bActivated);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override protected void ActivateGadgetUpdate()
+	{
+		super.ActivateGadgetUpdate();
+		
+		AdjustTransform(m_vFlashlightAdjustOffset);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override protected void DeactivateGadgetUpdate()
+	{
+		super.DeactivateGadgetUpdate();
+		
+		if (m_iMode == EGadgetMode.IN_SLOT) // reset slot position of the gadget back to its default
+			AdjustTransform();
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -358,19 +351,27 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 	override bool OnTicksOnRemoteProxy() 
 	{ 
 		return true; // proxies will only tick on owners without this
-	};
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void EOnActivate(IEntity owner)
+	{
+		super.EOnActivate(owner);
+		
+		if (m_bActivated)
+			EnableLight();
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void Update(float timeSlice)
 	{		
-		if (m_iMode != EGadgetMode.IN_SLOT || !m_CharController || m_CharController.IsDead())	// deactivate frame on death without turning the light off
+		if (!m_CharController || m_CharController.IsDead())	// deactivate frame on death without turning the light off
 		{
-			DeactivateGadgetFlag();
+			DeactivateGadgetUpdate();
 			return;
 		}
-			
-		SCR_CharacterControllerComponent scrCharacterController = SCR_CharacterControllerComponent.Cast(m_CharController);	
-		if (scrCharacterController && scrCharacterController.GetLifeState() != ECharacterLifeState.ALIVE)	// not needed while uncon + can get quite jittery there
+						
+		if (m_iMode != EGadgetMode.IN_SLOT || m_CharController.GetLifeState() != ECharacterLifeState.ALIVE)	// run logic below only in slot,  not needed while uncon + can get quite jittery there
 			return;
 		
 		// adjust angle of the flashlight to provide usable angle within various poses
@@ -400,4 +401,4 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 			m_LenseArray.Insert(defColor);
 		}
 	}
-};
+}

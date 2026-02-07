@@ -8,7 +8,7 @@ class SCR_ComboBoxIconComponent: SCR_ComboBoxComponent
 	protected string m_sIconWidgetName;
 	
 	protected ImageWidget m_IconWidget;
-	protected ref ScriptInvoker Event_OnCreateElement = new ref ScriptInvoker;
+	protected ref ScriptInvoker Event_OnCreateElement = new ScriptInvoker;
 	protected ref Color m_cIconDisabledColor = new Color (0.8, 0.8, 0.8, 1);
 	
 	protected override void UpdateName()
@@ -34,15 +34,15 @@ class SCR_ComboBoxIconComponent: SCR_ComboBoxComponent
 	int AddItemAndIcon(string item, ResourceName icon, float rotation = 0, Managed data = null)
 	{
 		if (!m_aElementIcons)
-			m_aElementIcons = new ref array<ResourceName>;
+			m_aElementIcons = new array<ResourceName>;
 		
 		if (!m_aElementIconRotations)
-			m_aElementIconRotations = new ref array<float>;
+			m_aElementIconRotations = new array<float>;
 		
 		m_aElementIcons.Insert(icon);
 		m_aElementIconRotations.Insert(rotation);
 		
-		int i = super.AddItem(item, data);
+		int i = super.AddItem(item, false, data);
 		return i;
 	}
 	
@@ -53,10 +53,10 @@ class SCR_ComboBoxIconComponent: SCR_ComboBoxComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override int AddItem(string item, Managed data = null)
+	override int AddItem(string item, bool last = false, Managed data = null)
 	{
 		m_aElementIcons.Insert(string.Empty);
-		int i = super.AddItem(item, data);
+		int i = super.AddItem(item, last, data);
 		return i;
 	}
 	
@@ -118,19 +118,19 @@ class SCR_ComboBoxIconComponent: SCR_ComboBoxComponent
 				return;
 			
 			if (enable)
-				iconWidget.SetColor(Color.White);
+				iconWidget.SetColor(Color.FromInt(Color.WHITE));
 			else
 				iconWidget.SetColor(m_cIconDisabledColor);
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void RemoveItem(int item)
+	override void RemoveItem(int item, bool last = false)
 	{
 		if (item < m_aElementIcons.Count())
 			m_aElementIcons.Remove(item);
 		
-		super.RemoveItem(item);
+		super.RemoveItem(item, last);
 	}
 	
 	override void HandlerAttached(Widget w)

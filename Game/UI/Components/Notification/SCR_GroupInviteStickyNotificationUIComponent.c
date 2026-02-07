@@ -1,4 +1,4 @@
-class SCR_GroupInviteStickyNotificationUIComponent: SCR_StickyNotificationUIComponent
+class SCR_GroupInviteStickyNotificationUIComponent : SCR_StickyNotificationUIComponent
 {
 	[Attribute("#AR-Notification_Sticky_GroupInvite")]
 	protected LocalizedString m_sGroupInviteText;
@@ -6,6 +6,7 @@ class SCR_GroupInviteStickyNotificationUIComponent: SCR_StickyNotificationUIComp
 	SCR_GroupsManagerComponent m_GroupManager;
 	SCR_PlayerControllerGroupComponent m_PlayerControllerGroupComponent;
 	
+	//------------------------------------------------------------------------------------------------
 	//Shows the sticky notification including player who invited you and the group callsign
 	protected void ShowGroupInviteNotification(int groupId, bool isInit = false)
 	{		
@@ -26,16 +27,19 @@ class SCR_GroupInviteStickyNotificationUIComponent: SCR_StickyNotificationUIComp
 		SetStickyActive(true, !isInit);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnInviteReceived(int groupId, int fromPlayerId)
 	{
 		ShowGroupInviteNotification(groupId);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void OnInviteAcceptedOrCancelled(int groupId)
 	{
 		SetStickyActive(false);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnInit(SCR_NotificationsLogComponent notificationLog)
 	{	
 		super.OnInit(notificationLog);
@@ -67,14 +71,15 @@ class SCR_GroupInviteStickyNotificationUIComponent: SCR_StickyNotificationUIComp
 		SetVisible(groupInviteID > -1);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected override void OnButton()
 	{
 		MenuManager menuManager = GetGame().GetMenuManager();
-		
 		if (menuManager)
 			menuManager.OpenDialog(ChimeraMenuPreset.PlayerListMenu);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected override void OnDestroy()
 	{
 		if (!m_PlayerControllerGroupComponent)
@@ -84,4 +89,4 @@ class SCR_GroupInviteStickyNotificationUIComponent: SCR_StickyNotificationUIComp
 		m_PlayerControllerGroupComponent.GetOnInviteAccepted().Remove(OnInviteAcceptedOrCancelled);
 		m_PlayerControllerGroupComponent.GetOnInviteCancelled().Remove(OnInviteAcceptedOrCancelled);
 	}
-};
+}

@@ -3,7 +3,7 @@ class SCR_AIDangerReaction_DoorMovement : SCR_AIDangerReaction
 {
 	static const float AGENT_DEFAULT_RADIUS = 0.3;
 	static const float AGENT_DEFAULT_HEIGHT = 1.8;
-	static const float REACTION_DIST_SQ = 25.0;
+	static const float REACTION_DIST_SQ = 100.0;
 #ifdef WORKBENCH
 	ref Shape s1,s2,s3,s4;
 #endif
@@ -11,6 +11,8 @@ class SCR_AIDangerReaction_DoorMovement : SCR_AIDangerReaction
 	override bool PerformReaction(notnull SCR_AIUtilityComponent utility, notnull SCR_AIThreatSystem threatSystem, AIDangerEvent dangerEvent)
 	{
 		IEntity door = dangerEvent.GetObject();
+		if (!door)
+			return false;
 		vector agentPos = utility.GetOrigin();
 		vector doorPos = door.GetOrigin();
 		
@@ -21,14 +23,14 @@ class SCR_AIDangerReaction_DoorMovement : SCR_AIDangerReaction
 		
 		vector min, max;
 		float distToDoorY = doorPos[1] - agentPos[1];
-		//If agent above door higher than the door height, skip 
-		if (-distToDoorY > AGENT_DEFAULT_HEIGHT)
+		//If agent is below door more than agent height, skip 
+		if (distToDoorY > AGENT_DEFAULT_HEIGHT)
 			return false;
 			
 		door.GetBounds(min, max);
 		vector doorExtent = max - min;
-		//If agent bellow door and dist is higher than agent height, skip
-		if (distToDoorY > doorExtent[1])
+		//If agent above door more than door height, skip
+		if (-distToDoorY > doorExtent[1])
 			return false;
 		
 		float distToDoorXZ = vector.DistanceXZ(doorPos, agentPos) - AGENT_DEFAULT_RADIUS;
@@ -76,6 +78,13 @@ class SCR_AIDangerReaction_DoorMovement : SCR_AIDangerReaction
 		if (doorComponent.IsClosing())
 			rightHand = -1.0 * rightHand;
 		
+		IEntity doorFrame = door.GetParent();
+		if (!doorFrame)
+			doorFrame = door;
+		
+		vector doorFrameUp = doorFrame.VectorToParent(vector.Up);
+		vector fleeingDir;
+		
 #ifdef WORKBENCH
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_DEBUG_SHAPES))
 		{
@@ -86,18 +95,36 @@ class SCR_AIDangerReaction_DoorMovement : SCR_AIDangerReaction
 #endif
 		float dotP1 = vector.Dot(doorNormal, agentDirection);
 		float dotP2 = vector.Dot(rightHand, agentDirection);
+		float distanceToMove;
+		bool isDoorOpeningUpwards = !float.AlmostEqual(vector.Dot(doorNormal, doorFrameUp),0); // bar gates have rotation planes paralel with up vector of "door frame"
 		
-		if (dotP1 < 0) // standing in the other halfplane, than the one where the door is revolving
-			return false;
-		else if (dotP2 > 0) // standing in the halfplane of revolving door but not in the quadrant
-			return false;
-		
-		float distanceToMove = Math.Clamp((doorLength - distToDoorXZ) * 2.0, 2.0 * AGENT_DEFAULT_RADIUS, doorLength);
-		vector fleeingDir;
-		if (doorComponent.IsClosing())
-			fleeingDir = -1.0 * rightHand;
+		if (isDoorOpeningUpwards)
+		{
+			if (!doorComponent.IsClosing()) // ignoring opening gate
+				return false;
+			else 
+			{
+				distToDoorXZ = vector.DistanceXZ(doorFrame.GetOrigin(), agentPos) - AGENT_DEFAULT_RADIUS;
+				doorLength = 2.0; // bit hacky but simple
+				if (dotP2 < 0)
+					fleeingDir = -1.0 * rightHand;
+				else 
+					fleeingDir = rightHand;
+				distanceToMove = Math.Clamp((doorLength - distToDoorXZ) * 2.0, doorLength, 2.0 * doorLength);
+			}
+		}
 		else
-			fleeingDir = doorNormal;
+		{
+			if (dotP1 < 0) 			// standing in the other halfplane, than the one where the door is revolving
+				return false;
+			else if (dotP2 > 0) 	// standing in the halfplane of revolving door but not in the quadrant
+				return false;
+			if  (doorComponent.IsClosing())
+				fleeingDir = -1.0 * rightHand;
+			else
+				fleeingDir = doorNormal;
+			distanceToMove = Math.Clamp((doorLength - distToDoorXZ) * 2.0, 2.0 * AGENT_DEFAULT_RADIUS, doorLength);
+		}
 		
 #ifdef WORKBENCH
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_DEBUG_SHAPES))

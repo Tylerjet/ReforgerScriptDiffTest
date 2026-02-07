@@ -67,10 +67,32 @@ class HitZone: ScriptAndConfig
 	proto external void HandleDamage(float damage, int damageType, IEntity instigator);
 	//Returns true if its a proxy
 	proto external bool IsProxy();
+	//! Returns all collider IDs attached to this hitzone
+	proto external int GetColliderIDs(out notnull array<int> outIDs);
 	//gets collider description
 	proto bool TryGetColliderDescription(IEntity owner, int descIndex, out vector transformLS[4], out int boneIndex, out int nodeID);
 	//Gets collider description from name
 	proto bool TryGetColliderDescriptionFromName(IEntity owner, string colliderName, out vector transformLS[4], out int boneIndex, out int nodeID);
+
+	// callbacks
+
+	//! Call OnInit method from script
+	event void OnInit(IEntity pOwnerEntity, GenericComponent pManagerComponent);
+	//! Called when damage changes
+	event protected void OnHealthSet();
+	//! Called when max damage changes
+	event protected void OnMaxHealthChanged();
+	//! Called when damage state changes
+	event protected void OnDamageStateChanged();
+	//! Called when the damage has been dealt by the server, doesn't get called for DOT.
+	event void OnDamage(notnull BaseDamageContext damageContext);
+	/*!
+	Calculates the amount of damage a hitzone will receive.
+
+	\param BaseDamageConext DamageContext for this computation
+	\param bool isDOT true if this computation is fot DOT
+	*/
+	event float ComputeEffectiveDamage(notnull BaseDamageContext damageContext, bool isDOT);
 }
 
 /*!

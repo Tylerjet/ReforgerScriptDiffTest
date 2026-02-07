@@ -1,13 +1,10 @@
-[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
-/** @ingroup ManualCamera
-*/
+//! @ingroup ManualCamera
 
-/*!
-Adjust camera field of view.
-*/
+//! Adjust camera field of view.
+[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
 class SCR_ZoomManualCameraComponent : SCR_BaseManualCameraComponent
 {
-	const float INERTIA_THRESHOLD = 0.001;
+	protected static const float INERTIA_THRESHOLD = 0.001;
 	
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, desc: "Minimum field of view", params: "0 180 1")]
 	protected float m_fMinFOV;
@@ -26,29 +23,39 @@ class SCR_ZoomManualCameraComponent : SCR_BaseManualCameraComponent
 	protected bool m_bIsInstant;
 	protected ref ScriptInvoker m_OnZoomChange = new ScriptInvoker();
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnZoomChange()
 	{
 		return m_OnZoomChange;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraSave(SCR_ManualCameraComponentSave data)
 	{
 		if (m_fTargetFOV != 0)
 			data.m_aValues = {m_fTargetFOV};
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraLoad(SCR_ManualCameraComponentSave data)
 	{
 		m_fTargetFOV = data.m_aValues[0];
 		m_bIsInstant = true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraReset()
 	{
 		m_fTargetFOV = GetCameraEntity().GetDefaultFOV();
 		m_bIsAnimating = true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraFrame(SCR_ManualCameraParam param)
 	{
-		if (!param.isManualInputEnabled) return;
+		if (!param.isManualInputEnabled)
+			return;
 		
 		if (GetInputManager().GetActionValue("ManualCameraZoomReset"))
 		{
@@ -83,8 +90,10 @@ class SCR_ZoomManualCameraComponent : SCR_BaseManualCameraComponent
 			m_OnZoomChange.Invoke(param.fov);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool EOnCameraInit()
 	{
 		return true;
 	}
-};
+}

@@ -72,7 +72,7 @@ class SCR_EvacuateTask : SCR_RequestedTask
 		vector requesterOrigin = requesterEntity.GetOrigin();
 		
 		array<SCR_MilitaryBaseComponent> bases = {};
-		SCR_MilitaryBaseManager.GetInstance().GetBases(bases);
+		SCR_MilitaryBaseSystem.GetInstance().GetBases(bases);
 		
 		for (int i = 0; i < bases.Count(); i++)
 		{

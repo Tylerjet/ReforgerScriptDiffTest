@@ -8,7 +8,7 @@ class SCR_ShowHideInEditorComponentClass : ScriptComponentClass
 
 class SCR_ShowHideInEditorComponent : ScriptComponent
 {
-	[Attribute("1", desc: "Set when the entity is visible. If false will hide itself in editor and show outside of editor. USE SCR_EditableEntityVisibilityChildComponent IF EDITABLE ENTITY", uiwidget: UIWidgets.Flags, enums: ParamEnumArray.FromEnum(EShowHideInEditor))]
+	[Attribute("1", desc: "Set when the entity is visible. If false will hide itself in editor and show outside of editor. This component is ignored if attached to an EditableEntity or if parent is editable entity", uiwidget: UIWidgets.Flags, enums: ParamEnumArray.FromEnum(EShowHideInEditor))]
 	protected EShowHideInEditor m_eShowHideInEditor;
 	
 	[Attribute("0", desc: "If true will also Show/Hide children when entity is hidden")]
@@ -94,6 +94,15 @@ class SCR_ShowHideInEditorComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
+		//~ Use editor logic if attached to editable entity
+		if (owner.FindComponent(SCR_EditableEntityComponent))
+			return;
+		
+		//~ Use editor logic if attached to parent that is an editable entity
+		IEntity parent = owner.GetParent();
+		if (parent && parent.FindComponent(SCR_EditableEntityComponent))
+			return;
+		
 		//~  Set invisible on init
 		GetOwner().ClearFlags(EntityFlags.VISIBLE, m_bShowHideChildren);
 		
@@ -151,9 +160,18 @@ class SCR_ShowHideInEditorComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnDelete(IEntity owner)
-	{
+	{		
 		//~  Hide in workbench
 		if (SCR_Global.IsEditMode())
+			return;
+		
+		//~ Use editor logic if attached to editable entity
+		if (owner.FindComponent(SCR_EditableEntityComponent))
+			return;
+		
+		//~ Use editor logic if attached to parent that is an editable entity
+		IEntity parent = owner.GetParent();
+		if (parent && parent.FindComponent(SCR_EditableEntityComponent))
 			return;
 			
 		if (m_eShowHideInEditor <= 0)

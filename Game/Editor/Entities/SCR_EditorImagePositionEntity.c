@@ -530,7 +530,16 @@ class SCR_EditorImagePositionEntity : GenericEntity
 		if (SCR_Global.IsEditMode(this))
 		{
 			if (m_PreviewMesh)
-				SetObject(Resource.Load(m_PreviewMesh).GetResource().ToVObject(), "");
+			{
+				Resource resource = Resource.Load(m_PreviewMesh);
+				if (!resource.IsValid())
+				{
+					Print("Cannot load " + m_PreviewMesh + " | " + FilePath.StripPath(__FILE__) + ":" + __LINE__, LogLevel.WARNING);
+					return;
+				}
+
+				SetObject(resource.GetResource().ToVObject(), "");
+			}
 			
 			return;
 		}
@@ -540,7 +549,7 @@ class SCR_EditorImagePositionEntity : GenericEntity
 	void ~SCR_EditorImagePositionEntity()
 	{
 		WorldEditorAPI api = _WB_GetEditorAPI();
-		if (api && api.IsEntitySelected(this))
+		if (api && api.IsEntitySelected(api.EntityToSource(this)))
 			SCR_EditorImageGeneratorEntity.AddSelectedPosition(this);
 	}
 	override void _WB_AfterWorldUpdate(float timeSlice)

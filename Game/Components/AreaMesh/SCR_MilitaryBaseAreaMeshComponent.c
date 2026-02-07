@@ -1,11 +1,9 @@
-//------------------------------------------------------------------------------------------------
 [ComponentEditorProps(category: "GameScripted/Area Mesh", description: "")]
-class SCR_MilitaryBaseAreaMeshComponentClass: SCR_BaseAreaMeshComponentClass
+class SCR_MilitaryBaseAreaMeshComponentClass : SCR_BaseAreaMeshComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
-class SCR_MilitaryBaseAreaMeshComponent: SCR_BaseAreaMeshComponent
+class SCR_MilitaryBaseAreaMeshComponent : SCR_BaseAreaMeshComponent
 {
 	SCR_MilitaryBaseComponent m_MilitaryBaseComponent;
 	
@@ -32,4 +30,4 @@ class SCR_MilitaryBaseAreaMeshComponent: SCR_BaseAreaMeshComponent
 		
 		GenerateAreaMesh();
 	}
-};
+}

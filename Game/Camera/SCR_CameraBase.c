@@ -106,7 +106,7 @@ class SCR_CameraBase: CameraBase
 	override void _WB_AfterWorldUpdate(float timeSlice)
 	{
 		WorldEditorAPI api = _WB_GetEditorAPI();
-		if (!api || (!api.IsEntitySelected(this) && !m_bShowDebugViewCone))
+		if (!api || (!api.IsEntitySelected(api.EntityToSource(this)) && !m_bShowDebugViewCone))
 			return;
 		
 		float length = GetFarPlane();

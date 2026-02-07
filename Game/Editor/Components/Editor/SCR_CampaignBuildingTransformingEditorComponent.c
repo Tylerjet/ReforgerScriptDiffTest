@@ -73,9 +73,8 @@ class SCR_CampaignBuildingTransformingEditorComponent : SCR_TransformingEditorCo
 		{
 			layoutComponent.LockCompositionInteraction();
 			layoutComponent.DeletePreview();
+			SCR_EntityHelper.DeleteEntityAndChildren(layoutComponent.GetOwner());
 		}
-		
-		SCR_EntityHelper.DeleteEntityAndChildren(layoutComponent.GetOwner());
 	}
 
 	//------------------------------------------------------------------------------------------------

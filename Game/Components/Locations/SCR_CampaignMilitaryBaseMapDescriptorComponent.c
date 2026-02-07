@@ -1,9 +1,7 @@
-//------------------------------------------------------------------------------------------------
 class SCR_CampaignMilitaryBaseMapDescriptorComponentClass : SCR_MilitaryBaseMapDescriptorComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_CampaignMilitaryBaseMapDescriptorComponent : SCR_MilitaryBaseMapDescriptorComponent
 {
 	protected ref array<MapLink> m_aMapLinks = {};
@@ -13,12 +11,15 @@ class SCR_CampaignMilitaryBaseMapDescriptorComponent : SCR_MilitaryBaseMapDescri
 	protected bool m_bIsHovered;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] base
 	void SetParentBase(notnull SCR_CampaignMilitaryBaseComponent base)
 	{
 		m_Base = base;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] faction
 	void MapSetup(notnull Faction faction)
 	{
 		MapItem item = Item();
@@ -40,9 +41,9 @@ class SCR_CampaignMilitaryBaseMapDescriptorComponent : SCR_MilitaryBaseMapDescri
 			Color rangeColor;
 			
 			if (baseFaction)
-				rangeColor = baseFaction.GetFactionColor();
+				rangeColor = Color.FromInt(baseFaction.GetFactionColor().PackToInt());
 			else
-				rangeColor = Color(1, 1, 1, 1);
+				rangeColor = Color.FromInt(Color.WHITE);
 			
 			props.SetOutlineColor(rangeColor);
 			rangeColor.SetA(0.1);
@@ -54,6 +55,8 @@ class SCR_CampaignMilitaryBaseMapDescriptorComponent : SCR_MilitaryBaseMapDescri
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] icon
+	//! \param[in] hovering
 	void OnIconHovered(SCR_CampaignMapUIBase icon, bool hovering)
 	{
 		m_bIsHovered = hovering;
@@ -68,12 +71,18 @@ class SCR_CampaignMilitaryBaseMapDescriptorComponent : SCR_MilitaryBaseMapDescri
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] link
 	void UnregisterMapLink(notnull MapLink link)
 	{
 		m_aMapLinks.RemoveItem(link);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] owner
+	//! \param[in] target
+	//! \return
 	bool FindMapLink(MapDescriptorComponent owner, MapDescriptorComponent target)
 	{
 		for (int i = m_aMapLinks.Count() - 1; i >= 0; i--)
@@ -88,12 +97,16 @@ class SCR_CampaignMilitaryBaseMapDescriptorComponent : SCR_MilitaryBaseMapDescri
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] link
 	void RegisterMapLink(notnull MapLink link)
 	{
 		m_aMapLinks.Insert(link);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] link
 	void ColorMapLink(notnull MapLink link)
 	{
 		MapLinkProps props = link.GetMapLinkProps();
@@ -103,7 +116,7 @@ class SCR_CampaignMilitaryBaseMapDescriptorComponent : SCR_MilitaryBaseMapDescri
 		
 		props.SetLineWidth(m_Base.GetLineWidth());
 		
-		Color c = props.GetLineColor();
+		Color c = Color.FromInt(props.GetLineColor().PackToInt());
 		
 		if (!c)
 			return;
@@ -160,6 +173,8 @@ class SCR_CampaignMilitaryBaseMapDescriptorComponent : SCR_MilitaryBaseMapDescri
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] unlinkHQ
 	void UnregisterMyMapLinks(bool unlinkHQ = false)
 	{
 		Faction playerFaction = SCR_FactionManager.SGetLocalPlayerFaction();
@@ -202,6 +217,8 @@ class SCR_CampaignMilitaryBaseMapDescriptorComponent : SCR_MilitaryBaseMapDescri
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] unlinkHQ
 	void HandleMapLinks(bool unlinkHQ = false)
 	{
 		if (m_Base.IsHQ() && m_Base.GetFaction() != SCR_FactionManager.SGetLocalPlayerFaction())
@@ -252,6 +269,10 @@ class SCR_CampaignMilitaryBaseMapDescriptorComponent : SCR_MilitaryBaseMapDescri
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] myFaction
+	//! \param[in] localPlayerFaction
+	//! \param[in] mobilehq
 	void CreateLinks(Faction myFaction, Faction localPlayerFaction, MapItem mobilehq = null)
 	{
 		if (mobilehq)
@@ -293,6 +314,7 @@ class SCR_CampaignMilitaryBaseMapDescriptorComponent : SCR_MilitaryBaseMapDescri
 	
 	//------------------------------------------------------------------------------------------------
 	//! Shows info about the base in the map
+	//! \param[in] playerFactionCampaign
 	void HandleMapInfo(SCR_CampaignFaction playerFactionCampaign = null)
 	{
 		SCR_GameModeCampaign campaignGameMode = SCR_GameModeCampaign.GetInstance();
@@ -364,4 +386,4 @@ class SCR_CampaignMilitaryBaseMapDescriptorComponent : SCR_MilitaryBaseMapDescri
 		
 		HandleMapLinks();
 	}
-};
+}

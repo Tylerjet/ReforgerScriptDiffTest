@@ -9,8 +9,16 @@ class SCR_TutorialBallistic2: SCR_BaseCampaignTutorialArlandStage
 	override protected void Setup()
 	{
 		m_fDuration = 10;
-   		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
-		//#AR-Tutorial_ShootingRange_BalisticsProtection
-		//BALLISTIC_PROTECTION
+		m_bConditionPassCheck = true;
+		
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+   		PlaySoundSystem("Balistic", true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool GetIsFinished()
+	{
+		return !m_TutorialComponent.GetVoiceSystem().IsPlaying();
 	}
 };

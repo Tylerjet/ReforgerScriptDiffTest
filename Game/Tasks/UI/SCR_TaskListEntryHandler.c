@@ -57,7 +57,7 @@ class SCR_TaskListEntryHandler : SCR_ButtonBaseComponent
 		if (m_Task == localTask)
 			textWidget.SetColor(m_AssignedTaskColor);
 		else
-			textWidget.SetColor(Color.White);
+			textWidget.SetColor(Color.FromInt(Color.WHITE));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -82,13 +82,13 @@ class SCR_TaskListEntryHandler : SCR_ButtonBaseComponent
 		else if (m_Task.IsPriority())
 		{
 			background.LoadImageFromSet(0,m_sIconImageset, SCR_BaseTask.TASK_BG_M);
-			background.SetColor(Color.White);
+			background.SetColor(Color.FromInt(Color.WHITE));
 			outline.LoadImageFromSet(0,m_sIconImageset, SCR_BaseTask.TASK_O_M);
 		}
 		else
 		{
 			background.LoadImageFromSet(0,m_sIconImageset, SCR_BaseTask.TASK_BG);
-			background.SetColor(Color.White);
+			background.SetColor(Color.FromInt(Color.WHITE));
 			outline.LoadImageFromSet(0,m_sIconImageset, SCR_BaseTask.TASK_O);
 		}
 			
@@ -257,18 +257,22 @@ class SCR_TaskListEntryHandler : SCR_ButtonBaseComponent
 	//------------------------------------------------------------------------------------------------
 	void SetCollapsed(bool collapse, bool anim = true)
 	{
+		int opacity = 1;
+		if (collapse)
+			opacity = 0;
+		
 		m_CollapseHandler.SetCollapsed(collapse, anim);
-		Widget assignBtns = m_wRoot.FindAnyWidget("AssignButtons");
+		Widget assignBtns = m_wRoot.FindAnyWidget("AcceptButton");
 		if (assignBtns)
 		{
-			assignBtns.SetOpacity(collapse);
-			assignBtns.SetEnabled(collapse);
+			assignBtns.SetOpacity(opacity);
+			assignBtns.SetEnabled(opacity);
 
 			Widget mapBtn = m_wRoot.FindAnyWidget("MapButton");
 			if (mapBtn)
 			{
-				mapBtn.SetOpacity(collapse);
-				mapBtn.SetEnabled(collapse);
+				mapBtn.SetOpacity(opacity);
+				mapBtn.SetEnabled(opacity);
 			}
 		}
 	}

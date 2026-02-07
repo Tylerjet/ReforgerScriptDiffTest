@@ -29,10 +29,12 @@ class AIBaseUtilityComponent: AIComponent
 	proto external AIActionBase FindActionOfType(typename actionType);
 	//! Finds action of provided type or a type inherited from it
 	proto external AIActionBase FindActionOfInheritedType(typename actionType);
+	proto external void FindActionsOfType(typename actionType, notnull array<ref AIActionBase> outActions);
+	proto external void FindActionsOfInheritedType(typename actionType, notnull array<ref AIActionBase> outActions);
 	proto external void SetStateOfRelatedAction(AIActionBase relatedAction, EAIActionState state);
 	proto external bool CallActionsOnMessage(AIMessage msg);
 	//Getters and Setters
-	proto external void GetActions(out array<ref AIActionBase> outActions);
+	proto external void GetActions(notnull array<ref AIActionBase> outActions);
 	proto external ref AIActionBase GetCurrentAction();
 	proto external void SetCurrentAction(AIActionBase executed);
 	proto external ref AIActionBase GetExecutedAction();

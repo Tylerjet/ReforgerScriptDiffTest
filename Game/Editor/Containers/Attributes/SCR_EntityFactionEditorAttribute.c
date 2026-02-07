@@ -15,7 +15,7 @@ class SCR_EntityFactionEditorAttribute : SCR_BaseFactionEditableAttribute
 		if (vehicle)
 			return false;
 
-		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.Cast(entity.FindComponent(SCR_ArsenalComponent));
+		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.FindArsenalComponent(entity);
 		if (arsenalComponent)
 			return false;
 

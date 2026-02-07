@@ -10,6 +10,7 @@ class SCR_InventoryDamageInfoUI : ScriptedWidgetComponent
 	protected SCR_SlotUIComponent					m_pFrameSlotUI;
 	protected Widget 								m_wWidgetUnderCursor;
 	protected bool 									m_bForceShow;
+	protected string								m_sTextName;
 
 	protected RichTextWidget						m_wTourniquetHintIconWidget;
 	protected ImageWidget							m_wDamageIconWidget, m_wBleedingIconWidget, m_wTourniquetIconWidget, m_wSalineBagIconWidget, m_wMorphineIconWidget, m_wFractureIconWidget, m_wFractureIcon2Widget;
@@ -201,8 +202,15 @@ class SCR_InventoryDamageInfoUI : ScriptedWidgetComponent
 			return;
 		}
 		
+		m_sTextName = sName;
 		m_wTextName.SetText(sName);
 		m_wTextName.GetParent().SetVisible(true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	string GetName()
+	{
+		return m_sTextName;
 	}
 
 	//------------------------------------------------------------------------------------------------

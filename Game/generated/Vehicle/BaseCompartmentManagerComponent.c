@@ -15,6 +15,7 @@ class BaseCompartmentManagerComponentClass: GameComponentClass
 
 class BaseCompartmentManagerComponent: GameComponent
 {
+	proto external IEntity GetOwner();
 	//! Searches for compartment by ID of slot and compartment manager.
 	proto external BaseCompartmentSlot FindCompartment(int compartmentID, int mgrId = -1);
 	//! Returns a list and count of all compartments

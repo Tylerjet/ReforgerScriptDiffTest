@@ -3,12 +3,10 @@ typedef func OnCompositionSlotManagerEntityChangedMethod;
 typedef ScriptInvokerBase<OnCompositionSlotManagerEntityChangedMethod> OnCompsitionSlotManagerEntityChanged;
 
 [ComponentEditorProps(category: "GameScripted/Compositions", description: "")]
-class SCR_CompositionSlotManagerComponentClass: ScriptComponentClass
+class SCR_CompositionSlotManagerComponentClass : ScriptComponentClass
 {
-};
+}
 
-/*!
-*/
 class SCR_CompositionSlotManagerComponent : ScriptComponent
 {	
 	protected ref map<EntityID, IEntity> m_aOccupiedStatic = new map<EntityID, IEntity>();
@@ -17,6 +15,8 @@ class SCR_CompositionSlotManagerComponent : ScriptComponent
 	
 	protected ref OnCompsitionSlotManagerEntityChanged m_OnEntityChanged;
 
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	OnCompsitionSlotManagerEntityChanged GetOnEntityChanged()
 	{
 		if (!m_OnEntityChanged)
@@ -25,6 +25,8 @@ class SCR_CompositionSlotManagerComponent : ScriptComponent
 		return m_OnEntityChanged;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	static SCR_CompositionSlotManagerComponent GetInstance()
 	{
 		if (GetGame().GetGameMode())
@@ -32,6 +34,10 @@ class SCR_CompositionSlotManagerComponent : ScriptComponent
 		else
 			return null;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] slot
+	//! \param[in] occupant
 	void SetOccupant(IEntity slot, IEntity occupant)
 	{
 		if (Replication.IsClient())
@@ -43,6 +49,10 @@ class SCR_CompositionSlotManagerComponent : ScriptComponent
 		else
 			SetOccupiedStatic(slot.GetID(), occupant != null, occupant);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] pos
+	//! \param[in] occupant
 	void SetOccupant(vector pos, IEntity occupant)
 	{
 		if (Replication.IsClient())
@@ -55,6 +65,10 @@ class SCR_CompositionSlotManagerComponent : ScriptComponent
 		
 		m_aQueriedEntities = null;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] slot
+	//! \return
 	IEntity GetOccupant(IEntity slot)
 	{
 		IEntity occupant;
@@ -66,6 +80,11 @@ class SCR_CompositionSlotManagerComponent : ScriptComponent
 		
 		return occupant;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] slot
+	//! \return
 	bool IsOccupied(IEntity slot)
 	{
 		RplId slotID = Replication.FindId(slot);
@@ -74,24 +93,30 @@ class SCR_CompositionSlotManagerComponent : ScriptComponent
 		else
 			return m_aOccupiedStatic.Contains(slot.GetID());
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] occupant
+	//! \return
 	IEntity GetSlot(IEntity occupant)
 	{
 		for (int i = 0, count = m_aOccupiedStatic.Count(); i < count; i++)
 		{
 			if (m_aOccupiedStatic.GetElement(i) == occupant)
-			{
 				return GetGame().GetWorld().FindEntityByID(m_aOccupiedStatic.GetKey(i));
-			}
 		}
+
 		for (int i = 0, count = m_aOccupiedDynamic.Count(); i < count; i++)
 		{
 			if (m_aOccupiedDynamic.GetElement(i) == occupant)
-			{
 				return IEntity.Cast(Replication.FindItem(m_aOccupiedDynamic.GetKey(i)));
-			}
 		}
+
 		return null;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] occupant
+	//! \return
 	bool IsInSlot(IEntity occupant)
 	{
 		for (int i = 0, count = m_aOccupiedStatic.Count(); i < count; i++)
@@ -99,20 +124,26 @@ class SCR_CompositionSlotManagerComponent : ScriptComponent
 			if (m_aOccupiedStatic.GetElement(i) == occupant)
 				return true;
 		}
+
 		for (int i = 0, count = m_aOccupiedDynamic.Count(); i < count; i++)
 		{
 			if (m_aOccupiedDynamic.GetElement(i) == occupant)
 				return true;
 		}
+
 		return false;
 	}
 	
 	//--- Static
+
+	//------------------------------------------------------------------------------------------------
 	protected void SetOccupiedStatic(EntityID slotID, bool isOccupied, IEntity occupant)
 	{
 		if (Replication.IsServer() && ModifyArray(slotID, isOccupied, occupant))
 			Rpc(SetOccupiedStaticBroadcast, slotID, isOccupied);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void SetOccupiedStaticBroadcast(EntityID slotID, bool isOccupied)
 	{
@@ -120,11 +151,15 @@ class SCR_CompositionSlotManagerComponent : ScriptComponent
 	}
 	
 	//--- Dynamic
+
+	//------------------------------------------------------------------------------------------------
 	protected void SetOccupiedDynamic(RplId slotID, bool isOccupied, IEntity occupant)
 	{
 		if (Replication.IsServer() && ModifyArray(slotID, isOccupied, occupant))
 			Rpc(SetOccupiedDynamicBroadcast, slotID, isOccupied);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void SetOccupiedDynamicBroadcast(RplId slotID, bool isOccupied)
 	{
@@ -132,6 +167,8 @@ class SCR_CompositionSlotManagerComponent : ScriptComponent
 	}
 	
 	//--- Arrays
+
+	//------------------------------------------------------------------------------------------------
 	protected bool ModifyArray(EntityID slotID, bool isOccupied, IEntity occupant)
 	{
 		if (isOccupied)
@@ -154,6 +191,8 @@ class SCR_CompositionSlotManagerComponent : ScriptComponent
 			}
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected bool ModifyArray(RplId slotID, bool isOccupied, IEntity occupant)
 	{
 		if (isOccupied)
@@ -176,6 +215,8 @@ class SCR_CompositionSlotManagerComponent : ScriptComponent
 			}
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateSlot(IEntity slot, bool isOccupied)
 	{
 		if (!slot)
@@ -195,6 +236,8 @@ class SCR_CompositionSlotManagerComponent : ScriptComponent
 		if (m_OnEntityChanged)
 			m_OnEntityChanged.Invoke(this, slot);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnEntityChanged(SCR_EditableEntityComponent entity)
 	{
 		IEntity slot = GetSlot(entity.GetOwner());
@@ -219,6 +262,8 @@ class SCR_CompositionSlotManagerComponent : ScriptComponent
 		if (m_OnEntityChanged)
 			m_OnEntityChanged.Invoke(this, slot);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected bool QueryEntity(IEntity entity)
 	{
 		if (entity.IsInherited(SCR_SiteSlotEntity))
@@ -231,7 +276,8 @@ class SCR_CompositionSlotManagerComponent : ScriptComponent
 			return true;
 		}
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	override bool RplSave(ScriptBitWriter writer)
 	{
 		int occupiedCount = m_aOccupiedStatic.Count();
@@ -250,6 +296,8 @@ class SCR_CompositionSlotManagerComponent : ScriptComponent
 		
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool RplLoad(ScriptBitReader reader)
 	{
 		int occupiedCount;
@@ -276,6 +324,8 @@ class SCR_CompositionSlotManagerComponent : ScriptComponent
 		
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
@@ -285,6 +335,8 @@ class SCR_CompositionSlotManagerComponent : ScriptComponent
 			core.Event_OnEntityTransformChanged.Insert(OnEntityChanged);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnDelete(IEntity owner)
 	{
 		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
@@ -294,4 +346,4 @@ class SCR_CompositionSlotManagerComponent : ScriptComponent
 			core.Event_OnEntityTransformChanged.Remove(OnEntityChanged);
 		}
 	}
-};
+}

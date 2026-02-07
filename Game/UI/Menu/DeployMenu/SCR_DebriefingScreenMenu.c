@@ -14,6 +14,23 @@ class SCR_DebriefingScreenMenu : SCR_WelcomeScreenMenu
 			Close();
 			return;
 		}
+		
+		m_GameMasterButton = SCR_InputButtonComponent.GetInputButtonComponent("Editor", GetRootWidget());
+		if (m_GameMasterButton)
+		{
+		    if (m_GameMode.GetState() != SCR_EGameModeState.GAME)
+		    {
+		         m_GameMasterButton.SetVisible(false);
+		    }
+		    else 
+		    {
+		    	SCR_EditorManagerEntity editor = SCR_EditorManagerEntity.GetInstance();
+				if (editor)	
+		    		m_GameMasterButton.SetVisible(editor && !editor.IsLimited());
+				else
+					m_GameMasterButton.SetVisible(false);
+		    }
+		}
 
 		RichTextWidget scenarioTitle = RichTextWidget.Cast(GetRootWidget().FindAnyWidget("DeploySetup"));
 		if (scenarioTitle)

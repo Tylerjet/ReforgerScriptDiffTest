@@ -28,6 +28,11 @@ class AttachmentSlotComponent: BaseAttachmentSlotComponent
 	proto external bool IsObstructing();
 	//! Is this slot should show during inspection
 	proto external bool ShouldShowInInspection();
+
+	// callbacks
+
+	event bool ShouldSetAttachment(IEntity attachmentEntity) { return true; };
+	event bool ShouldSetResource(Resource resource) { return true; };
 }
 
 /*!

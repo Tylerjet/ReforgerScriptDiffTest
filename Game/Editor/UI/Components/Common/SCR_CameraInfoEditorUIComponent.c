@@ -1,4 +1,4 @@
-class SCR_CameraInfoEditorUIComponent: MenuRootSubComponent
+class SCR_CameraInfoEditorUIComponent : MenuRootSubComponent
 {
 	[Attribute(desc: "%1: vertical FOV (multiplier)\n%2: focal length (mm)\n%3 focus distance (m)")]
 	protected LocalizedString m_Text;
@@ -12,6 +12,7 @@ class SCR_CameraInfoEditorUIComponent: MenuRootSubComponent
 	protected SCR_FocusManualCameraComponent m_FocusComponent;
 	protected SCR_ZoomManualCameraComponent m_ZoomComponent;
 	
+	//------------------------------------------------------------------------------------------------
 	protected void Refresh()
 	{
 		float verticalFOV = m_Camera.GetVerticalFOV();
@@ -28,6 +29,8 @@ class SCR_CameraInfoEditorUIComponent: MenuRootSubComponent
 		
 		m_TextWidget.SetTextFormat(m_Text, zoomCoef.ToString(1, 1), focalLength, focusDistanceString);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void InitCamera(SCR_ManualCamera camera)
 	{
 		m_Camera = camera;
@@ -42,6 +45,8 @@ class SCR_CameraInfoEditorUIComponent: MenuRootSubComponent
 		
 		Refresh();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnCameraCreate(SCR_ManualCamera camera)
 	{
 		InitCamera(camera);
@@ -49,6 +54,8 @@ class SCR_CameraInfoEditorUIComponent: MenuRootSubComponent
 		SCR_CameraEditorComponent cameraManager = SCR_CameraEditorComponent.Cast(SCR_CameraEditorComponent.GetInstance(SCR_CameraEditorComponent));
 		cameraManager.GetOnCameraCreate().Remove(OnCameraCreate);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttachedScripted(Widget w)
 	{
 		m_TextWidget = TextWidget.Cast(w);		
@@ -73,6 +80,8 @@ class SCR_CameraInfoEditorUIComponent: MenuRootSubComponent
 			return;
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
@@ -83,4 +92,4 @@ class SCR_CameraInfoEditorUIComponent: MenuRootSubComponent
 		if (m_FocusComponent)
 			m_FocusComponent.GetOnFocusDistanceChange().Remove(Refresh);
 	}
-};
+}

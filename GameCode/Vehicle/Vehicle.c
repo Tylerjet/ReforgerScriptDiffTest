@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 enum EVehicleType
 {
 	VEHICLE 		= 0,
@@ -9,14 +8,14 @@ enum EVehicleType
 	COMM_TRUCK 		= 32,
 	SUPPLY_TRUCK 	= 64,
 	MORTAR			= 128,
-};
+	REPAIR			= 256,
+	ARSENAL			= 512,
+}
 
-//------------------------------------------------------------------------------------------------
-class VehicleClass: BaseVehicleClass
+class VehicleClass : BaseVehicleClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class Vehicle : BaseVehicle
 {
 	// Can be removed when EOnPhysicsActive is on components as well
@@ -26,11 +25,11 @@ class Vehicle : BaseVehicle
 	EVehicleType m_eVehicleType;
 	
 	SCR_VehicleFactionAffiliationComponent m_pFactionComponent;
-	protected SCR_WaterPhysicsComponent m_WaterPhysics;
 	protected BaseControllerComponent m_VehicleController;
 	protected SCR_ResourceComponent m_ResourceComponent;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnPhysicsActive()
 	{
 		if (!m_OnPhysicsActive)
@@ -47,6 +46,7 @@ class Vehicle : BaseVehicle
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	Faction GetFaction()
 	{
 		if (m_pFactionComponent)
@@ -56,18 +56,14 @@ class Vehicle : BaseVehicle
 	}	
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_VehicleFactionAffiliationComponent GetFactionAffiliation()
 	{
 		return m_pFactionComponent;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	SCR_WaterPhysicsComponent GetWaterPhysicsComponent()
-	{
-		return m_WaterPhysics;
-	}
-	
-	//------------------------------------------------------------------------------------------------
+	//! \return
 	Faction GetDefaultFaction()
 	{
 		if (m_pFactionComponent)
@@ -77,6 +73,7 @@ class Vehicle : BaseVehicle
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsOccupied()
 	{	
 		if (m_pFactionComponent)
@@ -113,7 +110,7 @@ class Vehicle : BaseVehicle
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Get pilot of the vehicle - occupant of the primary pilot compartment
+	//! \return pilot of the vehicle - occupant of the primary pilot compartment
 	IEntity GetPilot()
 	{
 		PilotCompartmentSlot slot = GetPilotCompartmentSlot();
@@ -124,18 +121,23 @@ class Vehicle : BaseVehicle
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_ResourceComponent GetResourceComponent()
 	{
 		return m_ResourceComponent;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void UpdateResourceComponent()
 	{
 		m_ResourceComponent = SCR_ResourceComponent.FindResourceComponent(this);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] parent
 	void Vehicle(IEntitySource src, IEntity parent)
 	{
 		SetEventMask(EntityEvent.PHYSICSACTIVE);
@@ -150,7 +152,6 @@ class Vehicle : BaseVehicle
 			m_VehicleController = BaseControllerComponent.Cast(FindComponent(VehicleControllerComponent_SA));
 
 		m_pFactionComponent = SCR_VehicleFactionAffiliationComponent.Cast(FindComponent(SCR_VehicleFactionAffiliationComponent));
-		m_WaterPhysics = SCR_WaterPhysicsComponent.Cast(FindComponent(SCR_WaterPhysicsComponent));
 		UpdateResourceComponent();
 	}
-};
+}

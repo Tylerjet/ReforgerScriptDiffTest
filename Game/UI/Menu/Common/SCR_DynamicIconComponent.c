@@ -18,6 +18,7 @@ class SCR_DynamicIconComponent : SCR_ScriptedWidgetComponent
 	
 	ImageWidget m_wIcon;
 	ImageWidget m_wGlow;
+	SizeLayoutWidget m_wSize;
 	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -25,6 +26,7 @@ class SCR_DynamicIconComponent : SCR_ScriptedWidgetComponent
 		super.HandlerAttached(w);
 		m_wIcon = ImageWidget.Cast(w.FindAnyWidget("Icon"));
 		m_wGlow = ImageWidget.Cast(w.FindAnyWidget("Glow"));
+		m_wSize = SizeLayoutWidget.Cast(w.FindAnyWidget("Size"));
 		
 		SetImage(m_sImageName);
 	}
@@ -60,6 +62,12 @@ class SCR_DynamicIconComponent : SCR_ScriptedWidgetComponent
 		m_sIconImageset = iconImageSet;
 		m_sGlowImageset = glowImageSet;
 		m_sImageName = imageName;
+		
+		if (m_wSize)
+		{
+			m_wSize.SetWidthOverride(m_sImageSize[0]);
+			m_wSize.SetHeightOverride(m_sImageSize[1]);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

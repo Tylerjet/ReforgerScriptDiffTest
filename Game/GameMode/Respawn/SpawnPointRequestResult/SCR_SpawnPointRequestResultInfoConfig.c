@@ -8,6 +8,7 @@ class SCR_SpawnPointRequestResultInfoConfig
 	protected ref SCR_SortedArray<SCR_BaseSpawnPointRequestResultInfo> m_aSortedSpawnPointRequestResultInfos = new SCR_SortedArray<SCR_BaseSpawnPointRequestResultInfo>();
 	
 	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_SpawnPointRequestResultInfoConfig()
 	{
 		if (SCR_Global.IsEditMode())
@@ -40,6 +41,10 @@ class SCR_SpawnPointRequestResultInfoConfig
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] requestComponent
+	//! \param[in] response
+	//! \param[in] data
+	//! \return
 	SCR_BaseSpawnPointRequestResultInfo GetFirstValidRequestResultInfo(SCR_SpawnRequestComponent requestComponent, SCR_ESpawnResult response, SCR_SpawnData data)
 	{
 		SCR_BaseSpawnPointRequestResultInfo requestResultInfo;
@@ -58,4 +63,3 @@ class SCR_SpawnPointRequestResultInfoConfig
 		return null;
 	}
 }
-

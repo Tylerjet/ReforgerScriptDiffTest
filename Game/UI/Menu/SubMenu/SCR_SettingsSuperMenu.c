@@ -1,4 +1,4 @@
-//------------------------------------------------------------------------------------------------
+
 class SCR_SettingsSuperMenu : SCR_SuperMenuBase
 {
 	//------------------------------------------------------------------------------------------------
@@ -9,7 +9,7 @@ class SCR_SettingsSuperMenu : SCR_SuperMenuBase
 		SCR_InputButtonComponent comp = SCR_InputButtonComponent.GetInputButtonComponent("Back",GetRootWidget());
 		if (comp)
 			comp.m_OnActivated.Insert(OnBack);
-
+		
 		bool showBlur = !GetGame().m_bIsMainMenuOpen;
 
 		Widget img = GetRootWidget().FindAnyWidget("MenuBackground");
@@ -28,34 +28,25 @@ class SCR_SettingsSuperMenu : SCR_SuperMenuBase
 			}
 		}
 		
-		Widget w = GetRootWidget().FindAnyWidget("TabViewRoot0");
-		if (!w)
-			return;
-		
 		bool isDebug = DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_UI_SHOW_ALL_SETTINGS, false);
-		
-		SCR_TabViewComponent tab = SCR_TabViewComponent.Cast(w.FindHandler(SCR_TabViewComponent));
-		if (!tab)
-			return;
-		
+
 		if (!isDebug && System.GetPlatform() == EPlatform.WINDOWS)
 		{
-			tab.RemoveTabByIdentifier("SettingsVideoConsole");
-			tab.ShowTabByIdentifier("SettingsVideoPC");
+			m_SuperMenuComponent.GetTabView().RemoveTabByIdentifier("SettingsVideoConsole");
+			m_SuperMenuComponent.GetTabView().ShowTabByIdentifier("SettingsVideoPC");
 		}
 
-// Remove video settings and keybinds for consoles, if not in settings debug mode
-		
+// Remove video settings for consoles, if not in settings debug mode
 #ifdef PLATFORM_CONSOLE
 		if (isDebug)
 			return;
 		
-		tab.RemoveTabByIdentifier("SettingsVideoPC");
-		tab.ShowTabByIdentifier("SettingsVideoConsole");
-		
+		m_SuperMenuComponent.GetTabView().RemoveTabByIdentifier("SettingsVideoPC");
+		m_SuperMenuComponent.GetTabView().ShowTabByIdentifier("SettingsVideoConsole");	
 #endif
 	}
 
+	//------------------------------------------------------------------------------------------------
 	void OnBack()
 	{
 		Close();

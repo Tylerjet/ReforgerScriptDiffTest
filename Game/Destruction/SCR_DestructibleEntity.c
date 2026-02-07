@@ -301,6 +301,7 @@ class SCR_DestructibleEntity: DestructibleEntity
 		
 		// Set position
 		vector mat[4];
+		GetTransform(mat);
 		
 		// Get center of bounding box
 		vector mins;

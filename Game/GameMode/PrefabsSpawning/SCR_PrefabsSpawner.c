@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 //! Base class for Prefabs Spawning.
 [BaseContainerProps()]
 class SCR_PrefabsSpawner
@@ -19,6 +18,7 @@ class SCR_PrefabsSpawner
 	protected ref array<SCR_PrefabSpawnPoint> m_aPrefabSpawnPoints;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	EPrefabSpawnType GetType()
 	{
 		return m_eType;
@@ -26,12 +26,11 @@ class SCR_PrefabsSpawner
 	
 	//------------------------------------------------------------------------------------------------
 	//! Call this to trigger spawn logic for this spawner
+	//! \param[in] prefabSpawnPoints
 	void Spawn(array<SCR_PrefabSpawnPoint> prefabSpawnPoints)
 	{
 		if (m_eRequiredGameFlags != 0 && !GetGame().AreGameFlagsSet(m_eRequiredGameFlags))
-		{
 			return;
-		}
 		
 		if (prefabSpawnPoints == null)
 		{
@@ -41,20 +40,20 @@ class SCR_PrefabsSpawner
 		
 		m_aPrefabSpawnPoints = prefabSpawnPoints;
 		
-		int numberOfPrefabsToSpawn = m_aPrefabSpawnPoints.Count() * m_iTotalPrefabs / 100 ;
+		int numberOfPrefabsToSpawn = m_aPrefabSpawnPoints.Count() * m_iTotalPrefabs * 0.01;
 		SpawnPrefabsCategories(numberOfPrefabsToSpawn, m_aPrefabsCategories);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Trigers spawning for Categories of prefabs and/or nested categories of prefabs.
+	//! Triggers spawning for Categories of prefabs and/or nested categories of prefabs.
+	//! \param[in] numberOfPrefabsToSpawn
+	//! \param[in] prefabsCategories
 	void SpawnPrefabsCategories(int numberOfPrefabsToSpawn, array<ref SCR_BasePrefabCategory> prefabsCategories)
 	{
 		int totalRatio = GetTotalRatio(prefabsCategories);
 		
 		if (totalRatio == 0)
-		{
 			return;
-		}
 		
 		foreach (SCR_BasePrefabCategory prefabCategory : prefabsCategories)
 		{
@@ -64,12 +63,12 @@ class SCR_PrefabsSpawner
 	
 	//------------------------------------------------------------------------------------------------
 	//! Spawn prefabs on random spawnpoints.
+	//! \param[in] totalprefabs
+	//! \param[in] prefab
 	void SpawnPrefabCategory(int totalprefabs, ResourceName prefab)
 	{
 		if (totalprefabs <= 0 || m_aPrefabSpawnPoints == null)
-		{
 			return;
-		}
 		
 		for (int i = 0; i < totalprefabs; i++)
 		{
@@ -79,24 +78,27 @@ class SCR_PrefabsSpawner
 			vector mat[4];
 			prefabSpawnPoint.GetWorldTransform(mat);
 			
-			if (prefabSpawnPoint.ShouldSnapToGound())
+			if (prefabSpawnPoint.ShouldSnapToGround())
 			{
 				vector position = mat[3];
 				position[1] = prefabSpawnPoint.GetWorld().GetSurfaceY(position[0], position[2]);
 				mat[3] = position;
 			}
 				
-			EntitySpawnParams spawnParams = new EntitySpawnParams;
+			EntitySpawnParams spawnParams = new EntitySpawnParams();
 			spawnParams.TransformMode = ETransformMode.WORLD;
 			spawnParams.Transform = mat;
 			
 			Resource resource = Resource.Load(prefab);
-			IEntity entity = GetGame().SpawnEntityPrefab(resource, null, spawnParams);
+			if (resource.IsValid())
+				GetGame().SpawnEntityPrefab(resource, null, spawnParams);
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Total Ratio for prefab/s categories on same level of hierarchy.
+	//! \param[in] prefabsCategories
+	//! \return
 	protected int GetTotalRatio(array<ref SCR_BasePrefabCategory> prefabsCategories)
 	{
 		int totalWeight = 0;
@@ -107,16 +109,4 @@ class SCR_PrefabsSpawner
 		
 		return totalWeight;
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	void SCR_PrefabsSpawner()
-	{
-		
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_PrefabsSpawner()
-	{
-		
-	}
-};
+}

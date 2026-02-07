@@ -1,5 +1,5 @@
 [ComponentEditorProps(category: "GameScripted/Editor (Editables)", description: "")]
-class SCR_SlotCompositionComponentClass: ScriptComponentClass
+class SCR_SlotCompositionComponentClass : ScriptComponentClass
 {
 	[Attribute(params: "et", category: "Composition", desc: "Slot this composition fits into.")]
 	protected ResourceName m_SlotPrefab;
@@ -10,21 +10,26 @@ class SCR_SlotCompositionComponentClass: ScriptComponentClass
 	[Attribute(defvalue: "1", category: "Composition", desc: "When enabled, children will not be turned into editable entities. The composition will appear as a single entity in in-game editor.")]
 	protected bool m_bEditableChildren; //--- Not read in the script, but accessed by EditablePrefabsConfig when generating editable prefabs
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetSlotPrefab()
 	{
 		return m_SlotPrefab;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	bool CanOrientChildrenToTerrain()
 	{
 		return m_bOrientChildrenToTerrain;
 	}
 	
-	/*!
-	Get slot prefab from SCR_EditorFactionsAccessComponent source
-	\param componentSource Component source
-	\return Slot prefab
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get slot prefab from SCR_EditorFactionsAccessComponent source
+	//! \param componentSource Component source
+	//! \return Slot prefab
+	//!
 	static ResourceName GetSlotPrefab(IEntityComponentSource componentSource)
 	{
 		ResourceName slotPrefab;
@@ -33,20 +38,17 @@ class SCR_SlotCompositionComponentClass: ScriptComponentClass
 	}
 };
 
-/** @ingroup Editable_Entities
-*/
+//! @ingroup Editable_Entities
 
-/*!
-Entity composition which is supposed to fit into a slot
-*/
+//! Entity composition which is supposed to fit into a slot
 class SCR_SlotCompositionComponent : ScriptComponent
 {
 	protected GenericEntity m_Owner;
 	protected static bool m_bIgnoreOrientChildrenToTerrain;
-	/*!
-	Get prefab of the slot to which the composition fits.
-	\return Slot prefab
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get prefab of the slot to which the composition fits.
+	//! \return Slot prefab
 	ResourceName GetSlotPrefab()
 	{
 		SCR_SlotCompositionComponentClass prefabData = SCR_SlotCompositionComponentClass.Cast(GetComponentData(m_Owner));
@@ -55,10 +57,10 @@ class SCR_SlotCompositionComponent : ScriptComponent
 		else
 			return ResourceName.Empty;
 	}
-	/*!
-	Check if composition children should be snapped and oriented to terrain.
-	\return True if children are affected
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if composition children should be snapped and oriented to terrain.
+	//! \return True if children are affected
 	bool CanOrientChildrenToTerrain()
 	{
 		SCR_SlotCompositionComponentClass prefabData = SCR_SlotCompositionComponentClass.Cast(GetComponentData(m_Owner));
@@ -67,17 +69,17 @@ class SCR_SlotCompositionComponent : ScriptComponent
 		else
 			return false;
 	}
-	/*!
-	Bool to disable the terrain snapping for next spawned composition
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Bool to disable the terrain snapping for next spawned composition
 	static void IgnoreOrientChildrenToTerrain()
 	{
 		m_bIgnoreOrientChildrenToTerrain = true;
 	}
-	/*!
-	Orient composition and its children to terrain.
-	Applied only if "Can Orient Children To Terrain" attribute is enabled.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Orient composition and its children to terrain.
+	//! Applied only if "Can Orient Children To Terrain" attribute is enabled.
 	void OrientToTerrain()
 	{
 		//--- Don't initialize child compositions (they will be initialized as part of parent's init)
@@ -88,6 +90,8 @@ class SCR_SlotCompositionComponent : ScriptComponent
 		SetChildTransform(m_Owner, world);
 		m_Owner.Update();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void SetChildTransform(IEntity owner, BaseWorld world)
 	{		
 		//--- Find entity's height
@@ -110,6 +114,7 @@ class SCR_SlotCompositionComponent : ScriptComponent
 			SCR_TerrainHelper.SnapToTerrain(transform, world); //--- Don't rotate root entity. Its transformation is broadcasted to clients, who would then think the rotated state is default
 		else
 			SCR_TerrainHelper.SnapAndOrientToTerrain(transform, world);
+
 		transform[3] = transform[3] + Vector(0, height, 0);
 		
 		//If entity should be horizontally aligned rather then aligned to terrain
@@ -137,10 +142,11 @@ class SCR_SlotCompositionComponent : ScriptComponent
 				pos = parent.CoordToLocal(pos);
 			}
 			vector angles = Math3D.MatrixToAngles(transform);
-			api.ModifyEntityKey(owner, "coords", pos.ToString(false));
-			api.ModifyEntityKey(owner, "angleX", angles[1].ToString());
-			api.ModifyEntityKey(owner, "angleY", angles[0].ToString());
-			api.ModifyEntityKey(owner, "angleZ", angles[2].ToString());
+			IEntitySource ownerSrc = api.EntityToSource(owner);
+			api.SetVariableValue(ownerSrc, null, "coords", pos.ToString(false));
+			api.SetVariableValue(ownerSrc, null, "angleX", angles[1].ToString());
+			api.SetVariableValue(ownerSrc, null, "angleY", angles[0].ToString());
+			api.SetVariableValue(ownerSrc, null, "angleZ", angles[2].ToString());
 		}
 		else
 		{
@@ -163,19 +169,24 @@ class SCR_SlotCompositionComponent : ScriptComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
 		if (SCR_Global.IsEditMode(owner))
 			return;
+
 		if (m_bIgnoreOrientChildrenToTerrain)
 		{
 			m_bIgnoreOrientChildrenToTerrain = false;
 			return;
 		}
+
 		//--- Initialize transform on every machine (ToDo: Remove SCR_EditableEntityComponent check; rather, have editable entities suppress this functionality)
 		if (!owner.FindComponent(SCR_EditableEntityComponent))
 			OrientToTerrain();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		m_Owner = GenericEntity.Cast(owner);
@@ -184,6 +195,13 @@ class SCR_SlotCompositionComponent : ScriptComponent
 	}
 	
 #ifdef WORKBENCH
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] api
+	//! \param[in] entitySource
+	//! \param[in] isRoot
+	//! \param[in] delayed
+	//! \return
 	static bool _WB_ConfigureComposition(WorldEditorAPI api, IEntitySource entitySource, bool isRoot = true, bool delayed = false)
 	{
 		//--- Skip sub-compositions
@@ -216,6 +234,7 @@ class SCR_SlotCompositionComponent : ScriptComponent
 		return isChange;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override array<ref WB_UIMenuItem> _WB_GetContextMenuItems(IEntity owner)
 	{
 		return { 
@@ -223,6 +242,8 @@ class SCR_SlotCompositionComponent : ScriptComponent
 			new WB_UIMenuItem("Orient to terrain", 1)
 		};
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void _WB_OnContextMenu(IEntity owner, int id)
 	{
 		WorldEditorAPI api = GenericEntity.Cast(owner)._WB_GetEditorAPI();
@@ -251,29 +272,37 @@ class SCR_SlotCompositionComponent : ScriptComponent
 		}
 	}
 #endif
-};
+}
 
 #ifdef WORKBENCH
 //--- Adding a component from inside a context action causes error, this is a hotfix
-class SCR_SlotCompositionHelperEntityClass: GenericEntityClass {}
-class SCR_SlotCompositionHelperEntity: GenericEntity
+class SCR_SlotCompositionHelperEntityClass : GenericEntityClass {}
+class SCR_SlotCompositionHelperEntity : GenericEntity
 {
 	protected IEntitySource m_EntitySource;
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] api
+	//! \param[in] entitySource
 	static void CreateHierarchy(WorldEditorAPI api, IEntitySource entitySource)
 	{
-		SCR_SlotCompositionHelperEntity helper = SCR_SlotCompositionHelperEntity.Cast(api.CreateEntity("SCR_SlotCompositionHelperEntity", "SCR_SlotCompositionHelperEntity", 0, null, vector.Zero, vector.Zero));
-		helper.m_EntitySource = entitySource;
+		IEntitySource src = api.CreateEntity("SCR_SlotCompositionHelperEntity", "SCR_SlotCompositionHelperEntity", 0, null, vector.Zero, vector.Zero);
+		SCR_SlotCompositionHelperEntity helper = SCR_SlotCompositionHelperEntity.Cast(api.SourceToEntity(src));
+		helper.m_EntitySource = src;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void _WB_AfterWorldUpdate(float timeSlice)
 	{
-		if (!m_EntitySource) return;
+		if (!m_EntitySource)
+			return;
 		
 		WorldEditorAPI api = _WB_GetEditorAPI();
 		api.BeginEntityAction();
 		api.CreateComponent(m_EntitySource, "Hierarchy");
-		api.DeleteEntity(this);
+		api.DeleteEntity(m_EntitySource);
 		api.EndEntityAction();
 	}
-};
+}
 #endif

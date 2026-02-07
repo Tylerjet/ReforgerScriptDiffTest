@@ -2,7 +2,7 @@
 //------------------------------------------------------------------------------------------------
 //! Base destruction handler, destruction handler types extend from this
 //! TODO: Move this to damage manager instead
-//! Ported from SCR_DestructionBaseComponent
+//! Ported from SCR_DestructionDamageManagerComponent
 [BaseContainerProps()]
 class SCR_DestructionBaseHandler
 {

@@ -1,70 +1,128 @@
-//------------------------------------------------------------------------------------------------
 class SCR_InteractionHandlerComponentClass: InteractionHandlerComponentClass
 {
-};
+}
 
-
-//------------------------------------------------------------------------------------------------
-/*!
-	Provides an identification for SCR_InteractionHandlerComponent which type of input to use.
-	This is added for convenience of quick switching of different methods.
-*/
+//! Provides an identification for SCR_InteractionHandlerComponent which type of input to use.
+//! This is added for convenience of quick switching of different methods.
 enum SCR_NearbyContextDisplayMode
 {
-	//! Nearby display will never be allowed.
-	DISABLED = 0,
-	
-	//! Nearby display will always be on (when possible).
-	ALWAYS_ON = 1,
-	
-	//! Nearby display will show on provided input action.
-	ON_INPUT_ACTION = 2,
-	
-	//! Nearby display will show when controlled entity is in freelook.
-	ON_FREELOOK = 3
-};
+	DISABLED = 0, 			//!< Nearby display will never be allowed.
+	ALWAYS_ON = 1,			//!< Nearby display will always be on (when possible).
+	ON_INPUT_ACTION = 2,	//!< Nearby display will show on provided input action.
+	ON_FREELOOK = 3			//!< Nearby display will show when controlled entity is in freelook.
+}
 
-/*!
-	This component allows the player to interact with their environment.
-	It collects UserActionContext from ActionsManagerComponent from surrounding entities via queries,
-	filters and finds the most appropriate one and provides script API to work with them.
-	
-	It should always be attached to PlayerController entity and is local only.
-*/
+//! This component allows the player to interact with their environment.
+//! It collects UserActionContext from ActionsManagerComponent from surrounding entities via queries,
+//! filters and finds the most appropriate one and provides script API to work with them.
+//!
+//! It should always be attached to PlayerController entity and is local only.
 class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 {
-	/*!
-		Display (action menu) used to show UI to the player regarding collected actions.
-	*/
+	//! Display (action menu) used to show UI to the player regarding collected actions.
 	protected SCR_BaseInteractionDisplay m_pDisplay;
 	
 	[Attribute("3", UIWidgets.ComboBox, "Display mode", "", ParamEnumArray.FromEnum(SCR_NearbyContextDisplayMode), category: "Nearby Context Properties" )]
-	SCR_NearbyContextDisplayMode m_eDisplayMode;
+	protected SCR_NearbyContextDisplayMode m_eDisplayMode;
 	
 	[Attribute("", UIWidgets.EditBox, "Action to listen for when SCR_NearbyContextDisplayMode is set to ON_INPUT_ACTION", category: "Nearby Context Properties")]
-	string m_sActionName;
+	protected string m_sActionName;
+
 	[Attribute("", UIWidgets.EditBox, "Context to activate when SCR_NearbyContextDisplayMode is set to ON_INPUT_ACTION. Mustn't be empty to be activated.", category: "Nearby Context Properties")]
-	string m_sActionContext;
-	
+	protected string m_sActionContext;
 	
 	//! Last selected context
 	protected UserActionContext m_pLastContext;
+
 	//! Last selected user action
 	protected BaseUserAction m_pLastUserAction;
+
 	//! Currently selected action index
 	protected int m_iSelectedActionIndex;
-	
 
-	private bool m_bIsPerforming;
-	private bool m_bLastInput;
-	private float m_fCurrentProgress;
+	protected bool m_bIsPerforming;
+	protected bool m_bPerformAction;
+	protected bool m_bLastInput;
+	protected float m_fSelectAction;
+	protected float m_fCurrentProgress;
 
 	//! List of inspected entities (weapon, ...)
 	protected ref array<IEntity> m_aInspectedEntities = {};
 
-	private IEntity m_pControlledEntity;
+	protected IEntity m_ControlledEntity;
 
-	
+	//------------------------------------------------------------------------------------------------
+	//! Action listeners that are meant to be registered once per user and only for the user who is the owner of this controller
+	protected void RegisterActionListeners()
+	{
+		InputManager pInputManager = GetGame().GetInputManager();
+		if (!pInputManager)
+			return;
+
+		m_bPerformAction = false;
+		m_fSelectAction = 0;
+		pInputManager.AddActionListener("PerformAction", EActionTrigger.DOWN, ActionPerform);
+		pInputManager.AddActionListener("PerformAction", EActionTrigger.UP, ActionPerform);
+		pInputManager.AddActionListener("SelectAction", EActionTrigger.VALUE, ActionScroll);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void RemoveActionListeners()
+	{
+		InputManager pInputManager = GetGame().GetInputManager();
+		if (!pInputManager)
+			return;
+
+		m_bPerformAction = false;
+		m_fSelectAction = 0;
+		pInputManager.RemoveActionListener("PerformAction", EActionTrigger.DOWN, ActionPerform);
+		pInputManager.RemoveActionListener("PerformAction", EActionTrigger.UP, ActionPerform);
+		pInputManager.RemoveActionListener("SelectAction", EActionTrigger.VALUE, ActionScroll);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Callback for caching the key press
+	void ActionPerform(float value, EActionTrigger reason)
+	{
+		m_bPerformAction = reason == EActionTrigger.DOWN;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void ActionScroll(float value, EActionTrigger reason)
+	{
+		if (value == 0)
+			return;
+
+		m_fSelectAction = value;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Method called when player takes controll over an entity
+	//! \param[in] from entity which was previously controlled
+	//! \param[in] to entity which is now controlled
+	// HACK: this is added to SCR_PlayerController.OnControlledEntityChanged by SCR_PlayerController.EOnInit() because InteractionHandlerComponent.OnInit() is only called by the host
+	void OnControlledEntityChanged(IEntity from, IEntity to)
+	{
+		PlayerController controller = GetGame().GetPlayerController();
+		if (!controller)
+			return;
+
+		if (controller.FindComponent(SCR_InteractionHandlerComponent) != this)
+			return;
+
+		if (from)//Was an owner of the entity that contians this component but that is changing now
+			RemoveActionListeners();
+
+		if (to && to == SCR_PlayerController.GetLocalControlledEntity())//Became an owner of the entity that has this component
+			RegisterActionListeners();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnInit(IEntity owner)
+	{
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_INTERACTION_SKIP_DURATION, "", "Skip action duration", "User Actions");
+	}
+
 	//------------------------------------------------------------------------------------------------
 	protected SCR_BaseInteractionDisplay FindDisplay(IEntity owner)
 	{
@@ -74,6 +132,7 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 			Print("InteractionHandler must be attached to a PlayerController!", LogLevel.ERROR);
 			return null;
 		}
+
 		HUDManagerComponent hudManager = HUDManagerComponent.Cast(playerController.FindComponent(HUDManagerComponent));
 		array<BaseInfoDisplay> displayInfos = {};
 		int count = hudManager.GetInfoDisplays(displayInfos);
@@ -89,9 +148,14 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Checks input, compares it to previous states and evaluates what the handler should do next.
-	*/
+	//! Checks input, compares it to previous states and evaluates what the handler should do next.
+	//! \param[in] user
+	//! \param[in] context
+	//! \param[in] action
+	//! \param[in] canPerform
+	//! \param[in] performInput
+	//! \param[in] timeSlice
+	//! \param[in] display
 	protected void DoProcessInteraction(
 		ChimeraCharacter user, 
 		UserActionContext context, 
@@ -131,24 +195,36 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 			// update continuous handler state until we're finished
 			else if (m_bIsPerforming)
 			{
-				// Tick action
-				if (action.ShouldPerformPerFrame())
-					user.DoPerformContinuousObjectAction(action, timeSlice);
-				
+				if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_INTERACTION_SKIP_DURATION))
+					timeSlice += Math.AbsFloat(action.GetActionDuration());
+
 				// Update elapsed time
 				ScriptedSignalUserAction signalUserAction = ScriptedSignalUserAction.Cast(action);
 				SCR_ScriptedUserAction scriptedUserAction = SCR_ScriptedUserAction.Cast(action);
 				if (signalUserAction)
-					m_fCurrentProgress = signalUserAction.GetActionProgress();
+				{
+					SCR_AdjustSignalAction adjustAction = SCR_AdjustSignalAction.Cast(signalUserAction);
+					if (adjustAction && !adjustAction.IsManuallyAdjusted())
+						m_fCurrentProgress += timeSlice;
+					else
+						m_fCurrentProgress = signalUserAction.GetActionProgress();
+				}
 				else if (scriptedUserAction)
+				{
+					if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_INTERACTION_SKIP_DURATION))
+						timeSlice += scriptedUserAction.GetLoopActionHoldDuration();
+					
 					m_fCurrentProgress = scriptedUserAction.GetActionProgress(m_fCurrentProgress, timeSlice);
+				}
 				else
 					m_fCurrentProgress += timeSlice;
 				
+				// Tick action
+				if (action.ShouldPerformPerFrame())
+					user.DoPerformContinuousObjectAction(action, timeSlice);
+
 				// Get action duration
 				float duration = action.GetActionDuration();
-				if (duration == 0 && signalUserAction)
-					duration = signalUserAction.GetMaximumValue() - signalUserAction.GetMinimumValue();
 				
 				// Update UI
 				if (display)
@@ -189,19 +265,6 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 				m_fCurrentProgress = 0.0;
 			}
 		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected bool CollectInputs(out bool bPerform, out float fScroll)
-	{
-		InputManager pInputManager = GetGame().GetInputManager();
-		if (!pInputManager)
-			return false;
-
-		pInputManager.ActivateContext("ActionMenuContext");
-		bPerform = pInputManager.GetActionTriggered("PerformAction");
-		fScroll = pInputManager.GetActionValue("SelectAction");
-		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -258,13 +321,13 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 	protected override void OnContextChanged(UserActionContext previousContext, UserActionContext newContext)
 	{
 		// Changed, so hide previous
-		UserActionContext currentContext = GetCurrentContext();
-		if (!newContext || newContext != currentContext)
+		if (!newContext || newContext != GetCurrentContext())
 		{
 			m_iSelectedActionIndex = 0;
 			if (m_pDisplay)
 				m_pDisplay.HideDisplay();
 		}
+
 		// Changed, so show new
 		if (m_pDisplay && newContext)
 			m_pDisplay.ShowDisplay();
@@ -277,20 +340,19 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 		if (!newContext)
 		{
 			// Allow clearing if no entity is controlled, to prevent leaking of contexts
-			if (!m_pControlledEntity)
+			if (!m_ControlledEntity)
 				return true;
 		
 			// Allow clearing of context if controlled entity is destroyed, at this point interaction should begone
-			DamageManagerComponent dmg = DamageManagerComponent.Cast(m_pControlledEntity.FindComponent(DamageManagerComponent));
+			DamageManagerComponent dmg = DamageManagerComponent.Cast(m_ControlledEntity.FindComponent(DamageManagerComponent));
 			if (dmg && dmg.IsDestroyed())
 				return true;
 			
 			// Otherwise continue with the usual
 		}
 		
-		
 		// Check whether we are still in range
-		if (currentContext && m_pControlledEntity)
+		if (currentContext && m_ControlledEntity)
 		{
 			// We will leave a small error threshold
 			const float threshold = 1.1;
@@ -299,7 +361,7 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 			// Maximum sq distance we can interact at
 			float maxSqDistance = (visRange * visRange) * 1.1;
 			// Sq distance to controlled entity
-			float sqDistance = vector.DistanceSq(currentContext.GetOrigin(), m_pControlledEntity.GetOrigin());
+			float sqDistance = vector.DistanceSq(currentContext.GetOrigin(), m_ControlledEntity.GetOrigin());
 			
 			if (sqDistance > maxSqDistance)
 			{
@@ -319,10 +381,8 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Returns true if nearby action contexts should be shown when
-		display mode is set to automatic freelook mode.
-	*/
+	//! display mode is set to automatic freelook mode.
+	//! \return true if nearby action contexts should be shown when
 	protected bool ShouldBeEnabledInFreelook(ChimeraCharacter character)
 	{
 		if (!character)
@@ -331,20 +391,22 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 		CharacterControllerComponent controller = character.GetCharacterController();
 		if (!controller)
 			return false;
-		
+
+		// Inspection is priority
+		if (controller.GetInspect())
+			return true;
+
+		CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();
+		// Hide blips when in TPP while in the vehicle
+		if (compartmentAccess && compartmentAccess.IsInCompartment() && controller.IsInThirdPersonView())
+			return false;
+
 		// When freelook is enabled manually, enable the display
 		if (!controller.IsFreeLookEnforced() && controller.IsFreeLookEnabled())
 			return true;
 		
-		
-		// Inspection is priority
-		if (controller.GetInspect())
-			return true;
-		
 		// When forced, avoid displaying in certain cases
-		
 		// Suppress display when getting in our out
-		CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();
 		if (compartmentAccess)
 		{
 			if (compartmentAccess.IsGettingIn() || compartmentAccess.IsGettingOut())
@@ -438,7 +500,7 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 			referencePoint = rayStart + rayDir;
 			
 			// Inspection correction
-			ChimeraCharacter character = ChimeraCharacter.Cast(m_pControlledEntity);
+			ChimeraCharacter character = ChimeraCharacter.Cast(m_ControlledEntity);
 			if (character)
 			{
 				// During inspection (of a weapon)
@@ -458,7 +520,9 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 			}
 		}
 		else
+		{
 			referencePoint = vector.Zero;
+		}
 
 		return m_aInspectedEntities;
 	}
@@ -523,7 +587,7 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 		if (!m_pDisplay)
 			m_pDisplay = FindDisplay(owner);
 		
-		m_pControlledEntity = controlledEntity;
+		m_ControlledEntity = controlledEntity;
 		// Make sure we have a valid character
 		ChimeraCharacter character = ChimeraCharacter.Cast(controlledEntity);
 		
@@ -537,23 +601,19 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 		
 		HandleInspection(character, timeSlice);
 		
-		// Fetch current inputs
-		bool bPerform; float fScroll;
-		
 		UserActionContext currentContext = GetCurrentContext();
 		if (currentContext)
 		{
-			auto cEntity = GetGame().GetPlayerController().GetControlledEntity();
 			array<BaseUserAction> actions = {};
 			array<bool> canPerform = {};
 			int count = GetFilteredActions(actions, canPerform);
 			if (count > 0)
-				CollectInputs(bPerform, fScroll);
-			
+				GetGame().GetInputManager().ActivateContext("ActionMenuContext");
+
 			foreach (BaseUserAction action : actions)
 			{
 				if (m_pDisplay)
-					m_pDisplay.OnActionProgress( character, action, action.GetActionProgress(), action.GetActionDuration() );
+					m_pDisplay.OnActionProgress(character, action, action.GetActionProgress(), action.GetActionDuration());
 			}
 			
 			AggregateActions(actions, canPerform);
@@ -581,10 +641,9 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 			// But only if player is not performing an action already
 			if (!m_bIsPerforming)
 			{
-				if ( Math.AbsFloat(fScroll) > 0.5 )
-					iScrollAmount = Math.Clamp( fScroll, -1.0, 1.0 );
-	
-				
+				if (Math.AbsFloat(m_fSelectAction) > 0.5)
+					iScrollAmount = Math.Clamp(m_fSelectAction, -1.0, 1.0);
+
 				if (iScrollAmount != 0)
 					m_iSelectedActionIndex = m_iSelectedActionIndex - iScrollAmount;
 			}
@@ -611,14 +670,17 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 			}
 			
 			// Process interaction
-			DoProcessInteraction(character, currentContext, selectedAction, canPerformSelectedAction, bPerform, timeSlice, m_pDisplay);			
+			if (selectedAction)
+				canPerformSelectedAction = canPerformSelectedAction && selectedAction.CanBePerformed(character); // need to call this because the data from GetFilteredActions might not be up to date
+
+			DoProcessInteraction(character, currentContext, selectedAction, canPerformSelectedAction, m_bPerformAction, timeSlice, m_pDisplay);
 			m_pLastUserAction = selectedAction;
 			SetSelectedAction(selectedAction);
 
 			// Pass data to display
 			if (m_pDisplay)
 			{
-				ref ActionsTuple pData = new ref ActionsTuple();
+				ActionsTuple pData = new ActionsTuple();
 				bool canInteract = GetCanInteractScript(character);
 
 				if (canInteract || m_bIsPerforming)
@@ -632,7 +694,7 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 				}
 				
 				ActionDisplayData pDisplayData = new ActionDisplayData();
-				pDisplayData.pUser = cEntity;
+				pDisplayData.pUser = controlledEntity;
 				pDisplayData.pActionsData = pData;
 				pDisplayData.pSelectedAction = selectedAction;
 				pDisplayData.pCurrentContext = currentContext;
@@ -664,23 +726,26 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 			}
 		}
 		
-		
 		// Store last input
-		m_bLastInput = bPerform;
+		m_bLastInput = m_bPerformAction;
+
+		// Reset cached inputs to ensure that those actions will not be triggered on next frame
+		m_fSelectAction = 0;
+		if (!m_bIsPerforming)
+			m_bPerformAction = false;
+
 		// Update last context
 		m_pLastContext = currentContext;
 	}
 	
-	private ref array<BaseUserAction> m_ActionsBuffer = {};
-	private ref array<bool> m_PerformBuffer = {};
-	private ref map<string, ref array<int>> m_IndicesBuffer = new map<string, ref array<int>>();
+	protected ref array<BaseUserAction> m_ActionsBuffer = {};
+	protected ref array<bool> m_PerformBuffer = {};
+	protected ref map<string, ref array<int>> m_IndicesBuffer = new map<string, ref array<int>>();
 	
-	/*!
-		Modifies the input lists (which need to be 1:1 in length and logical sense) so
-		each action which can be aggregated (BaseUserAction.CanAggregate() returns true)
-		only displays the first available (or any first if none is available to perform)
-		action, filtered by BaseUserAction.GetActionName(). 
-	*/
+	//! Modifies the input lists (which need to be 1:1 in length and logical sense) so
+	//! each action which can be aggregated (BaseUserAction.CanAggregate() returns true)
+	//! only displays the first available (or any first if none is available to perform)
+	//! action, filtered by BaseUserAction.GetActionName().
 	protected void AggregateActions(array<BaseUserAction> actionsList, array<bool> canPerformList)
 	{
 		m_ActionsBuffer.Copy(actionsList);
@@ -690,7 +755,7 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 		canPerformList.Clear();
 		
 		// First pass, filter&gather
-		for (int i = 0; i < m_ActionsBuffer.Count(); i++)
+		for (int i = 0, count = m_ActionsBuffer.Count(); i < count; i++)
 		{
 			BaseUserAction action = m_ActionsBuffer[i];
 			if (!action)
@@ -704,13 +769,13 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 			// Group actions of same name for aggregation
 			string actionName = action.GetActionName();
 			if (!m_IndicesBuffer.Contains(actionName))
-				m_IndicesBuffer.Insert(actionName, new array<int>());
+				m_IndicesBuffer.Insert(actionName, {});
 			
 			m_IndicesBuffer[actionName].Insert(i);
 		}
 		
 		// Second pass, resolve&output
-		for (int i = 0; i < m_ActionsBuffer.Count(); i++)
+		for (int i = 0, count = m_ActionsBuffer.Count(); i < count; i++)
 		{
 			BaseUserAction action = m_ActionsBuffer[i];
 			if (!action)
@@ -752,4 +817,4 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 			m_IndicesBuffer.Remove(actionName);
 		}
 	}
-};
+}

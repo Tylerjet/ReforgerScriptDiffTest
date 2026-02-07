@@ -180,7 +180,7 @@ class SCR_ResourceEncapsulator : SCR_ResourceInteractor
 	void DebugDraw()
 	{
 		vector origin	= GetOwnerOrigin();
-		Color color		= Color.FromInt(m_ResourceComponent.GetDebugColor().PackToInt());
+		Color color		= m_ResourceComponent.GetDebugColor();
 		
 		color.Scale(0.2);
 		color.SetA(1.0);
@@ -235,7 +235,7 @@ class SCR_ResourceEncapsulator : SCR_ResourceInteractor
 		if (!m_ContainerRepresentative)
 			return;
 		
-		m_ContainerRepresentative.SetResourceValue(GetAggregatedResourceValue());
+		m_ContainerRepresentative.SetResourceValueUnsafe(GetAggregatedResourceValue());
 		
 	}
 	
@@ -261,7 +261,7 @@ class SCR_ResourceEncapsulator : SCR_ResourceInteractor
 			return;
 		
 		m_ContainerRepresentative.SetMaxResourceValue(GetAggregatedMaxResourceValue());
-		m_ContainerRepresentative.SetResourceValue(GetAggregatedResourceValue());
+		m_ContainerRepresentative.SetResourceValueUnsafe(GetAggregatedResourceValue());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -275,7 +275,7 @@ class SCR_ResourceEncapsulator : SCR_ResourceInteractor
 			return;
 		
 		m_ContainerRepresentative.SetMaxResourceValue(GetAggregatedMaxResourceValue());
-		m_ContainerRepresentative.SetResourceValue(GetAggregatedResourceValue());
+		m_ContainerRepresentative.SetResourceValueUnsafe(GetAggregatedResourceValue());
 	}
 }
 

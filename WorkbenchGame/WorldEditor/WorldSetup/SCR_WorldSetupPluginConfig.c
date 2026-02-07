@@ -1,5 +1,4 @@
-#ifdef WORKBENCH
-
+#ifdef WORKBENCH // this config is only related to a Workbench tool (SCR_WorldSetupPlugin_Entities)
 [BaseContainerProps(configRoot: true)]
 class SCR_WorldSetupPluginConfig
 {
@@ -42,5 +41,4 @@ class SCR_WorldSetupPluginConfig_EntitySourceKeyValue
 	[Attribute(desc: "Variable value")]
 	string m_sValue;
 }
-
-#endif
+#endif // WORKBENCH

@@ -165,10 +165,10 @@ class SCR_GameModeLastStand : SCR_BaseGameMode
 		}
 		BaseWorld world = owner.GetWorld();
 		m_AttackWP = AIWaypoint.Cast(world.FindEntityByName("WP1"));
-		m_aEnemySoldiers = new ref array<IEntity>;
-		m_aGroups = new ref array<SCR_AIGroup>;
-		m_aPlayerSpawnPoints = new ref array<SCR_SpawnPoint>;
-		m_aEnemySpawnPoints = new ref array<SCR_SpawnPoint>;
+		m_aEnemySoldiers = new array<IEntity>;
+		m_aGroups = new array<SCR_AIGroup>;
+		m_aPlayerSpawnPoints = new array<SCR_SpawnPoint>;
+		m_aEnemySpawnPoints = new array<SCR_SpawnPoint>;
 		array<SCR_SpawnPoint> spawnPoints = new array<SCR_SpawnPoint>;
 		spawnPoints = SCR_SpawnPoint.GetSpawnPoints();
 

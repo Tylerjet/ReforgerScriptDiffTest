@@ -38,11 +38,11 @@ class SCR_OverrideCharacterMedicalEditorAttribute : SCR_BaseEditorAttribute
 			manager.SetAttributeAsSubAttribute(SCR_CharUnconsciousnessEditorAttribute);
 		}	
 		
-		bool isOverriden = (var && var.GetBool());
+		bool isOverridden = var && var.GetBool();
 		
-		manager.SetAttributeEnabled(SCR_CharRegenEditorAttribute, isOverriden);
-		manager.SetAttributeEnabled(SCR_CharBleedingEditorAttribute, isOverriden);
-		manager.SetAttributeEnabled(SCR_CharUnconsciousnessEditorAttribute, isOverriden);
+		manager.SetAttributeEnabled(SCR_CharRegenEditorAttribute, isOverridden);
+		manager.SetAttributeEnabled(SCR_CharBleedingEditorAttribute, isOverridden);
+		manager.SetAttributeEnabled(SCR_CharUnconsciousnessEditorAttribute, isOverridden);
 	}
 	
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)

@@ -35,8 +35,8 @@ class SCR_GameOverTypeEditorAttribute: SCR_BaseFloatValueHolderEditorAttribute
 		if (isInit)
 			manager.SetAttributeAsSubAttribute(SCR_GameOverFactionsEditorAttribute);
 		
-		array <SCR_BaseGameOverScreenInfo> gameOverScreens = new ref array <SCR_BaseGameOverScreenInfo>;
-		array <SCR_BaseGameOverScreenInfo> editorGameOverScreens = new ref array <SCR_BaseGameOverScreenInfo>;
+		array <SCR_BaseGameOverScreenInfo> gameOverScreens = new array <SCR_BaseGameOverScreenInfo>;
+		array <SCR_BaseGameOverScreenInfo> editorGameOverScreens = new array <SCR_BaseGameOverScreenInfo>;
 		
 		if (!SetGameOverConfig())
 			return;
@@ -67,8 +67,8 @@ class SCR_GameOverTypeEditorAttribute: SCR_BaseFloatValueHolderEditorAttribute
 		
 		int index = var.GetInt();
 		
-		array <SCR_BaseGameOverScreenInfo> gameOverScreens = new ref array <SCR_BaseGameOverScreenInfo>;
-		array <SCR_BaseGameOverScreenInfo> editorGameOverScreens = new ref array <SCR_BaseGameOverScreenInfo>;
+		array <SCR_BaseGameOverScreenInfo> gameOverScreens = new array <SCR_BaseGameOverScreenInfo>;
+		array <SCR_BaseGameOverScreenInfo> editorGameOverScreens = new array <SCR_BaseGameOverScreenInfo>;
 		if (!SetGameOverConfig())
 			return;
 		
@@ -136,8 +136,8 @@ class SCR_GameOverTypeEditorAttribute: SCR_BaseFloatValueHolderEditorAttribute
 			hasPlayableFactions = (delegateFactionManager.GetPlayableFactionDelegateCount() > 0);
 		}
 		
-		array <SCR_BaseGameOverScreenInfo> gameOverScreens = new ref array <SCR_BaseGameOverScreenInfo>;
-		array <SCR_BaseGameOverScreenInfo> editorGameOverScreens = new ref array <SCR_BaseGameOverScreenInfo>;
+		array <SCR_BaseGameOverScreenInfo> gameOverScreens = new array <SCR_BaseGameOverScreenInfo>;
+		array <SCR_BaseGameOverScreenInfo> editorGameOverScreens = new array <SCR_BaseGameOverScreenInfo>;
 		m_GameOverScreenConfig.GetGameOverInfoArray(gameOverScreens);
 		GetEditorGameOverInfoArray(gameOverScreens, editorGameOverScreens);
 		

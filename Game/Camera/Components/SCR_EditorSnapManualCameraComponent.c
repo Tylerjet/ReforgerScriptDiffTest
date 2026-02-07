@@ -1,10 +1,7 @@
-[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
-/** @ingroup ManualCamera
-*/
+//! @ingroup ManualCamera
 
-/*!
-Snap camera to specific target.
-*/
+//! Snap camera to specific target.
+[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
 class SCR_EditorSnapManualCameraComponent : SCR_BaseManualCameraComponent
 {	
 	[Attribute("8", desc: "How agressively does the camera rotates towards the entity under cursor.")]
@@ -22,9 +19,11 @@ class SCR_EditorSnapManualCameraComponent : SCR_BaseManualCameraComponent
 	private SCR_TransformingEditorComponent m_TransformingManager;
 	private SCR_PreviewEntityEditorComponent m_PreviewManager;
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraFrame(SCR_ManualCameraParam param)
 	{
-		if (!param.isManualInputEnabled) return;
+		if (!param.isManualInputEnabled)
+			return;
 		
 		if (!m_HoverManager)
 		{
@@ -32,7 +31,9 @@ class SCR_EditorSnapManualCameraComponent : SCR_BaseManualCameraComponent
 			SetEnabled(false);
 			return;
 		}
-		if (!GetInputManager() || GetInputManager().IsUsingMouseAndKeyboard()) return;
+
+		if (!GetInputManager() || GetInputManager().IsUsingMouseAndKeyboard())
+			return;
 
 		bool isDelegate = false;
 		SCR_EditableEntityComponent entity = m_HoverManager.GetEntityUnderCursor(isDelegate);
@@ -43,10 +44,12 @@ class SCR_EditorSnapManualCameraComponent : SCR_BaseManualCameraComponent
 		}
 		
 		//--- Ignore currently edited entity
-		if (m_TransformingManager && m_TransformingManager.IsEditing(entity)) return;
+		if (m_TransformingManager && m_TransformingManager.IsEditing(entity))
+			return;
 		
 		//--- Ignore when transforming an entity vertically (would mess up camera snapping there)
-		if (m_PreviewManager && m_PreviewManager.IsMovingVertically()) return;
+		if (m_PreviewManager && m_PreviewManager.IsMovingVertically())
+			return;
 		
 		//--- Geometry (not icon) under cursor, check if it's not too close
 		if (!isDelegate)
@@ -82,7 +85,9 @@ class SCR_EditorSnapManualCameraComponent : SCR_BaseManualCameraComponent
 		//entity = m_HoverManager.GetParentBelowCurrentLayer(entity);
 
 		vector target;
-		if (!entity.GetPos(target)) return;
+		if (!entity.GetPos(target))
+			return;
+
 		target = CoordToCamera(target);
 				
 		target = vector.Direction(param.transform[3], target).Normalized();
@@ -96,6 +101,7 @@ class SCR_EditorSnapManualCameraComponent : SCR_BaseManualCameraComponent
 		param.isDirty = true;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected bool ResetSnap(vector transformationNew[4], SCR_EditableEntityComponent entity)
 	{
 		m_EntityPrev = entity;
@@ -104,6 +110,8 @@ class SCR_EditorSnapManualCameraComponent : SCR_BaseManualCameraComponent
 		m_bSnapped = false;
 		return false;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool EOnCameraInit()
 	{
 		m_TransformingManager = SCR_TransformingEditorComponent.Cast(SCR_TransformingEditorComponent.GetInstance(SCR_TransformingEditorComponent));
@@ -111,9 +119,8 @@ class SCR_EditorSnapManualCameraComponent : SCR_BaseManualCameraComponent
 		
 		SCR_EntitiesManagerEditorComponent entitiesManager = SCR_EntitiesManagerEditorComponent.Cast(SCR_EntitiesManagerEditorComponent.GetInstance(SCR_EntitiesManagerEditorComponent));
 		if (entitiesManager)
-		{
 			m_HoverManager = SCR_HoverEditableEntityFilter.Cast(entitiesManager.GetFilter(EEditableEntityState.HOVER));
-		}
+
 		return true;
 	}
-};
+}

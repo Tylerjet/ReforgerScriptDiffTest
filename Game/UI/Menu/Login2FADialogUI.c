@@ -11,7 +11,6 @@ class SCR_Login2FADialogUI : SCR_LoginProcessDialogUI
 	
 	protected const int EDIT_BOX_INITIAL_FOCUS_DELAY = 100;
 	protected const int EDIT_BOX_FLICKER_TIME = 400;
-	protected const int ON_FAIL_DELAY = 5000;
 
 	//------------------------------------------------------------------------------------------------
 	void SCR_Login2FADialogUI(string name, string code)
@@ -62,19 +61,20 @@ class SCR_Login2FADialogUI : SCR_LoginProcessDialogUI
 		if (m_bIsLoading)
 			return;
 		
+		string code = m_s2FAText.Trim();
+		
+		if (!VerifyFormatting(code))
+		{
+			ShowWarningMessage(true);
+			return;
+		}
+		
 		GetGame().GetBackendApi().SetCredentialsItem(EBackendCredentials.EBCRED_NAME, m_sName);
 		GetGame().GetBackendApi().SetCredentialsItem(EBackendCredentials.EBCRED_PWD, m_sCode);
-		GetGame().GetBackendApi().SetCredentialsItem(EBackendCredentials.EBCRED_2FA_TOKEN, m_s2FAText);
+		GetGame().GetBackendApi().SetCredentialsItem(EBackendCredentials.EBCRED_2FA_TOKEN, code);
 		GetGame().GetBackendApi().VerifyCredentials(m_Callback, true);
 		
 		super.OnConfirm();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void OnFail(SCR_BackendCallback callback, int code, int restCode, int apiCode)
-	{
-		// Add a delay to prevent the backend from being overwhelmed
-		GetGame().GetCallqueue().CallLater(OnFailDelayed, ON_FAIL_DELAY, false, callback, code, restCode, apiCode);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -86,15 +86,34 @@ class SCR_Login2FADialogUI : SCR_LoginProcessDialogUI
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnFailDelayed(SCR_BackendCallback callback, int code, int restCode, int apiCode)
+	override void OnFailDelayed(SCR_BackendCallback callback, int code, int restCode, int apiCode)
 	{
-		super.OnFail(callback, code, restCode, apiCode);
+		super.OnFailDelayed(callback, code, restCode, apiCode);
 
-		GetGame().GetCallqueue().Remove(OnFailDelayed);
 		Clear();
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// Code must be entirely made out of numbers
+	override bool VerifyFormatting(string text)
+	{
+		if (!IsCodeComplete() || text.Contains(" "))
+			return false;
+		
+		for (int i = 0; i < text.Length(); i++)
+		{
+			string char = text[i];
+			int asciiCode = char.ToAscii();
+			
+			if (asciiCode < 48 || asciiCode > 57)
+				return false;
+		}
+
+		return super.VerifyFormatting(text);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Overridden in console version
 	protected void ActivateFirstEditBox()
 	{
 		if (!m_aEditBoxComponents.IsEmpty())
@@ -102,6 +121,7 @@ class SCR_Login2FADialogUI : SCR_LoginProcessDialogUI
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Overridden in console version
 	protected void BindEditBoxInputEvent(SCR_EditBoxComponent comp)
 	{
 		comp.m_OnTextChange.Insert(OnTextChange);
@@ -133,7 +153,7 @@ class SCR_Login2FADialogUI : SCR_LoginProcessDialogUI
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! We have a number of single digit edit boxes
+	//! We have a number of single digit edit boxes. Overridden in console version
 	protected bool IsCodeComplete()
 	{
 		return m_s2FAText.Length() >= m_aEditBoxComponents.Count();
@@ -151,7 +171,7 @@ class SCR_Login2FADialogUI : SCR_LoginProcessDialogUI
 			// Flicker components
 			GetGame().GetCallqueue().Remove(comp.ResetOverlayColor);
 			
-			comp.ChangeOverlayColor(UIColors.WARNING);
+			comp.ChangeOverlayColor(Color.FromInt(UIColors.WARNING.PackToInt()));
 			GetGame().GetCallqueue().CallLater(comp.ResetOverlayColor, EDIT_BOX_FLICKER_TIME);
 		}
 		

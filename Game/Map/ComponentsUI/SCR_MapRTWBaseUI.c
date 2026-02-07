@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
 class ToolSize
 {
@@ -9,15 +8,14 @@ class ToolSize
 	int m_iSizeY;
 }
 
-//------------------------------------------------------------------------------------------------
-//! Base map UI component for map tools wihch using RenderTargetWidget for display 
+//! Base map UI component for map tools which are using RenderTargetWidget to display
 class SCR_MapRTWBaseUI : SCR_MapUIBaseComponent
 {
 	[Attribute("", UIWidgets.Object, desc: "Array of x*y sizes in unscaled pix")]
 	protected ref array<ref ToolSize> m_aSizesArray;
 	
-	const string BASE_WORLD_TYPE = "ChimeraWorld";
-	const float CAMERA_VERTICAL_FOV = 43;
+	protected static const string BASE_WORLD_TYPE = "ChimeraWorld";
+	protected static const float CAMERA_VERTICAL_FOV = 43;
 	
 	// configuration
 	protected string WIDGET_NAME;
@@ -28,9 +26,8 @@ class SCR_MapRTWBaseUI : SCR_MapUIBaseComponent
 	protected vector m_vCameraPos;
 	protected vector m_vCameraAngle;
 	
-	
 	protected bool m_bIsVisible;				// visibility flag
-	protected bool m_bWantedVisible;			// holds wanted visiblity state after close
+	protected bool m_bWantedVisible;			// holds wanted visibility state after close
 	protected bool m_bIsDragged = false;		// widget is being dragged
 	protected int m_iCurrentSizeIndex;			// current id of m_SizesArray
 	protected int m_iSizesCount;				// count of m_SizesArray
@@ -55,7 +52,7 @@ class SCR_MapRTWBaseUI : SCR_MapUIBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Initialize RT camera and prefab positon
+	//! Initialise RT camera and prefab positon
 	protected void InitPositionVectors()
 	{
 		m_vPrefabPos = "0 0 0";
@@ -99,7 +96,7 @@ class SCR_MapRTWBaseUI : SCR_MapUIBaseComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Set visibility
-	//! \param visible is true/false switch
+	//! \param[in] visible is true/false switch
 	protected void SetVisible(bool visible)
 	{
 		if (!m_wFrame)
@@ -118,7 +115,7 @@ class SCR_MapRTWBaseUI : SCR_MapUIBaseComponent
 			m_wFrame.SetEnabled(true);
 			ScriptCallQueue queue = GetGame().GetCallqueue();
 			if (queue)
-				queue.CallLater(SetFrameVisible, 0, 0);	// delayed by frame so the positioning can be initialized  
+				queue.CallLater(SetFrameVisible, 0, 0);	// delayed by frame so the positioning can be initialised
 
 			FrameSlot.SetPos(m_wFrame, m_fPosX, m_fPosY);
 		}
@@ -128,7 +125,7 @@ class SCR_MapRTWBaseUI : SCR_MapUIBaseComponent
 			m_wFrame.SetEnabled(false);
 			m_wFrame.SetVisible(false);
 				
-			delete m_RTEntity; // proc anims dont work without this not being refreshed atm
+			delete m_RTEntity; // proc anims do not work without this not being refreshed atm
 		}
 		
 		if (m_ToolMenuEntry)
@@ -153,6 +150,8 @@ class SCR_MapRTWBaseUI : SCR_MapUIBaseComponent
 			m_RTWorld = BaseWorld.CreateWorld(BASE_WORLD_TYPE, WORLD_NAME);
 			if (!m_RTWorld)
 				return false;
+			World previewRTWorld = m_RTWorld.GetRef();
+			previewRTWorld.ReloadSystems();
 		}
 		
 		BaseWorld previewWorld = m_RTWorld.GetRef();
@@ -172,13 +171,12 @@ class SCR_MapRTWBaseUI : SCR_MapUIBaseComponent
 		previewWorld.SetCameraFarPlane(0, 50);
 		previewWorld.SetCameraVerticalFOV(0, CAMERA_VERTICAL_FOV);
 		
-						
 		return true;
 	}
 		
 	//------------------------------------------------------------------------------------------------
 	//! Spawn prefab in the preview world
-	//! \return Returns true if successful
+	//! \return true if successful
 	protected bool SpawnPrefab()
 	{
 		string rscStr = GetPrefabResource();
@@ -218,7 +216,7 @@ class SCR_MapRTWBaseUI : SCR_MapUIBaseComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Set size of RTW widget, cyclying through an array of prepared sizes 
-	//! \param nextSize determines whether current size is kept or swapped to the next one in size array
+	//! \param[in] nextSize determines whether current size is kept or swapped to the next one in size array
 	protected void SetSize(bool nextSize = false)
 	{
 		if (nextSize)
@@ -234,6 +232,7 @@ class SCR_MapRTWBaseUI : SCR_MapUIBaseComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Drag event
+	//! \param[in] widget
 	protected void OnDragWidget(Widget widget)
 	{
 		if (widget == m_wFrame)
@@ -254,6 +253,8 @@ class SCR_MapRTWBaseUI : SCR_MapUIBaseComponent
 	
 	//------------------------------------------------------------------------------------------------
 	// OVERRIDES
+	//------------------------------------------------------------------------------------------------
+
 	//------------------------------------------------------------------------------------------------
 	override void OnMapOpen(MapConfiguration config)
 	{		
@@ -295,14 +296,9 @@ class SCR_MapRTWBaseUI : SCR_MapUIBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_MapRTWBaseUI()
 	{
 		m_bHookToRoot = true;
 	}
-
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_MapRTWBaseUI()
-	{
-		m_RTWorld = null;
-	}
-};
+}

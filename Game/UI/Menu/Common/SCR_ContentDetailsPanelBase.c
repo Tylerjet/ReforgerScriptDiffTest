@@ -1,34 +1,35 @@
-/*
-todo: refactor this.
-Don't do init of widgets in HandlerAttached of Base class.
-Instead make a new widgets class for each details panel layout type.
-*/
-
-class SCR_ContentDetailsPanelBase : ScriptedWidgetComponent
+class SCR_ContentDetailsPanelBase : SCR_ScriptedWidgetComponent
 {
-	protected ref SCR_ContentDetailsPanelBaseWidgets widgets = new SCR_ContentDetailsPanelBaseWidgets; // todo delete this. For now it's here for compatibility.
-	
-	Widget m_wRoot;
-	
-	[Attribute()]
-	protected ref SCR_ContentBrowser_ColorScheme m_ColorScheme;
+	protected ref SCR_ContentDetailsPanelBaseWidgets m_CommonWidgets = new SCR_ContentDetailsPanelBaseWidgets;
 	
 	[Attribute()]
 	protected ref DetailsPanelContentPresetConfig m_FallbackContent;
 	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Common image set", "imageset")]
-	protected ResourceName m_IconImageSet; 
-	
 	[Attribute("500")]
 	protected int m_iMaxDescriptionLenght;
 	
+	[Attribute("0")]
+	protected bool m_bDisplayAdditionalInfo;
+	
+	[Attribute("{8D067F8167DB936D}UI/layouts/Menus/Common/DetailsPanel/Prefabs/AddonTypeImage.layout")]
+	protected ResourceName m_sTypeDisplayLayout;
+	
+	[Attribute("12")]
+	protected int m_iMaxTypeImages;
+	
 	protected const int DESCRIPTION_LENGHT_OFFSET = 10;
+	
+	protected SCR_SimpleWarningOverlayComponent m_WarningOverlay;
+	protected ref array<Widget> m_aTypeImages = {};
 	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
-		m_wRoot = w;
-		widgets.Init(w.FindWidget("ContentDetailsPanel")); // The layout is exported from base layout which is embedded into this layout.
+		super.HandlerAttached(w);
+		m_CommonWidgets.Init(w.FindWidget("ContentDetailsPanel")); // The layout is exported from base layout which is embedded into this layout.
+	
+		m_CommonWidgets.m_WarningOverlayComponent.SetWarningVisible(false, false);
+		m_CommonWidgets.m_wAdditionalInfo.SetVisible(m_bDisplayAdditionalInfo);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -42,9 +43,7 @@ class SCR_ContentDetailsPanelBase : ScriptedWidgetComponent
 		
 		return true;
 	}
-	
-	
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateSize()
 	{
@@ -52,8 +51,8 @@ class SCR_ContentDetailsPanelBase : ScriptedWidgetComponent
 		float sizex, sizey;
 		m_wRoot.GetScreenSize(sizex, sizey);
 		float sizexUnscaled = GetGame().GetWorkspace().DPIUnscale(sizex);
-		widgets.m_TopSize.EnableHeightOverride(true);
-		widgets.m_TopSize.SetHeightOverride(sizexUnscaled / SCR_WorkshopUiCommon.IMAGE_SIZE_RATIO );
+		m_CommonWidgets.m_wTopSize.EnableHeightOverride(true);
+		m_CommonWidgets.m_wTopSize.SetHeightOverride(sizexUnscaled / SCR_WorkshopUiCommon.IMAGE_SIZE_RATIO);
 	}
 	
 	//-----------------------------------------------------------------------------------
@@ -80,10 +79,39 @@ class SCR_ContentDetailsPanelBase : ScriptedWidgetComponent
 			text += "...";
 		}
 		
-		widgets.m_DescriptionText.SetText(text);
+		m_CommonWidgets.m_wDescriptionText.SetText(text);
 	}
-};
-
+	
+	//-----------------------------------------------------------------------------------
+	protected Widget AddTypeDisplay(string image, ResourceName imageset, ResourceName glowImageset)
+	{
+		if (m_aTypeImages.Count() >= m_iMaxTypeImages)
+			return null;
+		
+		Widget w = GetGame().GetWorkspace().CreateWidgets(m_sTypeDisplayLayout, m_CommonWidgets.m_wTypeImages);
+		if (!w)
+			return null;
+		
+		m_aTypeImages.Insert(w);
+		
+		SCR_DynamicIconComponent comp = SCR_DynamicIconComponent.Cast(w.FindHandler(SCR_DynamicIconComponent));
+		if (comp)
+			comp.SetImage(image, imageset, glowImageset);
+		
+		return w;
+	}
+	
+	//-----------------------------------------------------------------------------------
+	protected void ClearTypeDisplays()
+	{
+		foreach (Widget w : m_aTypeImages)
+		{
+			w.RemoveFromHierarchy();
+		}
+		
+		m_aTypeImages.Clear();
+	}
+}
 
 //-----------------------------------------------------------------------------------
 [BaseContainerProps(configRoot : true)]
@@ -94,7 +122,7 @@ class DetailsPanelContentPresetConfig
 	
 	[Attribute()]
 	ref array<ref DetailsPanelContentPreset> m_aContent;
-};
+}
 
 //-----------------------------------------------------------------------------------
 [BaseContainerProps(), BaseContainerCustomTitleField("m_sTag")]
@@ -112,9 +140,9 @@ class DetailsPanelContentPreset
 	[Attribute()]
 	string m_sTitleImageName;
 	
-	[Attribute("255 255 255 255")]
+	[Attribute(UIColors.GetColorAttribute(UIColors.NEUTRAL_INFORMATION))]
 	ref Color m_sTitleImageColor;
 	
 	[Attribute()]
 	string m_sDescription;
-};
+}

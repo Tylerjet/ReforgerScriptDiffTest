@@ -3,25 +3,30 @@ class SCR_LampComponentClass : SCR_BaseInteractiveLightComponentClass
 {
 	[Attribute("{40318DDE45FF4CC3}Particles/Enviroment/Lamp_fire_normal.ptc", UIWidgets.ResourceNamePicker, "Prefab of fire particle used for a fire action.", "ptc")]
 	protected ResourceName m_sParticle;	
+
 	[Attribute("0 0.1 0", UIWidgets.EditBox, "Particle offset in local space from the origin of the entity")]
 	protected vector m_vParticleOffset;
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetParticle()
 	{
 		return m_sParticle;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	vector GetParticleOffset()
 	{
 		return m_vParticleOffset;
 	}
-};
+}
 
 class SCR_LampComponent : SCR_BaseInteractiveLightComponent
 {
 	private ParticleEffectEntity m_pFireParticle;
 	protected SCR_BaseInteractiveLightComponentClass m_ComponentData;
-		
+	
 	//------------------------------------------------------------------------------------------------
 	override void ToggleLight(bool turnOn, bool skipTransition = false, bool playSound = true)
 	{	
@@ -45,6 +50,7 @@ class SCR_LampComponent : SCR_BaseInteractiveLightComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void TurnOn()
 	{
 		SCR_LampComponentClass componentData = SCR_LampComponentClass.Cast(GetComponentData(GetOwner()));
@@ -65,6 +71,7 @@ class SCR_LampComponent : SCR_BaseInteractiveLightComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void TurnOff()
 	{
 		//Reset fire particles
@@ -92,4 +99,4 @@ class SCR_LampComponent : SCR_BaseInteractiveLightComponent
 		
 		RemoveLights();
 	}
-};
+}

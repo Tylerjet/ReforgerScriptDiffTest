@@ -2,8 +2,9 @@
 class EditablePrefabsLabel_EntityType : EditablePrefabsLabel_Base
 {
 	[Attribute("0", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EEditableEntityType))]
-	private EEditableEntityType m_EntityType;
-	
+	protected EEditableEntityType m_EntityType;
+
+	//------------------------------------------------------------------------------------------------
 	override bool GetLabelValid(WorldEditorAPI api, IEntitySource entitySource, IEntityComponentSource componentSource, string targetPath, EEditableEntityType entityType, notnull array<EEditableEntityLabel> authoredLabels, out EEditableEntityLabel label)
 	{
 		// Skip objects/generic label on Composition and System entity types
@@ -14,12 +15,13 @@ class EditablePrefabsLabel_EntityType : EditablePrefabsLabel_Base
 		{
 			return false;
 		}
-		
+
 		if (entityType == m_EntityType)
 		{
 			label = m_Label;
 			return true;
 		}
+
 		return false;
 	}
-};
+}

@@ -1,3 +1,14 @@
+enum ELocalAmbientSignal
+{
+	SoundName,
+	EntitySize,
+	AboveTerrain,
+	SunAngle,
+	EnvironmentType,
+	Seed,
+	Distance
+}
+
 [EntityEditorProps(category: "GameScripted/Sound", description: "Component handling ambient Insects", color: "0 0 255 255")]
 class SCR_AmbientInsectsComponentClass : ScriptComponentClass
 {
@@ -32,30 +43,36 @@ class SCR_AmbientInsectsComponent : ScriptComponent
 	protected int m_iWindSpeedSignalIdx;
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetEnvironmentType()
 	{
 		return m_iEnvironmentTypeSignalValue;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetTimeOfDay()
 	{
 		return m_fTimeOfDay;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetRainIntensity()
 	{
 		return m_fRainIntensity;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetWindSpeed()
 	{
 		return m_fWindSpeed;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] effect
 	void RemoveInsectEffect(SCR_AmbientInsectsEffect effect)
 	{
 		m_aAmbientInsectsEffect.RemoveItem(effect);
@@ -133,6 +150,10 @@ class SCR_AmbientInsectsComponent : ScriptComponent
 
 #ifdef ENABLE_DIAG
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_AmbientInsectsComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AMBIENT_LIFE, "", "Ambient Life", "World");

@@ -14,7 +14,7 @@ class SCR_PlayerDelegateEditorComponent : SCR_BaseEditorComponent
 	protected int m_iPlayerID;
 	protected SCR_EditablePlayerDelegateComponent m_PlayerDelegate;
 	protected ref map<int, SCR_EditablePlayerDelegateComponent> m_Delegates = new map<int, SCR_EditablePlayerDelegateComponent>;
-	protected ref ScriptInvoker m_OnLimitedEditorChanged = new ref ScriptInvoker;
+	protected ref ScriptInvoker m_OnLimitedEditorChanged = new ScriptInvoker;
 	
 	/*!
 	Register delegate *locally*

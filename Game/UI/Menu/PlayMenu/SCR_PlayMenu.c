@@ -19,7 +19,6 @@ class SCR_PlayMenuEntry : Managed
 	}
 }
 
-//------------------------------------------------------------------------------------------------
 class SCR_PlayMenu : MenuRootBase
 {
 	protected ResourceName m_sConfig = "{6409EA8EA4BFF7E6}Configs/PlayMenu/PlayMenuEntries.conf";
@@ -60,10 +59,13 @@ class SCR_PlayMenu : MenuRootBase
 	protected SCR_InputButtonComponent m_Restart;
 	protected SCR_InputButtonComponent m_Host;
 	protected SCR_InputButtonComponent m_FindServer;
+	protected ref array<SCR_InputButtonComponent> m_aRightFooterButtons = {};
 
 	protected SCR_PlayMenuTileComponent m_ClickedTile; // Cache last clicked line to trigger the correct dialog after the double click window
 
 	protected MissionWorkshopItem m_SelectedScenario;
+	
+	protected SCR_MenuActionsComponent m_ActionsComponent;
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen()
@@ -83,20 +85,29 @@ class SCR_PlayMenu : MenuRootBase
 		footer.GetOnButtonActivated().Insert(OnInteractionButtonPressed);
 		
 		SCR_InputButtonComponent back = footer.FindButton("Back");
-		m_Play = footer.FindButton("Play");
-		m_Continue = footer.FindButton("Continue");
-		m_Restart = footer.FindButton("Restart");
-		m_Host = footer.FindButton("Host");
-		m_FindServer = footer.FindButton("FindServer");
 		m_Scenarios = footer.FindButton("Scenarios");
+		m_Play = footer.FindButton(SCR_ScenarioEntryHelper.BUTTON_PLAY);
+		m_Continue = footer.FindButton(SCR_ScenarioEntryHelper.BUTTON_CONTINUE);
+		m_Restart = footer.FindButton(SCR_ScenarioEntryHelper.BUTTON_RESTART);
+		m_Host = footer.FindButton(SCR_ScenarioEntryHelper.BUTTON_HOST);
+		m_FindServer = footer.FindButton(SCR_ScenarioEntryHelper.BUTTON_FIND_SERVERS);
 		
+		m_aRightFooterButtons = footer.GetButtonsInFooter(SCR_EDynamicFooterButtonAlignment.RIGHT);
+
 		//! Listeners
-		SCR_MenuActionsComponent actionsComp = SCR_MenuActionsComponent.FindComponent(GetRootWidget());
-		if (actionsComp)
-			actionsComp.GetOnAction().Insert(OnActionTriggered);
+		m_ActionsComponent = SCR_MenuActionsComponent.FindComponent(GetRootWidget());
+		if (m_ActionsComponent)
+			m_ActionsComponent.GetOnAction().Insert(OnActionTriggered);
 
 		SCR_ServicesStatusHelper.RefreshPing();
 		SCR_ServicesStatusHelper.GetOnCommStatusCheckFinished().Insert(OnCommStatusCheckFinished);
+		
+		// Backend
+		WorkshopApi workshop = GetGame().GetBackendApi().GetWorkshop();
+		
+		// Scan offline items if needed
+		if (workshop.NeedScan())
+			workshop.ScanOfflineItems();
 		
 		// Read the PlayMenu config
 		m_Config = BaseContainerTools.LoadContainer(m_sConfig);
@@ -156,6 +167,37 @@ class SCR_PlayMenu : MenuRootBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	override void OnMenuShow()
+	{
+		super.OnMenuShow();
+		
+		if (m_ActionsComponent)
+			m_ActionsComponent.ActivateActions();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuFocusGained()
+	{
+		super.OnMenuFocusGained();
+
+		if (m_ActionsComponent)
+			m_ActionsComponent.ActivateActions();
+		
+		SCR_ServicesStatusHelper.RefreshPing();
+		
+		// Restore focus to the last accessed tile
+		if (m_CurrentTile)
+		{
+			GetGame().GetWorkspace().SetFocusedWidget(m_CurrentTile.m_wRoot);
+			return;
+		}
+
+		// Fallback to the 1st item in the *recent items* list
+		if (m_Recent)
+			m_Recent.SetFocusedItem(0);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void SetupSectionTiles(SCR_PlayMenuComponent section, array<ref SCR_PlayMenuEntry> entries)
 	{
 		ref array<Widget> widgets = section.GetWidgets();
@@ -178,11 +220,7 @@ class SCR_PlayMenu : MenuRootBase
 			entry.m_Tile = tile;
 			entry.m_wRoot = tile.m_wRoot;
 
-			tile.m_OnPlay.Insert(OnPlayButton);
-			tile.m_OnContinue.Insert(OnContinueButton);
-			tile.m_OnRestart.Insert(OnRestartButton);
-			tile.m_OnHost.Insert(OnHostButton);
-			tile.m_OnFindServer.Insert(OnJoinButton);
+			tile.GetOnMouseInteractionButtonClicked().Insert(OnInteractionButtonPressed);
 
 			tile.m_OnFocused.Insert(OnTileFocused);
 			tile.m_OnFocusLost.Insert(OnTileFocusLost);
@@ -303,79 +341,54 @@ class SCR_PlayMenu : MenuRootBase
 
 	//! Input Events
 	//------------------------------------------------------------------------------------------------
-	protected void OnConfirmationDialogButtonPressed(SCR_ScenarioConfirmationDialogUi dialog, string tag)
-	{
-		if (!dialog)
-			return;
-
-		MissionWorkshopItem scenario = dialog.GetScenario();
-		
-		switch (tag)
-		{
-			case "confirm":
-				Play(scenario);
-				break;
-
-			case "load":
-				Continue(scenario);
-				break;
-
-			case "restart":
-				Restart(scenario);
-				break;
-
-			case "join":
-				Join(scenario);
-				break;
-
-			case "host":
-				Host(scenario);
-				break;
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
 	protected void OnActionTriggered(string action, float multiplier)
 	{
 		//! TODO: set which input modes should trigger the actions in the component itself
-		if (GetGame().GetInputManager().GetLastUsedInputDevice() != EInputDeviceType.MOUSE)
+		if (GetGame().GetInputManager().GetLastUsedInputDevice() != EInputDeviceType.MOUSE || !GetTileUnderCursor())
 			return;
 
+		MissionWorkshopItem scenario = GetSelectedScenario();
+		
 		switch (action)
 		{
-			case "MenuSelectDouble":
-				OnTileClickInteraction(multiplier);
-				break;
-
-			case "MenuRestart":
-				OnRestartButton();
-				break;
-
-			case "MenuJoin":
-				OnJoinButton();
-				break;
-
-			case "MenuHost":
-				OnHostButton();
-				break;
+			case SCR_ScenarioEntryHelper.ACTION_DOUBLE_CLICK:	OnTileClickInteraction(multiplier); break;
+			case SCR_ScenarioEntryHelper.ACTION_RESTART:		Restart(scenario); break;
+			case SCR_ScenarioEntryHelper.ACTION_FIND_SERVERS:	Join(scenario); break;
+			case SCR_ScenarioEntryHelper.ACTION_HOST:			Host(scenario); break;
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnInteractionButtonPressed(string action)
 	{
-		switch (action)
-		{
-			case "Play": OnPlayButton(); break;
-			case "Continue": OnContinueButton(); break;
-			case "Restart": OnRestartButton(); break;
-			case "FindServer": OnJoinButton(); break;
-			case "Scenarios": OnScenarios(); break;
-			case "Host": OnHostButton(); break;
-			case "Back": OnBack(); break;
-		}
+		SwitchOnButton(action, GetSelectedScenario());
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected void OnConfirmationDialogButtonPressed(SCR_ScenarioConfirmationDialogUi dialog, string tag)
+	{
+		if (!dialog)
+			return;
+
+		SwitchOnButton(tag, dialog.GetScenario());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void SwitchOnButton(string tag, MissionWorkshopItem scenario)
+	{
+		switch (tag)
+		{
+			case SCR_ConfigurableDialogUi.BUTTON_CONFIRM:		Play(scenario); break;
+			case SCR_ScenarioEntryHelper.BUTTON_PLAY:			Play(scenario); break;
+			case SCR_ScenarioEntryHelper.BUTTON_CONTINUE:		Continue(scenario); break;
+			case SCR_ScenarioEntryHelper.BUTTON_RESTART:		Restart(scenario); break;
+			case SCR_ScenarioEntryHelper.BUTTON_FIND_SERVERS:	Join(scenario); break;
+			case SCR_ScenarioEntryHelper.BUTTON_HOST:			Host(scenario); break;
+			case "Scenarios": 									OnScenarios(); break;
+			case "Back": 										OnBack(); break;
+		}
+	}
+
 	// CLICKS
 	//------------------------------------------------------------------------------------------------
 	//------------------------------------------------------------------------------------------------
@@ -425,36 +438,6 @@ class SCR_PlayMenu : MenuRootBase
 	}
 	
 	// BUTTONS
-	//------------------------------------------------------------------------------------------------
-	protected void OnRestartButton()
-	{
-		Restart(GetSelectedScenario());
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnJoinButton()
-	{
-		Join(GetSelectedScenario());
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnHostButton()
-	{
-		Host(GetSelectedScenario());
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnPlayButton()
-	{
-		Play(GetSelectedScenario());
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnContinueButton()
-	{
-		Continue(GetSelectedScenario());
-	}
-	
 	//------------------------------------------------------------------------------------------------
 	protected void OnTileMouseClick(SCR_TileBaseComponent tile)
 	{
@@ -573,7 +556,8 @@ class SCR_PlayMenu : MenuRootBase
 	//------------------------------------------------------------------------------------------------
 	protected void Host(MissionWorkshopItem scenario)
 	{
-		if (!scenario)
+		SCR_EScenarioEntryErrorState state = SCR_ScenarioEntryHelper.GetErrorState(scenario);
+		if (!scenario || !SCR_ScenarioEntryHelper.IsMultiplayer(scenario) || SCR_ScenarioEntryHelper.IsInErrorState(state))
 			return;
 		
 		m_SelectedScenario = scenario;
@@ -586,7 +570,8 @@ class SCR_PlayMenu : MenuRootBase
 	//------------------------------------------------------------------------------------------------
 	protected void Join(MissionWorkshopItem scenario)
 	{
-		if (!scenario)
+		SCR_EScenarioEntryErrorState state = SCR_ScenarioEntryHelper.GetErrorState(scenario);
+		if (!scenario || !SCR_ScenarioEntryHelper.IsMultiplayer(scenario) || SCR_ScenarioEntryHelper.IsInErrorState(state))
 			return;
 		
 		m_SelectedScenario = scenario;
@@ -620,21 +605,8 @@ class SCR_PlayMenu : MenuRootBase
 		if (!m_CurrentTile)
 			return;
 		
-		show = show && GetSelectedTile();
-		
-		SCR_MissionHeader header = m_CurrentTile.m_Header;
-		MissionWorkshopItem item = m_CurrentTile.m_Item;
-
-		bool canContinue = header && GetGame().GetSaveManager().HasLatestSave(header);
-		m_Play.SetVisible(show && !m_CurrentTile.m_bIsMouseInteraction && !canContinue, false);
-		m_Continue.SetVisible(show && !m_CurrentTile.m_bIsMouseInteraction && canContinue, false);
-
-		m_Restart.SetVisible(show && !m_CurrentTile.m_bIsMouseInteraction && canContinue, false);
-		m_Host.SetVisible(show && !m_CurrentTile.m_bIsMouseInteraction && !GetGame().IsPlatformGameConsole() && item.GetPlayerCount() > 1, false);
-		SCR_ServicesStatusHelper.SetConnectionButtonEnabled(m_Host, SCR_ServicesStatusHelper.SERVICE_BI_BACKEND_MULTIPLAYER);
-		
-		m_FindServer.SetVisible(show && !m_CurrentTile.m_bIsMouseInteraction && item.GetPlayerCount() > 1, false);
-		SCR_ServicesStatusHelper.SetConnectionButtonEnabled(m_FindServer, SCR_ServicesStatusHelper.SERVICE_BI_BACKEND_MULTIPLAYER);
+		show = show && GetSelectedTile() && GetGame().GetInputManager().GetLastUsedInputDevice() != EInputDeviceType.MOUSE;
+		SCR_ScenarioEntryHelper.UpdateInputButtons(m_CurrentTile.m_Item, m_aRightFooterButtons, show);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -666,7 +638,7 @@ class SCR_PlayMenu : MenuRootBase
 		if (!m_SelectedScenario)
 			return;
 		
-		ServerHostingUI dialog = ServerHostingUI.Cast(GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.ServerHostingDialog));
+		ServerHostingUI dialog = SCR_CommonDialogs.CreateServerHostingDialog();
 
 		if (!dialog)
 			return;
@@ -678,25 +650,6 @@ class SCR_PlayMenu : MenuRootBase
 	protected void OnPlayTutorial()
 	{
 		TryPlayScenario(m_ItemTutorial);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void OnMenuFocusGained()
-	{
-		super.OnMenuFocusGained();
-
-		SCR_ServicesStatusHelper.RefreshPing();
-		
-		// Restore focus to the last accessed tile
-		if (m_CurrentTile)
-		{
-			GetGame().GetWorkspace().SetFocusedWidget(m_CurrentTile.m_wRoot);
-			return;
-		}
-
-		// Fallback to the 1st item in the *recent items* list
-		if (m_Recent)
-			m_Recent.SetFocusedItem(0);
 	}
 
 	//------------------------------------------------------------------------------------------------

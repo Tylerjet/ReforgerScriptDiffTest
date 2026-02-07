@@ -4,32 +4,26 @@ class SCR_EditableTaskComponentClass: SCR_EditableDescriptorComponentClass
 	[Attribute("#AR-Tasks_Objective", desc: "Name of objective type eg: Attack objective. Used among in, among other things, in notifications", category: "Visualization")]
 	protected  LocalizedString m_sObjectiveTypeName;
 	
-	/*!
-	Get objective type name. The name is the same for each prefab objective type
-	\return Objective type name
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get objective type name. The name is the same for each prefab objective type
+	//! \return Objective type name
 	LocalizedString GetObjectiveTypeName()
 	{
 		return m_sObjectiveTypeName;
 	}
-	
-};
+}
 
-/** @ingroup Editable_Entities
-*/
+//! @ingroup Editable_Entities
 
-/*!
-Editable SCR_BaseTask.
-*/
+//! Editable SCR_BaseTask.
 class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 {	
 	protected SCR_EditorTask m_Task;
 	protected Faction m_TargetFaction;
 	protected int m_iTextIndex;
 	
-	/*!
-	Reveal the task to all players.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Reveal the task to all players.
 	void ActivateTask()
 	{
 		if (!GetTaskManager())
@@ -39,40 +33,41 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 		if (supportEntity)
 			supportEntity.SetTargetFaction(m_Task, m_TargetFaction);
 	}
-	/*!
-	Check if the task is actived, i.e., shown to players.
-	\return True when actived
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if the task is active, i.e., shown to players.
+	//! \return true when active
 	bool IsTaskActivated()
 	{
 		return m_Task.GetTargetFaction() == m_TargetFaction;
 	}
 	
-	/*!
-	Get type of custom texts this task should use.
-	\return Type of texts
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get type of custom texts this task should use.
+	//! \return Type of texts
 	ETaskTextType GetTextType()
 	{
 		return m_Task.GetTextType();
 	}
-	/*!
-	Get index of custom text from SCR_TextsTaskManagerComponent.
-	\return Index from the array of texts
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get index of custom text from SCR_TextsTaskManagerComponent.
+	//! \return Index from the array of texts
 	int GetTextIndex()
 	{
 		return m_iTextIndex;
 	}
-	/*!
-	Set index of custom text from SCR_TextsTaskManagerComponent.
-	\param index Index from the array of texts
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Set index of custom text from SCR_TextsTaskManagerComponent.
+	//! \param[in] index Index from the array of texts
 	void SetTextIndex(int index)
 	{
 		SetTextIndexBroadcast(index);
 		Rpc(SetTextIndexBroadcast, index);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void SetTextIndexBroadcast(int index)
 	{
@@ -81,19 +76,17 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 		UpdateText();
 	}
 	
-	/*!
-	Get the task completion type
-	\return MANUAL and ALWAYS_MENUAL means only the GM can complete the task. AUTOMATIC means that the task can auto complete and/or fail depending on the task
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get the task completion type
+	//! \return MANUAL and ALWAYS_MENUAL means only the GM can complete the task. AUTOMATIC means that the task can auto complete and/or fail depending on the task
 	EEditorTaskCompletionType GetTaskCompletionType()
 	{
 		return m_Task.GetTaskCompletionType();
 	}
 	
-	/*!
-	Set the task completion type
-	\param completionType MANUAL and ALWAYS_MENUAL means only the GM can complete the task. AUTOMATIC means that the task can auto complete and/or fail depending on the task
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Set the task completion type
+	//! \param[in] completionType MANUAL and ALWAYS_MENUAL means only the GM can complete the task. AUTOMATIC means that the task can auto complete and/or fail depending on the task
 	void SetTaskCompletionType(EEditorTaskCompletionType completionType)
 	{
 		if (m_Task.GetTaskCompletionType() == completionType)
@@ -102,12 +95,15 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 		SetTaskCompletionTypeBroadcast(completionType);
 		Rpc(SetTaskCompletionTypeBroadcast, completionType);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void SetTaskCompletionTypeBroadcast(EEditorTaskCompletionType completionType)
 	{
 		m_Task.SetTaskCompletionType(completionType);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateText()
 	{
 		UpdateInfo(m_Task.GetInfo());
@@ -115,27 +111,34 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 		m_Task.SetTextIndex(m_iTextIndex);
 		m_Task.SetLocationName(m_UIInfoDescriptor.GetLocationName());
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void GetOnLocationChange(SCR_EditableEntityComponent nearestLocation)
 	{
 		UpdateText();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override Faction GetFaction()
 	{
 		return m_TargetFaction;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void SetTransform(vector transform[4], bool changedByUser = false)
 	{	
 		super.SetTransform(transform, changedByUser);
 		UpdateNearestLocation();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override bool Serialize(out SCR_EditableEntityComponent outTarget = null, out int outTargetIndex = -1, out EEditableEntitySaveFlag outSaveFlags = 0)
 	{
 		outTargetIndex = GetGame().GetFactionManager().GetFactionIndex(m_TargetFaction);
 		return super.Serialize(outTarget, outTargetIndex, outSaveFlags);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void Deserialize(SCR_EditableEntityComponent target, int targetValue)
 	{
 		super.Deserialize(target, targetValue);
@@ -147,10 +150,14 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 		m_TargetFaction = GetGame().GetFactionManager().GetFactionByIndex(targetValue);
 		supportEntity.SetTargetFaction(m_Task, m_TargetFaction);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override ScriptInvoker GetOnUIRefresh()
 	{
 		return Event_OnUIRefresh;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool RplSave(ScriptBitWriter writer)
 	{
 		if (!super.RplSave(writer))
@@ -168,6 +175,8 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 		
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool RplLoad(ScriptBitReader reader)
 	{
 		if (!super.RplLoad(reader))
@@ -187,7 +196,9 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 		
 		return true;
 	}
-	override SCR_EditableEntityComponent EOnEditorPlace(out SCR_EditableEntityComponent parent, SCR_EditableEntityComponent recipient, EEditorPlacingFlags flags, bool isQueue)
+
+	//------------------------------------------------------------------------------------------------
+	override SCR_EditableEntityComponent EOnEditorPlace(out SCR_EditableEntityComponent parent, SCR_EditableEntityComponent recipient, EEditorPlacingFlags flags, bool isQueue, int playerID = 0)
 	{
 		if (recipient)
 		{
@@ -203,17 +214,23 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 		}
 		return this;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_EditableTaskComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		m_Task = SCR_EditorTask.Cast(ent);
 	}
 	
-	
+	//------------------------------------------------------------------------------------------------
 	override bool Delete(bool changedByUser = false, bool updateNavmesh = true)
 	{
 		if (m_Task)
 			m_Task.ShowTaskNotification(ENotification.EDITOR_TASK_DELETED, true);
 		
-		return super.Delete(updateNavmesh);
+		return super.Delete(changedByUser, updateNavmesh);
 	}
-};
+}

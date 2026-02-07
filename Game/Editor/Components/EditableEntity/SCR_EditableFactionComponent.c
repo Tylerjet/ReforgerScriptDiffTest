@@ -1,19 +1,17 @@
 [ComponentEditorProps(category: "GameScripted/Editor (Editables)", description: "", icon: "WBData/ComponentEditorProps/componentEditor.png")]
-class SCR_EditableFactionComponentClass: SCR_EditableEntityComponentClass
+class SCR_EditableFactionComponentClass : SCR_EditableEntityComponentClass
 {
+	//------------------------------------------------------------------------------------------------
 	static override bool GetEntitySourceBudgetCost(IEntityComponentSource editableEntitySource, out notnull array<ref SCR_EntityBudgetValue> budgetValues)
 	{
 		// Avoid fallback entityType cost
 		return true;
 	}
-};
+}
 
-/** @ingroup Editable_Entities
-*/
+//! @ingroup Editable_Entities
 
-/*!
-Special configuration for editable faction.
-*/
+//! Special configuration for editable faction.
 class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 {
 	[Attribute()]
@@ -34,17 +32,16 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 	protected SCR_BaseTask m_PrevTask = null;
 	
 	//Script invokers
-	protected ref ScriptInvoker Event_OnSpawnPointCountChanged = new ref ScriptInvoker;
-	protected ref ScriptInvoker Event_OnTaskCountChanged = new ref ScriptInvoker;
+	protected ref ScriptInvoker Event_OnSpawnPointCountChanged = new ScriptInvoker();
+	protected ref ScriptInvoker Event_OnTaskCountChanged = new ScriptInvoker();
 	
 	//Arsenal
 	protected SCR_EArsenalItemType m_AllowedArsenalItemTypes;
 	protected ref map<SCR_EArsenalItemType, int> m_aCurrentItemTaken = new map<SCR_EArsenalItemType, int>();
 	
-	/*!
-	Assign faction to this editable entity.
-	\param index Index of the faction in FactionManager array
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Assign faction to this editable entity.
+	//! \param[in] index Index of the faction in FactionManager array
 	void SetFactionIndex(int index)
 	{
 		if (m_iFactionIndex != -1)
@@ -53,15 +50,16 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 		SetFactionIndexBroadcast(index);
 		Rpc(SetFactionIndexBroadcast, index);
 	}
-	/*!
-	Get index of a faction represented by this delegate.
-	\return Faction index
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get index of a faction represented by this delegate.
+	//! \return Faction index
 	int GetFactionIndex()
 	{
 		return m_iFactionIndex;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void SetFactionIndexBroadcast(int index)
 	{
@@ -111,8 +109,9 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 	}
 	
 	//======================================== FACTION SPAWNPOINTS ========================================\\
-	//---------------------------------------- Init Faction spawnpoint count ----------------------------------------\\
-	//Called on server
+
+	//------------------------------------------------------------------------------------------------
+	// Called on server
 	protected void InitSpawnPointCount()
 	{		
 		int spawnPointCount = SCR_SpawnPoint.GetSpawnPointCountForFaction(m_Faction.GetFactionKey());
@@ -121,19 +120,23 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 		Rpc(InitSpawnPointCountBroadcast, spawnPointCount);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void InitSpawnPointCountBroadcast(int spawnPointCount)
 	{
 		m_iSpawnPointCount = spawnPointCount;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnSpawnpointFactionChanged(SCR_SpawnPoint spawnPoint)
 	{
 		OnSpawnPointsChanged(m_Faction.GetFactionKey());
 	}
 	
 	//---------------------------------------- On Faction Spawnpoints changed ----------------------------------------\\
-	//Called on server
+
+	//------------------------------------------------------------------------------------------------
+	// Called on server
 	protected void OnSpawnPointsChanged(string factionKey)
 	{		
 		if (factionKey != m_Faction.GetFactionKey()) 
@@ -161,8 +164,8 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 		OnSpawnPointCountChangedBroadcast(spawnPointCount);
 		Rpc(OnSpawnPointCountChangedBroadcast, spawnPointCount);
 	}
-
 	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void OnSpawnPointCountChangedBroadcast(int spawnPointCount)
 	{
@@ -171,21 +174,23 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 	}
 
 	//======================================== FACTION TASKS ========================================\\
-	//---------------------------------------- Init Faction Task count ----------------------------------------\\
-	//Called on server
+
+	//------------------------------------------------------------------------------------------------
+	// Called on server
 	protected void InitTaskCount()
 	{		
 		SCR_BaseTaskManager taskManager = GetTaskManager();
 		if (!taskManager)
 			return;
 		
-		array<SCR_BaseTask> tasks = new array<SCR_BaseTask>;
+		array<SCR_BaseTask> tasks = {};
 		int factionTaskCount = taskManager.GetFilteredTasks(tasks, m_Faction);
 		
 		InitTaskCountBroadcast(factionTaskCount);
 		Rpc(InitTaskCountBroadcast, factionTaskCount);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void InitTaskCountBroadcast(int factionTaskCount)
 	{
@@ -204,7 +209,7 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 		if (!faction || faction != m_Faction)
 			return;
 		
-		array<SCR_BaseTask> tasks = new array<SCR_BaseTask>;
+		array<SCR_BaseTask> tasks = {};
 		int factionTaskCount = taskManager.GetFilteredTasks(tasks, m_Faction);
 		
 		//Safty as task Update is called on any change in tasks, but it should catch all the OnTaskUpdates types regardless. So if the same value is given don't do anything
@@ -216,8 +221,9 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 		//Update task count
 		OnTaskCountChangedBroadcast(factionTaskCount);
 		Rpc(OnTaskCountChangedBroadcast, factionTaskCount);	
-	}	
+	}
 
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void OnTaskCountChangedBroadcast(int factionTaskCount)
 	{		
@@ -226,10 +232,10 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 	}
 	
 	//======================================== FACTION PLAYABLE ========================================\\
-	/*!
-	Set faction Playable, can only be called from the server side
-	\param factionPlayable bool for setting faction playable
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Set faction Playable, can only be called from the server side
+	//! \param[in] factionPlayable bool for setting faction playable
 	void SetFactionPlayableServer(bool factionPlayable)
 	{
 		//If client cancel
@@ -244,7 +250,8 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 		Rpc(OnFactionplayableChangedBroadcast, factionPlayable);	
 	}
 	
-	//Broad cast to client
+	//------------------------------------------------------------------------------------------------
+	// Broadcast to client
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void OnFactionplayableChangedBroadcast(bool factionPlayable)
 	{	
@@ -253,74 +260,81 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 		//--- Hide non-playable faction, so it's unselected if it was currently selected
 		SetVisible(factionPlayable);
 	}
-		
 	
 	//======================================== GETTERS ========================================\\
-	/*!
-	Get Spawnpoint count of faction
-	\return int Spawn Point count
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get Spawnpoint count of faction
+	//! \return int Spawn Point count
 	int GetFactionSpawnPointCount()
 	{	
 		return m_iSpawnPointCount;
 	}
 	
-	/*!
-	Get Task count of faction
-	\return int Task count
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get Task count of faction
+	//! \return int Task count
 	int GetFactionTasksCount()
 	{				
 		return m_iTaskCount;
 	}
 	
-	/*!
-	Get On Spawn Point Count Changed Script Invoker
-	\return ScriptInvoker Event_OnSpawnPointCountChanged
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get On Spawn Point Count Changed Script Invoker
+	//! \return ScriptInvoker Event_OnSpawnPointCountChanged
 	ScriptInvoker GetOnSpawnPointCountChanged()
 	{
 		return Event_OnSpawnPointCountChanged;
 	}
 	
-	/*!
-	Get On Task Count Changed Script Invoker
-	\return ScriptInvoker Event_OnTaskCountChanged
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get On Task Count Changed Script Invoker
+	//! \return ScriptInvoker Event_OnTaskCountChanged
 	ScriptInvoker GetOnTaskCountChanged()
 	{
 		return Event_OnTaskCountChanged;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_EArsenalItemType GetAllowedArsenalItemTypes()
 	{
 		return m_AllowedArsenalItemTypes;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] allowedArsenalItemTypes
 	void SetAllowedArsenalItemTypes(SCR_EArsenalItemType allowedArsenalItemTypes)
 	{
 		m_AllowedArsenalItemTypes = allowedArsenalItemTypes;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override bool CanDuplicate(out notnull set<SCR_EditableEntityComponent> outRecipients)
 	{
 		return false;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override Faction GetFaction()
 	{
 		return m_Faction;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool GetPos(out vector pos)
 	{
 		return false;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool GetEntityBudgetCost(out notnull array<ref SCR_EntityBudgetValue> outBudgets, IEntity owner = null)
 	{
 		// Return true and empty cost array, avoid fallback entityType cost
 		return true;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		super.OnPostInit(owner);
@@ -328,7 +342,9 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 		owner.SetFlags(EntityFlags.NO_LINK, true);
 	}
 	
-		//======================================== RPL ========================================\\
+	//======================================== RPL ========================================\\
+
+	//------------------------------------------------------------------------------------------------
 	override bool RplSave(ScriptBitWriter writer)
 	{	
 		writer.WriteInt(m_iFactionIndex); 
@@ -339,6 +355,7 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 		return true;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override bool RplLoad(ScriptBitReader reader)
 	{
 		int spawnPointCount, taskCount;
@@ -357,10 +374,11 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 		return true;
 	}
 	
-	
+	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_EditableFactionComponent()
 	{
-		if (Replication.IsServer() && m_Faction)
+		if (m_Faction && Replication.IsServer())
 		{
 			//Spawnpoints
 			SCR_SpawnPoint.Event_OnSpawnPointCountChanged.Remove(OnSpawnPointsChanged);
@@ -371,4 +389,4 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 			SCR_BaseTaskManager.s_OnTaskDeleted.Remove(OnTasksChanged);
 		}
 	}
-};
+}

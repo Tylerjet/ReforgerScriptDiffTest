@@ -1,13 +1,11 @@
-[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
-/** @ingroup ManualCamera
-*/
+//! @ingroup ManualCamera
 
-/*!
-Free roam building camera.
-Limit camera movement within specific cyllindrical area, defined by a radius of trigger, which determines the area in which the player can build.
-*/
-//------------------------------------------------------------------------------------------------
+
+//! Free roam building camera.
+//! Limit camera movement within specific cyllindrical area, defined by a radius of trigger, which determines the area in which the player can build.
+//!
 //! Search for the trigger defining the building area and set it's radius as a radius of the camera.
+[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
 class SCR_CampaignBuildingLimitCylinderManualCameraComponent : SCR_LimitCylinderManualCameraComponent
 {
 	[Attribute(defvalue: "1", desc: "Multiplicator of camera height")]
@@ -16,6 +14,7 @@ class SCR_CampaignBuildingLimitCylinderManualCameraComponent : SCR_LimitCylinder
 	[Attribute(defvalue: "1", desc: "Multiplicator of camera range")]
 	protected float m_fRangeMultiplicator;
 	
+	//------------------------------------------------------------------------------------------------
 	override bool EOnCameraInit()
 	{
 		SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
@@ -43,4 +42,4 @@ class SCR_CampaignBuildingLimitCylinderManualCameraComponent : SCR_LimitCylinder
 		super.EOnCameraInit();
 		return true;
 	}
-};
+}

@@ -1,5 +1,4 @@
-//------------------------------------------------------------------------------------------------
-class SCR_TreeHitZoneV2 : ScriptedHitZone
+class SCR_TreeHitZoneV2 : SCR_HitZone
 {
 	[Attribute("0", UIWidgets.EditBox, "Enter the tree part number.")]
 	private int m_iTreePartIndex;
@@ -9,6 +8,7 @@ class SCR_TreeHitZoneV2 : ScriptedHitZone
 	private SCR_DestructibleTreeV2 m_OwnerTree;
 	private IEntity m_OwnerEntity;
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnInit(IEntity pOwnerEntity, GenericComponent pManagerComponent) 
 	{
 		//Determine whether this hit zone is on a tree part or a destructible tree
@@ -21,11 +21,13 @@ class SCR_TreeHitZoneV2 : ScriptedHitZone
 				m_OwnerTree = SCR_DestructibleTreeV2.Cast(m_OwnerEntity);
 				if (m_OwnerTree)
 					return;
+
 				m_OwnerEntity = m_OwnerEntity.GetParent();
 			}
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnDamage(float damage,
 							EDamageType type,
 							IEntity pHitEntity,
@@ -63,6 +65,7 @@ class SCR_TreeHitZoneV2 : ScriptedHitZone
 				m_OwnerPart.SetToBreak(positionVector: positionVector, impulseVector: impulseVector, damageType: type);
 				return;
 			}
+
 			if (m_OwnerTree)
 			{
 				//m_OwnerTree.SetToDestroy(positionVector, impulseVector, m_iTreePartIndex);
@@ -70,4 +73,4 @@ class SCR_TreeHitZoneV2 : ScriptedHitZone
 		}
 	}
 #endif
-};
+}

@@ -1,9 +1,11 @@
-class SCR_ToolbarItemNotificationEditorUIComponent: ScriptedWidgetComponent
+class SCR_ToolbarItemNotificationEditorUIComponent : ScriptedWidgetComponent
 {
 	[Attribute("Icon")]
 	protected string m_sIconWidgetName;
+
 	[Attribute("Number")]
 	protected string m_sNumberWidgetName;
+
 	[Attribute()]
 	protected ResourceName m_sDefaultIcon;
 	
@@ -11,6 +13,9 @@ class SCR_ToolbarItemNotificationEditorUIComponent: ScriptedWidgetComponent
 	protected ImageWidget m_IconWidget;
 	protected TextWidget m_NumberWidget;
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] number
+	//! \param[in] info
 	void SetNotification(int number, SCR_UIInfo info = null)
 	{
 		//Hide
@@ -35,6 +40,7 @@ class SCR_ToolbarItemNotificationEditorUIComponent: ScriptedWidgetComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		m_root = w;
@@ -42,4 +48,4 @@ class SCR_ToolbarItemNotificationEditorUIComponent: ScriptedWidgetComponent
 		m_NumberWidget = TextWidget.Cast(w.FindAnyWidget(m_sNumberWidgetName));
 		m_root.SetVisible(false);
 	}
-};
+}

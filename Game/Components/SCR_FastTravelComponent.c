@@ -1,10 +1,8 @@
-//------------------------------------------------------------------------------------------------
 [EntityEditorProps(category: "GameScripted/FastTravel", description: "Handles client > server communication for Fast travel. Should be attached to PlayerController.")]
 class SCR_FastTravelComponentClass : ScriptComponentClass
 {
 }
 
-//------------------------------------------------------------------------------------------------
 class SCR_FastTravelComponent : ScriptComponent
 {
 	protected PlayerController m_PlayerController;
@@ -37,6 +35,7 @@ class SCR_FastTravelComponent : ScriptComponent
 	static const float CLOSE_MAP_DELAY = 0.75;
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	static SCR_FastTravelComponent GetLocalInstance()
 	{
 		PlayerController pc = GetGame().GetPlayerController();
@@ -57,18 +56,21 @@ class SCR_FastTravelComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetDestinationName()
 	{
 		return m_sDestinationName;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetCooldown()
 	{
 		return m_iCooldown;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void DisableAfterUse()
 	{
 		m_bDisableAfterUse = true;
@@ -76,6 +78,8 @@ class SCR_FastTravelComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Toggle fast travel destination selection from the map.
+	//! \param[in] enable
+	//! \param[in] disableAfterUse
 	static void ToggleMapDestinationSelection(bool enable, bool disableAfterUse = true)
 	{
 		SCR_FastTravelComponent comp = GetLocalInstance();
@@ -100,6 +104,7 @@ class SCR_FastTravelComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] item
 	void OnSelectionChanged(MapItem item)
 	{
 		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
@@ -140,6 +145,9 @@ class SCR_FastTravelComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] entity
+	//! \return
 	RplId FindDestinationId(IEntity entity)
 	{
 		RplId id = Replication.FindId(entity);
@@ -156,6 +164,7 @@ class SCR_FastTravelComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void FastTravel()
 	{
 		if (!m_PlayerController)
@@ -192,6 +201,8 @@ class SCR_FastTravelComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] id
+	//! \return
 	IEntity GetEntityByDestinationId(RplId id)
 	{
 		Managed destination = Replication.FindItem(id);
@@ -214,6 +225,7 @@ class SCR_FastTravelComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Sanity check before the actual teleport
+	//! \param[in] target
 	protected bool ServerSanityCheck(notnull IEntity target)
 	{
 		ChimeraWorld world = GetGame().GetWorld();
@@ -222,6 +234,7 @@ class SCR_FastTravelComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] timestamp
 	void SetNextTransportTimestamp(WorldTimestamp timestamp)
 	{
 		m_fNextTravelAvailableAt = timestamp;
@@ -268,6 +281,7 @@ class SCR_FastTravelComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Find coordinates for player teleport some distance away from the target, azimuth relative to previous player location
+	//! \param[in] destination
 	protected vector CalculateDestinationVector(notnull IEntity destination)
 	{
 		return CalculateDestinationVector(destination.GetOrigin());
@@ -313,6 +327,7 @@ class SCR_FastTravelComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_FastTravelComponent()
 	{
 		SCR_MapEntity.GetOnSelectionChanged().Remove(OnSelectionChanged);

@@ -15,10 +15,11 @@ typedef func ScriptInvoker_VotingManagerVoteCountChangedMethod;
 typedef ScriptInvokerBase<ScriptInvoker_VotingManagerVoteCountChangedMethod> ScriptInvoker_VotingManagerVoteCountChanged;
 
 [ComponentEditorProps(category: "GameScripted/Voting", description: "")]
-class SCR_VotingManagerComponentClass: SCR_BaseGameModeComponentClass
+class SCR_VotingManagerComponentClass : SCR_BaseGameModeComponentClass
 {
-};
-class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
+}
+
+class SCR_VotingManagerComponent : SCR_BaseGameModeComponent
 {
 	[Attribute(desc: "Voting Templates, please use configs and the VotingManagerComponent prefab for default gamemode voting templates")]
 	protected ref array<ref SCR_VotingBase> m_aVotingTemplates;
@@ -43,10 +44,10 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Public, static, anywhere
-	/*!
-	Get local instance of this component.
-	\return Local voting manager component
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get local instance of this component.
+	//! \return Local voting manager component
 	static SCR_VotingManagerComponent GetInstance()
 	{
 		if (GetGame().GetGameMode())
@@ -57,14 +58,14 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Public, server
-	/*!
-	Vote!
-	If the voting does not exist yet, start it.
-	To be called from SCR_VoterComponent! Do not call from elsewhere unless you want to subvert democracy!
-	\param playerID Player who cast the vote
-	\param type Type of the vote
-	\param value Voted value, depends on the type (e.g., for KICK it's player ID)
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Vote!
+	//! If the voting does not exist yet, start it.
+	//! To be called from SCR_VoterComponent! Do not call from elsewhere unless you want to subvert democracy!
+	//! \param[in] playerID Player who cast the vote
+	//! \param[in] type Type of the vote
+	//! \param[in] value Voted value, depends on the type (e.g., for KICK it's player ID)
 	void Vote(int playerID, EVotingType type, int value)
 	{
 		//--- Prevent voting fraud, non-existent players cannot vote!
@@ -102,13 +103,13 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		if (voting.Evaluate(outcome))
 			EndVoting(voting, outcome);
 	}
-	/*!
-	Remove previously cast vote.
-	To be called from SCR_VoterComponent! Do not call from elsewhere unless you want to subvert democracy!
-	\param playerID Player who cast the vote
-	\param type Type of the vote
-	\param value Voted value, depends on the type (e.g., for KICK it's player ID)
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Remove previously cast vote.
+	//! To be called from SCR_VoterComponent! Do not call from elsewhere unless you want to subvert democracy!
+	//! \param[in] playerID Player who cast the vote
+	//! \param[in] type Type of the vote
+	//! \param[in] value Voted value, depends on the type (e.g., for KICK it's player ID)
 	void RemoveVote(int playerID, EVotingType type, int value)
 	{
 		SCR_VotingBase voting = FindVoting(type, value);
@@ -136,12 +137,11 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		}
 	}
 	
-	/*!
-	Start voting.
-	\param type Type of the vote
-	\param value Target value, depends on the type (e.g., for KICK it's player ID)
-	\return True if the voting started
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Start voting.
+	//! \param[in] type Type of the vote
+	//! \param[in] value Target value, depends on the type (e.g., for KICK it's player ID)
+	//! \return True if the voting started
 	bool StartVoting(EVotingType type, int value = SCR_VotingBase.DEFAULT_VALUE)
 	{
 		if (FindVoting(type, value))
@@ -154,25 +154,26 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		SCR_VotingBase voting = FindVoting(type, value);
 		return voting != null;
 	}
-	/*!
-	End voting.
-	\param type Type of the vote
-	\param value Target value, depends on the type (e.g., for KICK it's player ID)
-	\param outcome How should the winner be evaluated
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! End voting.
+	//! \param[in] type Type of the vote
+	//! \param[in] value Target value, depends on the type (e.g., for KICK it's player ID)
+	//! \param[in] outcome How should the winner be evaluated
+	//!
 	void EndVoting(EVotingType type, int value = SCR_VotingBase.DEFAULT_VALUE, EVotingOutcome outcome = EVotingOutcome.EVALUATE)
 	{
 		SCR_VotingBase voting = FindVoting(type, value);
 		if (voting)
 			EndVoting(voting, outcome);
 	}
-	/*!
-	Get value cast by given player.
-	\param playerID Player who cast the vote
-	\param type Type of the vote
-	\param value Target value, depends on the type (e.g., for KICK it's player ID)
-	\return Cast value, or default when player did not vote
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get value cast by given player.
+	//! \param[in] playerID Player who cast the vote
+	//! \param[in] type Type of the vote
+	//! \param[in] value Target value, depends on the type (e.g., for KICK it's player ID)
+	//! \return Cast value, or default when player did not vote
 	int GetPlayerVote(int playerID, EVotingType type, int value = SCR_VotingBase.DEFAULT_VALUE)
 	{
 		SCR_VotingBase voting = FindVoting(type, value);
@@ -183,14 +184,13 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
- 	/*!
-	Get the amount of players needed
-	\param type Type of the vote
-	\param value Value of the vote
-	\param[out] currentVotes Current votes the vote has
-	\param[out] votesRequired Votes required to be successfull
-	return True if successfully obtained the requirement data
-	*/
+	//!
+	//! Get the amount of players needed
+	//! \param[in] type Type of the vote
+	//! \param[in] value Value of the vote
+	//! \param[out] currentVotes Current votes the vote has
+	//! \param[out] votesRequired Votes required to be successfull
+	//! return True if successfully obtained the requirement data
 	bool GetVoteCounts(EVotingType type, int value, out int currentVotes, out int votesRequired)
 	{
 		SCR_VotingBase voting = FindVoting(type, value);
@@ -203,67 +203,65 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		return votesRequired > 0;
 	}
 	
-	/*!
-	Get event called everywhere when a new voting is created.
-	\return Script invoker
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get event called everywhere when a new voting is created.
+	//! \return Script invoker
 	ScriptInvoker_VotingManagerStart GetOnVotingStart()
 	{
 		return m_OnVotingStart;
 	}
-	/*!
-	Get event called everywhere when a player voted or abstained
-	\return Script invoker
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get event called everywhere when a player voted or abstained
+	//! \return Script invoker
 	ScriptInvoker_VotingManagerVoteCountChanged GetOnVoteCountChanged()
 	{
 		return m_PlayerVoteCountChanged;
 	}
-	/*!
-	Get event called everywhere when a voting ends (e.g., time runs out, number of votes reaches threshold, or the player about whom the voting was disconnects).
-	\return Script invoker
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get event called everywhere when a voting ends (e.g., time runs out, number of votes reaches threshold, or the player about whom the voting was disconnects).
+	//! \return Script invoker
 	ScriptInvoker_VotingManagerEnd GetOnVotingEnd()
 	{
 		return m_OnVotingEnd;
 	}
-	/*!
-	Get event called on server when a player casts a vote.
-	\return Script invoker
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get event called on server when a player casts a vote.
+	//! \return Script invoker
 	ScriptInvoker_VotingManagerPlayer GetOnVote()
 	{
 		return m_OnVote;
 	}
-	/*!
-	Get event called on server when a player removes their vote.
-	\return Script invoker
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get event called on server when a player removes their vote.
+	//! \return Script invoker
 	ScriptInvoker_VotingManagerPlayer GetOnRemoveVote()
 	{
 		return m_OnRemoveVote;
 	}
-	/*!
-	Get event called on player when they cast a vote.
-	\return Script invoker
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get event called on player when they cast a vote.
+	//! \return Script invoker
 	ScriptInvoker_VotingManagerStart GetOnVoteLocal()
 	{
 		return m_OnVoteLocal;
 	}
-	/*!
-	Get event called on player when they remove their vote.
-	\return Script invoker
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get event called on player when they remove their vote.
+	//! \return Script invoker
 	ScriptInvoker_VotingManagerStart GetOnRemoveVoteLocal()
 	{
 		return m_OnRemoveVoteLocal;
 	}	
 	
-	/*!
-	Get event called on player when they remove their vote.
-	\return Script invoker
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get event called on player when they remove their vote.
+	//! \return Script invoker
 	ScriptInvoker_VotingManagerStart GetOnAbstainVoteLocal()
 	{
 		return m_OnAbstainVoteLocal;
@@ -271,10 +269,10 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Public, anywhere
-	/*
-	Get player ID of the host player.
-	\return Player ID. 0 on dedicated server.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get player ID of the host player.
+	//! \return Player ID. 0 on dedicated server.
 	int GetHostPlayerID()
 	{
 		if (m_iHostPlayerID == -1)
@@ -282,34 +280,34 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		
 		return m_iHostPlayerID;
 	}
-	/*!
-	Check if a voting is available in the current world.
-	\param type Type of the vote
-	\param value Target value, depends on the type (e.g., for KICK it's player ID)
-	\return True if available
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if a voting is available in the current world.
+	//! \param[in] type Type of the vote
+	//! \param[in] value Target value, depends on the type (e.g., for KICK it's player ID)
+	//! \return True if available
 	bool IsVotingAvailable(EVotingType type, int value = SCR_VotingBase.DEFAULT_VALUE)
 	{
 		SCR_VotingBase template = FindTemplate(type);
 		return template && (template.IsAvailable(value, IsVoting(type, value)) || DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_VOTING_ENABLE_ALL));
 	}
-	/*!
-	Check if a voting with given params is currently in effect.
-	\param type Type of the vote
-	\param value Target value, depends on the type (e.g., for KICK it's player ID)
-	\return True if the voting is ongoing
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if a voting with given params is currently in effect.
+	//! \param[in] type Type of the vote
+	//! \param[in] value Target value, depends on the type (e.g., for KICK it's player ID)
+	//! \return True if the voting is ongoing
 	bool IsVoting(EVotingType type, int value = SCR_VotingBase.DEFAULT_VALUE)
 	{
 		return FindVoting(type, value) != null;
 	}
-	/*!
-	Check if there is a vote of certain type about given player.
-	E.g., is there a vote about player being kicked?
-	\param playerID Player ID
-	\param type Type of the vote
-	\return True if the voting is ongoing
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if there is a vote of certain type about given player.
+	//! e.g., is there a vote about player being kicked?
+	//! \param[in] playerID Player ID
+	//! \param[in] type Type of the vote
+	//! \return True if the voting is ongoing
 	bool IsVotingAboutPlayer(int playerID, EVotingType type)
 	{
 		SCR_VotingBase voting = FindVoting(type, playerID);
@@ -320,11 +318,9 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Local player has abstained from voting eg: VoteRemove was called
-	\param type Type of the vote
-	\param value Target value, depends on the type (e.g., for KICK it's player ID)
-	*/
+	//! Local player has abstained from voting eg: VoteRemove was called
+	//! \param[in] type Type of the vote
+	//! \param[in] value Target value, depends on the type (e.g., for KICK it's player ID)
 	void AbstainVoteLocally(EVotingType type, int value = SCR_VotingBase.DEFAULT_VALUE)
 	{
 		SCR_VotingBase vote = FindVoting(type, value);
@@ -338,12 +334,10 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	If local player has abstained from voting eg: VoteRemove was called
-	\param type Type of the vote
-	\param value Target value, depends on the type (e.g., for KICK it's player ID)
-	\return True if the voting was abstained
-	*/
+	//! If local player has abstained from voting eg: VoteRemove was called
+	//! \param[in] type Type of the vote
+	//! \param[in] value Target value, depends on the type (e.g., for KICK it's player ID)
+	//! \return True if the voting was abstained
 	bool HasAbstainedLocally(EVotingType type, int value = SCR_VotingBase.DEFAULT_VALUE)
 	{
 		if (IsLocalVote(type, value))
@@ -357,6 +351,9 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] type
+	//! \param[in] value
+	//! \return
 	float GetRemainingDurationOfVote(EVotingType type, int value = SCR_VotingBase.DEFAULT_VALUE)
 	{
 		SCR_VotingBase vote = FindVoting(type, value);
@@ -366,16 +363,15 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		return -1;
 	}
 	
-	/*!
-	Get all votings about given player.
-	Returns only referendums, not elections
-	e.g., vote to KICK a player is a referendum, but vote to make him/her an ADMIN is election in which multiple players can compete, therefore it's not a vote about the player)
-	\param playerID Player ID
-	\param[out] outVotingTypes Array to be filled with vote types
-	\param onlyTemplates True to scan all voting templates, not only active votings
-	\param onlyAvailable True to scan only votings which can be available in current situation, evaluated by SCR_VotingBase.IsAvailable(). Note that Vote class specific values such as m_bFactionSpecific in SCR_VotingKick are not properly checked and need a IsVotingAvailable specifically if not checking for templates only
-	\return Number of votings
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get all votings about given player.
+	//! Returns only referendums, not elections
+	//! e.g., vote to KICK a player is a referendum, but vote to make him/her an ADMIN is election in which multiple players can compete, therefore it's not a vote about the player)
+	//! \param[in] playerID Player ID
+	//! \param[out] outVotingTypes Array to be filled with vote types
+	//! \param[in] onlyTemplates True to scan all voting templates, not only active votings
+	//! \param[in] onlyAvailable True to scan only votings which can be available in current situation, evaluated by SCR_VotingBase.IsAvailable(). Note that Vote class specific values such as m_bFactionSpecific in SCR_VotingKick are not properly checked and need a IsVotingAvailable specifically if not checking for templates only
+	//! \return Number of votings
 	int GetVotingsAboutPlayer(int playerID, out notnull array<EVotingType> outVotingTypes, bool onlyTemplates = false, bool onlyAvailable = false)
 	{
 		array<ref SCR_VotingBase> votings;
@@ -396,15 +392,14 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		return outVotingTypes.Count();
 	}
 	
-	/*!
-	Get all active player vote types (not caring which player is the target) 
-	Does not care what player the target is or if it is a  referendum or election
-	\param about Player True to return votings that are about players, false to return those which are *not* about players
-	\param[out] outVotingTypes Array to be filled with vote types
-	\param onlyTemplates True to scan all voting templates, not only active votings
-	\param onlyAvailable True to scan only votings which can be available in current situation, evaluated by SCR_VotingBase.IsAvailable(). Note that Vote class specific values such as m_bFactionSpecific in SCR_VotingKick are not properly checked and need a IsVotingAvailable specifically if not checking for templates only
-	\return Number of votings
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get all active player vote types (not caring which player is the target)
+	//! Does not care what player the target is or if it is a  referendum or election
+	//! \param[in] aboutPlayer Player True to return votings that are about players, false to return those which are *not* about players
+	//! \param[out] outVotingTypes Array to be filled with vote types
+	//! \param[in] onlyTemplates True to scan all voting templates, not only active votings
+	//! \param[in] onlyAvailable True to scan only votings which can be available in current situation, evaluated by SCR_VotingBase.IsAvailable(). Note that Vote class specific values such as m_bFactionSpecific in SCR_VotingKick are not properly checked and need a IsVotingAvailable specifically if not checking for templates only
+	//! \return Number of votings
 	int GetAllVotingsAboutPlayer(bool aboutPlayer, out notnull array<EVotingType> outVotingTypes, bool onlyTemplates = false, bool onlyAvailable = false)
 	{
 		array<ref SCR_VotingBase> votings;
@@ -422,15 +417,14 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		return outVotingTypes.Count();
 	}
 	
-	/*!
-	Get all votings with value defined.
-	Returns only referendums, not elections
-	\param[out] outVotingTypes Array to be filled with vote types
-	\param[out] outValues Array to be filled with vote values
-	\param onlyTemplates True to scan all voting templates, not only active votings
-	\param onlyAvailable True to scan only votings which can be available in current situation, evaluated by SCR_VotingBase.IsAvailable(). Note that Vote class specific values such as m_bFactionSpecific in SCR_VotingKick are not properly checked and need a IsVotingAvailable specifically if not checking for templates only
-	\return Number of votings
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get all votings with value defined.
+	//! Returns only referendums, not elections
+	//! \param[out] outVotingTypes Array to be filled with vote types
+	//! \param[out] outValues Array to be filled with vote values
+	//! \param[in] onlyTemplates True to scan all voting templates, not only active votings
+	//! \param[in] onlyAvailable True to scan only votings which can be available in current situation, evaluated by SCR_VotingBase.IsAvailable(). Note that Vote class specific values such as m_bFactionSpecific in SCR_VotingKick are not properly checked and need a IsVotingAvailable specifically if not checking for templates only
+	//! \return Number of votings
 	int GetAllVotingsWithValue(out notnull array<EVotingType> outVotingTypes, array<EVotingType> outValues, bool onlyTemplates = false, bool onlyAvailable = false)
 	{
 		array<ref SCR_VotingBase> votings;
@@ -451,14 +445,13 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		return outVotingTypes.Count();
 	}
 	
-	/*!
-	Get a array of all active votes with the specific voteType
-	\param type The type of active vote that needs to be searched
-	\param[out] outValues list of all active vote values of the given type
-	\param onlyTemplates True to scan all voting templates, not only active votings
-	\param onlyAvailable True to scan only votings which can be available in current situation, evaluated by SCR_VotingBase.IsAvailable(). Note that Vote class specific values such as m_bFactionSpecific in SCR_VotingKick are not properly checked and need a IsVotingAvailable specifically if not checking for templates only
-	\return count of active vote values
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get a array of all active votes with the specific voteType
+	//! \param[in] type The type of active vote that needs to be searched
+	//! \param[out] outValues list of all active vote values of the given type
+	//! \param[in] onlyTemplates True to scan all voting templates, not only active votings
+	//! \param[in] onlyAvailable True to scan only votings which can be available in current situation, evaluated by SCR_VotingBase.IsAvailable(). Note that Vote class specific values such as m_bFactionSpecific in SCR_VotingKick are not properly checked and need a IsVotingAvailable specifically if not checking for templates only
+	//! \return count of active vote values
 	int GetAllVotingValues(EVotingType type, out notnull array<int> outValues, bool onlyTemplates = false, bool onlyAvailable = false)
 	{
 		array<ref SCR_VotingBase> votings;
@@ -475,12 +468,11 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		}
 		return outValues.Count();
 	}
-	
-	/*!
-	Get UI representation of given voting.
-	\param type Type of the vote
-	\return Voting UI info
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get UI representation of given voting.
+	//! \param[in] type Type of the vote
+	//! \return Voting UI info
 	SCR_VotingUIInfo GetVotingInfo(EVotingType type)
 	{
 		SCR_VotingBase template = FindTemplate(type);
@@ -489,12 +481,12 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		else
 			return null;
 	}
-	/*!
-	Get name of the value.
-	\param type Type of the vote
-	\param value Value
-	\return Value name
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get name of the value.
+	//! \param[in] type Type of the vote
+	//! \param[in] value Value
+	//! \return Value name
 	string GetValueName(EVotingType type, int value)
 	{
 		SCR_VotingBase template = FindTemplate(type);
@@ -503,13 +495,13 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		else
 			return value.ToString();
 	}
-	/*!
-	Save local vote for given voting.
-	It's purely informative, does not affect voting outcome!
-	To be called from SCR_VoterComponent!
-	\param type Type of the vote
-	\param value Voted value, depends on the type (e.g., for KICK it's player ID)
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Save local vote for given voting.
+	//! It is purely informative and does not affect voting outcome
+	//! To be called from SCR_VoterComponent!
+	//! \param[in] type Type of the vote
+	//! \param[in] value Voted value, depends on the type (e.g., for KICK it's player ID)
 	void VoteLocal(EVotingType type, int value)
 	{
 		SCR_VotingBase voting = FindVoting(type, value);
@@ -534,13 +526,13 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 			m_LocalVoteRecords.Insert(new Tuple2<int, int>(type, value));
 		}
 	}
-	/*!
-	Remove local vote for given voting.
-	It's purely informative, does not affect voting outcome!
-	To be called from SCR_VoterComponent!
-	\param type Type of the vote
-	\param value Voted value, depends on the type (e.g., for KICK it's player ID)
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Remove local vote for given voting.
+	//! It is purely informative and does not affect voting outcome
+	//! To be called from SCR_VoterComponent!
+	//! \param[in] type Type of the vote
+	//! \param[in] value Voted value, depends on the type (e.g., for KICK it's player ID)
 	void RemoveVoteLocal(EVotingType type, int value)
 	{
 		SCR_VotingBase voting = FindVoting(type, value);
@@ -562,13 +554,13 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 			}
 		}
 	}
-	/*!
-	Get local vote for given voting.
-	It's purely informative, does not affect voting outcome!
-	\param type Type of the vote
-	\param value Target value, depends on the type (e.g., for KICK it's player ID)
-	\return Voted value
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get local vote for given voting.
+	//! It is purely informative and does not affect voting outcome
+	//! \param[in] type Type of the vote
+	//! \param[in] value Target value, depends on the type (e.g., for KICK it's player ID)
+	//! \return Voted value
 	int GetLocalVote(EVotingType type, int value = SCR_VotingBase.DEFAULT_VALUE)
 	{
 		SCR_VotingBase voting = FindVoting(type, value);
@@ -577,20 +569,20 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		else
 			return SCR_VotingBase.DEFAULT_VALUE;
 	}
-	/*!
-	Check if local vote was cast.
-	It's purely informative, does not affect voting outcome!
-	\param type Type of the vote
-	\param value Target value, depends on the type (e.g., for KICK it's player ID)
-	\return True if the vote was cast
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if local vote was cast.
+	//! It is purely informative and does not affect voting outcome
+	//! \param[in] type Type of the vote
+	//! \param[in] value Target value, depends on the type (e.g., for KICK it's player ID)
+	//! \return True if the vote was cast
 	bool IsLocalVote(EVotingType type, int value = SCR_VotingBase.DEFAULT_VALUE)
 	{
 		return GetLocalVote(type, value) != SCR_VotingBase.DEFAULT_VALUE;
 	}
-	/*!
-	Print out information about all ongoing voting instances.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Print out information about all ongoing voting instances.
 	void Log()
 	{
 		Print("---------------------------------------------");
@@ -604,6 +596,8 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Protected, server
+
+	//------------------------------------------------------------------------------------------------
 	protected void EndVoting(SCR_VotingBase voting, EVotingOutcome outcome = EVotingOutcome.EVALUATE)
 	{
 		EVotingType type = voting.GetType();
@@ -625,6 +619,8 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		EndVotingBroadcast(type, value, winner);
 		Rpc(EndVotingBroadcast, type, value, winner);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected SCR_VotingBase FindVoting(EVotingType type, int value)
 	{		
 		for (int i, count = m_aVotingInstances.Count(); i < count; i++)
@@ -634,7 +630,8 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		}
 		return null;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	protected SCR_VotingBase FindTemplate(EVotingType type)
 	{	
 		for (int i, count = m_aVotingTemplates.Count(); i < count; i++)
@@ -647,6 +644,8 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Protected, anywhere
+
+	//------------------------------------------------------------------------------------------------
 	protected SCR_VotingBase CreateVotingInstance(EVotingType type, int value, float remainingDuration = -1, int currentVoteCount = -1)
 	{
 		if (FindVoting(type, value))
@@ -694,6 +693,8 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		
 		return voting;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void DeleteVotingInstance(EVotingType type, int value, int winner)
 	{
 		SCR_VotingBase voting = FindVoting(type, value);
@@ -727,6 +728,8 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		if (m_aVotingInstances.IsEmpty())
 			ClearEventMask(GetOwner(), EntityEvent.FRAME);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void StartVotingBroadcast(EVotingType type, int value)
 	{
@@ -744,6 +747,8 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 			}
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void EndVotingBroadcast(EVotingType type, int value, int winner)
 	{
@@ -752,11 +757,15 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Overrides
+
+	//------------------------------------------------------------------------------------------------
 	override void OnPlayerConnected(int playerId)
 	{		
 		//--- Force instant refresh in EOnFrame
 		m_fUpdateLength = m_fUpdateStep;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
 	{
 		for (int i = m_aVotingInstances.Count() - 1; i >= 0; i--)
@@ -774,6 +783,8 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		//--- Force instant refresh in EOnFrame
 		m_fUpdateLength = m_fUpdateStep;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool RplSave(ScriptBitWriter writer)
 	{
 		int votingTypeMin, votingTypeMax;
@@ -794,6 +805,8 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool RplLoad(ScriptBitReader reader)
 	{
 		int votingTypeMin, votingTypeMax;
@@ -818,6 +831,8 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void EOnFrame(IEntity owner, float timeSlice)
 	{
 		m_fUpdateLength += timeSlice;
@@ -854,9 +869,15 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 			m_fUpdateLength = 0; //--- Must be after the code above, as it's passed inside Update() as a parameter
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_VotingManagerComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		DiagMenu.RegisterMenu(SCR_DebugMenuID.DEBUGUI_VOTING, "Voting", "Game");
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_VOTING_ENABLE_ALL, "", "Enable All Vote Types", "Voting");
 	}
-};
+}

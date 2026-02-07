@@ -37,6 +37,10 @@ class AIAgent: GenericController
 	proto external void ActivateAI();
 	proto external void DeactivateAI();
 	proto external bool IsAIActivated();
+
+	// callbacks
+
+	event void OnLODChanged(int oldLOD, int newLOD);
 }
 
 /*!

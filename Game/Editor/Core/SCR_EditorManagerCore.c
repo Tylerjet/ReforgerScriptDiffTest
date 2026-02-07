@@ -1,10 +1,8 @@
-#include "scripts/Game/config.c"
-/// @ingroup Editor_Core GameCore
-/*!
-Core component to manage SCR_EditorManagerEntity.
-*/
+//! @ingroup Editor_Core GameCore
+
+//! Core component to manage SCR_EditorManagerEntity.
 [BaseContainerProps(configRoot: true)]
-class SCR_EditorManagerCore: SCR_GameCoreBase
+class SCR_EditorManagerCore : SCR_GameCoreBase
 {
 	[Attribute("", UIWidgets.ResourceNamePicker, "Individual editor manager", "et")]
 	private ResourceName m_EditorManagerPrefab;
@@ -25,32 +23,31 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 	private ref SCR_SortedArray<SCR_EditorModePrefab> m_ModePrefabsSorted = new SCR_SortedArray<SCR_EditorModePrefab>;
 	private ref array<ref SCR_EditorManagerDisconnectData> m_DisconnectedModes;
 	
-	/*!
-	Called when an editor manager is created after a player connects
-	\param editorManager Created editor manager
-	*/
+	//! Called when an editor manager is created after a player connects
+	//! \param editorManager Created editor manager
 	ref ScriptInvoker Event_OnEditorManagerCreatedServer = new ScriptInvoker;
-	/*!
-	Called when an editor manager is deleted after a player disconnects
-	\param editorManager Deleted editor manager
-	*/
+
+	//! Called when an editor manager is deleted after a player disconnects
+	//! \param editorManager Deleted editor manager
 	ref ScriptInvoker Event_OnEditorManagerDeletedServer = new ScriptInvoker;
-	/*!
-	Called when an editor manager is initialized on owner's machine
-	\param editorManager Created editor manager
-	*/
+
+	//! Called when an editor manager is initialized on owner's machine
+	//! \param editorManager Created editor manager
 	ref ScriptInvoker Event_OnEditorManagerInitOwner = new ScriptInvoker;
-	/*!
-	Called when user sends a ping.
-	\param playerID ID of player who sent the ping
-	*/
+
+	//! Called when user sends a ping.
+	//! \param playerID ID of player who sent the ping
 	ref ScriptInvoker Event_OnEditorManagerPing = new ScriptInvoker;
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Custom functions
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	protected SCR_EditorManagerEntity CreateEditorManager(int playerID)
 	{
-		if (RplSession.Mode() == RplMode.Client || (m_SettingsEntity && m_SettingsEntity.IsEditorDisabled())) return null;
+		if (RplSession.Mode() == RplMode.Client || (m_SettingsEntity && m_SettingsEntity.IsEditorDisabled()))
+			return null;
 		
 		if (m_aEditorEntities && m_aEditorEntities.Contains(playerID))
 		{
@@ -81,7 +78,9 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 		
 		//--- Create the entity
 		ResourceName prefab = m_EditorManagerPrefab;
-		if (m_SettingsEntity) prefab = m_SettingsEntity.GetPrefab(m_EditorManagerPrefab);
+		if (m_SettingsEntity)
+			prefab = m_SettingsEntity.GetPrefab(m_EditorManagerPrefab);
+
 		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.Cast(GetGame().SpawnEntityPrefab(Resource.Load(prefab)));
 		if (!editorManager)
 		{
@@ -124,17 +123,11 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 		//--- Restore modes player had before disconnecting
 		if (m_DisconnectedModes)
 		{
-			#ifdef AR_EDITOR_DISCONNECT_TIMESTAMP
 			ChimeraWorld world = GetGame().GetWorld();
 			WorldTimestamp currentTime = world.GetServerTimestamp();
-			#endif
 			for (int i = m_DisconnectedModes.Count() - 1; i >= 0; i--)
 			{
-				#ifndef AR_EDITOR_DISCONNECT_TIMESTAMP
-				if (Replication.Time() > m_DisconnectedModes[i].m_Time + m_iRestoreOnReconnectTimeout * 1000)
-				#else
 				if (currentTime.Greater(m_DisconnectedModes[i].m_Time.PlusSeconds(m_iRestoreOnReconnectTimeout)))
-				#endif
 				{
 					//--- Expired, ignore
 					m_DisconnectedModes.Remove(i);
@@ -157,6 +150,8 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 
 		return editorManager;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void DeleteEditorManager(int playerID)
 	{
 		if (RplSession.Mode() == RplMode.Client)
@@ -168,7 +163,7 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 			
 			//--- Remember editor modes so they can be restored upon reconnection
 			if (!m_DisconnectedModes)
-				m_DisconnectedModes = new array<ref SCR_EditorManagerDisconnectData>();
+				m_DisconnectedModes = {};
 			
 			bool isAdmin = SCR_Global.IsAdmin(playerID);
 			
@@ -194,11 +189,10 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 			delete editorManager;
 		}
 	}
-	
-	/*!
-	Get the list of all editor entities
-	\param[out] outEditorEntities Array of editor entities
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get the list of all editor entities
+	//! \param[out] outEditorEntities Array of editor entities
 	int GetEditorEntities(out notnull array<SCR_EditorManagerEntity> outEditorEntities)
 	{
 		outEditorEntities.Clear();
@@ -207,16 +201,16 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 			for (int i = 0; i < m_aEditorEntities.Count(); i++)
 			{
 				SCR_EditorManagerEntity editorManager = m_aEditorEntities.GetElement(i);
-				if (editorManager) outEditorEntities.Insert(editorManager);
+				if (editorManager)
+					outEditorEntities.Insert(editorManager);
 			}
 		}
 		return outEditorEntities.Count();
 	}
 	
-	/*!
-	Set the local instance of the editor manager. Shows an error when it already exists.
-	\param entity Editor manager
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Set the local instance of the editor manager. Shows an error when it already exists.
+	//! \param entity Editor manager
 	bool SetEditorManager(SCR_EditorManagerEntity entity)
 	{
 		if (m_EditorManager)
@@ -227,19 +221,19 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 		m_EditorManager = entity;
 		return true;
 	}
-	/*!
-	Get local instance of the editor manager.
-	\return Editor manager
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get local instance of the editor manager.
+	//! \return Editor manager
 	SCR_EditorManagerEntity GetEditorManager()
 	{
 		return m_EditorManager;
 	}
-	/*!
-	Get editor manager of given player
-	\param playerID Player ID
-	\return Editor manager
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get editor manager of given player
+	//! \param playerID Player ID
+	//! \return Editor manager
 	SCR_EditorManagerEntity GetEditorManager(int playerID)
 	{		
 		if (m_aEditorEntities && m_aEditorEntities.Contains(playerID))
@@ -247,10 +241,10 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 		else
 			return null;
 	}
-	/*!
-	Get editor server entity.
-	\return Editor server entity
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get editor server entity.
+	//! \return Editor server entity
 	SCR_EditorServerEntity GetEditorServer()
 	{
 		if (Replication.IsClient())
@@ -260,30 +254,31 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 		}
 		return m_ServerEntity;
 	}
-	/*!
-	Assing entity with world-specific editor settings.
-	Won't do anything if settings are already assigned.
-	\param entity Settings entity
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Assign entity with world-specific editor settings.
+	//! Will not do anything if settings are already assigned.
+	//! \param entity Settings entity
 	void SetSettingsEntity(SCR_EditorSettingsEntity entity)
 	{
-		if (m_SettingsEntity) return;
+		if (m_SettingsEntity)
+			return;
+
 		m_SettingsEntity = entity;
 	}
-	/*!
-	Get world-specific editor settings entity.
-	\return Settings entity
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get world-specific editor settings entity.
+	//! \return Settings entity
 	SCR_EditorSettingsEntity GetSettingsEntity()
 	{
 		return m_SettingsEntity;
 	}
 	
-	/*!
-	Get base mode prefab.
-	\param modeType Mode type
-	\return array of SCR_EditorModePrefab
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get base mode prefab.
+	//! \param modeType Mode type
+	//! \return SCR_EditorModePrefab
 	SCR_EditorModePrefab GetBaseModePrefab(EEditorMode modeType)
 	{
 		array<SCR_EditorModePrefab> prefabs = {};
@@ -295,12 +290,12 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 		}
 		return null;
 	}
-	/*!
-	Get all base mode types.
-	\param flags Flags filter
-	\param coreOnly When true, base mode prefab override on SCR_EditorSettingsEntity will be ignored
-	\return Values of base mode types
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get all base mode types.
+	//! \param flags Flags filter
+	//! \param coreOnly When true, base mode prefab override on SCR_EditorSettingsEntity will be ignored
+	//! \return Values of base mode types
 	EEditorMode GetBaseModes(EEditorModeFlag flags = -1, bool coreOnly = false)
 	{
 		EEditorMode modes;
@@ -311,12 +306,12 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 		}
 		return modes;
 	}
-	/*!
-	Get prefabs of all base mode types.
-	\param flags Flags filter
-	\param coreOnly When true, base mode prefab override on SCR_EditorSettingsEntity will be ignored
-	\return Prefabs of base mode types
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get prefabs of all base mode types.
+	//! \param flags Flags filter
+	//! \param coreOnly When true, base mode prefab override on SCR_EditorSettingsEntity will be ignored
+	//! \return Prefabs of base mode types
 	int GetBaseModePrefabs(out notnull array<SCR_EditorModePrefab> outPrefabs, EEditorModeFlag flags = -1, bool coreOnly = false)
 	{
 		EEditorMode defaultModes;
@@ -340,12 +335,12 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 		}
 		return outPrefabs.Count();
 	}
-	/*!
-	Get sorted prefabs of all base mode types.
-	\param flags Flags filter
-	\param coreOnly When true, base mode prefab override on SCR_EditorSettingsEntity will be ignored
-	\return Sorted prefabs of base mode types
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get sorted prefabs of all base mode types.
+	//! \param flags Flags filter
+	//! \param coreOnly When true, base mode prefab override on SCR_EditorSettingsEntity will be ignored
+	//! \return Sorted prefabs of base mode types
 	int GetBaseModePrefabs(out notnull SCR_SortedArray<SCR_EditorModePrefab> outPrefabs, EEditorModeFlag flags = -1, bool coreOnly = false)
 	{
 		EEditorMode defaultModes;
@@ -365,12 +360,12 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 			}
 		}
 		return outPrefabs.Count();
-	}	
-	/*!
-	Get UI info of given default mode.
-	\param modeType Mode type
-	\return UI info
-	*/
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get UI info of given default mode.
+	//! \param modeType Mode type
+	//! \return UI info
 	SCR_EditorModeUIInfo GetDefaultModeInfo(EEditorMode modeType)
 	{
 		foreach (SCR_EditorModePrefab modeEntity: m_ModePrefabs)
@@ -383,6 +378,9 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Event handlers
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnPlayerRegistered(int playerID)
 	{
 		//--- Create and register editor manager
@@ -393,11 +391,15 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 		if (controlledEntity)
 			OnPlayerSpawn(playerID, controlledEntity);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnPlayerDisconnected(int playerID)
 	{
 		//--- Delete and unregister editor manager
 		DeleteEditorManager(playerID);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnPlayerSpawn(int playerID, IEntity controlledEntity)
 	{
 		SCR_EditorManagerEntity editorManager = GetEditorManager(playerID);
@@ -407,16 +409,22 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 			editorManager.AutoInit();
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
 		SCR_EditorManagerEntity editorManager = GetEditorManager(playerId);
 		if (editorManager)
 			editorManager.SetCanOpen(false, EEditorCanOpen.ALIVE);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnPlayerDeleted(int playerID, IEntity player)
 	{
 		OnPlayerKilled(playerID, player, null, Instigator.CreateInstigator(null));
-	}	
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnPlayerRoleChange(int playerId, EPlayerRole roleFlags)
 	{
 		SCR_EditorManagerEntity editorManager = GetEditorManager(playerId);
@@ -437,7 +445,10 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 			editorManager.SetEditorModes(EEditorModeAccess.ROLE, modes, false);
 		}
 	}
+
 #ifdef WORKBENCH
+	//------------------------------------------------------------------------------------------------
+	//!
 	void OnPlayFromCameraPos()
 	{
 		//--- Ignore when the world contains game mode, player is registered by it alrady
@@ -471,10 +482,14 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Default Functions
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	override void OnGameStart()
 	{		
 		//--- Server only
-		if (RplSession.Mode() == RplMode.Client) return;
+		if (RplSession.Mode() == RplMode.Client)
+			return;
 		
 		//--- Create server entity
 		m_ServerEntity = SCR_EditorServerEntity.Cast(GetGame().SpawnEntityPrefab(Resource.Load(m_EditorServerPrefab)));
@@ -488,7 +503,9 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 		}
 		
 		//--- Initialize entity list (ignore if already done)
-		if (m_aEditorEntities) return;
+		if (m_aEditorEntities)
+			return;
+
 		m_aEditorEntities = new map<int, SCR_EditorManagerEntity>();
 				
 		//--- Get lobby
@@ -523,6 +540,8 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 		if (SCR_ReconnectComponent.GetInstance())
 			SCR_ReconnectComponent.GetInstance().GetOnReconnect().Insert(OnReconnectOnPreviousCharacter);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnGameEnd()
 	{
 		m_EditorManager = null;
@@ -531,6 +550,9 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 		Event_OnEditorManagerDeletedServer = new ScriptInvoker;
 		Event_OnEditorManagerInitOwner = new ScriptInvoker;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_EditorManagerCore()
 	{
 		//--- Cache array of modes sorted by custom order
@@ -541,6 +563,9 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 		
 		DiagMenu.RegisterMenu(SCR_DebugMenuID.DEBUGUI_EDITOR, "Editor", "");
 	}
+
+	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_EditorManagerCore()
 	{
 		Event_OnEditorManagerCreatedServer = null;
@@ -548,26 +573,20 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 		Event_OnEditorManagerInitOwner = null;
 		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_EDITOR);
 	}
-};
+}
+
 class SCR_EditorManagerDisconnectData
 {
 	int m_iPlayerID;
-	#ifndef AR_EDITOR_DISCONNECT_TIMESTAMP
-	float m_Time;
-	#else
 	WorldTimestamp m_Time;
-	#endif
 	EEditorMode m_Modes;
-	
+
+	//------------------------------------------------------------------------------------------------
 	void SCR_EditorManagerDisconnectData(int playerID, EEditorMode modes)
 	{
 		m_iPlayerID = playerID;
 		m_Modes = modes;
-		#ifndef AR_EDITOR_DISCONNECT_TIMESTAMP
-		m_Time = Replication.Time(); //--- Can use absolute value, we don't need precision
-		#else
 		ChimeraWorld world = GetGame().GetWorld();
 		m_Time = world.GetServerTimestamp(); //--- Can use absolute value, we don't need precision
-		#endif
 	}
-};
+}

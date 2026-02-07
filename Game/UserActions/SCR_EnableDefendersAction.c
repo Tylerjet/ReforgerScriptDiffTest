@@ -30,6 +30,23 @@ class SCR_EnableDefendersAction : ScriptedUserAction
 			return false;
 		}
 		
+		if (!m_DefenderSpawner.UserRankCheck(user))
+		{
+			string rankName;
+			FactionAffiliationComponent factionAffiliationComp = FactionAffiliationComponent.Cast(user.FindComponent(FactionAffiliationComponent));
+			if (!factionAffiliationComp)
+				return false;
+			
+			SCR_Faction faction = SCR_Faction.Cast(factionAffiliationComp.GetAffiliatedFaction());
+			if (!faction)
+				return false;
+			
+			rankName = faction.GetRankName(m_DefenderSpawner.GetMinimumRank());
+			
+			SetCannotPerformReason(rankName);
+			return false;
+		}			
+		
 		return true;
 	}
 

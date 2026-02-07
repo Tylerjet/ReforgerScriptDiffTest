@@ -9,7 +9,7 @@ Do not modify, this script is generated
 \{
 */
 
-class DamageManagerComponentClass: SCR_HitZoneContainerComponentClass
+class DamageManagerComponentClass: HitZoneContainerComponentClass
 {
 	proto external float GetFallDamageLimitNoDamage();
 	proto external float GetFallDamageLimitFullDamage();

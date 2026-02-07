@@ -42,7 +42,7 @@ enum SCR_EBanListArgs
 class BanCommand: ScrServerCommand
 {
 	protected ref StateBackendCallback m_Callback;
-	protected ref PageParams m_Params;
+	protected ref BanListPageParams m_Params;
 	protected BanServiceApi m_BanApi;
 	protected SCR_EBanSubcommandArg m_eSubcommandArg;
 	
@@ -143,7 +143,7 @@ class BanCommand: ScrServerCommand
 				return ScrServerCmdResult("Not Valid page number", EServerCmdResultType.ERR);
 		}
 		
-		m_Params = new PageParams();
+		m_Params = new BanListPageParams();
 		
 		// Set different page limits for chat and RCON
 		if (playerId == 0)
@@ -170,11 +170,11 @@ class BanCommand: ScrServerCommand
 			return ScrServerCmdResult("Page not found!", EServerCmdResultType.ERR);
 		
 		// Generate string resposne for list
-		ref array<BanRecordData> banList = new ref array<BanRecordData>;
+		ref array<OnlineBanListData> banList = new array<OnlineBanListData>;
 		m_BanApi.GetPageItems(banList);
 		string banListStr = "Total bans: " + m_BanApi.GetTotalItemCount() + " | Page: " + (m_BanApi.GetPage() + 1) +"/" + m_BanApi.GetPageCount() + "\n";
 		banListStr += "- Identity Id | Banned name\n";
-		foreach (BanRecordData ban : banList)
+		foreach (OnlineBanListData ban : banList)
 		{
 			banListStr += string.Format("- %1 | %2\n", ban.identityId, ban.bannedName);
 		}

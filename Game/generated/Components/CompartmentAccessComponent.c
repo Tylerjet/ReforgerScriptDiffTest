@@ -38,6 +38,10 @@ class CompartmentAccessComponent: GameComponent
 	proto external bool MoveInVehicle(IEntity targetEntity, BaseCompartmentSlot targetCompartment);
 	//! If true, last exiting of vehicle was by ejecting, so we should not reset vehicle inputs.
 	proto external bool WasLastGettingOutEjecting();
+	//! If true, last exiting of vehicle was by teleportation.
+	proto external bool WasLastGettingOutTeleportation();
+	//! Get the target transform for the last exit from vehicle.
+	proto external void GetTeleportTarget(out vector outMat[4]);
 	//! Returns true while getting in
 	proto external bool IsGettingIn();
 	//! Returns true while getting out

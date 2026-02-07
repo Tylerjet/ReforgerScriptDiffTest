@@ -15,9 +15,6 @@ class SCR_BleedingScreenEffect : SCR_BaseScreenEffect
 	//Saturation
 	private static float s_fSaturation;
 	
-	// Adaptive opacity widgets 
-	protected Widget								m_wAdaptiveOpacityBlood;
-	
 	// Widgets
 	protected ImageWidget 							m_wBloodEffect1;
 	protected ImageWidget 							m_wBloodEffect2;
@@ -220,12 +217,5 @@ class SCR_BleedingScreenEffect : SCR_BaseScreenEffect
 
 		m_pDamageManager.GetOnDamageOverTimeAdded().Remove(OnDamageOverTimeAdded);
 		m_pDamageManager.GetOnDamageOverTimeRemoved().Remove(OnDamageOverTimeRemoved);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override event void DisplayStopDraw(IEntity owner)
-	{
-		if (GetGame().GetHUDManager())
-			GetGame().GetHUDManager().GetSceneBrightnessChangedInvoker().Remove(UpdateOpacity);
 	}
 };

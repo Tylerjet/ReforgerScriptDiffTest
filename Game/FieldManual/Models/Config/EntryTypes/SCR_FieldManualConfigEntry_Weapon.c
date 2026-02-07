@@ -10,6 +10,7 @@ class SCR_FieldManualConfigEntry_Weapon : SCR_FieldManualConfigEntry
 	ref SCR_FieldManualUI_WeaponStatsHelper m_WeaponStatsHelper;
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_FieldManualConfigEntry_Weapon()
 	{
 		if (m_Layout.Trim().IsEmpty())

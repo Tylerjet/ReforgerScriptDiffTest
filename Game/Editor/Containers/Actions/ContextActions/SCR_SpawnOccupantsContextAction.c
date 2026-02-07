@@ -31,7 +31,7 @@ class SCR_SpawnOccupantsContextAction : SCR_SelectedEntitiesContextAction
 		return false;
 		
 		SCR_EditableVehicleComponent vehicle = SCR_EditableVehicleComponent.Cast(selectedEntity);
-		return vehicle && vehicle.CanOccupyVehicleWithCharacters(m_aCompartmentsTypes, false, true, true, true, true);
+		return vehicle && vehicle.CanOccupyVehicleWithCharacters(m_aCompartmentsTypes, -1, false, true, true, true, true);
 	}
 	
 	//~ Makes sure CanBePerformed is not executed twice
@@ -112,7 +112,7 @@ class SCR_SpawnOccupantsContextAction : SCR_SelectedEntitiesContextAction
 		}
 		
 		//~ No longer valid to spawn
-		if (!vehicleToOccupy.CanOccupyVehicleWithCharacters(m_aCompartmentsTypes, true, checkEditorBudget: false, checkForFreeDefaultCompartments: true))
+		if (!vehicleToOccupy.CanOccupyVehicleWithCharacters(m_aCompartmentsTypes, -1, true, checkEditorBudget: false, checkForFreeDefaultCompartments: true))
 		{
 			m_VehiclesToOccupyQueue.RemoveElement(0);
 			SpawnNextOccupantsInEntity(null, null, false);
@@ -120,7 +120,7 @@ class SCR_SpawnOccupantsContextAction : SCR_SelectedEntitiesContextAction
 		}
 		
 		//~ No longer valid budget
-		if (!vehicleToOccupy.CanOccupyVehicleWithCharacters(m_aCompartmentsTypes, false, true, false, false, true))
+		if (!vehicleToOccupy.CanOccupyVehicleWithCharacters(m_aCompartmentsTypes, -1, false, true, false, false, true))
 		{
 			//~ Todo get player ID to send notification
 			/*if (!m_bHasSendNotEnoughBudgetNotification)

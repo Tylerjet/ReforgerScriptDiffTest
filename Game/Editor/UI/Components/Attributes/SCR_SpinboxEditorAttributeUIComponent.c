@@ -31,7 +31,7 @@ class SCR_SpinboxEditorAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 					
 					for (int i = 0; i < count; i++)
 					{
-						m_SpinboxWidgetComponent.AddItem(spinboxData.GetValuesEntry(i).GetName());
+						m_SpinboxWidgetComponent.AddItem(spinboxData.GetValuesEntry(i).GetName(), i == count - 1);
 					}
 					
 					continue;
@@ -46,7 +46,7 @@ class SCR_SpinboxEditorAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 				{
 					SCR_BaseEditorAttributeEntryText entry = SCR_BaseEditorAttributeEntryText.Cast(entries[i]);
 					if (entry) 
-						m_SpinboxWidgetComponent.AddItem(entry.GetText());
+						m_SpinboxWidgetComponent.AddItem(entry.GetText(), i == entriesCount - 1);
 				}
 			}
 		}

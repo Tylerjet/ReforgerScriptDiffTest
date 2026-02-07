@@ -36,7 +36,7 @@ class EntityCheckPlugin: WorkbenchPlugin
 					{
 						if (pos[j] < boundsMins[j] || pos[j] > boundsMaxs[j])
 						{
-							api.AddToEntitySelection(entity);
+							api.AddToEntitySelection(src);
 							if (src.GetName())
 								Print("Entity(" + entity + " ID:" + entity.GetID() + " Name: " + src.GetName() + ") has invalid position " + pos, LogLevel.ERROR);
 							else
@@ -85,8 +85,8 @@ class EntityRelativePlugin: WorkbenchPlugin
 		{
 			progress.SetProgress(i / selectedCount);
 			
-			IEntity e = api.GetSelectedEntity(i);
-			IEntitySource src = api.EntityToSource(e);
+			IEntitySource src = api.GetSelectedEntity(i);
+			IEntity e = api.SourceToEntity(src);
 			
 			vector pos;
 			src.Get("coords", pos);
@@ -95,7 +95,7 @@ class EntityRelativePlugin: WorkbenchPlugin
 			if (api.TryGetTerrainSurfaceY(pos[0], pos[2], y))
 			{
 				pos[1] = pos[1] - y;
-				api.ModifyEntityKey(e, "coords", pos.ToString(false));
+				api.SetVariableValue(src, null, "coords", pos.ToString(false));
 			}
 			else
 			{

@@ -103,4 +103,11 @@ class SCR_AITargetClusterState
 		
 		return pm.GetTime() - m_fMaxTimestamp;
 	}
+	
+	//---------------------------------------------------------------------------
+	// Returns center position of cluster based on cluster bouding box
+	vector GetCenterPosition()
+	{
+		return 0.5 * (m_vBBMin + m_vBBMax);
+	}
 }

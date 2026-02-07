@@ -1,3 +1,4 @@
+#ifdef WORKBENCH
 //! Plugin that allows to reset all/selected entities' desired flags to Prefab's default
 //! WARNING: can take up to serveral minutes depending on what is selected!
 [WorkbenchPluginAttribute(
@@ -335,19 +336,19 @@ class SCR_EntityFlagsManagerPlugin : WorldEditorPlugin
 
 			if (newFlags == prefabFlags)
 			{
-				m_WorldEditorAPI.ClearVariableValue(entitySource, {}, FLAGS);
+				m_WorldEditorAPI.ClearVariableValue(entitySource, null, FLAGS);
 				clearedFlags++;
 			}
 			else
 			if (newFlags != oldFlags)
 			{
-				m_WorldEditorAPI.ModifyEntityKey(m_WorldEditorAPI.SourceToEntity(entitySource), FLAGS, newFlags.ToString());
+				m_WorldEditorAPI.SetVariableValue(entitySource, null, FLAGS, newFlags.ToString());
 				editedFlags++;
 			}
 
 			// relativeY aftermath
 			if (m_bResetRelativeYFlag && entityPos != vector.Zero)
-				m_WorldEditorAPI.ModifyEntityKey(m_WorldEditorAPI.SourceToEntity(entitySource), COORDS, entityPos.ToString(false));
+				m_WorldEditorAPI.SetVariableValue(entitySource, null, COORDS, entityPos.ToString(false));
 
 			if (oldFlags != newFlags)
 				fixed++;
@@ -379,7 +380,7 @@ class SCR_EntityFlagsManagerPlugin : WorldEditorPlugin
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param      validAncestors - which topmost ancestors are accepted
+	//! \param[in] validAncestors - which topmost ancestors are accepted
 	//! \param[out] originalCount - how many entities were selected/found
 	//  \param[out] filteredCount - how many entities remain after filter < removed for now
 	//! \return filtered entitySources
@@ -392,18 +393,17 @@ class SCR_EntityFlagsManagerPlugin : WorldEditorPlugin
 		Debug.BeginTimeMeasure();
 		if (selectedCount > 0)
 		{
-			IEntity entity;
 			IEntitySource entitySource;
 			originalCount = selectedCount;
 			result.Reserve(selectedCount);
 			for (int i = 0; i < selectedCount; i++)
 			{
-				entity = m_WorldEditorAPI.GetSelectedEntity(i);
-				if (!m_bUpdateChildEntities && entity.GetParent())
-					continue;
-
-				entitySource = m_WorldEditorAPI.EntityToSource(entity);
+				entitySource = m_WorldEditorAPI.GetSelectedEntity(i);
+				
 				if (!entitySource)
+					continue;
+				
+				if (!m_bUpdateChildEntities && entitySource.GetParent())
 					continue;
 
 				if (m_bProcessEverythingSelected || validAncestors.Contains(SCR_BaseContainerTools.GetTopMostAncestor(entitySource).GetResourceName()))
@@ -415,7 +415,6 @@ class SCR_EntityFlagsManagerPlugin : WorldEditorPlugin
 			int entitiesCount = m_WorldEditorAPI.GetEditorEntityCount(); // maximum possible (almost)
 			originalCount = entitiesCount;
 			result.Reserve(entitiesCount);
-			IEntity entity;
 			IEntitySource entitySource;
 			for (int i = 0; i < entitiesCount; i++)
 			{
@@ -423,11 +422,7 @@ class SCR_EntityFlagsManagerPlugin : WorldEditorPlugin
 				if (!entitySource)
 					continue;
 
-				entity = m_WorldEditorAPI.SourceToEntity(entitySource);
-				if (!entity)
-					continue;
-
-				if (!m_bUpdateChildEntities && entity.GetParent())
+				if (!m_bUpdateChildEntities && entitySource.GetParent())
 					continue;
 
 				// m_bProcessEverythingSelected must not be introduced here
@@ -453,4 +448,5 @@ class SCR_EntityFlagsManagerPlugin : WorldEditorPlugin
 	{
 		return false;
 	}
-};
+}
+#endif // WORKBENCH

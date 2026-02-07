@@ -15,8 +15,8 @@ class BaseWeaponManagerComponentClass: GameComponentClass
 
 class BaseWeaponManagerComponent: GameComponent
 {
-	ref ScriptInvoker<BaseWeaponComponent> m_OnWeaponChangeCompleteInvoker = new ref ScriptInvoker<BaseWeaponComponent>();
-	ref ScriptInvoker<BaseWeaponComponent> m_OnWeaponChangeStartedInvoker = new ref ScriptInvoker<BaseWeaponComponent>();
+	ref ScriptInvoker<BaseWeaponComponent> m_OnWeaponChangeCompleteInvoker = new ScriptInvoker<BaseWeaponComponent>();
+	ref ScriptInvoker<BaseWeaponComponent> m_OnWeaponChangeStartedInvoker = new ScriptInvoker<BaseWeaponComponent>();
 
 	proto external IEntity GetOwner();
 	//! performs throwing

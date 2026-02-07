@@ -1,15 +1,15 @@
-class FireDamageSystem: GameSystem
+class FireDamageSystem : GameSystem
 {
 	protected ref array<SCR_DamageManagerComponent> m_aDamageManagers = {};
 
 	//------------------------------------------------------------------------------------------------
-	protected override ESystemPoint GetSystemPoint()
+	override bool ShouldBePaused()
 	{
-		return ESystemPoint.FixedFrame;
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override protected void OnUpdate(ESystemPoint point)
+	protected override void OnUpdate(ESystemPoint point)
 	{
 		float timeSlice = GetWorld().GetFixedTimeSlice();
 
@@ -39,6 +39,7 @@ class FireDamageSystem: GameSystem
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param component must not be null
 	void Register(SCR_DamageManagerComponent component)
 	{
 		//About to be deleted

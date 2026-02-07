@@ -1,7 +1,4 @@
-/*
-Effect which colorizes a widget with given name.
-*/
-
+//! Effect which colorizes a widget with given name.
 [BaseContainerProps(configRoot : true), SCR_ButtonEffectTitleAttribute("Color", "m_sWidgetName")]
 class SCR_ButtonEffectColor : SCR_ButtonEffectWidgetBase
 {
@@ -46,6 +43,7 @@ class SCR_ButtonEffectColor : SCR_ButtonEffectWidgetBase
 	//TODO: focus should probably be a state, not events
 	//TODO: Fix colors not matching the button's current state
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnStateDefault(bool instant)
 	{
 		// This can get triggered on mouse leave while the button remains focused. The focus color must then have priority, as it is integral to gamepad navigation
@@ -56,11 +54,13 @@ class SCR_ButtonEffectColor : SCR_ButtonEffectWidgetBase
 		Apply(color, instant);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnStateHovered(bool instant)
 	{
 		Apply(m_cHovered, instant);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnStateActivated(bool instant)
 	{
 		// If the modular button is toggled while focused, the focus state must have priority, as it is integral to gamepad navigation
@@ -71,31 +71,37 @@ class SCR_ButtonEffectColor : SCR_ButtonEffectWidgetBase
 		Apply(color, instant);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnStateDisabled(bool instant)
 	{
 		Apply(m_cDisabled, instant);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnStateDisabledActivated(bool instant)
 	{
 		Apply(m_cDisabledActivated, instant);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnStateActivatedHovered(bool instant)
 	{
 		Apply(m_cActivatedHovered, instant);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnClicked(bool instant)
 	{
 		Apply(m_cClicked, instant);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnFocusGained(bool instant)
 	{
 		Apply(m_cFocusGained, instant);
 	}	
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnFocusLost(bool instant)
 	{
 		// Focusing away from an activated modular button must give priority to it's activated state color
@@ -107,22 +113,26 @@ class SCR_ButtonEffectColor : SCR_ButtonEffectWidgetBase
 		Apply(color, instant);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnToggledOn(bool instant)
 	{
 		Apply(m_cToggledOn, instant);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnToggledOff(bool instant)
 	{
 		Apply(m_cToggledOff, instant);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	// Called when effect is disabled. Here you should stop all running effects.
 	override void OnDisabled()
 	{
 		AnimateWidget.StopAnimation(m_wTarget, WidgetAnimationColor);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void Apply(Color color, bool instant)
 	{
 		if (color && m_wTarget)
@@ -138,4 +148,4 @@ class SCR_ButtonEffectColor : SCR_ButtonEffectWidgetBase
 			}
 		}
 	}
-};
+}

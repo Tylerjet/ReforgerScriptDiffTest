@@ -17,6 +17,8 @@ class SCR_NetworkedStatsTestComponent : ScriptComponent
 		statsComponent.GetNetworkedStatPrefabData().GetOnStatsChanged(true).Insert(OnStatUpdate);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] stat
 	void OnStatUpdate(SCR_BaseNetworkedStat stat)
 	{
 		SCR_FPSNetworkedStat fpsStat = SCR_FPSNetworkedStat.Cast(stat);

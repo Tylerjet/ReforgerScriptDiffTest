@@ -26,10 +26,11 @@ class SCR_ContentBrowserActiveFiltersEditorUIComponent: ScriptedWidgetComponent
 	protected SCR_ContentBrowserEditorComponent m_ContentBrowserComponent;
 	protected SCR_ContentBrowserFiltersEditorUIComponent m_ContentBrowserFilterUiComponent;
 	protected Widget m_FiltersHolder;
-	protected ref array<EEditableEntityLabel> m_aActiveFilters = new ref array<EEditableEntityLabel>;
-	protected ref map <EEditableEntityLabelGroup, int> m_mGroupLabelOrder = new ref map <EEditableEntityLabelGroup, int>;
-	//protected ref map <EEditableEntityLabel, int> m_mLabelOrder = new ref map <EEditableEntityLabelGroup, int>;
+	protected ref array<EEditableEntityLabel> m_aActiveFilters = {};
+	protected ref map <EEditableEntityLabelGroup, int> m_mGroupLabelOrder = new map <EEditableEntityLabelGroup, int>();
+	//protected ref map <EEditableEntityLabel, int> m_mLabelOrder = new map <EEditableEntityLabelGroup, int>();
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnFilterLabelChanged(EEditableEntityLabel label, bool active)
 	{
 		if (active)
@@ -51,6 +52,7 @@ class SCR_ContentBrowserActiveFiltersEditorUIComponent: ScriptedWidgetComponent
 		CreateFilters();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void InsertOrderedFilter(EEditableEntityLabel label)
 	{
 		if (m_aActiveFilters.IsEmpty())
@@ -67,7 +69,7 @@ class SCR_ContentBrowserActiveFiltersEditorUIComponent: ScriptedWidgetComponent
 		int checkLabelOrder;
 		int count = m_aActiveFilters.Count();
 		bool inserted = false;
-		array<SCR_EditableEntityCoreLabelSetting> groupLabels = new array<SCR_EditableEntityCoreLabelSetting>;
+		array<SCR_EditableEntityCoreLabelSetting> groupLabels = {};
 		int indexInGroup;
 		
 		for(int i = 0; i < count; i++)
@@ -117,6 +119,7 @@ class SCR_ContentBrowserActiveFiltersEditorUIComponent: ScriptedWidgetComponent
 			m_aActiveFilters.Insert(label);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected int GetIndexInGroup(array<SCR_EditableEntityCoreLabelSetting> groupLabels,  EEditableEntityLabel label)
 	{
 		int count = groupLabels.Count();
@@ -129,13 +132,14 @@ class SCR_ContentBrowserActiveFiltersEditorUIComponent: ScriptedWidgetComponent
 		return -1;
 	}
 	
-	
+	//------------------------------------------------------------------------------------------------
 	protected void OnFiltersReset()
 	{
 		m_ContentBrowserComponent.GetActiveLabels(m_aActiveFilters);
 		CreateFilters();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnActiveFilterPressed(SCR_ButtonBaseComponent button)
 	{
 		SCR_ContentBrowserActiveFilterEditorUIComponent activeFilterComponent = SCR_ContentBrowserActiveFilterEditorUIComponent.Cast(button.GetRootWidget().FindHandler(SCR_ContentBrowserActiveFilterEditorUIComponent));
@@ -146,6 +150,7 @@ class SCR_ContentBrowserActiveFiltersEditorUIComponent: ScriptedWidgetComponent
 		m_ContentBrowserFilterUiComponent.DisableFilterFromActiveFilters(activeFilterComponent.GetLabelReference());
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//Create active filter widgets
 	protected void CreateFilters()
 	{
@@ -223,6 +228,7 @@ class SCR_ContentBrowserActiveFiltersEditorUIComponent: ScriptedWidgetComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//Clear filter widgets
 	protected void ClearAllFilterWidgets()
 	{
@@ -243,10 +249,9 @@ class SCR_ContentBrowserActiveFiltersEditorUIComponent: ScriptedWidgetComponent
 		}
 	}
 	
-	/*!
-	Init of the UI component. Creating active filters
-	\param contentBrowserFilterUiComponent SCR_ContentBrowserFiltersEditorUIComponent reference to set filters when active filter is pressed
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Init of the UI component. Creating active filters
+	//! \param[in] contentBrowserFilterUiComponent SCR_ContentBrowserFiltersEditorUIComponent reference to set filters when active filter is pressed
 	void Init(SCR_ContentBrowserFiltersEditorUIComponent contentBrowserFilterUiComponent)
 	{
 		m_ContentBrowserFilterUiComponent = contentBrowserFilterUiComponent;
@@ -267,7 +272,9 @@ class SCR_ContentBrowserActiveFiltersEditorUIComponent: ScriptedWidgetComponent
 		m_ContentBrowserComponent.GetLabelGroups(labelGroups);
 		
 		foreach (SCR_EditableEntityCoreLabelGroupSetting groupSetting: labelGroups)
+		{
 			m_mGroupLabelOrder.Insert(groupSetting.GetLabelGroupType(), groupSetting.GetOrder());
+		}
 		
 		m_ContentBrowserComponent.GetOnLabelChanged().Insert(OnFilterLabelChanged);
 		m_ContentBrowserComponent.GetOnBrowserStateCleared().Insert(OnFiltersReset);
@@ -276,11 +283,13 @@ class SCR_ContentBrowserActiveFiltersEditorUIComponent: ScriptedWidgetComponent
 		CreateFilters();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		m_wRoot = w;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		if (m_ContentBrowserComponent)
@@ -289,4 +298,4 @@ class SCR_ContentBrowserActiveFiltersEditorUIComponent: ScriptedWidgetComponent
 			m_ContentBrowserComponent.GetOnBrowserStateCleared().Remove(OnFiltersReset);
 		}
 	}
-};
+}

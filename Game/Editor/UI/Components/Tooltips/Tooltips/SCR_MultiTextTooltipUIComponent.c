@@ -1,4 +1,4 @@
-class SCR_MultiTextTooltipUIComponent: ScriptedWidgetComponent
+class SCR_MultiTextTooltipUIComponent : ScriptedWidgetComponent
 {
 	[Attribute(defvalue: "1 1 1 1", desc: "Color of Text.")]
 	protected ref Color m_cTextColor;
@@ -6,9 +6,10 @@ class SCR_MultiTextTooltipUIComponent: ScriptedWidgetComponent
 	[Attribute("")]
 	protected ResourceName m_TextPrefab;
 	
+	protected Widget m_wRoot;
 	
-	protected Widget m_wRoot;;
-	
+	//------------------------------------------------------------------------------------------------
+	//!
 	void ClearAllText()
 	{
 		if (!m_wRoot)
@@ -24,11 +25,21 @@ class SCR_MultiTextTooltipUIComponent: ScriptedWidgetComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] color
 	void SetInitTextColor(Color color)
 	{
 		m_cTextColor = color;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] text
+	//! \param[in] param1
+	//! \param[in] param2
+	//! \param[in] param3
+	//! \param[in] param4
+	//! \return
 	TextWidget AddText(string text, string param1 = string.Empty, string param2 = string.Empty, string param3 = string.Empty, string param4 = string.Empty)
 	{
 		if (!m_wRoot)
@@ -47,9 +58,9 @@ class SCR_MultiTextTooltipUIComponent: ScriptedWidgetComponent
 		return textWidget;
 	}
 	
-	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		m_wRoot = w;
 	}
-};
+}

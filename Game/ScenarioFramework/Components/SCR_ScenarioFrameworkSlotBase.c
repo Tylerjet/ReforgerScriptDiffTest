@@ -1,13 +1,11 @@
-[EntityEditorProps(category: "GameScripted/ScriptWizard", description: "ScriptWizard generated script file.")]
+[EntityEditorProps(category: "GameScripted/ScenarioFramework/Slot", description: "")]
 class SCR_ScenarioFrameworkSlotBaseClass : SCR_ScenarioFrameworkLayerBaseClass
 {
-	// prefab properties here
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 {
-	[Attribute(desc: "Resource name of the object to be spawned", category: "Asset")]
+	[Attribute(params: "et", desc: "Resource name of the object to be spawned", category: "Asset")]
 	protected ResourceName 		m_sObjectToSpawn;
 	
 	[Attribute(desc: "Name of the entity used for identification", category: "Asset")];
@@ -19,19 +17,19 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	[Attribute(desc: "Overrides display name of the spawned object for task purposes", category: "Asset")]
 	protected string 	m_sOverrideObjectDisplayName;
 	
-	[Attribute(defvalue: "1", desc: "If spawned entity should be garbage-collected", category: "Asset")]
+	[Attribute(defvalue: "1", desc: "If the spawned entity can be garbage-collected", category: "Asset")]
 	protected bool m_bCanBeGarbageCollected;
 	
 	[Attribute(desc: "Randomize spawned asset(s) per Faction Attribute which needs to be filled as well. Will override Object To Spawn Attribute.", category: "Randomization")]
 	protected bool						m_bRandomizePerFaction;
 	
-	[Attribute("0", UIWidgets.ComboBox, "Select Entity Catalog type for random spawn", "", ParamEnumArray.FromEnum(EEntityCatalogType), category: "Randomization")]
+	[Attribute("0", UIWidgets.SearchComboBox, "Select Entity Catalog type for random spawn", "", ParamEnumArray.FromEnum(EEntityCatalogType), category: "Randomization")]
 	protected EEntityCatalogType	m_eEntityCatalogType;
 	
-	[Attribute("0", UIWidgets.ComboBox, "Select Entity Labels which you want to optionally include to random spawn. If you want to spawn everything, you can leave it out empty and also leave Include Only Selected Labels attribute to false.", "", ParamEnumArray.FromEnum(EEditableEntityLabel), category: "Randomization")]
+	[Attribute("0", UIWidgets.SearchComboBox, "Select Entity Labels which you want to optionally include to random spawn. If you want to spawn everything, you can leave it out empty and also leave Include Only Selected Labels attribute to false.", "", ParamEnumArray.FromEnum(EEditableEntityLabel), category: "Randomization")]
 	protected ref array<EEditableEntityLabel> 		m_aIncludedEditableEntityLabels;
 	
-	[Attribute("0", UIWidgets.ComboBox, "Select Entity Labels which you want to exclude from random spawn", "", ParamEnumArray.FromEnum(EEditableEntityLabel), category: "Randomization")]
+	[Attribute("0", UIWidgets.SearchComboBox, "Select Entity Labels which you want to exclude from random spawn", "", ParamEnumArray.FromEnum(EEditableEntityLabel), category: "Randomization")]
 	protected ref array<EEditableEntityLabel> 		m_aExcludedEditableEntityLabels;
 	
 	[Attribute(desc: "If true, it will spawn only the entities that are from Included Editable Entity Labels and also do not contain Label to be Excluded.", category: "Randomization")]
@@ -41,15 +39,15 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	protected bool m_bIgnoreOrientChildrenToTerrain;
 		
 	protected bool						m_bSelected = false;
-	protected ref EntitySpawnParams 	m_SpawnParams = new EntitySpawnParams;
+	protected ref EntitySpawnParams 	m_SpawnParams = new EntitySpawnParams();
 	vector 								m_Size;
 	protected ResourceName 				m_sRandomlySpawnedObject; 	
 	protected vector 					m_vPosition;
 	
-#ifdef WORKBENCH
 	[Attribute(defvalue: "1", desc: "Show the debug shapes in Workbench", category: "Debug")];
-	protected bool							m_bShowDebugShapesInWorkbench;
-	
+	protected bool	
+							m_bShowDebugShapesInWorkbench;
+#ifdef WORKBENCH	
 	protected WorldEditorAPI m_API;
 	protected IEntity m_PreviewEntity;
 #endif
@@ -66,12 +64,13 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] state
 	void OnObjectDamage(EDamageState state)
 	{
 		if (state != EDamageState.DESTROYED || !m_Entity)
 			return;
 		
-		ScriptedDamageManagerComponent objectDmgManager = ScriptedDamageManagerComponent.Cast(m_Entity.FindComponent(ScriptedDamageManagerComponent));
+		SCR_DamageManagerComponent objectDmgManager = SCR_DamageManagerComponent.Cast(m_Entity.FindComponent(SCR_DamageManagerComponent));
 		if (objectDmgManager)
 	 		objectDmgManager.GetOnDamageStateChanged().Remove(OnObjectDamage);
 
@@ -83,13 +82,12 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 			return;
 		}
 		
-		SetIsTerminated(true);		
-		
-		if (!m_bCanBeGarbageCollected)
-			RemoveEntityFromGarbageCollector(m_Entity);	
+		SetIsTerminated(true);				
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] oldSlot
+	//! \param[in] newSlot
 	void OnInventoryParentChanged(InventoryStorageSlot oldSlot, InventoryStorageSlot newSlot)
 	{
 		InventoryItemComponent invComp = InventoryItemComponent.Cast(m_Entity.FindComponent(InventoryItemComponent));
@@ -97,30 +95,37 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 			return;
 		
 		SetDynamicDespawnExcluded(true);
-		
-		if (!m_bCanBeGarbageCollected)
-			RemoveEntityFromGarbageCollector(m_Entity);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] vehicle
+	//! \param[in] mgr
+	//! \param[in] occupant
+	//! \param[in] managerId
+	//! \param[in] slotID
 	void OnCompartmentEntered(IEntity vehicle, BaseCompartmentManagerComponent mgr, IEntity occupant, int managerId, int slotID)
 	{
 		m_bExcludeFromDynamicDespawn = true;			
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
+	// TODO: overridd*en
 	string GetOverridenObjectDisplayName() 
 	{ 
 		return m_sOverrideObjectDisplayName;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] name
+	// TODO: overridd*en
 	void SetOverridenObjectDisplayName(string name) 
 	{ 
 		m_sOverrideObjectDisplayName = name;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetSpawnedEntityDisplayName() 
 	{ 
 		if (!m_Entity)
@@ -134,48 +139,6 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 			return string.Empty;
 		
 		return editableEntityComp.GetDisplayName();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	bool GetCanBeGarbageCollected() 
-	{ 
-		return m_bCanBeGarbageCollected;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void SetCanBeGarbageCollected(bool status) 
-	{ 
-		m_bCanBeGarbageCollected = status;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void RemoveEntityFromGarbageCollector(IEntity entity) 
-	{ 
-		if (!entity)
-			return;
-		
-		ChimeraWorld world = entity.GetWorld();
-		if (!world)
-			return;
-		
-		GarbageManager garbageMan = world.GetGarbageManager();
-		if (garbageMan)
-			garbageMan.Withdraw(entity);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void AddEntityToGarbageCollector(IEntity entity) 
-	{ 
-		if (!entity)
-			return;
-		
-		ChimeraWorld world = entity.GetWorld();
-		if (!world)
-			return;
-		
-		GarbageManager garbageMan = world.GetGarbageManager();
-		if (garbageMan)
-			garbageMan.Insert(entity);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -208,11 +171,11 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 				if (m_sObjectToSpawn.IsEmpty())
 					return true;
 				
-				TStringArray strs = new TStringArray;
+				TStringArray strs = new TStringArray();
 				resource.Split("/", strs, true);
 				string resourceName = strs[strs.Count() - 1];
 				
-				TStringArray strsObject = new TStringArray;
+				TStringArray strsObject = new TStringArray();
 				m_sObjectToSpawn.Split("/", strsObject, true);
 				string resourceObject = strsObject[strsObject.Count() - 1];
 				
@@ -256,31 +219,35 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetSpawnedObjectName()
 	{
 		return m_sID;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetObjectToSpawn()
 	{
 		return m_sObjectToSpawn;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetRandomlySpawnedObject()
 	{
 		return m_sRandomlySpawnedObject;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] name
 	void SetRandomlySpawnedObject(ResourceName name)
 	{
 		m_sRandomlySpawnedObject = name;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void DynamicDespawn()
+	override void DynamicDespawn(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		GetOnAllChildrenSpawned().Remove(DynamicDespawn);
 		if (!m_Entity && !SCR_StringHelper.IsEmptyOrWhiteSpace(m_sObjectToSpawn))
@@ -330,40 +297,35 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 				return;
 			
 			m_ParentLayer = SCR_ScenarioFrameworkLayerBase.Cast(entity.FindComponent(SCR_ScenarioFrameworkLayerBase));
+			if (!m_ParentLayer)
+			{
+				Print(string.Format("ScenarioFramework: Slot %1 has no parent layer linked - whole parent hierarchy won't be properly working!", GetName()), LogLevel.ERROR);
+				return;
+			}
 		}
 	
 		if (!m_bDynamicallyDespawned && activation != m_eActivationType)
-			return;
+			m_ParentLayer.CheckAllChildrenSpawned(this);
 		
 		foreach (SCR_ScenarioFrameworkActivationConditionBase activationCondition : m_aActivationConditions)
 		{
 			//If just one condition is false, we don't continue and interrupt the init
 			if (!activationCondition.Init(GetOwner()))
 			{
-				InvokeAllChildrenSpawned();
+				m_ParentLayer.CheckAllChildrenSpawned(this);
 				return;
 			}
 		}
 
-		if (m_Entity && !m_bEnableRepeatedSpawn)
+		if (m_Entity && !m_bEnableRepeatedSpawn && !m_ParentLayer.GetEnableRepeatedSpawn())
 		{
-			IEntity entity = GetOwner().GetParent();
-			if (!entity)
-				return;
-				
-			SCR_ScenarioFrameworkLayerBase layerBase = SCR_ScenarioFrameworkLayerBase.Cast(entity.FindComponent(SCR_ScenarioFrameworkLayerBase));
-			if (!layerBase)
-				return;
-				
-			if (!layerBase.GetEnableRepeatedSpawn())
-			{
-				Print(string.Format("ScenarioFramework: Object %1 already exists and won't be spawned for %2, exiting...", m_Entity, GetOwner().GetName()), LogLevel.ERROR);
-				return;
-			}
+			Print(string.Format("ScenarioFramework: Object %1 already exists and won't be spawned for %2, exiting...", m_Entity, GetName()), LogLevel.ERROR);
+			m_ParentLayer.CheckAllChildrenSpawned(this);
+			return;
 		}
 		
 		// Handles inheritance of faction settings from parents
-		if (m_sFactionKey.IsEmpty() && m_ParentLayer && !m_ParentLayer.GetFactionKey().IsEmpty())
+		if (m_sFactionKey.IsEmpty() && !m_ParentLayer.GetFactionKey().IsEmpty())
 			SetFactionKey(m_ParentLayer.GetFactionKey());
 		
 		if (!m_bUseExistingWorldAsset)
@@ -386,7 +348,7 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 		if (!m_sID.IsEmpty())
 			m_Entity.SetName(m_sID);	
 		
-		ScriptedDamageManagerComponent objectDmgManager = ScriptedDamageManagerComponent.Cast(m_Entity.FindComponent(ScriptedDamageManagerComponent));
+		SCR_DamageManagerComponent objectDmgManager = SCR_DamageManagerComponent.Cast(m_Entity.FindComponent(SCR_DamageManagerComponent));
 		if (objectDmgManager)
 			objectDmgManager.GetOnDamageStateChanged().Insert(OnObjectDamage);
 		
@@ -400,10 +362,14 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 		InventoryItemComponent invComp = InventoryItemComponent.Cast(m_Entity.FindComponent(InventoryItemComponent));
 		if (invComp)
 			invComp.m_OnParentSlotChangedInvoker.Insert(OnInventoryParentChanged);
-		
+
 		if (!m_bCanBeGarbageCollected)
-			RemoveEntityFromGarbageCollector(m_Entity);
-		
+		{
+			SCR_GarbageSystem garbageSystem = SCR_GarbageSystem.GetByEntityWorld(m_Entity);
+			if (garbageSystem)
+				garbageSystem.UpdateBlacklist(m_Entity, true);
+		}
+
 		if (!area)
 		{
 			SCR_GameModeSFManager gameModeComp = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
@@ -416,7 +382,7 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void AfterAllChildrenSpawned()
+	override void AfterAllChildrenSpawned(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		m_bInitiated = true;
 		
@@ -437,6 +403,7 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnAllAreasInitiatedInvoker()
 	{
 		BaseGameMode gameMode = GetGame().GetGameMode();
@@ -457,15 +424,40 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[out] prefab
+	//! \return
 	ResourceName GetRandomAsset(out ResourceName prefab)
 	{
+		SCR_EntityCatalog entityCatalog;
+		
+		SCR_EntityCatalogManagerComponent catalogManager = SCR_EntityCatalogManagerComponent.GetInstance();
+		
+		//~ Get data from faction manager
+		if (catalogManager)
+		{
+			//~ Faction set so get catalog from faction
+			if (!m_sFactionKey.IsEmpty())
+				entityCatalog = catalogManager.GetFactionEntityCatalogOfType(m_eEntityCatalogType, m_sFactionKey);
+			//~ No faction set so get factionless list
+			else 
+				entityCatalog = catalogManager.GetEntityCatalogOfType(m_eEntityCatalogType);
+		}
+		//~ For some reason catalog manager was not found so get data from faction
+		else 
+		{
+			if (m_sFactionKey.IsEmpty())
+			{
+				Print("ScenarioFramework Randomized Spawn: No catalog manager found and faction key is empty!", LogLevel.ERROR);
+				return string.Empty;
+			}
+			
 		FactionManager factionManager = GetGame().GetFactionManager();
 		if (!factionManager)
 		{
 			Print("ScenarioFramework Randomized Spawn: Faction manager not found.", LogLevel.ERROR);
 			return string.Empty;
 		}
-
+	
 		SCR_Faction faction = SCR_Faction.Cast(factionManager.GetFactionByKey(m_sFactionKey));
 		if (!faction)
 		{
@@ -473,28 +465,44 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 			return string.Empty;
 		}
 			
-		SCR_EntityCatalog entityCatalog = faction.GetFactionEntityCatalogOfType(m_eEntityCatalogType);
+			//~ Get entity Catalog from faction
+			entityCatalog = faction.GetFactionEntityCatalogOfType(m_eEntityCatalogType);
+			
 		if (!entityCatalog)
 		{
-			Print(string.Format("ScenarioFramework Randomized Spawn: Faction Entity Catalog not found for selected type for %1.", GetOwner().GetName()), LogLevel.ERROR);
+				Print(string.Format("ScenarioFramework Randomized Spawn: Faction Entity Catalog (type: %1) not found for %2.", typename.EnumToString(EEntityCatalogType, m_eEntityCatalogType), GetOwner().GetName()), LogLevel.ERROR);
 			return string.Empty;
+			}	
 		}
 						
-		array<SCR_EntityCatalogEntry> aFactionEntityEntry = {};
-		entityCatalog.GetFullFilteredEntityListWithLabels(aFactionEntityEntry, m_aIncludedEditableEntityLabels, m_aExcludedEditableEntityLabels, m_bIncludeOnlySelectedLabels);
-		if (aFactionEntityEntry.IsEmpty())
+		//~ No catalog found
+		if (!entityCatalog)
+		{
+			if (!m_sFactionKey.IsEmpty())
+				Print(string.Format("ScenarioFramework Randomized Spawn: Faction Entity Catalog for faction %1 (type %2) not found for %3.", m_sFactionKey, typename.EnumToString(EEntityCatalogType, m_eEntityCatalogType), GetOwner().GetName()), LogLevel.ERROR);
+			else 
+				Print(string.Format("ScenarioFramework Randomized Spawn: Non-Faction Entity Catalog (Type: %1) not found for %2.", typename.EnumToString(EEntityCatalogType, m_eEntityCatalogType), GetOwner().GetName()), LogLevel.ERROR);
+			
+			return string.Empty;
+		}
+		
+		array<SCR_EntityCatalogEntry> entityEntries = {};
+		entityCatalog.GetFullFilteredEntityListWithLabels(entityEntries, m_aIncludedEditableEntityLabels, m_aExcludedEditableEntityLabels, m_bIncludeOnlySelectedLabels);
+		if (entityEntries.IsEmpty())
 		{
 			Print(string.Format("ScenarioFramework Randomized Spawn: Applied labels resulted in no viable prefabs to be randomly selected for %1.", GetOwner().GetName()), LogLevel.ERROR);
 			return string.Empty;
 		}
 			
 		Math.Randomize(-1);
-		prefab = aFactionEntityEntry.GetRandomElement().GetPrefab();
+		prefab = entityEntries.GetRandomElement().GetPrefab();
 		m_sRandomlySpawnedObject = prefab;
 		return prefab;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	IEntity SpawnAsset()
 	{
 		//If Randomization is enabled, it will try to apply settings from Attributes.
@@ -572,9 +580,12 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] owner
+	//! \param[in] resource
 	void SpawnEntityPreview(IEntity owner, Resource resource)
 	{
-		EntitySpawnParams spawnParams = new EntitySpawnParams;
+		EntitySpawnParams spawnParams = new EntitySpawnParams();
 		spawnParams.TransformMode = ETransformMode.WORLD;
 		owner.GetWorldTransform(spawnParams.Transform);
 			
@@ -621,6 +632,10 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 #endif	
 			
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_ScenarioFrameworkSlotBase(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 #ifdef WORKBENCH		
@@ -629,37 +644,25 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_ScenarioFrameworkSlotBase()
 	{
 #ifdef WORKBENCH		
 		SCR_EntityHelper.DeleteEntityAndChildren(m_PreviewEntity);
 #endif	
 	}
-};
-
-//------------------------------------------------------------------------------------------------
-[BaseContainerProps()]
-class SCR_WaypointSet	
-{
-	[Attribute("Name")]
- 	string m_sName ;	
-	
-	[Attribute("Use random order")]
-	bool m_bUseRandomOrder;
-	
-	[Attribute("Cycle the waypoints")]
-	bool m_bCycleWaypoints;	
 }
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkActivationConditionBase	
 {
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] entity
+	//! \return
 	bool Init(IEntity entity);
 }
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkDayTimeCondition : SCR_ScenarioFrameworkActivationConditionBase
 {
@@ -687,7 +690,6 @@ class SCR_ScenarioFrameworkDayTimeCondition : SCR_ScenarioFrameworkActivationCon
 	}
 }
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkDayTimeHourCondition : SCR_ScenarioFrameworkActivationConditionBase
 {
@@ -718,7 +720,6 @@ class SCR_ScenarioFrameworkDayTimeHourCondition : SCR_ScenarioFrameworkActivatio
 	}
 }
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkWeatherCondition : SCR_ScenarioFrameworkActivationConditionBase
 {

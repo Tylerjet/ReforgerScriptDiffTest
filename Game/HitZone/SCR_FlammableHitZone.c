@@ -7,7 +7,7 @@ enum EFireState // Rename to SCR_EBurningState - we have conflict with gamecode
 	BURNING
 }
 
-class SCR_FlammableHitZone : SCR_DestructibleHitzone
+class SCR_FlammableHitZone : SCR_VehicleHitZone
 {
 	protected static const float		FIRE_TERRAIN_HEIGHT_TOLERANCE = 2.2; // Prevents spawning of ground fire effect if the vehicle is too high (in meters)
 	protected static const float 		LIGHT_EMISSIVITY_START = 5;
@@ -87,10 +87,6 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 
 	[Attribute(defvalue: "FireState", desc: "Fire state signal name", category: "Flammability")]
 	protected string m_sFireStateSignal;
-
-	// Repairs
-	[Attribute(EVehicleHitZoneGroup.HULL.ToString(), UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EVehicleHitZoneGroup))]
-	protected EVehicleHitZoneGroup m_eHitZoneGroup;
 
 	// Audio features
 	protected SignalsManagerComponent	m_SignalsManager;
@@ -176,20 +172,23 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 	\param nodeID Bone index in mesh object
 	\param isDOT True if this is a calculation for DamageOverTime
 	*/
-	override float ComputeEffectiveDamage(EDamageType damageType, float rawDamage, IEntity hitEntity, HitZone struckHitZone, IEntity damageSource, notnull Instigator instigator, const GameMaterial hitMaterial, int colliderID, inout vector hitTransform[3], const vector impactVelocity, int nodeID, bool isDOT)
+	override float ComputeEffectiveDamage(notnull BaseDamageContext damageContext, bool isDOT)
 	{
 		// Incendiary damage has different thresholds
-		if (damageType == EDamageType.INCENDIARY && !isDOT)
+		if (damageContext.damageType == EDamageType.INCENDIARY && !isDOT)
 		{
-			ComputeIncendiaryDamage(rawDamage, instigator);
+			ComputeIncendiaryDamage(damageContext.damageValue, damageContext.instigator);
 			return 0;
 		}
 
-		float damage = rawDamage;
-		if (damageType == EDamageType.FIRE)
+		float damage = damageContext.damageValue;
+		if (damageContext.damageType == EDamageType.FIRE)
 			damage *= m_fFireMultiplier;
 
-		return super.ComputeEffectiveDamage(damageType, damage, hitEntity, struckHitZone, damageSource, instigator, hitMaterial, colliderID, hitTransform, impactVelocity, nodeID, isDOT);
+		BaseDamageContext hack = BaseDamageContext.Cast(damageContext.Clone());
+		hack.damageValue = damage;
+		
+		return super.ComputeEffectiveDamage(hack, isDOT);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -375,7 +374,7 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 
 		// Send update to remote clients
 		array<HitZone> hitZones = {};
-		SCR_HitZoneContainerComponent hitZoneContainer = SCR_HitZoneContainerComponent.Cast(GetHitZoneContainer());
+		SCR_DamageManagerComponent hitZoneContainer = SCR_DamageManagerComponent.Cast(GetHitZoneContainer());
 
 		if (!hitZoneContainer)
 			return;
@@ -568,7 +567,7 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 		if (!owner)
 			return;
 
-		SCR_HitZoneContainerComponent hitZoneContainer = SCR_HitZoneContainerComponent.Cast(GetHitZoneContainer());
+		SCR_DamageManagerComponent hitZoneContainer = SCR_DamageManagerComponent.Cast(GetHitZoneContainer());
 
 		if (!hitZoneContainer)
 			return;
@@ -641,6 +640,7 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 
 		ParticleEffectEntitySpawnParams spawnParams();
 		spawnParams.Transform[3] = position;
+		spawnParams.UseFrameEvent = true;
 		m_BurningGroundParticle = ParticleEffectEntity.SpawnParticleEffect(m_sBurningGroundParticle, spawnParams);
 	}
 

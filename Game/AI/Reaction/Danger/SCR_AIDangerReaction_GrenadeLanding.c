@@ -17,7 +17,7 @@ class SCR_AIDangerReaction_GrenadeLanding : SCR_AIDangerReaction
 	{
 		vector agentTransform[3];
 		entity.GetTransform(agentTransform);
-		vector agentDir = agentTransform[2];				
+		vector agentDir = agentTransform[2];	
 		
 		vector dirToGrenade = vector.Direction(entity.GetOrigin(), grenadePos);
 		dirToGrenade.Normalize();
@@ -72,6 +72,51 @@ class SCR_AIDangerReaction_GrenadeLanding : SCR_AIDangerReaction
 		);
 	}
 	
+	//-----------------------------------------------------------------------------------------------------
+	// Return utility owner faction
+	Faction GetOwnerFaction(SCR_AIUtilityComponent utility)
+	{
+		SCR_ChimeraCharacter ownerCharacter = SCR_ChimeraCharacter.Cast(utility.m_OwnerEntity);
+		if (!ownerCharacter)
+			return null;
+		
+		return ownerCharacter.GetFaction();
+	}
+	
+	//-----------------------------------------------------------------------------------------------------
+	// Return character of grenade instigator
+	SCR_ChimeraCharacter GetShooterCharacter(notnull IEntity grenadeObject)
+	{
+		GrenadeMoveComponent grenadeComp = GrenadeMoveComponent.Cast(grenadeObject.FindComponent(GrenadeMoveComponent));
+		if (!grenadeComp)
+			return null;
+		
+		Instigator shooterInst = grenadeComp.GetInstigator();
+		if (!shooterInst)
+			return null;
+		
+		return SCR_ChimeraCharacter.Cast(shooterInst.GetInstigatorEntity());
+	}
+	
+	//-----------------------------------------------------------------------------------------------------
+	// Adds grenade instigator position to group perception for potentatial investigation later
+	void AddToGroupPerception(SCR_AIUtilityComponent utility, IEntity shooter, vector observePosition)
+	{		
+		AIGroup group = AIGroup.Cast(utility.GetOwner().GetParentGroup());
+		if (!group)
+			return;
+		
+		SCR_AIGroupUtilityComponent groupUtilityComp = SCR_AIGroupUtilityComponent.Cast(group.FindComponent(SCR_AIGroupUtilityComponent));
+		if (!groupUtilityComp)
+			return;
+		
+		PerceptionManager perceptionMan = GetGame().GetPerceptionManager();
+		if (!perceptionMan)
+			return;
+
+		groupUtilityComp.m_Perception.AddOrUpdateGunshot(shooter, observePosition, perceptionMan.GetTime());
+	}
+	
 	//-------------------------------------------------------------------------------------------
 	override bool PerformReaction(notnull SCR_AIUtilityComponent utility, notnull SCR_AIThreatSystem threatSystem, AIDangerEvent dangerEvent)
 	{
@@ -83,6 +128,14 @@ class SCR_AIDangerReaction_GrenadeLanding : SCR_AIDangerReaction
 			float distanceToGrenade = vector.Distance(utility.GetOrigin(), grenadePos);
 			if (distanceToGrenade < GRENADE_AVOID_RADIUS)
 			{
+				vector observePosition = vector.Zero;
+				SCR_ChimeraCharacter shooter = GetShooterCharacter(grenadeObject);
+				Faction ownerFaction = GetOwnerFaction(utility);
+				
+				// Filter out friendlies
+				if (ownerFaction && shooter && !ownerFaction.IsFactionFriendly(shooter.GetFaction()))
+					AddToGroupPerception(utility, shooter, shooter.GetOrigin());
+
 				float reactionDelay = GRENADE_AVOID_REACT_MIN_TIME_MS;
 				
 				if (distanceToGrenade > GRENADE_AVOID_RADIUS_MIN)
@@ -103,7 +156,7 @@ class SCR_AIDangerReaction_GrenadeLanding : SCR_AIDangerReaction
 					#endif
 				}
 				
-				SCR_AIMoveFromDangerBehavior behavior = new SCR_AIMoveFromGrenadeBehavior(utility, null, vector.Zero, dangerEntity: grenadeObject, behaviorDelay: reactionDelay);
+				SCR_AIMoveFromDangerBehavior behavior = new SCR_AIMoveFromGrenadeBehavior(utility, null, vector.Zero, grenadeObject, reactionDelay, observePosition);
 				utility.AddAction(behavior);
 				return true;
 			}

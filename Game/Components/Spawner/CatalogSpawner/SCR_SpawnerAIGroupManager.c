@@ -1,6 +1,6 @@
 class SCR_SpawnerAIGroupManagerComponentClass : SCR_BaseGameModeComponentClass
 {
-};
+}
 
 class SCR_SpawnerAIGroupManagerComponent : SCR_BaseGameModeComponent
 {
@@ -14,6 +14,7 @@ class SCR_SpawnerAIGroupManagerComponent : SCR_BaseGameModeComponent
 	protected float m_fCurrentGroupMemberSpawnDelay;
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] value
 	void SetIsAtAILimit(bool value)
 	{
 		m_bIsAtAILimit = value;
@@ -21,12 +22,19 @@ class SCR_SpawnerAIGroupManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsAtAILimit()
 	{
 		return m_bIsAtAILimit;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] spawner
+	//! \param[in] resName
+	//! \param[in] user
+	//! \param[in] slotEntity
+	//! \param[in] rallyPoint
 	void QueueSpawn(notnull SCR_CatalogEntitySpawnerComponent spawner, ResourceName resName, notnull IEntity user, notnull IEntity slotEntity, notnull SCR_EntityLabelPointComponent rallyPoint)
 	{
 		if (!GetGameMode().IsMaster())
@@ -100,6 +108,7 @@ class SCR_SpawnerAIGroupManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_SpawnerAIGroupManagerComponent()
 	{		
 		if (!SCR_AIWorld.Cast(GetGame().GetAIWorld()))
@@ -108,10 +117,8 @@ class SCR_SpawnerAIGroupManagerComponent : SCR_BaseGameModeComponent
 		SCR_AIWorld.s_OnAgentSpawned.Remove(OnAgentsUpdated);
 		SCR_AIWorld.s_OnAgentRemoved.Remove(OnAgentsUpdated);
 	}
-	
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_SpawnerAIRequest
 {
 	SCR_CatalogEntitySpawnerComponent m_Spawner;
@@ -121,6 +128,12 @@ class SCR_SpawnerAIRequest
 	SCR_EntityLabelPointComponent m_RallyPoint;
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] spawner
+	//! \param[in] resName
+	//! \param[in] userEntity
+	//! \param[in] slotEntity
+	//! \param[in] labelComp
 	void SCR_SpawnerAIRequest(SCR_CatalogEntitySpawnerComponent spawner, ResourceName resName, IEntity userEntity, IEntity slotEntity, SCR_EntityLabelPointComponent labelComp)
 	{
 		m_Spawner = spawner;
@@ -129,4 +142,4 @@ class SCR_SpawnerAIRequest
 		m_SlotEntity = slotEntity;
 		m_RallyPoint = labelComp;
 	}
-};
+}

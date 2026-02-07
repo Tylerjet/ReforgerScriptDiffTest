@@ -1,17 +1,18 @@
 [ComponentEditorProps(category: "GameScripted/Editor", description: "", icon: "WBData/ComponentEditorProps/componentEditor.png")]
-class SCR_EditorVONControllerComponentClass: SCR_BaseEditorComponentClass
+class SCR_EditorVONControllerComponentClass : SCR_BaseEditorComponentClass
 {
-};
+}
 
-/*!
-Manages interaction with Voice Over Network IEntityComponentSource
-*/
+//! Manages interaction with Voice Over Network IEntityComponentSource
 class SCR_EditorVONControllerComponent : SCR_BaseEditorComponent
 {
 	//------------------------------------------------------------------------------------------------
 	override protected void EOnEditorOpen()
 	{
-		SCR_EditorManagerEntity.GetInstance().GetOnModeChange().Insert(OnEditorModeChange);
+		SCR_EditorManagerEntity instance = SCR_EditorManagerEntity.GetInstance();
+		
+		if (instance)
+			instance.GetOnModeChange().Insert(OnEditorModeChange);
 		
 		OnEditorModeChange();
 	}
@@ -19,7 +20,10 @@ class SCR_EditorVONControllerComponent : SCR_BaseEditorComponent
 	//------------------------------------------------------------------------------------------------
 	override protected void EOnEditorClose()
 	{
-		SCR_EditorManagerEntity.GetInstance().GetOnModeChange().Remove(OnEditorModeChange);
+		SCR_EditorManagerEntity instance = SCR_EditorManagerEntity.GetInstance();
+		
+		if (instance)
+			instance.GetOnModeChange().Remove(OnEditorModeChange);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -32,4 +36,4 @@ class SCR_EditorVONControllerComponent : SCR_BaseEditorComponent
 		if (vonController && vonController.GetVONMenu())
 			vonController.GetVONMenu().SetMenuDisabled(mode == EEditorMode.PHOTO);
 	}
-};
+}

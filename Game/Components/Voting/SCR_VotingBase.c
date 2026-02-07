@@ -1,8 +1,6 @@
-/*!
-Base class for voting types.
-Do not expose objects of this class outside of SCR_VotingManagerComponent!
-Other systems should *always* go through the manager.
-*/
+//! Base class for voting types.
+//! Do not expose objects of this class outside of SCR_VotingManagerComponent!
+//! Other systems should *always* go through the manager.
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EVotingType, "m_Type")]
 class SCR_VotingBase
 {
@@ -38,11 +36,9 @@ class SCR_VotingBase
 	protected ref array<int> m_aPlayersVoted_Server = {};
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	A player has voted to approve (server only)
-	\param playerID Id of player who voted
-	\return True if player had not yet voted to approve
-	*/
+	//! A player has voted to approve (server only)
+	//! \param[in] playerID Id of player who voted
+	//! \return True if player had not yet voted to approve
 	bool AddPlayerVotedServer(int playerID)
 	{
 		if (m_aPlayersVoted_Server.Contains(playerID))
@@ -58,11 +54,9 @@ class SCR_VotingBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	A player has voted to remove or abstain (server only)
-	\param playerID Id of player who voted to remove or abstain
-	\return True if player had previously voted to approve and the vote was removed
-	*/
+	//! A player has voted to remove or abstain (server only)
+	//! \param[in] playerID Id of player who voted to remove or abstain
+	//! \return True if player had previously voted to approve and the vote was removed
 	bool RemovePlayerVotedServer(int playerID)
 	{
 		if (!m_aPlayersVoted_Server.Contains(playerID))
@@ -78,107 +72,110 @@ class SCR_VotingBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Set the current amount of votes this vote has
-	\param currentVoteCount New current vote amount
-	*/
+	//! Set the current amount of votes this vote has
+	//! \param[in] currentVoteCount New current vote amount
 	void SetCurrentVoteCount(int currentVoteCount)
 	{
 		m_iCurrentVoteCount = currentVoteCount;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return Current total votes the vote has received
-	*/
+	//! \return Current total votes the vote has received
 	int GetCurrentVoteCount()
 	{
 		return m_iCurrentVoteCount;
 	}
 	
-	////////////////////////////////////////////////////////////////////////////////////////////////
+	//------------------------------------------------------------------------------------------------
 	//--- Public, server
-	/*!
-	Set vote of given player.
-	\param playerID Player ID
-	\param value Cast vote
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Set vote of given player.
+	//! \param[in] playerID Player ID
+	//! \param[in] value Cast vote
 	void SetVote(int playerID, int value = DEFAULT_VALUE);
-	/*!
-	Remove vote of given player.
-	\param playerID Player ID
-	\return True if the voting should be canceled
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Remove vote of given player.
+	//! \param[in] playerID Player ID
+	//! \return True if the voting should be cancelled
 	bool RemoveVote(int playerID);
-	/*!
-	Remove all votes for given value.
-	\param value Value
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! Remove all votes for given value.
+	//! \param[in] value Value
+	//! \return
 	bool RemoveValue(int value);
-	/*!
-	Evaluate if the voting can end.
-	\param[out] EVotingOutcome Outcome of the vote (used only when returned value is true)
-	\return True if it can end
-	*/
 	
-	/*!
-	Check if notification can be shown for this voting
-	\param value Voting value
-	\return True if can send notification for this voting type
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Check if notification can be shown for this voting
+	//! \param[in] value Voting value
+	//! \return True if can send notification for this voting type
 	bool CanSendNotification(int value)
 	{
 		return true;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! Evaluate if the voting can end.
+	//! \param[out] outcome Outcome of the vote (used only when returned value is true)
+	//! \return True if it can end
 	bool Evaluate(out EVotingOutcome outcome)
 	{
 		return m_fDuration <= 0;
 	}
-	/*!
-	Get winner of the vote.
-	\return Winning value
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get winner of the vote.
+	//! \return Winning value
 	int GetWinner()
 	{
 		return DEFAULT_VALUE;
 	}
-	/*!
-	Event called when the voting ends.
-	\param value Voting value
-	\param winner Winning value
-	*/
-	void OnVotingEnd(int value = DEFAULT_VALUE, int winner = DEFAULT_VALUE)
-	{
-	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Event called when the voting ends.
+	//! \param[in] value Voting value
+	//! \param[in] winner Winning value
+	//!
+	void OnVotingEnd(int value = DEFAULT_VALUE, int winner = DEFAULT_VALUE);
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] playerID
+	//! \return
 	int GetPlayerVote(int playerID)
 	{
 		return DEFAULT_VALUE;
 	}	
+
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Public, anywhere
-	/*!
-	Check if the voting is available in the current world.
-	\param value Potential voting value
-	\param isOngoing True if the voting was already initiated
-	\return True when available
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Check if the voting is available in the current world.
+	//! \param[in] value Potential voting value
+	//! \param[in] isOngoing True if the voting was already initiated
+	//! \return True when available
 	bool IsAvailable(int value, bool isOngoing)
 	{
 		return true;
 	}
-	/*!
-	Check if the voting is matching given params.
-	\param type Voting type
-	\param value Voting value
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if the voting is matching given params.
+	//! \param[in] type Voting type
+	//! \param[in] value Voting value
+	//! \return
 	bool IsMatching(EVotingType type, int value = DEFAULT_VALUE);
 
+	//------------------------------------------------------------------------------------------------
+	//!
 	void Log();
-	/*!
-	Get name of the value.
-	\return Value name
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get name of the value.
+	//! \param[in] value
+	//! \return Value name
 	string GetValueName(int value)
 	{
 		if (m_bIsValuePlayerID && value > 0)
@@ -186,87 +183,85 @@ class SCR_VotingBase
 		else
 			return value.ToString();
 	}
-	/*!
-	Get voting type.
-	\return Type
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get voting type.
+	//! \return Type
 	EVotingType GetType()
 	{
 		return m_Type;
 	}
-	/*!
-	Get voting value.
-	Applicable only if the voting targets specific value, e.g., is referendum about certain outcome.
-	\return Value
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get voting value.
+	//! Applicable only if the voting targets specific value, e.g., is referendum about certain outcome.
+	//! \return Value
 	EVotingType GetValue()
 	{
 		return DEFAULT_VALUE;
 	}
-	/*!
-	Get voting UI representation
-	\return UI info
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get voting UI representation
+	//! \return UI info
 	SCR_VotingUIInfo GetInfo()
 	{
 		return m_Info;
 	}
-	/*!
-	\return Remaining time of the voting in seconds
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return Remaining time of the voting in seconds
 	float GetRemainingDuration()
 	{
 		return m_fDuration;
 	}
-	/*!
-	Check if the voting is about player IDs.
-	\return True when it's about player IDs
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if the voting is about player IDs.
+	//! \return True when it's about player IDs
 	bool IsValuePlayerID()
 	{
 		return m_bIsValuePlayerID;
 	}
-	/*!
-	Save local vote.
-	It's purely informative, does not affect voting outcome!
-	\param value Voted value
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Save local vote.
+	//! It's purely informative, does not affect voting outcome!
+	//! \param[in] value Voted value
 	void SetVoteLocal(int value)
 	{
 		m_iLocalValue = value;
 	}
-	/*!
-	Remove local vote.
-	It's purely informative, does not affect voting outcome!
-	\param value Voted value
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Remove local vote.
+	//! It is purely informative and does not affect voting outcome!
 	void RemoveVoteLocal()
 	{
 		m_iLocalValue = DEFAULT_VALUE;
 	}
-	/*!
-	Get local vote.
-	It's purely informative, does not affect voting outcome!
-	\return Voted value
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get local vote.
+	//! It is purely informative and does not affect voting outcome!
+	//! \return Voted value
 	int GetLocalVote()
 	{
 		return m_iLocalValue;
 	}
-	/*!
-	Periodically update the voting.
-	\param timeSlice Time since the last update
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Periodically update the voting.
+	//! \param[in] timeSlice Time since the last update
 	void Update(float timeSlice)
 	{
 		m_fDuration = Math.Max(m_fDuration - timeSlice, 0);
 	}
-	/*!
-	Initialize voting from given template.
-	\param template Source template
-	\param value Target value
-	\param remainingDuration Remaining time until the voting ends in seconds (-1 to use default)
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Initialise voting from given template.
+	//! \param[in] template Source template
+	//! \param[in] value Target value
+	//! \param[in] remainingDuration Remaining time until the voting ends in seconds (-1 to use default)
 	void InitFromTemplate(SCR_VotingBase template, int value, float remainingDuration)
 	{
 		m_Type = template.m_Type;
@@ -281,19 +276,17 @@ class SCR_VotingBase
 			m_fDuration = remainingDuration;
 	}
 	
-	/*!
-	Get total player count of players that are valid to vote for the issue
-	return Total count
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get total player count of players that are valid to vote for the issue
+	//! \return Total count
 	int GetPlayerCount()
 	{
 		return Math.Max(GetGame().GetPlayerManager().GetPlayerCount(), 1);
 	}
 	
-	/*!
-	Get total players needed to make sure the vote is successfull
-	return Total votes needed
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get total players needed to make sure the vote is successfull
+	//! \return Total votes needed
 	int GetVoteCountRequired()
 	{
 		float playersRequired = GetPlayerCount() * m_fThreshold;
@@ -309,8 +302,7 @@ class SCR_VotingBase
 		return playersRequiredInt;
 	}
 		
-	////////////////////////////////////////////////////////////////////////////////////////////////
-	//--- Protected
+	//------------------------------------------------------------------------------------------------
 	protected bool EvaluateParticipation(int voteCount)
 	{
 		return
@@ -344,27 +336,30 @@ class SCR_VotingBase
 	}
 };
 
-/*!
-Referendum about specific outcome.
-Can have target value, e.g., player ID of whoever should be kicked.
-Multiple votings of the same type can exist at the same type, e.g., KICK player 1 and KICK player 2.
-The voting succeeds when proportion of votes is *larger* than given threshold and there was sufficient participation.
-If time runs out, the voting is invalid.
-*/
+//! Referendum about specific outcome.
+//! Can have target value, e.g., player ID of whoever should be kicked.
+//! Multiple votings of the same type can exist at the same type, e.g., KICK player 1 and KICK player 2.
+//! The voting succeeds when proportion of votes is *larger* than given threshold and there was sufficient participation.
+//! If time runs out, the voting is invalid.
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EVotingType, "m_Type")]
-class SCR_VotingReferendum: SCR_VotingBase
+class SCR_VotingReferendum : SCR_VotingBase
 {
 	protected ref set<int> m_aPlayerIDs = new set<int>();
 	protected int m_iValue;
 	
+	//------------------------------------------------------------------------------------------------
 	protected float GetRatio()
 	{
 		return (m_aPlayerIDs.Count() / GetPlayerCount());
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void SetVote(int playerID, int value = DEFAULT_VALUE)
 	{
 		m_aPlayerIDs.Insert(playerID);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool RemoveVote(int playerID)
 	{
 		int index = m_aPlayerIDs.Find(playerID);
@@ -378,18 +373,26 @@ class SCR_VotingReferendum: SCR_VotingBase
 			return false;
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool RemoveValue(int value)
 	{
 		return m_bIsValuePlayerID && m_iValue == value;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool IsMatching(EVotingType type, int value = DEFAULT_VALUE)
 	{
 		return m_Type == type && m_iValue == value;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool Evaluate(out EVotingOutcome outcome)
 	{
 		return super.Evaluate(outcome) || (GetRatio() > m_fThreshold && EvaluateParticipation(m_aPlayerIDs.Count()));
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override int GetWinner()
 	{
 		if (GetRatio() > m_fThreshold && EvaluateParticipation(m_aPlayerIDs.Count()))
@@ -397,6 +400,8 @@ class SCR_VotingReferendum: SCR_VotingBase
 		else
 			return DEFAULT_VALUE; //--- Expired, didn't pass
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override int GetPlayerVote(int playerID)
 	{
 		if (m_aPlayerIDs.Contains(playerID))
@@ -404,10 +409,14 @@ class SCR_VotingReferendum: SCR_VotingBase
 		else
 			return DEFAULT_VALUE;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override int GetValue()
 	{
 		return m_iValue;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void Log()
 	{
 		PrintFormat("%1 (m_Type = %2, m_iValue = %3, m_iLocalValue = %3)", Type(), typename.EnumToString(EVotingType, m_Type), GetValueName(m_iValue), GetValueName(m_iLocalValue));
@@ -416,26 +425,27 @@ class SCR_VotingReferendum: SCR_VotingBase
 			PrintFormat("    '%1'", GetGame().GetPlayerManager().GetPlayerName(playerID));
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void InitFromTemplate(SCR_VotingBase template, int value, float remainingDuration)
 	{
 		m_iValue = value;
 		super.InitFromTemplate(template, value, remainingDuration);
 	}
-};
+}
 
-/*!
-Election of specific type.
-Once it starts, players can vote for multiple values.
-The voting ends when proportion of votes for single value is *larger* than threshold, or if time expires.
-If the vote had enough participation, the value with the most votes wins, otherwise the vote fails.
-*/
+//! Election of specific type.
+//! Once it starts, players can vote for multiple values.
+//! The voting ends when proportion of votes for single value is *larger* than threshold, or if time expires.
+//! If the vote had enough participation, the value with the most votes wins, otherwise the vote fails.
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EVotingType, "m_Type")]
-class SCR_VotingElection: SCR_VotingBase
+class SCR_VotingElection : SCR_VotingBase
 {
 	protected ref map<int, int> m_Votes = new map<int, int>(); // <playerID, value>
 	protected int m_iHighestValue = DEFAULT_VALUE;
 	protected int m_iHighestCount;
-	
+
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateHighestValue()
 	{
 		map<int, int> tally = new map<int, int>(); // <value, count>
@@ -469,18 +479,23 @@ class SCR_VotingElection: SCR_VotingBase
 			//--- In case of multiple leaders, pick one by random
 			m_iHighestValue = winners[Math.RandomInt(0, winners.Count())];
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	override void SetVote(int playerID, int value = DEFAULT_VALUE)
 	{
 		m_Votes.Set(playerID, value);
 		UpdateHighestValue();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool RemoveVote(int playerID)
 	{
 		m_Votes.Remove(playerID);
 		UpdateHighestValue();
 		return m_Votes.IsEmpty();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool RemoveValue(int value)
 	{
 		for (int i = m_Votes.Count() - 1; i >= 0; i--)
@@ -491,15 +506,21 @@ class SCR_VotingElection: SCR_VotingBase
 		UpdateHighestValue();
 		return false;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool IsMatching(EVotingType type, int value = DEFAULT_VALUE)
 	{
 		return m_Type == type;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool Evaluate(out EVotingOutcome outcome)
 	{
 		float ratio = (m_iHighestCount / GetPlayerCount());
 		return super.Evaluate(outcome) || (ratio > m_fThreshold && EvaluateParticipation(m_Votes.Count()));
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override int GetWinner()
 	{
 		if (EvaluateParticipation(m_Votes.Count()))
@@ -507,6 +528,8 @@ class SCR_VotingElection: SCR_VotingBase
 		else
 			return DEFAULT_VALUE; //--- Expired, didn't pass
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override int GetPlayerVote(int playerID)
 	{
 		int value;
@@ -515,6 +538,8 @@ class SCR_VotingElection: SCR_VotingBase
 		else
 			return DEFAULT_VALUE;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void Log()
 	{
 		PrintFormat("%1 (m_Type = %2, m_iLocalValue = %3)", Type(), typename.EnumToString(EVotingType, m_Type), GetValueName(m_iLocalValue));
@@ -525,4 +550,4 @@ class SCR_VotingElection: SCR_VotingBase
 			PrintFormat("    %1 votes for  %2", GetGame().GetPlayerManager().GetPlayerName(playerID), GetValueName(value));
 		}
 	}
-};
+}

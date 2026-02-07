@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 class CharacterCameraBinoculars : CharacterCamera1stPerson
 {
 	// ! This is just a prototype functionality for binocs, should be moved to sightscomponent when possible
@@ -10,9 +9,9 @@ class CharacterCameraBinoculars : CharacterCamera1stPerson
 	protected IEntity m_ePlayer;
 
 	//-----------------------------------------------------------------------------
+	// constructor
 	void CharacterCameraBinoculars(CameraHandlerComponent pCameraHandler)
 	{
-		
 	}
 	
 	//-----------------------------------------------------------------------------
@@ -36,8 +35,10 @@ class CharacterCameraBinoculars : CharacterCamera1stPerson
 		m_fBinocFOV = m_Optics.GetFovZoomed();
 	}
 	
-	//-----------------------------------------------------------------------------
-	//! Find optics compoenent in binocular 
+	//------------------------------------------------------------------------------------------------
+	//! Find optics component in binocular
+	//! \param owner
+	//! \return found 2D optics component, null if not found
 	protected SCR_2DOpticsComponent FindOpticsComponent(IEntity owner)
 	{
 		// Finding gadget manager 
@@ -79,5 +80,4 @@ class CharacterCameraBinoculars : CharacterCamera1stPerson
 			pOutResult.m_fNearPlane = 0.05;
 		}
 	}
-			
-};
+}

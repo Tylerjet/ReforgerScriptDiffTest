@@ -11,8 +11,6 @@ class SCR_TutorialConflictCapture5 : SCR_BaseCampaignTutorialArlandStage
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
 	{
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
-		
 		if (!GetTaskManager())
 			return;
 	
@@ -25,6 +23,8 @@ class SCR_TutorialConflictCapture5 : SCR_BaseCampaignTutorialArlandStage
 			return;
 		
 		m_Task = supportClass.GetTask(baseBeauregard, SCR_GameModeCampaign.GetInstance().GetFactionByEnum(SCR_ECampaignFaction.BLUFOR), SCR_CampaignTaskType.CAPTURE);
+	
+		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
 	}
 	
 	//------------------------------------------------------------------------------------------------

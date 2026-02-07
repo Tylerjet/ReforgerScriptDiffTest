@@ -267,7 +267,7 @@ enum ESoundName
 	// Mid 1330
 	// Dist 1360
 	BIRD_MEADOW_DIST_COMMONBUZZARD = 1360,
-};
+}
 
 [BaseContainerProps()]
 class SCR_SoundDef
@@ -301,4 +301,4 @@ class SCR_SoundDef
 #ifdef ENABLE_DIAG
 	int m_iCount;	
 #endif
-};
+}

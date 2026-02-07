@@ -1,63 +1,87 @@
 #define ENABLE_BASE_DESTRUCTION
-//------------------------------------------------------------------------------------------------
+
 [ComponentEditorProps(category: "GameScripted")]
 class SCR_DestructionTireInitialDamageDataComponentClass: ScriptComponentClass
 {
 	[Attribute("", UIWidgets.Object, "Initial damage phase data", category: "Destruction Multi-Phase")]
 	ref SCR_DamagePhaseData InitialData;	
-};
+}
 
 [ComponentEditorProps(category: "GameScripted/Destruction", description: "Tire destruction component, for destruction and deformation of tires")]
 class SCR_DestructionTireComponentClass: SCR_DestructionMultiPhaseComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Tire destruction component, for destruction and deformation of tires
 class SCR_DestructionTireComponent : SCR_DestructionMultiPhaseComponent
 {
-	const int MAX_BONES = 36;
-	
+	protected static const int MAX_BONES = 36;
+
+	//
+	// Category: Tire Destruction
+	//
+
 	[Attribute("", UIWidgets.EditBox, "List of phases in which the tire should handle deformation (this also means deflating)", category: "Tire Destruction")]
-	ref array<int> m_DeformPhaseIndexes;
+	protected ref array<int> m_DeformPhaseIndexes;
+
 	[Attribute("0.15", UIWidgets.Slider, "Rate at which the tire deflates when in a tire deformation damage phase (in %/s)", "0.01 1000 0.01", category: "Tire Destruction")]
-	float m_fDeflationRate;
+	protected float m_fDeflationRate;
+
 	[Attribute("Tyre_", UIWidgets.EditBox, "Name prefix (followed then by index) of the tire deformation joints", category: "Tire Destruction")]
-	string m_sTireJointNamePrefix;
+	protected string m_sTireJointNamePrefix;
+
 	[Attribute("1", UIWidgets.CheckBox, "If true, tire damage and destruction will affect vehicle physics (if attached to such)", category: "Tire Destruction")]
-	bool m_bAffectPhysics;
+	protected bool m_bAffectPhysics;
 	
+	//
+	// Category: Tire Deformation Simple
+	//
+
 	[Attribute("1", UIWidgets.Slider, "Ground deformation of the tire (in %)", "0 1 0.01", category: "Tire Deformation Simple")]
-	float m_fGroundSlumpScale;
+	protected float m_fGroundSlumpScale;
+
 	[Attribute("1", UIWidgets.Slider, "Radial deformation of the tire (in %)", "0 1 0.01", category: "Tire Deformation Simple")]
-	float m_fRadiusScale;
+	protected float m_fRadiusScale;
+
 	[Attribute("1", UIWidgets.Slider, "Width deformation of the tire (in %)", "0 1 0.01", category: "Tire Deformation Simple")]
-	float m_fTireWidthScale;
+	protected float m_fTireWidthScale;
+
 	[Attribute("1", UIWidgets.Slider, "Sideward skew deformation of the tire (in %)", "0 1 0.01", category: "Tire Deformation Simple")]
-	float m_fTireSideSkewScale;
+	protected float m_fTireSideSkewScale;
 	
+	//
+	// Category: Tire Deformation Advanced
+	//
+
 	[Attribute("0.75", UIWidgets.Slider, "Ground contact width scale addition (in %) - [Scaled by m_fGroundSlumpScale]", "-2 2 0.01", category: "Tire Deformation Advanced")]
-	float m_fDeformParam_ScaleAdd_SquishWidthGround;
+	protected float m_fDeformParam_ScaleAdd_SquishWidthGround;
+
 	[Attribute("-0.3", UIWidgets.Slider, "Opposite to ground width scale addition (in %) - [Scaled by m_fTireWidthScale]", "-2 2 0.01", category: "Tire Deformation Advanced")]
-	float m_fDeformParam_ScaleAdd_SquishWidthTop;
+	protected float m_fDeformParam_ScaleAdd_SquishWidthTop;
+
 	[Attribute("0.25", UIWidgets.Slider, "Flatten tire top offset (in m) - [Scaled by m_fRadiusScale]", "-10 10 0.01", category: "Tire Deformation Advanced")]
-	float m_fDeformParam_Offset_FlattenTop;
+	protected float m_fDeformParam_Offset_FlattenTop;
+
 	[Attribute("0.25", UIWidgets.Slider, "Outward slump of tire on front/back of ground contact point (in m) - [Scaled by m_fGroundSlumpScale]", "-10 10 0.01", category: "Tire Deformation Advanced")]
-	float m_fDeformParam_Offset_GroundSlump;
+	protected float m_fDeformParam_Offset_GroundSlump;
+
 	[Attribute("0.1", UIWidgets.Slider, "Outward extrusion near ground contact point (in m)", "-10 10 0.01", category: "Tire Deformation Advanced")]
-	float m_fDeformParam_Offset_ExtrudeBottomOutward;
+	protected float m_fDeformParam_Offset_ExtrudeBottomOutward;
+
 	[Attribute("0.35", UIWidgets.Slider, "Upward extrusion near ground contact point (in m)", "-10 10 0.01", category: "Tire Deformation Advanced")]
-	float m_fDeformParam_Offset_ExtrudeBottomUpward;
+	protected float m_fDeformParam_Offset_ExtrudeBottomUpward;
+
 	[Attribute("0.1", UIWidgets.Slider, "Downward extrusion of top opposite ground contact point (in m)", "-10 10 0.01", category: "Tire Deformation Advanced")]
-	float m_fDeformParam_Offset_ExtrudeTopDownward;
+	protected float m_fDeformParam_Offset_ExtrudeTopDownward;
+
 	[Attribute("0.01", UIWidgets.Slider, "Sideward skew extrusion all around the tire (in m) - [Scaled by m_fTireSideSkewScale]", "-10 10 0.01", category: "Tire Deformation Advanced")]
-	float m_fDeformParam_Offset_ExtrudeSidewardSkew;
+	protected float m_fDeformParam_Offset_ExtrudeSidewardSkew;
 	
 #ifdef ENABLE_BASE_DESTRUCTION
 	protected bool m_bHandleDeformation;
 	protected float m_fInflation = 1;
 	protected float m_fWheelRadius = -1;
-	protected ref array<int> m_WheelBones = new array<int>;
+	protected ref array<int> m_WheelBones = {};
 	protected ref SCR_DamagePhaseData m_InitialData;
 	
 	protected VehicleWheeledSimulation m_VehicleWheeledSimulation;
@@ -67,6 +91,7 @@ class SCR_DestructionTireComponent : SCR_DestructionMultiPhaseComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Sets the wheel index for the tire and updates it's radius
+	//! \param[in] wheelIndex
 	void SetWheelIndex(int wheelIndex)
 	{
 		m_iWheelIndex = wheelIndex;
@@ -84,7 +109,8 @@ class SCR_DestructionTireComponent : SCR_DestructionMultiPhaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Returns whether deformation should be handled in the input damage 
+	//! \param[in] damagePhase
+	//! \return whether deformation should be handled in the input damage
 	bool GetShouldHandleDeformation(int damagePhase)
 	{
 		return m_DeformPhaseIndexes && m_DeformPhaseIndexes.Find(damagePhase) != -1;
@@ -92,6 +118,7 @@ class SCR_DestructionTireComponent : SCR_DestructionMultiPhaseComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Enables/disables handling of tire deformation and deflation
+	//! \param[in] enable
 	void EnableTireDeformation(bool enable)
 	{
 #ifdef ENABLE_DEFORMATION
@@ -110,10 +137,9 @@ class SCR_DestructionTireComponent : SCR_DestructionMultiPhaseComponent
 		}
 	}
 	
-	
-	float groundContactPct1 = 1;
+	protected float groundContactPct1 = 1;
+
 	//------------------------------------------------------------------------------------------------
-	//! Frame
 	override void OnFrame(IEntity owner, float timeSlice)
 	{
 		super.OnFrame(owner, timeSlice);
@@ -132,10 +158,13 @@ class SCR_DestructionTireComponent : SCR_DestructionMultiPhaseComponent
 					m_VehicleWheeledSimulation.WheelSetRadiusState(m_iWheelIndex, targetWheelRadius);
 					
 					Physics physics = null;
-					auto parent = owner.GetParent();
-					if (parent) physics = parent.GetPhysics();
-					if (physics && !physics.IsActive())
-						physics.SetActive(ActiveState.ACTIVE);
+					IEntity parent = owner.GetParent();
+					if (parent)
+					{
+						physics = parent.GetPhysics();
+						if (physics && !physics.IsActive())
+							physics.SetActive(ActiveState.ACTIVE);
+					}
 				}
 			}
 		}
@@ -149,14 +178,17 @@ class SCR_DestructionTireComponent : SCR_DestructionMultiPhaseComponent
 					m_VehicleWheeledSimulation_SA.WheelSetRadiusState(m_iWheelIndex, targetWheelRadius);
 					
 					Physics physics = null;
-					auto parent = owner.GetParent();
-					if (parent) physics = parent.GetPhysics();
-					if (physics && !physics.IsActive())
-						physics.SetActive(ActiveState.ACTIVE);
+					IEntity parent = owner.GetParent();
+					if (parent)
+					{
+						physics = parent.GetPhysics();
+
+						if (physics && !physics.IsActive())
+							physics.SetActive(ActiveState.ACTIVE);
+					}
 				}
 			}
 		}
-		
 		
 		// Handle deformation and deflation of the tire
 		vector floorNorm = vector.Up;
@@ -217,6 +249,8 @@ class SCR_DestructionTireComponent : SCR_DestructionMultiPhaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] pData
 	void ReturnToInitialDamagePhase(SCR_DamagePhaseData pData)
 	{
 		if (GetDamagePhase() != 0)
@@ -230,16 +264,14 @@ class SCR_DestructionTireComponent : SCR_DestructionMultiPhaseComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Switches to the input damage phase (or deletes if past last phase)
+	//! \param[in] damagePhase
+	//! \param[in] delayMeshChange
 	override void GoToDamagePhase(int damagePhase, bool delayMeshChange)
 	{
 		if (damagePhase == 0)
-		{
 			ReturnToInitialDamagePhase(m_InitialData);
-		}
 		else
-		{
 			super.GoToDamagePhase(damagePhase, delayMeshChange);
-		}
 		
 		EnableTireDeformation(GetShouldHandleDeformation(GetDamagePhase()));
 //		if (m_bHandleDeformation)
@@ -275,4 +307,4 @@ class SCR_DestructionTireComponent : SCR_DestructionMultiPhaseComponent
 		}
 	}
 #endif
-};
+}

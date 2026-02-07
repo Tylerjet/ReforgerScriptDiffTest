@@ -1,8 +1,9 @@
-class SCR_CharacterEditableEntityUIComponent: SCR_CustomEditableEntityUIComponent
+class SCR_CharacterEditableEntityUIComponent : SCR_CustomEditableEntityUIComponent
 {
 	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, params: "edds")]
 	protected ResourceName m_PlayerIcon;
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnInit(SCR_EditableEntityComponent entity, SCR_UIInfo info, SCR_EditableEntityBaseSlotUIComponent slot)
 	{
 		if (entity && entity.HasEntityState(EEditableEntityState.PLAYER))
@@ -15,4 +16,4 @@ class SCR_CharacterEditableEntityUIComponent: SCR_CustomEditableEntityUIComponen
 			super.OnInit(entity, info, slot);
 		}
 	}
-};
+}

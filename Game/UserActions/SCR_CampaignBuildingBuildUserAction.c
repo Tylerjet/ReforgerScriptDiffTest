@@ -29,7 +29,6 @@ class SCR_CampaignBuildingBuildUserAction : SCR_ScriptedUserAction
 	override void OnActionStart(IEntity pUserEntity)
 	{
 		m_ActiveUser = pUserEntity;
-		super.OnActionStart(pUserEntity);
 		
 		if (!ShouldPerformPerFrame())
 			return;
@@ -43,7 +42,15 @@ class SCR_CampaignBuildingBuildUserAction : SCR_ScriptedUserAction
 		{
 			CharacterAnimationComponent pAnimationComponent = charController.GetAnimationComponent();
 			int itemActionId = pAnimationComponent.BindCommand("CMD_Item_Action");
-			charController.TryUseItemOverrideParams(GetBuildingTool(pUserEntity), false, true, itemActionId, 1, 0, int.MAX, 0, 0, false, null);
+
+			ItemUseParameters params = new ItemUseParameters();
+			params.SetEntity(GetBuildingTool(pUserEntity));
+			params.SetAllowMovementDuringAction(false);
+			params.SetKeepInHandAfterSuccess(true);
+			params.SetCommandID(itemActionId);
+			params.SetCommandIntArg(1);
+
+			charController.TryUseItemOverrideParams(params);
 		}
 
 		super.OnActionStart(pUserEntity);
@@ -124,6 +131,11 @@ class SCR_CampaignBuildingBuildUserAction : SCR_ScriptedUserAction
 		if (!gadgetComponent)
 			return false;
 		
+		ChimeraCharacter character = ChimeraCharacter.Cast(user);
+		CharacterControllerComponent charController = character.GetCharacterController();
+		
+		if (charController && !IsInProgress() && !charController.CanUseItem())
+			return false;			
 		
 		return (gadgetComponent.GetMode() == EGadgetMode.IN_HAND);
 	}

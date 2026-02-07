@@ -1,3 +1,3 @@
-class SCR_EditModeEditorUIComponent: SCR_BaseModeEditorUIComponent
+class SCR_EditModeEditorUIComponent : SCR_BaseModeEditorUIComponent
 {
-};
+}

@@ -1,10 +1,11 @@
-//------------------------------------------------------------------------------------------------
 class SCR_ContextMenuButtonEditorUIComponent : ScriptedWidgetComponent
 {
 	[Attribute()]
 	string m_sButtonName;
+
 	[Attribute()]
 	string m_sButtonIconName;
+
 	[Attribute()]
 	string m_sShortcutTextName;
 	
@@ -12,6 +13,10 @@ class SCR_ContextMenuButtonEditorUIComponent : ScriptedWidgetComponent
 	private ImageWidget m_ButtonIconWidget;
 	private TextWidget m_ShortcutTextWidget;
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] info
+	//! \param[in] shortcutAction
+	//! \param[in] canBePerformed
 	void SetData(SCR_UIInfo info, string shortcutAction, bool canBePerformed)
 	{
 		SCR_ButtonTextComponent buttonTextComponent = SCR_ButtonTextComponent.Cast(m_RootWidget.FindHandler(SCR_ButtonTextComponent));
@@ -21,6 +26,7 @@ class SCR_ContextMenuButtonEditorUIComponent : ScriptedWidgetComponent
 		SetShortcutText(shortcutAction);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void SetShortcutText(string shortcutAction)
 	{		
 		string shortcutText = string.Empty;
@@ -39,4 +45,4 @@ class SCR_ContextMenuButtonEditorUIComponent : ScriptedWidgetComponent
 		m_ButtonIconWidget = ImageWidget.Cast(w.FindAnyWidget(m_sButtonIconName));
 		m_ShortcutTextWidget = TextWidget.Cast(w.FindAnyWidget(m_sShortcutTextName));
 	}
-};
+}

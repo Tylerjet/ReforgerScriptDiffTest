@@ -76,9 +76,9 @@ class SCR_SelectionBrushTool : WorldEditorTool
 	//! Event triggering on Mouse click - see WorldEditorTool.OnMousePressEvent()
 	//! Filtered to work only for left-click here
 	//! Creates/Refreshes the Obstacles Detector and deals with Click / Alt+Click
-	//! \param x
-	//! \param y
-	//! \param buttons
+	//! \param[in] x
+	//! \param[in] y
+	//! \param[in] buttons
 	protected override void OnMousePressEvent(float x, float y, WETMouseButtonFlag buttons)
 	{
 		if (!m_bIsWorldValid)
@@ -99,7 +99,7 @@ class SCR_SelectionBrushTool : WorldEditorTool
 
 		m_bIsMouseHeldDown = true;
 
-		IEntity entity = m_API.GetEntityUnderCursor();
+		IEntitySource entity = m_API.GetEntityUnderCursor();
 		if (entity && GetModifierKeyState(ModifierKey.CONTROL))
 		{
 			if (m_API.IsEntitySelected(entity))
@@ -123,9 +123,9 @@ class SCR_SelectionBrushTool : WorldEditorTool
 	//------------------------------------------------------------------------------------------------
 	//! Event triggering on Mouse movement - see WorldEditorTool.OnMouseMoveEvent()
 	//! Create/Delete entities and draw Alt+Click additional shapes
-	//! \param x
-	//! \param y
-	//! \param buttons
+	//! \param[in] x
+	//! \param[in] y
+	//! \param[in] buttons
 	protected override void OnMouseMoveEvent(float x, float y)
 	{
 		if (!m_bIsWorldValid)
@@ -159,7 +159,7 @@ class SCR_SelectionBrushTool : WorldEditorTool
 	//------------------------------------------------------------------------------------------------
 	//! Event triggering on Mouse scroll wheel - see WorldEditorTool.OnWheelEvent()
 	//! Used to set Brush's radius (Ctrl)
-	//! \param delta the scroll wheel difference value
+	//! \param[in] delta the scroll wheel difference value
 	protected override void OnWheelEvent(int delta)
 	{
 		// adjusts m_fRadius value using a CTRL + Scrollwheel keybind
@@ -177,9 +177,9 @@ class SCR_SelectionBrushTool : WorldEditorTool
 	//! Event triggering on Mouse click release - see WorldEditorTool.OnMouseReleaseEvent()
 	//! Filtered to work only for left-click here
 	//! Clears "held mouse click" flag
-	//! \param x
-	//! \param y
-	//! \param buttons
+	//! \param[in] x
+	//! \param[in] y
+	//! \param[in] buttons
 	protected override void OnMouseReleaseEvent(float x, float y, WETMouseButtonFlag buttons)
 	{
 		if (!m_bIsMouseHeldDown)
@@ -203,8 +203,8 @@ class SCR_SelectionBrushTool : WorldEditorTool
 	//------------------------------------------------------------------------------------------------
 	//! Event triggering on keyboard (normal) key press - see WorldEditorTool.OnKeyPressEvent()
 	//! Used to switch to Delete mode (Space) or cancel Alt+Click (Esc)
-	//! \param key
-	//! \param isAutoRepeat
+	//! \param[in] key
+	//! \param[in] isAutoRepeat
 	protected override void OnKeyPressEvent(KeyCode key, bool isAutoRepeat)
 	{
 		/**/ if (key == KeyCode.KC_ESCAPE)
@@ -226,8 +226,8 @@ class SCR_SelectionBrushTool : WorldEditorTool
 	//------------------------------------------------------------------------------------------------
 	//! Event triggering on keyboard (normal) key release - see WorldEditorTool.OnKeyReleaseEvent()
 	//! Used to switch from Deselect mode (Space)
-	//! \param key
-	//! \param isAutoRepeat
+	//! \param[in] key
+	//! \param[in] isAutoRepeat
 	protected override void OnKeyReleaseEvent(KeyCode key, bool isAutoRepeat)
 	{
 		if (key == KeyCode.KC_SPACE)
@@ -322,13 +322,15 @@ class SCR_SelectionBrushTool : WorldEditorTool
 		int selectedEntitiesCount = m_API.GetSelectedEntitiesCount();
 		foreach (IEntity entity2 : entities)
 		{
+			IEntitySource src2 = m_API.EntityToSource(entity2);
+			
 			if (m_iMaxSelectedEntities > 0 && selectedEntitiesCount >= m_iMaxSelectedEntities)
 				break;
 
-			if (m_API.IsEntitySelected(entity2))
+			if (m_API.IsEntitySelected(src2))
 				continue;
 
-			m_API.AddToEntitySelection(entity2);
+			m_API.AddToEntitySelection(src2);
 			selectedEntitiesCount++;
 		}
 
@@ -386,26 +388,26 @@ class SCR_SelectionBrushTool : WorldEditorTool
 	// this one does not use Trace, config or layer info
 	protected void DeselectAroundCursor(vector cursorWorldPos)
 	{
-		array<IEntity> entities = {};
-		IEntity entity;
+		array<IEntitySource> entities = {};
+		
 		for (int i = m_API.GetSelectedEntitiesCount() - 1; i >= 0; i--)
 		{
-			entity = m_API.GetSelectedEntity(i);
+			IEntitySource entity = m_API.GetSelectedEntity(i);
 			if (m_bDetectBySphere)
 			{
-				if (vector.Distance(cursorWorldPos, entity.GetOrigin()) <= m_fRadius)
+				if (vector.Distance(cursorWorldPos, m_API.SourceToEntity(entity).GetOrigin()) <= m_fRadius)
 					entities.Insert(entity);
 			}
 			else
 			{
-				if (vector.DistanceXZ(cursorWorldPos, entity.GetOrigin()) <= m_fRadius)
+				if (vector.DistanceXZ(cursorWorldPos, m_API.SourceToEntity(entity).GetOrigin()) <= m_fRadius)
 					entities.Insert(entity);
 			}
 		}
 
-		foreach (IEntity entity2 : entities)
+		foreach (IEntitySource entity : entities)
 		{
-			m_API.RemoveFromEntitySelection(entity2);
+			m_API.RemoveFromEntitySelection(entity);
 		}
 
 		if (entities.IsEmpty())
@@ -417,8 +419,6 @@ class SCR_SelectionBrushTool : WorldEditorTool
 	//------------------------------------------------------------------------------------------------
 	protected array<IEntity> GetAllEntitiesAroundCursor(vector cursorWorldPos)
 	{
-		array<IEntity> entities;
-
 		if (m_bUseTraceDetection)
 		{
 			if (m_bDetectBySphere)
@@ -440,31 +440,31 @@ class SCR_SelectionBrushTool : WorldEditorTool
 		}
 		else // AABB detection
 		{
-			entities = {};
-
-			SCR_SelectionBrushToolManagedHelper helper = new SCR_SelectionBrushToolManagedHelper();
+			array<IEntity> entities = {};
+			SCR_WorkbenchIEntityQueryCallbackArray helper = new SCR_WorkbenchIEntityQueryCallbackArray(entities);
+			
 			if (m_bDetectBySphere)
 			{
-				m_API.GetWorld().QueryEntitiesBySphere(cursorWorldPos, m_fRadius, helper.QueryEntitiesCallbackMethod);
+				m_API.GetWorld().QueryEntitiesBySphere(cursorWorldPos, m_fRadius, helper.Insert);
 			}
 			else
 			{
 				vector minAABB = cursorWorldPos - { m_fRadius, BRUSH_2D_Y_SEARCH * 0.5, m_fRadius };
 				vector maxAABB = cursorWorldPos + { m_fRadius, BRUSH_2D_Y_SEARCH * 0.5, m_fRadius };
-				m_API.GetWorld().QueryEntitiesByAABB(minAABB, maxAABB, helper.QueryEntitiesCallbackMethod);
+				m_API.GetWorld().QueryEntitiesByAABB(minAABB, maxAABB, helper.Insert);
 			}
 
-			return helper.m_aEntities;
+			return entities;
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Helps getting proper new value for a property
-	//! \param delta the scrollwheel value (obtained in OnWheelEvent) that is a multiple of 120
-	//! \param currentValue the value from which to start
-	//! \param min the min value
-	//! \param max the max value
-	//! \param step the step by which delta's converted value will be multiplied
+	//! \param[in] delta the scrollwheel value (obtained in OnWheelEvent) that is a multiple of 120
+	//! \param[in] currentValue the value from which to start
+	//! \param[in] min the min value
+	//! \param[in] max the max value
+	//! \param[in] step the step by which delta's converted value will be multiplied
 	//! \return the min-max clamped new value
 	protected float AdjustValueUsingScrollWheel(float delta, float currentValue, float min, float max, float step)
 	{
@@ -484,12 +484,11 @@ class SCR_SelectionBrushTool : WorldEditorTool
 	protected void DeleteSelectedEntities()
 	{
 		int selectedEntitiesCount = m_API.GetSelectedEntitiesCount();
-		IEntity entity;
 		bool manageEditAction = SCR_WorldEditorToolHelper.BeginEntityAction();
 		Debug.BeginTimeMeasure();
 		for (int i = 0; i < selectedEntitiesCount; i++)
 		{
-			entity = m_API.GetSelectedEntity(i);
+			IEntitySource entity = m_API.GetSelectedEntity(i);
 			if (entity) // deleted objects can have children selected too, having them deleted
 				m_API.DeleteEntity(entity);
 		}
@@ -620,23 +619,10 @@ class SCR_SelectionBrushConfig
 	ref array<ResourceName> m_aPrefabs;
 }
 
-class SCR_SelectionBrushToolManagedHelper
-{
-	ref array<IEntity> m_aEntities = {};
-
-	//------------------------------------------------------------------------------------------------
-	//! QueryEntitiesCallback method
-	bool QueryEntitiesCallbackMethod(IEntity e)
-	{
-		m_aEntities.Insert(e);
-		return true;
-	}
-}
-
 enum SCR_ESelectionBrushToolLayer
 {
 	ALL_LAYERS,
 	CURRENT_LAYER,
 	INACTIVE_LAYERS,
 }
-#endif
+#endif // WORKBENCH

@@ -404,15 +404,16 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! An event triggered from task manager when a base has been captured.
-	void OnCampaignBaseCaptured(SCR_CampaignMilitaryBaseComponent capturedBase)
+	override void SetTargetBase(notnull SCR_CampaignMilitaryBaseComponent targetBase)
 	{
-		if (!m_TargetBase || !capturedBase || !m_TargetFaction || m_eType != SCR_CampaignTaskType.CAPTURE || capturedBase != m_TargetBase)
-			return;
-		
-		SCR_CampaignFaction castFaction = SCR_CampaignFaction.Cast(m_TargetFaction);
-		
-		if (!castFaction)
+		super.SetTargetBase(targetBase);
+		SCR_MilitaryBaseSystem.GetInstance().GetOnBaseFactionChanged().Insert(OnTargetBaseCaptured);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void OnTargetBaseCaptured(SCR_MilitaryBaseComponent base, Faction faction)
+	{
+		if (base != m_TargetBase || !m_TargetFaction || m_eType != SCR_CampaignTaskType.CAPTURE || faction != m_TargetFaction)
 			return;
 		
 		if (!GetTaskManager())
@@ -423,8 +424,7 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 		if (!supportEntity)
 			return;
 		
-		if (capturedBase.GetFaction() == m_TargetFaction)
-			supportEntity.FinishTask(this);
+		supportEntity.FinishTask(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -458,7 +458,6 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 		
 		if (!GetTaskManager().IsProxy())
 		{
-			SCR_MilitaryBaseManager.GetInstance().GetOnBaseFactionChanged().Insert(OnCampaignBaseCaptured);
 			SCR_GameModeCampaign.GetInstance().GetBaseManager().GetOnSignalChanged().Insert(OnCampaignBaseSignalChanged);
 		}
 	}
@@ -471,10 +470,13 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 		
 		if (!GetTaskManager().IsProxy())
 		{
-			SCR_MilitaryBaseManager baseManager = SCR_MilitaryBaseManager.GetInstance(false);
-			
-			if (baseManager)
-				baseManager.GetOnBaseFactionChanged().Remove(OnCampaignBaseCaptured);
+			if (m_TargetBase)
+			{
+				SCR_MilitaryBaseSystem system = SCR_MilitaryBaseSystem.GetInstance();
+		
+				if (system)
+					system.GetOnBaseFactionChanged().Remove(OnTargetBaseCaptured);
+			}
 			
 			SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 			

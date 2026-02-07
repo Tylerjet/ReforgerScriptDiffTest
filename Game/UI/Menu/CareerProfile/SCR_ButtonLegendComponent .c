@@ -66,9 +66,9 @@ class SCR_ButtonLegendComponent : SCR_WLibComponentBase
 	protected bool m_bLeftAndRightUI;
 	
 	// Arguments passed: this
-	protected ref ScriptInvoker m_OnClicked = new ref ScriptInvoker();
-	protected ref ScriptInvoker m_OnMouseEnter = new ref ScriptInvoker();
-	protected ref ScriptInvoker m_OnMouseLeave = new ref ScriptInvoker();
+	protected ref ScriptInvoker m_OnClicked = new ScriptInvoker();
+	protected ref ScriptInvoker m_OnMouseEnter = new ScriptInvoker();
+	protected ref ScriptInvoker m_OnMouseLeave = new ScriptInvoker();
 	
 	//------------------------------------------------------------------------------------------------
 	protected override void HandlerAttached(Widget w)

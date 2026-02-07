@@ -1,10 +1,7 @@
-[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
-/** @ingroup ManualCamera
-*/
+//! @ingroup ManualCamera
 
-/*!
-Basic camera speed acceleration
-*/
+//! Basic camera speed acceleration
+[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
 class SCR_AccelerationManualCameraComponent : SCR_BaseManualCameraComponent
 {
 	[Attribute(defvalue: "0.11", desc: "How long it takes to accelerate to full speed.")]
@@ -12,6 +9,7 @@ class SCR_AccelerationManualCameraComponent : SCR_BaseManualCameraComponent
 	
 	private float m_fProgress;
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraFrame(SCR_ManualCameraParam param)
 	{
 		if (param.isManualInput)
@@ -27,8 +25,10 @@ class SCR_AccelerationManualCameraComponent : SCR_BaseManualCameraComponent
 			m_fProgress = 0;
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool EOnCameraInit()
 	{
 		return true;
 	}
-};
+}

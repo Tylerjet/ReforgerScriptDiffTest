@@ -1,21 +1,21 @@
-/*!
-Game core which persists through whole game and stores various data for AI debugging.
-*/
-
+//! Game core which persists through whole game and stores various data for AI debugging.
 [BaseContainerProps(configRoot: true)]
 class SCR_AIDebug : SCR_GameCoreBase
 {
-	const string logFileName = "$profile:ai_script.log";
+	const string logFileName = "$logs:ai_script.log";
 	
 	protected static ref SCR_AIDebug s_Instance;
 	
 	protected ref FileHandle m_FileHandle;
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	static SCR_AIDebug GetInstance()
 	{
 		return s_Instance;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnGameStart()
 	{
 		s_Instance = this;
@@ -27,6 +27,7 @@ class SCR_AIDebug : SCR_GameCoreBase
 		#endif
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnGameEnd()
 	{
 		if (m_FileHandle)
@@ -41,6 +42,10 @@ class SCR_AIDebug : SCR_GameCoreBase
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param behavior
+	//! \return empty string if behavior is null
 	static string GetBehaviorName(SCR_AIBehaviorBase behavior)
 	{
 		if (!behavior)
@@ -49,8 +54,11 @@ class SCR_AIDebug : SCR_GameCoreBase
 		return behavior.Type().ToString();
 	}
 	
-	
 	#ifdef AI_DEBUG
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param str
+	//! \param logLevel
 	static void DebugLog(string str, LogLevel logLevel = LogLevel.DEBUG)
 	{	
 		SCR_AIDebug inst = GetInstance();
@@ -95,4 +103,4 @@ class SCR_AIDebug : SCR_GameCoreBase
 			Print(str, logLevel);
 	}
 	#endif
-};
+}

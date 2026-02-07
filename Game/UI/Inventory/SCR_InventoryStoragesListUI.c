@@ -5,14 +5,16 @@
 //! Inventory Storage UI Layout - Shows the storages slots on player ( backpack, ALICE, vest, etc )
 class SCR_InventoryStoragesListUI : SCR_InventoryStorageBaseUI
 {
-	protected ref array<SCR_UniversalInventoryStorageComponent>		m_UniStorages			= new ref array<SCR_UniversalInventoryStorageComponent>();
-	protected ref array<IEntity>									m_Items					= new ref array<IEntity>();
+	protected ref array<SCR_UniversalInventoryStorageComponent>		m_UniStorages			= new array<SCR_UniversalInventoryStorageComponent>();
+	protected ref array<IEntity>									m_Items					= new array<IEntity>();
 	
 	//TODO: move to inventory manager
 	protected const ResourceName INVENTORY_CONFIG = "{024B56A4DE577001}Configs/Inventory/InventoryUI.conf";
 	protected ref SCR_InventoryConfig m_pInventoryUIConfig;
-		
 	
+	 //~ How many Entries in a row before max row is increased
+	protected const int MAX_ENTRIES_EACH_COLUMN = 12;
+		
 	//------------------------------------------------------------------------ USER METHODS ------------------------------------------------------------------------
 		
 	//------------------------------------------------------------------------------------------------
@@ -152,7 +154,7 @@ class SCR_InventoryStoragesListUI : SCR_InventoryStorageBaseUI
 							
 							SCR_CharacterInventoryStorageComponent characterStorage = SCR_CharacterInventoryStorageComponent.Cast(m_Storage);
 							
-							if (characterStorage)
+							if (characterStorage && pSlot.GetLoadoutArea())
 							{
 								pSlot.SetSlotBlocked(characterStorage.IsAreaBlocked(pSlot.GetLoadoutArea().Type()));
 							}
@@ -246,12 +248,40 @@ class SCR_InventoryStoragesListUI : SCR_InventoryStorageBaseUI
 	void SCR_InventoryStoragesListUI(BaseInventoryStorageComponent storage, LoadoutAreaType slotID = null, SCR_InventoryMenuUI menuManager = null, int iPage = 0, array<BaseInventoryStorageComponent> aTraverseStorage = null )
 	{
 		m_MenuHandler = menuManager;
-		m_iMaxRows 		= 10;
-		m_iMaxColumns 	= 1;
+		
+		Resource resource = BaseContainerTools.LoadContainer(INVENTORY_CONFIG);
+		if (!resource || !resource.IsValid())
+		{
+			Print("Cannot load " + INVENTORY_CONFIG + " | " + FilePath.StripPath(__FILE__) + ":" + __LINE__, LogLevel.WARNING);
+			return;
+		}
+		
+		m_pInventoryUIConfig = SCR_InventoryConfig.Cast(BaseContainerTools.CreateInstanceFromContainer(resource.GetResource().ToBaseContainer()));
+		
+		//~ Get items in row
+		if (m_pInventoryUIConfig)
+			m_iMaxRows = m_pInventoryUIConfig.GetLoadoutAreaCount();
+		
+		int tempMaxRowCount = m_iMaxRows;
+		m_iMaxColumns = 0;
+		
+		//~ Set ammount of columns
+		if (MAX_ENTRIES_EACH_COLUMN > 1)
+		{
+			while (tempMaxRowCount > 0)
+			{
+				tempMaxRowCount -= MAX_ENTRIES_EACH_COLUMN;
+				m_iMaxColumns++;
+			}
+		}
+		else 
+		{
+			m_iMaxColumns = 1;
+		}
+		
 		m_iMatrix = new SCR_Matrix( m_iMaxColumns, m_iMaxRows );
 		m_sGridPath = "CharacterGrid";
 		m_Storage = storage;
-		m_pInventoryUIConfig = SCR_InventoryConfig.Cast( BaseContainerTools.CreateInstanceFromContainer( BaseContainerTools.LoadContainer( INVENTORY_CONFIG ).GetResource().ToBaseContainer() ) );
 	}
 	
 	//------------------------------------------------------------------------------------------------

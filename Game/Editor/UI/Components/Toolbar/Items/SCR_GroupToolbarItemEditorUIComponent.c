@@ -1,3 +1,3 @@
-class SCR_GroupToolbarItemEditorUIComponent: SCR_EntityToolbarItemEditorUIComponent
+class SCR_GroupToolbarItemEditorUIComponent : SCR_EntityToolbarItemEditorUIComponent
 {
-};
+}

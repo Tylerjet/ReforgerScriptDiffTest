@@ -2,16 +2,16 @@
 
 class SCR_BaseLoadingScreenComponent : ScriptedWidgetComponent
 {
-	Widget m_wRoot;
+	protected Widget m_wRoot;
 
-	ref SCR_ScenarioLoadingScreenWidgets m_Widgets;	
-	SCR_LoadingSpinner m_SpinnerComp;
+	protected ref SCR_ScenarioLoadingScreenWidgets m_Widgets;
+	protected SCR_LoadingSpinner m_SpinnerComp;
 	
-	const float FADE_TIME_BLACK_OVERLAY = 1;
+	protected static const float FADE_TIME_BLACK_OVERLAY = 1;
 	
 	protected float m_fLoadingTime;
 	
-	//---------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	override protected void HandlerAttached(Widget w)
 	{
 		#ifdef DEBUG_LOADING_SCREENS
@@ -44,7 +44,7 @@ class SCR_BaseLoadingScreenComponent : ScriptedWidgetComponent
 		Update(m_fLoadingTime);
 	}
 
-	//---------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	protected void InitWidgets()
 	{
 		m_Widgets.m_wContent.SetVisible(true);
@@ -53,7 +53,11 @@ class SCR_BaseLoadingScreenComponent : ScriptedWidgetComponent
 		m_Widgets.m_wBlackOverlay.SetVisible(true);		
 	}	
 		
-	//---------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] timeSlice
+	//! \param[in] progress
+	//! \param[in] minDurationRatio
 	void Update(float timeSlice, float progress = 0, float minDurationRatio = 0)
 	{
 		m_fLoadingTime += timeSlice;
@@ -61,25 +65,29 @@ class SCR_BaseLoadingScreenComponent : ScriptedWidgetComponent
 		Fade(m_Widgets.m_wBlackOverlay, false, FADE_TIME_BLACK_OVERLAY, timeSlice);
 	}	
 
-	//---------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	void OnHide()
 	{
 		SaveLoadingTime(m_fLoadingTime);
 	}
 	
-	//---------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//!
 	static void ResetLoadingTime()
 	{
 		GameSessionStorage.s_Data["m_fLoadingTime"] = "0";
 	}	
 	
-	//---------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] loadingTime
 	void SaveLoadingTime(float loadingTime)
 	{
 		GameSessionStorage.s_Data["m_fLoadingTime"] = loadingTime.ToString();
 	}	
 
-	//---------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetLoadingTime()
 	{
 		// Get count
@@ -99,7 +107,7 @@ class SCR_BaseLoadingScreenComponent : ScriptedWidgetComponent
 		return fLoadingTime;
 	}	
 				
-	//---------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	protected void Fade(Widget w, bool show, float length, float timeslice)
 	{
 		if (length <= 0)
@@ -126,4 +134,4 @@ class SCR_BaseLoadingScreenComponent : ScriptedWidgetComponent
 		w.SetOpacity(opacity);
 		w.SetVisible(true);
 	}
-};
+}

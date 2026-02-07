@@ -1,19 +1,21 @@
-//------------------------------------------------------------------------------------------------
 [EntityEditorProps(category: "GameScripted", description: "Handles the character's rank.", color: "0 0 255 255")]
 class SCR_CharacterRankComponentClass: ScriptComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_CharacterRankComponent : ScriptComponent
 {	
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.ComboBox, desc: "Rank", enums: ParamEnumArray.FromEnum(SCR_ECharacterRank))]
 	protected SCR_ECharacterRank m_iRank;
 	
 	protected IEntity m_Owner;
-	static ref ScriptInvoker s_OnRankChanged = new ref ScriptInvoker();
+	static ref ScriptInvoker s_OnRankChanged = new ScriptInvoker();
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] newRank
+	//! \param[in] prevRank
+	//! \param[in] silent
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	void RpcDoSetCharacterRank(SCR_ECharacterRank newRank, SCR_ECharacterRank prevRank, bool silent)
 	{
@@ -23,12 +25,16 @@ class SCR_CharacterRankComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] unit
+	//! \return
 	static SCR_CharacterRankComponent GetCharacterRankComponent(IEntity unit)
 	{
 		return SCR_CharacterRankComponent.Cast(unit.FindComponent(SCR_CharacterRankComponent));
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] rank
+	//! \param[in] silent
 	void SetCharacterRank(SCR_ECharacterRank rank, bool silent = false)
 	{
 		if (rank != m_iRank)
@@ -45,7 +51,9 @@ class SCR_CharacterRankComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// !Helper method to easily read a character's rank by providing just the character parameter
+	//! Helper method to easily read a character's rank by providing just the character parameter
+	//! \param[in] unit
+	//! \return
 	static SCR_ECharacterRank GetCharacterRank(IEntity unit)
 	{
 		if (!unit)
@@ -77,6 +85,8 @@ class SCR_CharacterRankComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] unit
+	//! \return
 	static string GetCharacterRankName(IEntity unit)
 	{
 		if (!unit)
@@ -97,6 +107,8 @@ class SCR_CharacterRankComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] unit
+	//! \return
 	static string GetCharacterRankNameUpperCase(IEntity unit)
 	{
 		if (!unit)
@@ -117,6 +129,8 @@ class SCR_CharacterRankComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] unit
+	//! \return
 	static string GetCharacterRankNameShort(IEntity unit)
 	{
 		if (!unit)
@@ -137,6 +151,8 @@ class SCR_CharacterRankComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] unit
+	//! \return
 	static ResourceName GetCharacterRankInsignia(IEntity unit)
 	{
 		if (!unit)
@@ -186,13 +202,16 @@ class SCR_CharacterRankComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_CharacterRankComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		m_Owner = ent;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
 class SCR_CharacterRank
 {
@@ -212,37 +231,41 @@ class SCR_CharacterRank
 	protected string m_sInsignia;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_ECharacterRank GetRankID()
 	{
 		return m_iRank;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetRankName()
 	{
 		return m_sRankName;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetRankNameUpperCase()
 	{
 		return m_sRankNameUpper;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetRankNameShort()
 	{
 		return m_sRankNameShort;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetRankInsignia()
 	{
 		return m_sInsignia;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
 class SCR_RankID
 {
@@ -256,25 +279,29 @@ class SCR_RankID
 	protected int m_iRequiredXP;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_ECharacterRank GetRankID()
 	{
 		return m_iRank;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	bool IsRankRenegade()
 	{
 		return m_bIsRenegade;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetRequiredRankXP()
 	{
 		return m_iRequiredXP;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
+//~ Character ranks. Take note to update any changes in SCR_EntityCatalogSpawnerData and EEditableEntityBudget
 enum SCR_ECharacterRank
 {
 	RENEGADE,
@@ -297,4 +324,4 @@ enum SCR_ECharacterRank
 	CUSTOM9,
 	CUSTOM10,
 	INVALID
-};
+}

@@ -12,7 +12,7 @@ Do not modify, this script is generated
 /*!
 To create a system, you just need to create a class which inherits from BaseSystem, and then specify GetSystemPoint to your need.
 */
-class BaseSystem
+class BaseSystem: ScriptAndConfig
 {
 	private void BaseSystem();
 
@@ -40,10 +40,14 @@ class BaseSystem
 	proto external protected void Update();
 	proto external protected void EndUpdate();
 	proto external protected void AddEntity(notnull IEntity entity);
+	/*!
+	Attempts to run a remote procedure call of this instance with parameters pecified in method NetRpc attribute.
+	\param method member function pointer
+	*/
+	proto void Rpc(func method, void p0 = NULL, void p1 = NULL, void p2 = NULL, void p3 = NULL, void p4 = NULL, void p5 = NULL, void p6 = NULL, void p7 = NULL);
 
 	// callbacks
 
-	event protected ESystemPoint GetSystemPoint() { return ESystemPoint.FixedFrame; };
 	//! Should return true for systems this system depends on. False otherwise
 	event protected bool DependsOn(ESystemPoint point, BaseSystem system) { return false; };
 	/*!

@@ -1,3 +1,4 @@
+//------------------------------------------------------------------------------------------------
 [EntityEditorProps(category: "GameScripted/Gadgets", description: "Wristwatch gadget")]
 class SCR_WristwatchComponentClass : SCR_GadgetComponentClass
 {
@@ -32,7 +33,7 @@ class SCR_WristwatchComponentClass : SCR_GadgetComponentClass
 		if (m_iSignalHour != -1 && m_iSignalMinute != -1 && m_iSignalSecond != -1)
 			m_bSignalInit = true;
 	}
-};
+}
 
 //------------------------------------------------------------------------------------------------
 //! Wristwatch type 
@@ -40,7 +41,7 @@ enum EWristwatchType
 {
 	SandY184A,	// US
 	VOSTOK		// Soviet
-};
+}
 
 //------------------------------------------------------------------------------------------------
 class SCR_WristwatchComponent : SCR_GadgetComponent
@@ -63,6 +64,7 @@ class SCR_WristwatchComponent : SCR_GadgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void UpdateTime()
 	{		
 		if (!m_TimeMgr)
@@ -70,6 +72,7 @@ class SCR_WristwatchComponent : SCR_GadgetComponent
 			ChimeraWorld world = ChimeraWorld.CastFrom(GetGame().GetWorld());
 			if (world)
 				m_TimeMgr = world.GetTimeAndWeatherManager();
+			
 			return;
 		}
 		
@@ -93,10 +96,13 @@ class SCR_WristwatchComponent : SCR_GadgetComponent
 	//! Update state of wristwatch -> active/inactive
 	protected void UpdateWristwatchState()
 	{
+		if (System.IsConsoleApp())
+			return;
+		
 		if (m_bActivated)
-			ActivateGadgetFlag();
+			ActivateGadgetUpdate();
 		else 
-			DeactivateGadgetFlag();
+			DeactivateGadgetUpdate();
 		
 		if (!m_PrefabData.m_bSignalInit)
 			m_PrefabData.InitSignals(GetOwner());
@@ -113,6 +119,7 @@ class SCR_WristwatchComponent : SCR_GadgetComponent
 		ChimeraWorld world = ChimeraWorld.CastFrom(GetGame().GetWorld());
 		if (world)
 			m_TimeMgr = world.GetTimeAndWeatherManager();
+		
 		m_PrefabData.InitSignals(GetOwner());
 	}
 	
@@ -141,6 +148,26 @@ class SCR_WristwatchComponent : SCR_GadgetComponent
 	}
 		
 	//------------------------------------------------------------------------------------------------
+	override void ActivateGadgetUpdate()
+	{
+		super.ActivateGadgetUpdate();
+		
+		InventoryItemComponent itemComponent = InventoryItemComponent.Cast(GetOwner().FindComponent(InventoryItemComponent));
+		if (itemComponent)
+			itemComponent.ActivateOwner(true);	// required for the procedural animations to function
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void DeactivateGadgetUpdate()
+	{
+		super.DeactivateGadgetUpdate();
+		
+		InventoryItemComponent itemComponent = InventoryItemComponent.Cast(GetOwner().FindComponent(InventoryItemComponent));
+		if (itemComponent)
+			itemComponent.ActivateOwner(false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override EGadgetType GetType()
 	{
 		return EGadgetType.WRISTWATCH;
@@ -168,33 +195,10 @@ class SCR_WristwatchComponent : SCR_GadgetComponent
 		
 		UpdateWristwatchState();
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void ActivateGadgetFlag()
-	{
-		super.ActivateGadgetFlag();
 		
-		if (System.IsConsoleApp())
-			return;
-
-		ConnectToGadgetsSystem();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void DeactivateGadgetFlag()
-	{
-		super.DeactivateGadgetFlag();
-		
-		if (System.IsConsoleApp())
-			return;
-		
-		DisconnectFromGadgetsSystem();
-	}
-	
 	//------------------------------------------------------------------------------------------------
 	override void Update(float timeSlice)
 	{					
 		UpdateTime();
 	}
-
-};
+}

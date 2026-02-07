@@ -1,15 +1,18 @@
 [BaseContainerProps(), BaseContainerCustomTitleField("m_sDisplayName")]
-class SCR_FactionHintTooltipDetail: SCR_EntityTooltipDetail
+class SCR_FactionHintTooltipDetail : SCR_EntityTooltipDetail
 {
 	[Attribute("Text")]
 	protected string m_sTextWidgetName;
+
 	[Attribute("Seperator")]
 	protected string m_sSeperatorWidgetName;
+
 	[Attribute("160")]
 	protected int m_iSeperatorAlpha;
 	
 	[Attribute("#AR-Editor_TooltipDetail_FactionTasks_Hint")]
 	protected LocalizedString m_TaskHintText;
+
 	[Attribute("#AR-Editor_TooltipDetail_FactionSpawnPoint_Hint")]
 	protected LocalizedString m_SpawnPointHintText;
 	
@@ -17,7 +20,7 @@ class SCR_FactionHintTooltipDetail: SCR_EntityTooltipDetail
 	protected ImageWidget m_Seperator;
 	protected Widget m_self;
 	
-	
+	//------------------------------------------------------------------------------------------------
 	override bool InitDetail(SCR_EditableEntityComponent entity, Widget widget)
 	{		
 		m_self = widget;
@@ -27,7 +30,7 @@ class SCR_FactionHintTooltipDetail: SCR_EntityTooltipDetail
 			return false;
 			
 		m_Text = RichTextWidget.Cast(widget.FindAnyWidget(m_sTextWidgetName));
-		if (!m_Text) 
+		if (!m_Text)
 			return false;
 		
 		m_Text.SetText(string.Empty);
@@ -56,6 +59,7 @@ class SCR_FactionHintTooltipDetail: SCR_EntityTooltipDetail
 		
 		if (taskCount == 0)
 			m_Text.SetText(m_TaskHintText);
+
 		if (spawnPointCount == 0)
 		{
 			if (taskCount == 0)
@@ -66,4 +70,4 @@ class SCR_FactionHintTooltipDetail: SCR_EntityTooltipDetail
 		
 		return taskCount == 0 || spawnPointCount == 0;
 	}
-};
+}

@@ -39,12 +39,14 @@ class SCR_ContentBrowserStateManagerEditorUIComponent : ScriptedWidgetComponent
 	protected SCR_ContentBrowserEditorComponent m_ContentBrowserManager;
 	protected SCR_TabViewComponent m_BrowserStateTabView;
 	
+	//------------------------------------------------------------------------------------------------
 	//~ When tabview changes Browser State
 	protected void OnBrowserStateChanged(SCR_TabViewComponent tabView, Widget tabRoot, int stateIndex)
 	{
 		m_ContentBrowserManager.SetBrowserState(stateIndex, true, false);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnBrowserEntriesFiltered()
 	{
 		//~ Update tabs
@@ -62,17 +64,20 @@ class SCR_ContentBrowserStateManagerEditorUIComponent : ScriptedWidgetComponent
 		m_BrowserStateTabView.ShowTab(browserStateIndex, false, false);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//~ Enable/Disable all tabs
 	protected void EnableAllTabs(bool enable)
 	{
 		m_BrowserStateTabView.EnableAllTabs(enable);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void SetTabVisible(int tabIndex, bool visible)
 	{
 		m_BrowserStateTabView.SetTabVisible(tabIndex, visible, false);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//~ Creates state tabs if config is not used
 	protected void CreateBrowserStateTabs()
 	{		
@@ -82,7 +87,7 @@ class SCR_ContentBrowserStateManagerEditorUIComponent : ScriptedWidgetComponent
 		//~ Has display config so hide the tab
 		if (!m_bAlwaysShowTabview && m_ContentBrowserManager.GetContentBrowserDisplayConfig())
 		{
-			m_BrowserStateTabView.m_wRoot.SetVisible(false);
+			m_BrowserStateTabView.GetRootWidget().SetVisible(false);
 			return;
 		}
 			
@@ -104,11 +109,11 @@ class SCR_ContentBrowserStateManagerEditorUIComponent : ScriptedWidgetComponent
 		
 		m_BrowserStateTabView.Init();
 		
-		m_BrowserStateTabView.m_OnChanged.Insert(OnBrowserStateChanged);
+		m_BrowserStateTabView.GetOnChanged().Insert(OnBrowserStateChanged);
 
 		m_BrowserStateTabView.ShowTab(stateIndex, !m_bDisplayContentOnly, false);
 		
-		array<EEditableEntityLabel> savedLabels = new array<EEditableEntityLabel>;
+		array<EEditableEntityLabel> savedLabels = {};
 		
 		//Set initial tab visuals
 		for(int i = 0; i < count; i++)		
@@ -120,9 +125,12 @@ class SCR_ContentBrowserStateManagerEditorUIComponent : ScriptedWidgetComponent
 		array<int> hiddenStateTabs = {};
 		m_ContentBrowserManager.GetHiddenStateTabs(hiddenStateTabs);
 		foreach (int hiddenTabIndex: hiddenStateTabs)
+		{
 			SetTabVisible(hiddenTabIndex, false);
+		}
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//~ Update the state tabs if search or filters changed
 	protected void UpdateStateTab(int index, string searchString, notnull array<EEditableEntityLabel> activeLabels)
 	{
@@ -228,6 +236,7 @@ class SCR_ContentBrowserStateManagerEditorUIComponent : ScriptedWidgetComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		if (SCR_Global.IsEditMode()) 
@@ -239,9 +248,7 @@ class SCR_ContentBrowserStateManagerEditorUIComponent : ScriptedWidgetComponent
 		
 		Widget stateTab = w.FindAnyWidget(m_sBrowserStateTabViewName);
 		if (stateTab)
-		{
 			m_BrowserStateTabView = SCR_TabViewComponent.Cast(stateTab.FindHandler(SCR_TabViewComponent));				
-		}
 		
 		if (!m_BrowserStateTabView)
 		{
@@ -262,6 +269,8 @@ class SCR_ContentBrowserStateManagerEditorUIComponent : ScriptedWidgetComponent
 		//~ Create state tabs
 		CreateBrowserStateTabs();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		if (SCR_Global.IsEditMode()) 
@@ -279,4 +288,4 @@ class SCR_ContentBrowserStateManagerEditorUIComponent : ScriptedWidgetComponent
 			}
 		}
 	}
-};
+}

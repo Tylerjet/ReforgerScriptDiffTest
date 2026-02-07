@@ -1,10 +1,7 @@
-[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
-/** @ingroup ManualCamera
-*/
+//! @ingroup ManualCamera
 
-/*!
-Create a light on camera position.
-*/
+//! Create a light on camera position.
+[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
 class SCR_LightManualCameraComponent : SCR_BaseManualCameraComponent
 {
 	[Attribute(params: "et")]
@@ -18,6 +15,7 @@ class SCR_LightManualCameraComponent : SCR_BaseManualCameraComponent
 	
 	[Attribute(defvalue: "255,255,255,0", desc: "Color of Camera attached light")]
 	protected ref Color m_cCameraLightColor;
+
 	[Attribute(defvalue: "255,255,255,0", desc: "Color of pointing light")]
 	protected ref Color m_cPointingLightColor;
 	
@@ -32,11 +30,13 @@ class SCR_LightManualCameraComponent : SCR_BaseManualCameraComponent
 	
 	[Attribute("0", desc: "(Keyboard) How high does the camera need to be from the ground before the system considers showing the pointing light (still only showing when ShowPointingLightDistance is reached)")]
 	protected float m_fCameraHeightBeforeShowPointing_keyboard;
+
 	[Attribute("0", desc: "(Gamepad) How high does the camera need to be from the ground before the system considers showing the pointing light (still only showing when ShowPointingLightDistance is reached)")]
 	protected float m_fCameraHeightBeforeShowPointing_gamepad;
 	
 	[Attribute("100", desc: "(Keyboard) How far does the hit location need to be before the pointing light is shown")]
 	protected float m_fShowPointingLightDistance_keyboard;
+
 	[Attribute("100", desc: "(Gamepad) How far does the hit location need to be before the pointing light is shown")]
 	protected float m_fShowPointingLightDistance_gamepad;
 	
@@ -84,24 +84,26 @@ class SCR_LightManualCameraComponent : SCR_BaseManualCameraComponent
 	private const float LIGHT_TRACE_DISTANCE = 1500;
 	private const float LIGHT_MOUSE_Y_OFFSET = 20;
 	
-	/*!
-	Toggle camera light.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Toggle camera light.
 	void ToggleLight()
 	{
-		if (!IsEnabled()) return;
+		if (!IsEnabled())
+			return;
+
 		SetLight(m_CameraLight == null);
 	}
-	/*!
-	Set camera light.
-	\param enable True to turn on the light, false to turn it off
-	\param noSound True to prevent the sound from being played.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Set camera light.
+	//! \param[in] enable True to turn on the light, false to turn it off
+	//! \param[in] noSound True to prevent the sound from being played.
 	void SetLight(bool enable, bool noSound = false)
 	{
 		//--- No change, ignore
-		if (enable == (m_CameraLight != null)) return;
-		
+		if (enable == (m_CameraLight != null))
+			return;
+
 		m_bIsLightOn = enable;
 		Event_OnLightChanged.Invoke(enable);
 		 
@@ -127,44 +129,48 @@ class SCR_LightManualCameraComponent : SCR_BaseManualCameraComponent
 			if (m_PointingLight)
 				delete m_PointingLight;
 		}
-		if (!noSound && !m_sSoundEvent.IsEmpty()) SCR_UISoundEntity.SoundEvent(m_sSoundEvent);
+
+		if (!noSound && !m_sSoundEvent.IsEmpty())
+			SCR_UISoundEntity.SoundEvent(m_sSoundEvent);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	//~ On mouse and keyboard changed
 	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{	
 		m_bIsUsingKeyboardAndMouse = !isGamepad;
 	}
 	
-	/*!
-	Returns if light is on in editor or not
-	\return m_bLightState
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return if light is on in editor or not
 	bool IsLightOn()
 	{
 		return m_bIsLightOn;
 	}
 	
-	/*!
-	Get current light change ScriptInvoker which is called if Light is turned on/off
-	\return Script invoker
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get current light change ScriptInvoker which is called if Light is turned on/off
+	//! \return Script invoker
 	ScriptInvoker GetOnLightChanged()
 	{
 		return Event_OnLightChanged;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraSave(SCR_ManualCameraComponentSave data)
 	{
 		if (m_bIsLightOn)
 			data.m_aValues = {m_bIsLightOn};
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraLoad(SCR_ManualCameraComponentSave data)
 	{
 		if (data.m_aValues && !data.m_aValues.IsEmpty())
 			SetLight(data.m_aValues[0] != 0, true);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraFrame(SCR_ManualCameraParam param)
 	{
 		//~ If there is no light do check the distance from the camera to ground
@@ -181,26 +187,30 @@ class SCR_LightManualCameraComponent : SCR_BaseManualCameraComponent
 			PointingLightTransformUpdateGamepad(param);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//~ Updates the camera light intensity depending on how far the camera is from the ground
 	protected void CameraLightIntensityUpdate(vector cameraTransform[4])
 	{		
 		//~ Get light intensity using distance from ground and max distance intensity and using that value as alpha in the m_cCameraLightIntensityCurve
-		float lightIntensity =  Math.Lerp(m_fCameraLightIntesityMin, m_fCameraLightIntesityMax, Math3D.Curve(ECurveType.CurveProperty2D, Math.Clamp(SCR_TerrainHelper.GetHeightAboveTerrain(cameraTransform[3], m_World, true) / m_fCameraLightIntensityMaxHeight, 0, 1), m_cCameraLightIntensityCurve)[1]);
+		float lightIntensity = Math.Lerp(m_fCameraLightIntesityMin, m_fCameraLightIntesityMax, Math3D.Curve(ECurveType.CurveProperty2D, Math.Clamp(SCR_TerrainHelper.GetHeightAboveTerrain(cameraTransform[3], m_World, true) / m_fCameraLightIntensityMaxHeight, 0, 1), m_cCameraLightIntensityCurve)[1]);
 		m_CameraLight.SetColor(m_cCameraLightColor, Math.Clamp(lightIntensity, m_fLightMinLV, m_fLightMaxLV));
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//~ Keyboard function to give LightTransformUpdate the correct values
 	protected void PointingLightTransformUpdateKeyboard(SCR_ManualCameraParam param)
 	{
 		PointingLightTransformUpdate(param, GetCursorWorldPosition(), m_fCameraHeightBeforeShowPointing_keyboard, m_fShowPointingLightDistance_keyboard);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//~ Gamepad function to give LightTransformUpdate the correct values
 	protected void PointingLightTransformUpdateGamepad(SCR_ManualCameraParam param)
 	{
 		PointingLightTransformUpdate(param, GetCameraCenterRayCastPosition(), m_fCameraHeightBeforeShowPointing_gamepad, m_fShowPointingLightDistance_gamepad);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//~ Checks if pointing light needs to be spawned and set it to pointing position
 	protected void PointingLightTransformUpdate(SCR_ManualCameraParam param, vector pointingPosition, float cameraHeightBeforeDeatach, float lightDetachDistanceSq)
 	{		
@@ -261,11 +271,12 @@ class SCR_LightManualCameraComponent : SCR_BaseManualCameraComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//~ Get world cursor position. Though returns Camera center raycast if hovering over UI or if the raycast is too far
 	protected vector GetCursorWorldPosition()
 	{
 		vector cursorWorldPos;
-				
+
 		int mouseX, mouseY;
 		WidgetManager.GetMousePos(mouseX, mouseY);
 				
@@ -293,6 +304,7 @@ class SCR_LightManualCameraComponent : SCR_BaseManualCameraComponent
 		return cursorWorldPos;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//~ Get camera raycast position
 	protected vector GetCameraCenterRayCastPosition()
 	{
@@ -328,6 +340,7 @@ class SCR_LightManualCameraComponent : SCR_BaseManualCameraComponent
 		return hitPos;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override bool EOnCameraInit()
 	{
 		m_World = GetGame().GetWorld();
@@ -352,17 +365,20 @@ class SCR_LightManualCameraComponent : SCR_BaseManualCameraComponent
 		}
 		
 		InputManager inputManager = GetInputManager();
-		if (!inputManager) return false;
+		if (!inputManager)
+			return false;
 		
 		inputManager.AddActionListener("ManualCameraLight", EActionTrigger.DOWN, ToggleLight);
 		
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraExit()
 	{
 		if (m_CameraLight)
 			delete m_CameraLight;
-		
+
 		if (m_PointingLight)
 			delete m_PointingLight;
 		
@@ -370,8 +386,9 @@ class SCR_LightManualCameraComponent : SCR_BaseManualCameraComponent
 			GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 		
 		InputManager inputManager = GetInputManager();
-		if (!inputManager) return;
+		if (!inputManager)
+			return;
 		
 		inputManager.RemoveActionListener("ManualCameraLight", EActionTrigger.DOWN, ToggleLight);
 	}
-};
+}

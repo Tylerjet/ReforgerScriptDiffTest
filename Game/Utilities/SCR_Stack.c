@@ -50,7 +50,7 @@ class SCR_Stack<Class T>
 	//! Create an empty stack, initialize variables
 	void SCR_Stack()
 	{
-		m_aArray = new ref array<ref T>();
+		m_aArray = new array<ref T>();
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------

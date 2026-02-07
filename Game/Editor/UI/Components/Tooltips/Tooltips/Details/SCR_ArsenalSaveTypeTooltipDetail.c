@@ -1,6 +1,6 @@
 [BaseContainerProps(), BaseContainerCustomTitleField("m_sDisplayName")]
 class SCR_ArsenalSaveTypeTooltipDetail : SCR_EntityTooltipDetail
-{	
+{
 	//------------------------------------------------------------------------------------------------
 	override bool InitDetail(SCR_EditableEntityComponent entity, Widget widget)
 	{
@@ -17,12 +17,9 @@ class SCR_ArsenalSaveTypeTooltipDetail : SCR_EntityTooltipDetail
 		if (!arsenalSaveTypeInfoHolder)
 			return false;
 		
-		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.Cast(entity.GetOwner().FindComponent(SCR_ArsenalComponent));
-		if (!arsenalComponent && entity.GetEntityType() == EEditableEntityType.VEHICLE)
-		{
-			//~ If vehicle check if arsenal is on children
-			arsenalComponent = SCR_ArsenalComponent.GetArsenalComponentFromChildren(entity.GetOwner());
-		}
+		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.FindArsenalComponent(entity.GetOwner());
+		if (!arsenalComponent)
+			return false;
 		
 		if (!arsenalComponent || !arsenalComponent.HasSaveArsenalAction())
 			return false;
@@ -35,4 +32,4 @@ class SCR_ArsenalSaveTypeTooltipDetail : SCR_EntityTooltipDetail
 		
 		return true;
 	}
-};
+}

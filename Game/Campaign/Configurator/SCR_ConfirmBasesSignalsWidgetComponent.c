@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 class SCR_ConfirmBasesSignalsWidgetComponent : ScriptedWidgetComponent
 {
 #ifdef ENABLE_CAMPAIGN_CONFIGURATOR
@@ -11,4 +10,4 @@ class SCR_ConfirmBasesSignalsWidgetComponent : ScriptedWidgetComponent
 		return false;
 	}
 #endif
-};
+}

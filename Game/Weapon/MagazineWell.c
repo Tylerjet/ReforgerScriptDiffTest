@@ -140,6 +140,14 @@ class MagazineWellKPVT : BaseMagazineWell
 {
 };
 
+//NSV - 12.7x108mm
+class MagazineWellNSVClass {}
+MagazineWellNSV MagazineWellNSVSource;
+
+class MagazineWellNSV : BaseMagazineWell
+{
+};
+
 //Mortar - 81mm
 class MagazineWellMortarClass {}
 MagazineWellMortarClass MagazineWellMortarSource;
@@ -161,5 +169,13 @@ class MagazineWellVZ58_762Class {}
 MagazineWellVZ58_762Class MagazineWellVZ58_762Source;
 
 class MagazineWellVZ58_762 : BaseMagazineWell
+{
+};
+
+//UK-59
+class MagazineWellUK59Class {}
+MagazineWellUK59Class MagazineWellUK59Source;
+
+class MagazineWellUK59 : BaseMagazineWell
 {
 };

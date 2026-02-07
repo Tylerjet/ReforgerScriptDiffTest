@@ -4,9 +4,9 @@
 class SCR_PlayerCommandsConfig : Managed
 {
 	[Attribute("", UIWidgets.Object, "Available commands")]
-	protected ref array<ref SCR_BaseGroupCommand> m_aCommands;
+	protected ref array<ref SCR_BaseRadialCommand> m_aCommands;
 	
-	array<ref SCR_BaseGroupCommand> GetCommands()
+	array<ref SCR_BaseRadialCommand> GetCommands()
 	{
 		return m_aCommands;
 	}
@@ -89,6 +89,9 @@ class SCR_PlayerCommandingMenuCategoryElement : SCR_PlayerCommandingMenuBaseElem
 	[Attribute("", UIWidgets.Object, "Elements in the given category")]
 	protected ref array<ref SCR_PlayerCommandingMenuBaseElement> m_aElements;
 	
+	[Attribute()]
+	protected bool m_bShowOnMap;
+	
 	//------------------------------------------------------------------------------------------------
 	string GetCategoryDisplayText()
 	{
@@ -106,6 +109,12 @@ class SCR_PlayerCommandingMenuCategoryElement : SCR_PlayerCommandingMenuBaseElem
 	{
 		return m_aElements;
 	}	
+	
+	//------------------------------------------------------------------------------------------------
+	bool GetCanShowOnMap()
+	{
+		return m_bShowOnMap;
+	}
 };
 
 class SCR_BaseGroupCommandTitleField : BaseContainerCustomTitleField

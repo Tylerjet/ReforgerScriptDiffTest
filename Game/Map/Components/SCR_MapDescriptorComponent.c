@@ -1,7 +1,7 @@
-class SCR_MapDescriptorComponentClass: MapDescriptorComponentClass
+class SCR_MapDescriptorComponentClass : MapDescriptorComponentClass
 {
-};
+}
 
-class SCR_MapDescriptorComponent: MapDescriptorComponent
+class SCR_MapDescriptorComponent : MapDescriptorComponent
 {
-};
+}

@@ -11,8 +11,11 @@ class SCR_CampaignTutorialArlandDrivingAdvanced20 : SCR_BaseCampaignTutorialArla
 	{
 		RegisterWaypoint("WP_DRIVINGHEAVY_18");
 		m_fWaypointCompletionRadius = 10;
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
 		m_TutorialComponent.SetWaypointMiscImage("LEFT", true);
+		if (!m_TutorialComponent.GetVoiceSystem().IsPlaying())
+			PlaySoundSystem("ParkTruck", true);
+		else
+			GetGame().GetCallqueue().CallLater(PlaySoundSystem, 1000, false, "ParkTruck", true);
 	}
 	
 	//------------------------------------------------------------------------------------------------

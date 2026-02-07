@@ -18,6 +18,9 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 {
 	[Attribute("{C7EE4C198B641E21}Sounds/Editor/BaseBuilding/Editor_BaseBuilding.acp", UIWidgets.ResourceNamePicker, "Sound project file to be used for building", "acp")]
 	protected ResourceName m_sSoundFile;
+	
+	[Attribute("", UIWidgets.ResourcePickerThumbnail, "WP that is spawned as default for placed AI.", "et")]
+	protected ResourceName m_sDefaultAIWP;
 
 	protected bool m_bCanBeCreated = true;
 	protected SCR_CampaignBuildingEditorComponent m_CampaignBuildingComponent;
@@ -90,19 +93,88 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 		if (!m_CampaignBuildingComponent)
 			return;
 
+		int cooldownTime, aiBudgetValue;
 		int count = entities.Count();
+		SCR_EditorLinkComponent linkComponent;
+		SCR_EditableGroupComponent editableGroupComponent;
+		SCR_CampaignBuildingCompositionComponent compositionComponent;
+		SCR_AIGroup aiGroup;
+		
 		for (int i = 0; i < count; i++)
 		{
 			IEntity entityOwner = entities[i].GetOwnerScripted();
 			if (!entityOwner)
 				continue;
+			
+			linkComponent = SCR_EditorLinkComponent.Cast(entityOwner.FindComponent(SCR_EditorLinkComponent));
+			if (!linkComponent)
+				SCR_EditorLinkComponent.IgnoreSpawning(false);
+			
+			editableGroupComponent = SCR_EditableGroupComponent.Cast(entities[i]);
+			if (editableGroupComponent)
+			{
+				// Set Free Roam building Ai flag both group and characters in it to be able to process them on saving / loading as they use it's own struct.
+				SetAiFlag(editableGroupComponent);
+				
+				aiGroup = editableGroupComponent.GetAIGroupComponent();
+				if (aiGroup)
+				{
+					aiGroup.GetOnInit().Insert(InitGroup);
+				
+					EntitySpawnParams params = EntitySpawnParams();
+					params.TransformMode = ETransformMode.WORLD;
+					params.Transform[3] = aiGroup.GetOrigin();
+					SCR_AIWaypoint defendWP = SCR_AIWaypoint.Cast(GetGame().SpawnEntityPrefabLocal(Resource.Load(m_sDefaultAIWP), null, params));
 
-			SCR_CampaignBuildingCompositionComponent compositionComponent = SCR_CampaignBuildingCompositionComponent.Cast(entityOwner.FindComponent(SCR_CampaignBuildingCompositionComponent));
-			if (!compositionComponent)
+					aiGroup.AddWaypointAt(defendWP, 0);
+				}
+			}
+
+			compositionComponent = SCR_CampaignBuildingCompositionComponent.Cast(entityOwner.FindComponent(SCR_CampaignBuildingCompositionComponent));
+			if (compositionComponent)
+				SetProviderAndBuilder(compositionComponent);
+
+			if (!UseCooldown())
 				continue;
-
-			SetProviderAndBuilder(compositionComponent);
+			
+			cooldownTime = GetEntityBudgetValue(entities[i], EEditableEntityBudget.COOLDOWN);
+			aiBudgetValue = GetEntityBudgetValue(entities[i], EEditableEntityBudget.AI);
 		}
+		
+		SetCooldownTimer(cooldownTime);
+		SetAIBudget(aiBudgetValue);
+	}
+		
+	//------------------------------------------------------------------------------------------------
+	//! The placement is driven by a cooldown set on server. However for a client needs (to show him a remaining time) the cooldown has to be set as well. The difference in time between server and client is acceptable.
+	protected void GetCooldownTimeClient(int prefabID, SCR_EditableEntityComponent entity)
+	{
+		SetCooldownTimer(GetEntityBudgetValue(entity, EEditableEntityBudget.COOLDOWN));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void GetAIBudgetClient(int prefabID, SCR_EditableEntityComponent entity)
+	{
+		SetAIBudget(GetEntityBudgetValue(entity, EEditableEntityBudget.AI));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get value of given budget for given entity.
+	int GetEntityBudgetValue(notnull SCR_EditableEntityComponent entity, EEditableEntityBudget budget)
+	{
+		array<ref SCR_EntityBudgetValue> outBudgets = {};
+		entity.GetEntityChildrenBudgetCost(outBudgets);
+		
+		if (outBudgets.IsEmpty())
+			entity.GetEntityBudgetCost(outBudgets);
+		
+		foreach (SCR_EntityBudgetValue outBudget: outBudgets)
+		{
+			if (outBudget.GetBudgetType() == budget)
+				return outBudget.GetBudgetValue();
+		}
+		
+		return 0;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -114,8 +186,8 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 			return;
 
 		SCR_EditorManagerEntity managerEnt = GetManager();
-			if (!managerEnt)
-				return;
+		if (!managerEnt)
+			return;
 
 		int id = managerEnt.GetPlayerID();
 
@@ -134,6 +206,43 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 		SCR_EditorModeEntity ent = SCR_EditorModeEntity.Cast(GetOwner());
 		compositionComponent.SetClearProviderEvent(ent);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Init spawned AI group (set events and flags)
+	void InitGroup(SCR_AIGroup aiGroup)
+	{
+		if (!aiGroup)
+			return;
+		
+		aiGroup.GetOnInit().Remove(InitGroup);
+		
+		array<AIAgent> outAgents = {};
+		IEntity ent;
+		SCR_EditableEntityComponent editableEntityComponent;
+		SCR_CampaignBuildingProviderComponent providerComponent;
+		
+		aiGroup.GetAgents(outAgents);
+		
+		foreach (AIAgent agent: outAgents)
+		{
+			ent = agent.GetControlledEntity();
+			editableEntityComponent = SCR_EditableEntityComponent.Cast(ent.FindComponent(SCR_EditableEntityComponent));
+			if (editableEntityComponent)
+				SetAiFlag(editableEntityComponent);
+			
+			providerComponent = SCR_CampaignBuildingProviderComponent.Cast(m_Provider.FindComponent(SCR_CampaignBuildingProviderComponent));
+			if (!providerComponent)
+				continue;
+			
+			providerComponent.SetOnEntityKilled(agent.GetControlledEntity());
+		}
+	}
+		
+	//------------------------------------------------------------------------------------------------
+	void SetAiFlag(SCR_EditableEntityComponent component)
+	{
+		component.SetEntityFlag(EEditableEntityFlag.FREE_ROAM_BUILDING_AI, true);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnPlaceEntityServer(int prefabID, SCR_EditableEntityComponent entity)
@@ -148,14 +257,16 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 	protected void PlaySoundEvent(vector pos, string soundEvent)
 	{
 		vector transform[4];
+		Math3D.MatrixIdentity4(transform);
 		transform[3] = pos;
 
 		if (soundEvent && pos)
 			AudioSystem.PlayEvent(soundEvent, SCR_SoundEvent.SOUND_BUILD, transform, new array<string>, new array<float>);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	override protected void CreateEntityServer(SCR_EditorPreviewParams params, RplId prefabID, int playerID, int entityIndex, bool isQueue, array<RplId> recipientIds)
+	override protected void CreateEntityServer(SCR_EditorPreviewParams params, RplId prefabID, int playerID, int entityIndex, bool isQueue, array<RplId> recipientIds, bool canBePlayer)
 	{
 		// Cancel spawning of the composition instantly and spawn a composition layout instead.
 		SCR_EditorLinkComponent.IgnoreSpawning(true);
@@ -163,7 +274,7 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 		// Cancel a services registration to base - register once the final structure is erected.
 		SCR_ServicePointComponent.SpawnAsOffline(true);
 		
-		super.CreateEntityServer(params, prefabID, playerID, entityIndex, isQueue, recipientIds);
+		super.CreateEntityServer(params, prefabID, playerID, entityIndex, isQueue, recipientIds, canBePlayer);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -234,6 +345,14 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 	{
 		super.EOnEditorOpen();
 		InitVariables();
+		GetOnPlaceEntity().Insert(GetCooldownTimeClient);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override protected void EOnEditorClose()
+	{
+		super.EOnEditorClose();
+		GetOnPlaceEntity().Remove(GetCooldownTimeClient);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -268,6 +387,43 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 	override protected void EOnEditorDeactivateServer()
 	{
 		GetOnPlaceEntityServer().Remove(OnPlaceEntityServer);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Check if the cooldown is set with this provider.
+	bool UseCooldown()
+	{
+		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(m_Provider.FindComponent(SCR_CampaignBuildingProviderComponent));
+		if (!providerComponent)
+			return false;
+		
+		return providerComponent.IsBudgetToEvaluate(EEditableEntityBudget.COOLDOWN);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetCooldownTimer(int cooldownTime)
+	{
+		SCR_EditorManagerEntity managerEnt = GetManager();
+		if (!managerEnt)
+			return;
+		
+		int playerId = managerEnt.GetPlayerID();
+		
+		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(m_Provider.FindComponent(SCR_CampaignBuildingProviderComponent));
+		if (!providerComponent)
+			return;
+		
+		providerComponent.SetPlayerCooldown(playerId, cooldownTime);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetAIBudget(int value)
+	{		
+		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(m_Provider.FindComponent(SCR_CampaignBuildingProviderComponent));
+		if (!providerComponent)
+			return;
+		
+		providerComponent.AddAIValue(value);
 	}
 }
 

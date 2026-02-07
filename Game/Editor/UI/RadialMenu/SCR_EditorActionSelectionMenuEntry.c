@@ -4,7 +4,7 @@
 */
 
 /*!
-A wrapper class utilized by SCR_RadialMenuEditorGMComponent for creating a specialized Entry (SCR_SelectionMenuEntry) class to be utilized by the Editor.
+A wrapper class utilized by SCR_ActionsRadialMenuEditorComponent for creating a specialized Entry (SCR_SelectionMenuEntry) class to be utilized by the Editor.
 */
 class SCR_EditorActionSelectionMenuEntry : SCR_SelectionMenuEntry
 {
@@ -42,9 +42,15 @@ class SCR_EditorActionSelectionMenuEntry : SCR_SelectionMenuEntry
 		if (!m_ActionsEditorComponent || !m_Action)
 			return;
 
+		// Try to find current cursor world position 
+		SCR_MenuLayoutEditorComponent editorMenuLayout = SCR_MenuLayoutEditorComponent.Cast(SCR_MenuLayoutEditorComponent.GetInstance(SCR_MenuLayoutEditorComponent, true));
+		if (editorMenuLayout)
+			editorMenuLayout.GetCursorWorldPos(m_vCursorWorldPos);
+		
+		// Perform
 		m_ActionsEditorComponent.ActionPerform(m_Action, m_vCursorWorldPos, m_iFlags);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	void SCR_EditorActionSelectionMenuEntry(notnull SCR_BaseEditorAction action, notnull SCR_BaseActionsEditorComponent actionEditorComponent, vector cursorPosition, int actionFlags)
 	{

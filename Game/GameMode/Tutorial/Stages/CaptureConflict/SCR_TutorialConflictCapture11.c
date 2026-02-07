@@ -13,8 +13,11 @@ class SCR_TutorialConflictCapture11 : SCR_BaseCampaignTutorialArlandStage
 		m_fWaypointCompletionRadius = 10;
 		RegisterWaypoint("WP_CONFLICT_SEIZING_2");
 		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
-	
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("Conflict_MoveMHQ", true);
+		HintOnVoiceOver();
+		
 		m_MHQ = GetGame().GetWorld().FindEntityByName("MobileHQ");
 	}
 	

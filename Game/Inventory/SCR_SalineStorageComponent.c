@@ -1,8 +1,7 @@
 class SCR_SalineStorageComponentClass : SCR_EquipmentStorageComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_SalineMovedCallback : ScriptedInventoryOperationCallback
 {
 	SCR_CharacterInventoryStorageComponent m_CharInventoryStorageComp;
@@ -25,14 +24,19 @@ class SCR_SalineMovedCallback : ScriptedInventoryOperationCallback
 		
 		RplComponent.DeleteRplEntity(item, false);
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_SalineStorageComponent : SCR_EquipmentStorageComponent
 {
 	ref SCR_SalineMovedCallback m_SalineMovedCallback = new SCR_SalineMovedCallback();
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] target
+	//! \param[in] eHitZoneGroup
+	//! \param[in] salineBag
+	//! \param[in] itemRegenerationDuration
+	//! \return
 	bool AddSalineBagToSlot(IEntity target, ECharacterHitZoneGroup eHitZoneGroup, IEntity salineBag, float itemRegenerationDuration)
 	{
 		if (!target || !salineBag)
@@ -82,9 +86,24 @@ class SCR_SalineStorageComponent : SCR_EquipmentStorageComponent
 		m_SalineMovedCallback.m_SalineBag = salineBag;
 		m_SalineMovedCallback.m_CharInventoryStorageComp = charInventoryStorageComp;
 		m_SalineMovedCallback.m_fItemRegenerationDuration = itemRegenerationDuration;
-		
+ 		
 		if (storageMan.TryMoveItemToStorage(salineBag, SalineStorageComp, salineTargetSlot.GetID(), m_SalineMovedCallback))
 			return true;
+		
+		InventoryItemComponent invComp = InventoryItemComponent.Cast(salineBag.FindComponent(InventoryItemComponent));
+		if (!invComp)
+			return false;
+		
+		if (!invComp.GetParentSlot())
+		{
+			if (storageMan.TryInsertItemInStorage(salineBag, SalineStorageComp, salineTargetSlot.GetID(), m_SalineMovedCallback))
+				return true;
+		}
+		else
+		{
+			if (storageMan.TryMoveItemToStorage(salineBag, SalineStorageComp, salineTargetSlot.GetID(), m_SalineMovedCallback))
+				return true;
+		}	
 		
 		return false;
 	}
@@ -130,5 +149,4 @@ class SCR_SalineStorageComponent : SCR_EquipmentStorageComponent
 	{
 		return true;
 	}
-
-};
+}

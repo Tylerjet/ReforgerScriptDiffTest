@@ -1,4 +1,4 @@
-class SCR_LayerAutoEnterUIComponent: SCR_BaseEditorUIComponent
+class SCR_LayerAutoEnterUIComponent : SCR_BaseEditorUIComponent
 {
 	[Attribute(defvalue: "1", desc: "How long it takes to toggle hovered entity automatically during entity transformation.")]
 	protected float m_fAutoEnterDuration;
@@ -15,10 +15,11 @@ class SCR_LayerAutoEnterUIComponent: SCR_BaseEditorUIComponent
 	protected float m_fAutoEnterCharge = -1;
 	protected bool m_bCanCharge = true;
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnTargetChange(SCR_EditableEntityComponent target)
 	{
 		//--- Not editing anymore or the target was deleted, cancel charge
-		if (!m_PreviewEntityManager.IsEditing() || !target)
+		if (!target || !m_PreviewEntityManager.IsEditing())
 		{
 			Clear();
 			return;
@@ -56,16 +57,22 @@ class SCR_LayerAutoEnterUIComponent: SCR_BaseEditorUIComponent
 			m_fAutoEnterCharge = 0;
 		}		
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void Clear()
 	{
 		m_fAutoEnterCharge = -1;
 		m_AutoEnterTarget = null;
 		GetWidget().SetVisible(false);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void ResetGracePeriod()
 	{
 		m_bCanCharge = true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnMenuUpdate(float tDelta)
 	{
 		//--- Enter hovered entity automatically while editing
@@ -104,10 +111,13 @@ class SCR_LayerAutoEnterUIComponent: SCR_BaseEditorUIComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override protected bool IsUnique()
 	{
 		return false;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttachedScripted(Widget w)
 	{
 		super.HandlerAttachedScripted(w);
@@ -126,6 +136,8 @@ class SCR_LayerAutoEnterUIComponent: SCR_BaseEditorUIComponent
 		
 		Clear();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
@@ -137,4 +149,4 @@ class SCR_LayerAutoEnterUIComponent: SCR_BaseEditorUIComponent
 		if (menu)
 			menu.GetOnMenuUpdate().Remove(OnMenuUpdate);
 	}
-};
+}

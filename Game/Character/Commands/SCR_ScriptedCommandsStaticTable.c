@@ -1,9 +1,15 @@
 class SCR_ScriptedCommandsStaticTable
 {
+	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_ScriptedCommandsStaticTable() 
 	{
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param animationComponent must not be null
+	//! \return
 	bool Bind(CharacterAnimationComponent animationComponent)
 	{
 		m_CommandGesture = animationComponent.BindCommand("CMD_Gestures");
@@ -16,6 +22,9 @@ class SCR_ScriptedCommandsStaticTable
 		return m_bIsBound;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	bool IsBound()
 	{
 		return m_bIsBound;

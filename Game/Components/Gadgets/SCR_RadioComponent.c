@@ -1,17 +1,10 @@
-[EntityEditorProps(category: "GameScripted/Gadgets", description: "Radio gadget", color: "0 0 255 255")]
-class SCR_RadioComponentClass: SCR_GadgetComponentClass
-{
-};
-
-//------------------------------------------------------------------------------------------------
 //! Radio slot
 enum ERadioCategory
 {
 	PERSONAL,
 	MANPACK
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Radio model
 enum ERadioType
 {
@@ -19,17 +12,15 @@ enum ERadioType
 	ANPRC77,
 	R148,
 	R107M
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Frequency unit prefix
 enum EFreqUnit
 {
 	KHZ = 0,
 	MHZ = 1
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Radio procedural animation context
 class SCR_RadioProcAnimCtx
 {
@@ -39,9 +30,13 @@ class SCR_RadioProcAnimCtx
 	float fAnimSpeed;
 	float fTimeSlice;
 	bool bInProgress;
-};
+}
 
-//------------------------------------------------------------------------------------------------
+[EntityEditorProps(category: "GameScripted/Gadgets", description: "Radio gadget", color: "0 0 255 255")]
+class SCR_RadioComponentClass : SCR_GadgetComponentClass
+{
+}
+
 class SCR_RadioComponent : SCR_GadgetComponent
 {
 	[Attribute("0", UIWidgets.ComboBox, "Radio category", "", ParamEnumArray.FromEnum(ERadioCategory), category: "Radio")]
@@ -61,7 +56,7 @@ class SCR_RadioComponent : SCR_GadgetComponent
 	protected int m_iSignalChannelMhz = -1;
 
 	// proc anims
-	private ref array<ref SCR_RadioProcAnimCtx> m_aProcAnims = new ref array<ref SCR_RadioProcAnimCtx>();
+	private ref array<ref SCR_RadioProcAnimCtx> m_aProcAnims = new array<ref SCR_RadioProcAnimCtx>();
 	private bool m_bAnimInProgress;
 
 	//------------------------------------------------------------------------------------------------
@@ -83,10 +78,10 @@ class SCR_RadioComponent : SCR_GadgetComponent
 		}
 	}
 
-
 	//------------------------------------------------------------------------------------------------
 	//! Change frequency by a single step, init proc anims
-	//! \param direction decides whether the frequency is increased (true) / decreased (false)
+	//! \param[in] direction decides whether the frequency is increased (true) / decreased (false)
+	//! \return true on success, false otherwise
 	bool ChangeFrequencyStep(bool direction)
 	{
 		if (!m_BaseRadioComp.IsPowered() || m_bAnimInProgress)
@@ -143,7 +138,8 @@ class SCR_RadioComponent : SCR_GadgetComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Calculate target angle of a knob for procedural animation
-	//! \param freqUnit is frequency unit
+	//! \param[in] freqUnit is frequency unit
+	//! \return
 	private float GetKnobAngle(EFreqUnit freqUnit)
 	{
 		int step, stepsCount;
@@ -196,6 +192,8 @@ class SCR_RadioComponent : SCR_GadgetComponent
 	//------------------------------------------------------------------------------------------------
 	// Proc anims
 	//------------------------------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
 	//! Set knob rotation according to the current state
 	private void UpdateKnobState()
 	{
@@ -221,10 +219,10 @@ class SCR_RadioComponent : SCR_GadgetComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Knob animation setter
-	//! \param bone is the animated bone
-	//! \param targetAngle is the final angle
-	//! \param speed is animation length in seconds
-	//! \param clumpAnim false - start anim instantly / false - clump anim with the next one
+	//! \param[in] signal
+	//! \param[in] targetAngle is the final angle
+	//! \param[in] speed is animation length in seconds
+	//! \param[in] clumpAnim false - start anim instantly / false - clump anim with the next one
 	private void SetKnobAnim(int signal, float targetAngle, float speed, bool clumpAnim)
 	{
 		if (m_bAnimInProgress || !m_SignalManager)
@@ -243,13 +241,13 @@ class SCR_RadioComponent : SCR_GadgetComponent
 		if (!clumpAnim)
 		{
 			m_bAnimInProgress = true;
-			ConnectToGadgetsSystem();
+			ActivateGadgetUpdate();
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Knob animation tick
-	//! \param timeSlice is frame timeSlice
+	//! \param[in] timeSlice is frame timeSlice
 	private void AnimKnob(float timeSlice)
 	{
 		int inProgress;
@@ -294,13 +292,14 @@ class SCR_RadioComponent : SCR_GadgetComponent
 		{
 			m_bAnimInProgress = false;
 			m_aProcAnims.Clear();
-			DisconnectFromGadgetsSystem();
+			DeactivateGadgetUpdate();
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Amount of possible steps (numbers) on frequency dials for each radio
-	//! \param freqUnit is frequency unit
+	//! \param[in] freqUnit is frequency unit
+	//! \return
 	private int GetKnobAnimStepCount(EFreqUnit freqUnit)
 	{
 		if ( m_iRadioType == ERadioType.ANPRC68 )
@@ -341,12 +340,34 @@ class SCR_RadioComponent : SCR_GadgetComponent
 	//------------------------------------------------------------------------------------------------
 	// Overrides
 	//------------------------------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
 	override void ModeSwitch(EGadgetMode mode, IEntity charOwner)
 	{		
 		super.ModeSwitch(mode, charOwner);
 
 		// Update knobs
 		UpdateKnobState();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void ActivateGadgetUpdate()
+	{
+		super.ActivateGadgetUpdate();
+		
+		InventoryItemComponent itemComponent = InventoryItemComponent.Cast(GetOwner().FindComponent(InventoryItemComponent));
+		if (itemComponent)
+			itemComponent.ActivateOwner(true);	// required for the procedural animations to function
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void DeactivateGadgetUpdate()
+	{
+		super.DeactivateGadgetUpdate();
+		
+		InventoryItemComponent itemComponent = InventoryItemComponent.Cast(GetOwner().FindComponent(InventoryItemComponent));
+		if (itemComponent)
+			itemComponent.ActivateOwner(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -381,6 +402,7 @@ class SCR_RadioComponent : SCR_GadgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	BaseRadioComponent GetRadioComponent()
 	{
 		return m_BaseRadioComp;
@@ -392,7 +414,7 @@ class SCR_RadioComponent : SCR_GadgetComponent
 		// knob anim
 		if (!m_bAnimInProgress)
 		{
-			DisconnectFromGadgetsSystem();
+			DeactivateGadgetUpdate();
 			return;
 		}
 		
@@ -412,5 +434,4 @@ class SCR_RadioComponent : SCR_GadgetComponent
 		// signal manager
 		m_SignalManager = SignalsManagerComponent.Cast(owner.FindComponent( SignalsManagerComponent ) );
 	}
-
-};
+}

@@ -1,8 +1,9 @@
 [ComponentEditorProps(category: "GameScripted/GameMode/Components", description: "")]
-class SCR_EditorRespawnBriefingComponentClass: SCR_RespawnBriefingComponentClass
+class SCR_EditorRespawnBriefingComponentClass : SCR_RespawnBriefingComponentClass
 {
-};
-class SCR_EditorRespawnBriefingComponent: SCR_RespawnBriefingComponent
+}
+
+class SCR_EditorRespawnBriefingComponent : SCR_RespawnBriefingComponent
 {
 	[Attribute()]
 	protected ref SCR_UIInfo m_InfoGameMaster;
@@ -10,6 +11,7 @@ class SCR_EditorRespawnBriefingComponent: SCR_RespawnBriefingComponent
 	[Attribute()]
 	protected ref SCR_UIInfo m_InfoHost;
 	
+	//------------------------------------------------------------------------------------------------
 	override SCR_UIInfo GetInfo()
 	{
 		//~ Check if player is Server
@@ -27,4 +29,4 @@ class SCR_EditorRespawnBriefingComponent: SCR_RespawnBriefingComponent
 				return m_InfoGameMaster;
 		}	
 	}
-};
+}

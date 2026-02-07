@@ -12,7 +12,9 @@ class SCR_CampaignTutorialArlandDriving2 : SCR_BaseCampaignTutorialArlandStage
 		RegisterWaypoint("WP_GETINHMW2");
 		m_fWaypointCompletionRadius = 20;
 		m_TutorialComponent.SetWaypointMiscImage("GETIN", true);
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("GetIn", true);
 	}
 	
 	//------------------------------------------------------------------------------------------------

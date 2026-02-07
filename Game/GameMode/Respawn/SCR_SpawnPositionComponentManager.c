@@ -1,18 +1,18 @@
-//------------------------------------------------------------------------------------------------
 [EntityEditorProps(insertable: false)]
 class SCR_SpawnPositionComponentManagerClass : GenericEntityClass
 {
 }
 
-//------------------------------------------------------------------------------------------------
 class SCR_SpawnPositionComponentManager : GenericEntity
 {
 	protected static SCR_SpawnPositionComponentManager s_Instance;
 	protected ref array<SCR_SpawnPositionComponent> m_aSpawnPositions;
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] createNew
+	//! \return
 	static SCR_SpawnPositionComponentManager GetInstance(bool createNew = true)
-	{	
+	{
 		if (!s_Instance && createNew)
 			s_Instance = SCR_SpawnPositionComponentManager.Cast(GetGame().SpawnEntity(SCR_SpawnPositionComponentManager, GetGame().GetWorld()));
 
@@ -20,16 +20,20 @@ class SCR_SpawnPositionComponentManager : GenericEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] positionComp
 	void AddSpawnPosition(SCR_SpawnPositionComponent positionComp)
 	{
 		if (!m_aSpawnPositions)
-			m_aSpawnPositions = new array<SCR_SpawnPositionComponent>();
+			m_aSpawnPositions = {};
 
 		if (!m_aSpawnPositions.Contains(positionComp))
 			m_aSpawnPositions.Insert(positionComp);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] positionComp
 	void DeleteSpawnPosition(SCR_SpawnPositionComponent positionComp)
 	{
 		if (!m_aSpawnPositions)
@@ -42,6 +46,10 @@ class SCR_SpawnPositionComponentManager : GenericEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] center
+	//! \param[in] range
+	//! \param[out] positions
+	//! \return
 	int GetSpawnPositionsInRange(vector center, float range, out array<SCR_SpawnPositionComponent> positions)
 	{
 		if (!m_aSpawnPositions)
@@ -56,8 +64,9 @@ class SCR_SpawnPositionComponentManager : GenericEntity
 
 		return positions.Count();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_SpawnPositionComponentManager()
 	{
 		if (s_Instance == this)

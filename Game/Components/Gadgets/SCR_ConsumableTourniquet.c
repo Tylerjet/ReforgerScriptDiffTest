@@ -1,13 +1,12 @@
-//------------------------------------------------------------------------------------------------
 //! Tourniquet effect
 [BaseContainerProps()]
-class SCR_ConsumableTourniquet: SCR_ConsumableEffectHealthItems
+class SCR_ConsumableTourniquet : SCR_ConsumableEffectHealthItems
 {
 	//Cached to remember which bodypart to remove tourniquet from
-	ECharacterHitZoneGroup m_eTargetHZGroup;
+	protected ECharacterHitZoneGroup m_eTargetHZGroup;
 	
 	//------------------------------------------------------------------------------------------------
-	override void ApplyEffect(notnull IEntity target, notnull IEntity user, IEntity item, SCR_ConsumableEffectAnimationParameters animParams)
+	override void ApplyEffect(notnull IEntity target, notnull IEntity user, IEntity item, ItemUseParameters animParams)
 	{
 		super.ApplyEffect(target, user, item, animParams);
 		
@@ -19,7 +18,7 @@ class SCR_ConsumableTourniquet: SCR_ConsumableEffectHealthItems
 		if (!damageMgr)
 			return;
 		
-		m_eTargetHZGroup = damageMgr.FindAssociatedHitZoneGroup(animParams.m_intParam);
+		m_eTargetHZGroup = damageMgr.FindAssociatedHitZoneGroup(animParams.GetIntParam());
 
 		SCR_TourniquetStorageComponent tqStorageComp = SCR_TourniquetStorageComponent.Cast(user.FindComponent(SCR_TourniquetStorageComponent));
 		if (!tqStorageComp)
@@ -76,7 +75,7 @@ class SCR_ConsumableTourniquet: SCR_ConsumableEffectHealthItems
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override SCR_ConsumableEffectAnimationParameters GetAnimationParameters(notnull IEntity target, ECharacterHitZoneGroup group = ECharacterHitZoneGroup.VIRTUAL)
+	override ItemUseParameters GetAnimationParameters(IEntity item, notnull IEntity target, ECharacterHitZoneGroup group = ECharacterHitZoneGroup.VIRTUAL)
 	{
 		ChimeraCharacter char = ChimeraCharacter.Cast(target);
 		if (!char)
@@ -112,19 +111,30 @@ class SCR_ConsumableTourniquet: SCR_ConsumableEffectHealthItems
 		if (bodyPartToBandage == EBandagingAnimationBodyParts.Invalid)
 				return null;
 		
-		return new SCR_ConsumableEffectAnimationParameters(GetApplyToSelfAnimCmnd(target), 1, 0, m_fApplyToSelfDuration, bodyPartToBandage, 0.0, false);	
+		ItemUseParameters params = ItemUseParameters();
+		params.SetEntity(item);
+		params.SetAllowMovementDuringAction(false);
+		params.SetKeepInHandAfterSuccess(false);
+		params.SetCommandID(GetApplyToSelfAnimCmnd(target));
+		params.SetCommandIntArg(1);
+		params.SetCommandFloatArg(0.0);
+		params.SetMaxAnimLength(m_fApplyToSelfDuration);
+		params.SetIntParam(bodyPartToBandage);
+
+		return params;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ECharacterHitZoneGroup GetTargetHitZoneGroup()
 	{
 		return m_eTargetHZGroup;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_ConsumableTourniquet()
 	{
 		m_eConsumableType = SCR_EConsumableType.TOURNIQUET;
 	}
-	
-};
+}

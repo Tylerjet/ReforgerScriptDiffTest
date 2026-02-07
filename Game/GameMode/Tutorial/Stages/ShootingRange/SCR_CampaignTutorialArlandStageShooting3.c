@@ -9,7 +9,10 @@ class SCR_CampaignTutorialArlandStageShooting3 : SCR_BaseCampaignTutorialArlandS
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
 	{
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("Load", true);
+		HintOnVoiceOver();
 	}
 	
 	//------------------------------------------------------------------------------------------------

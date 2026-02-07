@@ -62,11 +62,17 @@ class SCR_KeyBindingEntry
 	[Attribute("", UIWidgets.EditBox, "Action name as defined in the ActionManager config")]
 	string m_sActionName;
 	
+	[Attribute("", UIWidgets.EditBox, "Name of gamepad action to be used instead of main one, for instance Aim has separate action for controller")]
+	string m_sActionNameGamepadOptional;
+	
 	[Attribute("", UIWidgets.LocaleEditBox, "Visible name of the action, long texts are not supported, name shouldn't be over 15 characters ")]
 	LocalizedString m_sDisplayName;
 	
 	[Attribute("", UIWidgets.EditBox, "Show only Action sources with this preset.\nUsed for example when multiple directions are mapped to one action, like moving forward with value +1 and backward with value -1.")]
 	string m_sPreset;
+	
+	[Attribute("", UIWidgets.EditBox, "Same as the Preset above, but this one should be filled only if it differs for the gamepad optional action.")]
+	string m_sPresetGamepadOptional;
 	
 	[Attribute(SCR_Enum.GetDefault(SCR_EActionPrefixType.NON_CONTINUOUS), UIWidgets.ComboBox, "Type of prefix that can be applied to this action", "", ParamEnumArray.FromEnum(SCR_EActionPrefixType))]
 	SCR_EActionPrefixType m_ePrefixType;

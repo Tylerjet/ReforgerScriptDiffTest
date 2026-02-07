@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 class SCR_ProfileEditSubMenu : SCR_SubMenuBase
 {
 	[Attribute("EditName")]
@@ -10,9 +9,9 @@ class SCR_ProfileEditSubMenu : SCR_SubMenuBase
 	protected DialogUI m_OpenedDialog;
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuOpen(SCR_SuperMenuBase parentMenu) 
+	override void OnTabCreate(Widget menuRoot, ResourceName buttonsLayout, int index) 
 	{
-		super.OnMenuOpen(parentMenu);
+		super.OnTabCreate(menuRoot, buttonsLayout, index);
 		
 		SCR_ButtonBaseComponent name = SCR_ButtonBaseComponent.GetButtonBase(m_sNameButtonName, m_wRoot);
 		if (name)

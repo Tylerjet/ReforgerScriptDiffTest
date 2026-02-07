@@ -1,10 +1,7 @@
 [EntityEditorProps(category: "GameScripted/GameMode", description: "")]
 class SCR_GameModeCombatOpsManagerClass : SCR_GameModeSFManagerClass
 {
-	// prefab properties here
 }
-
-//------------------------------------------------------------------------------------------------
 
 class SCR_GameModeCombatOpsManager : SCR_GameModeSFManager
 {	
@@ -29,5 +26,5 @@ class SCR_GameModeCombatOpsManager : SCR_GameModeSFManager
 				m_aTaskTypesAvailable.Insert(taskType);
 			}
 		}
-	};
+	}
 }

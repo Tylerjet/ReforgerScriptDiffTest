@@ -1,22 +1,26 @@
 class SCR_CommentEditableEntityUIComponent : SCR_BaseEditableEntityUIComponent
 {
-	const string WIDGET_TEXT = "Text"; //--- ToDo: Don't hardcode
-	const string WIDGET_ICON = "Icon"; //--- ToDo: Don't hardcode
-	const string WIDGET_EXTENDED_ICON = "Icon_ExtendablePrefabs";
+	protected static const string WIDGET_TEXT = "Text"; //--- ToDo: Don't hardcode
+	protected static const string WIDGET_ICON = "Icon"; //--- ToDo: Don't hardcode
+	protected static const string WIDGET_EXTENDED_ICON = "Icon_ExtendablePrefabs";
 	protected SCR_ContentBrowserEditorComponent m_ContentBrowserComponent;
 
 	protected Widget m_wExtendedIcon;
 
+	//------------------------------------------------------------------------------------------------
 	override void OnInit(SCR_EditableEntityComponent entity, SCR_UIInfo info, SCR_EditableEntityBaseSlotUIComponent slot)
 	{
 		Widget widget = GetWidget();
-		if (!widget) return;
+		if (!widget)
+			return;
 
 		GenericEntity owner = entity.GetOwner();
-		if (!owner) return;
+		if (!owner)
+			return;
 
 		SCR_EditableCommentComponent comment = SCR_EditableCommentComponent.Cast(entity);
-		if (!comment) return;
+		if (!comment)
+			return;
 
 		TextWidget textWidget = TextWidget.Cast(widget.FindAnyWidget(WIDGET_TEXT));
 		if (textWidget)
@@ -44,6 +48,9 @@ class SCR_CommentEditableEntityUIComponent : SCR_BaseEditableEntityUIComponent
 			m_wExtendedIcon.SetVisible(false);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] slotManager
+	//! \param[in] slot
 	void OnEntityChanged(SCR_CompositionSlotManagerComponent slotManager, IEntity slot)
 	{
 		if (!m_ContentBrowserComponent)

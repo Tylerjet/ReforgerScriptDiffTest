@@ -22,37 +22,81 @@ class SCR_DateTimeHelper
 
 	//------------------------------------------------------------------------------------------------
 	/*!
-	Returns month in translated string formating.
+	Returns translated date expression, either in short or verbose style
+	\param day number
 	\param month number (from 1 to 12)
+	\param year number
+	\param verbose bool
+	\return translated date expression
+	*/
+	static string GetDateString(int day, int month, int year, bool verbose = true)
+	{
+		string date;
+		
+		if (verbose)
+			date = WidgetManager.Translate("#AR-Date_Format_MonthFull", day, SCR_DateTimeHelper.GetMonthString(month), year);
+		else 
+			date = WidgetManager.Translate("#AR-Date_Format", day, month, year);
+		
+		return date;
+	}	
+	
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Returns translation key for the month.
+	\param month number (from 1 to 12)
+	\param standalone bool - is the month name going to be displayed as standalone string or part of the date (default: false)
 	\return month's translation key
 	*/
-	static string GetMonthString(int month)
+	static string GetMonthString(int month, bool standalone = false)
 	{
 		if (month < 1 || month > 12)
 			return string.Empty;
 
-		// if it gets called often, cache it as a static array
-		array<string> months = {
-			"#AR-Date_January",
-			"#AR-Date_February",
-			"#AR-Date_March",
-			"#AR-Date_April",
-			"#AR-Date_May",
-			"#AR-Date_June",
-			"#AR-Date_July",
-			"#AR-Date_August",
-			"#AR-Date_September",
-			"#AR-Date_October",
-			"#AR-Date_November",
-			"#AR-Date_December",
-		};
+		string months[12];
 
+		if (standalone)
+		{
+			months = {
+				"#AR-Date_January_Standalone",
+				"#AR-Date_February_Standalone",
+				"#AR-Date_March_Standalone",
+				"#AR-Date_April_Standalone",
+				"#AR-Date_May_Standalone",
+				"#AR-Date_June_Standalone",
+				"#AR-Date_July_Standalone",
+				"#AR-Date_August_Standalone",
+				"#AR-Date_September_Standalone",
+				"#AR-Date_October_Standalone",
+				"#AR-Date_November_Standalone",
+				"#AR-Date_December_Standalone",
+			};		
+		}
+		else
+		{
+			months = {
+				"#AR-Date_January",
+				"#AR-Date_February",
+				"#AR-Date_March",
+				"#AR-Date_April",
+				"#AR-Date_May",
+				"#AR-Date_June",
+				"#AR-Date_July",
+				"#AR-Date_August",
+				"#AR-Date_September",
+				"#AR-Date_October",
+				"#AR-Date_November",
+				"#AR-Date_December",
+			};		
+		}
+		
 		return months[month -1];
 	}
 
 	//------------------------------------------------------------------------------------------------
 	/*!
-	Returns abbreviated month in translated string formating.
+	Returns translation key for the abbrev. month.
 	\param month number (from 1 to 12)
 	\return month's short translation key
 	*/
@@ -63,18 +107,18 @@ class SCR_DateTimeHelper
 
 		// if it gets called often, cache it as a static array
 		array<string> months = {
-			"#AR-Date_January_Short",
-			"#AR-Date_February_Short",
-			"#AR-Date_March_Short",
-			"#AR-Date_April_Short",
-			"#AR-Date_May_Short",
-			"#AR-Date_June_Short",
-			"#AR-Date_July_Short",
-			"#AR-Date_August_Short",
-			"#AR-Date_September_Short",
-			"#AR-Date_October_Short",
-			"#AR-Date_November_Short",
-			"#AR-Date_December_Short",
+			"#AR-Date_January_StandaloneShort",
+			"#AR-Date_February_StandaloneShort",
+			"#AR-Date_March_StandaloneShort",
+			"#AR-Date_April_StandaloneShort",
+			"#AR-Date_May_StandaloneShort",
+			"#AR-Date_June_StandaloneShort",
+			"#AR-Date_July_StandaloneShort",
+			"#AR-Date_August_StandaloneShort",
+			"#AR-Date_September_StandaloneShort",
+			"#AR-Date_October_StandaloneShort",
+			"#AR-Date_November_StandaloneShort",
+			"#AR-Date_December_StandaloneShort",
 		};
 
 		return months[month -1];

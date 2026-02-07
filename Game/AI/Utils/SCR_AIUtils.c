@@ -78,12 +78,12 @@ class SCR_AICompartmentHandling
 	//--------------------------------------------------------------------------------------------
 	static ECompartmentType CompartmentClassToType(typename type)
 	{
-		switch (type)
-		{
-			case PilotCompartmentSlot:	return ECompartmentType.Pilot;
-			case CargoCompartmentSlot: 	return ECompartmentType.Cargo;
-			case TurretCompartmentSlot:	return ECompartmentType.Turret;
-		}
+		if (type.IsInherited(CargoCompartmentSlot))
+			return ECompartmentType.Cargo;
+		else if (type.IsInherited(PilotCompartmentSlot))
+			return ECompartmentType.Pilot;
+		else if (type.IsInherited(TurretCompartmentSlot))
+			return ECompartmentType.Turret;
 		return -1;
 	}
 	
@@ -92,6 +92,8 @@ class SCR_AICompartmentHandling
 	{
 		foreach (IEntity vehicle: vehicles)
 		{
+			if (!vehicle)
+				continue;
 			BaseCompartmentManagerComponent compartmentMan = BaseCompartmentManagerComponent.Cast(vehicle.FindComponent(BaseCompartmentManagerComponent));
 			if (!Vehicle.Cast(vehicle) || !compartmentMan)
 				return false;
@@ -111,6 +113,20 @@ class SCR_AICompartmentHandling
 			}
 		}
 		return false;
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	static bool IsInCompartment(notnull AIAgent agent)
+	{
+		IEntity controlledEntity = agent.GetControlledEntity();
+		if (!controlledEntity)
+			return false;
+		
+		ChimeraCharacter character = ChimeraCharacter.Cast(controlledEntity);
+		if (!character)
+			return false;
+		
+		return character.IsInVehicle();
 	}
 }
 
@@ -151,6 +167,21 @@ class SCR_AIWeaponHandling
 			return null;
 		
 		return currentMuzzle.GetMagazine();
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	static bool IsCurrentMuzzleChambered(BaseWeaponManagerComponent weapMgr)
+	{
+		BaseWeaponComponent weaponComp = weapMgr.GetCurrentWeapon();
+		
+		if (!weaponComp)
+			return false;
+		
+		BaseMuzzleComponent	currentMuzzle = weaponComp.GetCurrentMuzzle();
+		if (!currentMuzzle)
+			return false;
+		
+		return currentMuzzle.IsCurrentBarrelChambered();
 	}
 	
 	//--------------------------------------------------------------------------------------------

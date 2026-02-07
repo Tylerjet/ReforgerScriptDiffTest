@@ -371,54 +371,15 @@ class SCR_BaseUseSupportStationAction : SCR_ScriptedUserAction
 		if (!owner)
 			return;
 		
-		//~ Get Support Stations on self
-		array<Managed> supportStations = {};
-		owner.FindComponents(SCR_BaseSupportStationComponent, supportStations);
-		
-		SCR_BaseSupportStationComponent supportStationInArray;
-		
-		//~ Get correct support station
-		foreach (Managed supportStation : supportStations)
-		{
-			supportStationInArray = SCR_BaseSupportStationComponent.Cast(supportStation);
-			if (!supportStationInArray)
-				continue;
-			
-			if (supportStationInArray.GetSupportStationType() == GetSupportStationType())
-			{
-				m_ActionOwnerSupportStationComponent = supportStationInArray;
-				break;
-			}	
-		}
+		m_ActionOwnerSupportStationComponent = SCR_BaseSupportStationComponent.FindSupportStation(owner, GetSupportStationType(), queryFlags: SCR_EComponentFinderQueryFlags.ENTITY);
 		
 		//~ Get support station of children
 		if (!m_ActionOwnerSupportStationComponent && m_bAllowCheckChildrenSupportStation)
 		{
-			IEntity child = owner.GetChildren();
-			
-			while (child)
-			{
-				child.FindComponents(SCR_BaseSupportStationComponent, supportStations);
-				
-				//~ Get correct support station
-				foreach (Managed supportStation : supportStations)
-				{
-					supportStationInArray = SCR_BaseSupportStationComponent.Cast(supportStation);
-					if (!supportStationInArray)
-						continue;
-					
-					if (supportStationInArray.GetSupportStationType() == GetSupportStationType())
-					{
-						m_ActionOwnerSupportStationComponent = supportStationInArray;
-						break;
-					}	
-				}
-				
-				if (m_ActionOwnerSupportStationComponent)
-					break;
-				
-				child = child.GetSibling();
-			}
+			if (Vehicle.Cast(owner))
+				m_ActionOwnerSupportStationComponent = SCR_BaseSupportStationComponent.FindSupportStation(owner, GetSupportStationType(), queryFlags: SCR_EComponentFinderQueryFlags.SLOTS);
+			else 
+				m_ActionOwnerSupportStationComponent = SCR_BaseSupportStationComponent.FindSupportStation(owner, GetSupportStationType(), queryFlags: SCR_EComponentFinderQueryFlags.CHILDREN);
 		}
 	}
 	
@@ -442,7 +403,6 @@ class SCR_BaseUseSupportStationAction : SCR_ScriptedUserAction
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//~ 0, 1 or 2
 	protected int GetActionDecimalCount()
 	{
 		return 1;
@@ -581,16 +541,7 @@ class SCR_BaseUseSupportStationAction : SCR_ScriptedUserAction
 			
 			//~ Get percentage string
 			if (actionPercentage != int.MIN)
-			{
-				string actionPercentageString;
-				
-				if (GetActionDecimalCount() <= 0)
-					actionParam = Math.Floor(actionPercentage).ToString();
-				else if (GetActionDecimalCount() == 1)
-					actionParam = (Math.Floor((actionPercentage * 10)) / 10).ToString();
-				else 
-					actionParam = (Math.Floor((actionPercentage * 100)) / 100).ToString();
-			}
+				actionParam = SCR_FormatHelper.FloatToStringNoZeroDecimalEndings(actionPercentage, GetActionDecimalCount());
 		
 			//~ Show percentage
 			if (!actionParam.IsEmpty())

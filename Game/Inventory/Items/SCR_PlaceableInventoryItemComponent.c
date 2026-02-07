@@ -1,10 +1,8 @@
-[EntityEditorProps(category: "GameScripted/Components", description: "ScriptWizard generated script file.")]
+[EntityEditorProps(category: "GameScripted/Components", description: "")]
 class SCR_PlaceableInventoryItemComponentClass : SCR_BaseInventoryItemComponentClass
 {
-	
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 {
 	[Attribute("1")]
@@ -13,24 +11,21 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 	[Attribute("1", "Only works with Snap to ground")]
 	protected bool m_bAlignToNormal;
 	
-	vector m_vMat[4];
-	bool m_bUseTransform = false;
-	
-	protected bool m_bCanBeGarbageCollected;
-	
+	protected vector m_vMat[4];
+	protected bool m_bUseTransform = false;
+
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] user
 	// To be overridden, called when placement is done in SCR_ItemPlacementComponent
-	void PlacementDone(notnull IEntity user)
-	{
-	}
-	
+	void PlacementDone(notnull IEntity user);
+
 	//------------------------------------------------------------------------------------------------
-	override bool CanBeInserted()
-	{
-		return m_bCanBeGarbageCollected;
-	}
-	
-	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] right
+	//! \param[in] up
+	//! \param[in] forward
+	//! \param[in] position
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	void RPC_DoPlaceItem(vector right, vector up, vector forward, vector position)
 	{
@@ -50,14 +45,23 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] right
+	//! \param[in] up
+	//! \param[in] forward
+	//! \param[in] position
 	void PlaceItem(vector right, vector up, vector forward, vector position)
 	{
-		m_bCanBeGarbageCollected = false;
 		Rpc(RPC_DoPlaceItem, right, up, forward, position);
 		RPC_DoPlaceItem(right, up, forward, position);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[out] normal
+	//! \param[in] excludeArray
+	//! \param[in] maxLength
+	//! \param[in] direction
 	void SnapToGround(out vector normal, array<IEntity> excludeArray = null, float maxLength = 10, vector startOffset = "0 0 0", vector direction = -vector.Up)
 	{
 		IEntity owner = GetOwner();
@@ -92,6 +96,9 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] entity
+	//! \return
 	bool ValidateEntity(notnull IEntity entity)
 	{
 		Physics physics = entity.GetPhysics();
@@ -111,6 +118,9 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] e
+	//! \return
 	bool FilterCallback(notnull IEntity e)
 	{
 		Physics physics = e.GetPhysics();
@@ -127,7 +137,7 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 	override bool OverridePlacementTransform(IEntity caller, out vector computedTransform[4])
 	{
 		ActivateOwner(true);
-		
+
 		IEntity owner = GetOwner();
 		owner.Update();
 		
@@ -135,14 +145,19 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 		Physics physics = owner.GetPhysics();
 		if (physics)
 			EnablePhysics();
-		
+
 		if (m_bUseTransform)
 		{
+			// Entity was purposefully "placed" somewhere so we assume it should stay there (e.g. mines and flags to mark them)
+			auto garbageSystem = SCR_GarbageSystem.GetByEntityWorld(owner);
+			if (garbageSystem)
+				garbageSystem.Withdraw(owner);
+
 			Math3D.MatrixCopy(m_vMat, computedTransform);
 			m_bUseTransform = false;
 			return true;
 		}
-		
+
 		if (m_bSnapToGround)
 		{
 			caller.GetTransform(computedTransform);
@@ -155,8 +170,7 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 			
 			return true;
 		}
-		
-		m_bCanBeGarbageCollected = true;
+
 		return false;
 	}
-};
+}

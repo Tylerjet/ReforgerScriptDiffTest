@@ -3,8 +3,12 @@
 //------------------------------------------------------------------------------------------------
 
 [BaseContainerProps()]
-class SCR_AIInfoReaction : SCR_AIReactionBase
+class SCR_AIInfoReaction
 {
+	// Don't use, it's here for backwards compatibility, not guaranteed to work in all classes
+	[Attribute(defvalue: "", uiwidget: UIWidgets.EditBox, desc: "Don't use, it's here for backwards compatibility, not guaranteed to work in all classes", params: "bt")]
+	string m_OverrideBehaviorTree;
+	
 	[Attribute("0", UIWidgets.ComboBox, "Type of event activating the reaction", "", ParamEnumArray.FromEnum(EMessageType_Info) )]
 	EMessageType_Info m_eType;
 	

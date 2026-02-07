@@ -1,26 +1,47 @@
-#ifdef GMSTATS
+#ifdef GMSTATS 
+#define GM_AI_STATS
+#endif
+#ifdef AISTATS
+#define GM_AI_STATS
+#endif
+
+#ifdef GM_AI_STATS
+
 enum SCR_EGameModeRecordType
 {
 	Death,
 	Movement,
 	Connection,
 	Spawn,
-};
+	AILOD,
+}
 
-/*!
-	Defines an event record in the game mode statistics.
-*/
+enum ETypeOfAgent // TODO: SCR_ETypeOfAgent / SCR_EAgentType
+{
+	Group,
+	Agent,
+	Bird,
+	Player
+}
+
+//! Defines an event record in the game mode statistics.
 class SCR_IGameModeRecord
 {
 	//! Current timestamp as world time in milliseconds.
 	protected float m_fTimestamp;
 
+	//------------------------------------------------------------------------------------------------
 	//! Returns type of this record.
 	SCR_EGameModeRecordType GetRecordType();
 
+	//------------------------------------------------------------------------------------------------
 	//! Return time (since load of world) when this record occured
-	float GetTimestamp() { return m_fTimestamp; }
+	float GetTimestamp()
+	{
+		return m_fTimestamp;
+	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Parses shared tokens and calls derived save method.
 	string SaveToString()
 	{
@@ -31,12 +52,15 @@ class SCR_IGameModeRecord
 		);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Saves record to a string. Internal tokens are ommited.
 	protected string Save();
 
+	//------------------------------------------------------------------------------------------------
 	//! Loads record from tokens. See LoadFromString. Internal tokens are ommited.
 	protected void Load(array<string> tokens);
 
+	//------------------------------------------------------------------------------------------------
 	//! Parses a record from provided string.
 	static ref SCR_IGameModeRecord LoadFromString(string str)
 	{
@@ -86,11 +110,19 @@ class SCR_IGameModeRecord
 				return record;
 			}
 			break;
+			
+			case SCR_EGameModeRecordType.AILOD:
+			{
+				ref SCR_IGameModeRecord record = new SCR_AILODRecord();
+				record.m_fTimestamp = timeStamp;
+				record.Load(tokens);
+				return record;
+			}
 		}
 
 		return null;
 	}
-};
+}
 
 //! Object that defines a single player death event with corresponding data.
 sealed class SCR_DeathRecord : SCR_IGameModeRecord
@@ -103,11 +135,13 @@ sealed class SCR_DeathRecord : SCR_IGameModeRecord
 	int m_PlayerId;
 	EWeaponType m_WeaponType = EWeaponType.WT_NONE;
 
+	//------------------------------------------------------------------------------------------------
 	sealed override SCR_EGameModeRecordType GetRecordType()
 	{
 		return SCR_EGameModeRecordType.Death;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override string Save()
 	{
 		string pos = string.Format("%1,%2,%3", m_Position[0], m_Position[1], m_Position[2]);
@@ -115,6 +149,7 @@ sealed class SCR_DeathRecord : SCR_IGameModeRecord
 		return string.Format("%1;%2;%3;%4;%5;%6;%7", pos, ipos, m_Faction, m_InstigatorFaction, (int)m_WeaponType, m_PlayerId, m_InstigatorId);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected sealed override void Load(array<string> tokens)
 	{
 		array <string> pos = {};
@@ -133,10 +168,13 @@ sealed class SCR_DeathRecord : SCR_IGameModeRecord
 		m_InstigatorId = tokens[6].ToInt();
 	}
 
-	void SCR_DeathRecord()
-	{
-	}
-
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerId
+	//! \param[in] playerEntity
+	//! \param[in] killerEntity
+	//! \param[in] killer
+	//! \return
 	static ref SCR_DeathRecord CreateNew(int playerId, IEntity playerEntity, IEntity killerEntity, Instigator killer)
 	{
 		SCR_DeathRecord record = new SCR_DeathRecord();
@@ -180,7 +218,7 @@ sealed class SCR_DeathRecord : SCR_IGameModeRecord
 		// Keep track of instigator stuff..
 		return record;
 	}
-};
+}
 
 //! Object that defines a single player movement event with corresponding data.
 sealed class SCR_MovementRecord : SCR_IGameModeRecord
@@ -188,17 +226,20 @@ sealed class SCR_MovementRecord : SCR_IGameModeRecord
 	vector m_Position;
 	int m_PlayerId;
 
+	//------------------------------------------------------------------------------------------------
 	sealed override SCR_EGameModeRecordType GetRecordType()
 	{
 		return SCR_EGameModeRecordType.Movement;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override string Save()
 	{
 		string pos = string.Format("%1,%2,%3", m_Position[0], m_Position[1], m_Position[2]);
 		return string.Format("%1;%2;", pos, m_PlayerId);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected sealed override void Load(array<string> tokens)
 	{
 		array <string> pos = {};
@@ -207,10 +248,11 @@ sealed class SCR_MovementRecord : SCR_IGameModeRecord
 		m_PlayerId = tokens[1].ToInt();
 	}
 
-	void SCR_MovementRecord()
-	{
-	}
-
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] player
+	//! \param[in] playerId
+	//! \return
 	static ref SCR_MovementRecord CreateNew(IEntity player, int playerId)
 	{
 		SCR_MovementRecord record = new SCR_MovementRecord();
@@ -219,7 +261,7 @@ sealed class SCR_MovementRecord : SCR_IGameModeRecord
 		record.m_fTimestamp = player.GetWorld().GetWorldTime();
 		return record;
 	}
-};
+}
 
 //! Object that defines a single player connection or disconnection event.
 sealed class SCR_ConnectionRecord : SCR_IGameModeRecord
@@ -227,26 +269,30 @@ sealed class SCR_ConnectionRecord : SCR_IGameModeRecord
 	int m_PlayerId;
 	string m_PlayerName;
 
+	//------------------------------------------------------------------------------------------------
 	sealed override SCR_EGameModeRecordType GetRecordType()
 	{
 		return SCR_EGameModeRecordType.Connection;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override string Save()
 	{
 		return string.Format("%1;%2;", m_PlayerId, m_PlayerName);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected sealed override void Load(array<string> tokens)
 	{
 		m_PlayerId = tokens[0].ToInt();
 		m_PlayerName = tokens[1];
 	}
 
-	void SCR_ConnectionRecord()
-	{
-	}
-
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerId
+	//! \param[in] playerName
+	//! \return
 	static ref SCR_ConnectionRecord CreateNew(int playerId, string playerName)
 	{
 		SCR_ConnectionRecord record = new SCR_ConnectionRecord();
@@ -255,7 +301,7 @@ sealed class SCR_ConnectionRecord : SCR_IGameModeRecord
 		record.m_fTimestamp = GetGame().GetWorld().GetWorldTime();
 		return record;
 	}
-};
+}
 
 sealed class SCR_SpawnRecord : SCR_IGameModeRecord 
 {
@@ -278,9 +324,16 @@ sealed class SCR_SpawnRecord : SCR_IGameModeRecord
 		m_FactionColor = tokens[1].ToInt();
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
 	void SCR_SpawnRecord()
 	{}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerId
+	//! \param[in] factionColor
+	//! \return
 	static ref SCR_SpawnRecord CreateNew(int playerId, int factionColor)
 	{
 		SCR_SpawnRecord record = new SCR_SpawnRecord();
@@ -289,15 +342,88 @@ sealed class SCR_SpawnRecord : SCR_IGameModeRecord
 		record.m_fTimestamp = GetGame().GetWorld().GetWorldTime();
 		return record;		
 	}
-};
+}
 
-/*!
-	Utility class that can store and manipulate various game mode statistic records.
-*/
+sealed class SCR_AILODRecord : SCR_IGameModeRecord
+{
+	string m_ID;
+	vector m_Position;
+	int m_LOD;
+	ETypeOfAgent m_Type;
+	int m_BTCounter = 0;
+	int m_PerceptionCounter = 0;
+	
+	sealed override SCR_EGameModeRecordType GetRecordType()
+	{
+		return SCR_EGameModeRecordType.AILOD;
+	}
+	
+	override string Save()
+	{
+		string pos = string.Format("%1,%2,%3", m_Position[0], m_Position[1], m_Position[2]);
+		return string.Format("%1;%2;%3;%4;%5;%6", m_ID, pos, m_LOD, m_Type, m_BTCounter, m_PerceptionCounter);
+	}
+	
+	protected sealed override void Load(array<string> tokens)
+	{
+		array <string> pos = {};
+		m_ID = tokens[0];
+		tokens[1].Split(",", pos, true);
+		m_Position = Vector(pos[0].ToFloat(), pos[1].ToFloat(), pos[2].ToFloat());
+		m_LOD = tokens[2].ToInt();
+		m_Type = tokens[3].ToInt();
+		m_BTCounter = tokens[4].ToInt();
+		m_PerceptionCounter = tokens[5].ToInt();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] agent
+	//! \return
+	static ref SCR_AILODRecord CreateNew(AIAgent agent)
+	{
+		SCR_AILODRecord record = new SCR_AILODRecord();
+		record.m_fTimestamp = GetGame().GetWorld().GetWorldTime();
+		record.m_LOD = agent.GetLOD();
+		SCR_AIGroup group = SCR_AIGroup.Cast(agent);
+		IEntity ent = agent.GetControlledEntity();
+		if (group)
+		{
+			record.m_Type = ETypeOfAgent.Group;
+			record.m_Position = group.GetCenterOfMass();
+		} 
+		else 
+		{			
+			if (ent)
+				record.m_Position = ent.GetOrigin();
+			if (AIFlock.Cast(agent))
+				record.m_Type = ETypeOfAgent.Bird;
+			else if (EntityUtils.IsPlayer(ent)) 
+				record.m_Type = ETypeOfAgent.Player;
+			else	
+				record.m_Type = ETypeOfAgent.Agent;			
+		}
+		
+		AIChimeraBehaviorTreeComponent btComp = AIChimeraBehaviorTreeComponent.Cast(agent.FindComponent(AIChimeraBehaviorTreeComponent));
+		if (btComp)
+			record.m_BTCounter = btComp.GetSimulateCounter();
+		
+		if (ent)
+		{
+			PerceptionComponent percComp = PerceptionComponent.Cast(ent.FindComponent(PerceptionComponent));
+			if (percComp)
+				record.m_PerceptionCounter = percComp.GetSimulateCounter();
+		}
+		record.m_ID = agent.GetID().ToString().Substring(2,16);
+		return record;
+	}
+}
+
+//! Utility class that can store and manipulate various game mode statistic records.
 class SCR_GameModeStatistics
 {
 	//! Interval of continuous records in ms
-	static const int RECORD_INTERVAL_MS = 200;
+	static const int RECORD_INTERVAL_MS = 1000;
 	
 	//! List of pending records
 	private static ref array<ref SCR_IGameModeRecord> s_aRecordBuffer = {};
@@ -308,6 +434,7 @@ class SCR_GameModeStatistics
 	//! File extension used by SCR_GameModeStatistics
 	private static const string k_sExtension = ".txt";
 
+	//------------------------------------------------------------------------------------------------
 	//! Returns true if statistics are being recorded.
 	static bool IsRecording()
 	{
@@ -317,6 +444,7 @@ class SCR_GameModeStatistics
 		return false;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Starts recording statistics.
 	static void StartRecording()
 	{
@@ -327,15 +455,17 @@ class SCR_GameModeStatistics
 		}
 
 		string filename = "GameStatistics_" + FormatTimestamp() + k_sExtension;
-		s_pFileHandle = FileIO.OpenFile("$profile:/" + filename, FileMode.WRITE);
+		s_pFileHandle = FileIO.OpenFile("$logs:/" + filename, FileMode.WRITE);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Returns whether any content is available to be flushed into output file.
 	static bool CanFlush()
 	{
 		return s_aRecordBuffer.Count() > 0;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Flushes currently recorded data into the open file.
 	static void Flush()
 	{
@@ -366,6 +496,7 @@ class SCR_GameModeStatistics
 		s_aRecordBuffer.Clear();
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Stops recording statistics.
 	static void StopRecording()
 	{
@@ -383,45 +514,58 @@ class SCR_GameModeStatistics
 		s_pFileHandle = null;
 	}
 
-	/*!
-		Creates a death record.
-		\param playerEntity Dead/destroyed entity
-		\param killerEntity Killer entity
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Creates a death record.
+	//! \param[in] playerId
+	//! \param[in] playerEntity Dead/destroyed entity
+	//! \param[in] killerEntity Killer entity
+	//! \param[in] killer
 	static void RecordDeath(int playerId, IEntity playerEntity, IEntity killerEntity, Instigator killer)
 	{
 		SCR_DeathRecord rec = SCR_DeathRecord.CreateNew(playerId, playerEntity, killerEntity, killer);
 		s_aRecordBuffer.Insert(rec);
 	}
 
-	/*!
-		Creates a movement record.
-		\param player Player to record info for.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Creates a movement record.
+	//! \param[in] player Player to record info for.
+	//! \param[in] playerId
 	static void RecordMovement(IEntity player, int playerId)
 	{
 		SCR_MovementRecord rec = SCR_MovementRecord.CreateNew(player, playerId);
 		s_aRecordBuffer.Insert(rec);
 	}
 
-	/*!
-		Creates a new connection record.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Creates a new connection record.
+	//! \param[in] playerId
+	//! \param[in] playerName
 	static void RecordConnection(int playerId, string playerName)
 	{
 		SCR_ConnectionRecord rec = SCR_ConnectionRecord.CreateNew(playerId, playerName);
 		s_aRecordBuffer.Insert(rec);
 	}
 	
-	/*!
-		Creates a new spawn record.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Creates a new spawn record.
+	//! \param[in] playerId
+	//! \param[in] factionColor
 	static void RecordSpawn(int playerId, int factionColor)
 	{
 		SCR_SpawnRecord rec = SCR_SpawnRecord.CreateNew(playerId, factionColor);
 		s_aRecordBuffer.Insert(rec);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] aiagent
+	static void RecordAILOD(AIAgent aiagent)
+	{
+		SCR_AILODRecord rec = SCR_AILODRecord.CreateNew(aiagent);
+		s_aRecordBuffer.Insert(rec);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Opens and outputs parsed statistics from a file. Returns number of entries loaded or 0 if none.
 	static int OpenStatistics(string filename, notnull array<ref SCR_IGameModeRecord> outRecords)
 	{
@@ -429,7 +573,7 @@ class SCR_GameModeStatistics
 		if (!filename.EndsWith(k_sExtension))
 			filename += k_sExtension;
 
-		if (!FileIO.FileExist(filename))
+		if (!FileIO.FileExists(filename))
 			return 0;
 
 		FileHandle fileHnd = FileIO.OpenFile(filename, FileMode.READ);
@@ -453,6 +597,7 @@ class SCR_GameModeStatistics
 		return count;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Iterates through records collection and outputs records that match predicate to filteredRecords.
 	static void FilterRecords(typename predicate, notnull array<SCR_IGameModeRecord> records, out array<SCR_IGameModeRecord> filteredRecords)
 	{
@@ -462,6 +607,8 @@ class SCR_GameModeStatistics
 				filteredRecords.Insert(record);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Iterates through records collection and outputs records that match predicate to filteredRecords.
 	static void FilterRecordsRefRef(typename predicate, notnull array<ref SCR_IGameModeRecord> records, out array<ref SCR_IGameModeRecord> filteredRecords)
 	{
@@ -471,6 +618,8 @@ class SCR_GameModeStatistics
 				filteredRecords.Insert(record);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Iterates through records collection and outputs records that match predicate to filteredRecords.
 	static void FilterRecordsWeakRef(typename predicate, notnull array<SCR_IGameModeRecord> records, out array<ref SCR_IGameModeRecord> filteredRecords)
 	{
@@ -481,6 +630,7 @@ class SCR_GameModeStatistics
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Returns current timestamp in yymmdd-hhmmss format.
 	private static string FormatTimestamp()
 	{
@@ -516,18 +666,13 @@ class SCR_GameModeStatistics
 
 		return string.Format("%1%2%3-%4%5%6", year, smonth, sday, sh, sm, ss);
 	}
-};
-
+}
 
 [EntityEditorProps(category: "GameDiag", description: "")]
 class SCR_StatisticsDrawerEntityClass : GenericEntityClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
-/*!
-	Class generated via ScriptWizard.
-*/
 class SCR_StatisticsDrawerEntity : GenericEntity
 {
 	//! Current statistics data
@@ -544,47 +689,63 @@ class SCR_StatisticsDrawerEntity : GenericEntity
 
 	//! Number of unique clients
 	protected int m_iUniquePlayerCount = 0;
+
 	//! Target player id to filter movement for or -1 if none
 	protected int m_iTargetPlayer = 0;
 
 	//! Should "anything" be drawn?
 	protected bool m_bDraw = true;
+
 	//! Should SCR_DeathRecord(s) be drawn?
 	protected bool m_bDrawDeaths = true;
+
 	//! Should deaths text boxes be drawn?
 	protected bool m_bDrawDeathsInfo = true;
+
 	//! Should SCR_MovementRecord(s) be drawn?
 	protected bool m_bDrawMovement = true;
+
 	//! Should SCR_ConnectionRecord(s) be drawn?
 	protected bool m_bDrawPlayerNames = true;
+
+	//! Should SCR_AILODRecord(s) be drawn?
+	protected bool m_bDrawAILODs = true;
+
 	//! If enabled, playback is enabled
 	protected bool m_bAutoPlay;
+
 	//! Speed multiplier of platback
 	protected float m_fPlaybackSpeed = 1.0;
 
 	//! Current playback time
 	protected float m_fCurrentTime;
+
 	//! Time of last record
 	protected float m_fMaxTime;
+
 	//! History length in milliseconds
 	protected float m_fHistoryLength = 10000;
 
-
 	//! Filtered death records
 	protected ref map<int, ref array<ref SCR_IGameModeRecord>> m_aDeathRecords = new map<int, ref array<ref SCR_IGameModeRecord>>();
+
 	//! Filtered movement records
 	protected ref map<int, ref array<ref SCR_IGameModeRecord>> m_aMovementRecords = new map<int, ref array<ref SCR_IGameModeRecord>>();
+
 	//! Filtered spawn records
 	protected ref map<int, ref array<ref SCR_IGameModeRecord>> m_aSpawnRecords = new map<int, ref array<ref SCR_IGameModeRecord>>();
+
 	//! Filtered connection records
 	protected ref array<ref SCR_IGameModeRecord> m_aConnectionRecords = {};
 
+	//! Filtered AILOD records
+	protected ref map<string, ref array<ref SCR_IGameModeRecord>> m_aAILODRecords = new map<string, ref array<ref SCR_IGameModeRecord>>();
+	
 	protected ref array<ref Shape> m_aShapes = {};
 	protected ref array<ref DebugText> m_aTexts = {};
 
 	//! Map of all available player names
 	protected ref map<int, string> m_mPlayerNames = new map<int, string>();
-
 
 	protected vector m_vMins;
 	protected vector m_vMaxs;
@@ -594,7 +755,6 @@ class SCR_StatisticsDrawerEntity : GenericEntity
 	protected static const float TELEPORT_DISTANCE = MAX_MOVEMENT_SPEED * (SCR_GameModeStatistics.RECORD_INTERVAL_MS / 1000.0);
 	protected static const float TELEPORT_DISTANCE_SQ = TELEPORT_DISTANCE * TELEPORT_DISTANCE;
 	
-
 	//! Pseudorandom colors used for players to differentiate them
 	protected static const int PLAYER_COLORS_COUNT = 27;
 	protected static const vector PLAYER_COLORS_ARRAY[PLAYER_COLORS_COUNT] = {
@@ -602,8 +762,24 @@ class SCR_StatisticsDrawerEntity : GenericEntity
 		"255 235 59", "255 152 0", "121 85 72", "95 125 139","62 69 81","3 159 244","244 67 54","233 30 99", "156 39 176",
 		"63 81 181", "0 188 212", "0 150 136", "76 175 80", "205 220 57", "255 235 59", "255 157 0", "121 85 139"
 	};
+	
+	protected static const vector AILOD_COLORS_ARRAY[11] = {
+		"255 255 255",
+		"244 225 244",
+		"233 195 233",
+		"222 165 222",
+		"211 135 211",
+		"200 105 200",
+		"189 75 189",
+		"178 45 178",
+		"167 15 167",
+		"156 0 156",
+		"0 0 0"
+	};
+	
 	protected bool m_bFactionColors = false;
 	
+	//------------------------------------------------------------------------------------------------
 	//! Returns true if no records are available
 	protected bool IsEmpty()
 	{
@@ -613,6 +789,7 @@ class SCR_StatisticsDrawerEntity : GenericEntity
 		return false;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Tries to open provided file name with statistics. Returns true on success.
 	protected bool OpenStatisticsFile(string filename)
 	{
@@ -621,6 +798,7 @@ class SCR_StatisticsDrawerEntity : GenericEntity
 		return count > 0;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Clears all <runtime> data, not <loaded> data. Use Close() to close entirely.
 	protected void Clear()
 	{
@@ -629,11 +807,13 @@ class SCR_StatisticsDrawerEntity : GenericEntity
 		m_aDeathRecords.Clear();
 		m_aMovementRecords.Clear();
 		m_aConnectionRecords.Clear();
+		m_aAILODRecords.Clear();
 		m_vMins = vector.Zero;
 		m_vMaxs = vector.Zero;
 		m_iTargetPlayer = 0;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! "Closes open file" by clearing <loaded> data.
 	protected void Close()
 	{
@@ -641,6 +821,7 @@ class SCR_StatisticsDrawerEntity : GenericEntity
 		m_aRecords.Clear();
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Filters and builds runtime data from provided records.
 	protected void LoadRecords(array<ref SCR_IGameModeRecord> records)
 	{
@@ -653,8 +834,11 @@ class SCR_StatisticsDrawerEntity : GenericEntity
 		array<ref SCR_IGameModeRecord> movement = {};
 		SCR_GameModeStatistics.FilterRecordsRefRef(SCR_MovementRecord, records, movement);
 
-		SCR_GameModeStatistics.FilterRecordsRefRef(SCR_ConnectionRecord, records, m_aConnectionRecords);
+		array<ref SCR_IGameModeRecord> lodRecords = {};
+		SCR_GameModeStatistics.FilterRecordsRefRef(SCR_AILODRecord, records, lodRecords);
 
+		SCR_GameModeStatistics.FilterRecordsRefRef(SCR_ConnectionRecord, records, m_aConnectionRecords);
+		
 		array<ref SCR_IGameModeRecord> spawn = {};
 		SCR_GameModeStatistics.FilterRecordsRefRef(SCR_SpawnRecord, records, spawn);
 		// Values used for finding "bounding box"
@@ -669,7 +853,7 @@ class SCR_StatisticsDrawerEntity : GenericEntity
 			if (!m_aMovementRecords.Contains(movementRecord.m_PlayerId))
 			{
 				// Initialize the array inside first
-				m_aMovementRecords.Insert(movementRecord.m_PlayerId, new ref array<ref SCR_IGameModeRecord>());
+				m_aMovementRecords.Insert(movementRecord.m_PlayerId, new array<ref SCR_IGameModeRecord>());
 			}
 
 			// Insert record for that player
@@ -694,7 +878,7 @@ class SCR_StatisticsDrawerEntity : GenericEntity
 			if (!m_aDeathRecords.Contains(deathRecord.m_PlayerId))
 			{
 				// Initialize the array inside first
-				m_aDeathRecords.Insert(deathRecord.m_PlayerId, new ref array<ref SCR_IGameModeRecord>());
+				m_aDeathRecords.Insert(deathRecord.m_PlayerId, new array<ref SCR_IGameModeRecord>());
 			}
 
 			// Insert record for that player
@@ -710,13 +894,27 @@ class SCR_StatisticsDrawerEntity : GenericEntity
 			if (!m_aSpawnRecords.Contains(spawnRecord.m_PlayerId))
 			{
 				// Initialize the array inside first
-				m_aSpawnRecords.Insert(spawnRecord.m_PlayerId, new ref array<ref SCR_IGameModeRecord>());
+				m_aSpawnRecords.Insert(spawnRecord.m_PlayerId, new array<ref SCR_IGameModeRecord>());
 			}
 
 			// Insert record for that player
 			m_aSpawnRecords[spawnRecord.m_PlayerId].Insert(spawnRecord);
 		}
 
+		// Sort LODs per EntityID
+		m_aAILODRecords.Clear();
+		foreach (SCR_IGameModeRecord record : lodRecords)
+		{
+			SCR_AILODRecord lodRecord = SCR_AILODRecord.Cast(record);
+			if (!m_aAILODRecords.Contains(lodRecord.m_ID))
+			{
+				// Initialize the array inside first
+				m_aAILODRecords.Insert(lodRecord.m_ID, new array<ref SCR_IGameModeRecord>());
+			}
+
+			// Insert record for that player
+			m_aAILODRecords[lodRecord.m_ID].Insert(lodRecord);
+		}
 
 		// Get records duration
 		if (records.Count() > 0)
@@ -748,6 +946,8 @@ class SCR_StatisticsDrawerEntity : GenericEntity
 		m_vMins = min;
 		m_vMaxs = max;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Draws a check using the DbgUI.Check and returns true if value has changed
 	private bool DrawCheck(string label, inout bool outValue)
 	{
@@ -755,6 +955,8 @@ class SCR_StatisticsDrawerEntity : GenericEntity
 		DbgUI.Check(label, outValue);
 		return previousValue != outValue;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Draws a slider using the DbgUI.SliderFloat and returns true if value has changed
 	private bool DrawSlider(string label, inout float outValue, float min, float max, int pxWidth)
 	{
@@ -762,6 +964,8 @@ class SCR_StatisticsDrawerEntity : GenericEntity
 		DbgUI.SliderFloat(label, outValue, min, max, pxWidth);
 		return previousValue != outValue;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Draw two buttons (single line) that subtract and add addValue to refValue.
 	private bool DrawAdvancementButton(string negativeLabel, string positiveLabel, inout float refValue, float addValue)
 	{
@@ -820,7 +1024,6 @@ class SCR_StatisticsDrawerEntity : GenericEntity
 				return;
 			}
 
-
 			DbgUI.Text(string.Format("Total Records: %1", m_aRecords.Count()));
 
 			// Individual filters and properties
@@ -831,6 +1034,7 @@ class SCR_StatisticsDrawerEntity : GenericEntity
 			if (m_bDrawDeaths && DrawCheck("Draw Death Infoboxes", m_bDrawDeathsInfo)) isDirty = true;
 			if (DrawCheck("Draw Movement Records", m_bDrawMovement)) isDirty = true;
 			if (DrawCheck("Draw Player List", m_bDrawPlayerNames)) isDirty = true;
+			if (DrawCheck("Draw AILODs", m_bDrawAILODs)) isDirty = true;
 			if (DrawCheck("Limit History Length", m_bUseHistory)) isDirty = true;
 			if (DrawCheck("No Z Buffer", m_bNoZBuffer)) isDirty = true;
 			if (DrawCheck("Faction Colors", m_bFactionColors)) isDirty = true;
@@ -929,7 +1133,6 @@ class SCR_StatisticsDrawerEntity : GenericEntity
 		// Let all shapes begone!
 		m_aShapes.Clear();
 		m_aTexts.Clear();
-
 		// And do not create new ones
 		if (!m_bDraw)
 			return;
@@ -940,6 +1143,10 @@ class SCR_StatisticsDrawerEntity : GenericEntity
 
 		if (m_bDrawDeaths)
 			RepaintDeaths(m_iTargetPlayer);
+		
+		if (m_bDrawAILODs)
+			RepaintAILODs();
+		
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1003,6 +1210,95 @@ class SCR_StatisticsDrawerEntity : GenericEntity
 			flags |= ShapeFlags.NOZBUFFER;
 
 		return flags;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void RepaintAILODs()
+	{			
+		vector characterRGB = PLAYER_COLORS_ARRAY[0];
+		vector groupRGB = PLAYER_COLORS_ARRAY[1];
+		int color;
+		int shapeFlags = GetShapeFlags();
+		float baseSphereScale = m_fGizmosScaleMultiplier * 0.25;
+		float baseCylinderScale = m_fGizmosScaleMultiplier * 2.5;
+		foreach(array<ref SCR_IGameModeRecord> lodRecords : m_aAILODRecords)
+		{	
+			
+			for (int j = 0; j < lodRecords.Count(); j++)
+			{
+				SCR_AILODRecord aiRecord = SCR_AILODRecord.Cast(lodRecords[j]);
+				SCR_AILODRecord prevAiRecord;
+				if (j)
+					prevAiRecord = SCR_AILODRecord.Cast(lodRecords[j-1]);
+				float timeStamp = aiRecord.GetTimestamp();
+				float alpha = 1.0;
+			
+				if (m_bUseHistory)
+				{
+					// We can skip if record is in the future
+					if (timeStamp > m_fCurrentTime)
+						break;
+	
+					// Otherwise blend out
+					alpha = GetAlpha(timeStamp);
+					if (alpha <= 0.0 || alpha > 1.0)  // If history is used and item is <almost> completely transparent, skip drawing it
+					{
+						continue;					 // additionally skip items which are further than now
+					}
+				}
+				vector LODcolor = AILOD_COLORS_ARRAY[aiRecord.m_LOD];
+				color = ARGB(255 * alpha, LODcolor[0], LODcolor[1], LODcolor[2]);
+				
+				float scaleAlpha = Math.Lerp(0.7, 1.0, alpha); // 70-100% scale based on age
+				if (aiRecord.m_Type == ETypeOfAgent.Group)
+				{
+					ref Shape cylinder = Shape.CreateCylinder(color, shapeFlags | ShapeFlags.NOOUTLINE, aiRecord.m_Position, baseSphereScale * scaleAlpha, baseCylinderScale * scaleAlpha);
+					m_aShapes.Insert(cylinder);
+				}
+				else if ((aiRecord.m_Type == ETypeOfAgent.Agent))
+				{
+					ref Shape sphere = Shape.CreateSphere(color, shapeFlags | ShapeFlags.NOOUTLINE, aiRecord.m_Position, baseSphereScale * scaleAlpha);
+					m_aShapes.Insert(sphere);
+				}
+				else if ((aiRecord.m_Type == ETypeOfAgent.Bird))
+				{
+					vector points[7];
+					points[0] = aiRecord.m_Position - Vector(m_fGizmosScaleMultiplier, 0, 0);
+					points[1] = aiRecord.m_Position + Vector(m_fGizmosScaleMultiplier, 0, 0);
+					points[2] = aiRecord.m_Position - Vector(0, m_fGizmosScaleMultiplier, 0);
+					points[3] = aiRecord.m_Position + Vector(0, m_fGizmosScaleMultiplier, 0);
+					points[4] = aiRecord.m_Position - Vector(0, 0, m_fGizmosScaleMultiplier);
+					points[5] = aiRecord.m_Position + Vector(0, 0, m_fGizmosScaleMultiplier);
+					points[6] = aiRecord.m_Position - Vector(m_fGizmosScaleMultiplier, 0, 0);
+					ref Shape sphere = Shape.CreateLines(color, shapeFlags | ShapeFlags.NOOUTLINE, points, 7);
+					m_aShapes.Insert(sphere);
+				} 
+				else 
+				{
+					ref Shape cylinder = Shape.CreateCylinder(ARGB(255 * alpha, 0xff, 0xff, 0 ),
+					 shapeFlags | ShapeFlags.NOOUTLINE, aiRecord.m_Position, baseSphereScale * scaleAlpha, baseCylinderScale * scaleAlpha);
+					m_aShapes.Insert(cylinder);
+				}
+				int btCounterNum = aiRecord.m_BTCounter;
+				int percCounterNum = aiRecord.m_PerceptionCounter;
+				if (!btCounterNum && !percCounterNum)
+					continue;
+				if (prevAiRecord)
+				{
+					btCounterNum -= prevAiRecord.m_BTCounter;
+					percCounterNum -= prevAiRecord.m_PerceptionCounter;
+				}
+				string text = string.Format("%1,%2", btCounterNum, percCounterNum);
+				vector mat[4];
+				mat[0] = "1 0 0";
+				mat[1] = "0 1 0";
+				mat[2] = "0 0 1";
+				mat[3] = aiRecord.m_Position + 3 * vector.Up;
+				
+				ref DebugText textShape = DebugTextWorldSpace.CreateInWorld(GetWorld(), text, DebugTextFlags.FACE_CAMERA | DebugTextFlags.CENTER, mat, 0.5, color, 0xFF111111);	
+				m_aTexts.Insert(textShape);
+			}
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1228,6 +1524,9 @@ class SCR_StatisticsDrawerEntity : GenericEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] parent
 	void SCR_StatisticsDrawerEntity(IEntitySource src, IEntity parent)
 	{
 		SetEventMask(EntityEvent.INIT | EntityEvent.FRAME);
@@ -1235,13 +1534,11 @@ class SCR_StatisticsDrawerEntity : GenericEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_StatisticsDrawerEntity()
 	{
 		if (m_aRecords)
-		{
 			Close();
-		}
 	}
-
-};
+}
 #endif

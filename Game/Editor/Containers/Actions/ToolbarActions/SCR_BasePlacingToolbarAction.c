@@ -6,7 +6,7 @@ class SCR_BasePlacingToolbarAction : SCR_EditorToolbarAction
 	
 	override bool CanBeShown(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition, int flags)
 	{
-		Print("CanBeShown condition method not overriden for action, action won't show", LogLevel.WARNING);
+		Print("CanBeShown condition method not overridden for action, action won't show", LogLevel.WARNING);
 		return false;
 	}
 	

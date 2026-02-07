@@ -1,7 +1,3 @@
-//------------------------------------------------------------------------------------------------
-/*!
-	Class generated via ScriptWizard.
-*/
 class SCR_2DPiPScopeZeroingGenerator : ScriptedBaseZeroingGenerator
 {
 	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Reference projectile", params: "et")]
@@ -9,17 +5,8 @@ class SCR_2DPiPScopeZeroingGenerator : ScriptedBaseZeroingGenerator
 
 	protected SCR_2DPIPSightsComponent m_SightsComponent;
 	protected float m_fFovZoomed;
-	
-	//------------------------------------------------------------------------------------------------
-	void SCR_2DPiPScopeZeroingGenerator()
-	{
-	}
 
 	//------------------------------------------------------------------------------------------------
-	void ~SCR_2DPiPScopeZeroingGenerator()
-	{
-	}
-	
 	override bool WB_InitGenerator()
 	{
 		SetPointInfoGeneration(false);
@@ -34,28 +21,31 @@ class SCR_2DPiPScopeZeroingGenerator : ScriptedBaseZeroingGenerator
 			m_fFovZoomed = Math.RAD2DEG * 2 * Math.Atan2(Math.Tan(Math.DEG2RAD * (s_fReferenceFOV / 2)), magnification);
 			return true;
 		}
-		else 
+		else
+		{
 			return false;
+		}
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	override bool WB_GetZeroingData(float weaponAngle, float distance, out vector offset, out vector angles)
 	{
 		angles[0] = weaponAngle;
 		return true;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override float WB_CalculateWeaponZeroingAnimationValue(float pitch, float distance, out vector offset, out vector angles)
 	{
 		if (m_SightsComponent.GetZeroType() == SCR_EPIPZeroingType.EPZ_CAMERA_TURN)
+		{
 			return angles[0];
-		else 
+		}
+		else
 		{
 			// Unsupported at this point.
 			Print("The Reticle Offset zeroing method is currently unsupported pending Refactor of scopes", LogLevel.ERROR);
 			return 0;
 		}
 	}
-	
-	
-	
-};
+}

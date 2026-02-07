@@ -161,6 +161,6 @@ class SCR_SaveArsenalLoadout : SCR_BaseFactionCheckUserAction
 		
 		super.PerformAction(pOwnerEntity, pUserEntity);
 		
-		m_ArsenalManager.SetPlayerArsenalLoadout(playerId, GameEntity.Cast(pUserEntity), m_ArsenalComponent);
+		m_ArsenalManager.SetPlayerArsenalLoadout(playerId, GameEntity.Cast(pUserEntity), m_ArsenalComponent, SCR_EArsenalSupplyCostType.RESPAWN_COST);
 	}
 };

@@ -1,26 +1,16 @@
-//------------------------------------------------------------------------------------------------
-class SCR_ArmorDamageManagerComponentClass : ScriptedDamageManagerComponentClass
+class SCR_ArmorDamageManagerComponentClass : SCR_DamageManagerComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
-class SCR_ArmorDamageManagerComponent : ScriptedDamageManagerComponent
+class SCR_ArmorDamageManagerComponent : SCR_DamageManagerComponent
 {
 	[Attribute(defvalue: "0.4", uiwidget: UIWidgets.EditBox, desc: "Multiplies rawdamage to be passed to character from this armor piece")]
 	protected float m_fPassedDamageScale;
 
 	//------------------------------------------------------------------------------------------------
-	override protected void OnDamage(
-				  EDamageType type,
-				  float damage,
-				  HitZone pHitZone,
-				  notnull Instigator instigator, 
-				  inout vector hitTransform[3], 
-				  float speed,
-				  int colliderID, 
-				  int nodeID)
+	override protected void OnDamage(notnull BaseDamageContext damageContext)
 	{
-		if (type != EDamageType.KINETIC && type != EDamageType.MELEE)
+		if (damageContext.damageType != EDamageType.KINETIC && damageContext.damageType != EDamageType.MELEE)
 			return;
 
 		IEntity parent = GetOwner();
@@ -40,7 +30,7 @@ class SCR_ArmorDamageManagerComponent : ScriptedDamageManagerComponent
 		if (!charDamMan)
 			return;
 
-		charDamMan.ArmorHitEventEffects(damage);
-		charDamMan.ArmorHitEventDamage(type, damage * m_fPassedDamageScale, instigator.GetInstigatorEntity());
+		charDamMan.ArmorHitEventEffects(damageContext.damageValue);
+		charDamMan.ArmorHitEventDamage(damageContext.damageType, damageContext.damageValue * m_fPassedDamageScale, damageContext.instigator.GetInstigatorEntity());
 	}
 }

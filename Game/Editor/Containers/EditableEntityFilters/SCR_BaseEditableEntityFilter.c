@@ -743,7 +743,7 @@ class SCR_BaseEditableEntityFilter
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	/*! @name Override Functions
-	Functions to be overriden by child classes (all of them local to the editor owner).
+	Functions to be overridden by child classes (all of them local to the editor owner).
 	*/
 	///@{
 	/*!

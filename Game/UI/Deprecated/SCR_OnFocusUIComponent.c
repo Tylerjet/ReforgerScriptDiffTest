@@ -4,7 +4,7 @@ If focused will send out event
 */
 class SCR_OnFocusUIComponent: ScriptedWidgetComponent
 {	
-	protected ref ScriptInvoker Event_OnFocusChanged = new ref ScriptInvoker;
+	protected ref ScriptInvoker Event_OnFocusChanged = new ScriptInvoker;
 	
 	ScriptInvoker GetOnFocusChanged()
 	{

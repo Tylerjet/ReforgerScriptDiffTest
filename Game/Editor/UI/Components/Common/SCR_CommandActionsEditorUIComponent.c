@@ -1,29 +1,28 @@
-//------------------------------------------------------------------------------------------------
 class SCR_CommandActionsEditorUIComponent : SCR_BaseContextMenuEditorUIComponent
 {
 	protected SCR_CommandActionsEditorComponent m_CommandActionsComponent;
 	protected SCR_BaseEditableEntityFilter m_Filter;
 	protected EEditorCommandActionFlags m_State;
 	
-	protected ref ScriptInvoker Event_OnCommandStateChange = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnCommandStateChange = new ScriptInvoker();
 	
-	/*!
-	Get state of commanding.
-	\return State based on selected entities
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get state of commanding.
+	//! \return State based on selected entities
 	EEditorCommandActionFlags GetCommandState()
 	{
 		return m_State;
 	}
-	/*!
-	Get even tcalled every time the commanding state changes.
-	\return Script invoker
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get even tcalled every time the commanding state changes.
+	//! \return Script invoker
 	ScriptInvoker GetOnCommandStateChange()
 	{
 		return Event_OnCommandStateChange;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void PerformDefaultCommand(bool isQueue)
 	{
 		OnOpenActionsMenuDown();
@@ -33,14 +32,19 @@ class SCR_CommandActionsEditorUIComponent : SCR_BaseContextMenuEditorUIComponent
 		m_CommandActionsComponent.PerformDefaultAction(isQueue);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnEditorSetCommand()
 	{
 		PerformDefaultCommand(false);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnEditorAddCommand()
 	{
 		PerformDefaultCommand(true);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnEditorCommandModifier(float value, EActionTrigger reason)
 	{
 		if (reason == EActionTrigger.DOWN)
@@ -54,10 +58,14 @@ class SCR_CommandActionsEditorUIComponent : SCR_BaseContextMenuEditorUIComponent
 			m_Filter.GetOnChanged().Remove(OnSelectedChanged);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnSelectedChanged(EEditableEntityState state, set<SCR_EditableEntityComponent> entitiesInsert, set<SCR_EditableEntityComponent> entitiesRemove)
 	{
 		UpdateState();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateState(bool clear = false)
 	{
 		
@@ -69,6 +77,7 @@ class SCR_CommandActionsEditorUIComponent : SCR_BaseContextMenuEditorUIComponent
 		Event_OnCommandStateChange.Invoke(m_State);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	private void OnMenuUpdate(float tDelta)
 	{
 		m_InputManager.ActivateContext("EditorCommandContext");
@@ -76,6 +85,7 @@ class SCR_CommandActionsEditorUIComponent : SCR_BaseContextMenuEditorUIComponent
 		//m_InputManager.SetContextDebug("EditorCommandActionsContext", true);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttachedScripted(Widget w)
 	{		
 		super.HandlerAttachedScripted(w);
@@ -97,11 +107,13 @@ class SCR_CommandActionsEditorUIComponent : SCR_BaseContextMenuEditorUIComponent
 		m_Filter = SCR_BaseEditableEntityFilter.GetInstance(EEditableEntityState.COMMANDED, true); //--- ToDo: Don't hardcode
 				
 		MenuRootBase menu = GetMenu();
-		if (!menu) return;
+		if (!menu)
+			return;
 		
 		menu.GetOnMenuUpdate().Insert(OnMenuUpdate);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
@@ -119,8 +131,9 @@ class SCR_CommandActionsEditorUIComponent : SCR_BaseContextMenuEditorUIComponent
 			m_Filter.GetOnChanged().Remove(OnSelectedChanged);
 		
 		MenuRootBase menu = GetMenu();
-		if (!menu) return;
+		if (!menu)
+			return;
 		
 		menu.GetOnMenuUpdate().Remove(OnMenuUpdate);
 	}
-};
+}

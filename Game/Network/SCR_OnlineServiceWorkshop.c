@@ -15,17 +15,17 @@ class SCR_ScriptPlatformRequestCallback : ScriptPlatformRequestCallback
 //------------------------------------------------------------------------------------------------	
 class SCR_OnlineServiceBackendCallbacks : BackendCallback
 {
-	ref ScriptInvoker m_OnDownloading = new ref ScriptInvoker();
-	ref ScriptInvoker m_OnSuccess = new ref ScriptInvoker();
-	ref ScriptInvoker m_OnItem = new ref ScriptInvoker();
-	ref ScriptInvoker m_OnDownloadSuccess = new ref ScriptInvoker();
-	ref ScriptInvoker m_OnUnsubscribe = new ref ScriptInvoker();
-	ref ScriptInvoker m_OnScenarios = new ref ScriptInvoker();
-	ref ScriptInvoker m_OnImage = new ref ScriptInvoker();
-	ref ScriptInvoker m_OnDependencies = new ref ScriptInvoker();
+	ref ScriptInvoker m_OnDownloading = new ScriptInvoker();
+	ref ScriptInvoker m_OnSuccess = new ScriptInvoker();
+	ref ScriptInvoker m_OnItem = new ScriptInvoker();
+	ref ScriptInvoker m_OnDownloadSuccess = new ScriptInvoker();
+	ref ScriptInvoker m_OnUnsubscribe = new ScriptInvoker();
+	ref ScriptInvoker m_OnScenarios = new ScriptInvoker();
+	ref ScriptInvoker m_OnImage = new ScriptInvoker();
+	ref ScriptInvoker m_OnDependencies = new ScriptInvoker();
 	
-	ref ScriptInvoker m_OnError = new ref ScriptInvoker();
-	ref ScriptInvoker m_OnTimeout = new ref ScriptInvoker();
+	ref ScriptInvoker m_OnError = new ScriptInvoker();
+	ref ScriptInvoker m_OnTimeout = new ScriptInvoker();
 	
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_OnlineServiceBackendCallbacks()
@@ -101,9 +101,9 @@ class SCR_OnlineServiceBackendCallbacks : BackendCallback
 class SCR_WorkshopCallbackBase : BackendCallback
 {
 	// Script invokers for generic results
-	ref ScriptInvoker m_OnError = new ref ScriptInvoker;
-	ref ScriptInvoker m_OnTimeout = new ref ScriptInvoker;
-	ref ScriptInvoker m_OnSuccess = new ref ScriptInvoker;
+	ref ScriptInvoker m_OnError = new ScriptInvoker;
+	ref ScriptInvoker m_OnTimeout = new ScriptInvoker;
+	ref ScriptInvoker m_OnSuccess = new ScriptInvoker;
 	
 	//------------------------------------------------------------------------------------------------
 	void SCR_WorkshopCallbackBase()
@@ -165,8 +165,8 @@ class SCR_WorkshopApiCallback_RequestPage : SCR_WorkshopCallbackBase
 {
 	int m_iPageId;
 	
-	ref ScriptInvoker m_OnDownloadImage = new ref ScriptInvoker;
-	ref ScriptInvoker m_OnGetAssets = new ref ScriptInvoker;
+	ref ScriptInvoker m_OnDownloadImage = new ScriptInvoker;
+	ref ScriptInvoker m_OnGetAssets = new ScriptInvoker;
 
 		
 	void SCR_WorkshopApiCallback_RequestPage(int pageId)
@@ -210,10 +210,10 @@ class SCR_WorkshopApiCallback_RequestPage : SCR_WorkshopCallbackBase
 class SCR_WorkshopItemCallback_AskDetails : SCR_WorkshopCallbackBase
 {
 	WorkshopItem m_Item;
-	ref ScriptInvoker m_OnGetAsset = new ref ScriptInvoker;
-	ref ScriptInvoker m_OnGetDependencyTree = new ref ScriptInvoker;
-	ref ScriptInvoker m_OnDownloadImage = new ref ScriptInvoker;
-	ref ScriptInvoker m_OnGetAssetScenarios = new ref ScriptInvoker; // outdated
+	ref ScriptInvoker m_OnGetAsset = new ScriptInvoker;
+	ref ScriptInvoker m_OnGetDependencyTree = new ScriptInvoker;
+	ref ScriptInvoker m_OnDownloadImage = new ScriptInvoker;
+	ref ScriptInvoker m_OnGetAssetScenarios = new ScriptInvoker; // outdated
 	
 	//-----------------------------------------------------------------------------------------------
 	void SCR_WorkshopItemCallback_AskDetails(WorkshopItem item)

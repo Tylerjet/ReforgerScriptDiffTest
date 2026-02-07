@@ -1,4 +1,4 @@
-#ifdef WORKBENCH
+#ifdef WORKBENCH // this config is only related to a Workbench tool (SCR_ObjectBrushTool)
 [BaseContainerProps(configRoot: true)]
 class SCR_ObjectBrushArrayConfig
 {
@@ -6,6 +6,7 @@ class SCR_ObjectBrushArrayConfig
 	ref array<ref SCR_ObjectBrushObjectBase> m_aObjectArray;
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_ObjectBrushArrayConfig()
 	{
 		if (!m_aObjectArray)
@@ -13,7 +14,6 @@ class SCR_ObjectBrushArrayConfig
 	}
 }
 
-//! Do not forget to update the Copy() method after adding a member variable
 [BaseContainerProps()]
 class SCR_ObjectBrushObjectBase : SCR_ForestGeneratorTreeBase
 {
@@ -46,4 +46,4 @@ class SCR_ObjectBrushObjectBase : SCR_ForestGeneratorTreeBase
 
 	int m_iSubareaIndex;
 }
-#endif
+#endif // WORKBENCH

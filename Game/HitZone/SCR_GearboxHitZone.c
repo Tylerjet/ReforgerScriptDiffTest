@@ -14,6 +14,8 @@ class SCR_GearboxHitZone : SCR_VehicleHitZone
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(IEntity pOwnerEntity, GenericComponent pManagerComponent)
 	{
+		super.OnInit(pOwnerEntity, pManagerComponent);
+		
 		Vehicle vehicle = Vehicle.Cast(pOwnerEntity.GetRootParent());
 		if (!vehicle)
 			return;

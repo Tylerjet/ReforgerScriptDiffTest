@@ -1,9 +1,7 @@
-// Script File
-
 [ComponentEditorProps(category: "GameScripted/AI", description: "Component for utility AI system calculations")]
-class SCR_AICombatComponentClass: ScriptComponentClass
+class SCR_AICombatComponentClass : ScriptComponentClass
 {
-};
+}
 
 enum EAISkill
 {
@@ -13,18 +11,17 @@ enum EAISkill
 	VETERAN	= 70,
 	EXPERT 	= 80,
 	CYLON  	= 100
-};
-
+}
 
 // be aware it is used for bitmask
 enum EAICombatActions
 {
-	HOLD_FIRE = 1,
-	BURST_FIRE = 2,
+	HOLD_FIRE = 1, // No longer/not yet used
+	BURST_FIRE = 2, // No longer used
 	SUPPRESSIVE_FIRE = 4,
 	MOVEMENT_WHEN_FIRE = 8,
 	MOVEMENT_TO_LAST_SEEN = 16,
-};
+}
 
 enum EAICombatType
 {
@@ -33,98 +30,96 @@ enum EAICombatType
 	SUPPRESSIVE,
 	RETREAT,
 	SINGLE_SHOT
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_AICombatComponent : ScriptComponent
 {
-	//-------------------------------------------------------------------------------------------------
 	// Constants
-	protected static const int	ENEMIES_SIMPLIFY_THRESHOLD = 12;
-	protected static const float	RIFLE_BURST_RANGE_SQ = 50*50;
+	static const int			 TARGET_ENDANGERED_TIMEOUT_S = 10;				//!< How long after last time target was endangering we stop treating it as such
+	static const float			 ENDANGERING_TARGET_SCORE_MULTIPLIER = 1.05;	//!< Multiplier of target score if target is considered endangering
 	
+	// Score increments for assigned targets and endangering targets
 	protected static const float ASSIGNED_TARGETS_SCORE_INCREMENT = 30.0;
 	protected static const float ENDANGERING_TARGETS_SCORE_INCREMENT = 15.0;
 	
-	// The object wrapping the weapon&target selection algorithm
+	// Constants related to weapon&target selector
+	static const float TARGET_MAX_LAST_SEEN_VISIBLE = 0.5;		//!< 'IsTargetVisible' variable in attack tree relies on this
 	protected static const float TARGET_MAX_LAST_SEEN_DIRECT_ATTACK = 1.6;
+	          static const float TARGET_MAX_LAST_SEEN_INDIRECT_ATTACK = 6.0;
+	          static const float TARGET_MAX_LAST_SEEN_INDIRECT_ATTACK_MG = 11.0;
+	          static const float TARGET_MAX_LAST_SEEN = 45.0;	
+	protected static const float TARGET_MIN_INDIRECT_TRACE_FRACTION_MIN = 0.5;	//!< Min value of TraceFraction for indirect attacks. \see BaseTarget.GetTraceFraction.
 	protected static const float TARGET_MAX_DISTANCE_INFANTRY = 500.0;
 	protected static const float TARGET_MAX_DISTANCE_VEHICLE = 700.0;
-	protected static const float TARGET_MAX_DISTANCE_DISARMED = 0.0;		// Max distance at which disarmed targets are considered for attack. Now it's 0, so they never shoot disarmed targets
-	protected static const float TARGET_MAX_TIME_SINCE_ENDANGERED = 5.0; 	// Max time since we were endangered to consider the enemy target endangering
-	protected static const float TARGET_INVISIBLE_TIME = 5.0; 				// how long in until invisible target becomes logically invisible
-	protected static const float TARGET_INVESTIGATE_TIME = 7.0;				// how long before investigating the target's location 
-	protected static const float TARGET_FORGET_TIME = 60;					// how long before forgetting the target 
-	protected static const float TARGET_SCORE_RETREAT = 75.0;				// Threshold for target score for retreating from that target
-			  static const float TARGET_SCORE_HIGH_PRIORITY_ATTACK = 96.0;	// Threshold for high priority attack
+	protected static const float TARGET_MAX_DISTANCE_DISARMED = 0.0;		//!< Max distance at which disarmed targets are considered for attack. Now it's 0, so they never shoot disarmed targets
+	protected static const float TARGET_MAX_TIME_SINCE_ENDANGERED = 5.0; 	//!< Max time since we were endangered to consider the enemy target endangering
+	protected static const float TARGET_SCORE_RETREAT = 75.0;				//!< Threshold for target score for retreating from that target
+	static const float TARGET_SCORE_HIGH_PRIORITY_ATTACK = 98.5;			//!< Threshold for high priority attack
 	
 	protected static ref array<EWeaponType> s_aWeaponBlacklistFragGrenades = {EWeaponType.WT_FRAGGRENADE};
 	
 	// Perception factors
-	protected const float PERCEPTION_FACTOR_SAFE = 1.0;			// We are safe and are good at recognizing enemies
-	protected const float PERCEPTION_FACTOR_VIGILANT = 2.5;		// When vigilant and alert we are very good at recognizing enemies
+	protected const float PERCEPTION_FACTOR_SAFE = 1.0;			//!< We are safe and are good at recognising enemies
+	protected const float PERCEPTION_FACTOR_VIGILANT = 2.5;		//!< When vigilant and alert we are very good at recognising enemies
 	protected const float PERCEPTION_FACTOR_ALERTED = 2.5;
 	protected const float PERCEPTION_FACTOR_THREATENED = 0.4;	// We are suppressed and are bad at recognizing enemies
 	
-	protected const float PERCEPTION_FACTOR_EQUIPMENT_BINOCULARS = 3.0;	// Looking through binoculars
-	protected const float PERCEPTION_FACTOR_EQUIPMENT_NONE = 1.0;		// Not using any special equipment, same recognition ability as usual
+	protected const float PERCEPTION_FACTOR_EQUIPMENT_BINOCULARS = 3.0;	//!< Looking through binoculars
+	protected const float PERCEPTION_FACTOR_EQUIPMENT_NONE = 1.0;		//!< Not using any special equipment, same recognition ability as usual
 	
+	//! Beyond this distance AI considers shooting as long range fire, used for danger events
+	static const float LONG_RANGE_FIRE_DISTANCE = 200.0;
 	
 	protected SCR_ChimeraAIAgent m_Agent;
 	protected SCR_CharacterControllerComponent		m_CharacterController;
 	protected SCR_InventoryStorageManagerComponent	m_InventoryManager;
-	protected EventHandlerManagerComponent			m_EventHandlerManagerComponent;
 	protected BaseWeaponManagerComponent			m_WpnManager;
 	protected SCR_CompartmentAccessComponent		m_CompartmentAccess;
-	protected ScriptedDamageManagerComponent		m_DamageManager;
+	protected SCR_DamageManagerComponent		m_DamageManager;
 	protected PerceptionComponent 					m_Perception;
 	protected SCR_AIInfoComponent					m_AIInfo;
 	protected SCR_AIUtilityComponent				m_Utility;
 	
 	// Cached data about current vehicle and compartment
-	protected IEntity m_CurrentVehicle;								// Current vehicle. It's not always same as compartment owner!
-	protected bool m_bCurrentVehicleEvac;							// True if we're exiting vehicle because of damage/fire
-	protected SCR_BaseCompartmentManagerComponent m_CurrentVehicleCompartmentManager;	// Vehicle's compartment manager
-	protected BaseCompartmentSlot m_CurrentCompartmentSlot;			// Current compartment slot
-	protected TurretControllerComponent m_CurrentTurretController;	// Current turret controller (if we are in a turret)
+	protected IEntity m_CurrentVehicle;								//!< Current vehicle. It's not always same as compartment owner!
+	protected bool m_bCurrentVehicleEvac;							//!< True if we're exiting vehicle because of damage/fire
+	protected SCR_BaseCompartmentManagerComponent m_CurrentVehicleCompartmentManager;	//!< Vehicle's compartment manager
+	protected BaseCompartmentSlot m_CurrentCompartmentSlot;			//!< Current compartment slot
+	protected TurretControllerComponent m_CurrentTurretController;	//!< Current turret controller (if we are in a turret)
 
-	protected EAICombatActions	m_iAllowedActions; //will be initialized with default combat type
+	protected EAICombatActions	m_iAllowedActions; //!< will be initialised with default combat type
 	protected EAICombatType		m_eCombatType = EAICombatType.NORMAL;
 	protected EAICombatType		m_eDefaultCombatType = EAICombatType.NORMAL;
 
-	
 	[Attribute("50", UIWidgets.ComboBox, "AI skill in combat", "", ParamEnumArray.FromEnum(EAISkill) )]
 	protected EAISkill m_eAISkillDefault;
+
 	protected EAISkill m_eAISkill;
 	
-	
-	//-------------------------------------------------------------------------------------------------
 	// Belongs to friendly in aim check
 	protected bool m_bFriendlyAimLastResult;
-	protected ref array<BaseTarget> m_FriendlyTargets = {};
 	#ifdef WORKBENCH
 	protected ref Shape m_FriendlyAimShape;
 	#endif
 	
-	//-------------------------------------------------------------------------------------------------	
 	// Weapon and target selection
 	ref AIWeaponTargetSelector m_WeaponTargetSelector = new AIWeaponTargetSelector();
 	private ref BaseTarget	m_SelectedTarget;
-	protected ref BaseTarget m_SelectedRetreatTarget;				// Target we should retreat from
-	protected ref array<IEntity> m_aAssignedTargets = {};			// Array with assigned targets. Their score is increased.
-	protected SCR_AITargetClusterState m_TargetClusterState;		// Assigned target cluster from our group
-	protected EAIUnitType m_eExpectedEnemyType = EAIUnitType.UnitType_Infantry;	// Enemy type we expect to fight
-	protected ResourceName m_SelectedWeaponResource;				// selected weapon handle tree read from config
+	protected ref BaseTarget m_SelectedRetreatTarget;				//!< Target we should retreat from
+	protected ref array<IEntity> m_aAssignedTargets = {};			//!< Array with assigned targets. Their score is increased.
+	protected SCR_AITargetClusterState m_TargetClusterState;		//!< Assigned target cluster from our group
+	protected EAIUnitType m_eExpectedEnemyType = EAIUnitType.UnitType_Infantry;	//!< Enemy type we expect to fight
+	protected ResourceName m_SelectedWeaponResource;				//!< selected weapon handle tree read from config
 
 	// Weapon selection against a specific target and its properties
-	protected BaseWeaponComponent m_SelectedWeaponComp; // Weapon, muzzle and magazine which we want to equip.
-	protected BaseMagazineComponent m_SelectedMagazineComp; // Character might currently have a different one though.
+	protected BaseWeaponComponent m_SelectedWeaponComp;				//!< Weapon, muzzle and magazine which we want to equip.
+	protected BaseMagazineComponent m_SelectedMagazineComp;			//!< Character might currently have a different one though.
 	protected int m_iSelectedMuzzle;
 	protected float m_fSelectedWeaponMinDist;
 	protected float m_fSelectedWeaponMaxDist;
 	protected bool m_bSelectedWeaponDirectDamage;
 	protected EAIUnitType m_eUnitTypesCanAttack;
-	protected BaseCompartmentSlot m_WeaponEvaluationCompartment; // Compartment at previous weapon evaluation
+	protected BaseCompartmentSlot m_WeaponEvaluationCompartment;	//!< Compartment at previous weapon evaluation
 	
 	// Weapon selection updates
 	protected float m_fNextWeaponTargetEvaluation_ms = 0;
@@ -136,25 +131,27 @@ class SCR_AICombatComponent : ScriptComponent
 	// Turret dismounting
 	protected float m_fDismountTurretTimer;
 	protected static const float DISMOUNT_TURRET_TARGET_LAST_SEEN_MAX_S = 100;
-	protected static const float TURRET_TARGET_EXCESS_ANGLE_THRESHOLD_DEG = 3.0; // We will dismount turret when target's angle exceeds turret limits by this value
-	protected const float DISMOUNT_TURRET_TIMER_MS = 1200; // How much time must pass till we decide to dismount a turret if enemy is out of turret limits.
-	static ref array<EVehicleType> s_aForbidDismountTurretsOfVehicleTypes = {EVehicleType.APC}; // Array of vehicle types we should not dismount when turret can't shoot the target
+	protected static const float TURRET_TARGET_EXCESS_ANGLE_THRESHOLD_DEG = 3.0;	//!< We will dismount turret when target's angle exceeds turret limits by this value
+	protected const float DISMOUNT_TURRET_TIMER_MS = 1200;							//!< How much time must pass until we decide to dismount a turret if enemy is out of turret limits.
+	protected static ref array<EVehicleType> s_aForbidDismountTurretsOfVehicleTypes = { EVehicleType.APC }; //!< Array of vehicle types we should not dismount when turret cannot shoot the target
 	
 	// Perception
-	protected float m_fEquipmentPerceptionFactor = 1.0; // How good we can spot targets based on our current equipment. Updated by RecalculateEquipmentPerceptionFactor().
+	protected float m_fEquipmentPerceptionFactor = 1.0;	//!< How good we can spot targets based on our current equipment. Updated by RecalculateEquipmentPerceptionFactor().
+	protected float m_fPerceptionFactor = 1.0;			//!< Perception factor which is set by SetPerceptionFactor(). It acts as multiplier.
 	
-	// Gadget state. Used for detection when we use binoculars.
-	EGadgetType m_eCurrentGadgetType = -1;
-	bool m_bGadgetFocus = false; // True when we are in gadget focus mode (like looking through binoculars)
+	protected EGadgetType m_eCurrentGadgetType = -1;	//!< Gadget state. Used for detection when we use binoculars.
+	protected bool m_bGadgetFocus = false;				//!< True when we are in gadget focus mode (like looking through binoculars)
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	EAISkill GetAISkill()
 	{
 		return m_eAISkill;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// use this to change AIskill dynamically
+	//! Use this to change AIskill dynamically
+	//! \param[in] skill
 	void SetAISkill(EAISkill skill)
 	{
 		#ifdef AI_DEBUG
@@ -165,7 +162,21 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// use this to reset AI skill to default
+	//! Sets perception ability. Affects speed at which perception detects targets.
+	//! Bigger value means proportionally faster detection.
+	//! Provided value must be non-negative
+	//! !!! Now it only affects visual detection.
+	//! \param[in] value
+	void SetPerceptionFactor(float value)
+	{
+		if (value < 0)
+			value = 0;
+		m_fPerceptionFactor = value;
+		UpdatePerceptionFactor(m_Perception, m_Utility.m_ThreatSystem);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! use this to reset AI skill to default
 	void ResetAISkill()
 	{
 		#ifdef AI_DEBUG
@@ -176,6 +187,7 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	EWeaponType GetCurrentWeaponType()
 	{
 		BaseWeaponComponent currentWeapon = null;
@@ -199,24 +211,28 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	BaseTarget GetCurrentTarget()
 	{
 		return m_SelectedTarget;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	BaseTarget GetRetreatTarget()
 	{
 		return m_SelectedRetreatTarget;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	BaseTarget GetLastSeenEnemy()
 	{
 		return m_Perception.GetLastSeenTarget(ETargetCategory.ENEMY, float.MAX);
 	}	
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	// Finds out if some of my known enemies is aimng at me. 
 	BaseTarget GetEndangeringEnemy()
 	{
@@ -233,6 +249,8 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] ent
+	//! \return
 	bool IsEnemyKnown(IEntity ent)
 	{
 		bool knownAsEnemy = m_Perception.GetTargetPerceptionObject(ent, ETargetCategory.ENEMY);
@@ -241,11 +259,15 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! selectedWeaponChanged - when true, selected weapon, muzzle or magazine has changed
-	//! selectedTargetChanged - when true, selected target has changed
-	//! outRetreatTargetChanged - when true, the most dangerous target we should retreat from has changed since last evaluation
-	//! outCompartmentChanged - when true, compartment has changed since last evaluation
+	//!
+	//! \param[out] outWeaponEvent when true, selected weapon, muzzle or magazine has changed
+	//! \param[out] outSelectedTargetChanged when true, selected target has changed
+	//! \param[out] outPrevTarget
+	//! \param[out] outCurrentTarget
+	//! \param[out] outRetreatTargetChanged when true, the most dangerous target we should retreat from has changed since last evaluation
+	//! \param[out] outCompartmentChanged when true, compartment has changed since last evaluation
 	void EvaluateWeaponAndTarget(out bool outWeaponEvent, out bool outSelectedTargetChanged,
+		out BaseTarget outPrevTarget, out BaseTarget outCurrentTarget,
 		out bool outRetreatTargetChanged, out bool outCompartmentChanged)
 	{
 		float worldTime = GetGame().GetWorld().GetWorldTime();
@@ -271,6 +293,7 @@ class SCR_AICombatComponent : ScriptComponent
 		bool compartmentChanged = false;
 		
 		// Resolve if we want to think of throwing grenade
+		// Grenade throw is synchronized via group
 		array<EWeaponType> weaponBlacklist;
 		if (groupInfoComp)
 		{
@@ -307,11 +330,6 @@ class SCR_AICombatComponent : ScriptComponent
 							newMuzzleId != m_iSelectedMuzzle ||
 							newMagazineComp != m_SelectedMagazineComp;
 			
-			if (newTarget && newWeaponComp)
-			{
-				SelectWeaponFireMode(newTarget, newWeaponComp);
-			}
-			
 			bool weaponOrMuzzleChanged = newWeaponComp != m_SelectedWeaponComp ||
 									newMuzzleId != m_iSelectedMuzzle;
 			
@@ -341,8 +359,15 @@ class SCR_AICombatComponent : ScriptComponent
 			m_SelectedMagazineComp = newMagazineComp;
 		}
 		
-		if (SelectTarget(newTarget))
+		BaseTarget prevTarget = m_SelectedTarget;
+		if (newTarget != m_SelectedTarget)
+		{
+			#ifdef AI_DEBUG
+			AddDebugMessage(string.Format("Target has changed. New: %1, Previous: %2", newTarget, m_SelectedTarget));
+			#endif
+			m_SelectedTarget = newTarget;
 			selectedTargetChanged = true;
+		}
 		
 		// Check if we must retreat from some target
 		BaseTarget targetCantAttack;
@@ -368,51 +393,21 @@ class SCR_AICombatComponent : ScriptComponent
 		outSelectedTargetChanged = selectedTargetChanged;
 		outRetreatTargetChanged = retreatTargetChanged;
 		outCompartmentChanged = compartmentChanged;
+		outCurrentTarget = newTarget;
+		outPrevTarget = prevTarget;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	bool SelectTarget(BaseTarget newTarget)
+	SCR_AIInfoComponent GetAIInfoComponent()
 	{
-		
-		if (newTarget == m_SelectedTarget)
-			return false;
-		
-		#ifdef AI_DEBUG
-		AddDebugMessage(string.Format("Target has changed. New: %1, Previous: %2", newTarget, m_SelectedTarget));
-		#endif
-		
-		m_SelectedTarget = newTarget;
-		
-		// suppressive regime is cleared when target is changed
-		if (GetCombatType() == EAICombatType.SUPPRESSIVE)
-			ResetCombatType();
-		
-		return true;
+		return m_AIInfo;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SelectWeaponFireMode(BaseTarget newTarget, BaseWeaponComponent newWeaponComp)
-	{
-		if (!newTarget || !newWeaponComp)
-			return;
-		
-		float targetDistanceSq = vector.DistanceSq(GetOwner().GetOrigin(), newTarget.GetTargetEntity().GetOrigin());
-		
-		EWeaponType wt = newWeaponComp.GetWeaponType();
-		
-		bool burstFire = false;
-		if (wt == EWeaponType.WT_MACHINEGUN)
-			burstFire = true;
-		else if (targetDistanceSq < RIFLE_BURST_RANGE_SQ)
-			burstFire = WeaponHasBurstOrAutoMode(newWeaponComp);
-		else
-			burstFire = false;
-		
-		SetActionAllowed(EAICombatActions.BURST_FIRE, burstFire);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	// Checks amount of magazines for given weapon, and if low on ammo, reports that to group
+	//! Checks amount of magazines for given weapon, and if low on ammo, reports that to group
+	//! \param[in] weaponComp
+	//! \param[in] muzzleId
+	//! \return
 	bool EvaluateLowAmmo(BaseWeaponComponent weaponComp, int muzzleId)
 	{
 		if (!weaponComp)
@@ -450,6 +445,8 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] timeSliceMs
 	void Update(float timeSliceMs)
 	{
 		// Evaluate if we must dismount turret - only if we are already in turret
@@ -460,6 +457,9 @@ class SCR_AICombatComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	//! Condition to dismount turret
 	//! Returns true when we should dismount it immediately
+	//! \param[in,out] targetPos
+	//! \param[in] targetPosProvided
+	//! \return
 	bool DismountTurretCondition(inout vector targetPos, bool targetPosProvided)
 	{
 		// False if not in turret
@@ -554,7 +554,11 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// Adds action to dismount turret, investigate, and go back
+	//! Adds action to dismount turret, investigate, and go back
+	//! \param[in] targetPos
+	//! \param[in] addGetOut
+	//! \param[in] addInvestigate
+	//! \param[in] addGetIn
 	void TryAddDismountTurretActions(vector targetPos, bool addGetOut = true, bool addInvestigate = true, bool addGetIn = true)
 	{
 		BaseCompartmentSlot compartmentSlot = m_CurrentCompartmentSlot;
@@ -592,7 +596,6 @@ class SCR_AICombatComponent : ScriptComponent
 		}
 	}
 	
-	//------------------------------------------------------------------------------------------------
 	protected static const float DISTANCE_MAX = 22; 
 	protected static const float DISTANCE_MIN = 6; // Minimal distance when movement is allowed
 	private static const float NEAR_PROXIMITY = 2;
@@ -600,6 +603,8 @@ class SCR_AICombatComponent : ScriptComponent
 	protected const float m_StopDistance = 30 + Math.RandomFloat(0, 10); 
 	// TODO: add possibility to get cover towards custom position
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	vector FindNextCoverPosition()
 	{
 		if (!m_SelectedTarget)
@@ -657,29 +662,6 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	static bool WeaponHasBurstOrAutoMode(notnull BaseWeaponComponent weaponComp)
-	{
-		if (!weaponComp)
-			return false;
-		
-		BaseMuzzleComponent muzzle = weaponComp.GetCurrentMuzzle();
-		if (!muzzle)
-			return false;
-		
-		array<BaseFireMode> fireModes = new array<BaseFireMode>();
-		int count = muzzle.GetFireModesList(fireModes);
-		foreach (BaseFireMode mode : fireModes)
-		{
-			EWeaponFiremodeType modeType = mode.GetFiremodeType();
-			if (modeType == EWeaponFiremodeType.Burst || modeType == EWeaponFiremodeType.Auto)
-			{
-				return true;
-			}
-		}
-		return false;
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	protected void Event_OnInventoryChanged(IEntity item, BaseInventoryStorageComponent storageOwner)
 	{
 		// This event spams so much, especially at start, we want to process it only once
@@ -693,7 +675,12 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void Event_OnCompartmentEntered( IEntity vehicle, BaseCompartmentManagerComponent manager, int mgrID, int slotID )
+	//!
+	//! \param[in] vehicle
+	//! \param[in] manager
+	//! \param[in] mgrID
+	//! \param[in] slotID
+	protected void Event_OnCompartmentEntered( IEntity vehicle, BaseCompartmentManagerComponent manager, int mgrID, int slotID )
 	{
 		m_CurrentCompartmentSlot = manager.FindCompartment(slotID, mgrID);
 		IEntity compartmentEntity = m_CurrentCompartmentSlot.GetOwner();
@@ -703,7 +690,12 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void Event_OnCompartmentLeft( IEntity vehicle, BaseCompartmentManagerComponent manager, int mgrID, int slotID )
+	//!
+	//! \param[in] vehicle
+	//! \param[in] manager
+	//! \param[in] mgrID
+	//! \param[in] slotID
+	protected void Event_OnCompartmentLeft( IEntity vehicle, BaseCompartmentManagerComponent manager, int mgrID, int slotID )
 	{
 		m_CurrentVehicle = null;
 		m_bCurrentVehicleEvac = false;
@@ -736,9 +728,9 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void Event_OnDamage(EDamageType dType, float dps, HitZone hz)
+	protected void Event_OnDamage(BaseDamageContext damageContext)
 	{
-		if (dType != EDamageType.FIRE || !m_Utility || !m_CurrentVehicle || m_bCurrentVehicleEvac)
+		if (damageContext.damageType != EDamageType.FIRE || !m_Utility || !m_CurrentVehicle || m_bCurrentVehicleEvac)
 			return;
 		
 		// Fire damage inside a vehicle - evac vehicle
@@ -756,7 +748,7 @@ class SCR_AICombatComponent : ScriptComponent
 	{
 		if (dType != EDamageType.BLEEDING || !m_Utility || !m_Utility.m_AIInfo)
 			return;
-				
+		
 		SCR_AIActionBase currentAction = SCR_AIActionBase.Cast(m_Utility.GetCurrentAction());
 		if (!currentAction)
 			return;
@@ -785,10 +777,20 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] action
+	//! \return
 	// Checks if unit is allowed to do action from the allowed actions enum
 	bool IsActionAllowed(EAICombatActions action)
 	{
 		return (m_iAllowedActions & action);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	EAICombatActions GetAllowedActions()
+	{
+		return m_iAllowedActions;
 	}
 	
 	//------------------------------------------------------------------------------------------------	
@@ -808,6 +810,7 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------	
+	//! \param[in] isHoldFire
 	void SetHoldFire(bool isHoldFire)
 	{
 		#ifdef AI_DEBUG
@@ -827,6 +830,7 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	EAICombatType GetCombatType()
 	{
 		return m_eCombatType;
@@ -835,6 +839,7 @@ class SCR_AICombatComponent : ScriptComponent
 	// For current AI combat type can be changed during the behaviors
 	// If you want AI to come bac to your state you have to set also default
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] combatType
 	void SetCombatType(EAICombatType combatType)
 	{
 		#ifdef AI_DEBUG
@@ -890,9 +895,10 @@ class SCR_AICombatComponent : ScriptComponent
 #endif
 	}
 	
-	// When AI use reset e.g. after bounding overwatch it is reseted to default combat type
-	// You have to also call SetCombatType to have immediate effect.
 	//------------------------------------------------------------------------------------------------
+	//! When AI use reset e.g. after bounding overwatch it is resetted to default combat type
+	//! You have to also call SetCombatType to have immediate effect.
+	//! \param[in] combatType
 	void SetDefaultCombatType(EAICombatType combatType)
 	{
 		#ifdef AI_DEBUG
@@ -903,6 +909,7 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void ResetCombatType()
 	{
 		#ifdef AI_DEBUG
@@ -913,6 +920,7 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsFriendlyInAim()
 	{
 		IEntity friendlyEntInAim = m_Perception.GetFriendlyInLineOfFire();
@@ -928,7 +936,24 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 		
 	//------------------------------------------------------------------------------------------------
+	//! Checks if given target can be considered visible
+	//! \param[in] target
+	//! \return
+	bool IsTargetVisible(notnull BaseTarget target)
+	{
+		// When m_lastSeenMax value is lower than perception component update interval,
+		// which might be large at higher LOD levels, the decorator might periodically return false,
+		// even when target is still visible.
+		// Therefore we must prevent the threshold from being smaller than update interval of perception component.		
+		float lastSeenMax = Math.Max(TARGET_MAX_LAST_SEEN_VISIBLE, m_Perception.GetUpdateInterval()) + 0.02;
+		bool visible = target.GetTimeSinceSeen() < lastSeenMax;
+		return visible;
+	}
+		
+	//------------------------------------------------------------------------------------------------
 	//! Either array of targets or target cluster must be provided
+	//! \param[in] assignedTargets
+	//! \param[in] clusterState
 	void SetAssignedTargets(array<IEntity> assignedTargets, SCR_AITargetClusterState clusterState)
 	{
 		m_aAssignedTargets.Clear();
@@ -940,6 +965,7 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void ResetAssignedTargets()
 	{
 		m_aAssignedTargets.Clear();
@@ -947,22 +973,27 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] expectedEnemyType
 	void SetExpectedEnemyType(EAIUnitType expectedEnemyType)
 	{
 		m_eExpectedEnemyType = expectedEnemyType;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void ResetExpectedEnemyType()
 	{
 		m_eExpectedEnemyType = EAIUnitType.UnitType_Infantry;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Returns the weapon which combat component thinks is best against current target
+	//! Getters which return the weapon which combat component thinks is best against current target
 	//! If there is no current target, then there is no selected weapon as well!
 	//! In that case use GetExpectedWeapon
-	void GetSelectedWeapon(out BaseWeaponComponent outWeaponComp, out int outMuzzleId, out BaseMagazineComponent outMagazineComp)
+	//! \param[out] outWeaponComp
+	//! \param[out] outMuzzleId
+	//! \param[out] outMagazineComp
+	void GetSelectedWeaponAndMagazine(out BaseWeaponComponent outWeaponComp, out int outMuzzleId, out BaseMagazineComponent outMagazineComp)
 	{
 		if (m_SelectedWeaponComp)
 		{
@@ -979,6 +1010,36 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[out] outWeaponComp
+	//! \param[out] outMuzzleId
+	void GetSelectedWeapon(out BaseWeaponComponent outWeaponComp, out int outMuzzleId)
+	{
+		if (m_SelectedWeaponComp)
+		{
+			outWeaponComp = m_SelectedWeaponComp;
+			outMuzzleId = m_iSelectedMuzzle;
+		}
+		else
+		{
+			outWeaponComp = null;
+			outMuzzleId = -1;
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	EWeaponType GetSelectedWeaponType()
+	{
+		if (m_SelectedWeaponComp)
+			return m_SelectedWeaponComp.GetWeaponType();
+		else
+			return EWeaponType.WT_NONE;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[out] outMinDistance
+	//! \param[out] outMaxDistance
+	//! \param[out] outDirectDamage
 	void GetSelectedWeaponProperties(out float outMinDistance, out float outMaxDistance, out bool outDirectDamage)
 	{
 		outMinDistance = m_fSelectedWeaponMinDist;
@@ -987,14 +1048,46 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
+	bool GetSelectedWeaponDirectDamage()
+	{
+		return m_bSelectedWeaponDirectDamage;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	float GetSelectedWeaponMinDist()
+	{
+		return m_fSelectedWeaponMinDist;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	float GetSelectedWeaponMaxDist()
+	{
+		return m_fSelectedWeaponMaxDist;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetSelectedWeaponResource()
 	{
 		return m_SelectedWeaponResource;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
+	EAIUnitType GetUnitTypesCanAttack()
+	{
+		return m_eUnitTypesCanAttack;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Returns weapon which combat component thinks is expected to be used this situation
 	//! This should be used for selecting fallback weapon in a situation without an actively attacked target
+	//! \param[out] outWeaponComp
+	//! \param[out] outMuzzleId
+	//! \param[out] outMagazineComp
 	void EvaluateExpectedWeapon(out BaseWeaponComponent outWeaponComp, out int outMuzzleId, out BaseMagazineComponent outMagazineComp)
 	{
 		bool useCompartmentWeapons = m_AIInfo.HasUnitState(EUnitState.IN_TURRET);
@@ -1021,15 +1114,29 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] weaponType
+	//! \return
 	bool HasWeaponOfType(EWeaponType weaponType)
 	{
-		return m_WeaponTargetSelector.CharacterHasWeaponOfType(weaponType);
+		return m_WeaponTargetSelector.HasWeaponOfType(weaponType, false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] weaponType
+	//! \return
+	BaseWeaponComponent FindWeaponOfType(EWeaponType weaponType)
+	{
+		return m_WeaponTargetSelector.FindWeaponOfType(weaponType, false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] magazineWell
+	//! \param[in] countMagazineInWeapon
+	//! \return
 	int GetMagazineCount(typename magazineWell, bool countMagazineInWeapon = false)
 	{
-		int count = m_WeaponTargetSelector.GetCharacterMagazineCount(magazineWell);
+		int count = m_WeaponTargetSelector.GetMagazineCount(magazineWell, false);
 		return count - 1 + countMagazineInWeapon;
 	}
 	
@@ -1043,27 +1150,38 @@ class SCR_AICombatComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
-		m_EventHandlerManagerComponent = EventHandlerManagerComponent.Cast(owner.FindComponent(EventHandlerManagerComponent));
 		m_eAISkill = m_eAISkillDefault;
 		
-		m_CharacterController = SCR_CharacterControllerComponent.Cast(owner.FindComponent(SCR_CharacterControllerComponent));
+		ChimeraCharacter character = ChimeraCharacter.Cast(owner);
+		if (character)
+		{	
+			m_CharacterController = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
 		if (m_CharacterController)
 		{
 			m_CharacterController.m_OnGadgetStateChangedInvoker.Insert(Event_OnGadgetStateChanged);
 			m_CharacterController.m_OnGadgetFocusStateChangedInvoker.Insert(Event_OnGadgetFocusStateChanged);
 		}
 		
-		m_WpnManager = BaseWeaponManagerComponent.Cast(owner.FindComponent(BaseWeaponManagerComponent));
-		m_InventoryManager = SCR_InventoryStorageManagerComponent.Cast(owner.FindComponent(SCR_InventoryStorageManagerComponent));
-		m_CompartmentAccess = SCR_CompartmentAccessComponent.Cast(owner.FindComponent(SCR_CompartmentAccessComponent));
+			m_WpnManager = m_CharacterController.GetWeaponManagerComponent();
+			
+			m_InventoryManager = SCR_InventoryStorageManagerComponent.Cast(m_CharacterController.GetInventoryStorageManager());
+			if (m_InventoryManager)
+			{
+				m_InventoryManager.m_OnItemAddedInvoker.Insert(Event_OnInventoryChanged);
+				m_InventoryManager.m_OnItemRemovedInvoker.Insert(Event_OnInventoryChanged);
+			}
+			
+			m_CompartmentAccess = SCR_CompartmentAccessComponent.Cast(character.GetCompartmentAccessComponent());
 		if (m_CompartmentAccess)
 		{
 			m_CompartmentAccess.GetOnCompartmentEntered().Insert(Event_OnCompartmentEntered);
 			m_CompartmentAccess.GetOnCompartmentLeft().Insert(Event_OnCompartmentLeft);
 		}
+		}	
+			
 		m_Perception = PerceptionComponent.Cast(owner.FindComponent(PerceptionComponent));
 		
-		auto world = GetGame().GetWorld();
+		BaseWorld world = GetGame().GetWorld();
 		if (world)
 		{
 			float worldTime = world.GetWorldTime();
@@ -1071,16 +1189,13 @@ class SCR_AICombatComponent : ScriptComponent
 		}
 		
 		SetCombatType(m_eDefaultCombatType);
-		
-		m_InventoryManager.m_OnItemAddedInvoker.Insert(Event_OnInventoryChanged);
-		m_InventoryManager.m_OnItemRemovedInvoker.Insert(Event_OnInventoryChanged);
-		
+
 		if (owner)
 		{
 			InitWeaponTargetSelector(owner);
 		}
 
-		m_DamageManager = ScriptedDamageManagerComponent.Cast(owner.FindComponent(ScriptedDamageManagerComponent));
+		m_DamageManager = SCR_DamageManagerComponent.Cast(owner.FindComponent(SCR_DamageManagerComponent));
 		if (m_DamageManager)
 		{
 			m_DamageManager.GetOnDamageOverTimeAdded().Insert(Event_OnDamageOverTimeAdded);
@@ -1128,7 +1243,7 @@ class SCR_AICombatComponent : ScriptComponent
 		m_WeaponTargetSelector.Init(owner);
 		
 		// maxLastSeenIndirect must be consistent with conditions in ShouldAttackEndForTarget, therefore we use TARGET_INVISIBLE_TIME here
-		m_WeaponTargetSelector.SetSelectionProperties(TARGET_MAX_LAST_SEEN_DIRECT_ATTACK, TARGET_INVISIBLE_TIME,
+		m_WeaponTargetSelector.SetSelectionProperties(TARGET_MAX_LAST_SEEN_DIRECT_ATTACK, TARGET_MAX_LAST_SEEN_INDIRECT_ATTACK, TARGET_MAX_LAST_SEEN, TARGET_MIN_INDIRECT_TRACE_FRACTION_MIN,
 		TARGET_MAX_DISTANCE_INFANTRY, TARGET_MAX_DISTANCE_VEHICLE, TARGET_MAX_TIME_SINCE_ENDANGERED, TARGET_MAX_DISTANCE_DISARMED);
 		
 		m_WeaponTargetSelector.SetTargetScoreConstants(EAIUnitType.UnitType_Infantry,			100.0,	-0.1); // At short range we prefer to shoot enemies in vehicle
@@ -1140,6 +1255,9 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] perceptionComp
+	//! \param[in] threatSystem
 	void UpdatePerceptionFactor(PerceptionComponent perceptionComp, SCR_AIThreatSystem threatSystem)
 	{
 		EAIThreatState threatState = threatSystem.GetState();
@@ -1157,6 +1275,7 @@ class SCR_AICombatComponent : ScriptComponent
 		}
 		
 		perceptionFactor *= m_fEquipmentPerceptionFactor;
+		perceptionFactor *= m_fPerceptionFactor;
 		
 		perceptionComp.SetPerceptionFactor(perceptionFactor);
 	}
@@ -1171,6 +1290,7 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_AICombatComponent()
 	{
 		GetGame().GetCallqueue().Remove(Event_OnTimerAfterInventoryChanged);
@@ -1188,6 +1308,8 @@ class SCR_AICombatComponent : ScriptComponent
 		w.SetText(str);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_ChimeraAIAgent GetAiAgent()
 	{
 		if (m_Agent)
@@ -1199,6 +1321,9 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] ent
+	//! \return
 	BaseTarget FindTargetByEntity(IEntity ent)
 	{
 		BaseTarget tgt = m_Perception.FindTargetPerceptionObject(ent);
@@ -1212,7 +1337,10 @@ class SCR_AICombatComponent : ScriptComponent
 		return null;
 	}
 	
-	//--------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] entity
+	//! \param[in] targetInfo
 	void UpdateLastSeenPosition(IEntity entity, notnull SCR_AITargetInfo targetInfo)
 	{
 		BaseTarget tgt = m_Perception.FindTargetPerceptionObject(entity);
@@ -1223,7 +1351,10 @@ class SCR_AICombatComponent : ScriptComponent
 			tgt.UpdateLastSeenPosition(targetInfo.m_vWorldPos, targetInfo.m_fTimestamp);
 	}
 	
-	//--------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] tgt
+	//! \param[in] targetInfo
 	void UpdateLastSeenPosition(notnull BaseTarget tgt, notnull SCR_AITargetInfo targetInfo)
 	{		
 		if (targetInfo.m_fTimestamp > tgt.GetTimeLastSeen())
@@ -1231,7 +1362,7 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	#ifdef AI_DEBUG
-	//--------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	protected void AddDebugMessage(string str, LogLevel logLevel = LogLevel.NORMAL)
 	{
 		AIControlComponent controlComp = AIControlComponent.Cast(GetOwner().FindComponent(AIControlComponent));
@@ -1242,82 +1373,4 @@ class SCR_AICombatComponent : ScriptComponent
 		infoComp.AddDebugMessage(str, msgType: EAIDebugMsgType.COMBAT, logLevel);
 	}
 	#endif
-	
-	//------------------------------------------------------------------------------------------------
-	// Contains logic wheather or not should attack end or not based on timeouts, returns true if target is obsolete
-	bool ShouldAttackEndForTarget(BaseTarget enemyTarget, out bool shouldInvestigateFurther = false, out string context = string.Empty)
-	{
-		float timeLastSeen = enemyTarget.GetTimeSinceSeen();
-		IEntity targetEntity = enemyTarget.GetTargetEntity();
-		ETargetCategory targetCategory = enemyTarget.GetTargetCategory();
-		
-		// End if no longer enemy (the case for vehicle which was occupied and became empty)
-		if (targetCategory != ETargetCategory.ENEMY)
-		{
-#ifdef AI_DEBUG
-			AddDebugMessage(string.Format("Ending attack for target: %1. Target category is no longer ETargetCategory.ENEMY", enemyTarget));
-			context = "Target category is no longer ETargetCategory.ENEMY";
-#endif
-			return true;
-		}
-		
-		// End if target entity is deleted
-		if (!targetEntity)
-		{
-#ifdef AI_DEBUG
-			AddDebugMessage(string.Format("Ending attack for target: %1. Target entity is null.", enemyTarget));
-			context = "Target entity is null";
-#endif
-			return true;
-		};
-		
-		// End if not seen for a long time
-		if (timeLastSeen > TARGET_INVISIBLE_TIME)
-		{
-			if (timeLastSeen > TARGET_FORGET_TIME)
-			{
-#ifdef AI_DEBUG
-				AddDebugMessage(string.Format("Ending attack for target: %1. Target is invisible for too long.", enemyTarget));
-				context = "Target is invisible for too long";
-#endif
-				return true;
-			};
-			// investigate or use suppressive fire
-			if (timeLastSeen > TARGET_INVESTIGATE_TIME)
-			{
-				// if static -> forget about target
-				if (m_AIInfo && (m_AIInfo.HasUnitState(EUnitState.IN_TURRET) || !IsActionAllowed(EAICombatActions.MOVEMENT_TO_LAST_SEEN)))
-				{
-#ifdef AI_DEBUG
-					AddDebugMessage(string.Format("Ending attack for target: %1. Agent not allowed to investigate a lost enemy.", enemyTarget));
-					context = "Agent not allowed to investigate a lost enemy";
-#endif
-					return true;
-				}	
-				// if normal combat mode and allow investigate -> move individually
-				else if (GetCombatType() == EAICombatType.NORMAL && IsActionAllowed(EAICombatActions.MOVEMENT_TO_LAST_SEEN))
-				{
-#ifdef AI_DEBUG
-					AddDebugMessage(string.Format("Ending attack for target: %1. Agent will investigate a lost enemy.", enemyTarget));
-					context = "Agent will investigate a lost enemy";
-#endif
-					shouldInvestigateFurther = true;
-					return true;
-				}
-			}
-		}
-		
-		// End if we have no weapons to attack this target
-		if ((enemyTarget.GetUnitType() & m_eUnitTypesCanAttack) == 0)
-		{
-#ifdef AI_DEBUG
-			AddDebugMessage(string.Format("Ending attack for target: %1. No weapons to attack this target.", enemyTarget));
-			context = "No weapons to attack this target";
-#endif
-			shouldInvestigateFurther = false;
-			return true;
-		}
-		
-		return false;
-	}
-};
+}

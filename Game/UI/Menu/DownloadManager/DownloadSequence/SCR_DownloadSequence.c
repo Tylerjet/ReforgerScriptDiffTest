@@ -53,6 +53,7 @@ class SCR_DownloadSequence
 	protected ref ScriptInvokerBase<ScriptInvoker_DownloadSequence> m_OnError;
 	protected ref ScriptInvokerBase<ScriptInvoker_DownloadSequence> m_OnReady;
 	
+	protected ref ScriptInvokerBase<ScriptInvoker_DownloadSequence> m_OnCancel;
 	protected ref ScriptInvokerBase<ScriptInvoker_DownloadSequence> m_OnDestroyed;
 	
 	//------------------------------------------------------------------------------------------------
@@ -89,6 +90,15 @@ class SCR_DownloadSequence
 			m_OnReady = new ScriptInvokerBase<ScriptInvoker_DownloadSequence>();
 		
 		return m_OnReady;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerBase<ScriptInvoker_DownloadSequence> GetOnCancel()
+	{
+		if (!m_OnCancel)
+			m_OnCancel = new ScriptInvokerBase<ScriptInvoker_DownloadSequence>();
+		
+		return m_OnCancel;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -141,6 +151,17 @@ class SCR_DownloadSequence
 			reportedDialog.GetOnAllReportsCanceled().Insert(OnAllReportsCanceled);
 		
 		return reportedDialog;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Cancels this download request.
+	void Cancel()
+	{
+		m_bCanceled = true;
+		m_bWaitingResponse = false;
+		
+		if (m_OnCancel)
+			m_OnCancel.Invoke(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------

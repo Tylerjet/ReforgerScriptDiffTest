@@ -1,33 +1,33 @@
 [ComponentEditorProps(category: "GameScripted/ZoneRestriction", description: "")]
-class SCR_PlayersRestrictionZoneManagerComponentClass: ScriptComponentClass
+class SCR_PlayersRestrictionZoneManagerComponentClass : ScriptComponentClass
 {
-};
-class SCR_PlayersRestrictionZoneManagerComponent: ScriptComponent
+}
+
+class SCR_PlayersRestrictionZoneManagerComponent : ScriptComponent
 {
 	//References
 	protected PlayerManager m_PlayerManager;
 	
 	//Registered restriction zones
-	protected ref set<SCR_EditorRestrictionZoneEntity> m_aRestrictionZones = new ref set<SCR_EditorRestrictionZoneEntity>;
+	protected ref set<SCR_EditorRestrictionZoneEntity> m_aRestrictionZones = new set<SCR_EditorRestrictionZoneEntity>();
 	
 	//Players data for being in zones
-	protected ref map<int, ref SCR_PlayerRestrictionZoneData> m_PlayerRestrictionZoneData = new ref map<int, ref SCR_PlayerRestrictionZoneData>;
+	protected ref map<int, ref SCR_PlayerRestrictionZoneData> m_PlayerRestrictionZoneData = new map<int, ref SCR_PlayerRestrictionZoneData>();
 	
 	//Update
 	protected int m_iPlayerCheckIndex = 0;
-	protected const int ZONE_CHECK_PLAYER_BATCH_AMOUNT = 10; //The amount of players the manager checks each update. The leftovers will be done next update etc
+	protected const int ZONE_CHECK_PLAYER_BATCH_AMOUNT = 10; //!< The amount of players the manager checks each update. The leftovers will be done next update etc
 	
 	protected const int ZONE_CHECK_FREQUENCY = 50;
-	
 
 	//============================== ZONE ARRAYS ==============================\\
-	/*!
-	Add restriction zone so it can be checked if a player is in/leaves a zone. Server only
-	\param zone the zone to add
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Add restriction zone so it can be checked if a player is in/leaves a zone. Server only
+	//! \param[in] zone the zone to add
 	void AddRestrictionZone(SCR_EditorRestrictionZoneEntity zone)
 	{
-		if (!Replication.IsServer() || zone == null || m_aRestrictionZones.Contains(zone))
+		if (!zone || !Replication.IsServer() || m_aRestrictionZones.Contains(zone))
 			return;
 		
 		m_aRestrictionZones.Insert(zone);
@@ -36,17 +36,15 @@ class SCR_PlayersRestrictionZoneManagerComponent: ScriptComponent
 			GetGame().GetCallqueue().CallLater(ZoneCheckUpdate, ZONE_CHECK_FREQUENCY, true, false, null, null);
 	}
 	
-	/*!
-	Remove restriction zone so it no longer checks if a player is in/leaves a zone. Server only
-	\param zone the zone to remove
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Remove restriction zone so it no longer checks if a player is in/leaves a zone. Server only
+	//! \param[in] zone the zone to remove
 	void RemoveRestrictionZone(SCR_EditorRestrictionZoneEntity zone)
 	{
-		if (!Replication.IsServer() || zone == null)
+		if (!zone || !Replication.IsServer())
 			return;
 		
 		int index = m_aRestrictionZones.Find(zone);
-		
 		if (index < 0)
 			return;
 		
@@ -58,9 +56,10 @@ class SCR_PlayersRestrictionZoneManagerComponent: ScriptComponent
 			GetGame().GetCallqueue().Remove(ZoneCheckUpdate);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void ZoneCheckUpdate(bool updateAll, SCR_EditorRestrictionZoneEntity removedZone = null, array<int> playerIDZoneMoved = null)
 	{	
-		array<int> players = new array<int>;
+		array<int> players = {};
 		int playerCount = m_PlayerManager.GetPlayers(players);
 		
 		//If no players do not check
@@ -78,11 +77,11 @@ class SCR_PlayersRestrictionZoneManagerComponent: ScriptComponent
 		bool inWarningZone;	
 		bool inRemovedZone;
 		
-		int startCheckingIndex = 0;
+		int startCheckingIndex;
 		int endCheckingIndex;
 		
-		bool wasTeleported = false;
-		bool ignoreWasTeleported = false;
+		bool wasTeleported;
+		bool ignoreWasTeleported;
 		
 		//Check if index is greater then player count. If true: Reset
 		if (!updateAll)
@@ -131,7 +130,6 @@ class SCR_PlayersRestrictionZoneManagerComponent: ScriptComponent
 			//Not the same entity so clear the entity data
 			if (zoneData.m_PlayerEntity != playerEntity && playerEntity != null)
 				SetPlayerZoneData(players[i], playerEntity, false, false, -1);
-
 
 			//No entity or dead entity clear the data
 			if (playerEntity == null)
@@ -246,6 +244,7 @@ class SCR_PlayersRestrictionZoneManagerComponent: ScriptComponent
 			m_iPlayerCheckIndex = endCheckingIndex;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void SetPlayerZoneData(int playerID, IEntity playerEntity, bool inZone, bool inWarningZone, ERestrictionZoneWarningType warningType, vector zoneCenter = vector.Zero, float warningRadiusSq = -1, float zoneRadiusSq = -1)
 	{		
 		SCR_PlayerRestrictionZoneData zoneData; 
@@ -268,6 +267,7 @@ class SCR_PlayersRestrictionZoneManagerComponent: ScriptComponent
 		m_PlayerRestrictionZoneData[playerID] = zoneData;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//Show warning HUD
 	protected void ShowWarningUI(int playerID, bool show, ERestrictionZoneWarningType warningIndex, bool centerChanged, vector zoneCenter, float warningRadiusSq, float zoneRadiusSq)
 	{
@@ -283,6 +283,7 @@ class SCR_PlayersRestrictionZoneManagerComponent: ScriptComponent
 		warningComponent.ShowWarningServer(show, warningIndex, centerChanged, zoneCenter, warningRadiusSq, zoneRadiusSq);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//Kill the player that walked outside of the zone
 	protected void KillPlayerOutOfZone(int playerID, IEntity playerEntity)
 	{
@@ -298,14 +299,14 @@ class SCR_PlayersRestrictionZoneManagerComponent: ScriptComponent
 		SetPlayerZoneData(playerID, null, false, false, -1);
 	}
 	
-	
+	//------------------------------------------------------------------------------------------------
 	//A zone was deleted or moved
 	protected void ZoneMovedOrDeleted(SCR_EditorRestrictionZoneEntity zone, array<int> playerIDZoneMoved = null)
 	{
 		if (!zone)
 			return;
 		
-		array<int> players = new array<int>;
+		array<int> players = {};
 		m_PlayerManager.GetPlayers(players);
 		
 		//If no players do not check
@@ -326,7 +327,7 @@ class SCR_PlayersRestrictionZoneManagerComponent: ScriptComponent
 		}
 	}
 	
-	
+	//------------------------------------------------------------------------------------------------
 	//Check if a zone or player was moved
 	protected void OnEntityTransformChanged(SCR_EditableEntityComponent editableEntity, vector prevTransfom[4])
 	{
@@ -346,8 +347,8 @@ class SCR_PlayersRestrictionZoneManagerComponent: ScriptComponent
 			//Get prev zone position
 			restrictionZonePosition = prevTransfom[3];
 			
-			array<int> players = new array<int>;
-			array<int> playersInZone = new array<int>;
+			array<int> players = {};
+			array<int> playersInZone = {};
 			m_PlayerManager.GetPlayers(players);
 			IEntity playerEntity;
 			
@@ -369,6 +370,7 @@ class SCR_PlayersRestrictionZoneManagerComponent: ScriptComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//Player was disconnected
 	protected void OnPlayerDisconnect(int playerID)
 	{
@@ -376,6 +378,7 @@ class SCR_PlayersRestrictionZoneManagerComponent: ScriptComponent
 			m_PlayerRestrictionZoneData.Remove(playerID);
 	}	
 	
+	//------------------------------------------------------------------------------------------------
 	//~Todo: Test what happens if player is deleted
 	protected void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
@@ -386,11 +389,13 @@ class SCR_PlayersRestrictionZoneManagerComponent: ScriptComponent
 			SetPlayerZoneData(playerId, null, false, false, -1);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
 		GetGame().GetCallqueue().CallLater(DelayedInit, 1);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//Delayed init so SCR_PlayersManagerEditorComponent can be found
 	protected void DelayedInit()
 	{
@@ -413,6 +418,7 @@ class SCR_PlayersRestrictionZoneManagerComponent: ScriptComponent
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		if (!Replication.IsServer())
@@ -421,6 +427,7 @@ class SCR_PlayersRestrictionZoneManagerComponent: ScriptComponent
 		SetEventMask(owner, EntityEvent.INIT);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnDelete(IEntity owner)
 	{
 		if (!Replication.IsServer())
@@ -440,7 +447,7 @@ class SCR_PlayersRestrictionZoneManagerComponent: ScriptComponent
 		if (editableEntityCore)
 			editableEntityCore.Event_OnEntityTransformChangedServer.Remove(OnEntityTransformChanged);
 	}
-};
+}
 
 class SCR_PlayerRestrictionZoneData
 {	
@@ -449,10 +456,11 @@ class SCR_PlayerRestrictionZoneData
 	bool m_bInWarningZone;
 	vector m_vZoneCenter;
 	
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] playerEntity
 	void SCR_PlayerRestrictionZoneData(IEntity playerEntity)
 	{
 		m_PlayerEntity = playerEntity;
 	}
-	
-};
-
+}

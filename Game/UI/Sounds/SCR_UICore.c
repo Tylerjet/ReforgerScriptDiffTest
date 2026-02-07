@@ -45,4 +45,4 @@ class SCR_UICore: SCR_GameCoreBase
 		if (s_Instance == this)
 			s_Instance = null;
 	}
-};
+}

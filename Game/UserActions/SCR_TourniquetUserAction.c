@@ -10,12 +10,12 @@ class SCR_TourniquetUserAction : SCR_HealingUserAction
 		if (!character)
 			return;
 		
-		SCR_CharacterDamageManagerComponent damageMan = SCR_CharacterDamageManagerComponent.Cast(character.GetDamageManager());
-		if (damageMan) 
-		{
-			if (damageMan.GetIsUnconscious() || damageMan.GetHealth() <= 0)
-				return;
-		}
+		CharacterControllerComponent controller = character.GetCharacterController();
+		if (!controller)
+			return;
+		
+		if (controller.GetLifeState() != ECharacterLifeState.ALIVE)
+			return;
 		
 		SCR_ConsumableItemComponent consumableComponent = GetConsumableComponent(character);
 		if (consumableComponent)

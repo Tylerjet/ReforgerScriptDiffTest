@@ -214,6 +214,7 @@ class SCR_VehicleDust : ScriptComponent
 						Math3D.AnglesToMatrix(m_vLocalOrientation, spawnParams.Transform);
 						spawnParams.Transform[3] = m_vLocalOffset;
 						spawnParams.Parent = owner;
+						spawnParams.UseFrameEvent = true;
 						
 						m_Effect = VehicleBodyEffectBase.Cast(ParticleEffectEntity.SpawnParticleEffect(surface_type, spawnParams));
 						m_Effect.UpdateVehicleDustEffect(speed, m_fDustStartSpeed*3.6, m_fDustTopSpeed);

@@ -1,9 +1,10 @@
 [BaseContainerProps()]
-class SCR_TextureResource: SCR_BaseTextureResource
+class SCR_TextureResource : SCR_BaseTextureResource
 {
-	[Attribute("", UIWidgets.ResourcePickerThumbnail, "", "edds")]
+	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, params: "edds")]
 	protected ResourceName m_Texture;
-	
+
+	//------------------------------------------------------------------------------------------------
 	override void ApplyTo(ImageWidget widget)
 	{
 		if (m_Texture.IsEmpty())
@@ -11,6 +12,7 @@ class SCR_TextureResource: SCR_BaseTextureResource
 			Print("Texture not defined!", LogLevel.ERROR);
 			return;
 		}
+
 		if (widget) widget.LoadImageTexture(0, m_Texture);
 	}
-};
+}

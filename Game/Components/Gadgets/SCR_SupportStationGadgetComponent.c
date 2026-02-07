@@ -14,10 +14,8 @@ class SCR_SupportStationGadgetComponent : SCR_GadgetComponent
 	protected ref map<ESupportStationType, SCR_BaseSupportStationComponent> m_mSupportStations = new map<ESupportStationType, SCR_BaseSupportStationComponent>();
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\param[out] Get List of all support station types this gadget has
-	\return Count of support station type array
-	*/
+	//! \param[out] Get List of all support station types this gadget has
+	//! \return Count of support station type array
 	int GetSupportStationTypes(out notnull array<ESupportStationType> types)
 	{
 		types.Copy(m_aSupportStationTypes);
@@ -26,20 +24,16 @@ class SCR_SupportStationGadgetComponent : SCR_GadgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\param Type to check
-	\return True if gadget is given type
-	*/
+	//! \param[in] Type to check
+	//! \return True if gadget is of the given type
 	bool IsGadgetOfSupportStationType(ESupportStationType type)
 	{
 		return m_aSupportStationTypes.Contains(type);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\param character Character that animates
-	\return True if character is currently in an animation loop
-	*/
+	//! \param[in] character Character that animates
+	//! \return True if character is currently in an animation loop
 	bool InUseAnimationLoop(IEntity character)
 	{
 		ChimeraCharacter chimeraCharacter = ChimeraCharacter.Cast(character);
@@ -59,11 +53,10 @@ class SCR_SupportStationGadgetComponent : SCR_GadgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Start the animation if animation 'in' and looping than it will go to the loop animation and StopGadgetAnimation() needs to be called
-	\param character Character to animate
-	\param action Action that is used for the animation
-	*/
+	//! Start the animation if animation 'in' and looping than it will go to the loop animation and StopGadgetAnimation() needs to be called
+	//! \param[in] character Character to animate
+	//! \param[in] animationCommand
+	//! \param[in] action Action that is used for the animation
 	void StartGadgetAnimation(notnull IEntity character, int animationCommand, notnull SCR_ScriptedUserAction action)
 	{
 		if (animationCommand < 0)
@@ -76,10 +69,9 @@ class SCR_SupportStationGadgetComponent : SCR_GadgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Start the animation if animation 'out'. Used when animation is looping
-	\param character Character to animate
-	*/
+	//! Start the animation if animation 'out'. Used when animation is looping
+	//! \param[in] character Character to animate
+	//! \param[in] animationCommand
 	void StopGadgetAnimation(notnull IEntity character, int animationCommand)
 	{
 		if (animationCommand < 0)
@@ -130,15 +122,23 @@ class SCR_SupportStationGadgetComponent : SCR_GadgetComponent
 		}
 		
 		int itemActionId = animationComponent.BindCommand("CMD_Item_Action");
-		charController.TryUseItemOverrideParams(GetOwner(), false, true, itemActionId, animationCMD, 2, int.MAX, 0, 0, false, ptWS);
+
+		ItemUseParameters params = new ItemUseParameters();
+		params.SetEntity(GetOwner());
+		params.SetAllowMovementDuringAction(false);
+		params.SetKeepInHandAfterSuccess(true);
+		params.SetCommandID(itemActionId);
+		params.SetCommandIntArg(animationCMD);
+		params.SetCommandFloatArg(2.0);
+		params.SetAlignmentPoint(ptWS);
+
+		charController.TryUseItemOverrideParams(params);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get action support station of given type
-	\param supportStationType Type of gadget to find
-	\return Support Station on gadget (if any)
-	*/
+	//! Get action support station of given type
+	//! \param[in] supportStationType Type of gadget to find
+	//! \return Support Station on gadget (if any)
 	SCR_BaseSupportStationComponent GetSupportStation(ESupportStationType supportStationType)
 	{
 		SCR_BaseSupportStationComponent supportStation;
@@ -148,12 +148,10 @@ class SCR_SupportStationGadgetComponent : SCR_GadgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get held gadget of given type from character
-	\param supportStationType Type of gadget to find
-	\param character Character to find gadget on
-	\return Support Station gadget component (if any)
-	*/
+	//! Get held gadget of given type from character
+	//! \param[in] supportStationType Type of gadget to find
+	//! \param[in] character Character to find gadget on
+	//! \return Support Station gadget component (if any)
 	static SCR_BaseSupportStationComponent GetHeldSupportStation(ESupportStationType supportStationType, notnull IEntity character)
 	{
 		SCR_SupportStationGadgetComponent gadgetComponent = GetHeldSupportStationGadget(supportStationType, character);
@@ -164,12 +162,10 @@ class SCR_SupportStationGadgetComponent : SCR_GadgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get support station of the given type from held gadget of the character
-	\param supportStationType Type of support station to find
-	\param character Character to get support station gadget off
-	\return Support Station component (if any)
-	*/
+	//! Get support station of the given type from held gadget of the character
+	//! \param[in] supportStationType Type of support station to find
+	//! \param[in] character Character to get support station gadget off
+	//! \return Support Station component (if any)
 	static SCR_SupportStationGadgetComponent GetHeldSupportStationGadget(ESupportStationType supportStationType, notnull IEntity character)
 	{
 		SCR_GadgetManagerComponent gadgetManager = SCR_GadgetManagerComponent.GetGadgetManager(character);
@@ -187,14 +183,12 @@ class SCR_SupportStationGadgetComponent : SCR_GadgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get support station of the given type from held gadget as well as Support statioon gadget
-	\param supportStationType Type of support station and gadget to find
-	\param character Character to get support station gadget off
-	\param[out] supportStation Found support station
-	\param[out] supportStationGadget Found gadget
-	\return True if both Support station and gadget were found of given type
-	*/
+	//! Get support station of the given type from held gadget as well as Support statioon gadget
+	//! \param[in] supportStationType Type of support station and gadget to find
+	//! \param[in] character Character to get support station gadget off
+	//! \param[out] supportStation Found support station
+	//! \param[out] supportStationGadget Found gadget
+	//! \return True if both Support station and gadget were found of given type
 	static bool GetHeldSupportStationAndGadget(ESupportStationType supportStationType, notnull IEntity character, out SCR_BaseSupportStationComponent supportStation, out SCR_SupportStationGadgetComponent supportStationGadget)
 	{
 		SCR_GadgetManagerComponent gadgetManager = SCR_GadgetManagerComponent.GetGadgetManager(character);
@@ -241,6 +235,6 @@ class SCR_SupportStationGadgetComponent : SCR_GadgetComponent
 	//------------------------------------------------------------------------------------------------
 	override EGadgetType GetType()
 	{
-		return EGadgetType.SUPPORT_STATION;
+		return EGadgetType.SPECIALIST_ITEM;
 	}
 }

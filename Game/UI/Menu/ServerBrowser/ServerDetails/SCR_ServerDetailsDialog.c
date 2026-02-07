@@ -430,7 +430,7 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 		if (versionMismatch)
 		{
 			m_wAlertText.SetText(s_Room.GameVersion() + " - " + STR_VERSION_MISMATCH);
-			m_NavConfirm.SetTexture(UIConstants.ICONS_IMAGE_SET, ICON_VERSION_MISMATCH, UIColors.WARNING);
+			m_NavConfirm.SetTexture(UIConstants.ICONS_IMAGE_SET, ICON_VERSION_MISMATCH, Color.FromInt(UIColors.WARNING.PackToInt()));
 		}
 		else
 		{

@@ -21,6 +21,8 @@ class SCR_Credits: ChimeraMenuBase
 	protected ref array<ref RichTextWidget> m_aDepartments = {};
 	protected ref array<ref RichTextWidget> m_aNames = {};
 	protected bool m_bLastCycle;
+	protected RichTextWidget m_wLastDepartment;
+	protected RichTextWidget m_wLastText;
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen()
@@ -32,6 +34,9 @@ class SCR_Credits: ChimeraMenuBase
 		m_wCreditsMain = GetRootWidget().FindAnyWidget("VerticalLayoutOP");
 		RichTextWidget dept = RichTextWidget.Cast(GetRootWidget().FindAnyWidget("DeptName"));
 		RichTextWidget name = RichTextWidget.Cast(GetRootWidget().FindAnyWidget("Names"));
+		Widget holder = GetRootWidget().FindAnyWidget("lastFrame");
+		m_wLastDepartment = RichTextWidget.Cast(holder.FindAnyWidget("DeptName"));
+		m_wLastText = RichTextWidget.Cast(holder.FindAnyWidget("Names"));
 		
 		m_bLastCycle = false;
 		m_aDepartments.Insert(dept);
@@ -59,6 +64,10 @@ class SCR_Credits: ChimeraMenuBase
 		SCR_InputButtonComponent back = SCR_InputButtonComponent.GetInputButtonComponent("Back", m_wFooter);
 		if (back)
 			back.m_OnActivated.Insert(EndCredits);
+		
+		SCR_InputButtonComponent licenses = SCR_InputButtonComponent.GetInputButtonComponent("Licenses", m_wFooter);
+		if (licenses)
+			licenses.m_OnActivated.Insert(OnLicenses);
 		
 		Resource container = BaseContainerTools.LoadContainer(m_sNamesLists);
 		if (container && container.IsValid())
@@ -152,12 +161,19 @@ class SCR_Credits: ChimeraMenuBase
 			if (nameCount > PAGE_NAME_SIZE[cycleCount])
 				names = nameCount - PAGE_NAME_SIZE[cycleCount];
 
-			m_aDepartments[cycleCount].GetParent().SetVisible(true);
-			m_aDepartments[cycleCount].SetText(deptName);
+			if (!m_bLastCycle)
+			{
+				m_aDepartments[cycleCount].GetParent().SetVisible(true);
+				m_aDepartments[cycleCount].SetText(deptName);
+			}
+			else
+			{
+				m_wLastDepartment.GetParent().SetVisible(true);
+				m_wLastDepartment.SetText(deptName);
+			}
 			
 			//for cycle for getting all names from department to one string
-			
-			nameGlobal = "<font name=\"{CD2634D279AB011A}\">";
+			nameGlobal = "";
 			
 			for (int i = counter, countx = CreditsNames.Count(); i < countx - names; i++)
 			{
@@ -166,18 +182,18 @@ class SCR_Credits: ChimeraMenuBase
 				
 				nameGlobal =  nameGlobal + CreditsNames[i].GetPersonName() + "<br/>";	
 			}
-			nameGlobal = nameGlobal + "</font>";
+			
 			//if there are no names to be shown, dont make the dept. name visible
 			
-			if (m_bLastCycle)
-				m_aNames[cycleCount].SetExactFontSize(20);
-			else
-				m_aNames[cycleCount].SetExactFontSize(32);
-			
-			if (nameGlobal == "<font name=\"{CD2634D279AB011A}\"></font>")
+			if (nameGlobal == "")
 				m_aDepartments[cycleCount].GetParent().SetVisible(false);
 			
-			m_aNames[cycleCount].SetText(nameGlobal);
+			if (m_bLastCycle)
+			{
+				m_wLastText.SetText(nameGlobal)
+			}
+			else
+				m_aNames[cycleCount].SetText(nameGlobal);
 			
 			//if there are names to be shown, there is no more space on screen. Break loop and change screens.
 			
@@ -200,7 +216,7 @@ class SCR_Credits: ChimeraMenuBase
 
 			cycleCount++;
 			
-			if (departments >= m_aCreditsNameList.Count() - 5)
+			if (departments >= m_aCreditsNameList.Count() - 2)
 			{
 				m_bLastCycle = true;
 				break;
@@ -236,5 +252,12 @@ class SCR_Credits: ChimeraMenuBase
 		GetGame().GetCallqueue().Remove(HideNames);
 		GetGame().GetCallqueue().Remove(ChangeBackground);
 		GetGame().GetMenuManager().CloseMenuByPreset(ChimeraMenuPreset.CreditsMenu)
+	}
+	
+	void OnLicenses()
+	{
+		//GetGame().GetMenuManager().CloseMenuByPreset(ChimeraMenuPreset.CreditsMenu);
+		GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.CreditsLicensesMenu);
+		
 	}
 };

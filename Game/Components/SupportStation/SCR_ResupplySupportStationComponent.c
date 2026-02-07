@@ -1,11 +1,14 @@
 [ComponentEditorProps(category: "GameScripted/SupportStation", description: "")]
 class SCR_ResupplySupportStationComponentClass : SCR_BaseSupportStationComponentClass
 {
-};
+}
 
 class SCR_ResupplySupportStationComponent : SCR_BaseSupportStationComponent
 {
-	[Attribute("10", desc: "Fallback item supply cost. If for some reason the item that was supplied had no cost or could not be found then the fallback cost is used",  category: "Resupply Support Station", params: "1 inf 1")]
+	[Attribute(SCR_EArsenalSupplyCostType.DEFAULT.ToString(), desc: "Cost type of items. If it is not DEFAULT than it will try to get the diffrent supply cost if the item has it assigned" , uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(SCR_EArsenalSupplyCostType), category: "Resupply Support Station")]
+	protected SCR_EArsenalSupplyCostType m_eSupplyCostType;
+	
+	[Attribute("1", desc: "Fallback item supply cost. If for some reason the item that was supplied had no cost or could not be found then the fallback cost is used",  category: "Resupply Support Station", params: "1 inf 1")]
 	protected int m_iFallbackItemSupplyCost;
 	
 	protected SCR_EntityCatalogManagerComponent m_EntityCatalogManager;
@@ -57,7 +60,7 @@ class SCR_ResupplySupportStationComponent : SCR_BaseSupportStationComponent
 	//------------------------------------------------------------------------------------------------
 	protected override int GetSupplyCostAction(IEntity actionOwner, IEntity actionUser, SCR_BaseUseSupportStationAction action)
 	{
-		if (!IsUsingSupplies())
+		if (!AreSuppliesEnabled())
 			return 0;
 		
 		SCR_BaseResupplySupportStationAction resupplyAction = SCR_BaseResupplySupportStationAction.Cast(action);
@@ -77,7 +80,7 @@ class SCR_ResupplySupportStationComponent : SCR_BaseSupportStationComponent
 			return Math.ClampInt(m_iFallbackItemSupplyCost + m_iBaseSupplyCostOnUse, 0, int.MAX);
 		}
 		
-		return Math.ClampInt(arsenalData.GetSupplyCost() + m_iBaseSupplyCostOnUse, 0, int.MAX);
+		return Math.ClampInt(arsenalData.GetSupplyCost(m_eSupplyCostType) + m_iBaseSupplyCostOnUse, 0, int.MAX);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -90,7 +93,7 @@ class SCR_ResupplySupportStationComponent : SCR_BaseSupportStationComponent
 			return;
 		
 		//~ Consume supplies
-		if (IsUsingSupplies())
+		if (AreSuppliesEnabled())
 		{
 			if (!OnConsumeSuppliesServer(GetSupplyCostAction(actionOwner, actionUser, action)))
 				return;
@@ -108,6 +111,9 @@ class SCR_ResupplySupportStationComponent : SCR_BaseSupportStationComponent
 	//~ playerId can be -1 if the user was not a player
 	protected override void OnExecute(IEntity actionOwner, IEntity actionUser, int playerId, SCR_BaseUseSupportStationAction action)
 	{
+		//~ On succesfully executed
+		OnSuccessfullyExecuted(actionOwner, actionUser, action);
+		
 		if (!actionUser || !actionOwner)
 			return;
 		
@@ -157,4 +163,4 @@ class SCR_ResupplySupportStationComponent : SCR_BaseSupportStationComponent
 			}
 		}				
 	}
-};
+}

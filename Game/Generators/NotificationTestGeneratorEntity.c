@@ -12,20 +12,20 @@ class NotificationTestGeneratorEntity : SCR_GeneratorBaseEntity
 	
 	void NotificationTestGeneratorEntity(IEntitySource src, IEntity parent)
 	{
-		m_Shapes = new ref array<ref Shape>();
+		m_Shapes = new array<ref Shape>();
 		SetEventMask(EntityEvent.INIT);
 	}
 	
 	override void EOnInit(IEntity owner)
 	{
-		m_Shapes = new ref array<ref Shape>();
+		m_Shapes = new array<ref Shape>();
 	}
 	
 	#ifdef WORKBENCH
 	protected override void OnIntersectingShapeChangedXZInternal(IEntitySource shapeEntitySrc, IEntitySource other, array<vector> mins, array<vector> maxes)
 	{
 		Print("Entity: " + Name + " intersected with " + mins.Count() + " boxes");
-		m_Shapes = new ref array<ref Shape>();
+		m_Shapes = new array<ref Shape>();
 		for (int i = 0; i < mins.Count(); ++i)
 		{
 			vector points[5];

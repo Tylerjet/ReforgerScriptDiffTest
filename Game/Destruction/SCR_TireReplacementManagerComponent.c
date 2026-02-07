@@ -1,7 +1,7 @@
 [ComponentEditorProps(category: "GameScripted/Destruction", description: "Tire destruction manager component, manages replacing destructible tires with a present spare tire.")]
-class SCR_TireReplacementManagerComponentClass: ScriptComponentClass
+class SCR_TireReplacementManagerComponentClass : ScriptComponentClass
 {
-};
+}
 
 class SCR_TireReplacementManagerComponent : ScriptComponent
 {
@@ -12,22 +12,23 @@ class SCR_TireReplacementManagerComponent : ScriptComponent
 	
 	[Attribute("0", UIWidgets.CheckBox, "If true, the user can replace an active wheel by a more damaged wheel", category: "Replacement Conditions")]
 	protected bool m_bAllowMoreDamagedTire;
+
 	[Attribute("1", UIWidgets.Auto, "The radius of the tracesphere, used to check whether or not the area is clear for replacing", category: "Replacement Conditions")]
 	protected float m_WheelTraceRadius;
+
 	[Attribute("", UIWidgets.Auto, "The radius of the tracesphere, used to check whether or not the area is clear for replacing", category: "Replacement Conditions")]
 	protected vector m_WheelTraceOffset;
 	
 	#ifdef ENABLE_DESTRUCTION
 	protected ref Shape m_DebugShape;
-	protected ref array<SCR_DestructionTireComponent> 	m_aDestructionTires 		= new array<SCR_DestructionTireComponent>;
-	protected ref array<GenericEntity> 					m_aDestructionTireEntities 	= new array<GenericEntity>;
+	protected ref array<SCR_DestructionTireComponent> 	m_aDestructionTires 		= {};
+	protected ref array<GenericEntity> 					m_aDestructionTireEntities 	= {};
 		
 	protected SCR_SpareTireComponent					m_SpareTireComponent;
 	protected SCR_DestructionTireComponent				m_SpareDestructionTire;
 	protected GenericEntity 							m_SpareTireEntity;
 	
 	protected IEntity 									m_Owner;
-	
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
@@ -37,17 +38,18 @@ class SCR_TireReplacementManagerComponent : ScriptComponent
 		SetEventMask(owner, EntityEvent.INIT);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner) 
 	{
 		m_Owner = owner;
-		auto ownerEntity = GenericEntity.Cast(owner);
+		GenericEntity ownerEntity = GenericEntity.Cast(owner);
 		if(!ownerEntity)
 			return;
 		
 		int wheelCount = 0;
 		if(GetGame().GetIsClientAuthority())
 		{
-			auto simulation = VehicleWheeledSimulation.Cast(ownerEntity.FindComponent(VehicleWheeledSimulation));
+			VehicleWheeledSimulation simulation = VehicleWheeledSimulation.Cast(ownerEntity.FindComponent(VehicleWheeledSimulation));
 			if(!simulation)
 				return;
 			
@@ -55,7 +57,7 @@ class SCR_TireReplacementManagerComponent : ScriptComponent
 		}
 		else
 		{
-			auto simulation = VehicleWheeledSimulation_SA.Cast(ownerEntity.FindComponent(VehicleWheeledSimulation_SA));
+			VehicleWheeledSimulation_SA simulation = VehicleWheeledSimulation_SA.Cast(ownerEntity.FindComponent(VehicleWheeledSimulation_SA));
 			if(!simulation)
 				return;
 			
@@ -65,25 +67,29 @@ class SCR_TireReplacementManagerComponent : ScriptComponent
 		m_aDestructionTires.Resize(wheelCount);
 		m_aDestructionTireEntities.Resize(wheelCount);
 		
-		array<Managed> slots = new array<Managed>();
+		array<Managed> slots = {};
 		ownerEntity.FindComponents(BaseSlotComponent, slots);
 		
+		BaseSlotComponent slot;
+		GenericEntity slotEntity;
+		SCR_WheelSlotComponent wheelSlotComponent;
+		SCR_SpareTireComponent spareTire;
 		foreach (Managed component : slots)
 		{
-			BaseSlotComponent slot = BaseSlotComponent.Cast(component);
+			slot = BaseSlotComponent.Cast(component);
 			if (!slot)
 				continue;
 
-			GenericEntity slotEntity = GenericEntity.Cast(slot.GetAttachedEntity());
+			slotEntity = GenericEntity.Cast(slot.GetAttachedEntity());
 			if (!slotEntity)
 				continue;
 			
-			SCR_WheelSlotComponent wheelSlotComponent = SCR_WheelSlotComponent.Cast(slot);
+			wheelSlotComponent = SCR_WheelSlotComponent.Cast(slot);
 			if(wheelSlotComponent)
 			{
 				if(wheelSlotComponent.m_iWheelIndex < 0 || wheelSlotComponent.m_iWheelIndex >= wheelCount)
 				{
-					Print("Wheel Index out of bounds. Index: " + wheelSlotComponent.m_iWheelIndex.ToString() + ". WheelCount: " + wheelCount);
+					Print("Wheel Index out of bounds. Index: " + wheelSlotComponent.m_iWheelIndex + ". WheelCount: " + wheelCount, LogLevel.NORMAL);
 					continue;
 				}
 				
@@ -94,7 +100,7 @@ class SCR_TireReplacementManagerComponent : ScriptComponent
 			if(m_SpareTireComponent)
 				continue;
 			
-			SCR_SpareTireComponent spareTire = SCR_SpareTireComponent.Cast(slotEntity.FindComponent(SCR_SpareTireComponent));
+			spareTire = SCR_SpareTireComponent.Cast(slotEntity.FindComponent(SCR_SpareTireComponent));
 			if(spareTire)
 			{
 				m_SpareTireComponent = spareTire;
@@ -106,9 +112,16 @@ class SCR_TireReplacementManagerComponent : ScriptComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] pWheelIndex
+	//! \return
 	bool CanTireBeReplaced(int pWheelIndex)
 	{
-		auto destructionTire = m_aDestructionTires.Get(pWheelIndex);
+		if (m_aDestructionTires.IsIndexValid(pWheelIndex))
+			return false;
+
+		SCR_DestructionTireComponent destructionTire = m_aDestructionTires.Get(pWheelIndex);
 		if(!destructionTire)
 			return false;
 		
@@ -118,6 +131,11 @@ class SCR_TireReplacementManagerComponent : ScriptComponent
 		return canBeShown;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] pWheelIndex
+	//! \param[in] pActionUser
+	//! \return
 	bool IsWheelAreaClear(int pWheelIndex, notnull IEntity pActionUser)
 	{
 		IEntity wheelEntity = m_aDestructionTireEntities.Get(pWheelIndex);
@@ -125,11 +143,11 @@ class SCR_TireReplacementManagerComponent : ScriptComponent
 		pActionUser.GetWorldTransform(mat);
 		wheelEntity.GetBounds(mins, maxs);
 
-		autoptr TraceSphere param = new TraceSphere;
+		TraceSphere param = new TraceSphere();
 		param.Radius = m_WheelTraceRadius;
 		param.Start = wheelEntity.CoordToParent(m_WheelTraceOffset);
 		param.Flags = TraceFlags.ENTS;
-		array<IEntity> excludeArray = {pActionUser, m_Owner};
+		array<IEntity> excludeArray = { pActionUser, m_Owner };
 		param.ExcludeArray = excludeArray;
 		
 		float traceResult = wheelEntity.GetWorld().TracePosition(param, null);
@@ -147,9 +165,12 @@ class SCR_TireReplacementManagerComponent : ScriptComponent
 		return traceResult >=0;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] pWheelIndex
 	void InitReplace(int pWheelIndex)
 	{
-		auto destructionTireComponent = m_aDestructionTires.Get(pWheelIndex);
+		SCR_DestructionTireComponent destructionTireComponent = m_aDestructionTires.Get(pWheelIndex);
 		if(!destructionTireComponent)
 			return;
 		
@@ -166,4 +187,4 @@ class SCR_TireReplacementManagerComponent : ScriptComponent
 		m_SpareDestructionTire.GetDefaultHitZone().HandleDamage(myDamage);
 	}
 	#endif
-};
+}

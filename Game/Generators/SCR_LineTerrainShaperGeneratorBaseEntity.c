@@ -1,4 +1,3 @@
-// [EntityEditorProps(category: "GameLib/Scripted/Generator", description: "Line Terrain Shaper", dynamicBox: true, visible: false)] // not yet standalone
 class SCR_LineTerrainShaperGeneratorBaseEntityClass : SCR_GeneratorBaseEntityClass
 {
 }
@@ -199,7 +198,7 @@ class SCR_LineTerrainShaperGeneratorBaseEntity : SCR_GeneratorBaseEntity
 
 	//------------------------------------------------------------------------------------------------
 	// constructor
-	protected void SCR_TerrainFlattenerGeneratorBaseEntity(IEntitySource src, IEntity parent)
+	protected void SCR_LineTerrainShaperGeneratorBaseEntity(IEntitySource src, IEntity parent)
 	{
 #ifdef WORKBENCH
 		if (!_WB_GetEditorAPI())

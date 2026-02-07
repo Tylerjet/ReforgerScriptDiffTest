@@ -2,13 +2,13 @@
 class SCR_FieldManualPiece_Header : SCR_FieldManualPiece
 {
 	protected static const int IMAGE_INDEX = 0;
-	
+
 	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, params: "edds imageset")]
 	protected ResourceName m_ImagePath;
 
 	[Attribute()]
 	protected string m_sImageSetName;
-	
+
 	[Attribute(uiwidget: UIWidgets.EditBoxWithButton)]
 	string m_sText;
 
@@ -36,9 +36,9 @@ class SCR_FieldManualPiece_Header : SCR_FieldManualPiece
 			Print("created widget could not be set text | " + FilePath.StripPath(__FILE__) + ":" + __LINE__, LogLevel.DEBUG);
 			return;
 		}
-		
+
 		textWidget.SetText(m_sText);
-		
+
 		ImageWidget imageWidget = ImageWidget.Cast(createdWidget.FindAnyWidget("Image"));
 		if (imageWidget != null)
 		{
@@ -61,4 +61,4 @@ class SCR_FieldManualPiece_Header : SCR_FieldManualPiece
 		}
 
 	}
-};
+}

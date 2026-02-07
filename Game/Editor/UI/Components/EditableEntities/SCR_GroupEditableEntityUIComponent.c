@@ -1,4 +1,4 @@
-class SCR_GroupEditableEntityUIComponent: SCR_BaseEditableEntityUIComponent
+class SCR_GroupEditableEntityUIComponent : SCR_BaseEditableEntityUIComponent
 {
 	[Attribute()]
 	protected ref array<ref SCR_GroupEditableEntityTextureUIComponent> m_Textures;
@@ -8,6 +8,7 @@ class SCR_GroupEditableEntityUIComponent: SCR_BaseEditableEntityUIComponent
 	
 	protected SCR_MilitarySymbolUIComponent m_SymbolUI;
 	
+	//------------------------------------------------------------------------------------------------
 	protected bool RefreshSymbol(SCR_EditableEntityComponent entity)
 	{
 		SCR_GroupIdentityComponent identity = SCR_GroupIdentityComponent.Cast(entity.GetOwner().FindComponent(SCR_GroupIdentityComponent));
@@ -16,6 +17,8 @@ class SCR_GroupEditableEntityUIComponent: SCR_BaseEditableEntityUIComponent
 		else
 			return false;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected bool RefreshSymbol(SCR_UIInfo info)
 	{
 		SCR_EditableGroupUIInfo groupInfo = SCR_EditableGroupUIInfo.Cast(info);
@@ -24,6 +27,8 @@ class SCR_GroupEditableEntityUIComponent: SCR_BaseEditableEntityUIComponent
 		else
 			return false;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected bool RefreshSymbol(SCR_MilitarySymbol symbol)
 	{
 		if (!symbol)
@@ -60,10 +65,13 @@ class SCR_GroupEditableEntityUIComponent: SCR_BaseEditableEntityUIComponent
 		return true;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnRefresh(SCR_EditableEntityBaseSlotUIComponent slot)
 	{
 		RefreshSymbol(m_Entity);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnInit(SCR_EditableEntityComponent entity, SCR_UIInfo info, SCR_EditableEntityBaseSlotUIComponent slot)
 	{
 		super.OnInit(entity, info, slot);
@@ -75,7 +83,7 @@ class SCR_GroupEditableEntityUIComponent: SCR_BaseEditableEntityUIComponent
 		
 		RefreshSymbol(info);
 	}
-};
+}
 
 [BaseContainerProps(), SCR_BaseContainerMilitaryLayout()]
 class SCR_GroupEditableEntityTextureUIComponent
@@ -91,4 +99,4 @@ class SCR_GroupEditableEntityTextureUIComponent
 	
 	[Attribute()]
 	string m_ImageName;
-};
+}

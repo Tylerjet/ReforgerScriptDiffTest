@@ -1,28 +1,28 @@
-//------------------------------------------------------------------------------------------------
 //! Data class for reconnecting players
 class SCR_ReconnectData
 {
 	int m_iPlayerId;	
-	IEntity m_ReservedEntity;	// entity of the returning player
+	IEntity m_ReservedEntity;	//!< entity of the returning player
 	
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] playerId
+	//! \param[in] entity
 	void SCR_ReconnectData(int playerId, IEntity entity)
 	{
 		m_iPlayerId = playerId;
 		m_ReservedEntity = entity;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! State of a reconnecting player
 enum SCR_EReconnectState
 {
 	NOT_RECONNECT,
 	ENTITY_AVAILABLE,
 	ENTITY_DISCARDED
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [EntityEditorProps(category: "GameScripted/GameMode", description: "")]
 class SCR_ReconnectComponentClass : SCR_BaseGameModeComponentClass
 {
@@ -34,11 +34,10 @@ class SCR_ReconnectComponentClass : SCR_BaseGameModeComponentClass
 		
 		return false;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Takes care of managing player reconnects in case of involuntary disconnect
-//! Authority only component attached to gamemode prefab
+//! Authority-only component attached to gamemode prefab
 class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 {
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Enable reconnect functionality for this gamemode")]
@@ -48,24 +47,30 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 	
 	protected bool m_bIsInit;			// whether check for connection to backend happenned 
 	protected bool m_bIsReconEnabled;	
-	protected ref array<ref SCR_ReconnectData> m_ReconnectPlayerList = new array<ref SCR_ReconnectData>();
+	protected ref array<ref SCR_ReconnectData> m_ReconnectPlayerList = {};
 	
-	protected ref ScriptInvoker<SCR_ReconnectData> m_OnAddedToReconnectList = new ScriptInvoker();
-	protected ref ScriptInvoker<SCR_ReconnectData> m_OnPlayerReconnect = new ScriptInvoker();  
+	protected ref ScriptInvoker m_OnAddedToReconnectList;
+	protected ref ScriptInvoker m_OnPlayerReconnect;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	static SCR_ReconnectComponent GetInstance() 
 	{ 
 		return s_Instance; 
 	}
 		
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnAddedToList()
 	{ 
+		if (!m_OnAddedToReconnectList)
+			m_OnAddedToReconnectList = new ScriptInvoker();
+
 		return m_OnAddedToReconnectList; 
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnReconnect() 
 	{ 
 		if (!m_OnPlayerReconnect)
@@ -75,22 +80,22 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Is reconnect list empty
+	//! \return true if the reconnect list empty, false otherwise
 	bool IsReconnectListEmpty()
 	{
 		return m_ReconnectPlayerList.IsEmpty();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Is reconnect functionality enabled
+	//! \return true if the reconnect functionality is enabled, false otherwise
 	bool IsReconnectEnabled() 
 	{ 
-		return m_bIsReconEnabled; 
+		return m_bIsReconEnabled;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Is subject playerID currently present in list of possible reconnects
-	//! \param playerId is the subject
+	//! \param[in] playerId the subject's ID
 	//! \return state of the reconnecting subject
 	SCR_EReconnectState IsInReconnectList(int playerId)
 	{
@@ -124,7 +129,7 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Is subject entity is currently present in list of possible reconnects
-	//! \param IEntity is the subject
+	//! \param[in] entity is the subject
 	//! \return state of the reconnecting subject
 	SCR_EReconnectState IsEntityReconnectList(IEntity entity)
 	{
@@ -158,7 +163,8 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Return control of the entity subject controlled before disconnect
-	//! \param playerId is the subject
+	//! \param[in] playerId is the subject
+	//! \return
 	IEntity ReturnControlledEntity(int playerId)
 	{		
 		int count = m_ReconnectPlayerList.Count();
@@ -170,8 +176,9 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 				PlayerManager playerManager = GetGame().GetPlayerManager();
 				SCR_PlayerController playerController = SCR_PlayerController.Cast(playerManager.GetPlayerController(playerId));		
 				playerController.SetInitialMainEntity(ent);
-	
-				m_OnPlayerReconnect.Invoke(m_ReconnectPlayerList[i]);
+
+				if (m_OnPlayerReconnect)
+					m_OnPlayerReconnect.Invoke(m_ReconnectPlayerList[i]);
 				
 				m_ReconnectPlayerList.Remove(i);
 				return ent;
@@ -180,7 +187,7 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 		
 		return null;
 	}
-			
+
 	//------------------------------------------------------------------------------------------------
 	//! Propagated from SCR_BaseGameMode OnPlayerDisconnected event
 	//! \return true if this disconnect is saved as eligible for reconnect
@@ -217,14 +224,15 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 			
 			SCR_ReconnectData newEntry = new SCR_ReconnectData(playerId, ent);
 			m_ReconnectPlayerList.Insert(newEntry);
-			m_OnAddedToReconnectList.Invoke(newEntry);
+			if (m_OnAddedToReconnectList)
+				m_OnAddedToReconnectList.Invoke(newEntry);
 		}
 		
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Check whether theere is a proper connection to backend
+	//! \return whether there is a proper connection to backend
 	bool Init()
 	{
 		m_bIsInit = true;
@@ -275,7 +283,7 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 		s_Instance = this;
 		m_bIsReconEnabled = true;
 		
-		auto game = GetGame();
+		ArmaReforgerScripted game = GetGame();
 		if (game && !game.InPlayMode())
 			return;
 		
@@ -283,13 +291,12 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_ReconnectComponent()
 	{
 		if (SCR_BaseGameMode.Cast(GetGame().GetGameMode()))
-		{
 			SCR_BaseGameMode.Cast(GetGame().GetGameMode()).GetOnPlayerAuditTimeouted().Remove(OnPlayerAuditTimeouted);
-		}
 			
 		s_Instance = null;
 	}
-};
+}

@@ -6,12 +6,6 @@ class SCR_IngameDateUIComponent : ScriptedWidgetComponent
 	[Attribute("Date_Day", desc: "Widget filled with current day (Monday to Sunday). At least Date or Day widget needs to be assigned for this UI to function")]
 	protected string m_sDayTextName;
 	
-	[Attribute("#AR-Date_Format_MonthFull", desc: "day = %1, month = %2, year = %3, Used when month is written in full")]
-	protected string m_sDateFullFormating;
-	
-	[Attribute("#AR-Date_Format", desc: "day = %1, month = %2, year = %3, used when month is not written in full")]
-	protected string m_sDateFormating;
-	
 	[Attribute("1", desc: "If true month will be written in full text, else month will be a number")]
 	protected bool m_bMonthAsText;
 	
@@ -36,12 +30,8 @@ class SCR_IngameDateUIComponent : ScriptedWidgetComponent
 		//~ Set date
 		if (m_DateText)
 		{
-			string dateString, monthString;
-			//~ Set date
-			if (m_bMonthAsText)
-				m_DateText.SetTextFormat(m_sDateFullFormating, day, SCR_DateTimeHelper.GetMonthString(month), year);
-			else 
-				m_DateText.SetTextFormat(m_sDateFormating, day, month, year);
+			string date = SCR_DateTimeHelper.GetDateString(day, month, year, m_bMonthAsText);
+			m_DateText.SetText(date);
 		}
 		
 		if (m_DayText)

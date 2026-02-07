@@ -79,7 +79,7 @@ class SCR_EditorSettingsEntity : SCR_EditorBaseEntity
 		m_bOverrideBaseModes = value;
 	}
 	/*!
-	Check if base editor modes are overriden.
+	Check if base editor modes are overridden.
 	\return True when override is active
 	*/
 	bool IsBaseOverrideEnabled()

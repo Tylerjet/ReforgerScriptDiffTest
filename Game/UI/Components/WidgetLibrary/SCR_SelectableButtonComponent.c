@@ -17,7 +17,7 @@ class SCR_SelectableButtonComponent : SCR_ButtonComponent
 	protected string WIDGET_CONTET_HLAYOUT = "hLayoutContent";
 	protected string WIDGET_IMAGE = "ImageContent";
 	
-	ref ScriptInvoker m_OnChanged = new ref ScriptInvoker();
+	ref ScriptInvoker m_OnChanged = new ScriptInvoker();
 	protected bool m_bIsSelected = false;
 	protected bool m_bIsTriggered = true;
 	

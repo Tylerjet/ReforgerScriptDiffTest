@@ -13,6 +13,8 @@ class SCR_CampaignTutorialArlandStageMovement15 : SCR_BaseCampaignTutorialArland
 		m_fWaypointCompletionRadius = 3;
 		m_fWaypointHeightOffset = 0;
 		m_bCheckWaypoint = false;
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
 		m_TutorialComponent.SetWaypointMiscImage("LADDER", true);
 	}
 	

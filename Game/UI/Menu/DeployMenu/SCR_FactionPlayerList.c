@@ -135,7 +135,7 @@ class SCR_FactionPlayerList : SCR_PlayerList
 		
 		for (int i = 0; i < pageCount; i++)
 		{
-			m_SpinBoxComp.AddItem("");
+			m_SpinBoxComp.AddItem("", i == pageCount - 1);
 		}
 		
 		m_SpinBoxComp.SetCurrentItem(m_iLastPage);

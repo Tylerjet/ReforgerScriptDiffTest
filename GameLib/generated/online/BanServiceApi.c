@@ -38,12 +38,20 @@ class BanServiceApi
 	*/
 	proto external bool RemoveBans(BackendCallback pCallback, notnull array<string> identityIds);
 	/*!
+	\brief Remove ban by name of player
+	\note For detailed explanation please consult documentation (wiki)
+	\param pCallback Is script callback where you will receive result/error when request finishes
+	\param sName Is name of player to be unbanned
+	\param nameMatchType Is how should player name be searched/matched in database
+	*/
+	proto external bool RemoveBanByName(BackendCallback pCallback, string sName, EStringMatchType nameMatchType);
+	/*!
 	\brief Request List of active bans for players banned on local server
 	\note For detailed explanation please consult documentation (wiki)
 	\param pCallback Is script callback where you will receive result/error when request finishes
 	\param pParams Is PageParams object used to specify size and offset for pages of ban list
 	*/
-	proto external bool RequestServerBanList(BackendCallback pCallback, notnull PageParams params);
+	proto external bool RequestServerBanList(BackendCallback pCallback, notnull BanListPageParams params);
 	//! \brief Get total item count on all pages
 	proto external int GetTotalItemCount();
 	//! \brief Get page count
@@ -55,7 +63,7 @@ class BanServiceApi
 	//! \brief Get item count on current page
 	proto external int GetPageItemCount();
 	//! \brief Get list of items on current page
-	proto external int GetPageItems(notnull array<BanRecordData> bans);
+	proto external int GetPageItems(notnull array<OnlineBanListData> bans);
 }
 
 /*!

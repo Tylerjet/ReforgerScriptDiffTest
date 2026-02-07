@@ -13,7 +13,7 @@ class SCR_NameTagRulesetFriendlies : SCR_NameTagRulesetBase
 			return false;
 		
 		float distLerp = Math.InverseLerp(m_ZoneCfg.m_fFarthestZoneRangePow2, 0, data.m_fDistance); // reduce the angle required to show with distance -> the further is the entity, angle required to focus it gets smaller
-		distLerp *= MAX_ANGLE/2;  // adjust for more standard ish FOV of 90 (45 radius) TODO: this should be taken from real FOV
+		distLerp *= m_iMaxAngle/2;  // adjust for more standard ish FOV of 90 (45 radius) TODO: this should be taken from real FOV
 		
 		data.m_fAngleToScreenCenter = GetCameraToEntityAngle(data.m_vEntWorldPos, VERT_ANGLE_ADJUST);
 		if (data.m_fAngleToScreenCenter < distLerp)		// pass if within visibility angle							

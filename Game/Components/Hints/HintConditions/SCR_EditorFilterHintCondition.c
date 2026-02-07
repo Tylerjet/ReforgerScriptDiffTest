@@ -1,5 +1,5 @@
 [BaseContainerProps(), SCR_BaseContainerHintCondition()]
-class SCR_EditorFilterHintCondition: SCR_BaseEditorHintCondition
+class SCR_EditorFilterHintCondition : SCR_BaseEditorHintCondition
 {
 	[Attribute(uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EEditableEntityState))]
 	protected EEditableEntityState m_State;
@@ -7,6 +7,7 @@ class SCR_EditorFilterHintCondition: SCR_BaseEditorHintCondition
 	[Attribute("-1", uiwidget: UIWidgets.ComboBox, enums: SCR_Enum.GetList(EEditableEntityType, new ParamEnum("<None>", "-1")))]
 	protected EEditableEntityType m_Type;
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnFilterChange(EEditableEntityState state, set<SCR_EditableEntityComponent> entitiesInsert, set<SCR_EditableEntityComponent> entitiesRemove)
 	{
 		if (entitiesInsert && !entitiesInsert.IsEmpty())
@@ -40,16 +41,20 @@ class SCR_EditorFilterHintCondition: SCR_BaseEditorHintCondition
 			}
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void OnInitConditionEditor(SCR_EditorManagerEntity editorManager)
 	{
 		SCR_BaseEditableEntityFilter filter = SCR_BaseEditableEntityFilter.GetInstance(m_State);
 		if (filter)
 			filter.GetOnChanged().Insert(OnFilterChange);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void OnExitConditionEditor(SCR_EditorManagerEntity editorManager)
 	{
 		SCR_BaseEditableEntityFilter filter = SCR_BaseEditableEntityFilter.GetInstance(m_State);
 		if (filter)
 			filter.GetOnChanged().Remove(OnFilterChange);
 	}
-};
+}

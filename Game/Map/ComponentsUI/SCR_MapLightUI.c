@@ -1,21 +1,18 @@
-//------------------------------------------------------------------------------------------------
 enum EMapLightMode
 {
 	NONE,
 	LIGHTER,
 	FLASH_DEFAULT,
 	FLASH_RED
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(configRoot: true)]
 class SCR_MapLightConfig
 {	
 	[Attribute("", UIWidgets.Object, "2D map light modes")]
 	ref array<ref SCR_MapLightMode> m_aMapLightModes;
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
 class SCR_MapLightMode
 {	
@@ -33,9 +30,8 @@ class SCR_MapLightMode
 	
 	[Attribute("{FFCDEB9793720A1C}UI/Textures/Sights/binocular_vignette2_ca.edds", UIWidgets.ResourceNamePicker, desc: "Zones config", params: "edds")]
 	ResourceName m_sConeTexture;
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Map light effects
 class SCR_MapLightUI : SCR_MapUIBaseComponent
 {
@@ -82,7 +78,6 @@ class SCR_MapLightUI : SCR_MapUIBaseComponent
 			return;
 		
 		IEntity flashlight = gadgetManager.GetGadgetByType(EGadgetType.FLASHLIGHT);
-		
 		if (flashlight)
 		{
 			m_bActive = true;
@@ -145,16 +140,8 @@ class SCR_MapLightUI : SCR_MapUIBaseComponent
 		float time = m_TimeMgr.GetTimeOfTheDay();
 				
 		// day/night
-		if ( time < m_fSunriseTime || time > m_fSunsetTime)
-		{			
-			m_bIsDark = true;
-			m_wLightOverlay.SetVisible(true);
-		}
-		else 
-		{			
-			m_bIsDark = false;
-			m_wLightOverlay.SetVisible(false);
-		}
+		m_bIsDark = time < m_fSunriseTime || time > m_fSunsetTime;
+		m_wLightOverlay.SetVisible(m_bIsDark);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -179,8 +166,8 @@ class SCR_MapLightUI : SCR_MapUIBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Initialization	
-	//! \param widget is the root widget
+	//! Initialisation
+	//! \param[in] widget is the root widget
 	protected void Init(Widget widget)
 	{
 		m_wLightOverlay = widget.FindAnyWidget("LightOverlay");
@@ -215,6 +202,8 @@ class SCR_MapLightUI : SCR_MapUIBaseComponent
 	//------------------------------------------------------------------------------------------------
 	// OVERRIDES
 	//------------------------------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
 	override void OnMapOpen(MapConfiguration config)
 	{
 		super.OnMapOpen(config);
@@ -246,12 +235,7 @@ class SCR_MapLightUI : SCR_MapUIBaseComponent
 		
 		UpdateTime();
 		
-		if (m_eLightMode != EMapLightMode.NONE)
-		{
-			if (m_wLightCone)
-			{				
-				UpdatePosition();
-			}
-		}
+		if (m_eLightMode != EMapLightMode.NONE && m_wLightCone)
+			UpdatePosition();
 	}	
-};
+}

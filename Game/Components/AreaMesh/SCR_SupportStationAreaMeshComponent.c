@@ -1,7 +1,7 @@
 [ComponentEditorProps(category: "GameScripted/Area Mesh", description: "")]
 class SCR_SupportStationAreaMeshComponentClass : SCR_BaseAreaMeshComponentClass
 {
-};
+}
 
 class SCR_SupportStationAreaMeshComponent : SCR_BaseAreaMeshComponent
 {
@@ -34,79 +34,20 @@ class SCR_SupportStationAreaMeshComponent : SCR_BaseAreaMeshComponent
 	//~ Get support station component from owner, parent or siblings
 	protected SCR_BaseSupportStationComponent GetSupportStation(IEntity owner)
 	{
-		array<Managed> supportStationComponents = {};
-		owner.FindComponents(SCR_BaseSupportStationComponent, supportStationComponents);
-		SCR_BaseSupportStationComponent supportStation = GetValidSupportStation(supportStationComponents);
-		if (supportStation)
-			return supportStation;
-		
-		IEntity parent = owner.GetParent();
-		
-		//~ Not found on owner so look for support station on parent
-		if (parent)
-		{
-			supportStationComponents.Clear();
-			parent.FindComponents(SCR_BaseSupportStationComponent, supportStationComponents);
-
-			supportStation = GetValidSupportStation(supportStationComponents);
-			if (supportStation)
-			{
-				if (SCR_Global.IsEditMode() && m_fRadius != supportStation.GetRange())
-					Print("'SCR_SupportStationAreaMeshComponent' is on a child entity yet the m_fRadius (" + m_fRadius + ") is not equal to the support Station range (" + supportStation.GetRange() + ") make sure it is equal else the preview will not show correctly", LogLevel.ERROR);
-				else if (!SCR_Global.IsEditMode() && m_fRadius !=  Math.Sqrt(supportStation.GetRange()))
-					Print("'SCR_SupportStationAreaMeshComponent' is on a child entity yet the m_fRadius (" + m_fRadius + ") is not equal to the support Station range (" + Math.Sqrt(supportStation.GetRange()) + ") make sure it is equal else the preview will not show correctly", LogLevel.ERROR);
-				
-				return supportStation;
-			}
-				
-			
-			//~ Not found on parent so look for support station on children of parent
-			IEntity child = parent.GetChildren();
-			while (child != null && m_SupportStationComponent == null)
-			{
-				supportStationComponents.Clear();
-				child.FindComponents(SCR_BaseSupportStationComponent, supportStationComponents);
-
-				supportStation = GetValidSupportStation(supportStationComponents);
-				if (supportStation)
-				{
-					if (SCR_Global.IsEditMode() && m_fRadius != supportStation.GetRange())
-					Print("'SCR_SupportStationAreaMeshComponent' is on a child entity yet the m_fRadius (" + m_fRadius + ") is not equal to the support Station range (" + supportStation.GetRange() + ") make sure it is equal else the preview will not show correctly", LogLevel.ERROR);
-				else if (!SCR_Global.IsEditMode() && m_fRadius != Math.Sqrt(supportStation.GetRange()))
-					Print("'SCR_SupportStationAreaMeshComponent' is on a child entity yet the m_fRadius (" + m_fRadius + ") is not equal to the support Station range (" + Math.Sqrt(supportStation.GetRange()) + ") make sure it is equal else the preview will not show correctly", LogLevel.ERROR);
-
-					return supportStation;
-				}
-					
-				child = child.GetSibling();
-			}
-		}
-		
-		return null;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//~ Checks if there are any valid support stations in the given array
-	protected SCR_BaseSupportStationComponent GetValidSupportStation(notnull array<Managed> supportStationComponents)
-	{
-		if (supportStationComponents.IsEmpty())
+		if (!owner)
 			return null;
+				
+		SCR_BaseSupportStationComponent supportStation = SCR_BaseSupportStationComponent.FindSupportStation(owner, m_eSearchForType, SCR_EComponentFinderQueryFlags.ENTITY | SCR_EComponentFinderQueryFlags.SLOTS | SCR_EComponentFinderQueryFlags.PARENT);
 
-		SCR_BaseSupportStationComponent supportStation;
-
-		foreach (Managed station : supportStationComponents)
+		if (supportStation && supportStation.GetOwner() != owner && supportStation.GetOwner() != owner.GetParent())
 		{
-			supportStation = SCR_BaseSupportStationComponent.Cast(station);
-			if (!supportStation)
-				continue;
-
-			if (m_eSearchForType == ESupportStationType.NONE || supportStation.GetSupportStationType() == m_eSearchForType)
-			{
-				return supportStation;
-			}
+			if (SCR_Global.IsEditMode() && m_fRadius != supportStation.GetRange())
+				Print("'SCR_SupportStationAreaMeshComponent' is on a child entity yet the m_fRadius (" + m_fRadius + ") is not equal to the support Station range (" + supportStation.GetRange() + ") make sure it is equal else the preview will not show correctly", LogLevel.ERROR);
+			else if (!SCR_Global.IsEditMode() && m_fRadius != Math.Sqrt(supportStation.GetRange()))
+				Print("'SCR_SupportStationAreaMeshComponent' is on a child entity yet the m_fRadius (" + m_fRadius + ") is not equal to the support Station range (" + Math.Sqrt(supportStation.GetRange()) + ") make sure it is equal else the preview will not show correctly", LogLevel.ERROR);
 		}
-
-		return null;
+		
+		return supportStation;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -203,6 +144,4 @@ class SCR_SupportStationAreaMeshComponent : SCR_BaseAreaMeshComponent
 		if (m_SupportStationComponent && m_SupportStationComponent.UsesRange())
 			m_SupportStationComponent.GetOnEnabledChanged().Remove(OnEnabledChanged);
 	}
-};
-
-
+}

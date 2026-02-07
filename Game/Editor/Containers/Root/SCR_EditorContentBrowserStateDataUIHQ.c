@@ -1,9 +1,8 @@
-/*!
-Editor Content browser State data that includes UI data for tabs, with specific conditin for HQ
-*/
+//! Editor Content browser State data that includes UI data for tabs, with specific condition for HQ
 [BaseContainerProps(), SCR_BaseContainerCustomTitleUIInfo("m_BrowserStateUIInfo")]
 class SCR_EditorContentBrowserSaveStateDataUIHQ : SCR_EditorContentBrowserSaveStateDataUI
 {
+	//------------------------------------------------------------------------------------------------
 	//! Tab allowing a supply truck to build a new base is not available for Conflict mode.
 	override bool CanBeShown()
 	{

@@ -55,13 +55,18 @@ class SCR_GlobalUnconsciousnessEditorAttribute : SCR_BaseEditorAttribute
 			if (!characterDamageManager) 
 				continue;
 			
-			if (characterDamageManager.GetState() == EDamageState.DESTROYED)
-				continue;
-				
-			if (!characterDamageManager.IsDamageHandlingEnabled())
+			CharacterControllerComponent controller = CharacterControllerComponent.Cast(character.GetCharacterController());
+			if (!controller) 
 				continue;
 			
-			if (characterDamageManager.GetIsUnconscious())
+			ECharacterLifeState lifeState = controller.GetLifeState();
+			if (lifeState == ECharacterLifeState.DEAD)
+				continue;
+			
+			if (!characterDamageManager.IsDamageHandlingEnabled())
+				continue;
+
+			if (lifeState == ECharacterLifeState.INCAPACITATED)
 				characterDamageManager.Kill(Instigator.CreateInstigator(null));
 		}
 	}

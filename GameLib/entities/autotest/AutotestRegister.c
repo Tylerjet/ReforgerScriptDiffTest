@@ -296,7 +296,7 @@ class AutotestRegister
 	int GetNumberOfWorldFiles()
 	{
 		array<string> files = {};
-		System.FindFiles(files.Insert, m_worldFileFolder, ".ent");
+		FileIO.FindFiles(files.Insert, m_worldFileFolder, ".ent");
 		return files.Count();
 	}
 	

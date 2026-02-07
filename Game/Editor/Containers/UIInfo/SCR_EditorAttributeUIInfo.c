@@ -1,18 +1,15 @@
-/*!
-UIInfo used by editor attribute system
-*/
+//! UIInfo used by editor attribute system
 [BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
 class SCR_EditorAttributeUIInfo : SCR_UIInfo
 {
 	[Attribute("1 1 1 1", UIWidgets.ColorPicker, desc: "Description Icon Color")]
 	protected ref Color m_cDescriptionIconColor;
-	
-	/*!
-	Copy UI info from source with potential overwrites
-	\param source Source to copy from
-	\param overwriteDescription Optional description overwrite
-	\param overwriteColor Optional description icon Color overwrite
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Copy UI info from source with potential overwrites
+	//! \param source Source to copy from
+	//! \param overwriteDescription Optional description overwrite
+	//! \param overwriteColor Optional description icon Color overwrite
 	void CopyFromEditorAttributeUIInfo(notnull SCR_EditorAttributeUIInfo source, LocalizedString overwriteDescription = string.Empty, Color overwriteColor = null)
 	{
 		CopyFrom(source);
@@ -23,7 +20,8 @@ class SCR_EditorAttributeUIInfo : SCR_UIInfo
 		if (!overwriteColor)
 			m_cDescriptionIconColor = overwriteColor;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	override void CopyFrom(SCR_UIName source)
 	{
 		SCR_EditorAttributeUIInfo sourceInfo = SCR_EditorAttributeUIInfo.Cast(source);
@@ -37,13 +35,12 @@ class SCR_EditorAttributeUIInfo : SCR_UIInfo
 
 		super.CopyFrom(source);
 	}
-	
-	/*!
-	Get attribute description icon color
-	\return Attribute description icon color
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get attribute description icon color
+	//! \return Attribute description icon color
 	Color GetDescriptionIconColor()
 	{
-		return m_cDescriptionIconColor;
+		return Color.FromInt(m_cDescriptionIconColor.PackToInt());
 	}
-};
+}

@@ -4,7 +4,7 @@
 [BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
 class SCR_SnapYPositionEditorAttribute : SCR_ValidTypeBaseEditorAttribute
 {	
-	protected ref ScriptInvoker Event_OnValueChanged = new ref ScriptInvoker;
+	protected ref ScriptInvoker Event_OnValueChanged = new ScriptInvoker;
 	
 	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)
 	{		

@@ -1,12 +1,9 @@
 #define ENABLE_BASE_DESTRUCTION
-//------------------------------------------------------------------------------------------------
 [EntityEditorProps(category: "GameScripted/Destruction", description: "Enables destruction.")]
 class SCR_DestructionManagerComponentClass : ScriptComponentClass
 {
-	// prefab properties here
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_DestructionManagerComponent : ScriptComponent
 {
 #ifdef ENABLE_BASE_DESTRUCTION
@@ -31,4 +28,4 @@ class SCR_DestructionManagerComponent : ScriptComponent
 		GetGame().GetCallqueue().CallLater(SCR_MPDestructionManager.InitializeDestructionManager, delay, false);
 	}
 #endif
-};
+}

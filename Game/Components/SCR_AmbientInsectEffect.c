@@ -6,15 +6,19 @@ class SCR_AmbientInsectsEffect
 	protected SignalsManagerComponent m_LocalSignalsManager;
 
 	//------------------------------------------------------------------------------------------------
-	/*
-	Called by SCR_AmbientInsectsComponent in UpdateSoundJob()
-	*/
+	//!
+	//! \param[in] worldTime
+	//! \param[in] cameraPos
+	//! \param[in] timeOfDay
+	//! \param[in] rainIntensity
+	// Called by SCR_AmbientInsectsComponent in UpdateSoundJob()
 	void Update(float worldTime, vector cameraPos, float timeOfDay, float rainIntensity);
 
 	//------------------------------------------------------------------------------------------------
-	/*
-	Called by SCR_AmbientInsectsComponent in OnPostInit()
-	*/
+	//! \param[in] ambientSoundsComponent
+	//! \param[in] ambientInsectsComponent
+	//! \param[in] signalsManagerComponent
+	// Called by SCR_AmbientInsectsComponent in OnPostInit()
 	void OnPostInit(SCR_AmbientSoundsComponent ambientSoundsComponent, SCR_AmbientInsectsComponent ambientInsectsComponent, SignalsManagerComponent signalsManagerComponent)
 	{
 		m_AmbientSoundsComponent = ambientSoundsComponent;

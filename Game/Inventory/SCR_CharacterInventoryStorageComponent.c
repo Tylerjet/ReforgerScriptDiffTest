@@ -1,36 +1,31 @@
-[ComponentEditorProps(category: "GameScripted/Inventory", description: "Inventory 2.0", icon: HYBRID_COMPONENT_ICON)]
-class SCR_CharacterInventoryStorageComponentClass: CharacterInventoryStorageComponentClass
-{
-};
-
-//------------------------------------------------------------------------------------------------
-//! default scritped storage for the character
-
-const ref array<EWeaponType>		WEAPON_TYPES_THROWABLE	= {EWeaponType.WT_FRAGGRENADE, EWeaponType.WT_SMOKEGRENADE};
-
 enum EItemType
 {
 	IT_NONE = 16385
-};
+}
 
-//------------------------------------------------------------------------------------------------
+[ComponentEditorProps(category: "GameScripted/Inventory", description: "Inventory 2.0", icon: HYBRID_COMPONENT_ICON)]
+class SCR_CharacterInventoryStorageComponentClass: CharacterInventoryStorageComponentClass
+{
+}
+
 class SCR_InvEquipCB : SCR_InvCallBack
 {
 	CharacterControllerComponent m_Controller;
 
+	//------------------------------------------------------------------------------------------------
 	protected override void OnComplete()
 	{
 		m_Controller.TryEquipRightHandItem(m_pItem, EEquipItemType.EEquipTypeWeapon, false);
 		m_pItem = null;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected override void OnFailed()
 	{
 		m_pItem = null;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_EquipNextGrenadeCB : SCR_InvCallBack
 {
 	SCR_InventoryStorageManagerComponent m_InvMan;
@@ -49,7 +44,19 @@ class SCR_EquipNextGrenadeCB : SCR_InvCallBack
 	{
 		m_pItem = null;
 	}
-};	
+}
+
+class SCR_EquipGearCB : SCR_InvCallBack
+{
+	protected override void OnComplete()
+	{
+		if (m_pMenu)
+		{
+			m_pMenu.ShowStoragesList();
+			m_pMenu.ShowAllStoragesInList();
+		}
+	}
+}
 
 class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponent
 {
@@ -63,24 +70,23 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	
 	#ifndef DISABLE_INVENTORY
 	
-	private BaseInventoryStorageComponent m_pLootStorage;
+	private BaseInventoryStorageComponent				m_LootStorage;
 	protected ref array<IEntity>						m_aQuickSlots = { null, null, null, null, null, null, null, null, null, null };
 	protected ref map<IEntity, int> 					m_mSlotHistory = new map<IEntity, int>();
 	protected ref array<IEntity>						m_aWeaponQuickSlotsStorage = {}; //Is used to store first four quickslots of turrets.
-	protected ref array< int >							m_aQuickSlotsHistory = new array< int >();	//here we'll be remembering the items stored
-	// protected ref array<EntityComponentPrefabData>		m_aPrefabsData = { null, null, null, null, null, null, null, null, null, null }; // todo: figure out the intentions
-	protected string				 					m_pLoadout;
+	protected ref array< int >							m_aQuickSlotsHistory = {};	//here we'll be remembering the items stored
+//	protected ref array<EntityComponentPrefabData>		m_aPrefabsData = { null, null, null, null, null, null, null, null, null, null }; // todo: figure out the intentions
 	protected static const int							GADGET_OFFSET = 9999;	//EWeaponType && EGadgetType might be have the same number, offset it ( not nice (i agree) )
-	/*
-	protected ref array<ref array<int>>					m_aDefaultRiflemanQuickSlots = 	{	{ EWeaponType.WT_RIFLE, EWeaponType.WT_SNIPERRIFLE, EWeaponType.WT_MACHINEGUN },
-																							{ EWeaponType.WT_HANDGUN, EWeaponType.WT_ROCKETLAUNCHER, EWeaponType.WT_GRENADELAUNCHER, ( EGadgetType.BINOCULARS ) + GADGET_OFFSET  },
-																							{ ( EGadgetType.FLASHLIGHT ) + GADGET_OFFSET },
-																							{ EWeaponType.WT_FRAGGRENADE, EWeaponType.WT_SMOKEGRENADE },
-																							{ ( EGadgetType.MAP ) + GADGET_OFFSET },
-																							{ ( EGadgetType.COMPASS ) + GADGET_OFFSET } 
-																						};
-	*/
-	protected static ref array<ref array<int>>			DEFAULT_QUICK_SLOTS =			{	{ EWeaponType.WT_RIFLE, EWeaponType.WT_SNIPERRIFLE, EWeaponType.WT_MACHINEGUN },
+
+//	protected ref array<ref array<int>>					m_aDefaultRiflemanQuickSlots = 	{	{ EWeaponType.WT_RIFLE, EWeaponType.WT_SNIPERRIFLE, EWeaponType.WT_MACHINEGUN },
+//																							{ EWeaponType.WT_HANDGUN, EWeaponType.WT_ROCKETLAUNCHER, EWeaponType.WT_GRENADELAUNCHER, ( EGadgetType.BINOCULARS ) + GADGET_OFFSET  },
+//																							{ ( EGadgetType.FLASHLIGHT ) + GADGET_OFFSET },
+//																							{ EWeaponType.WT_FRAGGRENADE, EWeaponType.WT_SMOKEGRENADE },
+//																							{ ( EGadgetType.MAP ) + GADGET_OFFSET },
+//																							{ ( EGadgetType.COMPASS ) + GADGET_OFFSET }
+//																						};
+
+	protected static const ref array<ref array<int>>	DEFAULT_QUICK_SLOTS =			{	{ EWeaponType.WT_RIFLE, EWeaponType.WT_SNIPERRIFLE, EWeaponType.WT_MACHINEGUN },
 																							{ EWeaponType.WT_RIFLE, EWeaponType.WT_ROCKETLAUNCHER, EWeaponType.WT_GRENADELAUNCHER, EWeaponType.WT_SNIPERRIFLE, EWeaponType.WT_MACHINEGUN },
 																							{ EWeaponType.WT_HANDGUN },
 																							{ EWeaponType.WT_FRAGGRENADE },
@@ -98,15 +104,21 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	protected BaseInventoryStorageComponent m_WeaponStorage;
 	
 	protected ref SCR_InvEquipCB m_Callback = new SCR_InvEquipCB();
+
+	protected static const ref array<EWeaponType> WEAPON_TYPES_THROWABLE = { EWeaponType.WT_FRAGGRENADE, EWeaponType.WT_SMOKEGRENADE };
 	
 	//------------------------------------------------------------------------ USER METHODS ------------------------------------------------------------------------
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	//TODO: define this on loadout level. This is temporary and will be removed!
-	float GetMaxLoad() { return m_fMaxWeight; }
+	float GetMaxLoad()
+	{
+		return m_fMaxWeight;
+	}
 	
 	//------------------------------------------------------------------------------------------------
-	// !
+	//! \return
 	BaseInventoryStorageComponent GetWeaponStorage()
 	{
 		if (!m_WeaponStorage)
@@ -116,7 +128,8 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// !
+	//! \param[in] eSlot
+	//! \return
 	InventoryItemComponent GetItemFromLoadoutSlot( LoadoutAreaType eSlot )
 	{
 		// Not all attached Entities to slots are storages.
@@ -132,44 +145,48 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		
 		return InventoryItemComponent.Cast(entity.FindComponent(InventoryItemComponent));
 	}
+
 	//------------------------------------------------------------------------------------------------
-	// !
+	//! \param[in] eSlot
+	//! \return
 	BaseInventoryStorageComponent GetStorageFromLoadoutSlot( LoadoutAreaType eSlot )
 	{
 		return BaseInventoryStorageComponent.Cast( GetItemFromLoadoutSlot(eSlot) );
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// 
 	protected bool HasStorageComponent( IEntity pEntity )
 	{
 		return GetStorageComponentFromEntity( pEntity ) != null;	
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
-	// ! returns all topmost storages
+	//! \param[out] storagesInInventory
+	//! \return all topmost storages
 	void GetStorages( out notnull array<SCR_UniversalInventoryStorageComponent> storagesInInventory )
 	{
-		array<IEntity> pEntities = new array<IEntity>();
+		array<IEntity> pEntities = {};
 		int iNrOfStorages = GetAll( pEntities );
 		
+		SCR_UniversalInventoryStorageComponent pUniComp;
 		foreach ( IEntity pEntity: pEntities )
 		{
-			SCR_UniversalInventoryStorageComponent pUniComp = GetStorageComponentFromEntity( pEntity );
+			pUniComp = GetStorageComponentFromEntity(pEntity);
 			if( pUniComp )
 				storagesInInventory.Insert( pUniComp );
 		}
 	}
 		
 	//------------------------------------------------------------------------------------------------
+	//! \param[out] blockedSlots
 	void GetBlockedSlots(out notnull array<typename> blockedSlots)
 	{
 		blockedSlots.Copy(m_aBlockedSlots);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// ! get the item inventory component 
+	//! \param[in] pEntity
+	//! \return the item inventory component
 	SCR_UniversalInventoryStorageComponent GetStorageComponentFromEntity( IEntity pEntity )
 	{
 		if ( pEntity == null )
@@ -179,46 +196,51 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// !
+	//! \param[in] pOwner
 	void SetLootStorage( IEntity pOwner )
 	{
 		if( !pOwner )
 		{
-			m_pLootStorage = null;
+			m_LootStorage = null;
 			return;
 		}
-		m_pLootStorage = BaseInventoryStorageComponent.Cast( pOwner.FindComponent( BaseInventoryStorageComponent ) );
+
+		m_LootStorage = BaseInventoryStorageComponent.Cast(pOwner.FindComponent(BaseInventoryStorageComponent));
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	BaseInventoryStorageComponent GetLootStorage()
 	{
-		return m_pLootStorage;
+		return m_LootStorage;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// ! returns the visibility state of the adequate UI container - if the storage was previously shown in the inventory
+	//! \param[in] pStorage
+	//! \return the visibility state of the adequate UI container - if the storage was previously shown in the inventory
 	bool GetIsStorageShown( notnull BaseInventoryStorageComponent pStorage )
 	{
 		return m_aStoragesInStorageList.Find( pStorage ) != -1;
 	}
+
 	//------------------------------------------------------------------------------------------------
-	// ! 
+	//! \param[in] pStorage
 	void SetStorageAsShown( notnull BaseInventoryStorageComponent pStorage )
 	{
 		if ( !GetIsStorageShown( pStorage ) )
-		{
 			m_aStoragesInStorageList.Insert( pStorage );
-		}
 	}
+
 	//------------------------------------------------------------------------------------------------
-	// !
+	//! \param[in] pStorage
 	void SetStorageAsHidden( notnull BaseInventoryStorageComponent pStorage )
 	{
 		m_aStoragesInStorageList.RemoveItem( pStorage );
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// !
+	//! \param[in] pItem
+	//! \return
 	static int GetItemType( IEntity pItem )
 	{
 		int iItemType = -1;
@@ -250,13 +272,18 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// !
+	//!
+	//! \param[in] iItemType
+	//! \param[in] iSlotIndex
+	//! \return
 	bool ItemBelongsToSlot( int iItemType, int iSlotIndex )
 	{
 		return DEFAULT_QUICK_SLOTS[iSlotIndex].Contains(iItemType);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] ent
+	//! \return
 	int GetLastQuickSlotId(IEntity ent)
 	{
 		int result = m_mSlotHistory.Get(ent);
@@ -265,6 +292,8 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] item
+	//! \return
 	int GetEntityQuickSlot(IEntity item)
 	{
 		int itemType = GetItemType(item);
@@ -278,19 +307,27 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] item
+	//! \return
 	bool IsItemAlreadyInQuickSlot(IEntity item)
 	{
 		int itemType = GetItemType(item);
 		if (itemType < 0)
 			return false;
+
 		int slotId = GetEntityQuickSlot(item);
 		if (slotId < 0)
 			return false;
+
 		return m_aQuickSlots[slotId] == item;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// !
+	//!
+	//! \param[in] pItem
+	//! \param[in] iSlotIndex
+	//! \param[in] isForced
+	//! \return
 	int StoreItemToQuickSlot( notnull IEntity pItem, int iSlotIndex = -1, bool isForced = false )
 	{
 		int iItemType = GetItemType( pItem );
@@ -365,7 +402,9 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// !
+	//!
+	//! \param[in] pItem
+	//! \return
 	int RemoveItemFromQuickSlot( IEntity pItem )
 	{
 		int iIndex = m_aQuickSlots.Find( pItem );
@@ -376,7 +415,8 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// !
+	//!
+	//! \param[in] iIndex
 	void RemoveItemFromQuickSlotAtIndex(int iIndex)
 	{
 		if (iIndex >= 0 && m_aQuickSlots.Get(iIndex))
@@ -384,13 +424,15 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// !
+	//! \return
 	array<IEntity> GetQuickSlotItems()
 	{ 
 		return m_aQuickSlots; 
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] index
+	//! \return
 	IEntity GetItemFromQuickSlot(int index)
 	{
 		if (!m_aQuickSlots.IsIndexValid(index))
@@ -400,7 +442,7 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Get currently held item. If character holds gadget, gadget is returned, otherwise current weapon.
+	//! \return currently held item. If character holds gadget, gadget is returned, otherwise current weapon.
 	IEntity GetCurrentItem()
 	{
 		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
@@ -427,7 +469,7 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Get selected item. If there is no active switching, currently held item is returned instead.
+	//! \return selected item. If there is no active switching, currently held item is returned instead.
 	IEntity GetSelectedItem()
 	{
 		// Selection is in progress
@@ -516,6 +558,8 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	
 	//------------------------------------------------------------------------------------------------
 	//! Called when item is added to slot, update armored attributes when item with armorData is equipped
+	//! \param[in] item
+	//! \param[in] slotID
 	protected override void OnAddedToSlot(IEntity item, int slotID)
 	{
 		super.OnAddedToSlot(item, slotID);
@@ -545,7 +589,7 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		if( !UIinfoItem )
 			return;
 		
-		PrintFormat( "INV: item %1 was added. It's weight is: %2, and total weight of item/storage is: %3", UIinfoItem.GetName(), attr.GetWeight(), storageComponent.GetTotalWeight() );
+		Print(string.Format("INV: item %1 was added. It's weight is: %2, and total weight of item/storage is: %3", UIinfoItem.GetName(), attr.GetWeight(), storageComponent.GetTotalWeight()), LogLevel.NORMAL);
 		#endif
 	}
 	
@@ -563,7 +607,6 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	protected void UpdateBlockedSlots(IEntity item, int slotID, bool added)
 	{
 		BaseLoadoutClothComponent loadoutComp = BaseLoadoutClothComponent.Cast(item.FindComponent(BaseLoadoutClothComponent));
-		
 		if (!loadoutComp)
 			return;
 		
@@ -591,6 +634,8 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] areaType
+	//! \return
 	bool IsAreaBlocked(typename areaType)
 	{
 		return m_aBlockedSlots.Contains(areaType);
@@ -615,7 +660,9 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// !
+	//!
+	//! \param[in] item
+	//! \param[in] storageOwner
 	void HandleOnItemAddedToInventory( IEntity item, BaseInventoryStorageComponent storageOwner )
 	{
 		int targetQuickSlot = StoreItemToQuickSlot(item);
@@ -624,14 +671,112 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// !
+	//!
+	//! \param[in] item
+	//! \param[in] storageOwner
 	void HandleOnItemRemovedFromInventory( IEntity item, BaseInventoryStorageComponent storageOwner )
 	{
 		m_mSlotHistory.Set(item, m_aQuickSlots.Find(item));
 		RemoveItemFromQuickSlot( item );
 	}
 	
+	// For use from inventory menu
+	bool CanEquipItem_Inventory(notnull IEntity item)
+	{
+		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
+		if (!character)
+			return false;
+
+		CharacterControllerComponent charCtrl = character.GetCharacterController();
+		if (!charCtrl)
+			return false;
+
+		if (charCtrl.GetRightHandItem() == item || charCtrl.GetInputContext().GetLeftHandGadgetEntity() == item)
+			return false;
+
+		if (item.FindComponent(MagazineComponent))
+			return false;
+
+		if (item.FindComponent(BaseLoadoutClothComponent))
+			return true;
+
+		if (item.FindComponent(BaseWeaponComponent))
+		{
+			if (charCtrl.IsChangingItem())
+				return false;
+		}
+
+		return CanUseItem(item);
+	}
+
+	// For use from inventory menu	
+	bool CanUseItem_Inventory(notnull IEntity item, ESlotFunction slotFunction = ESlotFunction.TYPE_GENERIC)
+	{
+		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
+		if (!character)
+			return false;
+
+		CharacterControllerComponent controller = character.GetCharacterController();
+		if (!controller)
+			return false;
+
+		if (slotFunction == ESlotFunction.TYPE_GENERIC)
+		{
+			if (item.FindComponent(BaseLoadoutClothComponent))
+				slotFunction = ESlotFunction.TYPE_CLOTHES;
+			else if (item.FindComponent(MagazineComponent))
+				slotFunction = ESlotFunction.TYPE_MAGAZINE;
+			else if (item.FindComponent(BaseWeaponComponent))
+				slotFunction = ESlotFunction.TYPE_WEAPON;
+			else if (item.FindComponent(SCR_GadgetComponent))
+				slotFunction = ESlotFunction.TYPE_GADGET;
+		}
+
+		switch (slotFunction)
+		{
+			case ESlotFunction.TYPE_CLOTHES:
+			{
+				return false;
+			} break;
+
+			case ESlotFunction.TYPE_MAGAZINE:
+			{
+				if (!character.IsInVehicle())
+					return CanReloadCurrentWeapon(item);
+
+				return false;
+			} break;
+
+			case ESlotFunction.TYPE_WEAPON:
+			{
+				return false;
+			} break;
+
+			case ESlotFunction.TYPE_GADGET:
+			{
+				SCR_ConsumableItemComponent consumableComp = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
+				if (consumableComp)
+				{
+					return (consumableComp 
+						&& consumableComp.GetConsumableEffect() 
+						&& consumableComp.GetConsumableEffect().CanApplyEffect(character, character));
+				}
+				else
+				{
+					SCR_GadgetComponent gadgetComp = SCR_GadgetComponent.Cast(item.FindComponent(SCR_GadgetComponent));
+					return (gadgetComp.GetMode() == EGadgetMode.IN_HAND && gadgetComp.CanBeToggled());
+				}
+			} break;
+		}
+
+		return false;
+	}
+
 	//------------------------------------------------------------------------------------------------	
+	//!
+	//! \param[in] item
+	//! \param[in] slotFunction
+	//! \return
 	bool CanUseItem(notnull IEntity item, ESlotFunction slotFunction = ESlotFunction.TYPE_GENERIC)
 	{
 		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
@@ -691,6 +836,10 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	}
 	
 	//------------------------------------------------------------------------------------------------	
+	//!
+	//! \param[in] item
+	//! \param[in] slotFunction
+	//! \return
 	bool UseItem(notnull IEntity item, ESlotFunction slotFunction = ESlotFunction.TYPE_GENERIC)
 	{
 		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
@@ -700,12 +849,14 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		// Autodetect slot function
 		if (slotFunction == ESlotFunction.TYPE_GENERIC)
 		{
-			if (item.FindComponent(MagazineComponent))
+			if (item.FindComponent(SCR_GadgetComponent))
+				slotFunction = ESlotFunction.TYPE_GADGET;
+			else if (item.FindComponent(BaseLoadoutClothComponent))
+				slotFunction = ESlotFunction.TYPE_CLOTHES;
+			else if (item.FindComponent(MagazineComponent))
 				slotFunction = ESlotFunction.TYPE_MAGAZINE;
 			else if (item.FindComponent(BaseWeaponComponent))
 				slotFunction = ESlotFunction.TYPE_WEAPON;
-			else if (item.FindComponent(SCR_GadgetComponent))
-				slotFunction = ESlotFunction.TYPE_GADGET;
 		}
 		
 		switch (slotFunction)
@@ -822,11 +973,38 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 				// TODO kamil: this doesnt call setmode when switching to other item from gadget (no direct call to scripted togglefocused for example, possibly other issues?)
 				SCR_GadgetManagerComponent gadgetMgr = SCR_GadgetManagerComponent.GetGadgetManager(character);
 				if (gadgetMgr)
-					gadgetMgr.SetGadgetMode(item, EGadgetMode.IN_HAND);
+				{
+					SCR_GadgetComponent gadgetComp = SCR_GadgetComponent.Cast(item.FindComponent(SCR_GadgetComponent));
+					if (gadgetComp.GetMode() == EGadgetMode.IN_HAND && gadgetComp.CanBeToggled())
+						gadgetComp.ToggleActive(!gadgetComp.IsToggledOn());
+					else
+						gadgetMgr.SetGadgetMode(item, EGadgetMode.IN_HAND);
+				}
 				else
 					return false;
+
 				return true;
 			}
+
+			case ESlotFunction.TYPE_CLOTHES:
+			{
+				SCR_EquipGearCB cb = new SCR_EquipGearCB();
+				cb.m_pMenu = SCR_InventoryMenuUI.GetInventoryMenu();
+
+				SCR_InventoryStorageManagerComponent storageMgr = SCR_InventoryStorageManagerComponent.Cast(character.GetCharacterController().GetInventoryStorageManager());
+				if (storageMgr)
+					storageMgr.EquipAny(this, item, -1, cb);
+			} break;
+
+			case ESlotFunction.TYPE_STORAGE:
+			{
+				SCR_EquipGearCB cb = new SCR_EquipGearCB();
+				cb.m_pMenu = SCR_InventoryMenuUI.GetInventoryMenu();
+
+				SCR_InventoryStorageManagerComponent storageMgr = SCR_InventoryStorageManagerComponent.Cast(character.GetCharacterController().GetInventoryStorageManager());
+				if (storageMgr)
+					storageMgr.EquipAny(this, item, -1, cb);
+			} break;
 		} 
 		return false;
 	}
@@ -862,7 +1040,7 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 			return false;
 		
 		MagazineComponent magazine = MagazineComponent.Cast(item.FindComponent(MagazineComponent));
-		if (!magazine)
+		if (!magazine || !magazine.GetMagazineWell())
 			return false;
 		
 		if (magazine.GetMagazineWell().Type() == currentMagWell.Type())
@@ -888,6 +1066,7 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		return controller.ReloadWeaponWith(item);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void GetPlayersWeapons( notnull inout array<IEntity> outWeapons )
 	{
 		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
@@ -936,7 +1115,9 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// !
+	//!
+	//! \param[in] pOwner
+	//! \param[in] pControlled
 	void InitAsPlayer(IEntity pOwner, bool pControlled)
 	{
 		ChimeraCharacter character = ChimeraCharacter.Cast(pOwner);
@@ -957,16 +1138,20 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 			if ( m_aQuickSlotsHistory.Count() <  i )
 			{
 				for ( int m = 0; m < i; m++ )
+				{
 					m_aQuickSlotsHistory.Insert( 0 );	//default is none	
+				}
 			}
 			
 			//Insert weapons to quick slots as first, because they can't be equipped into hands directly from different storage than EquippedWeaponStorage
-			//TODO: optimalize ( hotfix for ability to select grenades from quickslot )
+			//TODO: optimise ( hotfix for ability to select grenades from quickslot )
 			
 			array<IEntity> outWeapons = {};
 			GetPlayersWeapons( outWeapons );
 			foreach ( IEntity weapon : outWeapons )
+			{
 				StoreItemToQuickSlot( weapon );
+			}
 
 			// There may be unequipped grenades among default quick item slots as well
 			array<IEntity> outItems = {};
@@ -1014,7 +1199,7 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 
 	//------------------------------------------------------------------------------------------------
 	// Called when item is used by the player
-	protected void OnItemUsed(IEntity item, bool successful, SCR_ConsumableEffectAnimationParameters animParams)
+	protected void OnItemUsed(IEntity item, bool successful, ItemUseParameters animParams)
 	{
 		// If the item isn't consumable, return
 		if (!SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent)))
@@ -1055,6 +1240,11 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 
 	//------------------------------------------------------------------------------------------------
 	//! SCR_CompartmentAccessComponent event
+	//! \param[in] targetEntity
+	//! \param[in] manager
+	//! \param[in] mgrID
+	//! \param[in] slotID
+	//! \param[in] move
 	protected void OnCompartmentEntered(IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move)
 	{
 		BaseCompartmentSlot compartment = manager.FindCompartment(slotID, mgrID);
@@ -1062,8 +1252,10 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		if (m_CompartmentAcessComp && m_CompartmentAcessComp.IsGettingIn())
 		{
 			m_aWeaponQuickSlotsStorage.Clear();
-			for (int i; i < SCR_InventoryMenuUI.WEAPON_SLOTS_COUNT && i < m_aQuickSlots.Count(); i++)
+			for (int i, count = m_aQuickSlots.Count(); i < SCR_InventoryMenuUI.WEAPON_SLOTS_COUNT && i < count; i++)
+			{
 				m_aWeaponQuickSlotsStorage.Insert(m_aQuickSlots[i]);
+			}
 		}
 		
 		if (!TurretCompartmentSlot.Cast(compartment) && !m_aWeaponQuickSlotsStorage.IsEmpty())
@@ -1111,6 +1303,11 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 
 	//------------------------------------------------------------------------------------------------
 	//! SCR_CompartmentAccessComponent event
+	//! \param[in] targetEntity
+	//! \param[in] manager
+	//! \param[in] mgrID
+	//! \param[in] slotID
+	//! \param[in] move
 	protected void OnCompartmentLeft(IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move)
 	{
 		BaseCompartmentSlot compartment = manager.FindCompartment(slotID, mgrID);
@@ -1118,8 +1315,10 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		if (!TurretCompartmentSlot.Cast(compartment))
 		{
 			m_aWeaponQuickSlotsStorage.Clear();
-			for (int i; i < SCR_InventoryMenuUI.WEAPON_SLOTS_COUNT && i < m_aQuickSlots.Count(); i++)
+			for (int i, count = m_aQuickSlots.Count(); i < SCR_InventoryMenuUI.WEAPON_SLOTS_COUNT && i < count; i++)
+			{
 				m_aWeaponQuickSlotsStorage.Insert(m_aQuickSlots[i]);
+			}
 		}
 		
 		if (m_CompartmentAcessComp && m_CompartmentAcessComp.IsGettingOut())
@@ -1152,7 +1351,9 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	protected void RemoveItemsFromWeaponQuickSlots()
 	{
 		for (int i = 0; i < SCR_InventoryMenuUI.WEAPON_SLOTS_COUNT; i++)
+		{
 			RemoveItemFromQuickSlotAtIndex(i);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1168,7 +1369,6 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		
 		return -1;
 	}
-	
 	
 	//------------------------------------------------------------------------------------------------
 	protected int GetTurretWeaponSlots(BaseCompartmentSlot compartment, out array<WeaponSlotComponent> weaponSlots)
@@ -1187,14 +1387,41 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	//------------------------------------------------------------------------ COMMON METHODS ----------------------------------------------------------------------
 	
 	#else
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetMaxLoad();
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	BaseInventoryStorageComponent GetWeaponStorage();
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] eSlot
+	//! \return
 	InventoryItemComponent GetItemFromLoadoutSlot( ELoadoutArea eSlot );
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] eSlot
+	//! \return
 	BaseInventoryStorageComponent GetStorageFromLoadoutSlot( ELoadoutArea eSlot );
 	protected bool HasStorageComponent( IEntity pEntity );
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[out] storagesInInventory
 	void GetStorages( out notnull array<SCR_UniversalInventoryStorageComponent> storagesInInventory );
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] pEntity
+	//! \return
 	SCR_UniversalInventoryStorageComponent GetStorageComponentFromEntity( IEntity pEntity );
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] pOwner
 	void SetLootStorage( IEntity pOwner );
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	BaseInventoryStorageComponent GetLootStorage();
 	//override bool CanStoreItem(IEntity item, int slotID);
 	//override bool CanRemoveItem(IEntity item);
@@ -1202,4 +1429,4 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	//override InventoryStorageSlot GetEmptySlotForItem( IEntity item );
 	//protected override void OnAddedToSlot(IEntity item, int slotID);
 	#endif
-};
+}

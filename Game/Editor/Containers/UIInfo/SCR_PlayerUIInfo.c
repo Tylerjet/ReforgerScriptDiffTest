@@ -1,18 +1,22 @@
 [BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
-class SCR_PlayerUIInfo: SCR_UIInfo
+class SCR_PlayerUIInfo : SCR_UIInfo
 {
 	[Attribute()]
 	protected int m_iPlayerID;
-	
+
+	//------------------------------------------------------------------------------------------------
 	void SetPlayerID(int playerID)
 	{
 		m_iPlayerID = playerID;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	int GetPlayerID()
 	{
 		return m_iPlayerID;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	override LocalizedString GetName()
 	{
 		if (m_iPlayerID > 0)
@@ -20,4 +24,4 @@ class SCR_PlayerUIInfo: SCR_UIInfo
 		else
 			return super.GetName();
 	}
-};
+}

@@ -1,21 +1,19 @@
-class SCR_FactionAffiliationComponentClass: FactionAffiliationComponentClass
+class SCR_FactionAffiliationComponentClass : FactionAffiliationComponentClass
 {
-	
-};
+}
 
 void OnFactionChangeDelegate(FactionAffiliationComponent owner, Faction previousFaction, Faction newFaction);
 typedef func OnFactionChangeDelegate;
 typedef ScriptInvokerBase<OnFactionChangeDelegate> OnFactionChangedInvoker;
 
 
-class SCR_FactionAffiliationComponent: FactionAffiliationComponent
+class SCR_FactionAffiliationComponent : FactionAffiliationComponent
 {
-	//! Local invokers
+	// Local invokers
 	private ref ScriptInvoker m_OnFactionUpdate;
-	
 	private ref OnFactionChangedInvoker m_OnFactionChangedInvoker;
 	
-	//--------------------------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	override protected void OnFactionChanged(Faction previous, Faction current)
 	{
 		if (m_OnFactionUpdate)
@@ -25,19 +23,18 @@ class SCR_FactionAffiliationComponent: FactionAffiliationComponent
 			m_OnFactionChangedInvoker.Invoke(this, previous, current);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
 	// may return to DefaultAffiliatedFaction in some cases - override this
-	//--------------------------------------------------------------------------------------------------------------------------
 	void ClearAffiliatedFaction()
 	{
 		SetAffiliatedFaction(null); 
 	}
 	
-	//--------------------------------------------------------------------------------------------------------------------------
-	/*
-	Set faction.
-	\param IEntity Owner
-	\param faction Desired faction
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Set faction.
+	//! \param[in] owner
+	//! \param[in] faction the desired faction
 	static void SetFaction(IEntity owner, Faction faction)
 	{
 		if (!owner || !faction )
@@ -48,7 +45,8 @@ class SCR_FactionAffiliationComponent: FactionAffiliationComponent
 			factionComponent.SetAffiliatedFaction(faction);
 	}
 	
-	//--------------------------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	[Obsolete("Use the SCR_FactionAffiliationComponent.GetOnFactionChanged invoker instead!")]
 	ScriptInvoker GetOnFactionUpdate()
 	{
@@ -57,7 +55,8 @@ class SCR_FactionAffiliationComponent: FactionAffiliationComponent
 		return m_OnFactionUpdate;
 	}
 	
-	//--------------------------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	OnFactionChangedInvoker GetOnFactionChanged()
 	{
 		if (!m_OnFactionChangedInvoker)
@@ -65,4 +64,4 @@ class SCR_FactionAffiliationComponent: FactionAffiliationComponent
 		
 		return m_OnFactionChangedInvoker;
 	}
-};
+}

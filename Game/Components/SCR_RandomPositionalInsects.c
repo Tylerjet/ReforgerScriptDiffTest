@@ -34,7 +34,7 @@ class SCR_RandomPositionalInsects : SCR_AmbientInsectsEffect
 	protected ref array<ref SCR_InsectParticle> m_aParticles = {};
 
 	//------------------------------------------------------------------------------------------------
-	//! Called by SCR_AmbientInsectsComponent.Update()
+	// Called by SCR_AmbientInsectsComponent.Update()
 	override void Update(float worldTime, vector cameraPos, float timeOfDay, float rainIntensity)
 	{
 
@@ -53,6 +53,8 @@ class SCR_RandomPositionalInsects : SCR_AmbientInsectsEffect
 
 	//------------------------------------------------------------------------------------------------
 	//! Updates time and weather for respective Insect groups
+	//! \param[in] timeOfDay
+	//! \param[in] rainIntensity
 	protected void UpdateGlobalModifiers(float timeOfDay, float rainIntensity)
 	{
 		UpdateDensity();
@@ -83,10 +85,8 @@ class SCR_RandomPositionalInsects : SCR_AmbientInsectsEffect
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get maximal density per insect group and sound map type
-	\return density
-	*/
+	//! Get maximal density per insect group and sound map type
+	//! \return density
 	protected int GetDensityMax(int insectGroup, int soundMapType)
 	{
 		if (soundMapType == 0)
@@ -109,6 +109,7 @@ class SCR_RandomPositionalInsects : SCR_AmbientInsectsEffect
 
 	//------------------------------------------------------------------------------------------------
 	//! Deletes Insects that are too far away
+	//! \param[in] cameraPos
 	protected void RemoveOutOfRangeParticles(vector cameraPos)
 	{
 		for (int i = m_aParticles.Count() - 1; i >= 0; i--)
@@ -125,6 +126,8 @@ class SCR_RandomPositionalInsects : SCR_AmbientInsectsEffect
 
 	//------------------------------------------------------------------------------------------------
 	//! Deletes Insects that are not supposed to be spawned based on time and weather conditions
+	//! \param[in] timeOfDay
+	//! \param[in] rainIntensity
 	protected void RemoveParticlesBasedOnTimeAndWeather(float timeOfDay, float rainIntensity)
 	{
 		for (int i = m_aParticles.Count() - 1; i >= 0; i--)
@@ -143,6 +146,7 @@ class SCR_RandomPositionalInsects : SCR_AmbientInsectsEffect
 	
 	//------------------------------------------------------------------------------------------------
 	//! Randomizes animation for Insect
+	//! \param[in] entity
 	protected void RandomizeAnimation(IEntity entity)
 	{
 		AnimationPlayerComponent animComponent = AnimationPlayerComponent.Cast(entity.FindComponent(AnimationPlayerComponent));
@@ -158,9 +162,10 @@ class SCR_RandomPositionalInsects : SCR_AmbientInsectsEffect
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*
-	Attempts to find new position to play sound based on defined ESpawnMethod
-	*/
+	//! Attempts to find new position to play sound based on defined ESpawnMethod
+	//! \param[in] worldTime
+	//! \param[in] camPos
+	//! \param[in] insectGroup
 	protected void UpdateInsectGroup(float worldTime, vector camPos, int insectGroup)
 	{
 		// Generate sound position
@@ -237,6 +242,9 @@ class SCR_RandomPositionalInsects : SCR_AmbientInsectsEffect
 
 	//------------------------------------------------------------------------------------------------
 	//! Generates random position for the selected insect group around camera position
+	//! \param[in] insectGroup
+	//! \param[in] camPos
+	//! \return
 	protected vector GenerateRandomPosition(int insectGroup, vector camPos)
 	{
 		// Angle for random position is rotated by 40 deg for each GenerateRandomPosition() call
@@ -253,6 +261,7 @@ class SCR_RandomPositionalInsects : SCR_AmbientInsectsEffect
 
 	//------------------------------------------------------------------------------------------------
 	//! Gets random insect def from the insect group
+	//! \param[in] insectType
 	protected SCR_InsectDef GetRandomInsectDef(SCR_InsectType insectType)
 	{
 		if (!insectType)
@@ -279,6 +288,8 @@ class SCR_RandomPositionalInsects : SCR_AmbientInsectsEffect
 
 	//------------------------------------------------------------------------------------------------
 	//! Gets sound map type from terrain
+	//! \param[in] worldPos
+	//! \param[in] camPos
 	protected int GetSoundMapTypeFromTerrain(inout vector worldPos, vector camPos)
 	{
 		ChimeraWorld world = ChimeraWorld.CastFrom(m_AmbientInsectsComponent.GetOwner().GetWorld());
@@ -444,7 +455,7 @@ class SCR_RandomPositionalInsects : SCR_AmbientInsectsEffect
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Called by SCR_AmbientSoundComponent in OnPostInit()
+	// Called by SCR_AmbientSoundComponent in OnPostInit()
 	override void OnPostInit(SCR_AmbientSoundsComponent ambientSoundsComponent, SCR_AmbientInsectsComponent ambientInsectsComponent, SignalsManagerComponent signalsManagerComponent)
 	{
 		super.OnPostInit(ambientSoundsComponent, ambientInsectsComponent, signalsManagerComponent);

@@ -1,9 +1,8 @@
 [EntityEditorProps(category: "GameScripted/Power", description: "This is the power pole entity.", color: "0 255 0 255", visible: false, dynamicBox: true)]
-class SCR_PowerPoleClass: PowerPoleEntityClass
+class SCR_PowerPoleClass : PowerPoleEntityClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_PowerPole : PowerPoleEntity
 {
 	[Attribute(desc: "Slots for connecting with other power poles", category: "Power Cable Slots")]
@@ -16,14 +15,14 @@ class SCR_PowerPole : PowerPoleEntity
 	protected IEntitySource m_Source;
 
 	//------------------------------------------------------------------------------------------------
-	//! \param sameLine is used by SCR_JunctionPowerPole.GetSlotsCount
+	//! \param[in] sameLine is used by SCR_JunctionPowerPole.GetSlotsCount
 	int GetSlotsCount(bool sameLine = true)
 	{
 		return m_aSlots.Count();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param sameLine is used by SCR_JunctionPowerPole.GetSlot
+	//! \param[in] sameLine is used by SCR_JunctionPowerPole.GetSlot
 	vector GetSlot(int index, bool sameLine)
 	{
 		if (!m_aSlots.IsIndexValid(index))
@@ -35,9 +34,9 @@ class SCR_PowerPole : PowerPoleEntity
 	//------------------------------------------------------------------------------------------------
 	//! \Tries to find position of the closest compatible slot.
 	//! \return vector with world origin of the closest compatible slot.
-	//! \param index is the index of the other slot, this method tries to find the slot under the same index.
-	//! \param otherSlot is the local position of other slot.
-	//! \param sameLine is used by SCR_JunctionPowerPole.TryGetSlot
+	//! \param[in] index is the index of the other slot, this method tries to find the slot under the same index.
+	//! \param[in] otherSlot is the local position of other slot.
+	//! \param[in] sameLine is used by SCR_JunctionPowerPole.TryGetSlot
 	vector TryGetSlot(int index, vector otherSlot, bool sameLine)
 	{
 		if (index < 0)
@@ -63,7 +62,7 @@ class SCR_PowerPole : PowerPoleEntity
 	}
 
 	#ifdef WORKBENCH
-	//-----------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	override bool _WB_OnKeyChanged(BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent)
 	{
 		DrawDebugShapes();
@@ -78,7 +77,7 @@ class SCR_PowerPole : PowerPoleEntity
 		if (!m_bDrawDebugShapes)
 			return;
 
-		foreach (SCR_PowerPoleSlotBase slot: m_aSlots)
+		foreach (SCR_PowerPoleSlotBase slot : m_aSlots)
 		{
 			slot.DrawDebugShapes(m_aDebugShapes, this);
 		}
@@ -92,4 +91,4 @@ class SCR_PowerPole : PowerPoleEntity
 		m_Source = src;
 		SetEventMask(EntityEvent.INIT);
 	}
-};
+}

@@ -10,7 +10,7 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 	protected const string NAV_DISABLE_ALL = "#AR-Workshop_DisableAll";
 	
 	protected const string SORT_BTN_SORT_LABEL = "#AR-Editor_TooltipDetail_WaypointIndex_Name";
-	protected const string SORT_BTN_SORT_ACTION = "MenuSelectHold";
+	protected const string SORT_BTN_SORT_ACTION = "MenuFilter";
 	protected const string SORT_BTN_PLACE_LABEL = "#AR-Button_Confirm-UC";
 	protected const string SORT_BTN_PLACE_ACTION = "MenuSelect";
 	
@@ -41,6 +41,7 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 	protected SCR_InputButtonComponent m_NavEnableAll;
 	protected SCR_InputButtonComponent m_NavSelectSort;
 	protected SCR_InputButtonComponent m_NavChangeSortOrder;
+	protected SCR_InputButtonComponent m_NavDownloadDependencies;
 	
 	protected SCR_AddonLineDSConfigComponent m_FocusedLine;
 	protected SCR_AddonLineDSConfigComponent m_OrderedLine;
@@ -48,33 +49,11 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 	protected ref map<ref SCR_WorkshopItem, ref SCR_AddonLineDSConfigComponent> m_aEnabledMods = new map<ref SCR_WorkshopItem, ref SCR_AddonLineDSConfigComponent>();
 	
 	protected bool m_bIsListeningForCommStatus;
+	protected bool m_bIsSorting;
 	
-	//------------------------------------------------------------------------------------------------
-	// Invokers
-	//------------------------------------------------------------------------------------------------
-	 
-	protected ref ScriptInvoker<> Event_OnWorkshopButtonActivate;
+	protected ref ScriptInvokerVoid Event_OnWorkshopButtonActivate;
 
-	//------------------------------------------------------------------------------------------------
-	protected void InvokeEventOnWorkshopButtonActivate()
-	{
-		if (Event_OnWorkshopButtonActivate)
-			Event_OnWorkshopButtonActivate.Invoke();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetEventOnWorkshopButtonActivate()
-	{
-		if (!Event_OnWorkshopButtonActivate)
-			Event_OnWorkshopButtonActivate = new ScriptInvoker();
-
-		return Event_OnWorkshopButtonActivate;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	// Widget handler override 
-	//------------------------------------------------------------------------------------------------
-	
+	// --- Overrides ---
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
@@ -82,23 +61,20 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		
 		m_Widgets.Init(w);
 		
-		// Find 
-		m_DisabledList = SCR_ListBoxComponent.Cast(SCR_WidgetTools.FindHandlerOnWidget(
-			m_Widgets.m_DisabledAddonsList, "Content", SCR_ListBoxComponent));
-		
-		m_EnabledList = SCR_ListBoxComponent.Cast(SCR_WidgetTools.FindHandlerOnWidget(
-			m_Widgets.m_EnabledAddonsList, "Content", SCR_ListBoxComponent));
-		
 		// Find scroll components
-		m_wDisableScroll = ScrollLayoutWidget.Cast(m_Widgets.m_DisabledAddonsList.GetParent());
-		m_wEnableScroll = ScrollLayoutWidget.Cast(m_Widgets.m_EnabledAddonsList.GetParent());
+		m_wDisableScroll = ScrollLayoutWidget.Cast(m_Widgets.m_wDisabledAddonsList.GetParent());
+		m_wEnableScroll = ScrollLayoutWidget.Cast(m_Widgets.m_wEnabledAddonsList.GetParent());
 		
 		m_DisableScroll = SCR_GamepadScrollComponent.Cast(m_wDisableScroll.FindHandler(SCR_GamepadScrollComponent));
 		m_EnableScroll = SCR_GamepadScrollComponent.Cast(m_wEnableScroll.FindHandler(SCR_GamepadScrollComponent));
 		
 		// Setup action all buttons 
-		m_Widgets.m_ButtonEnableAllComponent.m_OnClicked.Insert(OnEnableAllClicked);
-		m_Widgets.m_ButtonDisableAllComponent.m_OnClicked.Insert(OnDisableAllClicked);
+		m_Widgets.m_ButtonEnableAllComponent0.m_OnClicked.Insert(OnEnableAllClicked);
+		m_Widgets.m_ButtonEnableAllComponent0.m_OnClicked.Insert(OnDisableAllClicked);
+		
+		// Disable Delete All buttons
+		m_Widgets.m_wDeleteAllEnabled.SetVisible(false);
+		m_Widgets.m_wDeleteAllDisabled.SetVisible(false);
 		
 		CreateAddonList();
 
@@ -116,51 +92,38 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuShow(SCR_SuperMenuBase parentMenu)
+	override void OnTabCreate(Widget menuRoot, ResourceName buttonsLayout, int index)
 	{
-		if (!m_NavWorkshop)
-		{
-			m_NavWorkshop = CreateNavigationButton("MenuDownloadManager", "#AR-Workshop_WorkshopPageName", false);
-			
-			if (m_NavWorkshop)
-				m_NavWorkshop.m_OnActivated.Insert(OnOpenWorkshopButton);
-		}
+		super.OnTabCreate(menuRoot, buttonsLayout, index);
 		
-		// Setup navigation buttons 
-		if (!m_NavSelectSort)
-		{
-			m_NavSelectSort = CreateNavigationButton("MenuSelectHold", "#AR-Editor_TooltipDetail_WaypointIndex_Name", true);
-			
-			if (m_NavSelectSort)
-				m_NavSelectSort.m_OnActivated.Insert(OnNavSelectSortActivate);
-		}
+		m_NavWorkshop = CreateNavigationButton("MenuDownloadManager", "#AR-Workshop_WorkshopPageName", false);
+		if (m_NavWorkshop)
+			m_NavWorkshop.m_OnActivated.Insert(OnOpenWorkshopButton);
+
+		m_NavSelectSort = CreateNavigationButton(SORT_BTN_SORT_ACTION, SORT_BTN_SORT_LABEL, true);
+		if (m_NavSelectSort)
+			m_NavSelectSort.m_OnActivated.Insert(OnNavSelectSortActivate);
+
+		m_NavChangeSortOrder = CreateNavigationButton("MenuVertical", SORT_BTN_SORT_LABEL, true);
+		if (m_NavChangeSortOrder)
+			FlagNavigationButtonVisibility(m_NavChangeSortOrder, false);
+
+		m_NavEnableAll = CreateNavigationButton("MenuEnableAll", NAV_ENABLE_ALL, true);
+		if (m_NavEnableAll)
+			m_NavEnableAll.m_OnActivated.Insert(OnNavEnableAllActivated);
 		
-		if (!m_NavChangeSortOrder)
-		{
-			m_NavChangeSortOrder = CreateNavigationButton("MenuVertical", "#AR-Editor_TooltipDetail_WaypointIndex_Name", true);
+		m_NavEnable = CreateNavigationButton("MenuEnable", NAV_ENABLE, true);
+		if (m_NavEnable)
+			m_NavEnable.m_OnActivated.Insert(OnNavEnableActivated);
 		
-			if (m_NavChangeSortOrder)
-				m_NavChangeSortOrder.SetVisible(false);
-		}
-		
-		if (!m_NavEnable)
-		{
-			m_NavEnable = CreateNavigationButton("MenuEnable", NAV_ENABLE, true);
-			
-			if (m_NavEnable)
-				m_NavEnable.m_OnActivated.Insert(OnNavEnableActivated);
-		}
-		
-		if (!m_NavEnableAll)
-		{
-			m_NavEnableAll = CreateNavigationButton("MenuEnableAll", NAV_ENABLE_ALL, false);
-			
-			if (m_NavEnableAll)
-				m_NavEnableAll.m_OnActivated.Insert(OnNavEnableAllActivated);
-		}
-		
+		ShowNavigationButtons(false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnTabShow()
+	{
 		// Focus fist entry next frame to ensure focus will happend
-		GetGame().GetCallqueue().CallLater(FocusFirstEntry);
+		GetGame().GetCallqueue().Call(FocusFirstEntry);
 		
 		SCR_ServicesStatusHelper.RefreshPing();
 		
@@ -170,14 +133,16 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		m_bIsListeningForCommStatus = true;
 		UpdateWorkshopButton();
 		
-		super.OnMenuShow(parentMenu);
+		super.OnTabShow();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuHide(SCR_SuperMenuBase parentMenu)
+	override void OnTabHide()
 	{
-		super.OnMenuHide(parentMenu);
-		
+		super.OnTabHide();
+	
+		ReleaseSort();
+			
 		SCR_ServicesStatusHelper.GetOnCommStatusCheckFinished().Remove(OnCommStatusCheckFinished);
 		m_bIsListeningForCommStatus = false;
 	}
@@ -188,7 +153,7 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		if (!m_NavWorkshop)
 			return;
 
-		SCR_ServicesStatusHelper.SetConnectionButtonEnabled(m_NavWorkshop, SCR_ServicesStatusHelper.SERVICE_WORKSHOP);
+		SCR_InputButtonComponent.SetConnectionButtonEnabled(m_NavWorkshop, SCR_ServicesStatusHelper.SERVICE_WORKSHOP);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -206,7 +171,6 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 	//------------------------------------------------------------------------------------------------
 	// Protected 
 	//------------------------------------------------------------------------------------------------
-	
 	//------------------------------------------------------------------------------------------------
 	protected void FocusFirstEntry()
 	{
@@ -233,7 +197,10 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		
 		for (int i = 0, count = addons.Count(); i < count; i++)
 		{
-			AddLineEntry(addons[i], i);
+			SCR_ERevisionAvailability availability = SCR_AddonManager.ItemAvailability(addons[i].Internal_GetWorkshopItem());
+			
+			if (availability == SCR_ERevisionAvailability.ERA_AVAILABLE)
+				AddLineEntry(addons[i], i);
 		}
 	}
 	
@@ -241,7 +208,7 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 	protected void AddLineEntry(SCR_WorkshopItem item, int id)
 	{
 		// Line setup
-		Widget w = GetGame().GetWorkspace().CreateWidgets(m_EntryLayout, m_Widgets.m_DisabledAddonsList);
+		Widget w = GetGame().GetWorkspace().CreateWidgets(m_EntryLayout, m_Widgets.m_wDisabledAddonsList);
 		SCR_AddonLineDSConfigComponent line = SCR_AddonLineDSConfigComponent.Cast(
 			w.FindHandler(SCR_AddonLineDSConfigComponent));
 		
@@ -249,13 +216,13 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 			return; 
 		
 		// Callbacks 
-		line.m_OnEnableButton.Insert(OnAddonEnabled);
-		line.m_OnDisableButton.Insert(OnAddonDisabled);
+		line.GetOnEnableButton().Insert(OnAddonEnabled);
+		line.GetOnDisableButton().Insert(OnAddonDisabled);
+		line.GetOnSortConfirm().Insert(OnSortConfirm);
 		line.GetEventOnButtonUp().Insert(OnLineButtonUp);
 		line.GetEventOnButtonDown().Insert(OnLineButtonDown);
-		line.m_OnFocus.Insert(OnLineFocus);
-		line.m_OnFocusLost.Insert(OnLineFocusLost);
-		line.m_OnFixButton.Insert(OnLineFixButton);
+		line.GetOnFocus().Insert(OnLineFocus);
+		line.GetOnFocusLost().Insert(OnLineFocusLost);
 		
 		line.Init(item);
 		m_aDisabled.Insert(w);
@@ -277,7 +244,6 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		
 		return -1;
 	}
-	
 	
 	//------------------------------------------------------------------------------------------------
 	protected int LastFocusedId(Widget line, bool enabled)
@@ -402,19 +368,66 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// Callbacks
-	//------------------------------------------------------------------------------------------------
+	protected void UpdateNavigationButtons(SCR_AddonLineDSConfigComponent line, bool forceDisabled = false)
+	{
+		if (!line)
+			forceDisabled = true;
+		
+		bool enabled = line && line.GetWidgetEnabled();
+		
+		if (m_NavEnable)
+		{
+			bool issues = line && line.HasItemAnyIssue();
+			
+			m_NavEnable.SetEnabled(!m_OrderedLine && !issues && !forceDisabled, false);
+			
+			if (enabled)
+				m_NavEnable.SetLabel(NAV_DISABLE);
+			else
+				m_NavEnable.SetLabel(NAV_ENABLE);
+			
+			if (issues)
+				m_NavEnable.SetTexture(UIConstants.ICONS_IMAGE_SET, "dependencies", Color.FromInt(UIColors.WARNING_DISABLED.PackToInt()));
+			else
+				m_NavEnable.ResetTexture();
+		}
+		
+		if (m_NavEnableAll)
+		{
+			m_NavEnableAll.SetEnabled(!m_OrderedLine && !forceDisabled, false);
+			
+			if (enabled)
+				m_NavEnableAll.SetLabel(NAV_DISABLE_ALL);
+			else
+				m_NavEnableAll.SetLabel(NAV_ENABLE_ALL);
+		}
+		
+		if (m_NavSelectSort)
+			m_NavSelectSort.SetEnabled(!forceDisabled && enabled, false);
+		
+		SCR_WorkshopItem item;
+		if (line)
+			item = line.GetWorkshopItem();
+	
+		bool dependenciesRequired;
+		if (item)
+			dependenciesRequired = item.GetAnyDependencyMissing() || item.GetAnyDependencyUpdateAvailable();
+	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnAddonEnabled(SCR_AddonLineDSConfigComponent line)
-	{
+	// Callbacks
+	//------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	protected void OnAddonEnabled(SCR_ScriptedWidgetComponent component)
+	{	
+		SCR_AddonLineDSConfigComponent line = SCR_AddonLineDSConfigComponent.Cast(component);
 		if (!line)
 			return;
 		
 		SCR_WorkshopItem item = line.GetWorkshopItem();
 		if (!item)
 			return;
-		
+
 		// Enable dependencies
 		array<ref SCR_WorkshopItem> dependencies = item.GetLatestDependencies();
 		dependencies.Insert(item);
@@ -423,8 +436,9 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnAddonDisabled(SCR_AddonLineDSConfigComponent line)
+	protected void OnAddonDisabled(SCR_ScriptedWidgetComponent component)
 	{
+		SCR_AddonLineBaseComponent line = SCR_AddonLineBaseComponent.Cast(component);
 		if (!line)
 			return;
 		
@@ -442,154 +456,28 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnLineFocus(SCR_AddonLineDSConfigComponent line)
+	protected void OnLineFocus(SCR_ScriptedWidgetComponent component)
 	{
+		SCR_AddonLineDSConfigComponent line = SCR_AddonLineDSConfigComponent.Cast(component);
+		if (!line)
+			return;
+		
 		m_FocusedLine = line;
 		
-		// Setup nav buttons 
-		if (m_NavEnable)
-			m_NavEnable.SetEnabled(!m_OrderedLine);
-		
-		if (m_NavEnableAll)
-			m_NavEnableAll.SetEnabled(!m_OrderedLine);
-		
-		if (m_NavSelectSort)
-			m_NavSelectSort.SetEnabled(line.GetWidgetEnabled());
-		
-		// Enable state 
-		bool enabled = line.GetWidgetEnabled();
-		
-		// Nav enable text 
-		if (m_NavEnable)
-		{
-			if (enabled)
-				m_NavEnable.SetLabel(NAV_DISABLE);
-			else
-				m_NavEnable.SetLabel(NAV_ENABLE);
-		}
-		
-		if (m_NavEnableAll)
-		{
-			if (enabled)
-				m_NavEnableAll.SetLabel(NAV_DISABLE_ALL);
-			else
-				m_NavEnableAll.SetLabel(NAV_ENABLE_ALL);
-		}
+		UpdateNavigationButtons(line);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnLineFocusLost(SCR_AddonLineDSConfigComponent line)
+	protected void OnLineFocusLost(SCR_ScriptedWidgetComponent component)
 	{
 		m_FocusedLine = null;
 		
-		// Setup nav buttons 
-		if (m_NavEnable)
-			m_NavEnable.SetEnabled(false);
-		
-		if (m_NavEnableAll)
-			m_NavEnableAll.SetEnabled(false);
-		
-		if (m_NavSelectSort)
-			m_NavSelectSort.SetEnabled(false);
+		SCR_AddonLineDSConfigComponent line = SCR_AddonLineDSConfigComponent.Cast(component);
+		UpdateNavigationButtons(line, true);
 		
 		// Prevent move between list when ordering 
 		if (m_OrderedLine && m_OrderedLine != m_FocusedLine)
-		{
-			GetGame().GetCallqueue().CallLater(FocusLine, 0, false, m_OrderedLine);
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void OnLineFixButton(notnull SCR_AddonLineBaseComponent line)
-	{
-		// All dependencies
-		array<ref SCR_WorkshopItem> dependencies = line.GetWorkshopItem().GetLatestDependencies();
-		if (dependencies.IsEmpty())
-			return;
-		
-		// Reported and blocked dependencies 
-		array<ref SCR_WorkshopItem> issues = SCR_AddonManager.SelectItemsOr(dependencies,
-			EWorkshopItemQuery.BLOCKED | EWorkshopItemQuery.AUTHOR_BLOCKED | EWorkshopItemQuery.REPORTED_BY_ME);
-		
-		if (!issues.IsEmpty())
-		{
-			// Show dialog of issues 
-			SCR_AddonListDialog.CreateRestrictedAddonsDownload(issues);
-			return;
-		}
-		
-		// Missing dependencies
-		dependencies = SCR_AddonManager.SelectItemsOr(dependencies, EWorkshopItemQuery.NOT_OFFLINE | EWorkshopItemQuery.UPDATE_AVAILABLE);
-		if (dependencies.IsEmpty())
-			return;
-		
-		array<ref SCR_DownloadManager_Entry> downloads = {};
-		SCR_DownloadManager.GetInstance().GetAllDownloads(downloads);
-		
-		// Remove mods in downloading 
-		for (int i = dependencies.Count() - 1; i >= 0; i--)
-		{
-			for (int x = 0, count = downloads.Count(); x < count; x++)
-			{
-				if (downloads[x].m_Item.GetId() != dependencies[i].GetId())
-					continue;
-					
-				if (downloads[x].m_Action.IsActive())
-				{
-					dependencies.RemoveItem(dependencies[i]);
-					break;
-				}
-			}
-		}
-		
-		// Open download dialog if all are being downloaded
-		if (dependencies.IsEmpty())
-		{
-			GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.DownloadManagerDialog);
-			return;
-		}
-		
-		// Create addon list and dialog 
-		array<ref Tuple2<SCR_WorkshopItem, ref Revision>> addonsAndVersions = {};		
-		foreach (SCR_WorkshopItem item : dependencies)
-		{
-			addonsAndVersions.Insert(new Tuple2<SCR_WorkshopItem, ref Revision>(item, null));
-		}
-		
-		SCR_DownloadConfirmationDialog downloadDialog = SCR_DownloadConfirmationDialog.CreateForAddons(
-			addonsAndVersions, true);
-		
-		downloadDialog.GetOnDownloadConfirmed().Insert(OnFixDependeciesDownloadConfirm);
-	}
-	
-	//----------------------------------------------------------------------------------------------
-	protected void OnFixDependeciesDownloadConfirm(SCR_DownloadConfirmationDialog dialog)
-	{
-		// Listen to download done
-		foreach (SCR_WorkshopItemAction action : dialog.GetActions())
-		{
-			action.m_OnCompleted.Insert(OnFixDependenciesDownloadCompleted);
-		} 
-		
-		dialog.GetOnDownloadConfirmed().Remove(OnFixDependeciesDownloadConfirm);
-	}
-	
-	//----------------------------------------------------------------------------------------------
-	protected void OnFixDependenciesDownloadCompleted(SCR_WorkshopItemAction action)
-	{
-		OnDownloadComplete(action);
-		
-		// Reset all entries state 
-		for (int i = 0, count = m_aDisabled.Count(); i < count; i++)
-		{
-			SCR_AddonLineBaseComponent line = SCR_AddonLineBaseComponent.Cast(
-				m_aDisabled[i].FindHandler(SCR_AddonLineBaseComponent));
-			
-			if (line)
-				line.UpdateFixButton();
-		}
-		
-		action.m_OnCompleted.Remove(OnFixDependenciesDownloadCompleted);
+			GetGame().GetCallqueue().Call(FocusLine, m_OrderedLine);
 	}
 	
 	//----------------------------------------------------------------------------------------------
@@ -619,7 +507,7 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 			if (enable && !line.GetWidgetEnabled())
 			{
 				// Move to enabled
-				m_Widgets.m_EnabledAddonsList.AddChild(lineRoot);
+				m_Widgets.m_wEnabledAddonsList.AddChild(lineRoot);
 				m_aEnabled.Insert(lineRoot);
 				m_aDisabled.RemoveItem(lineRoot);
 				
@@ -628,7 +516,7 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 			else if (!enable && line.GetWidgetEnabled())
 			{
 				// Move to disabled
-				m_Widgets.m_DisabledAddonsList.AddChild(lineRoot);
+				m_Widgets.m_wDisabledAddonsList.AddChild(lineRoot);
 				m_aDisabled.Insert(lineRoot);
 				m_aEnabled.RemoveItem(lineRoot);
 				
@@ -636,7 +524,6 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 			}
 			
 			line.SetWidgetEnabled(enable);
-			line.HandleEnableButtons(enable);
 		}
 		
 		// Order disabled mods 
@@ -659,7 +546,7 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		items.Remove(0);
 		if (!items.IsEmpty())
 		{
-			GetGame().GetCallqueue().CallLater(EnableItems, 0, false, enable, items);
+			GetGame().GetCallqueue().Call(EnableItems, enable, items);
 		}
 		else
 		{
@@ -682,14 +569,22 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnLineButtonUp(SCR_AddonLineDSConfigComponent line)
+	protected void OnLineButtonUp(SCR_ScriptedWidgetComponent component)
 	{
+		SCR_AddonLineDSConfigComponent line = SCR_AddonLineDSConfigComponent.Cast(component);
+		if (!line)
+			return;
+		
 		// Check if not on top 
 		int id = line.GetRootWidget().GetZOrder();
 		
 		if (id == -1 || id == 0)
 			return;
-		
+	
+		// Enter sorting mode
+		if (!m_bIsSorting)
+			StartSort(line);
+			
 		// Move up 
 		m_aEnabled[id] = m_aEnabled[id-1];
 		m_aEnabled[id].SetZOrder(id);
@@ -705,17 +600,25 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 				otherLine.SetOnBottom(true);
 		}
 	
-		line.SetOnBottom(false);	
+		line.SetOnBottom(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnLineButtonDown(SCR_AddonLineDSConfigComponent line)
+	protected void OnLineButtonDown(SCR_ScriptedWidgetComponent component)
 	{
+		SCR_AddonLineDSConfigComponent line = SCR_AddonLineDSConfigComponent.Cast(component);
+		if (!line)
+			return;
+		
 		// Check if not on bottom 
 		int id = line.GetRootWidget().GetZOrder();
 		
 		if (id == -1 || id >= m_aEnabled.Count() - 1)
 			return;
+		
+		// Enter sorting mode
+		if (!m_bIsSorting)
+			StartSort(line);
 		
 		// Move down 
 		m_aEnabled[id] = m_aEnabled[id+1];
@@ -731,6 +634,14 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 
 		if (id + 1 == m_aEnabled.Count() - 1)
 			line.SetOnBottom(true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnSortConfirm(SCR_ScriptedWidgetComponent component)
+	{
+		SCR_AddonLineDSConfigComponent line = SCR_AddonLineDSConfigComponent.Cast(component);
+		if (line)
+			Sort(line);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -768,35 +679,31 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void OnOpenWorkshopButton()
 	{		
-		InvokeEventOnWorkshopButtonActivate();
+		if (Event_OnWorkshopButtonActivate)
+			Event_OnWorkshopButtonActivate.Invoke();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnNavEnableActivated()
+	protected void OnNavEnableActivated(SCR_InputButtonComponent button, string action)
 	{
 		if (!m_FocusedLine)
 			return;
-		
-		SCR_WorkshopItem item = m_FocusedLine.GetWorkshopItem();
-		if (!item)
-			return;
-		
+				
 		bool enabled = m_FocusedLine.GetWidgetEnabled();
 		
-		// Store last focused position
-		int focusedId = LastFocusedId(m_FocusedLine.GetRootWidget(), !enabled);
+		// TODO: temporary hacky fix for this method being called multiple times in a row. It's the only button posing this problem, and the invoker is bound only once...
+		GetGame().GetCallqueue().Call(SetLineEnabled, enabled);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void SetLineEnabled(bool enabled)
+	{
+		GetGame().GetCallqueue().Remove(SetLineEnabled);
 		
 		if (enabled)
 			m_FocusedLine.OnDisableButton();
 		else
 			m_FocusedLine.OnEnableButton();
-		
-		// Switch focus 
-		if (focusedId >= 0)
-		{
-			Widget nextLine = ClosestAddonLine(focusedId, !enabled);
-			GetGame().GetWorkspace().SetFocusedWidget(nextLine);
-		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -812,72 +719,98 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		else
 			OnEnableAllClicked();
 	}
-	
+		
 	//------------------------------------------------------------------------------------------------
-	protected void OnNavSelectSortActivate()
+	protected void OnNavSelectSortActivate(SCR_InputButtonComponent button, string action)
 	{
-		// Release 
-		if (m_OrderedLine)
-		{
-			m_OrderedLine = null;
-			
-			GetGame().GetInputManager().RemoveActionListener("MenuDown", EActionTrigger.DOWN, OnDownSort);
-			GetGame().GetInputManager().RemoveActionListener("MenuUp", EActionTrigger.DOWN, OnUpSort);
-			
-			if (m_NavChangeSortOrder)
-				m_NavChangeSortOrder.SetVisible(false, false);
-			
-			if (m_NavSelectSort)
-			{
-				// Start ordering
-				m_NavSelectSort.SetLabel(SORT_BTN_SORT_LABEL);
-				m_NavSelectSort.SetAction(SORT_BTN_SORT_ACTION);
-			}
-			
-			if (m_NavEnable)
-				m_NavEnable.SetVisible(true, false);
-			
-			if (m_NavEnableAll)
-				m_NavEnableAll.SetVisible(true, false);
-			
-			// Refocus 
-			OnLineFocus(m_FocusedLine);
-			
-			return;
-		}
-		
-		if (!m_FocusedLine)
-			return;
-		
-		// Select only enabled 
-		if (!m_FocusedLine.GetWidgetEnabled())
-			return;
-		
-		m_OrderedLine = m_FocusedLine;
-		
-		if (m_OrderedLine)
-		{
-			GetGame().GetInputManager().AddActionListener("MenuDown", EActionTrigger.DOWN, OnDownSort);
-			GetGame().GetInputManager().AddActionListener("MenuUp", EActionTrigger.DOWN, OnUpSort);
-			
-			if (m_NavChangeSortOrder)
-				m_NavChangeSortOrder.SetVisible(true);
-			
-			if (m_NavSelectSort)
-			{
-				// Place and stop ordering
-				m_NavSelectSort.SetLabel(SORT_BTN_PLACE_LABEL);
-				m_NavSelectSort.SetAction(SORT_BTN_PLACE_ACTION);
-			}
-			
-			if (m_NavEnable)
-				m_NavEnable.SetVisible(false, false);
-		
-			if (m_NavEnableAll)
-				m_NavEnableAll.SetVisible(false, false);
-		}
+		Sort(m_FocusedLine);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected void Sort(SCR_AddonLineDSConfigComponent line)
+	{
+		if (m_OrderedLine)
+		{
+			ReleaseSort();
+			return;
+		}
+		
+		StartSort(line);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void StartSort(SCR_AddonLineDSConfigComponent line)
+	{
+		if (!line || !line.GetWidgetEnabled())
+			return;
+		
+		m_OrderedLine = line;
+
+		m_OrderedLine.NotifySorting(true);
+		
+		GetGame().GetInputManager().AddActionListener("MenuDown", EActionTrigger.DOWN, OnDownSort);
+		GetGame().GetInputManager().AddActionListener("MenuUp", EActionTrigger.DOWN, OnUpSort);
+		
+		if (m_NavChangeSortOrder)
+			SetNavigationButtonVisibile(m_NavChangeSortOrder, true);
+		
+		if (m_NavSelectSort)
+		{
+			// Place and stop ordering
+			m_NavSelectSort.SetLabel(SORT_BTN_PLACE_LABEL);
+			m_NavSelectSort.SetAction(SORT_BTN_PLACE_ACTION);
+		}
+		
+		if (m_NavEnable)
+			SetNavigationButtonVisibile(m_NavEnable, false);
+	
+		if (m_NavEnableAll)
+			SetNavigationButtonVisibile(m_NavEnableAll, false);
+		
+		// Panel buttons
+		m_Widgets.m_ButtonEnableAllComponent0.SetEnabled(false);
+		m_Widgets.m_ButtonDisableAllComponent0.SetEnabled(false);
+		
+		m_bIsSorting = true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ReleaseSort()
+	{
+		if (!m_OrderedLine)
+			return;
+			
+		m_OrderedLine.NotifySorting(false);
+		m_OrderedLine = null;
+		
+		GetGame().GetInputManager().RemoveActionListener("MenuDown", EActionTrigger.DOWN, OnDownSort);
+		GetGame().GetInputManager().RemoveActionListener("MenuUp", EActionTrigger.DOWN, OnUpSort);
+		
+		if (m_NavChangeSortOrder)
+			SetNavigationButtonVisibile(m_NavChangeSortOrder, false);
+		
+		if (m_NavSelectSort)
+		{
+			// Start ordering
+			m_NavSelectSort.SetLabel(SORT_BTN_SORT_LABEL);
+			m_NavSelectSort.SetAction(SORT_BTN_SORT_ACTION);
+		}
+		
+		if (m_NavEnable)
+			SetNavigationButtonVisibile(m_NavEnable, true);
+		
+		if (m_NavEnableAll)
+			SetNavigationButtonVisibile(m_NavEnableAll, true);
+		
+		// Panel buttons
+		m_Widgets.m_ButtonEnableAllComponent0.SetEnabled(true);
+		m_Widgets.m_ButtonDisableAllComponent0.SetEnabled(true);
+		
+		// Refocus 
+		OnLineFocus(m_FocusedLine);
+		
+		m_bIsSorting = false;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnDownSort()
@@ -886,8 +819,7 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 			return;
 		
 		OnLineButtonDown(m_OrderedLine);
-		//GetGame().GetWorkspace().SetFocusedWidget(m_OrderedLine.GetRootWidget());
-		GetGame().GetCallqueue().CallLater(FocusLine, 0, false, m_OrderedLine);
+		GetGame().GetCallqueue().Call(FocusLine, m_OrderedLine);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -897,8 +829,7 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 			return;
 		
 		OnLineButtonUp(m_OrderedLine);
-		//GetGame().GetWorkspace().SetFocusedWidget(m_OrderedLine.GetRootWidget());
-		GetGame().GetCallqueue().CallLater(FocusLine, 0, false, m_OrderedLine);
+		GetGame().GetCallqueue().Call(FocusLine, m_OrderedLine);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -910,7 +841,6 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 	//------------------------------------------------------------------------------------------------
 	// API
 	//------------------------------------------------------------------------------------------------
-	
 	//------------------------------------------------------------------------------------------------
 	//! Get all selected mods from addon entries
 	array<ref DSMod> SelectedModsList()
@@ -944,9 +874,12 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	SCR_InputButtonComponent GetNavWorkshopButton()
+	ScriptInvokerVoid GetEventOnWorkshopButtonActivate()
 	{
-		return m_NavWorkshop;
+		if (!Event_OnWorkshopButtonActivate)
+			Event_OnWorkshopButtonActivate = new ScriptInvokerVoid();
+
+		return Event_OnWorkshopButtonActivate;
 	}
 }
 

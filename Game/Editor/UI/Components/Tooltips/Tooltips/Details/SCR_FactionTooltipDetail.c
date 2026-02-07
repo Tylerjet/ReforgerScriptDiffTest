@@ -1,5 +1,5 @@
 [BaseContainerProps(), BaseContainerCustomTitleField("m_sDisplayName")]
-class SCR_FactionTooltipDetail: SCR_EntityTooltipDetail
+class SCR_FactionTooltipDetail : SCR_EntityTooltipDetail
 {
 	[Attribute("#AR-Editor_TooltipDetail_FactionUnassigned_Name")]
 	protected LocalizedString m_sPlayerNoFactionName;
@@ -7,6 +7,7 @@ class SCR_FactionTooltipDetail: SCR_EntityTooltipDetail
 	protected TextWidget m_Text;
 	protected SCR_FactionManager m_FactionManager;
 	
+	//------------------------------------------------------------------------------------------------
 	override void UpdateDetail(SCR_EditableEntityComponent entity)
 	{
 		Faction faction = entity.GetFaction();
@@ -26,6 +27,8 @@ class SCR_FactionTooltipDetail: SCR_EntityTooltipDetail
 		if (faction) 
 			m_Text.SetText(faction.GetFactionName());
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool InitDetail(SCR_EditableEntityComponent entity, Widget widget)
 	{
 		m_Text = TextWidget.Cast(widget);
@@ -41,4 +44,4 @@ class SCR_FactionTooltipDetail: SCR_EntityTooltipDetail
 		
 		return m_Text && (faction || (playerID > 0 && m_FactionManager));
 	}
-};
+}

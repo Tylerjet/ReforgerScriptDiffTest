@@ -18,23 +18,40 @@ class SCR_WorkshopUiCommon
 	
 	// Map which maps addon tags to icon names
 	static const ResourceName ADDON_TYPE_FILTER_CATEGORY_CONFIG = "{A557E41062372854}Configs/ContentBrowser/Filters/category_type.conf";
-	static ResourceName s_sAddonTagImageSet;
 	static ref map<string, string> s_sAddonTagImageMap;
 	
 	// Map which maps addon tags to default pictures
 	static ref map<string, ResourceName> s_sAddonTagDefaultThumbnailMap;
 	
 	static const string WIDGET_LIST = "AddonList";
+
+	// --- Revision availability ---
+	// Short messages
+	static const string	MESSAGE_MOD_NOT_AVAILABLE =					"#AR-Workshop_State_NotAvailable"; // Fallback
+	static const string MESSAGE_MOD_NOT_AVAILABLE_REMOVED =			"#AR-Workshop_State_Removed";
+	static const string MESSAGE_MOD_NOT_AVAILABLE_INCOMPATIBLE =	"#AR-Workshop_State_Incompatible";
+	static const string MESSAGE_MOD_AVAILABLE_WHEN_UPDATED = 		"#AR-Workshop_State_UpdateRequired";
+	static const string MESSAGE_MOD_DOWNLOAD_NOT_FINISHED = 		"#AR-Workshop_State_DownloadNotFinished";
 	
+	// Verbose messages
+	static const string	MESSAGE_VERBOSE_MOD_NOT_AVAILABLE =					"#AR-Workshop_State_NotAvailableDesc"; // Fallback
+	static const string MESSAGE_VERBOSE_MOD_NOT_AVAILABLE_REMOVED =			"#AR-Workshop_State_RemovedDesc";
+	static const string MESSAGE_VERBOSE_MOD_NOT_AVAILABLE_INCOMPATIBLE =	"#AR-Workshop_State_IncompatibleDesc";
+	static const string MESSAGE_VERBOSE_MOD_AVAILABLE_WHEN_UPDATED = 		"#AR-Workshop_State_UpdateRequiredDesc";
+	static const string MESSAGE_VERBOSE_MOD_DOWNLOAD_NOT_FINISHED = 		"#AR-Workshop_State_DownloadNotFinishedDesc";
+	
+	// Icons
+	static const string	ICON_MOD_NOT_AVAILABLE =					"not-available"; // Fallback
+	static const string ICON_MOD_NOT_AVAILABLE_REMOVED =			"cancelCircle";
+	static const string ICON_MOD_NOT_AVAILABLE_INCOMPATIBLE =		"incompatible";
+	static const string ICON_MOD_AVAILABLE_WHEN_UPDATED = 			"available-when-updated";
+	static const string ICON_MOD_DOWNLOAD_NOT_FINISHED = 			"downloading";
 	
 	//------------------------------------------------------------------------------------------------
 	// P U B L I C   M E T H O D S 
 	//------------------------------------------------------------------------------------------------
-	
-	
-	
-	
-	
+
+	// --- Init ---
 	//------------------------------------------------------------------------------------------------
 	//! Call this somewhere once, preferably at start of the game.
 	static void OnGameStart()
@@ -42,12 +59,9 @@ class SCR_WorkshopUiCommon
 		SCR_AddonManager mgr = SCR_AddonManager.GetInstance();
 		mgr.m_OnAddonsChecked.Remove(SCR_WorkshopUiCommon.Callback_OnAddonsChecked);
 		mgr.m_OnAddonsChecked.Insert(SCR_WorkshopUiCommon.Callback_OnAddonsChecked);
-		mgr.CheckAddons();
 		
 		InitAddonTagMaps();
 	}
-	
-	
 	
 	//---------------------------------------------------------------------------------------------
 	//! Tries to open Workshop UI, if not possible due to privileges, negotiates them.
@@ -63,6 +77,7 @@ class SCR_WorkshopUiCommon
 		}
 	}
 	
+	//---------------------------------------------------------------------------------------------
 	protected static void OnTryOpenWorkshopUgcPrivilegeResult(bool result)
 	{
 		SCR_AddonManager mgr = SCR_AddonManager.GetInstance();
@@ -71,8 +86,6 @@ class SCR_WorkshopUiCommon
 			ContentBrowserUI.Create();
 	}
 	
-	
-		
 	//---------------------------------------------------------------------------------------------
 	static SCR_ConfigurableDialogUi CreateDialog(string presetName)
 	{
@@ -81,21 +94,11 @@ class SCR_WorkshopUiCommon
 	
 	//---------------------------------------------------------------------------------------------
 	//! Returns image associated with given Workshop tag
-	static void GetTagImage(string tag, out ResourceName imageSet, out string image)
+	static string GetTagImage(string tag)
 	{
-		if (!s_sAddonTagImageSet)
-		{
-			imageSet = string.Empty;
-			image = string.Empty;
-			return;
-		}
-		
 		tag.ToLower();
-		string _image = s_sAddonTagImageMap.Get(tag);
-		image = _image;
-		imageSet = s_sAddonTagImageSet;
+		return s_sAddonTagImageMap.Get(tag);
 	}
-	
 	
 	//---------------------------------------------------------------------------------------------
 	static ResourceName GetDefaultAddonThumbnail(notnull SCR_WorkshopItem item)
@@ -121,7 +124,6 @@ class SCR_WorkshopUiCommon
 		return ADDON_DEFAULT_THUMBNAIL;
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
 	static bool GetConnectionState()
 	{	
@@ -129,7 +131,6 @@ class SCR_WorkshopUiCommon
 		bool connected = backend.IsActive() && backend.IsAuthenticated();
 		return connected;
 	}
-	
 	
 	//------------------------------------------------------------------------------------------------
 	//! Returns prefered image width for grid screen.
@@ -142,75 +143,44 @@ class SCR_WorkshopUiCommon
 		return widthInt;
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
 	// S C E N A R I O   S T A R T I N G
 	
-	
 	//------------------------------------------------------------------------------------------------
 	//! Starts the mission or opens a confirmation dialog if it can't be immediately started
-	static void TryPlayScenario(MissionWorkshopItem scenario)
+	static void TryPlayScenario(notnull MissionWorkshopItem scenario)
 	{
 		int nCompleted, nTotal;
-		SCR_DownloadManager mgr = SCR_DownloadManager.GetInstance();
 		
+		SCR_DownloadManager mgr = SCR_DownloadManager.GetInstance();
 		if (mgr)
 			mgr.GetDownloadQueueState(nCompleted, nTotal);
 		
 		if (nTotal > 0)
-			new SCR_StartScenarioWhileDownloadingDialog(scenario, false);
+			SCR_StartScenarioWhileDownloadingDialog.CreateDialog(scenario);
 		else
 			scenario.Play();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Hosts the scenario or opens a confirmation dialog if it can't be immediately started - TODO remove?
-	static void TryHostScenario(MissionWorkshopItem scenario)
+	//! Hosts the scenario or opens a confirmation dialog if it can't be immediately started
+	static void TryHostScenario(notnull MissionWorkshopItem scenario, notnull SCR_DSConfig config)
 	{
 		int nCompleted, nTotal;
-		SCR_DownloadManager mgr = SCR_DownloadManager.GetInstance();
 		
+		SCR_DownloadManager mgr = SCR_DownloadManager.GetInstance();
 		if (mgr)
 			mgr.GetDownloadQueueState(nCompleted, nTotal);
 		
 		if (nTotal > 0)
-			new SCR_StartScenarioWhileDownloadingDialog(scenario, true);
-		else	
-		{
-			ref DSConfig config = new DSConfig;
-			ref DSGameConfig game = new DSGameConfig;
-			config.game = game;
-			game.scenarioId = scenario.Id();
-			//game.maxPlayers = scenario.GetPlayerCount();
-			game.name = scenario.Name() + System.GetMachineName();
-			WorkshopItem hostedMod = scenario.GetOwner();
-			if (hostedMod)
-				game.hostedScenarioModId = hostedMod.Id();
-			
-			ref array<WorkshopItem> offlineMods = new array<WorkshopItem>;
-			ref array<ref DSMod> modIds = new array<ref DSMod>;
-			GetGame().GetBackendApi().GetWorkshop().GetOfflineItems(offlineMods);
-			foreach(auto mod : offlineMods)
-			{
-				ref DSMod modData = new DSMod;
-				modData.modId = mod.Id();
-				modData.name = mod.Name();
-				modData.version = mod.GetActiveRevision().GetVersion();
-				modIds.Insert(modData);
-			}
-			config.game.mods = modIds;
-			
+			SCR_HostScenarioWhileDownloadingDialog.CreateDialog(scenario, config);
+		else
 			scenario.Host(config);
-		}
 	}
-	
-	
-	
-	
 	
 	//------------------------------------------------------------------------------------------------
 	// A D D O N   S T A T E S   A N D   A C T I O N S
-	
+
 	//---------------------------------------------------------------------------------------------
 	//! Toggles addon enabled state. Must be called from non-toggleable buttons.
 	//! Might show confirmation dialog.
@@ -225,7 +195,6 @@ class SCR_WorkshopUiCommon
 		bool newEnabled = !item.GetEnabled();
 		SetAddonEnabled(item, newEnabled);
 	}
-	
 	
 	//---------------------------------------------------------------------------------------------
 	//! Sets addon enabled state from a toggleable button.
@@ -257,7 +226,6 @@ class SCR_WorkshopUiCommon
 		else
 			SCR_DeleteAddonDialog.CreateDeleteAddon(item);	// Show a standard confirmation for addon deletion
 	}
-	
 	
 	//---------------------------------------------------------------------------------------------
 	//! Returns short description of highest priority problem of an item according to GetHighestPriorityProblem() value.
@@ -303,8 +271,6 @@ class SCR_WorkshopUiCommon
 		return false;
 	}
 	
-	
-	
 	//---------------------------------------------------------------------------------------------
 	//! Returns name of suggested primary action
 	static string GetPrimaryActionName(SCR_WorkshopItem item)
@@ -337,8 +303,6 @@ class SCR_WorkshopUiCommon
 		
 		return string.Empty;
 	}
-	
-	
 	
 	//---------------------------------------------------------------------------------------------
 	//! Returns string such as "Banned" or "Reported" for a restricted item. Otherwise returns empty string.
@@ -445,81 +409,84 @@ class SCR_WorkshopUiCommon
 				m_OnDownloadConfirmDisplayed.Invoke(downloadSequence, confirmDialog);
 	}
 	
-	//---------------------------------------------------------------------------------------------
-	//! Updates icon and text with according to current state of addon
-	static void UpdateAddonStateIconAndText(SCR_WorkshopItem item, SCR_ContentBrowser_ColorScheme colorScheme, ImageWidget wImage, TextWidget wText)
+	// --- Revision Error messages ---
+	//------------------------------------------------------------------------------------------------
+	static string GetRevisionAvailabilityErrorMessage(WorkshopItem item)
 	{
-		// Issues / problems
-		bool imageVisible = false;
-		bool textVisible = false;
-		const ResourceName stateImageset = "{9DA6A249AD4D71C4}UI/Textures/Icons/icons_wrapperUI-48.imageset";
+		if (!item)
+			return MESSAGE_MOD_NOT_AVAILABLE;	
 		
-		string image;
-		string stateText;
-		Color color = colorScheme.m_Moderate;
-		
-		bool downloading = item.GetDownloadAction() != null || item.GetDependencyCompositeAction() != null;
-		
-		if (downloading)
-		{
-			image = "downloading";
-			stateText = "#AR-Workshop_ButtonDownloading";
-			color = colorScheme.m_Moderate;
-			imageVisible = true;
-			textVisible = true;
-		}
-		else
-		{
-			
-			EWorkshopItemProblem problem = item.GetHighestPriorityProblem();
-			if (problem == EWorkshopItemProblem.UPDATE_AVAILABLE)
-			{
-				image = "download";
-				color = colorScheme.m_Moderate;
-				textVisible = false;
-				imageVisible = true;
-			}
-			else
-			{
-				bool problemCritical;
-				bool problemExists = SCR_WorkshopUiCommon.GetHighestPriorityProblemDescription(item, stateText, problemCritical);
-				if (problemExists)
-				{
-					image = "warning";
-					color = colorScheme.m_Moderate;
-					if (problemCritical)
-						color = colorScheme.m_Critical;
-					imageVisible = true;
-					textVisible = true;
-				}
-				else
-				{
-					image = "check";
-					imageVisible = item.GetOffline();
-					textVisible = false;
-					color = colorScheme.m_Good;
-				}
-			}
-		}
-		
-		wText.SetText(stateText);
-		wText.SetColor(color);
-		wText.SetVisible(textVisible);
-		if (!image.IsEmpty())
-			wImage.LoadImageFromSet(0, stateImageset, image);		
-		wImage.SetVisible(imageVisible);
-		wImage.SetColor(color);
+		return GetRevisionAvailabilityErrorMessage(SCR_AddonManager.ItemAvailability(item));
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	static string GetRevisionAvailabilityErrorMessage(SCR_ERevisionAvailability state)
+	{
+		switch (state)
+		{
+			case SCR_ERevisionAvailability.ERA_AVAILABLE:					return string.Empty;
+			case SCR_ERevisionAvailability.ERA_UNKNOWN_AVAILABILITY:		return MESSAGE_MOD_NOT_AVAILABLE;
+			case SCR_ERevisionAvailability.ERA_DELETED:						return MESSAGE_MOD_NOT_AVAILABLE_REMOVED;
+			case SCR_ERevisionAvailability.ERA_OBSOLETE:					return MESSAGE_MOD_NOT_AVAILABLE_INCOMPATIBLE;
+			case SCR_ERevisionAvailability.ERA_COMPATIBLE_UPDATE_AVAILABLE:	return MESSAGE_MOD_AVAILABLE_WHEN_UPDATED;
+			case SCR_ERevisionAvailability.ERA_DOWNLOAD_NOT_FINISHED:		return MESSAGE_MOD_DOWNLOAD_NOT_FINISHED;
+		}
+		
+		return MESSAGE_MOD_NOT_AVAILABLE;
+	}
 	
+	//------------------------------------------------------------------------------------------------
+	static string GetRevisionAvailabilityErrorMessageVerbose(WorkshopItem item)
+	{
+		if (!item)
+			return MESSAGE_VERBOSE_MOD_NOT_AVAILABLE;	
+		
+		return GetRevisionAvailabilityErrorMessageVerbose(SCR_AddonManager.ItemAvailability(item));
+	}
 	
+	//------------------------------------------------------------------------------------------------
+	static string GetRevisionAvailabilityErrorMessageVerbose(SCR_ERevisionAvailability state)
+	{
+		switch (state)
+		{
+			case SCR_ERevisionAvailability.ERA_AVAILABLE:					return string.Empty;
+			case SCR_ERevisionAvailability.ERA_UNKNOWN_AVAILABILITY:		return MESSAGE_VERBOSE_MOD_NOT_AVAILABLE;
+			case SCR_ERevisionAvailability.ERA_DELETED:						return MESSAGE_VERBOSE_MOD_NOT_AVAILABLE_REMOVED;
+			case SCR_ERevisionAvailability.ERA_OBSOLETE:					return MESSAGE_VERBOSE_MOD_NOT_AVAILABLE_INCOMPATIBLE;
+			case SCR_ERevisionAvailability.ERA_COMPATIBLE_UPDATE_AVAILABLE:	return MESSAGE_VERBOSE_MOD_AVAILABLE_WHEN_UPDATED;
+			case SCR_ERevisionAvailability.ERA_DOWNLOAD_NOT_FINISHED:		return MESSAGE_VERBOSE_MOD_DOWNLOAD_NOT_FINISHED;
+		}
+		
+		return MESSAGE_VERBOSE_MOD_NOT_AVAILABLE;
+	}
 	
+	//------------------------------------------------------------------------------------------------
+	static string GetRevisionAvailabilityErrorTexture(WorkshopItem item)
+	{
+		if (!item)
+			return ICON_MOD_NOT_AVAILABLE;	
+		
+		return GetRevisionAvailabilityErrorTexture(SCR_AddonManager.ItemAvailability(item));
+	}
 	
+	//------------------------------------------------------------------------------------------------
+	static string GetRevisionAvailabilityErrorTexture(SCR_ERevisionAvailability state)
+	{
+		switch (state)
+		{
+			case SCR_ERevisionAvailability.ERA_AVAILABLE:					return string.Empty;
+			case SCR_ERevisionAvailability.ERA_UNKNOWN_AVAILABILITY:		return ICON_MOD_NOT_AVAILABLE;
+			case SCR_ERevisionAvailability.ERA_DELETED:						return ICON_MOD_NOT_AVAILABLE_REMOVED;
+			case SCR_ERevisionAvailability.ERA_OBSOLETE:					return ICON_MOD_NOT_AVAILABLE_INCOMPATIBLE;
+			case SCR_ERevisionAvailability.ERA_COMPATIBLE_UPDATE_AVAILABLE:	return ICON_MOD_AVAILABLE_WHEN_UPDATED;
+			case SCR_ERevisionAvailability.ERA_DOWNLOAD_NOT_FINISHED:		return ICON_MOD_DOWNLOAD_NOT_FINISHED;
+		}
+		
+		return ICON_MOD_NOT_AVAILABLE;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	// S T R I N G   F O R M A T T I N G 
-	
-	
 	
 	//------------------------------------------------------------------------------------------------
 	//! Formats addon version. For example "1.2.3" -> "v. 1.2.3".
@@ -527,7 +494,6 @@ class SCR_WorkshopUiCommon
 	{
 		return string.Format("v. %1", version);
 	}
-	
 	
 	//------------------------------------------------------------------------------------------------
 	//! Converts report type enum to stringtable entry
@@ -554,12 +520,9 @@ class SCR_WorkshopUiCommon
 		return REPORT_REASONS[reportType];
 	}
 	
-	
-	
 	//------------------------------------------------------------------------------------------------
 	// P R O T E C T E D   M E T H O D S 
 	//------------------------------------------------------------------------------------------------
-	
 	
 	//------------------------------------------------------------------------------------------------
 	//! Callback from addon manager when addons are checked
@@ -609,9 +572,7 @@ class SCR_WorkshopUiCommon
 		SCR_FilterCategory cat = SCR_ConfigHelperT<SCR_FilterCategory>.GetConfigObject(ADDON_TYPE_FILTER_CATEGORY_CONFIG);
 		if (!cat)
 			return;
-
-		s_sAddonTagImageSet = cat.m_sFilterImageSet;
-
+	
 		foreach (SCR_FilterEntry filter : cat.GetFilters())
 		{
 			string internalName = filter.m_sInternalName;
@@ -626,8 +587,7 @@ class SCR_WorkshopUiCommon
 			}
 		}
 	}
-};
-
+}
 
 //------------------------------------------------------------------------------------------------
 //! Confirmation dialog for unsubscribing an addon.
@@ -671,9 +631,49 @@ class SCR_DeleteAddonDialog : SCR_ConfigurableDialogUi
 		
 		m_Item.DeleteLocally();
 		
-		this.Close();
+		Close();
 	}
 };
+
+//------------------------------------------------------------------------------------------------
+// Confirmation dialog for unsubscribing multiple addons.
+// On confirm it deletes local data and unsubscribes the addons.
+// TODO: centralize handling of deletion, this should not be done by a dialog
+// TODO: show a list of selcted mods
+class SCR_DeleteAddonsListDialog : SCR_ConfigurableDialogUi
+{
+	protected ref array<SCR_WorkshopItem> m_aItems = {};
+	
+	//------------------------------------------------------------------------------------------------
+	static SCR_DeleteAddonsListDialog CreateDialog(array<SCR_WorkshopItem> items)
+	{
+		return new SCR_DeleteAddonsListDialog(items);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	private void SCR_DeleteAddonsListDialog(array<SCR_WorkshopItem> items)
+	{
+		m_aItems = items;
+		SCR_ConfigurableDialogUi.CreateFromPreset(SCR_WorkshopUiCommon.DIALOGS_CONFIG, "deleteAll", this);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnConfirm()
+	{
+		foreach (SCR_WorkshopItem item : m_aItems)
+		{
+			if (item.GetEnabled())
+				SCR_AddonManager.GetInstance().GetPresetStorage().ClearUsedPreset();
+		
+			if (item.GetSubscribed())
+				item.SetSubscribed(false);
+			
+			item.DeleteLocally();
+		}
+		
+		Close();
+	}
+}
 
 //------------------------------------------------------------------------------------------------
 //! Dialog to cancel downloads
@@ -1095,8 +1095,6 @@ class SCR_WorkshopItemBackendImageComponent : SCR_BackendImageComponent
 {
 	protected ref SCR_WorkshopItem m_Item;
 	
-	protected override void SetImage(BackendImage image);
-	
 	protected const string LOADING_BACKGROUND_IMAGE = "{75455009AFED376B}UI/Textures/Workshop/AddonThumbnails/workshop_loading_UI.edds";
 	
 	//----------------------------------------------------------------------------------
@@ -1105,11 +1103,11 @@ class SCR_WorkshopItemBackendImageComponent : SCR_BackendImageComponent
 	{
 		m_Item = item;
 		
-		super.SetImage(image);
+		SetImage(image);
 	}
 	
 	//----------------------------------------------------------------------------------
-	protected override void ShowDefaultImage()
+	override void ShowDefaultImage()
 	{
 		ResourceName img;
 		if (m_Item)
@@ -1120,7 +1118,7 @@ class SCR_WorkshopItemBackendImageComponent : SCR_BackendImageComponent
 	}
 	
 	//----------------------------------------------------------------------------------
-	protected override void ShowLoadingImage(string fallbackImage)
+	override void ShowLoadingImage(string fallbackImage)
 	{
 		if (!m_wImage)
 			return;
@@ -1137,15 +1135,13 @@ class SCR_WorkshopItemBackendImageComponent : SCR_BackendImageComponent
 		else
 			super.ShowLoadingImage(fallbackImage); // Default behavior
 	}
-};
+}
 
 //------------------------------------------------------------------------------------------------
 //! Same as SCR_BackendImageComponent, but implements default image based on scenario
 class SCR_ScenarioBackendImageComponent : SCR_BackendImageComponent
 {
 	protected ref MissionWorkshopItem m_Scenario;
-	
-	protected override void SetImage(BackendImage image);
 	
 	protected const string LOADING_BACKGROUND_IMAGE = SCR_WorkshopUiCommon.SCENARIO_SP_DEFAULT_THUMBNAIL;
 	
@@ -1155,18 +1151,18 @@ class SCR_ScenarioBackendImageComponent : SCR_BackendImageComponent
 	{
 		m_Scenario = scenario;
 		
-		super.SetImage(image);
+		SetImage(image);
 	}
 	
 	//----------------------------------------------------------------------------------
-	protected override void ShowDefaultImage()
+	override void ShowDefaultImage()
 	{
 		// Later we can choose default image based on scenario type, player count...
 		ShowImage(SCR_WorkshopUiCommon.SCENARIO_SP_DEFAULT_THUMBNAIL);
 	}
 	
 	//----------------------------------------------------------------------------------
-	protected override void ShowLoadingImage(string fallbackImage)
+	override void ShowLoadingImage(string fallbackImage)
 	{
 		if (!m_wImage)
 			return;
@@ -1184,4 +1180,4 @@ class SCR_ScenarioBackendImageComponent : SCR_BackendImageComponent
 		else
 			super.ShowLoadingImage(fallbackImage); // Default behavior
 	}
-};
+}

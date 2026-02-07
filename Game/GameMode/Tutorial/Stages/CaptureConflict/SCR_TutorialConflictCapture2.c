@@ -13,7 +13,9 @@ class SCR_TutorialConflictCapture2 : SCR_BaseCampaignTutorialArlandStage
 		SCR_MapEntity.GetOnMapClose().Remove(m_TutorialComponent.OnMapClose);
 		SCR_MapEntity.GetOnMapOpen().Insert(m_TutorialComponent.OnMapOpen);
 		SCR_MapEntity.GetOnMapClose().Insert(m_TutorialComponent.OnMapClose);
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		
+		PlaySoundSystem("Conflict_MapControls", true);
+		HintOnVoiceOver();
 	}
 	
 	//------------------------------------------------------------------------------------------------

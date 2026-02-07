@@ -7,17 +7,20 @@ class SCR_PassagerTooltipDetail: SCR_EntityTooltipDetail
 	[Attribute("#AR-Editor_TooltipDetail_CompartmentFill")]
 	private string m_sCompartmentFillText;
 	
+	//------------------------------------------------------------------------------------------------
 	override bool NeedUpdate()
 	{
 		return m_CompartmentManager != null;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void UpdateDetail(SCR_EditableEntityComponent entity)
 	{
-		if (!m_CompartmentManager || !m_Text) return;
+		if (!m_CompartmentManager || !m_Text)
+			return;
 		
-		array<BaseCompartmentSlot> compartments = new array<BaseCompartmentSlot>;
+		array<BaseCompartmentSlot> compartments = {};
 		m_CompartmentManager.GetCompartmentsOfType(compartments, ECompartmentType.Cargo);
-		
 		
 		int total = compartments.Count();
 		int occupied;
@@ -29,6 +32,8 @@ class SCR_PassagerTooltipDetail: SCR_EntityTooltipDetail
 		
 		m_Text.SetTextFormat(m_sCompartmentFillText, occupied, total);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool InitDetail(SCR_EditableEntityComponent entity, Widget widget)
 	{
 		m_Text = TextWidget.Cast(widget);
@@ -40,7 +45,7 @@ class SCR_PassagerTooltipDetail: SCR_EntityTooltipDetail
 		if (!m_CompartmentManager)
 			return false;
 		
-		array<BaseCompartmentSlot> compartments = new array<BaseCompartmentSlot>;
+		array<BaseCompartmentSlot> compartments = {};
 		m_CompartmentManager.GetCompartmentsOfType(compartments, ECompartmentType.Cargo);
 		
 		if (compartments.IsEmpty())
@@ -52,4 +57,4 @@ class SCR_PassagerTooltipDetail: SCR_EntityTooltipDetail
 		
 		return true;
 	}
-};
+}

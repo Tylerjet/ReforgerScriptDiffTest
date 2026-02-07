@@ -1,15 +1,19 @@
 [EntityEditorProps(category: "GameScripted/GameMode", description: "")]
-class SCR_PlayerRadioSpawnPointClass: SCR_PlayerSpawnPointClass
+class SCR_PlayerRadioSpawnPointClass : SCR_PlayerSpawnPointClass
 {
-};
-class SCR_PlayerRadioSpawnPoint: SCR_PlayerSpawnPoint
+}
+
+class SCR_PlayerRadioSpawnPoint : SCR_PlayerSpawnPoint
 {
+	//------------------------------------------------------------------------------------------------
 	protected void OnItemAdded(IEntity item, BaseInventoryStorageComponent storageOwner)
 	{
 		BaseLoadoutClothComponent loadoutCloth = BaseLoadoutClothComponent.Cast(item.FindComponent(BaseLoadoutClothComponent));
 		if (loadoutCloth && loadoutCloth.GetAreaType() && loadoutCloth.GetAreaType().IsInherited(LoadoutBackpackArea) && item.FindComponent(SCR_RadioComponent))
 			super.ActivateSpawnPoint();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnItemRemoved(IEntity item, BaseInventoryStorageComponent storageOwner)
 	{
 		BaseLoadoutClothComponent loadoutCloth = BaseLoadoutClothComponent.Cast(item.FindComponent(BaseLoadoutClothComponent));
@@ -17,6 +21,7 @@ class SCR_PlayerRadioSpawnPoint: SCR_PlayerSpawnPoint
 			super.DeactivateSpawnPoint();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override protected void ActivateSpawnPoint()
 	{
 		//--- Track when the player picks up or drops radio backpack
@@ -36,6 +41,8 @@ class SCR_PlayerRadioSpawnPoint: SCR_PlayerSpawnPoint
 				OnItemAdded(backpack, null);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void DeactivateSpawnPoint()
 	{
 		if (m_TargetPlayer)
@@ -47,6 +54,7 @@ class SCR_PlayerRadioSpawnPoint: SCR_PlayerSpawnPoint
 				inventoryManager.m_OnItemRemovedInvoker.Remove(OnItemRemoved);
 			}
 		}
+
 		super.DeactivateSpawnPoint();
 	}
-};
+}

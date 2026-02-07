@@ -13,7 +13,7 @@ class SCR_AddonExportDialog : DialogUI
 		
 		// Button actions 
 		m_Widgets.m_NavCopyComponent.m_OnActivated.Insert(OnClickCopy);
-		m_Widgets.m_TabViewRootComponent.m_OnChanged.Insert(OnTabChanged);
+		m_Widgets.m_TabViewRootComponent.GetOnChanged().Insert(OnTabChanged);
 		
 		GenerateModContent();
 	}

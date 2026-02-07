@@ -13,8 +13,8 @@ sealed class ChimeraWorld: World
 {
 	//! Returns the time and weather manager entity
 	proto external TimeAndWeatherManagerEntity GetTimeAndWeatherManager();
-	proto external TagManager GetTagManager();
-	proto external GarbageManager GetGarbageManager();
+	// Returns garbage manager instance or null if none.
+	proto external GarbageSystem GetGarbageSystem();
 	proto external RadioManagerEntity GetRadioManager();
 	proto external ItemPreviewManagerEntity GetItemPreviewManager();
 	proto external MusicManager GetMusicManager();

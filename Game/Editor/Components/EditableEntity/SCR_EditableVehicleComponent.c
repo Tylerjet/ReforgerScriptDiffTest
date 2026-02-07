@@ -3,34 +3,39 @@ class SCR_EditableVehicleComponentClass : SCR_EditableEntityComponentClass
 {
 }
 
-/** @ingroup Editable_Entities
-*/
+//! @ingroup Editable_Entities
 
-/*!
-Special configuration for editable wehicle.
-*/
+//! Special configuration for editable wehicle.
 class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 {
 	protected SCR_BaseCompartmentManagerComponent m_CompartmentManager;
 	protected SCR_VehicleFactionAffiliationComponent m_VehicleFactionAffiliation;
-	protected ref ScriptInvoker m_OnUIRefresh = new ScriptInvoker();
+	protected ref ScriptInvoker m_OnUIRefresh;
 
 	protected int m_iPlayersInVehicle;
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetPlayerCountInVehicle()
 	{
 		return m_iPlayersInVehicle;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void OnFactionUpdate(FactionAffiliationComponent owner, Faction previousFaction, Faction newFaction)
 	{
-		m_OnUIRefresh.Invoke();
+		if (m_OnUIRefresh)
+			m_OnUIRefresh.Invoke();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnDestroyed(IEntity owner)
 	{
-		m_OnUIRefresh.Invoke();
+		if (m_OnUIRefresh)
+			m_OnUIRefresh.Invoke();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override Faction GetFaction()
 	{
 		//--- Destroyed entities have no faction
@@ -42,10 +47,17 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 
 		return null;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override ScriptInvoker GetOnUIRefresh()
 	{
+		if (!m_OnUIRefresh)
+			m_OnUIRefresh = new ScriptInvoker();
+
 		return m_OnUIRefresh;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override SCR_EditableEntityComponent GetAIGroup()
 	{
 		if (!m_CompartmentManager)
@@ -62,6 +74,7 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 		return null;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override SCR_EditableEntityComponent GetAIEntity()
 	{
 		if (!m_CompartmentManager)
@@ -101,7 +114,7 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 
 				if (playerIdToReturn == 0)
 					playerIdToReturn = playerId;
-				else if (SCR_CompartmentAccessComponent.GetCompartmentType(compartment) == ECompartmentType.Pilot)
+				else if (compartment.GetType() == ECompartmentType.Pilot)
 					return playerId;
 			}
 		}
@@ -110,6 +123,7 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void UpdatePlayerCountInVehicle()
 	{
 		if (!m_CompartmentManager)
@@ -132,9 +146,11 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 		}
 
 		m_iPlayersInVehicle = playerCount;
-		m_OnUIRefresh.Invoke();
+		if (m_OnUIRefresh)
+			m_OnUIRefresh.Invoke();
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override int GetCrew(out notnull array<CompartmentAccessComponent> crewCompartmentAccess, bool ignorePlayers = true)
 	{
 		SCR_BaseCompartmentManagerComponent compartmentManager = SCR_BaseCompartmentManagerComponent.Cast(GetOwner().FindComponent(SCR_BaseCompartmentManagerComponent));
@@ -147,7 +163,7 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 		if (ignorePlayers)
 			playerManager = GetGame().GetPlayerManager();
 
-		array<IEntity> occupants = new array<IEntity>;
+		array<IEntity> occupants = {};
 		compartmentManager.GetOccupants(occupants);
 		CompartmentAccessComponent compartmentAccess;
 
@@ -165,14 +181,15 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 		return crewCompartmentAccess.Count();
 	}
 
-	//~ Add feedback to players that they are teleported when inside of the vehicle
+	//------------------------------------------------------------------------------------------------
+	//! Add feedback to players that they are teleported when inside of the vehicle
 	protected void PlayerTeleportedFeedback()
 	{
 		SCR_BaseCompartmentManagerComponent compartmentManager = SCR_BaseCompartmentManagerComponent.Cast(GetOwner().FindComponent(SCR_BaseCompartmentManagerComponent));
 		if (!compartmentManager)
 			return;
 
-		array<IEntity> occupants = new array<IEntity>;
+		array<IEntity> occupants = {};
 		SCR_EditableCharacterComponent editableCharacter;
 		compartmentManager.GetOccupants(occupants);
 
@@ -184,6 +201,7 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void SetTransform(vector transform[4], bool changedByUser = false)
 	{
 		super.SetTransform(transform, changedByUser);
@@ -193,15 +211,18 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 	}
 
 	//--------------------------------------------------- Spawn occupants ---------------------------------------------------\\
-	/*!
-	Check if vehicle can spawn characters (Of vehicle Faction) in the vehicle. Cannot spawn characters in vehicle if occupied by another faction that is hostile
-	\param compartmentTypes Given compartment types that need to be checked if can be filled.
-	\param checkEditorBudget If true will check if characters to spawn are within budget. Function will return false if there isn't enough budget
-	\param checkOccupyingFaction If true function will check if the faction of the vehicle is null (empty) or the same/friendly to the static faction as given in the editableUIInfo. Function will return false if faction is hostile or neutral
-	\param checkForFreeCompartments If true will check if there are compartments free for the given compartments types. Function will return false if there are no free compartments of given type
-	\return Will return true if a character can be spawned in at least one compartment
-	*/
-	bool CanOccupyVehicleWithCharacters(array<ECompartmentType> compartmentTypes, bool checkHasDefaultOccupantsData, bool checkEditorBudget = true, bool checkOccupyingFaction = true, bool checkForFreeCompartments = true, bool checkForFreeDefaultCompartments = false)
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if vehicle can spawn characters (Of vehicle Faction) in the vehicle. Cannot spawn characters in vehicle if occupied by another faction that is hostile
+	//! \param[in] compartmentTypes Given compartment types that need to be checked if can be filled.
+	//! \param[in] checkHasDefaultOccupantsData
+	//! \param[in] playerID If server player ID must be given of the player that wans to check if can occupy, if client no ID needs to be given
+	//! \param[in] checkEditorBudget If true will check if characters to spawn are within budget. Function will return false if there isn't enough budget
+	//! \param[in] checkOccupyingFaction If true function will check if the faction of the vehicle is null (empty) or the same/friendly to the static faction as given in the editableUIInfo. Function will return false if faction is hostile or neutral
+	//! \param[in] checkForFreeCompartments If true will check if there are compartments free for the given compartments types. Function will return false if there are no free compartments of given type
+	//! \param[in] checkForFreeDefaultCompartments
+	//! \return Will return true if a character can be spawned in at least one compartment
+	bool CanOccupyVehicleWithCharacters(array<ECompartmentType> compartmentTypes, bool checkHasDefaultOccupantsData, int playerID, bool checkEditorBudget = true, bool checkOccupyingFaction = true, bool checkForFreeCompartments = true, bool checkForFreeDefaultCompartments = false)
 	{
 		FactionKey factionKey = string.Empty;
 
@@ -219,7 +240,7 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 		bool hasFreeDefaultCompartments;
 
 		if (checkEditorBudget || checkForFreeDefaultCompartments)
-			hasEnoughBudgetForDefaultCompartments = HasEnoughBudgetForDefaultOccupants(compartmentTypes, hasFreeDefaultCompartments);
+			hasEnoughBudgetForDefaultCompartments = HasEnoughBudgetForDefaultOccupants(compartmentTypes, playerID, EEditorMode.EDIT, hasFreeDefaultCompartments);
 
 		if (checkEditorBudget && !hasEnoughBudgetForDefaultCompartments)
 			return false;
@@ -230,16 +251,19 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 		return m_CompartmentManager.CanOccupy(compartmentTypes, checkHasDefaultOccupantsData, factionKey, checkOccupyingFaction, checkForFreeCompartments);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//~ Check if there is enough budget to spawn default occupants
-	protected bool HasEnoughBudgetForDefaultOccupants(array<ECompartmentType> compartmentTypes, out bool noFreeDefaultCompartments)
+	protected bool HasEnoughBudgetForDefaultOccupants(array<ECompartmentType> compartmentTypes, int playerID, EEditorMode editorMode, out bool noFreeDefaultCompartments)
 	{
 		noFreeDefaultCompartments = true;
 
-		array<BaseCompartmentSlot> compartments = new array<BaseCompartmentSlot>;
+		array<BaseCompartmentSlot> compartments = {};
 
 		//~ Get all free compartments of given types
 		foreach (ECompartmentType compartmentType : compartmentTypes)
+		{
 			m_CompartmentManager.GetFreeCompartmentsOfType(compartments, compartmentType);
+		}
 
 		array<ResourceName> occupantsToSpawn = {};
 		ResourceName occupant;
@@ -258,29 +282,52 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 			return true;
 		}
 
-		SCR_ContentBrowserEditorComponent contentBrowser = SCR_ContentBrowserEditorComponent.Cast(SCR_ContentBrowserEditorComponent.GetInstance(SCR_ContentBrowserEditorComponent, true));
+		SCR_EditorManagerEntity editorManager;
+		
+		//~ Get EditorManager from given player
+		if (playerID > 0)
+		{
+			SCR_EditorManagerCore editorCore = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
+			if (!editorCore)
+				return false;
+			
+			editorManager = editorCore.GetEditorManager(playerID);
+		}
+		//~ Get Editor manager from local player
+		else 
+		{
+			editorManager = SCR_EditorManagerEntity.GetInstance();
+		}
+		
+		if (!editorManager)
+			return false;
+		
+		SCR_EditorModeEntity modeEntity = editorManager.FindModeEntity(editorMode);
+		if (!modeEntity)
+			return false;
+		
+		SCR_ContentBrowserEditorComponent contentBrowser = SCR_ContentBrowserEditorComponent.Cast(modeEntity.FindComponent(SCR_ContentBrowserEditorComponent));
 		return contentBrowser && contentBrowser.CanPlace(occupantsToSpawn, EEditableEntityType.CHARACTER);
 	}
 
-	/*!
-	Spawn characters (Of vehicle Faction) within the Vehicle (Server only)
-	\param compartmentTypes Given compartment types that need to be filled with characters
-	*/
-	void OccupyVehicleWithDefaultCharacters(array<ECompartmentType> compartmentTypes)
+	//------------------------------------------------------------------------------------------------
+	//! Spawn characters (Of vehicle Faction) within the Vehicle (Server only)
+	//! \param[in] compartmentTypes Given compartment types that need to be filled with characters
+	void OccupyVehicleWithDefaultCharacters(notnull array<ECompartmentType> compartmentTypes)
 	{
 		m_CompartmentManager.SpawnDefaultOccupants(compartmentTypes);
 	}
 
-	/*!
-	Get Compartment manager of vehicle
-	\return Compartment manager
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get Compartment manager of vehicle
+	//! \return Compartment manager
 	SCR_BaseCompartmentManagerComponent GetCompartmentManager()
 	{
 		return m_CompartmentManager;
 	}
 
-	override SCR_EditableEntityComponent EOnEditorPlace(out SCR_EditableEntityComponent parent, SCR_EditableEntityComponent recipient, EEditorPlacingFlags flags, bool isQueue)
+	//------------------------------------------------------------------------------------------------
+	override SCR_EditableEntityComponent EOnEditorPlace(out SCR_EditableEntityComponent parent, SCR_EditableEntityComponent recipient, EEditorPlacingFlags flags, bool isQueue, int playerID = 0)
 	{
 		//~ No vehicle placing flag
 		if (!SCR_Enum.HasPartialFlag(flags, EEditorPlacingFlags.VEHICLE_CREWED | EEditorPlacingFlags.VEHICLE_PASSENGER))
@@ -288,14 +335,13 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 
 		//~ Todo: Check if EEditorPlacingFlags.CHARACTER_PLAYER and spawn the first character as player. If Only EEditorPlacingFlags.CHARACTER_PLAYER add itself as pilot (or any other availible slots)
 
-
 		SCR_EditableVehicleUIInfo uiInfo = SCR_EditableVehicleUIInfo.Cast(GetInfo());
-		array<ECompartmentType> compartmentsToFill = new array<ECompartmentType>;
+		array<ECompartmentType> compartmentsToFill = {};
 
 		bool hasFreeSeats;
 
 		//~ Check crew budget
-		if (SCR_Enum.HasFlag(flags, EEditorPlacingFlags.VEHICLE_CREWED) && HasEnoughBudgetForDefaultOccupants(SCR_BaseCompartmentManagerComponent.CREW_COMPARTMENT_TYPES, hasFreeSeats))
+		if (SCR_Enum.HasFlag(flags, EEditorPlacingFlags.VEHICLE_CREWED) && HasEnoughBudgetForDefaultOccupants(SCR_BaseCompartmentManagerComponent.CREW_COMPARTMENT_TYPES, playerID, EEditorMode.EDIT, hasFreeSeats))
 		{
 			//~ Occupy with Crew
 			if (!uiInfo || !uiInfo.GetEditorPlaceAsOneGroup())
@@ -305,7 +351,7 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 		}
 
 		//~ Check passenger budget
-		if (SCR_Enum.HasFlag(flags, EEditorPlacingFlags.VEHICLE_PASSENGER) && HasEnoughBudgetForDefaultOccupants(SCR_BaseCompartmentManagerComponent.PASSENGER_COMPARTMENT_TYPES, hasFreeSeats))
+		if (SCR_Enum.HasFlag(flags, EEditorPlacingFlags.VEHICLE_PASSENGER) && HasEnoughBudgetForDefaultOccupants(SCR_BaseCompartmentManagerComponent.PASSENGER_COMPARTMENT_TYPES, playerID, EEditorMode.EDIT, hasFreeSeats))
 		{
 			//~ Occupy with Passengers
 			if (!uiInfo || !uiInfo.GetEditorPlaceAsOneGroup())
@@ -317,10 +363,11 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 		//~ Occupy vehicle with both Crew and Passengers in one group (If both placing flags where selected)
 		if (!compartmentsToFill.IsEmpty())
 			OccupyVehicleWithDefaultCharacters(compartmentsToFill);
-
+		
 		return this;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void EOnPhysicsActive(IEntity owner, bool activeState)
 	{
 		//--- Move to root when the vehicle is activated
@@ -328,6 +375,8 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 			SetParentEntity(null);
 		//ClearEventMask(m_Owner, EntityEvent.PHYSICSACTIVE);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_DISABLE))
@@ -346,6 +395,9 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 		if (eventHandlerManager)
 			eventHandlerManager.RegisterScriptHandler("OnDestroyed", owner, OnDestroyed);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_EditableVehicleComponent()
 	{
 		if (m_VehicleFactionAffiliation)

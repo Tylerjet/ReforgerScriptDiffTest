@@ -1,46 +1,26 @@
-class SCR_GroupSubMenuPlayerlist : SCR_SubMenuBase
-{
-	[Attribute("6", params: "1 100 1")]
-	protected int m_iMaxColumnNumber;
-	
-	[Attribute()]
-	protected ResourceName m_ButtonLayout;
-	
-	[Attribute("#AR-PauseMenu_Continue", UIWidgets.LocaleEditBox)]
-	protected LocalizedString m_sContinueButtonText;
-	
-	protected Widget m_wGridWidget;
-	protected SCR_InputButtonComponent m_AddGroupButton;
-	protected SCR_InputButtonComponent m_JoinGroupButton;
-	protected SCR_InputButtonComponent m_AcceptInviteButton;
-	protected SCR_InputButtonComponent m_GroupSettingsButton;
+class SCR_GroupSubMenuPlayerlist : SCR_GroupSubMenuBase
+{	
 	protected SCR_InputButtonComponent m_ViewProfileButton;
-	protected SCR_GroupsManagerComponent m_GroupManager;
 	protected SCR_PlayerControllerGroupComponent m_PlayerGroupController;
-	
-	protected const string CREATE_GROUP = "#AR_DeployMenu_AddNewGroup";
-	protected const string JOIN_GROUP = "#AR-DeployMenu_JoinGroup";
-	protected const string ACCEPT_INVITE = "#AR-DeployMenu_AcceptInvite";
 	
 	protected int m_iLastSelectedPlayerId;
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuUpdate(SCR_SuperMenuBase parentMenu, float tDelta)
+	override void OnMenuUpdate(float tDelta)
 	{
 		GetGame().GetInputManager().ActivateContext("GroupMenuContext");
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuOpen(SCR_SuperMenuBase parentMenu)
+	override void OnTabCreate(Widget menuRoot, ResourceName buttonsLayout, int index)
 	{
-		super.OnMenuOpen(parentMenu);
+		super.OnTabCreate(menuRoot, buttonsLayout, index);
+		
 		m_GroupManager = SCR_GroupsManagerComponent.GetInstance();
 		m_PlayerGroupController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
 		if (!m_PlayerGroupController)
 			return;
-		if (!m_ParentMenu)
-			return;
-	
+
 		CreateAddGroupButton();
 		CreateJoinGroupButton();
 		CreateAcceptInviteButton();
@@ -51,20 +31,20 @@ class SCR_GroupSubMenuPlayerlist : SCR_SubMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuShow(SCR_SuperMenuBase parentMenu)
+	override void OnTabShow()
 	{
-		super.OnMenuShow(parentMenu);
+		super.OnTabShow();
 	
 		UpdateViewProfileButton(true);
 		
 		//todo:mku this is a temporary solution because of how playerlist is implemented right now
-		OverlayWidget header = OverlayWidget.Cast(m_ParentMenu.GetRootWidget().FindAnyWidget("SortHeader"));
+		OverlayWidget header = OverlayWidget.Cast(m_wMenuRoot.FindAnyWidget("SortHeader"));
 		if (header)
 			header.SetVisible(false);
-		ScrollLayoutWidget scrollWidget = ScrollLayoutWidget.Cast(m_ParentMenu.GetRootWidget().FindAnyWidget("ScrollLayout0"));
+		ScrollLayoutWidget scrollWidget = ScrollLayoutWidget.Cast(m_wMenuRoot.FindAnyWidget("ScrollLayout0"));
 		if (scrollWidget)
 			scrollWidget.SetVisible(false);
-		HorizontalLayoutWidget footerLeft = HorizontalLayoutWidget.Cast(m_ParentMenu.GetRootWidget().FindAnyWidget("FooterLeft"));
+		HorizontalLayoutWidget footerLeft = HorizontalLayoutWidget.Cast(m_wMenuRoot.FindAnyWidget("FooterLeft"));
 		if (footerLeft)
 			footerLeft.SetVisible(false);
 		
@@ -93,28 +73,28 @@ class SCR_GroupSubMenuPlayerlist : SCR_SubMenuBase
 	void UpdateGroupsMenu()
 	{
 		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
-		if (!playerController || !m_ParentMenu)
+		if (!playerController || !m_wMenuRoot)
 			return;
 		
 		SetAcceptButtonStatus();
 		
-		m_wGridWidget = m_ParentMenu.GetRootWidget().FindAnyWidget("GroupList");
-		SCR_GroupSubMenu.InitGroups(m_wGridWidget, m_AddGroupButton, m_JoinGroupButton, m_GroupSettingsButton, m_ButtonLayout, m_ParentMenu);
+		m_wGridWidget = m_wMenuRoot.FindAnyWidget("GroupList");
+		InitGroups(m_PlayerGroupController);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuHide(SCR_SuperMenuBase parentMenu)
+	override void OnTabHide()
 	{
-		super.OnMenuHide(parentMenu);
+		super.OnTabHide();
 	
 		SCR_GroupTileButton.GetOnPlayerTileFocus().Remove(OnPlayerTileFocus);
 		SCR_GroupTileButton.GetOnPlayerTileFocusLost().Remove(OnPlayerTileFocusLost);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuClose(SCR_SuperMenuBase parentMenu)
+	override void OnTabRemove()
 	{
-		super.OnMenuClose(parentMenu);
+		super.OnTabRemove();
 		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
 		if (m_GroupManager)
 		{
@@ -131,13 +111,13 @@ class SCR_GroupSubMenuPlayerlist : SCR_SubMenuBase
 		m_PlayerGroupController.GetOnInviteReceived().Remove(SetAcceptButtonStatus);
 		
 		//todo:mku this is a temporary solution because of how playerlist is implemented right now
-		OverlayWidget header = OverlayWidget.Cast(m_ParentMenu.GetRootWidget().FindAnyWidget("SortHeader"));
+		OverlayWidget header = OverlayWidget.Cast(m_wMenuRoot.FindAnyWidget("SortHeader"));
 		if (header)
 			header.SetVisible(true);
-		ScrollLayoutWidget scrollWidget = ScrollLayoutWidget.Cast(m_ParentMenu.GetRootWidget().FindAnyWidget("ScrollLayout0"));
+		ScrollLayoutWidget scrollWidget = ScrollLayoutWidget.Cast(m_wMenuRoot.FindAnyWidget("ScrollLayout0"));
 		if (scrollWidget)
 			scrollWidget.SetVisible(true);
-		HorizontalLayoutWidget footerLeft = HorizontalLayoutWidget.Cast(m_ParentMenu.GetRootWidget().FindAnyWidget("FooterLeft"));
+		HorizontalLayoutWidget footerLeft = HorizontalLayoutWidget.Cast(m_wMenuRoot.FindAnyWidget("FooterLeft"));
 		if (footerLeft)
 			footerLeft.SetVisible(true);
 		
@@ -229,11 +209,10 @@ class SCR_GroupSubMenuPlayerlist : SCR_SubMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void CreateGroupSettingsButton()
 	{
-		m_GroupSettingsButton = CreateNavigationButton("MenuSettingsGroup", "#AR-Player_Groups_Settings", true);
+		m_GroupSettingsButton = CreateNavigationButton("MenuSettingsGroup", "#AR-Player_Groups_Settings", true, false);
 		if (!m_GroupSettingsButton)
 			return;
 		m_GroupSettingsButton.GetRootWidget().SetZOrder(0);
-		m_GroupSettingsButton.SetVisible(false);
 		m_GroupSettingsButton.m_OnActivated.Insert(OpenGroupSettingsDialog);
 	}
 	
@@ -264,7 +243,7 @@ class SCR_GroupSubMenuPlayerlist : SCR_SubMenuBase
 		if (!m_ViewProfileButton)
 			return;
 
-		m_ViewProfileButton.SetVisible(!forceHidden && GetGame().GetPlayerManager().IsUserProfileAvailable(m_iLastSelectedPlayerId), false);
+		SetNavigationButtonVisibile(m_ViewProfileButton, !forceHidden && GetGame().GetPlayerManager().IsUserProfileAvailable(m_iLastSelectedPlayerId));
 	}
 	
 	//------------------------------------------------------------------------------------------------

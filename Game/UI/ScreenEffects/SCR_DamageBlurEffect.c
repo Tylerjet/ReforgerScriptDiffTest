@@ -46,16 +46,9 @@ class SCR_DamageBlurEffect : SCR_BaseScreenEffect
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnDamage(EDamageType type,
-				  float damage,
-				  HitZone pHitZone,
-				  notnull Instigator instigator,
-				  inout vector hitTransform[3],
-				  float speed,
-				  int colliderID,
-				  int nodeID)
+	void OnDamage(BaseDamageContext damageContext)
 	{
-		if (damage > m_fGaussBlurMinDamage)
+		if (damageContext.damageValue > m_fGaussBlurMinDamage)
 			m_fGaussBlurReduction = Math.Clamp(++m_fGaussBlurReduction, 0, 2);
 	}
 

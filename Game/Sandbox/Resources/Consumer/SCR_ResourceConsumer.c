@@ -18,18 +18,21 @@ class SCR_ResourceActor : ScriptAndConfig
 	protected IEntity m_Owner;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	Color GetDebugColor()
 	{
-		return m_ResourceComponent.GetDebugColor();
+		return Color.FromInt(m_ResourceComponent.GetDebugColor().PackToInt());
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetGridUpdateId()
 	{
 		return m_ResourceComponent.GetGridUpdateId();
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	vector GetOwnerOrigin()
 	{
 		// TODO: Make it so that the nullity of this never happen in the first place.
@@ -40,83 +43,102 @@ class SCR_ResourceActor : ScriptAndConfig
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetDebugName()
 	{
 		return m_sDebugName;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetDebugNameHash()
 	{
 		return m_sDebugName.Hash();
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_ResourceComponent GetComponent()
 	{
 		return m_ResourceComponent;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	IEntity GetOwner()
 	{
 		return m_Owner;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	EResourceRights GetResourceRight()
 	{
 		return m_eResourceRights;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	bool ShouldUpdate()
 	{
 		return false;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsIsolated()
 	{
 		return m_eResourceRights == EResourceRights.SELF ||  m_eResourceRights == EResourceRights.NONE;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] gridUpdateId
+	//! \return
 	bool IsGridUpdateIdGreaterThan(int gridUpdateId)
 	{
 		return m_ResourceComponent.IsGridUpdateIdGreaterThan(gridUpdateId);
 	}
 		
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] rights
 	void SetResourceRights(EResourceRights rights)
 	{
 		m_eResourceRights = rights;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] gridUpdateId
 	void SetGridUpdateId(int gridUpdateId)
 	{
 		m_ResourceComponent.SetGridUpdateId(gridUpdateId);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] timeslice
 	void Update(float timeslice)
 	{
 		
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] timeslice
 	void UpdateInner(float timeslice)
 	{
 		
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void Clear()
 	{
 		
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_ResourceActor()
 	{
 		Clear();
@@ -141,51 +163,56 @@ class SCR_ResourceInteractor : SCR_ResourceActor
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetResourceGridRange()
 	{
 		return 0.0;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetAggregatedResourceValue()
 	{
 		return 0.0;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetAggregatedMaxResourceValue()
 	{
 		return 0.0;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetContainerCount()
 	{
 		return 0;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return The last processed world position of the interactor.
-	*/
+	//! \return The last processed world position of the interactor.
 	vector GetLastPosition()
 	{
 		return m_LastPosition;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	EResourceType GetResourceType()
 	{
 		return m_eResourceType;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_ResourceContainerQueueBase GetContainerQueue()
 	{
 		return null;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnResourcesChanged()
 	{
 		if (!m_OnResourcesChangedInvoker)	
@@ -196,6 +223,7 @@ class SCR_ResourceInteractor : SCR_ResourceActor
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnMaxResourcesChanged()
 	{
 		if (!m_OnMaxResourcesChangedInvoker)	
@@ -206,6 +234,7 @@ class SCR_ResourceInteractor : SCR_ResourceActor
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	EResourceGeneratorID GetIdentifier()
 	{
 		return EResourceGeneratorID.INVALID;
@@ -218,6 +247,8 @@ class SCR_ResourceInteractor : SCR_ResourceActor
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] container
+	//! \return
 	bool IsAllowed(notnull SCR_ResourceContainer container)
 	{
 		if (container.GetResourceType() != m_eResourceType)
@@ -227,13 +258,16 @@ class SCR_ResourceInteractor : SCR_ResourceActor
 		{
 			case EResourceRights.NONE:
 				return false;
+
 			case EResourceRights.SELF:
 				return m_Owner == container.GetOwner();
+
 			case EResourceRights.SQUAD:
 				if (container.GetResourceRight() == EResourceRights.ALL)
 					return true;
 				// TODO: Logic for detecting the squad.
 				return false;
+
 			case EResourceRights.FACTION:
 				if (container.GetResourceRight() == EResourceRights.ALL)
 					return true;	
@@ -249,6 +283,7 @@ class SCR_ResourceInteractor : SCR_ResourceActor
 					return false;
 				
 				return interactorFactionComponent.GetAffiliatedFaction() == containerrFactionComponent.GetAffiliatedFaction();
+
 			case EResourceRights.ALL:
 				return true;
 		}
@@ -257,6 +292,9 @@ class SCR_ResourceInteractor : SCR_ResourceActor
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] entity
+	//! \param[in] resourceType
+	//! \return
 	bool IsAllowed(notnull IEntity entity, EResourceType resourceType)
 	{
 		if (resourceType != m_eResourceType)
@@ -266,8 +304,10 @@ class SCR_ResourceInteractor : SCR_ResourceActor
 		{
 			case EResourceRights.NONE:
 				return false;
+
 			case EResourceRights.SELF:
 				return m_Owner == entity;
+
 			case EResourceRights.SQUAD:
 				// TODO: Logic for detecting the squad.
 			case EResourceRights.FACTION:	
@@ -295,6 +335,7 @@ class SCR_ResourceInteractor : SCR_ResourceActor
 					return false;
 				
 				return interactorFactionComponent.GetAffiliatedFaction() == containerrFactionComponent.GetAffiliatedFaction();
+
 			case EResourceRights.ALL:
 				return true;
 		}
@@ -303,12 +344,18 @@ class SCR_ResourceInteractor : SCR_ResourceActor
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] container
+	//! \return
 	bool CanInteractWith(notnull SCR_ResourceContainer container)
 	{
 		return IsAllowed(container) && container.IsAllowed(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] container
+	//! \return
 	int FindContainer(notnull SCR_ResourceContainer container)
 	{
 		return SCR_ResourceContainerQueueBase.INVALID_CONTAINER_INDEX;
@@ -324,57 +371,76 @@ class SCR_ResourceInteractor : SCR_ResourceActor
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Updates the last known position of the interactor.
-	*/
+	//! Updates the last known position of the interactor.
 	void UpdateLastPosition()
 	{
 		m_LastPosition = GetOwnerOrigin();
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] container
+	//! \return
 	bool RegisterContainer(notnull SCR_ResourceContainer container)
 	{
 		return false;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] container
+	//! \return
 	bool RegisterContainerForced(notnull SCR_ResourceContainer container)
 	{
 		return false;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] containerIndex
+	//! \return
 	bool UnregisterContainer(int containerIndex)
 	{	
 		return false;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] container
+	//! \return
 	bool UnregisterContainer(notnull SCR_ResourceContainer container)
 	{	
 		return false;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void Replicate()
 	{
 		m_ResourceComponent.Replicate();
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void ReplicateEx()
 	{
 		m_ResourceComponent.ReplicateEx();
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] container
+	//! \param[in] previousValue
 	void UpdateContainerResourceValue(SCR_ResourceContainer container, float previousValue);
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] container
+	//! \param[in] previousValue
 	void UpdateContainerMaxResourceValue(SCR_ResourceContainer container, float previousValue);
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] previousValue
 	void OnResourcesChanged(float previousValue)
 	{
 		m_fAggregatedResourceValue = GetAggregatedResourceValue();
@@ -389,6 +455,7 @@ class SCR_ResourceInteractor : SCR_ResourceActor
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] previousValue
 	void OnMaxResourcesChanged(float previousValue)
 	{
 		m_fAggregatedMaxResourceValue = GetAggregatedMaxResourceValue();
@@ -403,18 +470,22 @@ class SCR_ResourceInteractor : SCR_ResourceActor
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] container
 	void OnContainerRegistered(notnull SCR_ResourceContainer container)
 	{
 		container.LinkInteractor(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] container
 	void OnContainerUnregistered(notnull SCR_ResourceContainer container)
 	{
 		container.UnlinkInteractor(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] owner
 	void Initialize(notnull IEntity owner)
 	{
 		m_Owner = owner;
@@ -459,7 +530,7 @@ class SCR_ResourceConsumer : SCR_ResourceInteractor
 	protected ref ScriptInvoker m_OnResourceRangeChangedInvoker;
 	protected ref ScriptInvoker m_OnBuyMultiplierChangedInvoker;
 	protected ref ScriptInvoker m_OnSellMultiplierChangedInvoker;
-	protected ref ScriptInvoker m_OnConsumtionStateChangedInvoker;
+	protected ref ScriptInvoker m_OnConsumtionStateChangedInvoker; // TODO: Consumtion -> Consumption
 	protected ref ScriptInvoker m_OnExchangeStateChangedInvoker;
 	
 	//------------------------------------------------------------------------------------------------
@@ -469,18 +540,21 @@ class SCR_ResourceConsumer : SCR_ResourceInteractor
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetResourceRange()
 	{
 		return m_fResourceRange;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetBuyMultiplier()
 	{
 		return m_fBuyMultiplier;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetSellMultiplier()
 	{
 		return m_fSellMultiplier;
@@ -520,6 +594,7 @@ class SCR_ResourceConsumer : SCR_ResourceInteractor
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnResourceRangeChanged()
 	{
 		if (!m_OnResourceRangeChangedInvoker)	
@@ -529,6 +604,7 @@ class SCR_ResourceConsumer : SCR_ResourceInteractor
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnBuyMultiplierChanged()
 	{
 		if (!m_OnBuyMultiplierChangedInvoker)	
@@ -538,6 +614,7 @@ class SCR_ResourceConsumer : SCR_ResourceInteractor
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnSellMultiplierChanged()
 	{
 		if (!m_OnSellMultiplierChangedInvoker)	
@@ -547,6 +624,8 @@ class SCR_ResourceConsumer : SCR_ResourceInteractor
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
+	// TODO: Consumtion -> Consumption
 	ScriptInvoker GetOnConsumtionStateChanged()
 	{
 		if (!m_OnConsumtionStateChangedInvoker)	
@@ -556,6 +635,7 @@ class SCR_ResourceConsumer : SCR_ResourceInteractor
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnExchangeStateChanged()
 	{
 		if (!m_OnExchangeStateChangedInvoker)	
@@ -565,6 +645,7 @@ class SCR_ResourceConsumer : SCR_ResourceInteractor
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	EResourceGeneratorID GetGeneratorIdentifier()
 	{
 		return m_eGeneratorIdentifier;
@@ -577,18 +658,21 @@ class SCR_ResourceConsumer : SCR_ResourceInteractor
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsIgnoringItself()
 	{
 		return m_bIsIgnoringItself;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsConsuming()
 	{
 		return m_bIsConsuming;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsExchanging()
 	{
 		return m_bIsExchanging;
@@ -616,6 +700,9 @@ class SCR_ResourceConsumer : SCR_ResourceInteractor
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] value
+	//! \param[in] notifyChange
+	//! \return
 	bool SetResourceRange(float value, bool notifyChange = true)
 	{
 		float previousValue	= m_fResourceRange;
@@ -631,6 +718,9 @@ class SCR_ResourceConsumer : SCR_ResourceInteractor
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] value
+	//! \param[in] notifyChange
+	//! \return
 	bool SetBuyMultiplier(float value, bool notifyChange = true)
 	{
 		float previousValue	= m_fBuyMultiplier;
@@ -646,6 +736,9 @@ class SCR_ResourceConsumer : SCR_ResourceInteractor
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] value
+	//! \param[in] notifyChange
+	//! \return
 	bool SetSellMultiplier(float value, bool notifyChange = true)
 	{
 		float previousValue	= m_fSellMultiplier;
@@ -661,6 +754,11 @@ class SCR_ResourceConsumer : SCR_ResourceInteractor
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] shouldEnable
+	//! \param[in] notifyChange
+	//! \return
+	// TODO: Consumtion -> Consumption
 	bool EnableConsumtion(bool shouldEnable, bool notifyChange = true)
 	{
 		bool previousValue	= m_bIsConsuming;
@@ -676,6 +774,10 @@ class SCR_ResourceConsumer : SCR_ResourceInteractor
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] shouldEnable
+	//! \param[in] notifyChange
+	//! \return
 	bool EnableExchange(bool shouldEnable, bool notifyChange = true)
 	{
 		bool previousValue	= m_bIsExchanging;
@@ -731,6 +833,10 @@ class SCR_ResourceConsumer : SCR_ResourceInteractor
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] resourceCost
+	//! \param[in] performFullQuery
+	//! \return
 	SCR_ResourceConsumtionResponse RequestAvailability(float resourceCost, bool performFullQuery = false)
 	{
 		GetGame().GetResourceGrid().UpdateInteractor(this);
@@ -758,6 +864,10 @@ class SCR_ResourceConsumer : SCR_ResourceInteractor
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] resourceCost
+	//! \return
+	// TODO: Consumtion -> Consumption
 	SCR_ResourceConsumtionResponse RequestConsumtion(float resourceCost)
 	{
 		SCR_ResourceConsumtionResponse response = RequestAvailability(resourceCost, true);
@@ -792,6 +902,7 @@ class SCR_ResourceConsumer : SCR_ResourceInteractor
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void DebugDraw()
 	{
 		// TODO: Make it so that the nullity of these never happen in the first place.
@@ -848,6 +959,7 @@ class SCR_ResourceConsumer : SCR_ResourceInteractor
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// TODO: Consumtion -> Consumption
 	protected void OnConsumtionStateChanged(float previousValue)
 	{
 		if (m_OnConsumtionStateChangedInvoker)
@@ -959,36 +1071,65 @@ class SCR_ResourceConsumer : SCR_ResourceInteractor
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] snapshot
+	//! \param[in] ctx
+	//! \param[in] packet
 	static void Encode(SSnapSerializerBase snapshot, ScriptCtx ctx, ScriptBitSerializer packet) 
 	{
 		snapshot.Serialize(packet, SCR_ResourceConsumer.CODEC_CONSUMER_PACKET_BYTESIZE);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] packet
+	//! \param[in] ctx
+	//! \param[in] snapshot
+	//! \return
 	static bool Decode(ScriptBitSerializer packet, ScriptCtx ctx, SSnapSerializerBase snapshot)
 	{
 		return snapshot.Serialize(packet, SCR_ResourceConsumer.CODEC_CONSUMER_PACKET_BYTESIZE);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] lhs
+	//! \param[in] rhs
+	//! \param[in] ctx
+	//! \return
 	static bool SnapCompare(SSnapSerializerBase lhs, SSnapSerializerBase rhs , ScriptCtx ctx)
 	{
 		return lhs.CompareSnapshots(rhs, SCR_ResourceConsumer.CODEC_CONSUMER_PACKET_BYTESIZE);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] instance
+	//! \param[in] snapshot
+	//! \param[in] ctx
+	//! \return
 	static bool PropCompare(SCR_ResourceConsumer instance, SSnapSerializerBase snapshot, ScriptCtx ctx)
 	{
 		return instance.PropCompareNetworkedVariables(snapshot, ctx);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] instance
+	//! \param[in] ctx
+	//! \param[in] snapshot
+	//! \return
 	static bool Extract(SCR_ResourceConsumer instance, ScriptCtx ctx, SSnapSerializerBase snapshot)
 	{
 		return instance.ExtractNetworkedVariables(snapshot, ctx);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] snapshot
+	//! \param[in] ctx
+	//! \param[in] instance
+	//! \return
 	static bool Inject(SSnapSerializerBase snapshot, ScriptCtx ctx, SCR_ResourceConsumer instance)
 	{
 		return instance.InjectNetworkedVariables(snapshot, ctx);

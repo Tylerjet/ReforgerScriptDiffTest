@@ -1,6 +1,6 @@
-class SCR_StressTestGroupActivationClass: GenericEntityClass
+class SCR_StressTestGroupActivationClass : GenericEntityClass
 {
-};
+}
 
 class SCR_StressTestGroupActivation : GenericEntity
 {
@@ -11,12 +11,17 @@ class SCR_StressTestGroupActivation : GenericEntity
 	private int m_iIndex;
 	private float m_fTimeElapsed;	
 	
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] parent
 	void SCR_StressTestGroupActivation(IEntitySource src, IEntity parent)
 	{
 		SetEventMask(EntityEvent.INIT | EntityEvent.FRAME);
 		SetFlags(EntityFlags.ACTIVE, false);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
 		BaseWorld world = GetGame().GetWorld();
@@ -26,6 +31,7 @@ class SCR_StressTestGroupActivation : GenericEntity
 		m_fTimeElapsed = 0;		
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
 		if (m_fTimeElapsed > m_fNextGroupTime)
@@ -37,6 +43,7 @@ class SCR_StressTestGroupActivation : GenericEntity
 				{
 					if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AI_PRINT_GROUP_INFO))
 						PrintFormat("Group %1 activated at location %2",group,group.GetOrigin());
+
 					group.SpawnUnits();
 					m_iIndex = i + 1;
 					m_fTimeElapsed = 0;
@@ -50,6 +57,7 @@ class SCR_StressTestGroupActivation : GenericEntity
 				}
 			}
 		}
+
 		m_fTimeElapsed += timeSlice;		
 	}
-};
+}

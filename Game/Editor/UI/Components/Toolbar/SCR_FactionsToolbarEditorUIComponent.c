@@ -1,6 +1,6 @@
-/** @ingroup Editor_UI Editor_UI_Components
-*/
-class SCR_FactionsToolbarEditorUIComponent: SCR_EntitiesToolbarEditorUIComponent
+//! @ingroup Editor_UI Editor_UI_Components
+
+class SCR_FactionsToolbarEditorUIComponent : SCR_EntitiesToolbarEditorUIComponent
 {
 	[Attribute("NoPlayerFactionsActive")]
 	protected string m_sNoPlayerFactionsActiveName;
@@ -18,6 +18,7 @@ class SCR_FactionsToolbarEditorUIComponent: SCR_EntitiesToolbarEditorUIComponent
 	protected Widget m_wButtonHint;
 	protected Widget m_wHeader;
 	
+	//------------------------------------------------------------------------------------------------
 	protected override bool CanOpenDialog()
 	{				
 		//Are there any playable factions
@@ -54,6 +55,7 @@ class SCR_FactionsToolbarEditorUIComponent: SCR_EntitiesToolbarEditorUIComponent
 		return false;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void FactionPlayabilityChanged(Faction faction, bool playable)
 	{
 		Refresh();
@@ -71,7 +73,7 @@ class SCR_FactionsToolbarEditorUIComponent: SCR_EntitiesToolbarEditorUIComponent
 		if (!delegatesManager)
 			return;
 		
-		map<Faction, SCR_EditableFactionComponent> delegates = new map<Faction, SCR_EditableFactionComponent>;
+		map<Faction, SCR_EditableFactionComponent> delegates = new map<Faction, SCR_EditableFactionComponent>();
 		delegatesManager.GetFactionDelegates(delegates);
 		
 		foreach (Faction faction, SCR_EditableFactionComponent delegate: delegates)
@@ -138,7 +140,7 @@ class SCR_FactionsToolbarEditorUIComponent: SCR_EntitiesToolbarEditorUIComponent
 		if (!delegatesManager)
 			return;
 		
-		map<Faction, SCR_EditableFactionComponent> delegates = new map<Faction, SCR_EditableFactionComponent>;
+		map<Faction, SCR_EditableFactionComponent> delegates = new map<Faction, SCR_EditableFactionComponent>();
 		delegatesManager.GetFactionDelegates(delegates);
 		
 		foreach (Faction faction, SCR_EditableFactionComponent delegate: delegates)
@@ -159,8 +161,6 @@ class SCR_FactionsToolbarEditorUIComponent: SCR_EntitiesToolbarEditorUIComponent
 		// Open attribute manager
 		SCR_AttributesManagerEditorComponent attributesManager = SCR_AttributesManagerEditorComponent.Cast(SCR_AttributesManagerEditorComponent.GetInstance(SCR_AttributesManagerEditorComponent));
 		if (attributesManager)
-		{
 			attributesManager.StartEditing(m_HoverEntity);
-		}
 	}
-};
+}

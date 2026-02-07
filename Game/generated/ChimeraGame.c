@@ -76,6 +76,9 @@ class ChimeraGame: Game
 
 	//! Getter for where authority is for vehicles
 	event bool GetIsClientAuthority();
+	event void OnCinematicStart();
+	event void OnCinematicEnd();
+	event void OnCinematicBlending(float blendFactor, vector cameraPosition);
 	/*!
 	\brief Called when a mission header is set (to both a valid one or to null as well)
 	\param mission can be passed in as null when mission is cleared, make sure to nullptr check!

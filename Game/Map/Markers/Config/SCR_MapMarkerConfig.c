@@ -85,25 +85,33 @@ class SCR_MapMarkerEntryConfig
 	//------------------------------------------------------------------------------------------------
 	//! Client side initialization of visuals or other client logic for dynamic markers
 	//! Override this in children where wanted
-	void InitClientSettingsDynamic(SCR_MapMarkerEntity marker, SCR_MapMarkerDynamicWComponent widgetComp)
-	{
-	}
+	void InitClientSettingsDynamic(notnull SCR_MapMarkerEntity marker, notnull SCR_MapMarkerDynamicWComponent widgetComp);
 	
 	//------------------------------------------------------------------------------------------------
 	//! Override this to set up server side logic & event behavior for dynamic markers
-	void InitServerLogic()
-	{
-	}
+	void InitServerLogic();
+	
+	//------------------------------------------------------------------------------------------------
+	//! Override this to set up logic & event behavior on client
+	void InitClientLogic();
 	
 	//------------------------------------------------------------------------------------------------
 	//! Override this to set up client side behavior for when map changes zoom layers
-	void OnMapLayerChanged(SCR_MapMarkerWidgetComponent widgetComp, int layerID)
-	{
-	}
+	void OnMapLayerChanged(notnull SCR_MapMarkerWidgetComponent widgetComp, int layerID);
 	
 	//------------------------------------------------------------------------------------------------
 	//! Override this to set up client side behavior for when map changes zoom layers
-	void OnMapLayerChangedDynamic(SCR_MapMarkerDynamicWComponent widgetComp, int layerID)
-	{
-	}
+	void OnMapLayerChangedDynamic(notnull SCR_MapMarkerDynamicWComponent widgetComp, int layerID);
+	
+	//------------------------------------------------------------------------------------------------
+	//! Override this to set up client side behavior on map init 
+	void OnMapInit(notnull SCR_MapEntity mapEnt, notnull SCR_MapMarkersUI markerUIComp);
+	
+	//------------------------------------------------------------------------------------------------
+	//! Override this to set up client side behavior on map open
+	void OnMapOpen(notnull SCR_MapEntity mapEnt, notnull SCR_MapMarkersUI markerUIComp);
+	
+	//------------------------------------------------------------------------------------------------
+	//! Override this to set up client side behavior on map close
+	void OnMapClose(notnull SCR_MapEntity mapEnt, notnull SCR_MapMarkersUI markerUIComp);
 }

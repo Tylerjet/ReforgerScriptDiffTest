@@ -1,16 +1,16 @@
 [EntityEditorProps(category: "GameScripted/Components", description: "Registers characters and holds them in an array.", color: "0 0 255 255")]
-class SCR_CharacterRegistrationComponentClass: ScriptComponentClass
+class SCR_CharacterRegistrationComponentClass : ScriptComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_CharacterRegistrationComponent : ScriptComponent
 {
-	static ref array<SCR_ChimeraCharacter> s_aChimeraCharacters = new ref array<SCR_ChimeraCharacter>();
+	protected static ref array<SCR_ChimeraCharacter> s_aChimeraCharacters = {};
 	
-	IEntity m_owner;
+	protected IEntity m_owner;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	static array<SCR_ChimeraCharacter> GetChimeraCharacters()
 	{
 		return s_aChimeraCharacters;
@@ -41,16 +41,20 @@ class SCR_CharacterRegistrationComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_CharacterRegistrationComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_CharacterRegistrationComponent()
 	{
 		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(m_owner);
 		if (character && s_aChimeraCharacters.Find(character) != -1)
 			s_aChimeraCharacters.RemoveItem(character);
 	}
-
-};
+}

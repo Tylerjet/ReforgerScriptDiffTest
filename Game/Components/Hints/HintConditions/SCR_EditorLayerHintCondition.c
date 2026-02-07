@@ -1,9 +1,10 @@
 [BaseContainerProps(), SCR_BaseContainerHintCondition()]
-class SCR_EditorLayerHintCondition: SCR_BaseEditorHintCondition
+class SCR_EditorLayerHintCondition : SCR_BaseEditorHintCondition
 {
 	[Attribute("1")]
 	protected bool m_bOnEnter;
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnCurrentLayerChange(SCR_EditableEntityComponent currentLayer, SCR_EditableEntityComponent prevCurrentLayer)
 	{
 		if (m_bOnEnter)
@@ -22,16 +23,19 @@ class SCR_EditorLayerHintCondition: SCR_BaseEditorHintCondition
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override protected void OnInitConditionEditor(SCR_EditorManagerEntity editorManager)
 	{
 		SCR_LayersEditorComponent layerManager = SCR_LayersEditorComponent.Cast(SCR_LayersEditorComponent.GetInstance(SCR_LayersEditorComponent));
 		if (layerManager)
 			layerManager.GetOnCurrentLayerChange().Insert(OnCurrentLayerChange);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void OnExitConditionEditor(SCR_EditorManagerEntity editorManager)
 	{
 		SCR_LayersEditorComponent layerManager = SCR_LayersEditorComponent.Cast(SCR_LayersEditorComponent.GetInstance(SCR_LayersEditorComponent));
 		if (layerManager)
 			layerManager.GetOnCurrentLayerChange().Remove(OnCurrentLayerChange);
 	}
-};
+}

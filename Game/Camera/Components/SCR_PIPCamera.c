@@ -1,12 +1,15 @@
 [EntityEditorProps()]
 class SCR_PIPCameraClass : CameraBaseClass
 {
-
-};
+}
 
 class SCR_PIPCamera : CameraBase
 {
 
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] parent
 	void SCR_PIPCamera(IEntitySource src, IEntity parent)
 	{
 		/// Ooofgly hack.
@@ -15,6 +18,7 @@ class SCR_PIPCamera : CameraBase
 		ClearEventMask(EntityEvent.INIT);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnActivate(IEntity owner)
 	{
 		super.EOnActivate(owner);
@@ -23,6 +27,9 @@ class SCR_PIPCamera : CameraBase
 		Deactivate();
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] index
 	/// Apply camera base props to camera in world
 	void ApplyProps(int index)
 	{
@@ -34,6 +41,9 @@ class SCR_PIPCamera : CameraBase
 		UpdatePIPCamera(0.0);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] timeSlice
 	/// Apply entity transformation to camera in world
 	void UpdatePIPCamera(float timeSlice)
 	{
@@ -42,4 +52,4 @@ class SCR_PIPCamera : CameraBase
 		//GetWorldTransform(camMat);
 		//GetWorld().SetCameraEx(index, camMat);
 	}
-};
+}

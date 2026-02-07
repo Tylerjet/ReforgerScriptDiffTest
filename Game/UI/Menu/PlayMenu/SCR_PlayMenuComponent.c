@@ -45,13 +45,6 @@ class SCR_PlayMenuComponent : ScriptedWidgetComponent
 		
 		m_iSelectedItem = 0;
 		SetFocusedItem(m_iSelectedItem);
-		
-		/*
-		GetGame().GetInputManager().AddActionListener("MenuLeft", EActionTrigger.DOWN, OnItemLeft);
-		GetGame().GetInputManager().AddActionListener("MenuRight", EActionTrigger.DOWN, OnItemRight);
-		GetGame().GetInputManager().AddActionListener("MenuUp", EActionTrigger.DOWN, OnItemUp);
-		GetGame().GetInputManager().AddActionListener("MenuDown", EActionTrigger.DOWN, OnItemDown);
-		*/
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -144,73 +137,7 @@ class SCR_PlayMenuComponent : ScriptedWidgetComponent
 	{
 		m_iSelectedItem = m_aWidgets.Find(w);
 	}
-	/*
-	//------------------------------------------------------------------------------------------------
-	protected void OnItemLeft()
-	{
-		if (!m_wRoot.IsEnabledInHierarchy() || !m_wRoot.IsVisibleInHierarchy())
-			return;
-		
-		if (m_iSelectedItem % m_iColumns == 0)
-			return;
-		
-		int nextItem = m_iSelectedItem - 1;
-		
-		if (nextItem < 0)
-			return;		
-		
-		if (!m_aWidgets[nextItem].IsEnabled())
-			SetFocusedItem(nextItem);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnItemRight()
-	{
-		if (!m_wRoot.IsEnabledInHierarchy() || !m_wRoot.IsVisibleInHierarchy())
-			return;
-
-		if ((m_iSelectedItem + 1) % m_iColumns == 0)
-			return;		
-				
-		int nextItem = m_iSelectedItem + 1;
-
-		if (nextItem >= m_aWidgets.Count())
-			return;
-		
-		if (!m_aWidgets[nextItem].IsEnabled())
-			SetFocusedItem(nextItem);
-	}	
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnItemUp()
-	{
-		if (!m_wRoot.IsEnabledInHierarchy() || !m_wRoot.IsVisibleInHierarchy())
-			return;
-
-		int nextItem = m_iSelectedItem - m_iColumns;
-		
-		if (nextItem < 0)
-			return;
-		
-		if (!m_aWidgets[nextItem].IsEnabled())
-			SetFocusedItem(nextItem);
-	}		
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnItemDown()
-	{
-		if (!m_wRoot.IsEnabledInHierarchy() || !m_wRoot.IsVisibleInHierarchy())
-			return;
-		
-		int nextItem = m_iSelectedItem + m_iColumns;
-		
-		if (nextItem >= m_aWidgets.Count())
-			return;
-		
-		if (!m_aWidgets[nextItem].IsEnabled())
-			SetFocusedItem(nextItem);
-	}	
-	*/
+	
 	//------------------------------------------------------------------------------------------------
 	void SetFocusedItem(int index)
 	{

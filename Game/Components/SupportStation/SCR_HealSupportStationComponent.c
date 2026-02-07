@@ -7,9 +7,7 @@ class SCR_HealSupportStationComponentClass : SCR_BaseDamageHealSupportStationCom
 	protected ref SCR_AudioSourceConfiguration m_OnHealBloodUpdateAudioSourceConfiguration;
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return Sound Config for heal blood update. Will return null if no audio is assigned
-	*/
+	//! \return Sound Config for heal blood update. Will return null if no audio is assigned
 	SCR_AudioSourceConfiguration GetOnHealBloodUpdateAudioConfig()
 	{		
 		//~ Create Audio source if it does not yet exist
@@ -18,7 +16,7 @@ class SCR_HealSupportStationComponentClass : SCR_BaseDamageHealSupportStationCom
 
 		return m_OnHealBloodUpdateAudioSourceConfiguration;
 	}	
-};
+}
 
 class SCR_HealSupportStationComponent : SCR_BaseDamageHealSupportStationComponent
 {			
@@ -61,7 +59,7 @@ class SCR_HealSupportStationComponent : SCR_BaseDamageHealSupportStationComponen
 	//------------------------------------------------------------------------------------------------
 	protected override int GetSupplyCostAction(IEntity actionOwner, IEntity actionUser, SCR_BaseUseSupportStationAction action)
 	{
-		if (!IsUsingSupplies())
+		if (!AreSuppliesEnabled())
 			return 0;
 			
 		SCR_BaseDamageHealSupportStationAction damageHealAction = SCR_BaseDamageHealSupportStationAction.Cast(action);
@@ -123,7 +121,7 @@ class SCR_HealSupportStationComponent : SCR_BaseDamageHealSupportStationComponen
 		}
 		
 		//~ Consume supplies
-		if (IsUsingSupplies())
+		if (AreSuppliesEnabled())
 		{
 			//~ Failed to consume supplies, meaning there weren't enough supplies for the action
 			if (!OnConsumeSuppliesServer(GetSupplyCostAction(actionOwner, actionUser, action)))
@@ -154,8 +152,13 @@ class SCR_HealSupportStationComponent : SCR_BaseDamageHealSupportStationComponen
 	//------------------------------------------------------------------------------------------------
 	protected override void OnExecuteDamageSystem(IEntity actionOwner, IEntity actionUser, SCR_EDamageSupportStationHealState healState, SCR_BaseDamageHealSupportStationAction action, float healthScaled)
 	{
+		//~ Could not send notification as unknown owner or user
 		if (!actionOwner || !actionUser)
+		{
+			//~ Action was still succesfully executed
+			OnSuccessfullyExecuted(actionOwner, actionUser, action);
 			return;
+		}
 		
 		bool isBloodHealState = false;
 		
@@ -195,6 +198,9 @@ class SCR_HealSupportStationComponent : SCR_BaseDamageHealSupportStationComponen
 			super.OnExecuteDamageSystem(actionOwner, actionUser, healState, action, healthScaled);
 			return;
 		}
+			
+		//~ On succesfully executed
+		OnSuccessfullyExecuted(actionOwner, actionUser, action);
 			
 		//~ Do not send notification
 		if (!GetSendNotificationOnUse())
@@ -261,4 +267,4 @@ class SCR_HealSupportStationComponent : SCR_BaseDamageHealSupportStationComponen
 			}
 		}
 	}
-};
+}

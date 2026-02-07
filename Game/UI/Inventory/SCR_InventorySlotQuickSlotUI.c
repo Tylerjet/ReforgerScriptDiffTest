@@ -49,6 +49,8 @@ class SCR_InventorySlotQuickSlotUI : SCR_InventorySlotUI
 
 		if( bVisible )
 		{
+			m_wSelectedEffect = m_widget.FindAnyWidget("SelectedFrame");
+			
 			if ( !m_pItem )	//if item is not available, it's the empty slot, show the large number
 			{
 				m_wTextQuickSlotLarge = TextWidget.Cast( m_widget.FindAnyWidget( "TextQuickSlotLarge" ) );
@@ -63,6 +65,7 @@ class SCR_InventorySlotQuickSlotUI : SCR_InventorySlotUI
 		}
 		else
 		{
+			m_wSelectedEffect = null;
 			m_wTextQuickSlotLarge = null;
 		}
 	}

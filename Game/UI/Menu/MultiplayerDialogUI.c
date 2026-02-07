@@ -15,8 +15,8 @@ class MultiplayerDialogUI: SCR_ConfigurableDialogUi //DialogUI
 	
 	protected ServerBrowserMenuUI m_ServerBrowserUI;
 	
-	/*ref ScriptInvoker m_OnJoinCodeEntered = new ref ScriptInvoker;
-	ref ScriptInvoker m_OnIpEntered = new ref ScriptInvoker;*/
+	/*ref ScriptInvoker m_OnJoinCodeEntered = new ScriptInvoker;
+	ref ScriptInvoker m_OnIpEntered = new ScriptInvoker;*/
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnConfirm()
@@ -45,7 +45,7 @@ class MultiplayerDialogUI: SCR_ConfigurableDialogUi //DialogUI
 		if (sAddr.Length() == 0)
 			return string.Empty;
 		
-		// Set client address as fallback 
+		// Set client address as fallback - todo: this will be removed once lan detection is available
 		if (sAddr == DEFAULT_ADDRESS)
 			sAddr = GetGame().GetBackendApi().GetClientLobby().GetMyIP();
 		

@@ -1,8 +1,9 @@
 [ComponentEditorProps(category: "GameScripted/Misc", description: "")]
-class SCR_InitWeatherComponentClass: SCR_BaseGameModeComponentClass
+class SCR_InitWeatherComponentClass : SCR_BaseGameModeComponentClass
 {
-};
-class SCR_InitWeatherComponent: SCR_BaseGameModeComponent
+}
+
+class SCR_InitWeatherComponent : SCR_BaseGameModeComponent
 {
 	[Attribute(defvalue: "", desc: "Weather IDs are the same as used in the TimeAndWeatherManager. This sets the weather as soon as the game has been started. This weather will loop and never change automatically. If this is empty then the automated weather system will run instead")]
 	protected string m_sInitialStartingWeatherId;
@@ -16,7 +17,8 @@ class SCR_InitWeatherComponent: SCR_BaseGameModeComponent
 	[Attribute(defvalue: "1.2", desc: "Takes float up to 24 (hours) and is used to randomize the inital weather duration. Must be higher then m_initialWeatherDurationMin. Is ignored if weather is constant.", params: "0.1 24")]
 	protected float m_initialWeatherDurationMax; 
 	
-	//~ Sets initial weather state when server is first loaded. This state will loop and never change automatically
+	//------------------------------------------------------------------------------------------------
+	//! Sets initial weather state when server is first loaded. This state will loop and never change automatically
 	protected void InitWeatherServer()
 	{
 		if (!Replication.IsServer())
@@ -48,16 +50,18 @@ class SCR_InitWeatherComponent: SCR_BaseGameModeComponent
 			weatherDuration = Math.RandomFloat(m_initialWeatherDurationMin, m_initialWeatherDurationMax);
 		}
 		
-		weatherManager.ForceWeatherTo(m_iSetWeatherConstant, m_sInitialStartingWeatherId, weatherDuration / 2, weatherDuration / 2);
+		weatherManager.ForceWeatherTo(m_iSetWeatherConstant, m_sInitialStartingWeatherId, weatherDuration * 0.5, weatherDuration * 0.5);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
 		InitWeatherServer();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		SetEventMask(owner, EntityEvent.INIT);
 	}
-};
+}

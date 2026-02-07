@@ -30,7 +30,7 @@ class SCR_AnalogGaugeNonLinear : SCR_BaseAnalogGauge
 	protected int m_iSignalIndex = -1;
 
 	protected float m_fValueMin, m_fValueMax, m_fValueRange;
-	protected ref array<float> m_aValues = new ref array<float>();
+	protected ref array<float> m_aValues = new array<float>();
 	
 	//------------------------------------------------------------------------------------------------
 	override SCR_BaseAnalogGaugeData GetGaugeData()

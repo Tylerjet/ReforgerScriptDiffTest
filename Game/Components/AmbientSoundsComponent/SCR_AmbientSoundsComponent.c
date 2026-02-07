@@ -1,4 +1,4 @@
-enum EQueryType
+enum EQueryType // TODO: SCR_EQueryType
 {
 	TreeBush,
 	TreeLeafy,
@@ -7,33 +7,21 @@ enum EQueryType
 	TreeStump,
 	TreeWithered,
 	Building,
-};
-
-enum ELocalAmbientSignal
-{
-	SoundName,
-	EntitySize,
-	AboveTerrain,
-	SunAngle,
-	EnvironmentType,
-	Seed,
-	Distance
-};
+}
 
 [EntityEditorProps(category: "GameScripted/Sound", description: "THIS IS THE SCRIPT DESCRIPTION.", color: "0 0 255 255")]
-class SCR_AmbientSoundsComponentClass: AmbientSoundsComponentClass
+class SCR_AmbientSoundsComponentClass : AmbientSoundsComponentClass
 {
-};
-		
-//------------------------------------------------------------------------------------------------
+}
+
 class SCR_AmbientSoundsComponent : AmbientSoundsComponent
-{															
+{
 	[Attribute()]
 	ref array<ref SCR_AmbientSoundsEffect> m_aAmbientSoundsEffect;
-								
+
 	// Components
 	private SignalsManagerComponent m_LocalSignalsManager;
-			
+
 	// Constants
 	private const int QUERY_RADIUS = 25;
 	private const int QUERY_PROCESSING_INTERVAL = 2000;
@@ -51,7 +39,6 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 	
 	// Misc
 	private ChimeraWorld m_World;
-	private int m_iEnvironmentTypeSignalValue;
 	private float m_fWorldTime;
 	private vector m_vCameraPosFrame;
 	private vector m_vCameraPosQuery;
@@ -61,16 +48,12 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 	private ref array<ref SCR_AudioHandleLoop> m_aAudioHandleLoop = {};
 
 	//! Stores entity counds for all EQueryType
-	private ref array<int> m_aQueryTypeCount = new array<int>;		
-	//! AmbientEntity Signal's manager signals indexes
-	private ref array<int> m_aLocalAmbientSignalIndex = new array<int>;	
-			
+	private ref array<int> m_aQueryTypeCount = {};
+
 	//------------------------------------------------------------------------------------------------
-	/*
-	Does QueryBySphere and stores all needed data into prepared structures
-	*/
+	//! Does QueryBySphere and stores all needed data into prepared structures
 	private void HandleQueryEntities()
-	{		
+	{
 		// Limit processing by time and moved distance
 		if (m_fWorldTime < m_fQueryTimer)
 			return;
@@ -80,40 +63,30 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 		
 		m_fQueryTimer = m_fWorldTime + QUERY_PROCESSING_INTERVAL;							
 		m_vCameraPosQuery = m_vCameraPosFrame;
-				
+
 		// Get new query values		
 		QueryAmbientSoundsBySphere(QUERY_RADIUS);
 		GetAmbientSoundsCountPerType(m_aQueryTypeCount);
-										
-		// Get spawn preset = EnvironmentType
-		if (m_aLocalAmbientSignalIndex[ELocalAmbientSignal.EnvironmentType] != INVALID)
-			m_iEnvironmentTypeSignalValue = m_LocalSignalsManager.GetSignalValue(m_aLocalAmbientSignalIndex[ELocalAmbientSignal.EnvironmentType]);
 	}
-		
+
 	//------------------------------------------------------------------------------------------------
-	int GetEnvironmentType()
-	{
-		return m_iEnvironmentTypeSignalValue;
-	}
-	
-	//------------------------------------------------------------------------------------------------
+	//! \return
 	EQueryType GetDominantTree()
 	{
 		if (m_aQueryTypeCount[EQueryType.TreeLeafy] + m_aQueryTypeCount[EQueryType.TreeConifer] == 0)
 			return INVALID;
+
 		if (m_aQueryTypeCount[EQueryType.TreeLeafy] > m_aQueryTypeCount[EQueryType.TreeConifer])
 			return EQueryType.TreeLeafy;
-		else
-			return EQueryType.TreeConifer;
+
+		return EQueryType.TreeConifer;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Uses linear interpolation to get value from curve
-		\x Range <0, 1>
-		\curve Curve
-		\return value from curve
-	*/									
+	//! Uses linear interpolation to get value from curve
+	//! \param[in] x Range <0, 1>
+	//! \param[in] curve Curve
+	//! \return value from curve
 	static float GetPoint(float x, Curve curve)
 	{				
 		if (x <= curve[0][0])
@@ -136,14 +109,12 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 		else
 			return Math.Lerp(curve[i-1][1], curve[i][1], (x - curve[i-1][0]) / (curve[i][0] - curve[i-1][0]));
 	}
-				
+
 	//------------------------------------------------------------------------------------------------	
-	/*!
-		Use to play sound events that has looped banks
-		\soundEvent Sound event name
-		\transformation Sound position
-	*/
-	
+	//! Use to play sound events that has looped banks
+	//! \param[in] soundEvent Sound event name
+	//! \param[in] transformation Sound position
+	//! \return
 	SCR_AudioHandleLoop SoundEventLooped(string soundEvent, vector transformation[4])
 	{
 		SCR_AudioHandleLoop audioHandleLoop = new SCR_AudioHandleLoop;
@@ -152,14 +123,13 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 		audioHandleLoop.m_sSoundEvent = soundEvent;
 		
 		m_aAudioHandleLoop.Insert(audioHandleLoop);
-				
+
 		return audioHandleLoop;
 	}
 	
 	//------------------------------------------------------------------------------------------------	
-	/*!
-		Use to terminate looped sounds that were triggered using SoundEventLooped()
-	*/	
+	//! Use to terminate looped sounds that were triggered using SoundEventLooped()
+	//! \param[in] audioHandleLoop
 	void TerminateLooped(SCR_AudioHandleLoop audioHandleLoop)
 	{
 		if (!audioHandleLoop)
@@ -196,9 +166,11 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 				m_vCameraPosLoopedSound = m_vCameraPosFrame;
 				UpdateLoopedSounds()
 			}
-											
+
 			foreach (SCR_AmbientSoundsEffect ambientSoundsEffect : m_aAmbientSoundsEffect)
+			{
 				ambientSoundsEffect.Update(m_fWorldTime, m_vCameraPosFrame);
+			}
 			
 			m_fUpdateTimer = m_fWorldTime + UPDATE_PROCESSING_INTERVAL;
 		}
@@ -207,12 +179,16 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 
 #ifdef ENABLE_DIAG
 		foreach (SCR_AmbientSoundsEffect ambientSoundsEffect : m_aAmbientSoundsEffect)
+		{
 			ambientSoundsEffect.UpdateDebug(m_fWorldTime);
+		}
 		
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_SOUNDS_RELOAD_AMBIENT_SOUNDS_CONFIGS))
 		{
 			foreach (SCR_AmbientSoundsEffect ambientSoundsEffect : m_aAmbientSoundsEffect)
+			{
 				ambientSoundsEffect.ReloadConfig();
+			}
 			
 			DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_SOUNDS_RELOAD_AMBIENT_SOUNDS_CONFIGS, false);
 		}
@@ -231,7 +207,7 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 			SetScriptedMethodsCall(false);	
 			return;
 		}
-				
+
 		// Get local signals component		
 		m_LocalSignalsManager = SignalsManagerComponent.Cast(owner.FindComponent(SignalsManagerComponent));		
 		if (!m_LocalSignalsManager)
@@ -240,16 +216,11 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 			Print("AUDIO: SCR_AmbientSoundsComponent: Missing SignalsManagerComponent", LogLevel.WARNING);
 			return;
 		}
-											
-		// Get Local Ambient Signal Idx		
-		typename enumType = ELocalAmbientSignal;
-		int size = enumType.GetVariableCount();
-		
-		for (int i = 0; i < size; i++)
-			m_aLocalAmbientSignalIndex.Insert(m_LocalSignalsManager.AddOrFindSignal(typename.EnumToString(ELocalAmbientSignal, i)));
-				
+
 		foreach (SCR_AmbientSoundsEffect ambientSoundsEffect : m_aAmbientSoundsEffect)
+		{
 			ambientSoundsEffect.OnPostInit(this, m_LocalSignalsManager);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -260,10 +231,16 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 		m_World.RegisterEntityToBeUpdatedWhileGameIsPaused(owner);
 		
 		foreach (SCR_AmbientSoundsEffect ambientSoundsEffect : m_aAmbientSoundsEffect)
+		{
 			ambientSoundsEffect.OnInit();
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_AmbientSoundsComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		SetScriptedMethodsCall(true);
@@ -276,13 +253,14 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_AmbientSoundsComponent()
 	{
 		if (m_World)
 			m_World.UnregisterEntityToBeUpdatedWhileGameIsPaused(GetOwner());
-				
+
 #ifdef ENABLE_DIAG
 		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_SOUNDS_RELOAD_AMBIENT_SOUNDS_CONFIGS);
 #endif	
 	}
-};
+}

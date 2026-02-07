@@ -1,9 +1,10 @@
 [BaseContainerProps(), SCR_BaseContainerHintCondition()]
-class SCR_EditorModeHintCondition: SCR_BaseEditorHintCondition
+class SCR_EditorModeHintCondition : SCR_BaseEditorHintCondition
 {
 	[Attribute()]
 	private bool m_bIsLimited;
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnModePostActivate()
 	{
 		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
@@ -11,12 +12,15 @@ class SCR_EditorModeHintCondition: SCR_BaseEditorHintCondition
 			Activate();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override protected void OnInitConditionEditor(SCR_EditorManagerEntity editorManager)
 	{
 		SCR_EditorModeEntity mode = editorManager.GetCurrentModeEntity();
 		if (mode)
 			mode.GetOnPostActivate().Insert(OnModePostActivate);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void OnExitConditionEditor(SCR_EditorManagerEntity editorManager)
 	{
 		Deactivate();
@@ -25,4 +29,4 @@ class SCR_EditorModeHintCondition: SCR_BaseEditorHintCondition
 		if (mode)
 			mode.GetOnPostActivate().Remove(OnModePostActivate);
 	}
-};
+}

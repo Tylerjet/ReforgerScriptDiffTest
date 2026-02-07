@@ -2,19 +2,13 @@
 Info for Entity Spawner
 */
 [BaseContainerProps(configRoot: true), BaseContainerCustomCheckIntTitleField("m_bEnabled", "SpawnerData", "DISABLED - SpawnerData", 1)]
-class SCR_EntityCatalogSpawnerData: SCR_BaseEntityCatalogData
-{
+class SCR_EntityCatalogSpawnerData : SCR_BaseEntityCatalogData
+{				
 	[Attribute(desc: "UI info overwrite to overwrite entity name. Will use EditableEntityUI if non is set")]
 	protected ref SCR_UIInfo m_UiInfo;
 	
 	[Attribute("0", desc: "Slot size the entity can be spawned in", uiwidget: UIWidgets.Flags, enums: ParamEnumArray.FromEnum(SCR_EEntitySpawnerSlotType))]
 	protected SCR_EEntitySpawnerSlotType m_eSlotTypes;
-	
-	[Attribute("1", desc: "Minimum required rank to spawn entity", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(SCR_ECharacterRank))]
-	protected SCR_ECharacterRank m_eMinimumRequiredRank;
-	
-	[Attribute("-1", desc: "Cost to spawn entity")]
-	protected int m_iSupplyCost;
 	
 	[Attribute(defvalue: "1", params: "1 inf", desc: "Prefab entity count. To be used with prefabs like groups, where spawned logic create additional entities")]
 	protected int m_iEntityCount;
@@ -23,6 +17,10 @@ class SCR_EntityCatalogSpawnerData: SCR_BaseEntityCatalogData
 	protected ref array<ref SCR_SpawnerVariantData> m_aVariantData;
 	
 	protected ResourceName m_sDefaultPrefab;
+	
+	protected SCR_ECharacterRank m_eMinimumRequiredRank;
+	
+	protected int m_iSupplyCost;
 	
 	//--------------------------------- Enable/Disable in Spawner ---------------------------------\\
 	/*!
@@ -207,6 +205,116 @@ class SCR_EntityCatalogSpawnerData: SCR_BaseEntityCatalogData
 		super.InitData(entry);
 		
 		m_sDefaultPrefab = entry.GetPrefab();
+		
+		SCR_EditableEntityUIInfo uiInfo = SCR_EditableEntityUIInfo.Cast(entry.GetEntityUiInfo());
+		if (!uiInfo)
+			return;
+		
+		array<ref SCR_EntityBudgetValue> budgets = {};
+		uiInfo.GetEntityAndChildrenBudgetCost(budgets);
+
+		m_eMinimumRequiredRank = -1;
+		
+		foreach (SCR_EntityBudgetValue budget : budgets)
+		{
+			switch (budget.GetBudgetType())
+			{
+				//~ Set Supply cost
+				case EEditableEntityBudget.CAMPAIGN:
+				{
+					m_iSupplyCost = budget.GetBudgetValue();
+					
+					break;
+				}
+				
+				//~ Set ranks
+				case EEditableEntityBudget.RANK_RENEGADE:
+				{
+					if (m_eMinimumRequiredRank == -1)
+						m_eMinimumRequiredRank = SCR_ECharacterRank.RENEGADE;
+					else 
+						Print("'SCR_EntityCatalogSpawnerData' entry " + uiInfo.GetName() + " has rank " + typename.EnumToString(EEditableEntityBudget, m_eMinimumRequiredRank) + " assigned but multiple ranks in the editable UI info which is not supported!");
+				
+					break;
+				}
+				case EEditableEntityBudget.RANK_PRIVATE:
+				{
+					if (m_eMinimumRequiredRank == -1)
+						m_eMinimumRequiredRank = SCR_ECharacterRank.PRIVATE;
+					else 
+						Print("'SCR_EntityCatalogSpawnerData' entry " + uiInfo.GetName() + " has rank " + typename.EnumToString(EEditableEntityBudget, m_eMinimumRequiredRank) + " assigned but multiple ranks in the editable UI info which is not supported!");
+				
+					break;
+				}
+				case EEditableEntityBudget.RANK_CORPORAL:
+				{
+					if (m_eMinimumRequiredRank == -1)
+						m_eMinimumRequiredRank = SCR_ECharacterRank.CORPORAL;
+					else 
+						Print("'SCR_EntityCatalogSpawnerData' entry " + uiInfo.GetName() + " has rank " + typename.EnumToString(EEditableEntityBudget, m_eMinimumRequiredRank) + " assigned but multiple ranks in the editable UI info which is not supported!");
+				
+					break;
+				}
+				case EEditableEntityBudget.RANK_SERGEANT:
+				{
+					if (m_eMinimumRequiredRank == -1)
+						m_eMinimumRequiredRank = SCR_ECharacterRank.SERGEANT;
+					else 
+						Print("'SCR_EntityCatalogSpawnerData' entry " + uiInfo.GetName() + " has rank " + typename.EnumToString(EEditableEntityBudget, m_eMinimumRequiredRank) + " assigned but multiple ranks in the editable UI info which is not supported!");
+				
+					break;
+				}
+				case EEditableEntityBudget.RANK_LIEUTENANT:
+				{
+					if (m_eMinimumRequiredRank == -1)
+						m_eMinimumRequiredRank = SCR_ECharacterRank.LIEUTENANT;
+					else 
+						Print("'SCR_EntityCatalogSpawnerData' entry " + uiInfo.GetName() + " has rank " + typename.EnumToString(EEditableEntityBudget, m_eMinimumRequiredRank) + " assigned but multiple ranks in the editable UI info which is not supported!");
+				
+					break;
+				}
+				case EEditableEntityBudget.RANK_CAPTAIN:
+				{
+					if (m_eMinimumRequiredRank == -1)
+						m_eMinimumRequiredRank = SCR_ECharacterRank.CAPTAIN;
+					else 
+						Print("'SCR_EntityCatalogSpawnerData' entry " + uiInfo.GetName() + " has rank " + typename.EnumToString(EEditableEntityBudget, m_eMinimumRequiredRank) + " assigned but multiple ranks in the editable UI info which is not supported!");
+				
+					break;
+				}
+				case EEditableEntityBudget.RANK_MAJOR:
+				{
+					if (m_eMinimumRequiredRank == -1)
+						m_eMinimumRequiredRank = SCR_ECharacterRank.MAJOR;
+					else 
+						Print("'SCR_EntityCatalogSpawnerData' entry " + uiInfo.GetName() + " has rank " + typename.EnumToString(EEditableEntityBudget, m_eMinimumRequiredRank) + " assigned but multiple ranks in the editable UI info which is not supported!");
+				
+					break;
+				}
+				case EEditableEntityBudget.RANK_COLONEL:
+				{
+					if (m_eMinimumRequiredRank == -1)
+						m_eMinimumRequiredRank = SCR_ECharacterRank.COLONEL;
+					else 
+						Print("'SCR_EntityCatalogSpawnerData' entry " + uiInfo.GetName() + " has rank " + typename.EnumToString(EEditableEntityBudget, m_eMinimumRequiredRank) + " assigned but multiple ranks in the editable UI info which is not supported!");
+				
+					break;
+				}
+				case EEditableEntityBudget.RANK_GENERAL:
+				{
+					if (m_eMinimumRequiredRank == -1)
+						m_eMinimumRequiredRank = SCR_ECharacterRank.GENERAL;
+					else 
+						Print("'SCR_EntityCatalogSpawnerData' entry " + uiInfo.GetName() + " has rank " + typename.EnumToString(EEditableEntityBudget, m_eMinimumRequiredRank) + " assigned but multiple ranks in the editable UI info which is not supported!");
+
+					break;
+				}
+			}
+		}
+		
+		//~ No rank set so set minimum rank
+		if (m_eMinimumRequiredRank == -1)
+			m_eMinimumRequiredRank = SCR_ECharacterRank.PRIVATE;
 	}
 };
 

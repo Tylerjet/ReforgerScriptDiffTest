@@ -134,6 +134,16 @@ class SCR_AICommsHandler : Managed
 			if ((!myGroup || myGroup.GetAgentsCount() <= 1) &&
 				!request.m_bTransmitIfNoReceivers)
 				return true;
+			if (!request.m_bTransmitIfPassenger)
+			{
+				ChimeraCharacter char = ChimeraCharacter.Cast(m_Agent.GetControlledEntity());
+				if (char && char.IsInVehicle())
+				{
+					CompartmentAccessComponent compAcc = char.GetCompartmentAccessComponent();
+					if (compAcc && !TurretCompartmentSlot.Cast(compAcc.GetCompartment()))
+						return true;
+				}
+			}
 		}
 		
 		// Bypass if we are a leader of slave group
@@ -396,7 +406,7 @@ class SCR_AICommsHandler : Managed
 			return true;
 		
 		array<IEntity> entities = {};
-		TagManager tm = world.GetTagManager();
+		TagSystem tm = TagSystem.Cast(world.FindSystem(TagSystem));
 		if (!tm)
 		{
 			Print("SCR_AICommsHandler: TagManager is not present in the world, AI comms might behave incorrect", LogLevel.ERROR);

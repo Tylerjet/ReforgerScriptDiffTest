@@ -15,4 +15,4 @@ class SCR_FieldManual_ImageData
 
 	[Attribute(defvalue: SCR_Enum.GetDefault(SCR_EInputTypeCondition.ALL_INPUTS), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_EInputTypeCondition))]
 	SCR_EInputTypeCondition m_eInputDisplayCondition;
-};
+}

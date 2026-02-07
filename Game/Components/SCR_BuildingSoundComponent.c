@@ -1,11 +1,10 @@
 [ComponentEditorProps(category: "GameScripted/Sound", description: "THIS IS THE SCRIPT DESCRIPTION.")]
-class SCR_BuildingSoundComponentClass: SoundComponentClass
+class SCR_BuildingSoundComponentClass : SoundComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_BuildingSoundComponent : SoundComponent
-{	
+{
 	[Attribute("8", UIWidgets.Slider, "Time interval when maximum WindSpeed [s]", "0 60 1")]
 	int m_iTimeIntervalMin;
 	
@@ -27,6 +26,7 @@ class SCR_BuildingSoundComponent : SoundComponent
 	private void TriggeredSoundHandler(IEntity owner, float timeSlice)
 	{	
 		vector mat[4];
+		Math3D.MatrixIdentity4(mat);
 		mat[3] = GetSoundPosition(owner);
 	
 		//Set Interior signal
@@ -39,6 +39,7 @@ class SCR_BuildingSoundComponent : SoundComponent
 		GetTimeInterval();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	private void SetInteriorSignal(IEntity owner)
 	{
 		bool interior;
@@ -63,6 +64,7 @@ class SCR_BuildingSoundComponent : SoundComponent
 			signalsManagerComponent.SetSignalValue(signalsManagerComponent.AddOrFindSignal("Interior"), interior);		
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	private bool IsInWorldBounds(vector point, IEntity entity)
 	{
 		vector mins = vector.Zero;
@@ -73,6 +75,7 @@ class SCR_BuildingSoundComponent : SoundComponent
 		return !(point[0] < mins[0] || point[0] > maxs[0] || point[1] < mins[1] || point[1] > maxs[1] || point[2] < mins[2] || point[2] > maxs[2]);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	private void GetTimeInterval()
 	{		
 		float windSpeed = GetGame().GetSignalsManager().GetSignalValue(GetGame().GetSignalsManager().AddOrFindSignal("WindSpeed"));		
@@ -81,6 +84,7 @@ class SCR_BuildingSoundComponent : SoundComponent
 		m_fTriggerInterval = Math.RandomFloat(timeInterval * RANDOM_PERCENTAGE_MIN, timeInterval * RANDOM_PERCENTAGE_MAX);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	private vector GetSoundPosition(IEntity owner)
 	{		
 		vector v;
@@ -93,7 +97,8 @@ class SCR_BuildingSoundComponent : SoundComponent
 			
 		return v;	
 	}
-		
+
+	//------------------------------------------------------------------------------------------------
 	private float Interpolate(float in, float Xmin, float Xmax, float Ymin, float Ymax)
 	{
 		if (in <= Xmin)
@@ -123,13 +128,12 @@ class SCR_BuildingSoundComponent : SoundComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_BuildingSoundComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		SetScriptedMethodsCall(true);	
 	}
-
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_BuildingSoundComponent()
-	{
-	}
-};
+}

@@ -10,40 +10,42 @@ class SCR_EditableDescriptorUIInfo: SCR_EditableEntityUIInfo
 	protected LocalizedString m_sLocationName;
 	protected string m_sNameEncoded;
 	protected string m_sDescriptionEncoded;
-	
-	/*!
-	Get location name.
-	\return Location name
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get location name.
+	//! \return Location name
 	LocalizedString GetLocationName()
 	{
 		return m_sLocationName;
 	}
-	/*!
-	Set location name from existing name.
-	\param locationName Name of the location
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Set location name from existing name.
+	//! \param locationName Name of the location
 	void SetLocationName(LocalizedString locationName)
 	{
 		m_sLocationName = locationName;
 		//EncodeName();
 	}
-	/*!
-	Set location name from a position.
-	\param pos Position
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Set location name from a position.
+	//! \param pos Position
 	void SetLocationName(vector pos)
 	{
 		m_sLocationName = SCR_MapEntity.GetGridLabel(pos);
 		//EncodeName();
 	}
+
 	/*
+	//------------------------------------------------------------------------------------------------
 	protected void EncodeName()
 	{
 		m_sNameEncoded = SCR_LocalizationTools.EncodeFormat(m_sNameFormat, m_sLocationName);
 		m_sDescriptionEncoded = SCR_LocalizationTools.EncodeFormat(m_sDescriptionFormat, m_sLocationName);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	override LocalizedString GetName()
 	{
 		if (m_sLocationName)
@@ -51,6 +53,8 @@ class SCR_EditableDescriptorUIInfo: SCR_EditableEntityUIInfo
 		else
 			return super.GetName();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override LocalizedString GetDescription()
 	{
 		if (m_sLocationName)
@@ -59,6 +63,8 @@ class SCR_EditableDescriptorUIInfo: SCR_EditableEntityUIInfo
 			return super.GetDescription();
 	}
 	*/
+
+	//------------------------------------------------------------------------------------------------
 	override bool SetNameTo(TextWidget textWidget)
 	{
 		if (!textWidget)
@@ -74,6 +80,8 @@ class SCR_EditableDescriptorUIInfo: SCR_EditableEntityUIInfo
 			return true;
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool SetDescriptionTo(TextWidget textWidget)
 	{
 		if (!textWidget)
@@ -89,8 +97,9 @@ class SCR_EditableDescriptorUIInfo: SCR_EditableEntityUIInfo
 			return true;
 		}
 	}
-	
-	//--- Override without 'protected' keyword
+
+	//------------------------------------------------------------------------------------------------
+	// override without 'protected' keyword
 	override void CopyFrom(SCR_UIName source)
 	{
 		SCR_EditableDescriptorUIInfo descriptorSource = SCR_EditableDescriptorUIInfo.Cast(source);
@@ -110,7 +119,9 @@ class SCR_EditableDescriptorUIInfo: SCR_EditableEntityUIInfo
 		
 		super.CopyFrom(source);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_EditableDescriptorUIInfo()
 	{
 		if (!m_sNameFormat)
@@ -119,4 +130,4 @@ class SCR_EditableDescriptorUIInfo: SCR_EditableEntityUIInfo
 		if (!m_sDescriptionFormat)
 			m_sDescriptionFormat = Description;
 	}
-};
+}

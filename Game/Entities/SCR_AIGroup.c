@@ -59,7 +59,11 @@ class SCR_AIGroup_DelayedSpawn
 	int index;
 	ResourceName resourceName;
 	bool editMode;
-};	
+};
+
+void ScriptInvoker_AIGroupOnEmpty_Callback(AIGroup group);
+typedef func ScriptInvoker_AIGroupOnEmpty_Callback;
+typedef ScriptInvokerBase<ScriptInvoker_AIGroupOnEmpty_Callback> ScriptInvoker_AIGroupOnEmpty;
 
 class SCR_AIGroup : ChimeraAIGroup
 {
@@ -100,7 +104,7 @@ class SCR_AIGroup : ChimeraAIGroup
 	
 	protected int m_iMaxUnitsToSpawn = int.MAX;
 	protected ref ScriptInvoker Event_OnInit = new ScriptInvoker;
-	protected ref ScriptInvoker Event_OnEmpty = new ScriptInvoker;
+	protected ref ScriptInvoker_AIGroupOnEmpty Event_OnEmpty = new ScriptInvoker_AIGroupOnEmpty();
 	protected ref ScriptInvoker Event_OnAgentAdded = new ScriptInvoker;
 	protected ref ScriptInvoker Event_OnAgentRemoved = new ScriptInvoker;
 	protected ref ScriptInvoker Event_OnLeaderChanged = new ScriptInvoker;
@@ -153,15 +157,18 @@ class SCR_AIGroup : ChimeraAIGroup
 	protected static ref ScriptInvoker s_OnFlagSelected = new ScriptInvoker();
 	protected static ref ScriptInvoker s_OnJoinPrivateGroupRequest = new ScriptInvoker();
 	protected static ref ScriptInvoker s_OnJoinPrivateGroupConfirm = new ScriptInvoker();
-	protected static ref ScriptInvoker s_OnJoinPrivateGroupCancel = new ScriptInvoker();	
+	protected static ref ScriptInvoker s_OnJoinPrivateGroupCancel = new ScriptInvoker();
 	
 	protected ref array<int> m_aRequesterIDs = {};
 	protected ref array<int> m_aDeniedRequesters = {};
 	
+	[RplProp()]
+	protected int m_iDeployedRadioCount = 0;
+	
 	//commanding variables
 	protected SCR_AIGroup m_SlaveGroup;
 	protected SCR_AIGroup m_MasterGroup;
-	protected ref array<SCR_ChimeraCharacter> m_aAIMembers = {};		
+	protected ref array<SCR_ChimeraCharacter> m_aAIMembers = {};
 	
 	// entity spawn list
 	protected ref array<ref SCR_AIGroup_DelayedSpawn> m_delayedSpawnList = {};
@@ -171,6 +178,12 @@ class SCR_AIGroup : ChimeraAIGroup
 	int GetNumberOfMembersToSpawn()
 	{
 		return m_iNumOfMembersToSpawn;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetNumberOfMembersToSpawn(int number)
+	{
+		m_iNumOfMembersToSpawn = number;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -589,7 +602,12 @@ class SCR_AIGroup : ChimeraAIGroup
 	//------------------------------------------------------------------------------------------------
 	string GetCustomDescription()
 	{	
-		if (!GetGame().GetPlayerController().CanViewContentCreatedBy(m_iDescriptionAuthorID))
+		bool canViewContentBy = true;
+		
+		if (m_iDescriptionAuthorID > 0)
+			canViewContentBy = GetGame().GetPlayerController().CanViewContentCreatedBy(m_iDescriptionAuthorID);
+		
+		if (m_sCustomDescription.IsEmpty() || !canViewContentBy)
 			return string.Empty;
 		
 		return m_sCustomDescription;
@@ -598,7 +616,12 @@ class SCR_AIGroup : ChimeraAIGroup
 	//------------------------------------------------------------------------------------------------
 	string GetCustomName()
 	{	
-		if (!GetGame().GetPlayerController().CanViewContentCreatedBy(m_iNameAuthorID))
+		bool canViewContentBy = true;
+		
+		if (m_iNameAuthorID > 0)
+			canViewContentBy = GetGame().GetPlayerController().CanViewContentCreatedBy(m_iNameAuthorID);
+		
+		if (m_sCustomName.IsEmpty() || !canViewContentBy)
 			return string.Empty;
 		
 		return m_sCustomName;
@@ -624,7 +647,7 @@ class SCR_AIGroup : ChimeraAIGroup
 		string originalName, newName;
 		originalName = string.Format(format, company, platoon, squad, character);
 		
-		if (m_sCustomName.IsEmpty() || !GetGame().GetPlayerController().CanViewContentCreatedBy(m_iNameAuthorID))
+		if (m_iDescriptionAuthorID < 1 || m_sCustomName.IsEmpty() || !GetGame().GetPlayerController().CanViewContentCreatedBy(m_iNameAuthorID))
 			return originalName;
 				
 		return m_sCustomName + " ( " + originalName + " )";
@@ -1189,7 +1212,7 @@ class SCR_AIGroup : ChimeraAIGroup
 		
 		//--- We are in WB, prepare array so previews can be deleted later
 		if (editMode && !m_aSceneGroupUnitInstances)
-			m_aSceneGroupUnitInstances = new ref array<IEntity>;
+			m_aSceneGroupUnitInstances = new array<IEntity>;
 		
 		 m_iNumOfMembersToSpawn = Math.Min(entityResourceNames.Count(), m_iMaxUnitsToSpawn);
 		//--- Create group members
@@ -1305,7 +1328,12 @@ class SCR_AIGroup : ChimeraAIGroup
 		if (editMode)
 			m_aSceneGroupUnitInstances.Insert(member);
 		
+		// Even same null-check is above, in some situations, member can get deleted and it would result in VME
+		if (!member)
+			return true;
+		
 		AddAIEntityToGroup(member);
+		
 		FactionAffiliationComponent factionAffiliation = FactionAffiliationComponent.Cast(member.FindComponent(FactionAffiliationComponent));
 		
 		if (factionAffiliation)
@@ -1329,7 +1357,7 @@ class SCR_AIGroup : ChimeraAIGroup
 	//------------------------------------------------------------------------------------------------
 	void AddWaypointsDynamic(out array<IEntity> entityInstanceList, array<ref SCR_WaypointPrefabLocation> prefabs)
 	{
-		entityInstanceList = new ref array<IEntity>;
+		entityInstanceList = new array<IEntity>;
 		EntitySpawnParams spawnParams = new EntitySpawnParams;
 		spawnParams.TransformMode = ETransformMode.WORLD;
 		vector mat[4];
@@ -1529,6 +1557,12 @@ class SCR_AIGroup : ChimeraAIGroup
 	{
 		if (Vehicle.Cast(vehicle) && m_aUsableVehicles.Find(vehicle) > -1)
 			m_aUsableVehicles.RemoveItem(vehicle);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsUsableVehicle(IEntity vehicle)
+	{
+		return m_aUsableVehicles.Contains(vehicle);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1747,7 +1781,7 @@ class SCR_AIGroup : ChimeraAIGroup
 	No invoker params are passed.
 	\return Script invoker
 	*/
-	ScriptInvoker GetOnEmpty()
+	ScriptInvoker_AIGroupOnEmpty GetOnEmpty()
 	{
 		return Event_OnEmpty;
 	}
@@ -1858,7 +1892,7 @@ class SCR_AIGroup : ChimeraAIGroup
 	//------------------------------------------------------------------------------------------------
 	override void OnEmpty()
 	{
-		Event_OnEmpty.Invoke();
+		Event_OnEmpty.Invoke(this);
 		
 		//--- Delete after delay, doing it directly in this event would be unsafe
 		if (m_bDeleteWhenEmpty)
@@ -1888,18 +1922,26 @@ class SCR_AIGroup : ChimeraAIGroup
 	{
 		Event_OnLeaderChanged.Invoke(currentLeader, prevLeader);
 		
-		if (currentLeader && currentLeader.GetControlledEntity())
+		if (currentLeader)
 		{
-			EventHandlerManagerComponent eventHandlerManagerComponent = EventHandlerManagerComponent.Cast(currentLeader.GetControlledEntity().FindComponent(EventHandlerManagerComponent));
-			if (eventHandlerManagerComponent)
-				eventHandlerManagerComponent.RegisterScriptHandler("OnConsciousnessChanged", this, this.OnLeaderConsciousnessChanged, true);
+			ChimeraCharacter character = ChimeraCharacter.Cast(currentLeader.GetControlledEntity());
+			if (character)
+			{
+				SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
+				if (controller)
+					controller.m_OnLifeStateChanged.Insert(LeaderLifeStateChanged);
+			}
 		}
 		
-		if (prevLeader && prevLeader.GetControlledEntity())
+		if (!prevLeader)
+			return;
+		
+		ChimeraCharacter character = ChimeraCharacter.Cast(prevLeader.GetControlledEntity());
+		if (character)
 		{
-			EventHandlerManagerComponent eventHandlerManagerComponent = EventHandlerManagerComponent.Cast(prevLeader.GetControlledEntity().FindComponent(EventHandlerManagerComponent));
-			if (eventHandlerManagerComponent)
-				eventHandlerManagerComponent.RemoveScriptHandler("OnConsciousnessChanged", this, this.OnLeaderConsciousnessChanged, true);
+			SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
+			if (controller)
+				controller.m_OnLifeStateChanged.Remove(LeaderLifeStateChanged);
 		}
 	}
 	
@@ -1964,8 +2006,8 @@ class SCR_AIGroup : ChimeraAIGroup
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
-		m_aUsableVehicles =  new ref array<IEntity>;
-		m_aAllocatedCompartments = new ref array<BaseCompartmentSlot>;
+		m_aUsableVehicles =  new array<IEntity>;
+		m_aAllocatedCompartments = new array<BaseCompartmentSlot>;
 		
 		if (s_bIgnoreSpawning)
 		{
@@ -2195,12 +2237,14 @@ class SCR_AIGroup : ChimeraAIGroup
 		return true;
 	}
 	
-	void OnLeaderConsciousnessChanged(bool conscious)
+	//------------------------------------------------------------------------------------------------
+	void LeaderLifeStateChanged(ECharacterLifeState previousLifeState, ECharacterLifeState newLifeState)
 	{
-		if (!conscious)
+		if (newLifeState == ECharacterLifeState.INCAPACITATED)
 			SetNewConsciousLeader();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	void SetNewConsciousLeader()
 	{
 		array<AIAgent> groupAgents = {};
@@ -2220,11 +2264,33 @@ class SCR_AIGroup : ChimeraAIGroup
 			{
 				SetNewLeader(groupAgents.Get(i));
 				return;
-			}
-			
+			}	
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	void IncreaseDeployedRadioCount()
+	{
+		m_iDeployedRadioCount++;
+		Replication.BumpMe();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void DecreaseDeployedRadioCount()
+	{
+		if(m_iDeployedRadioCount < 1)
+			return;
+		
+		m_iDeployedRadioCount--;
+		Replication.BumpMe();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetDeployedRadioCount()
+	{
+		return m_iDeployedRadioCount;
+	}
+		
 	//------------------------------------------------------------------------------------------------
 	void SCR_AIGroup(IEntitySource src, IEntity parent)
 	{
@@ -2266,6 +2332,15 @@ enum EGroupState
 	REQ_ORDERS = 8,
 	FOLLOW = 9,
 };
+
+//------------------------------------------------------------------------
+enum SCR_EAIGroupFormation
+{
+	Wedge,
+	Line,
+	Column,
+	StaggeredColumn
+}
 
 //------------------------------------------------------------------------
 [BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]

@@ -1,8 +1,9 @@
 [ComponentEditorProps(category: "GameScripted/GameMode", description: "")]
-class SCR_PlayerSpawnPointManagerComponentClass: SCR_BaseGameModeComponentClass
+class SCR_PlayerSpawnPointManagerComponentClass : SCR_BaseGameModeComponentClass
 {
-};
-class SCR_PlayerSpawnPointManagerComponent: SCR_BaseGameModeComponent
+}
+
+class SCR_PlayerSpawnPointManagerComponent : SCR_BaseGameModeComponent
 {
 	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, params: "et")]
 	protected ResourceName m_SpawnPointPrefab;
@@ -22,13 +23,11 @@ class SCR_PlayerSpawnPointManagerComponent: SCR_BaseGameModeComponent
 	protected ref map<int, SCR_PlayerSpawnPoint> m_SpawnPoints = new map<int, SCR_PlayerSpawnPoint>();
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Set status of automatic player spawn points.
-	When enabled, a spawn point will be created for every connected player, even those who connect later.
-	When disabled, all existing player spawn points will be deleted.
-	\param enable True to enable the system
-	\param notificationPlayerID if not -1 then a notification will be shown to all players that spawning on players is enabled/disabled
-	*/
+	//! Set status of automatic player spawn points.
+	//! When enabled, a spawn point will be created for every connected player, even those who connect later.
+	//! When disabled, all existing player spawn points will be deleted.
+	//! \param[in] enable True to enable the system
+	//! \param[in] notificationPlayerID if not -1 then a notification will be shown to all players that spawning on players is enabled/disabled
 	void EnablePlayerSpawnPoints(bool enable, int notificationPlayerID = -1)
 	{
 		if (enable == m_bEnablePlayerSpawnPoints)
@@ -66,10 +65,7 @@ class SCR_PlayerSpawnPointManagerComponent: SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check if the system is enabled.
-	\return True if the system is enabled
-	*/
+	//! \return true if the system is enabled, false otherwise
 	bool IsPlayerSpawnPointsEnabled()
 	{
 		return m_bEnablePlayerSpawnPoints;
@@ -114,11 +110,9 @@ class SCR_PlayerSpawnPointManagerComponent: SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Set if Radio vehicle Respawning is enabled for specific respawn vehicles eg: Command Trucks (Server)
-	\param enable True to enable the system
-	\param notificationPlayerID if not -1 then a notification will be shown to all players that spawning on stationary vehicles is enabled/disabled
-	*/
+	//! Set if Radio vehicle Respawning is enabled for specific respawn vehicles eg: Command Trucks (Server)
+	//! \param[in] enable True to enable the system
+	//! \param[in] notificationPlayerID if not -1 then a notification will be shown to all players that spawning on stationary vehicles is enabled/disabled
 	void EnableRadioVehicleSpawning(bool enable, int notificationPlayerID = -1)
 	{
 		if (enable == m_bRadioVehicleSpawningEnabled)
@@ -147,12 +141,14 @@ class SCR_PlayerSpawnPointManagerComponent: SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsRadioVehicleSpawningEnabled()
 	{
 		return m_bRadioVehicleSpawningEnabled;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvokerBool GetOnRadioVehicleSpawningChanged()
 	{
 		if (!m_OnRadioVehicleSpawningChanged)
@@ -162,11 +158,9 @@ class SCR_PlayerSpawnPointManagerComponent: SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Set if players are allowed to deploy their radio backpack. (Server only)
-	\param enable True to enable the system
-	\param notificationPlayerID if not -1 then a notification will be shown to all players that deployable radio logic is enabled/disabled
-	*/
+	//! Set if players are allowed to deploy their radio backpack. (Server only)
+	//! \param[in] enable True to enable the system
+	//! \param[in] notificationPlayerID if not -1 then a notification will be shown to all players that deployable radio logic is enabled/disabled
 	void EnableDeployableSpawnPoints(bool enable, int notificationPlayerID = -1)
 	{
 		if (enable == m_bDeployableSpawnPointsEnabled)
@@ -195,12 +189,14 @@ class SCR_PlayerSpawnPointManagerComponent: SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsDeployingSpawnPointsEnabled()
 	{
 		return m_bDeployableSpawnPointsEnabled;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvokerBool GetOnSpawnPointDeployingEnabledChanged()
 	{
 		if (!m_OnSpawnPointDeployingEnabledChanged)
@@ -268,7 +264,8 @@ class SCR_PlayerSpawnPointManagerComponent: SCR_BaseGameModeComponent
 	protected override void OnDelete(IEntity owner)
 	{
 		foreach (int pointId, SCR_PlayerSpawnPoint spawnPoint : m_SpawnPoints)
+		{
 			RplComponent.DeleteRplEntity(spawnPoint, false);
-			
+		}
 	}
-};
+}

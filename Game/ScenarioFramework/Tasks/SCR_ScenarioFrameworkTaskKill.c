@@ -13,7 +13,7 @@ class SCR_TaskKill : SCR_ScenarioFrameworkTask
 		if (state != EDamageState.DESTROYED || !m_Asset || !m_SupportEntity)
 			return;
 		
-		ScriptedDamageManagerComponent objectDmgManager = ScriptedDamageManagerComponent.Cast(m_Asset.FindComponent(ScriptedDamageManagerComponent));
+		SCR_DamageManagerComponent objectDmgManager = SCR_DamageManagerComponent.Cast(m_Asset.FindComponent(SCR_DamageManagerComponent));
 		if (objectDmgManager)
 	 		objectDmgManager.GetOnDamageStateChanged().Remove(OnObjectDamage);
 				
@@ -28,7 +28,7 @@ class SCR_TaskKill : SCR_ScenarioFrameworkTask
 		
 		m_Asset = object;
 		
-		ScriptedDamageManagerComponent objectDmgManager = ScriptedDamageManagerComponent.Cast(m_Asset.FindComponent(ScriptedDamageManagerComponent));
+		SCR_DamageManagerComponent objectDmgManager = SCR_DamageManagerComponent.Cast(m_Asset.FindComponent(SCR_DamageManagerComponent));
 		if (objectDmgManager)
 			objectDmgManager.GetOnDamageStateChanged().Insert(OnObjectDamage);
 	}
@@ -55,7 +55,7 @@ class SCR_TaskKill : SCR_ScenarioFrameworkTask
 		if (!m_Asset)
 			return;		
 			
-		ScriptedDamageManagerComponent objectDmgManager = ScriptedDamageManagerComponent.Cast(m_Asset.FindComponent(ScriptedDamageManagerComponent));
+		SCR_DamageManagerComponent objectDmgManager = SCR_DamageManagerComponent.Cast(m_Asset.FindComponent(SCR_DamageManagerComponent));
 		if (objectDmgManager)
 			objectDmgManager.GetOnDamageStateChanged().Insert(OnObjectDamage);
 	}

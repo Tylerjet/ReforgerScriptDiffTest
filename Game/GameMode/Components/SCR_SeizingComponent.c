@@ -1,25 +1,20 @@
-#include "scripts/Game/config.c"
-//------------------------------------------------------------------------------------------------
 class SCR_SeizingComponentClass : SCR_MilitaryBaseLogicComponentClass
 {
 	[Attribute("{59A6F1EBC6C64F79}Prefabs/Logic/SeizingTrigger.et", UIWidgets.ResourceNamePicker, "", "et")]
 	protected ResourceName m_sTriggerPrefab;
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetTriggerPrefab()
 	{
 		return m_sTriggerPrefab;
 	}
 }
 
-//------------------------------------------------------------------------------------------------
-#ifdef AR_CAMPAIGN_TIMESTAMP
 void OnTimerChangeFn(WorldTimestamp newStart, WorldTimestamp newEnd);
 typedef func OnTimerChangeFn;
 typedef ScriptInvokerBase<OnTimerChangeFn> OnTimerChangeInvoker;
 
-//------------------------------------------------------------------------------------------------
-#endif
 class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 {
 	[Attribute("100")]
@@ -59,36 +54,20 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 	protected ENotification m_eCapturedByEnemiesNotification;
 
 	[RplProp(onRplName: "OnSeizingTimestampChanged")]
-	#ifndef AR_CAMPAIGN_TIMESTAMP
-	protected float m_fSeizingStartTimestamp;
-	#else
 	protected WorldTimestamp m_fSeizingStartTimestamp;
-	#endif
 
 	[RplProp(onRplName: "OnSeizingTimestampChanged")]
-	#ifndef AR_CAMPAIGN_TIMESTAMP
-	protected float m_fSeizingEndTimestamp;
-	#else
 	protected WorldTimestamp m_fSeizingEndTimestamp;
-	#endif
 
-	static const float TRIGGER_CHECK_PERIOD_IDLE = 3;
-	static const float TRIGGER_CHECK_PERIOD_ACTIVE = 1;
+	protected static const float TRIGGER_CHECK_PERIOD_IDLE = 3;
+	protected static const float TRIGGER_CHECK_PERIOD_ACTIVE = 1;
 
 	protected ref ScriptInvoker m_OnCaptureStart;
 	protected ref ScriptInvoker m_OnCaptureInterrupt;
 	protected ref ScriptInvoker m_OnCaptureFinish;
-	#ifndef AR_CAMPAIGN_TIMESTAMP
-	protected ref ScriptInvoker m_OnTimerChange;
-	#else
 	protected ref OnTimerChangeInvoker m_OnTimerChange;
-	#endif
 
-	#ifndef AR_CAMPAIGN_TIMESTAMP
-	protected float m_fInterruptedCaptureTimestamp;
-	#else
 	protected WorldTimestamp m_fInterruptedCaptureTimestamp;
-	#endif
 	protected float m_fCurrentSeizingTime;
 	protected float m_fInterruptedCaptureDuration;
 	protected SCR_Faction m_PrevailingFaction;
@@ -100,11 +79,8 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 	protected bool m_bCharacterPresent;
 	protected SCR_FactionAffiliationComponent m_FactionControl;
 	protected int m_iSeizingCharacters;
-	#ifndef AR_CAMPAIGN_TIMESTAMP
-	protected ref map<int, float> m_mSpawnTimers = new map<int, float>();
-	#else
 	protected ref map<int, WorldTimestamp> m_mSpawnTimers = new map<int, WorldTimestamp>();
-	#endif
+	protected bool m_bDeleteDisabledAIs = false;
 
 	//------------------------------------------------------------------------------------------------
 	protected bool IsProxy()
@@ -113,24 +89,30 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetRadius()
 	{
 		return m_iRadius;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] allow
 	void AllowNotifications(bool allow)
 	{
 		m_bShowNotifications = allow;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	bool NotificationsAllowed()
 	{
 		return m_bShowNotifications;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnCaptureStart()
 	{
 		if (!m_OnCaptureStart)
@@ -140,6 +122,7 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnCaptureInterrupt()
 	{
 		if (!m_OnCaptureInterrupt)
@@ -149,6 +132,7 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnCaptureFinish()
 	{
 		if (!m_OnCaptureFinish)
@@ -158,18 +142,11 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	#ifndef AR_CAMPAIGN_TIMESTAMP
-	ScriptInvoker GetOnTimerChange()
-	#else
+	//! \return
 	OnTimerChangeInvoker GetOnTimerChange()
-	#endif
 	{
 		if (!m_OnTimerChange)
-			#ifndef AR_CAMPAIGN_TIMESTAMP
-			m_OnTimerChange = new ScriptInvoker();
-			#else
 			m_OnTimerChange = new OnTimerChangeInvoker();
-			#endif
 
 		return m_OnTimerChange;
 	}
@@ -226,6 +203,14 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 		// Go through all entities and check their factions
 		for (int i = 0; i < presentEntitiesCnt; i++)
 		{
+			IEntity entity = presentEntities[i];
+			
+			if (m_bDeleteDisabledAIs && IsDisabledAI(entity))
+			{
+				RplComponent.DeleteRplEntity(entity, false);	
+				continue;
+			}				
+			
 			evaluatedEntityFaction = EvaluateEntityFaction(presentEntities[i]);
 
 			if (!evaluatedEntityFaction)
@@ -239,7 +224,7 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 			else
 				factionsPresence.Set(evaluatedEntityFaction, factionCnt + 1);
 		}
-
+		m_bDeleteDisabledAIs = false;
 		SCR_Faction prevailingFaction;
 		int highestAttackingPresence;
 		int highestDefendingPresence;
@@ -312,36 +297,39 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 	protected SCR_Faction EvaluateEntityFaction(IEntity ent)
 	{
 		SCR_ChimeraCharacter char = SCR_ChimeraCharacter.Cast(ent);
-
 		if (!char)
 			return null;
 
 		if (char.IsInVehicle() && SCR_TerrainHelper.GetHeightAboveTerrain(char.GetOrigin()) > m_iMaximumAltitude)
 			return null;
 
-		CharacterControllerComponent charControl = CharacterControllerComponent.Cast(char.FindComponent(CharacterControllerComponent));
+		CharacterControllerComponent charControl = char.GetCharacterController();
 
-		if (charControl && charControl.IsDead())
+		if (charControl && charControl.GetLifeState() != ECharacterLifeState.ALIVE)
 			return null;
 
-		SCR_CharacterDamageManagerComponent damageMan = SCR_CharacterDamageManagerComponent.Cast(char.GetDamageManager());
-
-		if (damageMan && damageMan.GetIsUnconscious())
-			return null;
+		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(ent);
+		if (!playerId)
+		{
+			AIControlComponent ctrComp = charControl.GetAIControlComponent();
+			if (ctrComp)
+			{
+				AIAgent ai = ctrComp.GetAIAgent();
+				if (ai && ai.GetLOD() == AIAgent.GetMaxLOD())
+				{
+					return null;
+				}
+			}
+		}
 
 		// Handle after-respawn cooldown
 		if (m_fRespawnCooldownPeriod > 0)
 		{
-			int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(ent);
 
 			if (playerId != 0 && m_mSpawnTimers.Contains(playerId))
 			{
-				#ifndef AR_CAMPAIGN_TIMESTAMP
-				if (m_mSpawnTimers.Get(playerId) > Replication.Time())
-				#else
 				ChimeraWorld world = GetOwner().GetWorld();
 				if (m_mSpawnTimers.Get(playerId).Greater(world.GetServerTimestamp()))
-				#endif
 					return null;
 				else
 					m_mSpawnTimers.Remove(playerId)
@@ -356,22 +344,15 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnPrevailingFactionChanged()
 	{
-		if (m_FactionControl.GetAffiliatedFaction() == m_PrevailingFaction || !m_PrevailingFaction)
+		if (!m_PrevailingFaction || m_FactionControl.GetAffiliatedFaction() == m_PrevailingFaction)
 		{
 			if (m_fSeizingEndTimestamp != 0)
 			{
-				#ifndef AR_CAMPAIGN_TIMESTAMP
-				m_fInterruptedCaptureTimestamp = Replication.Time();
-				m_fInterruptedCaptureDuration = m_fInterruptedCaptureTimestamp - m_fSeizingStartTimestamp;
-				m_fSeizingEndTimestamp = 0;
-				m_fSeizingStartTimestamp = 0;
-				#else
 				ChimeraWorld world = GetOwner().GetWorld();
 				m_fInterruptedCaptureTimestamp = world.GetServerTimestamp();
 				m_fInterruptedCaptureDuration = m_fInterruptedCaptureTimestamp.DiffMilliseconds(m_fSeizingStartTimestamp);
 				m_fSeizingEndTimestamp = null;
 				m_fSeizingStartTimestamp = null;
-				#endif
 				int factionIndex = GetGame().GetFactionManager().GetFactionIndex(m_PrevailingFactionPrevious);
 				Rpc(RpcDo_OnCaptureInterrupt, factionIndex);
 				RpcDo_OnCaptureInterrupt(factionIndex);
@@ -379,12 +360,8 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 		}
 		else
 		{
-			#ifndef AR_CAMPAIGN_TIMESTAMP
-			m_fSeizingStartTimestamp = Replication.Time();
-			#else
 			ChimeraWorld world = GetOwner().GetWorld();
 			m_fSeizingStartTimestamp = world.GetServerTimestamp();
-			#endif
 			RefreshSeizingTimer();
 			int factionIndex = GetGame().GetFactionManager().GetFactionIndex(m_PrevailingFaction);
 			Rpc(RpcDo_OnCaptureStart, factionIndex);
@@ -412,6 +389,7 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void RefreshSeizingTimer()
 	{
 		float seizingTimeVar = m_fMaximumSeizingTime - m_fMinimumSeizingTime;
@@ -423,11 +401,7 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 			deduct = deductPerPlayer * (m_iSeizingCharacters - 1);
 		}
 
-		#ifndef AR_CAMPAIGN_TIMESTAMP
-		m_fSeizingEndTimestamp = m_fSeizingStartTimestamp + ((m_fMaximumSeizingTime - deduct) * 1000);
-		#else
 		m_fSeizingEndTimestamp = m_fSeizingStartTimestamp.PlusSeconds(m_fMaximumSeizingTime - deduct);
-		#endif
 
 		if (m_bGradualTimerReset && m_fInterruptedCaptureDuration != 0)
 			HandleGradualReset();
@@ -440,19 +414,6 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 	//! When capture started after getting interrupted, take into account the time spent on it
 	protected void HandleGradualReset()
 	{
-		#ifndef AR_CAMPAIGN_TIMESTAMP
-		float timeSinceInterrupt = m_fSeizingStartTimestamp - m_fInterruptedCaptureTimestamp;
-
-		if (timeSinceInterrupt < m_fInterruptedCaptureDuration)
-		{
-			float diff = m_fInterruptedCaptureDuration - timeSinceInterrupt;
-			m_fSeizingStartTimestamp = m_fSeizingStartTimestamp - diff;
-			m_fSeizingEndTimestamp = m_fSeizingEndTimestamp - diff;
-		}
-
-		m_fInterruptedCaptureDuration = 0;
-		m_fInterruptedCaptureTimestamp = 0;
-		#else
 		float timeSinceInterrupt = m_fSeizingStartTimestamp.DiffMilliseconds(m_fInterruptedCaptureTimestamp);
 
 		if (timeSinceInterrupt < m_fInterruptedCaptureDuration)
@@ -464,25 +425,18 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 
 		m_fInterruptedCaptureDuration = 0;
 		m_fInterruptedCaptureTimestamp = null;
-		#endif
 	}
 
 	//------------------------------------------------------------------------------------------------
-	#ifndef AR_CAMPAIGN_TIMESTAMP
-	float GetSeizingStartTimestamp()
-	#else
+	//! \return
 	WorldTimestamp GetSeizingStartTimestamp()
-	#endif
 	{
 		return m_fSeizingStartTimestamp;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	#ifndef AR_CAMPAIGN_TIMESTAMP
-	float GetSeizingEndTimestamp()
-	#else
+	//! \return
 	WorldTimestamp GetSeizingEndTimestamp()
-	#endif
 	{
 		return m_fSeizingEndTimestamp;
 	}
@@ -527,6 +481,7 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void RpcDo_OnCaptureFinish(int factionIndex)
 	{
+		m_bDeleteDisabledAIs = true;
 		FactionManager factionManager = GetGame().GetFactionManager();
 
 		if (!factionManager)
@@ -562,12 +517,8 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 		if (vector.DistanceSqXZ(controlledEntity.GetOrigin(), GetOwner().GetOrigin()) > (m_iRadius * m_iRadius))
 			return;
 
-		#ifndef AR_CAMPAIGN_TIMESTAMP
-		m_mSpawnTimers.Set(playerId, Replication.Time() + (m_fRespawnCooldownPeriod * 1000))
-		#else
 		ChimeraWorld world = GetOwner().GetWorld();
 		m_mSpawnTimers.Set(playerId, world.GetServerTimestamp().PlusSeconds(m_fRespawnCooldownPeriod));
-		#endif
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -584,7 +535,6 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 			queue.Remove(0);
 
 			flag = SCR_FlagComponent.Cast(processedEntity.FindComponent(SCR_FlagComponent));
-
 			if (flag)
 				flag.ChangeMaterial(faction.GetFactionFlagMaterial());
 
@@ -602,7 +552,6 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 	protected bool GetIsLocalPlayerPresent()
 	{
 		IEntity player = GetGame().GetPlayerManager().GetPlayerControlledEntity(SCR_PlayerController.GetLocalPlayerId());
-
 		if (!player)
 			return false;
 
@@ -613,7 +562,6 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 	protected void NotifyPlayerInRadius(notnull SCR_Faction faction)
 	{
 		Faction playerFaction = SCR_FactionManager.SGetLocalPlayerFaction();
-
 		if (!playerFaction)
 			return;
 
@@ -627,6 +575,7 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	Faction GetFaction()
 	{
 		if (m_FactionControl)
@@ -641,8 +590,36 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 		super.OnBaseFactionChanged(faction);
 		m_PrevailingFaction = null;
 	}
-
 	//------------------------------------------------------------------------------------------------
+	bool IsDisabledAI(IEntity ent)
+	{
+		
+		SCR_ChimeraCharacter char = SCR_ChimeraCharacter.Cast(ent);
+		if (!char)
+			return false;
+
+		CharacterControllerComponent charControl = char.GetCharacterController();
+		if (!charControl)
+			return false;
+		
+		if (charControl.GetLifeState() == ECharacterLifeState.DEAD)
+			return false;
+
+		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(ent);
+		if (playerId)
+			return false;
+	
+		AIControlComponent ctrComp = charControl.GetAIControlComponent();
+		if (!ctrComp)
+			return false;
+		
+		if (ctrComp.IsAIActivated())
+			return false;
+		return true;
+		
+	}	
+	//------------------------------------------------------------------------------------------------
+	//!
 	void Disable()
 	{
 		m_bEnabled = false;
@@ -705,12 +682,10 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 			return;
 
 		SCR_SeizingComponentClass componentData = SCR_SeizingComponentClass.Cast(GetComponentData(GetOwner()));
-
 		if (!componentData)
 			return;
 
 		m_FactionControl = SCR_FactionAffiliationComponent.Cast(owner.FindComponent(SCR_FactionAffiliationComponent));
-
 		if (!m_FactionControl)
 		{
 			Print("SCR_SeizingComponent: Owner is missing SCR_FactionAffiliationComponent! Terminating...", LogLevel.ERROR);
@@ -718,7 +693,6 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 		}
 
 		Resource triggerResource = Resource.Load(componentData.GetTriggerPrefab());
-
 		if (!triggerResource)
 		{
 			Print("SCR_SeizingComponent: Trigger resource failed to load! Terminating...", LogLevel.ERROR);
@@ -727,7 +701,6 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 
 		// Spawn the trigger locally on server
 		m_Trigger = BaseGameTriggerEntity.Cast(GetGame().SpawnEntityPrefabLocal(triggerResource, GetGame().GetWorld()));
-
 		if (!m_Trigger)
 		{
 			Print("SCR_SeizingComponent: Trigger failed to spawn! Terminating...", LogLevel.ERROR);
@@ -752,13 +725,6 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 	//------------------------------------------------------------------------------------------------
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
-		#ifndef AR_CAMPAIGN_TIMESTAMP
-		if (m_fSeizingEndTimestamp == 0 || Replication.Time() < m_fSeizingEndTimestamp)
-			return;
-
-		m_fSeizingEndTimestamp = 0;
-		m_fSeizingStartTimestamp = 0;
-		#else
 		if (m_fSeizingEndTimestamp == 0)
 			return;
 
@@ -768,7 +734,6 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 
 		m_fSeizingEndTimestamp = null;
 		m_fSeizingStartTimestamp = null;
-		#endif
 		OnSeizingTimestampChanged();
 
 		Replication.BumpMe();
@@ -788,16 +753,13 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_SeizingComponent()
 	{
 		if (m_Trigger)
 			delete m_Trigger;
 
-		m_mSpawnTimers.Clear();
-		m_mSpawnTimers = null;
-
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-
 		if (gameMode)
 			gameMode.GetOnPlayerSpawned().Remove(OnPlayerSpawned);
 

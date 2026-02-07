@@ -13,9 +13,11 @@ class SCR_BuildingTutorialStage15 : SCR_BaseCampaignTutorialArlandStage
 		m_fWaypointCompletionRadius = 50;
 		RegisterWaypoint("TownBaseFarm");
 		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
-	
 		m_SupplyTruck = GetGame().GetWorld().FindEntityByName("BuildingSupplyTruck");
+		
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("Building_ReturnBack", true);
 	}
 	
 	//------------------------------------------------------------------------------------------------

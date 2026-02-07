@@ -1,9 +1,7 @@
-//------------------------------------------------------------------------------------------------
 class SCR_CampaignSeizingComponentClass : SCR_SeizingComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_CampaignSeizingComponent : SCR_SeizingComponent
 {
 	[Attribute("60", params: "0 inf 0.1", category: "Campaign")]
@@ -75,11 +73,7 @@ class SCR_CampaignSeizingComponent : SCR_SeizingComponent
 		if ((m_fMaximumSeizingTime - m_fMinimumSeizingTime) > 0)
 			servicesMultiplier = 1 + (servicesCount * (m_fExtraTimePerService / (m_fMaximumSeizingTime - m_fMinimumSeizingTime)));
 
-		#ifndef AR_CAMPAIGN_TIMESTAMP
-		m_fSeizingEndTimestamp = m_fSeizingStartTimestamp + (servicesMultiplier * (m_fMaximumSeizingTime - deduct) * 1000);
-		#else
 		m_fSeizingEndTimestamp = m_fSeizingStartTimestamp.PlusSeconds(servicesMultiplier * (m_fMaximumSeizingTime - deduct));
-		#endif
 
 		ChimeraWorld world = GetGame().GetWorld();
 		WorldTimestamp currentTime = world.GetServerTimestamp();
@@ -95,14 +89,21 @@ class SCR_CampaignSeizingComponent : SCR_SeizingComponent
 		OnSeizingTimestampChanged();
 	}
 	
-	/*static void TestValues(float maxSeizingTime, float minSeizingTime, float extraTime, int players, int services)
-	{
-		float seizingTimeVar = maxSeizingTime - minSeizingTime;
-		float deductPerPlayer = seizingTimeVar / 11;
-		float deduct = deductPerPlayer * (players - 1);
-		float servicesMultiplier = 1 + (services * (extraTime / (maxSeizingTime - minSeizingTime)));
-		Print(servicesMultiplier * (maxSeizingTime - deduct));
-	}*/
+//	//------------------------------------------------------------------------------------------------
+//	//!
+//	//! \param[in] maxSeizingTime
+//	//! \param[in] minSeizingTime
+//	//! \param[in] extraTime
+//	//! \param[in] players
+//	//! \param[in] services
+//	static void TestValues(float maxSeizingTime, float minSeizingTime, float extraTime, int players, int services)
+//	{
+//		float seizingTimeVar = maxSeizingTime - minSeizingTime;
+//		float deductPerPlayer = seizingTimeVar / 11;
+//		float deduct = deductPerPlayer * (players - 1);
+//		float servicesMultiplier = 1 + (services * (extraTime / (maxSeizingTime - minSeizingTime)));
+//		Print(servicesMultiplier * (maxSeizingTime - deduct));
+//	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnBaseRegistered(notnull SCR_MilitaryBaseComponent base)
@@ -122,4 +123,4 @@ class SCR_CampaignSeizingComponent : SCR_SeizingComponent
 		
 		m_Base = campaignBase;
 	}
-};
+}

@@ -164,7 +164,6 @@ class SCR_CampaignBuildingServicesEditorUIComponent : SCR_BaseEditorUIComponent
 		if (!buildingEditorComponent)
 			return;
 		
-		
 		SCR_MilitaryBaseComponent militaryBaseComponent = SCR_MilitaryBaseComponent.Cast(buildingEditorComponent.GetProviderComponent().GetMilitaryBaseComponent());
 		if (!militaryBaseComponent)
 			return;
@@ -263,15 +262,16 @@ class SCR_CampaignBuildingServicesEditorUIComponent : SCR_BaseEditorUIComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Check if any listed service is fully built.
+	//! \param[in] label
+	//! \return
 	bool IsAnyServiceBuilt(EEditableEntityLabel label)
 	{		
 		foreach (Tuple2<EEditableEntityLabel, SCR_ServicePointComponent> service : m_aServices)
 		{
-			//ToDo: Find a repro on exiting a game, can be service null and check just tries to run?
-			if (/*!service ||*/ service.param1 != label)
+			if (service.param1 != label)
 				continue;
 
-			if (service.param2.GetServiceState() == SCR_EServicePointStatus.ONLINE)
+			if (service.param2 && service.param2.GetServiceState() == SCR_EServicePointStatus.ONLINE)
 				return true;
 		}
 		
@@ -280,6 +280,8 @@ class SCR_CampaignBuildingServicesEditorUIComponent : SCR_BaseEditorUIComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Set the icon of the service.
+	//! \param[in] widget
+	//! \param[in] serviceLabel
 	protected void SetIcon(ImageWidget widget, EEditableEntityLabel serviceLabel)
 	{
 		if (!m_aAvailableServicesLabel)
@@ -298,4 +300,4 @@ class SCR_CampaignBuildingServicesEditorUIComponent : SCR_BaseEditorUIComponent
 				data.GetUIInfo().SetIconTo(widget);
 		}		
 	}
-};
+}

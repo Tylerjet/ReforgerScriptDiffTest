@@ -29,10 +29,10 @@ class SCR_ServerFilterBarComponent : ScriptedWidgetComponent
 	protected Widget m_wHLayout;
 	protected Widget m_wTooltip;
 	
-	protected ref array<bool> m_aCheckFilters = new ref array<bool>();
+	protected ref array<bool> m_aCheckFilters = new array<bool>();
 	protected Widget m_wFirstWidget;
 	
-	ref ScriptInvoker m_OnFilterChange = new ref ScriptInvoker();
+	ref ScriptInvoker m_OnFilterChange = new ScriptInvoker();
 	
 	//------------------------------------------------------------------------------------------------
 	Widget GetFirstWidget() { return m_wFirstWidget; }
@@ -177,10 +177,10 @@ class ServerFilterGroup
 	protected EFilterGroupType m_iGroupType;
 	
 	//protected ref array<ref SCR_SelectableButtonComponent> m_aButtons;
-	protected ref array<Widget> m_aEntryWidgets = new ref array<Widget>();
+	protected ref array<Widget> m_aEntryWidgets = new array<Widget>();
 	protected ref Widget m_wFirstEntryWidget;
 	
-	ref ScriptInvoker m_OnFilterCheck = new ref ScriptInvoker();
+	ref ScriptInvoker m_OnFilterCheck = new ScriptInvoker();
 	
 	//------------------------------------------------------------------------------------------------
 	Widget GetFirstEntryWidget() { return m_wFirstEntryWidget; }
@@ -245,12 +245,12 @@ class ServerFilterGroup
 	//------------------------------------------------------------------------------------------------
 	protected void AddPaddings(float w, float h, Widget targetLayout)
 	{
-		Widget padding = GetGame().GetWorkspace().CreateWidget(WidgetType.ImageWidgetTypeID, WidgetFlags.VISIBLE, UIColors.TRANSPARENT, 0, targetLayout);
+		Widget padding = GetGame().GetWorkspace().CreateWidget(WidgetType.ImageWidgetTypeID, WidgetFlags.VISIBLE, Color.FromInt(UIColors.TRANSPARENT.PackToInt()), 0, targetLayout);
 		ImageWidget img = ImageWidget.Cast(padding);
 		
 		if (img)
 		{
-			img.SetColor(UIColors.TRANSPARENT);
+			img.SetColor(Color.FromInt(UIColors.TRANSPARENT.PackToInt()));
 			img.SetSize(w,h);
 			HorizontalLayoutSlot.SetVerticalAlign(img, LayoutVerticalAlign.Stretch);
 		}

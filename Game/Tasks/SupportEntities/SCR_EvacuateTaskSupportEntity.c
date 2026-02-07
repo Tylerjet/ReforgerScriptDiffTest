@@ -53,7 +53,7 @@ class SCR_EvacuateTaskSupportEntity : SCR_RequestedTaskSupportEntity
 		vector requesterOrigin = requesterEntity.GetOrigin();
 		array<SCR_MilitaryBaseComponent> bases = {};
 		
-		SCR_MilitaryBaseManager.GetInstance().GetBases(bases);
+		SCR_MilitaryBaseSystem.GetInstance().GetBases(bases);
 		
 		bool foundValidBase = false;
 		for (int i = bases.Count() - 1; i >= 0; i--)
@@ -137,7 +137,7 @@ class SCR_EvacuateTaskSupportEntity : SCR_RequestedTaskSupportEntity
 		vector requesterOrigin = requesterEntity.GetOrigin();
 		array<SCR_MilitaryBaseComponent> bases = {};
 		
-		SCR_MilitaryBaseManager.GetInstance().GetBases(bases);
+		SCR_MilitaryBaseSystem.GetInstance().GetBases(bases);
 		
 		for (int i = bases.Count() - 1; i >= 0; i--)
 		{

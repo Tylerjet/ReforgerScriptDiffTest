@@ -19,7 +19,7 @@ class SCR_LayersEditorComponent : SCR_BaseEditorComponent
 	protected bool m_bEditingLayersEnabled;
 	protected SCR_BaseEditableEntityFilter m_SelectionFilter;
 	protected SCR_EditableEntityCore m_Core;
-	protected ref set<SCR_EditableEntityComponent> m_EntitiesToSelectAfterMove = new ref set<SCR_EditableEntityComponent>();
+	protected ref set<SCR_EditableEntityComponent> m_EntitiesToSelectAfterMove = new set<SCR_EditableEntityComponent>();
 	protected SCR_EditableEntityComponent m_NewGroupLeader;
 	protected bool m_bSelectAfterMoveCanceled;
 	protected bool m_bSelectParentAfterMove;

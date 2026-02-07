@@ -1,5 +1,5 @@
 [BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
-class SCR_VotingUIInfo: SCR_UIInfo
+class SCR_VotingUIInfo : SCR_UIInfo
 {
 	[Attribute(desc: "Text used when starting a vote about something.")]
 	protected LocalizedString m_sStartVotingName;
@@ -32,9 +32,7 @@ class SCR_VotingUIInfo: SCR_UIInfo
 	protected ENotification m_eVoteAbstainedLocalNotification;
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return Name used when starting a new vote. 
-	*/
+	//! \return Name used when starting a new vote.
 	string GetStartVotingName()
 	{
 		if (!SCR_StringHelper.IsEmptyOrWhiteSpace(m_sStartVotingName))
@@ -44,9 +42,7 @@ class SCR_VotingUIInfo: SCR_UIInfo
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return Name used when withdrawing a vote.
-	*/
+	//! \return Name used when withdrawing a vote.
 	string GetCancelVotingName()
 	{
 		if (!SCR_StringHelper.IsEmptyOrWhiteSpace(m_sCancelVotingName))
@@ -56,9 +52,7 @@ class SCR_VotingUIInfo: SCR_UIInfo
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return Name used when abstaining voting
-	*/
+	//! \return Name used when abstaining voting
 	string GetRevoteName()
 	{
 		if (!SCR_StringHelper.IsEmptyOrWhiteSpace(m_sRevoteName))
@@ -68,9 +62,7 @@ class SCR_VotingUIInfo: SCR_UIInfo
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return Name used when abstaining voting
-	*/
+	//! \return Name used when abstaining voting
 	string GetAbstainVoteName()
 	{
 		if (!SCR_StringHelper.IsEmptyOrWhiteSpace(m_sAbstainVoteName))
@@ -80,62 +72,50 @@ class SCR_VotingUIInfo: SCR_UIInfo
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get sticky notification text shown in the notification log when the specific voting type is active.
-	\return string stricky notification text
-	*/
+	//! Get sticky notification text shown in the notification log when the specific voting type is active.
+	//! \return string stricky notification text
 	string GetStickyNotificationText()
 	{
 		return m_sStickyNotificationText;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get Start notification ID which is send to the Notification Component to show the specific notification when the voting starts
-	\return ENotification Notification ID of Start voting
-	*/
+	//! Get Start notification ID which is send to the Notification Component to show the specific notification when the voting starts
+	//! \return ENotification Notification ID of Start voting
 	ENotification GetVotingStartNotification()
 	{
 		return m_iStartNotificationId;
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get Succeed notification ID which is send to the Notification Component to show the specific notification when voting ends and succeeds
-	\return ENotification Notification ID of successful voting
-	*/
+	//! Get Succeed notification ID which is send to the Notification Component to show the specific notification when voting ends and succeeds
+	//! \return ENotification Notification ID of successful voting
 	ENotification GetVotingSucceedNotification()
 	{
 		return m_iSucceededNotificationId;
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get Fail notification ID which is send to the Notification Component to show the specific notification when voting ends and fails
-	\return ENotification Notification ID of failed voting
-	*/
+	//! Get Fail notification ID which is send to the Notification Component to show the specific notification when voting ends and fails
+	//! \return ENotification Notification ID of failed voting
 	ENotification GetVotingFailNotification()
 	{
 		return m_iFailedNotificationId;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get Local Vote notification ID which is send to the Notification Component to show the specific notification when a player locally casts a vote
-	\return Notification ID
-	*/
+	//! Get Local Vote notification ID which is send to the Notification Component to show the specific notification when a player locally casts a vote
+	//! \return Notification ID
 	ENotification GetLocalVoteCastNotification()
 	{
 		return m_eVoteCastedLocalNotification;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get Local Vote notification ID which is send to the Notification Component to show the specific notification when a player locally abstains from voting
-	\return Notification ID
-	*/
+	//! Get Local Vote notification ID which is send to the Notification Component to show the specific notification when a player locally abstains from voting
+	//! \return Notification ID
 	ENotification GetLocalVoteAbstainedNotification()
 	{
 		return m_eVoteAbstainedLocalNotification;
 	}
-};
+}

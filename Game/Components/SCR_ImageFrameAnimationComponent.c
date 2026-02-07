@@ -1,12 +1,9 @@
-/*!
-This component implements animation by switching textures, like in a movie.
-Animation frame rate can be separate from game frame rate.
-Images must be in image set.
-
-You do not have to care about starting/stopping the animation when widget is shown or hidden,
-it will be performed automatically.
-*/
-
+//! This component implements animation by switching textures, like in a movie.
+//! Animation frame rate can be separate from game frame rate.
+//! Images must be in image set.
+//!
+//! You do not have to care about starting/stopping the animation when widget is shown or hidden,
+//! it will be performed automatically.
 class SCR_ImageFrameAnimationComponent : ScriptedWidgetComponent
 {
 	// Attributes
@@ -28,7 +25,6 @@ class SCR_ImageFrameAnimationComponent : ScriptedWidgetComponent
 	
 	[Attribute("", UIWidgets.ResourceNamePicker, "Image Set with frames", params: "imageset")]
 	protected ResourceName m_sImageSet;
-		
 	
 	// Internal
 	
@@ -38,15 +34,15 @@ class SCR_ImageFrameAnimationComponent : ScriptedWidgetComponent
 	
 	protected ImageWidget m_wRoot;
 	
-	
-	//-----------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! PUBLIC API
 	
 	// You can Start/Stop animation, but most likely it's not needed,
 	// Because it will terminate itself when widget is hidden,
 	// And it will get reactivated when widget is shown again.
 	
-	//-----------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//!
 	void Start()
 	{
 		if (!m_wRoot)
@@ -60,20 +56,14 @@ class SCR_ImageFrameAnimationComponent : ScriptedWidgetComponent
 		queue.CallLater(OnEachFrame, 0, true);
 	}
 	
-	//-----------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//!
 	void Stop()
 	{		
 		GetGame().GetCallqueue().Remove(OnEachFrame);
 	}
-	
-	
-	
-	
-	//-----------------------------------------------------------------------------
-	// PROTECTED
-	
-	
-	//-----------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
 	override protected void HandlerAttached(Widget w)
 	{
 		m_wRoot = ImageWidget.Cast(w);
@@ -109,7 +99,7 @@ class SCR_ImageFrameAnimationComponent : ScriptedWidgetComponent
 			Start();
 	}
 	
-	//-----------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	override protected void HandlerDeattached(Widget w)
 	{
 		ArmaReforgerScripted game = GetGame();
@@ -117,7 +107,7 @@ class SCR_ImageFrameAnimationComponent : ScriptedWidgetComponent
 			Stop();
 	}
 	
-	//-----------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	protected void OnEachFrame()
 	{
 		if (!m_wRoot.IsVisibleInHierarchy())
@@ -143,14 +133,14 @@ class SCR_ImageFrameAnimationComponent : ScriptedWidgetComponent
 		}
 	}
 	
-	//-----------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	protected void ShowFrame(int id)
 	{
 		string imageName = string.Format(m_sImageNameFormat, id.ToString(m_iIntToStringLen));
 		m_wRoot.LoadImageFromSet(0, m_sImageSet, imageName);
 	}
 	
-	//-----------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	override bool OnUpdate(Widget w)
 	{
 		if (w != m_wRoot || !m_wRoot)
@@ -165,4 +155,4 @@ class SCR_ImageFrameAnimationComponent : ScriptedWidgetComponent
 		
 		return true;
 	}
-};
+}

@@ -33,12 +33,8 @@ class SCR_CharUnconsciousnessEditorAttribute : SCR_BaseEditorAttribute
 		SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(item);
 		if (!editableEntity)
 			return;
-		
-		IEntity owner =  editableEntity.GetOwner();
-		if (!owner) 
-			return;
-		
-		ChimeraCharacter character = ChimeraCharacter.Cast(owner);
+				
+		ChimeraCharacter character = ChimeraCharacter.Cast(editableEntity.GetOwner());
 		if (!character)
 			return;
 		
@@ -46,14 +42,19 @@ class SCR_CharUnconsciousnessEditorAttribute : SCR_BaseEditorAttribute
 		if (!characterDamageManager) 
 			return;
 		
-		if (characterDamageManager.GetState() == EDamageState.DESTROYED)
+		CharacterControllerComponent controller = CharacterControllerComponent.Cast(character.GetCharacterController());
+		if (!controller) 
+			return;
+		
+		ECharacterLifeState lifeState = controller.GetLifeState();
+		if (lifeState == ECharacterLifeState.DEAD)
 			return;
 		
 		if (!characterDamageManager.IsDamageHandlingEnabled())
 			return;
 		
 		//Neutralize character if unconsciousness is disabled and character is already unconscious
-		if (characterDamageManager.GetIsUnconscious() && !var.GetBool())
+		if (lifeState == ECharacterLifeState.INCAPACITATED && !var.GetBool())
 			characterDamageManager.Kill(Instigator.CreateInstigator(null));
 		
 		characterDamageManager.SetPermitUnconsciousness(var.GetBool(), true);

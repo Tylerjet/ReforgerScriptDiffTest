@@ -30,32 +30,31 @@ class SCR_InventoryOpenedStorageArsenalUI : SCR_InventoryOpenedStorageUI
 	
 	//------------------------------------------------------------------------------------------------
 	override void RefreshResources()
-	{
-		if (!m_wResourceDisplay || !m_wResourceText)
+	{		
+		if (!m_wResourceAvailableText && !m_wResourceAvailableDisplay)
 			return;
 		
-		if (!GetStorage())
+		if (!m_ResourceComponent)
+		{
+			m_wResourceAvailableDisplay.SetVisible(false);
 			return;
+		}
+			
 		
-		IEntity owner = GetStorage().GetOwner();
+		float availableResources;
 		
-		if (!owner)
+		if (!m_ResourceComponent || !m_ResourceComponent.IsResourceTypeEnabled() || !SCR_ResourceSystemHelper.GetAvailableResources(m_ResourceComponent, availableResources))
+		{
+			m_wResourceAvailableDisplay.SetVisible(false);
 			return;
+		}
 		
-		SCR_ResourceComponent resourceComponent = SCR_ResourceComponent.FindResourceComponent(owner);
+		m_wResourceAvailableText.SetTextFormat("#AR-Supplies_Arsenal_Availability", SCR_ResourceSystemHelper.SuppliesToString(availableResources));
 		
-		if (!resourceComponent)
-			return;
+		m_wResourceAvailableDisplay.SetVisible(true);
 		
-		SCR_ResourceConsumer consumer = resourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
-		
-		if (!consumer)
-			return;
-		
-		m_wResourceText.SetText(WidgetManager.Translate("#AR-Supplies_Arsenal_Availability", consumer.GetAggregatedResourceValue().ToString()));
-		
-		if (!m_wResourceDisplay.IsVisible())
-			m_wResourceDisplay.SetVisible(false);
+		if (!m_wResourceAvailableDisplay.IsVisible())
+			m_wResourceAvailableDisplay.SetVisible(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -71,26 +70,31 @@ class SCR_InventoryOpenedStorageArsenalUI : SCR_InventoryOpenedStorageUI
 		m_wCapacityDisplay = null;
 		m_wCapacityPercentageText = null;
 		
-		m_wResourceText = TextWidget.Cast(m_widget.FindAnyWidget("ResourceText"));
-		m_wResourceDisplay = Widget.Cast(m_widget.FindAnyWidget("ResourceDisplay"));
+		m_wResourceStoredDisplay = Widget.Cast(m_widget.FindAnyWidget("ResourceDisplayStored"));
+		if (m_wResourceStoredDisplay)
+			m_wResourceStoredText = TextWidget.Cast(m_wResourceStoredDisplay.FindAnyWidget("ResourceText"));
 		
-		if (!m_wResourceDisplay || !m_wResourceText)
+		m_wResourceAvailableDisplay = Widget.Cast(m_widget.FindAnyWidget("ResourceDisplayAvailable"));
+		if (m_wResourceAvailableDisplay)
+			m_wResourceAvailableText = TextWidget.Cast(m_wResourceAvailableDisplay.FindAnyWidget("ResourceText"));
+		
+		if (!m_wResourceStoredDisplay || !m_wResourceAvailableText)
 			return;
 		
 		if (m_Storage && m_Storage.GetOwner())
 			m_ResourceComponent = SCR_ResourceComponent.FindResourceComponent(m_Storage.GetOwner());
 		
 		if (!m_ResourceComponent)
+		{
+			m_wResourceAvailableDisplay.SetVisible(false);
 			return;
+		}
 		
 		m_ResourceConsumer = m_ResourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
-		
-		if (!m_ResourceConsumer)
-			return;
-		
-		m_wResourceDisplay.SetVisible(true);
-		m_wResourceText.SetText(WidgetManager.Translate("#AR-Supplies_Arsenal_Availability", m_ResourceConsumer.GetAggregatedResourceValue().ToString()));
 		m_ResourceComponent.TEMP_GetOnInteractorReplicated().Insert(Refresh);	
+		
+		RefreshResources();
+		m_wResourceStoredDisplay.SetVisible(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -116,7 +120,6 @@ class SCR_InventoryOpenedStorageArsenalUI : SCR_InventoryOpenedStorageUI
 	{
 		super.Refresh();
 		
-		if (m_ResourceComponent && m_ResourceConsumer)
-			RefreshResources();
+		RefreshResources();
 	}
 };

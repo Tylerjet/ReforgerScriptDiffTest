@@ -1,19 +1,15 @@
-/** @ingroup Editable_Entities
-*/
+//! @ingroup Editable_Entities
 
-//------------------------------------------------------------------------------------------------
-/*!
-Component defining editable entity.
-- Any entity with this component is exposed in the editor (SCR_EditorManagerCore).
-- Editable entities are tracked locally in a list managed by SCR_EditableEntityCore.
-- Editable entity, unless it has a flag EEditableEntityFlag.LOCAL, must also have a RplComponent attached.
-- Despite the name, not every entity with this component is actually editable - those with EEditableEntityFlag.NON_INTERACTIVE are not.
+//! Component defining editable entity.
+//! - Any entity with this component is exposed in the editor (SCR_EditorManagerCore).
+//! - Editable entities are tracked locally in a list managed by SCR_EditableEntityCore.
+//! - Editable entity, unless it has a flag EEditableEntityFlag.LOCAL, must also have a RplComponent attached.
+//! - Despite the name, not every entity with this component is actually editable - those with EEditableEntityFlag.NON_INTERACTIVE are not.
 
-## Implementation Notes
-- Keep memory footprint of component instance (i.e., the size of variables) to minimum. The component can axist on thousands of entities per world.
-- Do not reference editor (e.g., SCR_EditorManagerEntity, SCR_EditorModeEntity, or SCR_BaseEditorComponent) from here!
- + Editable entities are independent on the editor. Each player has their own editor, so there is no single editor to point to anyway.
-*/
+//! ## Implementation Notes
+//! - Keep memory footprint of component instance (i.e., the size of variables) to minimum. The component can axist on thousands of entities per world.
+//! - Do not reference editor (e.g., SCR_EditorManagerEntity, SCR_EditorModeEntity, or SCR_BaseEditorComponent) from here!
+//! + Editable entities are independent on the editor. Each player has their own editor, so there is no single editor to point to anyway.
 class SCR_EditableEntityComponent : ScriptComponent
 {
 	[Attribute("1", UIWidgets.ComboBox, category: "Editable Entity", desc: "Decide whether the entity should be registered automatically to the list of editable entities.", enums: ParamEnumArray.FromEnum(EEditableEntityRegister))]
@@ -22,7 +18,10 @@ class SCR_EditableEntityComponent : ScriptComponent
 	[Attribute("", UIWidgets.Auto, category: "Visualization", desc: "Icon offset (m) from entity's origin.")]
 	protected vector m_vIconPos;
 
-	[Attribute("1", category: "Visualization", desc: "Set entity's visibility setting. Apart from this custom value, visibility of an entitymay be influenced by other factors like distance to the camera or active layer.")]
+	[RplProp()]
+	protected bool m_bEnabledVisibilityReplication;
+
+	[RplProp(onRplName: "OnRplVisibilityChanged", condition: RplCondition.Custom, customConditionName: "CanReplicateVisibility"), Attribute("1", category: "Visualization", desc: "Set entity's visibility setting. Apart from this custom value, visibility of an entitymay be influenced by other factors like distance to the camera or active layer.")]
 	protected bool m_bVisible;
 
 	[Attribute(category: "Visualization", desc: "Mark entity as static. When static, entity's position is not calculated each frame. Instead, cached position is used.")]
@@ -44,13 +43,12 @@ class SCR_EditableEntityComponent : ScriptComponent
 	protected ref set<SCR_EditableEntityComponent> m_Entities;
 	protected vector m_vStaticPos;
 	protected int m_iIconBoneIndex = -1;
+	protected ref ScriptInvokerEntity m_OnDeleted;
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get entity name from info component.
-	When info is undefined, use entity's variable name, or, if that one is also undefined, its class name.
-	\return Type
-	*/
+	//! Get entity name from info component.
+	//! When info is undefined, use entity's variable name, or, if that one is also undefined, its class name.
+	//! \return Type
 	string GetDisplayName()
 	{
 		string displayName;
@@ -73,11 +71,9 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get entity prefab.
-	\param shorten True to include only GUID, not file path
-	\return Prefab path
-	*/
+	//! Get entity prefab.
+	//! \param[in] shorten True to include only GUID, not file path
+	//! \return Prefab path
 	ResourceName GetPrefab(bool shorten = false)
 	{
 		if (!m_Owner)
@@ -103,36 +99,26 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get prefab data of this editable entity.
-	\param Owner entity of this component, used when m_Owner==null, after deletion
-	\return Component prefab data
-	*/
+	//! Get prefab data of this editable entity.
+	//! \param[in] Owner entity of this component, used when m_Owner==null, after deletion
+	//! \return Component prefab data
 	SCR_EditableEntityComponentClass GetEditableEntityData(IEntity owner = null)
 	{
 		if (owner)
-		{
 			return SCR_EditableEntityComponentClass.Cast(GetComponentData(owner));
-		}
 		else if (m_Owner)
-		{
 			return SCR_EditableEntityComponentClass.Cast(GetComponentData(m_Owner));
-		}
 		else
-		{
 			return null;
-		}
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get entity type.
-	**Avoid basing your functionality on specific entity types!**
-	If everyone checked for specific types, adding a new type would mean all conditions have to be revised.
-	Instead, base your system on a function inside this class. Such function can be overrided by inherited classes to give desired result.
-	\param Owner entity of this component
-	\return Type
-	*/
+	//! Get entity type.
+	//! **Avoid basing your functionality on specific entity types!**
+	//! If everyone checked for specific types, adding a new type would mean all conditions have to be revised.
+	//! Instead, base your system on a function inside this class. Such function can be overrided by inherited classes to give desired result.
+	//! \param[in] Owner entity of this component
+	//! \return Type
 	EEditableEntityType GetEntityType(IEntity owner = null)
 	{
 		SCR_EditableEntityComponentClass prefabData = GetEditableEntityData(owner);
@@ -143,10 +129,8 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get entity interaction rules of this entity. If it doesn't contain any custom rules, those for its type will be used.
-	\return Interaction rules
-	*/
+	//! Get entity interaction rules of this entity. If it doesn't contain any custom rules, those for its type will be used.
+	//! \return Interaction rules
 	SCR_EditableEntityInteraction GetEntityInteraction(IEntity owner = null)
 	{
 		SCR_EditableEntityComponentClass prefabData = GetEditableEntityData(owner);
@@ -157,10 +141,8 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get information about the entity. When none exist, create a dummy one.
-	\return Info class
-	*/
+	//! Get information about the entity. When none exist, create a dummy one.
+	//! \return Info class
 	SCR_UIInfo GetInfo(IEntity owner = null)
 	{
 		//--- From instance
@@ -174,24 +156,33 @@ class SCR_EditableEntityComponent : ScriptComponent
 		else
 			return null;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	/*!
-	Set information about the entity on entity instance, locally on this machine.
-	This is a weak ref! The info needs to be held somewhere else, the entity will merely link to it.
-	\param info Info class
+	Get event called when entity is deleted
+	\return Script invoker
 	*/
+	ScriptInvokerEntity GetOnDeleted()
+	{
+		if (!m_OnDeleted)
+			m_OnDeleted = new ScriptInvokerEntity();
+		
+		return m_OnDeleted;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Set information about the entity on entity instance, locally on this machine.
+	//! This is a weak ref! The info needs to be held somewhere else, the entity will merely link to it.
+	//! \param[in] info Info class
 	void SetInfoInstance(SCR_UIInfo info)
 	{
 		m_UIInfoInstance = info;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check component's replication. Show an error when it's not registered for replication (e.g., RplComponent is missing)
-	\param[out] replicationID ID used by Replication.FindItem()
-	\return True if replicated
-	*/
+	//! Check component's replication. Show an error when it's not registered for replication (e.g., RplComponent is missing)
+	//! \param[out] replicationID ID used by Replication.FindItem()
+	//! \return true if replicated
 	bool IsReplicated(out RplId replicationID = -1)
 	{
 		//--- Never considered replicated when flagged as LOCAL
@@ -208,13 +199,11 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check if the entity can be serialized during session saving managed by SCR_EditableEntityStruct.
-	\param[out] target Entity to which this entity is attached to outside of hierarchy structure, e.g., character in a vehicle or waypoint on a target
-	\param[out] targetIndex Further specification of the target, e.g., crew position index in a vehicle
-	\param[out] isDestroyed Variable to be set to true if the entity is destroyed
-	\return True if it can be serialized
-	*/
+	//! Check if the entity can be serialized during session saving managed by SCR_EditableEntityStruct.
+	//! \param[out] target Entity to which this entity is attached to outside of hierarchy structure, e.g., character in a vehicle or waypoint on a target
+	//! \param[out] targetIndex Further specification of the target, e.g., crew position index in a vehicle
+	//! \param[out] isDestroyed Variable to be set to true if the entity is destroyed
+	//! \return true if it can be serialized
 	bool Serialize(out SCR_EditableEntityComponent outTarget = null, out int outTargetIndex = -1, out EEditableEntitySaveFlag outSaveFlags = 0)
 	{
 		if (IsDestroyed())
@@ -228,14 +217,13 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Deserialize the entity based on given params.
-	\param target Entity to which this entity is attached to outside of hierarchy structure, e.g., character in a vehicle or waypoint on a target
-	\param targetIndex Further specification of the target, e.g., crew position index in a vehicle
-	*/
+	//! Deserialise the entity based on given params.
+	//! \param[in] target Entity to which this entity is attached to outside of hierarchy structure, e.g., character in a vehicle or waypoint on a target
+	//! \param[in] targetIndex Further specification of the target, e.g., crew position index in a vehicle
 	void Deserialize(SCR_EditableEntityComponent target, int targetValue)
 	{
-		SetParentEntity(target);
+		if (target)
+			SetParentEntity(target);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -253,20 +241,16 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return Owner entity.
-	*/
+	//! \return Owner entity.
 	GenericEntity GetOwnerScripted()
 	{
 		return m_Owner;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get position representing the entity.
-	\param[out] pos Entity's position
-	\return True if the entity has a position
-	*/
+	//! Get position representing the entity.
+	//! \param[out] pos Entity's position
+	//! \return true if the entity has a position
 	bool GetPos(out vector pos)
 	{
 		if (!m_Owner)
@@ -303,20 +287,16 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get icon offset
-	\param Offset
-	*/
+	//! Get icon offset
+	//! \param[in] Offset
 	vector GetIconPos()
 	{
 		return m_vIconPos;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get world transformation matrix of editable entity.
-	\param[out] outTransform Transformation matrix
-	*/
+	//! Get world transformation matrix of editable entity.
+	//! \param[out] outTransform Transformation matrix
 	bool GetTransform(out vector outTransform[4])
 	{
 		if (!m_Owner)
@@ -327,10 +307,8 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get local transformation matrix of editable entity.
-	\param[out] outTransform Transformation matrix
-	*/
+	//! Get local transformation matrix of editable entity.
+	//! \param[out] outTransform Transformation matrix
 	bool GetLocalTransform(out vector outTransform[4])
 	{
 		if (!m_Owner)
@@ -356,94 +334,74 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get player controlling this entity.
-	\return Player ID
-	*/
+	//! Get player controlling this entity.
+	//! \return Player ID
 	int GetPlayerID()
 	{
 		return 0;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get entity's faction.
-	\return Faction
-	*/
+	//! Get entity's faction.
+	//! \return Faction
 	Faction GetFaction()
 	{
 		return null;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get event called when GUI should refresh entity's GUI, i.e., update faction color and call events in GUI widgets.
-	To be overriden by inherited classes.
-	\return Script invoker
-	*/
+	//! Get event called when GUI should refresh entity's GUI, i.e., update faction color and call events in GUI widgets.
+	//! To be overridden by inherited classes.
+	//! \return Script invoker
 	ScriptInvoker GetOnUIRefresh()
 	{
 		return null;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get event called when GUI should reset widgets that are used for entity visualization.
-	To be overriden by inherited classes.
-	\return Script invoker
-	*/
+	//! Get event called when GUI should reset widgets that are used for entity visualization.
+	//! To be overridden by inherited classes.
+	//! \return Script invoker
 	ScriptInvoker GetOnUIReset()
 	{
 		return null;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get entity's AI group.
-	\return Editable entity of the group
-	*/
+	//! Get entity's AI group.
+	//! \return Editable entity of the group
 	SCR_EditableEntityComponent GetAIGroup()
 	{
 		return null;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get entity which represents this entity as AI
-	\return Editable entity
-	*/
+	//! Get entity which represents this entity as AI
+	//! \return Editable entity
 	SCR_EditableEntityComponent GetAIEntity()
 	{
 		return null;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get vehicle the entity's in
-	\return Editable entity of the vehicle
-	*/
+	//! Get vehicle the entity's in
+	//! \return Editable entity of the vehicle
 	SCR_EditableEntityComponent GetVehicle()
 	{
 		return null;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get crew of vehicle or if in a vehicle get self.
-	\param[out] crewCompartmentAccess an array of CompartmentAccessComponent of all crew memebers
-	\param ignorePlayers will never return player CompartmentAccessComponent if true
-	\return int count of crew members
-	*/
-	int GetCrew(out notnull array<CompartmentAccessComponent> crewCompartmentAccess, bool ignorePlayers = true)
-	{
-		return 0;
-	}
+	//! Get crew of vehicle or if in a vehicle get self.
+	//! \param[out] crewCompartmentAccess an array of CompartmentAccessComponent of all crew memebers
+	//! \param[in] ignorePlayers will never return player CompartmentAccessComponent if true
+	//! \return count of crew members
+	// to be overridden
+	int GetCrew(out notnull array<CompartmentAccessComponent> crewCompartmentAccess, bool ignorePlayers = true);
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get entity health
-	\return Health value in range 0-1
-	*/
+	//! Get entity health
+	//! \return Health value in range 0-1
 	float GetHealth()
 	{
 		if (!m_Owner)
@@ -457,9 +415,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return If destroying of entity is allowed. Does not check if entity is destroyed already. Use IsDestroyed() for this
-	*/
+	//! \return if destroying of entity is allowed. Does not check if entity is destroyed already. Use IsDestroyed() for this
 	bool CanDestroy()
 	{
 		DamageManagerComponent damageManager = DamageManagerComponent.Cast(GetOwner().FindComponent(DamageManagerComponent));
@@ -467,14 +423,13 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check if the entity is destroyed.
-	\return True when destroyed
-	*/
+	//! Check if the entity is destroyed.
+	//! \return true when destroyed
 	bool IsDestroyed()
 	{
 		if (!m_Owner)
 			return true;
+
 		DamageManagerComponent damageManager = DamageManagerComponent.Cast(m_Owner.FindComponent(DamageManagerComponent));
 		if (damageManager)
 			return damageManager.GetState() == EDamageState.DESTROYED;
@@ -483,15 +438,13 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Set entity as static.
-	When static, entity's position is not calculated each frame. Instead, cached position is used.
-	Calling this function with isStatic=true refreshes cached position based on the current position.
-	Use only for entities that are not expected to move!
-	Certain entity types cannot be set as static, and this command will ignore them.
-	Ignored types are GROUP, CHARACTER and VEHICLE.
-	\param isStatic True to set as static
-	*/
+	//! Set entity as static.
+	//! When static, entity's position is not calculated each frame. Instead, cached position is used.
+	//! Calling this function with isStatic=true refreshes cached position based on the current position.
+	//! Use only for entities that are not expected to move!
+	//! Certain entity types cannot be set as static, and this command will ignore them.
+	//! Ignored types are GROUP, CHARACTER and VEHICLE.
+	//! \param[in] isStatic True to set as static
 	void SetStatic(bool isStatic)
 	{
 		if (isStatic && m_Owner.GetFlags() & EntityFlags.ACTIVE)
@@ -506,20 +459,16 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check if the entity is marked as static.
-	\return True if static
-	*/
+	//! Check if the entity is marked as static.
+	//! \return true if static
 	bool GetStatic()
 	{
 		return m_bStatic;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Update static cached position.
-	Doesn't do anything when the entity is not marked as static.
-	*/
+	//! Update static cached position.
+	//! Doesn't do anything when the entity is not marked as static.
 	void UpdateStaticPos()
 	{
 		if (!m_bStatic)
@@ -531,10 +480,8 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Mark hierarchy in all parents of the entity as dirty, i.e., modified by user.
-	Used for example to evaluate if the entity should be saved into a save file in its entirety.
-	*/
+	//! Mark hierarchy in all parents of the entity as dirty, i.e., modified by user.
+	//! Used for example to evaluate if the entity should be saved into a save file in its entirety.
 	void SetHierarchyAsDirtyInParents()
 	{
 		if (!IsServer()) //--- Server-only flag
@@ -549,23 +496,19 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Mark entity hierarchy as dirty, i.e., modified by user.
-	Used for example to evaluate if the entity should be saved into a save file in its entirety.
-	*/
+	//! Mark entity hierarchy as dirty, i.e., modified by user.
+	//! Used for example to evaluate if the entity should be saved into a save file in its entirety.
 	void SetHierarchyAsDirty()
 	{
 		m_Flags |= EEditableEntityFlag.DIRTY_HIERARCHY;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Update transformation of the entity and all its editor children and broadcast the changes to all clients.
-	\param transform Target transformation
-	*/
+	//! Update transformation of the entity and all its editor children and broadcast the changes to all clients.
+	//! \param[in] transform Target transformation
 	void SetTransformWithChildren(vector transform[4])
 	{
-		if (!IsServer() || !m_Owner)
+		if (!m_Owner || !IsServer())
 			return;
 
 		SCR_EditorPreviewParams params = SCR_EditorPreviewParams.CreateParams(transform, verticalMode: EEditorTransformVertical.TERRAIN);
@@ -573,11 +516,9 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Update entity's transformation and broadcast the changes to all clients.
-	\param transform Target transformation
-	\param changedByUser True when the change was initiated by user
-	*/
+	//! Update entity's transformation and broadcast the changes to all clients.
+	//! \param[in] transform Target transformation
+	//! \param[in] changedByUser True when the change was initiated by user
 	void SetTransform(vector transform[4], bool changedByUser = false)
 	{
 		if (!IsServer() || !m_Owner)
@@ -690,10 +631,8 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Kill/destroy this editable entity.
-	\return True if destroyed
-	*/
+	//! Kill/destroy this editable entity.
+	//! \return true if destroyed
 	bool Destroy()
 	{
 		if (IsServer())
@@ -709,12 +648,10 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Delete this editable entity.
-	\param changedByUser True when the change was initiated by user
-	\param updateNavmesh True to update navmesh after the entity is deleted (set to false when deleting children of already deleted entity)
-	\return True if deleted
-	*/
+	//! Delete this editable entity.
+	//! \param[in] changedByUser True when the change was initiated by user
+	//! \param[in] updateNavmesh True to update navmesh after the entity is deleted (set to false when deleting children of already deleted entity)
+	//! \return true if deleted
 	bool Delete(bool changedByUser = false, bool updateNavmesh = true)
 	{
 		if (!IsServer())
@@ -752,6 +689,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	RplId GetOwnerRplId()
 	{
 		RplComponent rpl = GetRplComponent();
@@ -762,20 +700,16 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get squared maximum distance in which this entity is drawn in editor (e.g., with an icon).
-	\return Squared distance in metres
-	*/
+	//! Get squared maximum distance in which this entity is drawn in editor (e.g., with an icon).
+	//! \return Squared distance in metres
 	float GetMaxDrawDistanceSq()
 	{
 		return m_fMaxDrawDistance;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Set maximum distance in which this entity is drawn in editor (e.g., with an icon).
-	\param maxDrawDistance Distance in metres
-	*/
+	//! Set maximum distance in which this entity is drawn in editor (e.g., with an icon).
+	//! \param[in] maxDrawDistance Distance in metres
 	void SetMaxDrawDistance(float maxDrawDistance)
 	{
 		if (maxDrawDistance <= 0)
@@ -785,11 +719,11 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get editable entity component on given entity.
-	\param entity
-	\return Editable entity component (if the entity has one)
-	*/
+	//!
+	//! Get editable entity component on given entity.
+	//! \param[in] entity
+	//! \return Editable entity component (if the entity has one)
+	//!
 	static SCR_EditableEntityComponent GetEditableEntity(IEntity owner)
 	{
 		if (owner)
@@ -799,27 +733,24 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get entity budget costs.
-	\param outBudgets Array to be filled with budget values
-	\return True if the entity cost should be based on outBudgets array, return false to fallback on entityType cost, return true with an empty array to avoid fallback entityType cost
-	*/
+	//! Get entity budget costs.
+	//! \param[out] outBudgets Array to be filled with budget values
+	//! \param[in] owner
+	//! \return true if the entity cost should be based on outBudgets array, return false to fallback on entityType cost, return true with an empty array to avoid fallback entityType cost
 	bool GetEntityBudgetCost(out notnull array<ref SCR_EntityBudgetValue> outBudgets, IEntity owner = null)
 	{
 		SCR_EditableEntityUIInfo editableEntityUIInfo = SCR_EditableEntityUIInfo.Cast(GetInfo(owner));
 		if (editableEntityUIInfo)
-		{
 			editableEntityUIInfo.GetEntityBudgetCost(outBudgets);
-		}
+
 		return !outBudgets.IsEmpty();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get entity budget costs including cost of children (for groups/compositions)
-	\param outBudgets Array to be filled with budget values
-	\return True if the entity cost should be based on outBudgets, return false to fallback on entityType cost, return true with an empty array to avoid fallback entityType cost
-	*/
+	//! Get entity budget costs including cost of children (for groups/compositions)
+	//! \param[out] outBudgets Array to be filled with budget values
+	//! \param[in] owner
+	//! \return true if the entity cost should be based on outBudgets, return false to fallback on entityType cost, return true with an empty array to avoid fallback entityType cost
 	bool GetEntityChildrenBudgetCost(out notnull array<ref SCR_EntityBudgetValue> outBudgets, IEntity owner = null)
 	{
 		SCR_EditableEntityUIInfo editableEntityUIInfo = SCR_EditableEntityUIInfo.Cast(GetInfo(owner));
@@ -829,14 +760,24 @@ class SCR_EditableEntityComponent : ScriptComponent
 		}
 		return !outBudgets.IsEmpty();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get budgets for both, entity and it's children.
+	//! \param[out] outBudgets Array to be filled with budget values
+	bool GetEntityAndChildrenBudgetCost(out notnull array<ref SCR_EntityBudgetValue> outBudgets, IEntity owner = null)
+	{
+		SCR_EditableEntityUIInfo editableEntityUIInfo = SCR_EditableEntityUIInfo.Cast(GetInfo(owner));
+		if (editableEntityUIInfo)
+			editableEntityUIInfo.GetEntityAndChildrenBudgetCost(outBudgets);
+
+		return !outBudgets.IsEmpty();
+	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Can entity be duplicated by editor and which recipients should be passed to the duplicated entity
-	Overridden by other EditableEntityComponents
-	\param outRecipients editableEntityComponents that will be passed to the duplicated entity (Groupcomponent / FactionComponent)
-	\return True if entity can be duplicated
-	*/
+	//! Can entity be duplicated by editor and which recipients should be passed to the duplicated entity
+	//! Overridden by other EditableEntityComponents
+	//! \param[out] outRecipients editableEntityComponents that will be passed to the duplicated entity (Groupcomponent / FactionComponent)
+	//! \return true if entity can be duplicated
 	bool CanDuplicate(out notnull set<SCR_EditableEntityComponent> outRecipients)
 	{
 		if (HasEntityFlag(EEditableEntityFlag.NON_INTERACTIVE))
@@ -851,9 +792,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 			{
 				SCR_EditableFactionComponent factionDelegate = delegateFactionManager.GetFactionDelegate(faction);
 				if (factionDelegate)
-				{
 					outRecipients.Insert(factionDelegate);
-				}
 			}
 		}
 		return true;
@@ -861,17 +800,17 @@ class SCR_EditableEntityComponent : ScriptComponent
 
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Parent / child management
+	////////////////////////////////////////////////////////////////////////////////////////////////
 
-	/*! @name Hierarchy
-	Functions to manage hierarchy of the entity.
-	*/
-	///@{
+	//! @name Hierarchy
+	//! Functions to manage hierarchy of the entity.
+	//!
+	//! @{
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check if the entity can be moved to intended parent.
-	\param parentEntity New parent. Null when evaluating root.
-	*/
+	//! Check if the entity can be moved to intended parent.
+	//! \param[in] parentEntity New parent. Null when evaluating root.
+	//! \return
 	bool CanSetParent(SCR_EditableEntityComponent parentEntity)
 	{
 		SCR_EditableEntityInteraction interaction = GetEntityInteraction();
@@ -891,14 +830,12 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Set parent of the entity.
-	When placed inside a parent, the entity will inherit some of its settings, like access key or visibility settings.
-	Changing it is allowed only on server.
-	\param parentEntity New parent. When null, the entity will be moved to the root.
-	\param changedByUser True when the change was initiated by user
-	\return New parent (in case it changes inside)
-	*/
+	//! Set parent of the entity.
+	//! When placed inside a parent, the entity will inherit some of its settings, like access key or visibility settings.
+	//! Changing it is allowed only on server.
+	//! \param[in] parentEntity New parent. When null, the entity will be moved to the root.
+	//! \param[in] changedByUser True when the change was initiated by user
+	//! \return New parent (in case it changes inside)
 	SCR_EditableEntityComponent SetParentEntity(SCR_EditableEntityComponent parentEntity, bool changedByUser = false)
 	{
 		//--- Not on server or not replicated, ignore
@@ -943,10 +880,8 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Add the entity to its previous parent after it was unregistered using RemoveParentEntity()
-	Allowed only on server.
-	*/
+	//! Add the entity to its previous parent after it was unregistered using RemoveParentEntity()
+	//! Allowed only on server.
 	void RestoreParentEntity()
 	{
 		//--- Not on server or not replicated, ignore
@@ -962,11 +897,9 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Remove entity from its parent.
-	This will unregister the entity from the system, making it not editable.
-	Later, it can be enabled again by adding it to editable parent.
-	*/
+	//! Remove entity from its parent.
+	//! This will unregister the entity from the system, making it not editable.
+	//! Later, it can be enabled again by adding it to editable parent.
 	void RemoveParentEntity()
 	{
 		//--- Not on server or not replicated, ignore
@@ -982,21 +915,17 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get parent entity.
-	\return Parent entity
-	*/
+	//! Get parent entity.
+	//! \return Parent entity
 	SCR_EditableEntityComponent GetParentEntity()
 	{
 		return m_ParentEntity;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get hierarchy of all parent entities, all the way to the root.
-	\param[out] entities Array to be filled with parent entities
-	*/
-	void GetParentEntities(notnull array<SCR_EditableEntityComponent> entities)
+	//! Get hierarchy of all parent entities, all the way to the root.
+	//! \param[out] entities Array to be filled with parent entities
+	void GetParentEntities(out notnull array<SCR_EditableEntityComponent> entities)
 	{
 		entities.Clear();
 		SCR_EditableEntityComponent parent = GetParentEntity();
@@ -1008,11 +937,9 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check if the entity is in hierarchy of given entity.
-	\param entity Queried entity
-	\return True if it's in entity's hierarchy.
-	*/
+	//! Check if the entity is in hierarchy of given entity.
+	//! \param[in] entity Queried entity
+	//! \return true if it's in entity's hierarchy.
 	bool IsChildOf(SCR_EditableEntityComponent entity)
 	{
 		SCR_EditableEntityComponent parent = GetParentEntity();
@@ -1027,25 +954,22 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get direct reference to entity's immediate children.
-	Use when performance is important.
-	*DO NOT MODIFY THE LIST!*
-	\return Set of child entities, or null when the entity has no children
-	*/
+	//! Get direct reference to entity's immediate children.
+	//! Use when performance is important.
+	//! *DO NOT MODIFY THE LIST!*
+	//! \return Set of child entities, or null when the entity has no children
 	set<SCR_EditableEntityComponent> GetChildrenRef()
 	{
 		return m_Entities;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get child entities.
-	\param[out] entities Array to be filled with child entities
-	\param onlyDirect When true, only the direct descendants are returned, otherwise all children, children of children etc. are returned.
-	\param skipIgnored When true, entities flagged by IGNORE_LAYERS will not be included in the list
-	*/
-	void GetChildren(notnull set<SCR_EditableEntityComponent> entities, bool onlyDirect = false, bool skipIgnored = false)
+	//!
+	//! Get child entities.
+	//! \param[out] entities Array to be filled with child entities (NOT cleared before filling)
+	//! \param[in] onlyDirect When true, only the direct descendants are returned, otherwise all children, children of children etc. are returned.
+	//! \param[in] skipIgnored When true, entities flagged by IGNORE_LAYERS will not be included in the list
+	void GetChildren(out notnull set<SCR_EditableEntityComponent> entities, bool onlyDirect = false, bool skipIgnored = false)
 	{
 		if (!m_Entities)
 			return;
@@ -1062,13 +986,11 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get child entities with compatible key.
-	\param[out] entities Array to be filled with child entities
-	\param onlyDirect When true, only the direct descendants are returned, otherwise all children, children of children etc. are returned.
-	\param accessKey Return only entities with at least one key matching this value
-	*/
-	void GetChildren(notnull set<SCR_EditableEntityComponent> entities, bool onlyDirect, EEditableEntityAccessKey accessKey)
+	//! Get child entities with compatible key.
+	//! \param[out] entities Array to be filled with child entities
+	//! \param[in] onlyDirect When true, only the direct descendants are returned, otherwise all children, children of children etc. are returned.
+	//! \param[in] accessKey Return only entities with at least one key matching this value
+	void GetChildren(out notnull set<SCR_EditableEntityComponent> entities, bool onlyDirect, EEditableEntityAccessKey accessKey)
 	{
 		if (!m_Entities)
 			return;
@@ -1089,11 +1011,9 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get number of child entities.
-	\param onlyDirect When true, return only direct children, othwise count recursively in their children as well
-	\param Number of child entities
-	*/
+	//! Get number of child entities.
+	//! \param[in] onlyDirect When true, return only direct children, othwise count recursively in their children as well
+	//! \return number of child entities
 	int GetChildrenCount(bool onlyDirect = false)
 	{
 		if (!m_Entities)
@@ -1115,33 +1035,30 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get child on given index.
-	\param index Child index
-	\return Editable entity
-	*/
+	//! Get child on given index.
+	//! \param[in] index Child index
+	//! \return Editable entity
 	SCR_EditableEntityComponent GetChild(int index)
 	{
+		if (!m_Entities.IsIndexValid(index))
+			return null;
+
 		return m_Entities[index];
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check if the entity is also a layer, i.e., has some child entities.
-	\return True when layer.
-	*/
+	//! Check if the entity is also a layer, i.e., has some child entities.
+	//! \return true when layer.
 	bool IsLayer()
 	{
 		return m_Entities && !m_Entities.IsEmpty();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Checks if can enter layer.
-	\param layersManager give a layermanager ref, it will find the layer manager if left empty
-	\param toExtreme When enable, it will not move just one layer up, but all the way to root. And the same when moving down
-	\return false if no layermanager or if unable to enter layer
-	*/
+	//! Checks if can enter layer.
+	//! \param[in] layersManager give a layermanager ref, it will find the layer manager if left empty
+	//! \param[in] toExtreme When enable, it will not move just one layer up, but all the way to root. And the same when moving down
+	//! \return false if no layermanager or if unable to enter layer
 	bool CanEnterLayer(SCR_LayersEditorComponent layersManager = null, bool toExtreme = false)
 	{
 		if (!layersManager)
@@ -1158,26 +1075,20 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check if the entity is registered.
-	Registered entity is a child of either root in SCR_EditableEntityCore or one of already registered entities.
-	\return True when registered
-	*/
+	//! Check if the entity is registered.
+	//! Registered entity is a child of either root in SCR_EditableEntityCore or one of already registered entities.
+	//! \return true when registered
 	bool IsRegistered()
 	{
 		return m_bAutoRegister == -1;
 	}
-	///@}
+	//! @}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Authority Only, forces entities such as Character and Group to place characters into a specific vehicle position
-	\param forceVehicleCompartments compartment types to force for entity
-	*/
-	void ForceVehicleCompartments(notnull array<ECompartmentType> forceVehicleCompartments)
-	{
-
-	}
+	//! Authority Only, forces entities such as Character and Group to place characters into a specific vehicle position
+	//! \param[in] forceVehicleCompartments compartment types to force for entity
+	// to be overridden
+	void ForceVehicleCompartments(notnull array<ECompartmentType> forceVehicleCompartments);
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnParentEntityChanged(SCR_EditableEntityComponent parentEntity, SCR_EditableEntityComponent parentEntityPrev, bool changedByUser)
@@ -1251,7 +1162,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void OnRegistrationChanged(bool toRegister)
 	{
-		set<SCR_EditableEntityComponent> children = new set<SCR_EditableEntityComponent>;
+		set<SCR_EditableEntityComponent> children = new set<SCR_EditableEntityComponent>();
 		GetChildren(children);
 
 		if (toRegister)
@@ -1291,6 +1202,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
 		if (core)
 			core.RegisterEntity(this);
+
 		SetParentEntityBroadcast(m_ParentEntity, m_ParentEntity);
 
 		//--- Restore orphaned entites belonging to this parent
@@ -1316,9 +1228,9 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnCreatedServer(notnull SCR_PlacingEditorComponent placedEditorComponent)
-	{
-	}
+	//! \param[in] placedEditorComponent
+	// to be overridden
+	void OnCreatedServer(notnull SCR_PlacingEditorComponent placedEditorComponent);
 
 	//------------------------------------------------------------------------------------------------
 	protected void AddToParent(SCR_EditableEntityComponent parentEntity, bool changedByUser)
@@ -1372,6 +1284,8 @@ class SCR_EditableEntityComponent : ScriptComponent
 		//--- Add to game hierarchy as well
 		if (entity.HasEntityFlag(EEditableEntityFlag.GAME_HIERARCHY))
 			UpdateGameHierarchy(m_Owner, entity.GetOwner(), true);
+		
+		entity.SetEntityFlag(EEditableEntityFlag.VIRTUAL, true);
 
 		OnChildEntityChanged(entity, true);
 	}
@@ -1430,35 +1344,31 @@ class SCR_EditableEntityComponent : ScriptComponent
 
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- State (local)
-	/*!
-	Check if given entity state is active.
-	\param state
-	\return True if the state is active
-	*/
+	////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if given entity state is active.
+	//! \param[in] state
+	//! \return true if the state is active
 	bool HasEntityState(EEditableEntityState state)
 	{
 		return (m_EntityState & state) == state;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check bit array with all currently active states
-	\return Bit array
-	*/
+	//! Check bit array with all currently active states
+	//! \return Bit array
 	EEditableEntityState GetEntityStates()
 	{
 		return m_EntityState;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Set value of an entity state. Multiple states can exist at the same time (e.g., HOVER and SELECTED).
-
-	<b>State has only informational value!</b> For example setting it to SELECTED will not actually select the entity.
-	\param state Target state
-	\param toSet True to activate the state, false to deactivate
-	\param reset True to reset the currentt values before setting the new one
-	*/
+	//! Set value of an entity state. Multiple states can exist at the same time (e.g., HOVER and SELECTED).
+	//!
+	//! <b>State has only informational value!</b> For example setting it to SELECTED will not actually select the entity.
+	//! \param[in] state Target state
+	//! \param[in] toSet True to activate the state, false to deactivate
 	void SetEntityState(EEditableEntityState state, bool toSet)
 	{
 		if (toSet)
@@ -1485,9 +1395,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Reset all entity states.
-	*/
+	//! Reset all entity states.
 	void ResetEntityStates()
 	{
 		EEditableEntityState state = m_EntityState;
@@ -1495,64 +1403,67 @@ class SCR_EditableEntityComponent : ScriptComponent
 
 		if (HasEntityFlag(EEditableEntityFlag.VIRTUAL))
 			SetEntityStateInChildren(m_Owner, state, false);
-		/*
-		//--- Deconstruct state flags and call handlers on each individual flag
-		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
-		int state = 1;
-		while (m_EntityState > 0 && state < int.MAX)
-		{
-			if (m_EntityState & state)
-			{
-				SetEntityStateInChildren(m_Owner, state, false);
-				//if (core) core.Event_OnEntityStateChanged.Invoke(this, state, false);
-				m_EntityState -= state;
-			}
-			state *= 2;
-		}
-		*/
+
+//		//--- Deconstruct state flags and call handlers on each individual flag
+//		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
+//		int state = 1;
+//		while (m_EntityState > 0 && state < int.MAX)
+//		{
+//			if (m_EntityState & state)
+//			{
+//				SetEntityStateInChildren(m_Owner, state, false);
+//				//if (core) core.Event_OnEntityStateChanged.Invoke(this, state, false);
+//				m_EntityState -= state;
+//			}
+//			state *= 2;
+//		}
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check if a flag is active.
-	\param flag
-	\return True if the flag is active
-	*/
+	//! Check if a flag is active.
+	//! \param[in] flag
+	//! \return true if the flag is active
 	bool HasEntityFlag(EEditableEntityFlag flag)
 	{
 		return (m_Flags & flag) == flag;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get entity flags
-	\return Entity flags
-	*/
+	//! Get entity flags
+	//! \return Entity flags
 	EEditableEntityFlag GetEntityFlags()
 	{
 		return m_Flags;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Set entity flag.
-	\param flag Flag type
-	\return toSet True to set the flag
-	*/
+	//! Set entity flag.
+	//! \param[in] flag Flag type
+	//! \return toSet True to set the flag
 	void SetEntityFlag(EEditableEntityFlag flag, bool toSet)
 	{
 		if (toSet)
 		{
 			if (m_Flags & flag)
 				return;
+
 			m_Flags = m_Flags | flag;
 		}
 		else
 		{
 			if (!(m_Flags & flag))
 				return;
+
 			m_Flags = m_Flags &~ flag;
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Override the Entity flags.
+	//! \param[in] flags The flags to override to
+	void CopyEntityFlags(EEditableEntityFlag flags)
+	{
+		m_Flags = flags;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1591,37 +1502,64 @@ class SCR_EditableEntityComponent : ScriptComponent
 
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Visibility (local)
+	////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnVisibilityChanged()
 	{
 		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
-		if (!core)
-			return;
-		core.Event_OnEntityVisibilityChanged.Invoke(this);
+		if (core)
+			core.Event_OnEntityVisibilityChanged.Invoke(this);
 	}
 
-	/*! @name Visibility
-	Functions to manage visibility of the entity.
-	*/
-	///@{
+	//! @name Visibility
+	//! Functions to manage visibility of the entity.
+	//!
+	//! @{
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Set entity visibility. When set to false, the entity will not be shown to the user.
-	Visibility is local to editor user.
-	\param show True to show, false to hide
-	*/
+	//! Set entity visibility. When set to false, the entity will not be shown to the user.
+	//! Visibility is local to editor user.
+	//! \param[in] show true to show, false to hide
 	void SetVisible(bool show)
 	{
-		//SetEntityState(EEditableEntityState.VISIBLE, show, !show);
 		m_bVisible = show;
 		OnVisibilityChanged();
+
+		RplComponent rpl = GetRplComponent();
+		if (rpl && !rpl.IsProxy())
+			Replication.BumpMe();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check visibility setting of the entity.
-	\return True if the entity is set as visible
-	*/
+	//!
+	//! \param[in] enable
+	void EnableVisibilityReplication(bool enable)
+	{
+		RplComponent rpl = GetRplComponent();
+		if (!rpl || rpl.IsProxy())
+			return;
+
+		m_bEnabledVisibilityReplication = enable;
+		Replication.BumpMe();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	bool CanReplicateVisibility()
+	{
+		return m_bEnabledVisibilityReplication;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnRplVisibilityChanged()
+	{
+		SetVisible(m_bVisible);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Check visibility setting of the entity.
+	//! \return true if the entity is set as visible
 	bool GetVisibleSelf()
 	{
 		//return HasEntityState(EEditableEntityState.VISIBLE);
@@ -1629,10 +1567,8 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check visibility setting of the entity in hierarchy (e.g., if an entity is set as visible, but its parent is not, false will be returned).
-	\return True if the entity is visible in hierarchy
-	*/
+	//! Check visibility setting of the entity in hierarchy (e.g., if an entity is set as visible, but its parent is not, false will be returned).
+	//! \return true if the entity is visible in hierarchy
 	bool GetVisibleInHierarchy()
 	{
 		if (m_ParentEntity)
@@ -1644,6 +1580,9 @@ class SCR_EditableEntityComponent : ScriptComponent
 
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Access key
+	////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void OnAccessKeyChanged(EEditableEntityAccessKey accessKey)
 	{
@@ -1670,18 +1609,17 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*! @name Access Key
-	Functions to manage access key.
-	- Access key is shared over network and define who has rights to edit the entity.
-	- Key is a flag composed of multiple EEditableEntityAccessKey values.
-	- When at least one of the values is compatible with editor key values, the entity will become available.
-	*/
-	///@{
-	/*!
-	Add access key.
-	Available only on server!
-	\param accessKey Key to be added
-	*/
+	//! @name Access Key
+	//! Functions to manage access key.
+	//! - Access key is shared over network and define who has rights to edit the entity.
+	//! - Key is a flag composed of multiple EEditableEntityAccessKey values.
+	//! - When at least one of the values is compatible with editor key values, the entity will become available.*
+	//!
+	//! @{
+
+	//! Add access key.
+	//! Available only on server!
+	//! \param[in] accessKey Key to be added
 	void AddAccessKey(EEditableEntityAccessKey accessKey)
 	{
 		if (!IsServer()/* || !IsReplicated()*/ || HasAccessSelf(accessKey))
@@ -1694,11 +1632,9 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Remove access key.
-	Available only on server!
-	\param accessKey Key to be removed
-	*/
+	//! Remove access key.
+	//! Available only on server!
+	//! \param[in] accessKey Key to be removed
 	void RemoveAccessKey(EEditableEntityAccessKey accessKey)
 	{
 		if (!IsServer()/* || !IsReplicated()*/ || !HasAccessSelf(accessKey))
@@ -1710,10 +1646,8 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Clear all access keys.
-	Available only on server!
-	*/
+	//! Clear all access keys.
+	//! Available only on server!
 	void ClearAccessKeys()
 	{
 		if (!IsServer()/* || !IsReplicated()*/)
@@ -1726,32 +1660,26 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get entity's access key.
-	\return Access key
-	*/
+	//! Get entity's access key.
+	//! \return Access key
 	EEditableEntityAccessKey GetAccessKey()
 	{
 		return m_AccessKey;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check access key of the entity.
-	\param accessKey Access key which be checked in entity's access key
-	\return True if given access key and entity's access key is compatible
-	*/
+	//! Check access key of the entity.
+	//! \param[in] accessKey Access key which be checked in entity's access key
+	//! \return true if given access key and entity's access key is compatible
 	bool HasAccessSelf(EEditableEntityAccessKey accessKey)
 	{
 		return m_AccessKey & accessKey;// || accessKey == int.MAX; //--- Enable this to let admin see also entities without any key
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check acces keys of the entity in hierarchy (e.g., if an entity is compatible, but its parent is not, false will be returned).
-	\param accessKey Access key which be checked in entity's access key
-	\return True if given access key and entity's access key is compatible
-	*/
+	//! Check acces keys of the entity in hierarchy (e.g., if an entity is compatible, but its parent is not, false will be returned).
+	//! \param[in] accessKey Access key which be checked in entity's access key
+	//! \return true if given access key and entity's access key is compatible
 	bool HasAccessInHierarchy(EEditableEntityAccessKey accessKey)
 	{
 		if (m_ParentEntity)
@@ -1761,10 +1689,8 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check access key of the entity compared to those defined in SCR_AccessKeysEditorComponent.
-	\return True if given access key and entity's access key are compatible
-	*/
+	//! Check access key of the entity compared to those defined in SCR_AccessKeysEditorComponent.
+	//! \return true if given access key and entity's access key are compatible
 	bool HasAccessSelf()
 	{
 		SCR_AccessKeysEditorComponent accessKeysComponent = SCR_AccessKeysEditorComponent.Cast(SCR_AccessKeysEditorComponent.GetInstance(SCR_AccessKeysEditorComponent));
@@ -1775,11 +1701,9 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check access key of the entity in hierarchy (e.g., if an entity is compatible, but its parent is not, false will be returned).
-	Compared with the key defined in SCR_AccessKeysEditorComponent.
-	\return True if given access key and entity's access key are compatible
-	*/
+	//! Check access key of the entity in hierarchy (e.g., if an entity is compatible, but its parent is not, false will be returned).
+	//! Compared with the key defined in SCR_AccessKeysEditorComponent.
+	//! \return true if given access key and entity's access key are compatible
 	bool HasAccessInHierarchy()
 	{
 		SCR_AccessKeysEditorComponent accessKeysComponent = SCR_AccessKeysEditorComponent.Cast(SCR_AccessKeysEditorComponent.GetInstance(SCR_AccessKeysEditorComponent));
@@ -1792,6 +1716,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Support Functions
+	////////////////////////////////////////////////////////////////////////////////////////////////
 
 	//------------------------------------------------------------------------------------------------
 	//--- Will send event for GUI to refresh instantly, to be called from inherited classes in case initialization takes a bit longer.
@@ -1837,6 +1762,11 @@ class SCR_EditableEntityComponent : ScriptComponent
 
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Log
+	////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] prefix
+	//! \return
 	string GetLogText(string prefix = "")
 	{
 		string displayName = GetDisplayName();
@@ -1855,12 +1785,10 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Print out entity information.
-	\param prefix Text added before the printed text
-	\param onlyDirect When true, only the direct descendants are logged, otherwise all children, children of children etc. are logged.
-	\param logLevel Log level type
-	*/
+	//! Print out entity information.
+	//! \param[in] prefix Text added before the printed text
+	//! \param[in] onlyDirect When true, only the direct descendants are logged, otherwise all children, children of children etc. are logged.
+	//! \param[in] logLevel Log level type
 	void Log(string prefix = "", bool onlyDirect = false, LogLevel logLevel = LogLevel.DEBUG)
 	{
 		if (!m_Owner)
@@ -1890,11 +1818,9 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Print out the entity and all its descendants which are compatible with given key.
-	\param prefix Text added before the printed text
-	\param accessKey Access key which be checked in entity's access key
-	*/
+	//! Print out the entity and all its descendants which are compatible with given key.
+	//! \param[in] prefix Text added before the printed text
+	//! \param[in] accessKey Access key which be checked in entity's access key
 	void Log(string prefix, EEditableEntityAccessKey accessKey)
 	{
 		if (!m_Owner)
@@ -1916,9 +1842,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Print out entity's access key
-	*/
+	//! Print out entity's access key
 	void LogAccessKey()
 	{
 		string output = "";
@@ -1943,34 +1867,34 @@ class SCR_EditableEntityComponent : ScriptComponent
 
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- External events
+	////////////////////////////////////////////////////////////////////////////////////////////////
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Event called on server when the entity is placed in the editor.
-	\param[out] parent Editable entity in which the new one is being created (rewrite the variable the change the parent)
-	\param recipient Entity that receives this editable entity (e.g., a group receiving a waypoint)
-	\param isQueue True if the entity was placed in a queue (i.e., placing remains active)
-	\param flags Placing flags enabled by user
-	\return Editable entity which is added to editor hieraechy (can be overloaded, e.g., to provide group after spawning a character)
-	*/
-	SCR_EditableEntityComponent EOnEditorPlace(out SCR_EditableEntityComponent parent, SCR_EditableEntityComponent recipient, EEditorPlacingFlags flags, bool isQueue)
+	//! Event called on server when the entity is placed in the editor.
+	//! \param[out] parent Editable entity in which the new one is being created (rewrite the variable the change the parent)
+	//! \param[in] recipient Entity that receives this editable entity (e.g., a group receiving a waypoint)
+	//! \param[in] flags Placing flags enabled by user
+	//! \param[in] isQueue true if the entity was placed in a queue (i.e., placing remains active)
+	//! \param[in] playerID ID of the player placing the entity.
+	//! \return Editable entity which is added to editor hieraechy (can be overloaded, e.g., to provide group after spawning a character)
+	SCR_EditableEntityComponent EOnEditorPlace(out SCR_EditableEntityComponent parent, SCR_EditableEntityComponent recipient, EEditorPlacingFlags flags, bool isQueue, int playerID = 0)
 	{
 		return this;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Event called on server when the session is being loaded by SCR_EditableEntityStruct
-	\param parent Editable entity in which the new one is being created
-	*/
+	//! Event called on server when the session is being loaded by SCR_EditableEntityStruct
+	//! \param[in] parent Editable entity in which the new one is being created
 	void EOnEditorSessionLoad(SCR_EditableEntityComponent parent)
 	{
 		SCR_AIWorld aiWorld = SCR_AIWorld.Cast(GetGame().GetAIWorld());
 		if (aiWorld)
 			aiWorld.RequestNavmeshRebuildEntity(GetOwnerScripted());
 	}
+
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Default functions
+	////////////////////////////////////////////////////////////////////////////////////////////////
 
 	//------------------------------------------------------------------------------------------------
 	//--- JIP on server
@@ -2004,6 +1928,9 @@ class SCR_EditableEntityComponent : ScriptComponent
 		//--- Marked as -1 in constructor when edit mode is active
 		if (m_EntityState == -1)
 			return;
+		
+		if (m_OnDeleted)
+			m_OnDeleted.Invoke(owner);
 
 		//--- Delete entities in editor hierarchy
 		if (IsServer() && m_Entities)
@@ -2069,12 +1996,14 @@ class SCR_EditableEntityComponent : ScriptComponent
 
 		//--- Register to the system
 		if (IsServer())
-		{
 			SetParentEntityBroadcast(m_ParentEntity, m_ParentEntity, isAutoRegistration: true);
-		}
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_EditableEntityComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_DISABLE))
@@ -2123,10 +2052,4 @@ class SCR_EditableEntityComponent : ScriptComponent
 		if (m_bAutoRegister == EEditableEntityRegister.WHEN_SPAWNED && !m_Owner.IsLoaded())
 			m_bAutoRegister = EEditableEntityRegister.ALWAYS;
 	}
-
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_EditableEntityComponent()
-	{
-
-	}
-};
+}

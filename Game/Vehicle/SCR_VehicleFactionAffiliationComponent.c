@@ -94,11 +94,11 @@ class SCR_VehicleFactionAffiliationComponent: SCR_FactionAffiliationComponent
 			if ((ignoreOccupant == occupant))
 				continue;
 			
-			ChimeraCharacter char = ChimeraCharacter.Cast(occupant);
-			if (!char)
+			ChimeraCharacter character = ChimeraCharacter.Cast(occupant);
+			if (!character)
 				continue;
 			
-			SCR_CharacterControllerComponent contr = SCR_CharacterControllerComponent.Cast(char.GetCharacterController());
+			CharacterControllerComponent contr = character.GetCharacterController();
 			if (!contr)
 				continue;
 			
@@ -118,7 +118,7 @@ class SCR_VehicleFactionAffiliationComponent: SCR_FactionAffiliationComponent
 	}
 	
 	//--------------------------------------------------------------------------------------------------------------------------
-	void OnOccupantLifeStateChanged(ECharacterLifeState lifeState)
+	void OnOccupantLifeStateChanged(ECharacterLifeState previousLifeState, ECharacterLifeState newLifeState)
 	{
 		UpdateOccupantsCount();
 	}	

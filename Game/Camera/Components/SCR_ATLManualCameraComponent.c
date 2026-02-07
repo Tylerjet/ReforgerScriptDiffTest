@@ -1,16 +1,13 @@
+//! @ingroup ManualCamera
+
+//! Movement above terrain surface.
+//!
+//! Based on limits defined by m_fATLMinHeight and m_fATLMaxHeight:
+//! - When below min height, camera follows terrain precisely.
+//! - When between min and max heights, camera tries to follow the terrain, but the ffect gets weaker as the height increases.
+//! - When above max height, camera moves above sea level.
 [BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
-/** @ingroup ManualCamera
-*/
-
-/*!
-Movement above terrain surface.
-
-Based on limits defined by m_fATLMinHeight and m_fATLMaxHeight:
-- When below min height, camera follows terrain precisely.
-- When between min and max heights, camera tries to follow the terrain, but the ffect gets weaker as the height increases.
-- When above max height, camera moves above sea level.
-*/
-class SCR_ATLManualCameraComponent: SCR_BaseManualCameraComponent
+class SCR_ATLManualCameraComponent : SCR_BaseManualCameraComponent
 {
 	[Attribute(defvalue: "5", desc: "Below this height, camera copies terrain height precisely.")]	
 	private int m_fATLMinHeight;
@@ -18,16 +15,19 @@ class SCR_ATLManualCameraComponent: SCR_BaseManualCameraComponent
 	[Attribute(defvalue: "50", desc: "When the camera is above this height, it moves ASL, not ATL.")]	
 	private int m_fATLMaxHeight;
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraFrame(SCR_ManualCameraParam param)
 	{
-		if (!param.isDirty) return;
+		if (!param.isDirty)
+			return;
 		
 		//--- Get target height
 		vector pos = param.transform[3];
 		float height = pos[1] - Math.Max(param.world.GetSurfaceY(pos[0], pos[2]), 0);
 		
 		//--- Terminate when the height is above threshold
-		if (height > m_fATLMaxHeight) return;
+		if (height > m_fATLMaxHeight)
+			return;
 		
 		//--- Get original height
 		vector posOrig = param.transformOriginal[3];
@@ -39,14 +39,17 @@ class SCR_ATLManualCameraComponent: SCR_BaseManualCameraComponent
 		
 		//--- Apply manual input
 		float inputDiff = 0;
-		if (param.isManualInput) inputDiff = pos[1] - posOrig[1];
+		if (param.isManualInput)
+			inputDiff = pos[1] - posOrig[1];
 		
 		//--- Apply transormation
 		pos[1] = pos[1] + heightInterpolated + inputDiff;
 		param.transform[3] = pos;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool EOnCameraInit()
 	{
 		return true;
 	}
-};
+}

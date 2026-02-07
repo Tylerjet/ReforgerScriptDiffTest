@@ -11,33 +11,37 @@ class SCR_BaseInteractiveLightComponentClass : SCR_BaseLightComponentClass
 	private float m_fLV;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetLightLV()
 	{
 		return m_fLV;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
+	// lighting?
 	bool IsGradualLightningOn()
 	{
 		return m_bGradualLightning;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ref array<ref SCR_BaseLightData> GetLightData()
 	{
 		return m_aLightData;
 	}
-};
+}
 
 enum ELightState
 {
 	LIT = 0,
 	LIT_ON_SPAWN = 1,
 	OFF = 2,
-};
+}
 
 class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
-{	
+{
 	protected ref array<LightEntity> m_aLights;
 	protected ParametricMaterialInstanceComponent m_EmissiveMaterialComponent;
 	protected float m_fCurLV;
@@ -51,15 +55,16 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 	protected const static int MATERIAL_EMISSIVITY_ON = 30;
 	protected const static float LIGHT_EMISSIVITY_START = 0.1;
 	protected const static int MATERIAL_EMISSIVITY_START = 1;
-	protected const static int LIGHT_EMISSIVITY_OFF = 0;	
+	protected const static int LIGHT_EMISSIVITY_OFF = 0;
 	protected const static int UPDATE_LIGHT_TIME = 100;
 	
 	[Attribute(defvalue: "0", uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(ELightState))]
 	private ELightState m_eInitialLightState;
 		
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetInitialState()
-	{		
+	{
 		switch (m_eInitialLightState)
 		{
 			case ELightState.LIT:
@@ -68,6 +73,7 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 			case ELightState.LIT_ON_SPAWN:
 				if (GetOwner().IsLoaded())
 					return false;
+
 				return true;
 				
 			case ELightState.OFF:
@@ -78,29 +84,30 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsOn()
 	{
 		return m_bIsOn;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] turnOn
+	//! \param[in] skipTransition
+	//! \param[in] playSound
 	void ToggleLight(bool turnOn, bool skipTransition = false, bool playSound = true)
 	{
-		if (!GetGame().InPlayMode() || m_bIsOn == turnOn)
-			return;	
+		if (m_bIsOn == turnOn || !GetGame().InPlayMode())
+			return;
 		
 		SCR_BaseInteractiveLightComponentClass componentData = SCR_BaseInteractiveLightComponentClass.Cast(GetComponentData(GetOwner()));
-		if (!componentData) 
+		if (!componentData)
 			return;
 		
 		if (turnOn)
-		{			
 			TurnOn(componentData, skipTransition, playSound);
-		}
 		else
-		{
 			TurnOff(componentData, playSound);
-		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -114,15 +121,15 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 		
 		// Play sound
 		if (!System.IsConsoleApp())
-		{		
+		{
 			if (playSound)
 			{
 				SoundComponent soundComponent = SoundComponent.Cast(owner.FindComponent(SoundComponent));
 				if (soundComponent)
 					soundComponent.SoundEvent(SCR_SoundEvent.SOUND_TURN_ON);
-			}	
+			}
 			
-			SignalsManagerComponent signalsManagerComponent = SignalsManagerComponent.Cast(owner.FindComponent(SignalsManagerComponent));	
+			SignalsManagerComponent signalsManagerComponent = SignalsManagerComponent.Cast(owner.FindComponent(SignalsManagerComponent));
 			if (signalsManagerComponent)
 				signalsManagerComponent.SetSignalValue(signalsManagerComponent.AddOrFindSignal("Trigger"), 1);
 		}
@@ -130,19 +137,20 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 		if (!m_aLights)
 			m_aLights = {};
 		
-		for (int i = 0, count = componentData.GetLightData().Count(); i < count; i++)
-		{			
-			if (!componentData.GetLightData()[i])
+		
+		foreach (SCR_BaseLightData lightData : componentData.GetLightData())
+		{
+			if (!lightData)
 				continue;
 			
 			vector mat[4];
 			owner.GetTransform(mat);
 			
-			lightOffset = componentData.GetLightData()[i].GetLightOffset();
-			lightDirection = (componentData.GetLightData()[i].GetLightConeDirection().Multiply4(mat) - lightOffset.Multiply4(mat)).Normalized();
+			lightOffset = lightData.GetLightOffset();
+			lightDirection = (lightData.GetLightConeDirection().Multiply4(mat) - lightOffset.Multiply4(mat)).Normalized();
 			pos = owner.GetOrigin() + lightOffset;
 			
-			light = CreateLight(componentData.GetLightData()[i], pos, lightDirection, LIGHT_EMISSIVITY_START);
+			light = CreateLight(lightData, pos, lightDirection, LIGHT_EMISSIVITY_START);
 			if (!light)
 				continue;
 						
@@ -150,11 +158,11 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 			light.SetFlags(EntityFlags.PROXY);
 			m_aLights.Insert(light);
 		}
-
+		
 		m_bIsOn = true;
 		m_bUpdate = true;
 
-		// Skip transition phase of the light.		
+		// Skip transition phase of the light.
 		if (skipTransition || !componentData.IsGradualLightningOn())
 		{
 			if (m_EmissiveMaterialComponent)
@@ -181,7 +189,7 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 		// Play sound
 		if (!System.IsConsoleApp())
 		{
-			IEntity owner = GetOwner();						
+			IEntity owner = GetOwner();
 			SignalsManagerComponent signalsManagerComponent = SignalsManagerComponent.Cast(owner.FindComponent(SignalsManagerComponent));
 						
 			if (playSound)
@@ -196,7 +204,7 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 		}
 		
 		if (!componentData.GetLightData().IsEmpty())
-		{				
+		{
 			RemoveLights();
 				
 			if (m_EmissiveMaterialComponent)
@@ -206,7 +214,7 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 		ClearEventMask(GetOwner(), EntityEvent.VISIBLE);
 		m_bIsOn = false;
 		m_bUpdate = false;
-	}	
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void EOnVisible(IEntity owner, int frameNumber)
@@ -215,10 +223,10 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 			return;
 		
 		SCR_BaseInteractiveLightComponentClass componentData = SCR_BaseInteractiveLightComponentClass.Cast(GetComponentData(GetOwner()));
-		if (!componentData) 
-			return;		
+		if (!componentData)
+			return;
 				
-		if (!m_aLights)	
+		if (!m_aLights)
 			return;
 		
 		bool shouldUpdate = true;
@@ -275,7 +283,7 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
-	{		
+	{
 		super.OnPostInit(owner);
 		
 		m_EmissiveMaterialComponent = ParametricMaterialInstanceComponent.Cast(owner.FindComponent(ParametricMaterialInstanceComponent));
@@ -284,20 +292,17 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void RemoveLights()
 	{
-		if (m_aLights && !m_aLights.IsEmpty())
-		{
-			for (int i = 0, count = m_aLights.Count(); i < count; i++)
-			{
-				delete m_aLights[i];
-			}
-		}
-		
 		if (m_aLights)
 		{
+			foreach (LightEntity light : m_aLights)
+			{
+				delete light;
+			}
+			
 			m_aLights.Clear();
-			m_aLights = null;
 		}
 	}
 	
@@ -308,4 +313,4 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 		
 		RemoveLights();
 	}
-};
+}

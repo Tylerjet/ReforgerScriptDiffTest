@@ -7,9 +7,7 @@ class SCR_SupplyMoveItemHintUIInfo : SCR_BaseSupplyItemHintUIInfo
 		if (!super.CanBeShown(item, focusedSlot))
 			return false;
 		
-		float supplies;
-		GetSupplyAmounts(item, supplies);
-		
-		return supplies > 0;
+		float totalResources, maxResources;
+		return SCR_ResourceSystemHelper.GetStoredAndMaxResources(m_ResourceComponent, totalResources, maxResources);
 	}
 }

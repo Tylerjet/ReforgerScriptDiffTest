@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(configRoot: true), BaseContainerCustomTitleField("m_sLoadoutName")]
 class SCR_PlayerLoadout : SCR_BasePlayerLoadout
 {
@@ -10,8 +9,7 @@ class SCR_PlayerLoadout : SCR_BasePlayerLoadout
 	
 	[Attribute("", UIWidgets.ResourceNamePicker, params: "edds")]
 	ResourceName m_sLoadoutImage;
-	
-	
+
 	//------------------------------------------------------------------------------------------------
 	override ResourceName GetLoadoutResource()
 	{
@@ -29,4 +27,4 @@ class SCR_PlayerLoadout : SCR_BasePlayerLoadout
 	{
 		return m_sLoadoutName;
 	}
-};
+}

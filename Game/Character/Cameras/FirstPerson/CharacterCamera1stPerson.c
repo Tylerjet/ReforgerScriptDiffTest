@@ -59,7 +59,8 @@ class CharacterCamera1stPerson extends CharacterCameraBase
 			pOutResult.m_CameraTM[3] = m_LookPositionOverrideLS;
 		
 		vector vYPR = "0 0 0";
-		vYPR[1] = m_OwnerCharacter.GetLocalYawPitchRoll()[1];
+		if (!m_bIgnoreCharacterPitch)
+			vYPR[1] = m_OwnerCharacter.GetLocalYawPitchRoll()[1];
 		vector mat[4];
 		Math3D.AnglesToMatrix(vYPR, mat);
 		Math3D.MatrixMultiply4(mat, pOutResult.m_CameraTM, pOutResult.m_CameraTM);

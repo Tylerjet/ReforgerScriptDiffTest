@@ -1,27 +1,32 @@
-//------------------------------------------------------------------------------------------------
 //! Map marker object base class 
+//! Created through SCR_MapMarkerManagerComponent API
 class SCR_MapMarkerBase
 {
-	protected const int SERIALIZED_BYTES = 26;	// total amount of serialized bytes withotut custom string
+	protected const int SERIALIZED_BYTES = 34;	// total amount of serialized bytes without custom string
 	
 	// synchronized 
 	protected SCR_EMapMarkerType m_eType;	// config type
 	protected int m_iMarkerID = -1;			// network ID, -1 means the marker is not set as synchronized
 	protected int m_iConfigID = -1;			// config id used when marker of a single type has bigger amount of configuration options
-	protected int m_MarkerOwnerID;			// owner playerID
+	protected int m_iMarkerOwnerID = -1;	// owner playerID, -1 is dedicated server
+	protected int m_iFlags;
 	protected int m_iPosWorldX;
 	protected int m_iPosWorldY;
+	protected int m_iFactionFlags;			// flags determining which factions are able to see the marker, 0 means no restrictions
 	protected int m_iColorEntry;			// placed marker color entry id
 	protected int m_iIconEntry;				// placed marker icon entry id
 	protected int m_iRotation;
-	protected string m_sFactionKey;			// marker FactionKey
 	protected string m_sCustomText;
 	
 	// server only
 	protected bool m_bIsServerSideDisabled; // in hosted server scenario, opposing faction markers have to be properly managed but still disabled from showing up
-	
+
 	// rest
+	protected bool m_bTestVisibleFrame = true;			// only run update based on presence in visible frame
+	protected bool m_bIsUpdateDisabled;					// is update currently disbled
 	protected bool m_bIsDragged;						// currently being dragged
+	protected int m_iScreenX;							// cached screen position X
+	protected int m_iScreenY;						 	// cached screen position Y
 	protected SCR_MapMarkerEntryConfig m_ConfigEntry; 	// marker entry associated with this marker type
 	protected SCR_MapEntity m_MapEntity;
 	protected Widget m_wRoot;
@@ -73,27 +78,62 @@ class SCR_MapMarkerBase
 	//------------------------------------------------------------------------------------------------
 	int GetMarkerOwnerID()
 	{
-		return m_MarkerOwnerID;
+		return m_iMarkerOwnerID;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void SetMarkerOwnerID(int playerID)
 	{
-		m_MarkerOwnerID = playerID;
+		m_iMarkerOwnerID = playerID;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	string GetMarkerFactionKey()
+	int GetFlags()
 	{
-		return m_sFactionKey;
+		return m_iFlags;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetMarkerFactionKey(string factionKey)
+	void SetFlags(int flags)
 	{
-		m_sFactionKey = factionKey;
+		m_iFlags = flags;
 	}
 		
+	//------------------------------------------------------------------------------------------------
+	//! Get faction flags representing indices of factions within FactionManager prefab
+	int GetMarkerFactionFlags()
+	{
+		return m_iFactionFlags;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Add faction index to flags which you can acquire by calling GetFactionIndex()
+	void AddMarkerFactionFlags(int flags)
+	{
+		if (flags < 0) // invalid id
+			return;
+		
+		int flag = Math.Pow(2, flags);
+		
+		m_iFactionFlags |= flag;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set faction flags directly without converting the faction indices
+	void SetMarkerFactionFlags(int flags)
+	{
+		m_iFactionFlags = flags;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Check whether the marker is one of the defined list of factions
+	bool IsFaction(int factionID)
+	{
+		int flag = Math.Pow(2, factionID);
+		
+		return (m_iFactionFlags & flag);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	void GetWorldPos(out int pos[2])
 	{
@@ -164,10 +204,46 @@ class SCR_MapMarkerBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Disable marker update based on visibility on screen
+	void SetUpdateDisabled(bool state)
+	{
+		m_bIsUpdateDisabled = state;
+		
+		if (m_wRoot)
+			m_wRoot.SetVisible(!state);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Used for temporary reasons such as hiding original marker during edit, not for filtering visiblity
+	void SetVisible(bool state)
+	{
+		if (m_wRoot)
+			m_wRoot.SetVisible(state);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Set dragged state
 	void SetDragged(bool state)
 	{
 		m_bIsDragged = state;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Test whether the marker is visible on screen
+	bool TestVisibleFrame(vector visibleMin, vector visibleMax)
+	{
+		if(    m_iPosWorldX < visibleMin[0] 
+			|| m_iPosWorldX > visibleMax[0] 
+			|| m_iPosWorldY < visibleMin[2]
+			|| m_iPosWorldY > visibleMax[2])
+		{
+			return false;
+		}
+		else 
+		{
+			SetUpdateDisabled(false);
+			return true;
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -239,15 +315,24 @@ class SCR_MapMarkerBase
 	
 	//------------------------------------------------------------------------------------------------
 	//! Called from SCR_MapMarkerManagerComponent
-	void OnUpdate()
+	bool OnUpdate(vector visibleMin = vector.Zero, vector visibleMax = vector.Zero)
 	{
 		if (m_bIsServerSideDisabled || m_bIsDragged)
-			return;
+			return true;
 		
-		int screenX, screenY;
-
-		m_MapEntity.WorldToScreen(m_iPosWorldX, m_iPosWorldY, screenX, screenY, true);
-		FrameSlot.SetPos(m_wRoot, GetGame().GetWorkspace().DPIUnscale(screenX), GetGame().GetWorkspace().DPIUnscale(screenY));	// needs unscaled coords
+		if (m_bTestVisibleFrame)
+		{
+			if ((m_iPosWorldX < visibleMin[0]) || (m_iPosWorldX > visibleMax[0]) || (m_iPosWorldY < visibleMin[2]) || (m_iPosWorldY > visibleMax[2]))
+			{
+				SetUpdateDisabled(true);
+				return false;
+			}
+		}
+		
+		m_MapEntity.WorldToScreen(m_iPosWorldX, m_iPosWorldY, m_iScreenX, m_iScreenY, true);
+		FrameSlot.SetPos(m_wRoot, GetGame().GetWorkspace().DPIUnscale(m_iScreenX), GetGame().GetWorkspace().DPIUnscale(m_iScreenY));	// needs unscaled coords
+		
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -256,13 +341,14 @@ class SCR_MapMarkerBase
 		snapshot.SerializeInt(instance.m_iPosWorldX);
 		snapshot.SerializeInt(instance.m_iPosWorldY);
 		snapshot.SerializeInt(instance.m_iMarkerID);
-		snapshot.SerializeInt(instance.m_MarkerOwnerID);
+		snapshot.SerializeInt(instance.m_iMarkerOwnerID);
+		snapshot.SerializeInt(instance.m_iFlags);
 		snapshot.SerializeInt(instance.m_iConfigID);
+		snapshot.SerializeInt(instance.m_iFactionFlags);
 		snapshot.SerializeBytes(instance.m_iRotation, 2);
 		snapshot.SerializeBytes(instance.m_eType, 1);
 		snapshot.SerializeBytes(instance.m_iColorEntry, 1);
 		snapshot.SerializeBytes(instance.m_iIconEntry, 2);
-		snapshot.SerializeString(instance.m_sFactionKey);
 		snapshot.SerializeString(instance.m_sCustomText);
 		return true;
 	}
@@ -273,13 +359,14 @@ class SCR_MapMarkerBase
 		snapshot.SerializeInt(instance.m_iPosWorldX);
 		snapshot.SerializeInt(instance.m_iPosWorldY);
 		snapshot.SerializeInt(instance.m_iMarkerID);
-		snapshot.SerializeInt(instance.m_MarkerOwnerID);
+		snapshot.SerializeInt(instance.m_iMarkerOwnerID);
+		snapshot.SerializeInt(instance.m_iFlags);
 		snapshot.SerializeInt(instance.m_iConfigID);
+		snapshot.SerializeInt(instance.m_iFactionFlags);
 		snapshot.SerializeBytes(instance.m_iRotation, 2);
 		snapshot.SerializeBytes(instance.m_eType, 1);
 		snapshot.SerializeBytes(instance.m_iColorEntry, 1);
 		snapshot.SerializeBytes(instance.m_iIconEntry, 2);
-		snapshot.SerializeString(instance.m_sFactionKey);
 		snapshot.SerializeString(instance.m_sCustomText);
 		return true;
 	}
@@ -289,7 +376,6 @@ class SCR_MapMarkerBase
 	{
 		snapshot.Serialize(packet, SERIALIZED_BYTES);
 		snapshot.EncodeString(packet);
-		snapshot.EncodeString(packet);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -297,15 +383,13 @@ class SCR_MapMarkerBase
 	{
 		snapshot.Serialize(packet, SERIALIZED_BYTES);
 		snapshot.DecodeString(packet);
-		snapshot.DecodeString(packet);
 		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	static bool SnapCompare(SSnapSerializerBase lhs, SSnapSerializerBase rhs , ScriptCtx ctx)
 	{
-		return lhs.CompareSnapshots(rhs, SERIALIZED_BYTES)	// m_iPosWorldX(4) + m_iPosWorldY(4) + m_iMarkerID(4) + m_MarkerOwnerID(4)  + m_iConfigID(4) + m_iRotation(2) + m_eType(1) + m_iColorEntry(1) + m_iIconEntry(2)
-			&& lhs.CompareStringSnapshots(rhs) // m_sFactionKey
+		return lhs.CompareSnapshots(rhs, SERIALIZED_BYTES)	// m_iPosWorldX(4) + m_iPosWorldY(4) + m_iMarkerID(4) + m_iMarkerOwnerID(4) + m_iFlags(4) + m_iConfigID(4) + m_iFactionFlags(4) + m_iRotation(2) + m_eType(1) + m_iColorEntry(1) + m_iIconEntry(2)
 			&& lhs.CompareStringSnapshots(rhs); // m_sCustomText
 	}
 
@@ -315,13 +399,14 @@ class SCR_MapMarkerBase
 		return snapshot.CompareInt(instance.m_iPosWorldX)
 			&& snapshot.CompareInt(instance.m_iPosWorldY) 
 			&& snapshot.CompareInt(instance.m_iMarkerID)
-			&& snapshot.CompareInt(instance.m_MarkerOwnerID)
+			&& snapshot.CompareInt(instance.m_iMarkerOwnerID)
+			&& snapshot.CompareInt(instance.m_iFlags)
 			&& snapshot.CompareInt(instance.m_iConfigID)
+			&& snapshot.CompareInt(instance.m_iFactionFlags)
 			&& snapshot.Compare(instance.m_iRotation, 2)
-		    && snapshot.Compare(instance.m_eType, 1)
+			&& snapshot.Compare(instance.m_eType, 1)
 			&& snapshot.Compare(instance.m_iColorEntry, 1)
 			&& snapshot.Compare(instance.m_iIconEntry, 2)
-			&& snapshot.CompareString(instance.m_sFactionKey)
 			&& snapshot.CompareString(instance.m_sCustomText);
 	}
 };

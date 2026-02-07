@@ -3,14 +3,18 @@ class EditablePrefabsLabel_Base
 {
 	[Attribute("0", UIWidgets.ComboBox, "", enums: ParamEnumArray.FromEnum(EEditableEntityLabel))]
 	protected EEditableEntityLabel m_Label;
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] api
+	//! \param[in] entitySource
+	//! \param[in] componentSource
+	//! \param[in] targetPath
+	//! \param[in] entityType
+	//! \param[in] authoredLabels
+	//! \param[out] label
+	//! \return
 	bool GetLabelValid(WorldEditorAPI api, IEntitySource entitySource, IEntityComponentSource componentSource, string targetPath, EEditableEntityType entityType, notnull array<EEditableEntityLabel> authoredLabels, out EEditableEntityLabel label)
 	{
 		return false;
 	}
-	
-	void EditablePrefabsLabel_Base()
-	{
-		
-	}
-};
+}

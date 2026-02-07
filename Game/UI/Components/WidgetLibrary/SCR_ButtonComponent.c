@@ -19,7 +19,7 @@ class SCR_ButtonComponent : SCR_ButtonBaseComponent
 	protected ref Color COLOR_CONTENT_FOCUSED = Color.White;
 	protected ref Color COLOR_CONTENT_CLICKED = Color.White;
 
-	//ref ScriptInvoker m_OnClicked = new ref ScriptInvoker();
+	//ref ScriptInvoker m_OnClicked = new ScriptInvoker();
 	ref ScriptInvoker m_OnHover = new ScriptInvoker();
 	ref ScriptInvoker<Widget> m_OnHoverLeave = new ScriptInvoker();
 

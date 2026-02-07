@@ -8,10 +8,12 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	static ref map<SCR_ArsenalInventorySlotUI, IEntity> ARSENAL_SLOT_STORAGES = new map<SCR_ArsenalInventorySlotUI, IEntity>();
 	
 	const float													STORAGE_NON_HIGHLIGHTED_OPACITY = 0.35;
+	const string												ARSENAL_TITLE_LAYOUT 		="{E0C9EDCB8E63F10A}UI/layouts/Menus/Inventory/ArsenalInventoryTraverseTitlePanel.layout";
 	const string												SUPPLY_TITLE_LAYOUT 		="{FCE2E160F8C0D4D4}UI/layouts/Menus/Inventory/SupplyInventoryTraverseTitlePanel.layout";
 	const string												GENERIC_CONTAINER_PREFAB	= "{9F0C54A3740F7FC9}Prefabs/Props/Military/SupplyBox/SupplyPortableContainers/SupplyPortableContainer_01/SupplyContainerGeneric.et";
 	const string 												STORAGE_TITLE_LAYOUT 		= "{EBBF9E10DB195DB0}UI/layouts/Menus/Inventory/InventoryTraverseTitlePanel.layout";
 	const string												SLOT_LAYOUT_1x1_EMPTY 		= "{B11F8BE49DFB62A1}UI/layouts/Menus/Inventory/Inventory20Slot_1x1_empty.layout";
+	protected const int											SLOT_LAYOUT_WIDTH			= 70;
 	protected ChimeraCharacter									m_Player;
 	protected SCR_InventoryStorageManagerComponent				m_InventoryManager;						//manager - handles all the adding / removing operations
 	protected SCR_CharacterInventoryStorageComponent			m_InventoryStorage;						//top-most character's inventory component
@@ -43,8 +45,9 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	protected int												m_iMaxRows, m_iMaxColumns, m_iPageSize;
 	//protected int												m_iPage					= 0;
 	protected int												m_iNrOfPages			= 0;
-	protected TextWidget 										m_wStorageName, m_wCapacityPercentageText, m_wWeightText, m_wResourceText;
-	protected Widget											m_wCapacityDisplay, m_wWeightDisplay, m_wResourceDisplay;
+	protected TextWidget 										m_wStorageName, m_wCapacityPercentageText, m_wWeightText, m_wResourceAvailableText, m_wResourceStoredText;
+	protected Widget											m_wCapacityDisplay, m_wWeightDisplay, m_wResourceAvailableDisplay, m_wResourceStoredDisplay;
+	protected SizeLayoutWidget									m_wWidthOverride;
 	protected int												m_iLastShownPage		= 0;
 	protected SCR_SpinBoxPagingComponent 						m_wPagingSpinboxComponent;
 	protected ref array<BaseInventoryStorageComponent> 			m_aTraverseStorage 			= {};
@@ -52,6 +55,9 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	protected ref array<SCR_ResourceComponent>					m_aResourceCompsInStorage	= {};
 	protected ButtonWidget 										m_wButton, m_wLastCloseTraverseButton, m_wCloseStorageButton;
 	protected ref SCR_ResourceSystemSubscriptionHandleBase		m_ResourceSubscriptionHandleConsumer;
+	
+	protected LocalizedString m_sSuppliesStoredFormat = "#AR-Campaign_BaseSuppliesAmount";
+	protected LocalizedString m_sSuppliesAvailableFormat = "#AR-Supplies_Arsenal_Availability";
 	
 	//------------------------------------------------------------------------ USER METHODS ------------------------------------------------------------------------
 	
@@ -82,6 +88,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 		m_wWeightText = TextWidget.Cast(m_widget.FindAnyWidget("WeightText"));
 		m_wCapacityDisplay = Widget.Cast(m_widget.FindAnyWidget("CapacityDisplay"));
 		m_wWeightDisplay = Widget.Cast(m_widget.FindAnyWidget("WeightDisplay"));
+		m_wWidthOverride = SizeLayoutWidget.Cast(m_widget.FindWidget("TitleWidthOverride"));
 		
 		InitPaging();
 		SetRowsAndColumns();
@@ -90,7 +97,10 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 		SizeLayoutWidget wSizeContainer = SizeLayoutWidget.Cast( m_widget.FindAnyWidget( "SizeLayout0" ) );
 		if ( wSizeContainer )
 			wSizeContainer.SetAspectRatio( m_iMaxColumns / m_iMaxRows );
-				
+		
+		if (m_wWidthOverride)
+			m_wWidthOverride.SetWidthOverride(m_iMaxColumns * SLOT_LAYOUT_WIDTH);
+		
 		//Get the storage the UI container will be showing the content from
 		if (!m_InventoryStorage)
 			m_Storage = m_InventoryStorage.GetStorageFromLoadoutSlot( m_eSlotAreaType );
@@ -122,14 +132,20 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 			return;
 		m_wStorageName.SetText(uiInfo.GetName());
 
-		m_wResourceText = TextWidget.Cast(m_widget.FindAnyWidget("ResourceText"));
-		m_wResourceDisplay = Widget.Cast(m_widget.FindAnyWidget("ResourceDisplay"));
+		m_wResourceStoredDisplay = Widget.Cast(m_widget.FindAnyWidget("ResourceDisplayStored"));
+		if (m_wResourceStoredDisplay)
+			m_wResourceStoredText = TextWidget.Cast(m_wResourceStoredDisplay.FindAnyWidget("ResourceText"));
 		
-		if (!m_wResourceDisplay || !m_wResourceText)
+		m_wResourceAvailableDisplay = Widget.Cast(m_widget.FindAnyWidget("ResourceDisplayAvailable"));
+		if (m_wResourceAvailableDisplay)
+			m_wResourceAvailableText = TextWidget.Cast(m_wResourceAvailableDisplay.FindAnyWidget("ResourceText"));
+		
+		if (!m_wResourceStoredText || !m_wResourceAvailableText)
 			return;
 		
+		//~ Will ignore storage components of vehicle slots if they already have a storage assigned
 		if (m_Storage && m_Storage.GetOwner())
-			m_ResourceComponent = SCR_ResourceComponent.FindResourceComponent(m_Storage.GetOwner());
+			m_ResourceComponent = SCR_ResourceComponent.FindResourceComponent(m_Storage.GetOwner(), true);
 		
 		if (m_ResourceComponent)
 			RefreshConsumer();
@@ -150,8 +166,6 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 			return;
 		
 		m_ResourceSubscriptionHandleConsumer = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandle(m_ResourceConsumer, resourceInventoryPlayerComponentRplId);
-		
-		m_wResourceDisplay.SetVisible(true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -165,7 +179,9 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 				m_wPagingSpinboxComponent.SetPageCount( 0 );
 				m_wPagingSpinboxComponent.SetCurrentItem( 0, false );
 				m_wPagingSpinboxComponent.SetButtonsActive(false);
+				SetPagingActive(false);
 			}
+			
 		}
 	}
 
@@ -204,14 +220,19 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	{
 		if ( m_MenuHandler )
 			m_MenuHandler.OnContainerHovered( this );
+
 		return false;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override bool OnMouseLeave( Widget w, Widget enterW, int x, int y)
 	{
+		if (enterW && w && w.FindAnyWidget(enterW.GetName()))
+			return false;
+		
 		if ( m_MenuHandler )
 			m_MenuHandler.OnContainerLeft( this );
+
 		return false;
 	}
 	
@@ -588,7 +609,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 		if (traverseSize > 0)
 		{
 			BaseInventoryStorageComponent lastStorage = null;
-			ref array<IEntity> rootItems = new ref array<IEntity>();
+			ref array<IEntity> rootItems = new array<IEntity>();
 			GetAllItems(rootItems);
 
 			for (int i = 0; i < traverseSize; i++)
@@ -650,37 +671,35 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	void RefreshResources()
 	{
-		if (!m_wResourceDisplay || !m_wResourceText)
-			return;
-		
 		if (m_ResourceComponent)
 		{
-			if (m_ResourceComponent && m_ResourceConsumer.GetResourceType() == EResourceType.SUPPLIES)
+			float resources, maxResources;
+			bool hasStored = false;
+
+			//~ Display stored resources
+			if (SCR_ResourceSystemHelper.GetStoredAndMaxResources(m_ResourceComponent, resources, maxResources))
 			{
-				UpdateTotalResources(GetTotalResources(m_ResourceConsumer), GetMaxResources(m_ResourceConsumer));
-				
-				if (!m_wResourceDisplay.IsVisible())
-					m_wResourceDisplay.SetVisible(true);
-				
-				return;
+				UpdateStoredResources(resources, maxResources);
+				hasStored = true;
+				m_wResourceStoredDisplay.SetVisible(true);
+			}
+			else 
+			{
+				m_wResourceStoredDisplay.SetVisible(false);
+			}
+					
+			//~ Display available resources
+			if (m_ResourceComponent.IsResourceTypeEnabled() && SCR_ResourceSystemHelper.GetAvailableResources(m_ResourceComponent, resources))
+			{
+				UpdateAvailableResources(resources, hasStored);
+				m_wResourceAvailableDisplay.SetVisible(true);
+			}
+			else 
+			{
+				m_wResourceAvailableDisplay.SetVisible(false);
 			}
 			
-			if (!m_aResourceCompsInStorage.IsEmpty())
-			{
-				float totalCurrentResourceCount, totalMaxResourceCount;
-				CalculateTotalResourcesInStorage(m_aResourceCompsInStorage, totalCurrentResourceCount, totalMaxResourceCount);
-				
-				UpdateTotalResources(totalCurrentResourceCount, totalMaxResourceCount);
-				
-				if (!m_wResourceDisplay.IsVisible())
-					m_wResourceDisplay.SetVisible(true);
-				
-				return;
-			}
 		}
-		
-		if (m_wResourceDisplay.IsVisible())
-			m_wResourceDisplay.SetVisible(false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -736,40 +755,84 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void CalculateTotalResourcesInStorage(array<SCR_ResourceComponent> resources, inout float totalCurrentResourceCount, inout float totalMaxResourceCount)
+	protected void UpdateStoredResources(float totalResources, float maxResources)
 	{
-		foreach (SCR_ResourceComponent resource: resources)
-		{
-			SCR_ResourceConsumer resourceContainer = resource.GetConsumer(EResourceGeneratorID.DEFAULT_STORAGE, EResourceType.SUPPLIES);
-
-			if (!resourceContainer)
-				continue;
-			
-			totalCurrentResourceCount	+= GetTotalResources(resourceContainer);
-			totalMaxResourceCount		+= GetMaxResources(resourceContainer);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void UpdateTotalResources(float totalResources, float maxResources, Color fontColor = Color.Gray25)
-	{
-		if (!m_wResourceText)
+		if (!m_wResourceStoredText)	
 			return;
 		
-		if (maxResources < 0)
-		{
+		/*if (m_wWeightDisplay)
 			m_wWeightDisplay.SetVisible(false);
-			m_wCapacityDisplay.SetVisible(false);
-			m_wResourceText.SetText(WidgetManager.Translate("#AR-Supplies_Arsenal_Availability", totalResources.ToString()));
-		}
-		else	
-			m_wResourceText.SetText(WidgetManager.Translate("#AR-Supplies_Arsenal_Availability", maxResources.ToString()));
-		
-		if (fontColor != m_wResourceText.GetColor())
-			m_wResourceText.SetColor(fontColor);
+		if (m_wCapacityDisplay)
+			m_wCapacityDisplay.SetVisible(false);*/
+			
+		m_wResourceStoredText.SetTextFormat(m_sSuppliesStoredFormat, SCR_ResourceSystemHelper.SuppliesToString(totalResources), SCR_ResourceSystemHelper.SuppliesToString(maxResources));
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
+	protected void UpdateAvailableResources(float totalResources, bool hasStored)
+	{
+		if (!m_wResourceAvailableText)
+			return;
+		
+		/*if (m_wWeightDisplay)
+			m_wWeightDisplay.SetVisible(false);
+		if (m_wCapacityDisplay)
+			m_wCapacityDisplay.SetVisible(false);*/
+
+		if (!hasStored)
+			m_wResourceAvailableText.SetTextFormat(m_sSuppliesAvailableFormat, SCR_ResourceSystemHelper.SuppliesToString(totalResources));
+		else 
+			m_wResourceAvailableText.SetText(SCR_ResourceSystemHelper.SuppliesToString(totalResources));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateContainerResources(notnull Widget targetTitle, notnull BaseInventoryStorageComponent targetStorage)
+	{
+		SCR_ResourceComponent resourceComponent = SCR_ResourceComponent.FindResourceComponent(targetStorage.GetOwner());
+		if(!resourceComponent)
+			return;
+		
+		float totalResources, maxResources;
+		
+		Widget resourceDisplay = targetTitle.FindAnyWidget("ResourceDisplayStored");
+		TextWidget resourceText;
+		
+		if (resourceDisplay)
+		{
+			resourceText = TextWidget.Cast(resourceDisplay.FindAnyWidget("ResourceText"));
+			
+			//~ Display stored resources
+			if (resourceText && SCR_ResourceSystemHelper.GetStoredAndMaxResources(resourceComponent, totalResources, maxResources))
+			{
+				resourceText.SetTextFormat(m_sSuppliesStoredFormat, SCR_ResourceSystemHelper.SuppliesToString(totalResources), SCR_ResourceSystemHelper.SuppliesToString(maxResources));
+				resourceDisplay.SetVisible(true);
+			}
+			else 
+			{
+				resourceDisplay.SetVisible(false);
+			}
+		}
+		
+		resourceDisplay = targetTitle.FindAnyWidget("ResourceDisplayAvailable");
+		
+		if (resourceDisplay)
+		{
+			resourceText = TextWidget.Cast(resourceDisplay.FindAnyWidget("ResourceText"));
+			
+			//~ Display available resources
+			if (resourceText && SCR_ResourceSystemHelper.GetAvailableResources(resourceComponent, totalResources) && resourceComponent.IsResourceTypeEnabled())
+			{
+				resourceText.SetTextFormat(m_sSuppliesAvailableFormat, SCR_ResourceSystemHelper.SuppliesToString(totalResources));
+				resourceDisplay.SetVisible(true);
+				return;
+			}
+			else 
+			{
+				resourceDisplay.SetVisible(false);
+			}
+		}
+	}
+	
 	protected void UpdateOwnedSlots(notnull array<IEntity> pItemsInStorage)
 	{
 		// TODO: optimize? ( the existing slots must be deleted. The previous algorithm doesn't work any more, since the number of slots is unknown due to the aggregation-stacking of the items of the same type )
@@ -857,7 +920,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void FindAndSetResourceCount(Widget targetTitle, BaseInventoryStorageComponent targetStorage)
+	/*protected void FindAndSetResourceCount(Widget targetTitle, BaseInventoryStorageComponent targetStorage)
 	{
 		TextWidget resourceText = TextWidget.Cast(targetTitle.FindAnyWidget("ResourceText"));
 		if(!resourceText)
@@ -879,7 +942,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 			return;
 		
 		resourceText.SetText(resourceConsumer.GetAggregatedResourceValue().ToString());
-	}
+	}*/
 	
 	//------------------------------------------------------------------------------------------------
 	// ! Looks for the very same item, including attachements and its content. Actually, it uses
@@ -951,7 +1014,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	// !
 	protected int CreateSlots( )
 	{
-		ref array<IEntity> pItemsInStorage = new ref array<IEntity>();
+		ref array<IEntity> pItemsInStorage = new array<IEntity>();
 		GetAllItems( pItemsInStorage );
 		UpdateOwnedSlots(pItemsInStorage);
 		return 0;
@@ -1112,7 +1175,9 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 		{
 			currentStorage = m_aTraverseStorage[i];
 			
-			if (currentStorage.GetOwner().FindComponent(SCR_ArsenalInventoryStorageManagerComponent) || SCR_ResourceComponent.FindResourceComponent(currentStorage.GetOwner()))
+			if (currentStorage.GetOwner().FindComponent(SCR_ArsenalInventoryStorageManagerComponent))
+				title = GetGame().GetWorkspace().CreateWidgets(ARSENAL_TITLE_LAYOUT, titleLayout);
+			else if (SCR_ResourceComponent.FindResourceComponent(currentStorage.GetOwner(), true))
 				title = GetGame().GetWorkspace().CreateWidgets(SUPPLY_TITLE_LAYOUT, titleLayout);
 			else
 				title = GetGame().GetWorkspace().CreateWidgets(STORAGE_TITLE_LAYOUT, titleLayout);
@@ -1133,8 +1198,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 			}
 			
 			FindAndSetTitleName(title, currentStorage);
-			
-			FindAndSetResourceCount(title, currentStorage);
+			UpdateContainerResources(title, currentStorage);
 			
 			closeContainerButton = SCR_InventoryNavigationButtonBack.Cast(SCR_InventoryNavigationButtonBack.GetInputButtonComponent("ButtonTraverseBack", title));
 			if (!closeContainerButton)
@@ -1317,7 +1381,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 		m_wWeightText.SetTextFormat("#AR-ValueUnit_Short_Kilograms", totalWeight);
 		
 		if (fontColor != m_wWeightText.GetColor())
-			m_wWeightText.SetColor(fontColor);
+			m_wWeightText.SetColor(Color.FromInt(fontColor.PackToInt()));
 	}
  	
  	//------------------------------------------------------------------------------------------------
@@ -1340,7 +1404,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 			return;
 		
 		if (fontColor != m_wCapacityPercentageText.GetColor())
-			m_wCapacityPercentageText.SetColor(fontColor);
+			m_wCapacityPercentageText.SetColor(Color.FromInt(fontColor.PackToInt()));
 
 		m_wCapacityPercentageText.SetText(percentage.ToString() + "%");
 	}

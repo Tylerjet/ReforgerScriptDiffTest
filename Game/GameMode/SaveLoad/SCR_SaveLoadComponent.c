@@ -1,11 +1,10 @@
 [ComponentEditorProps(category: "GameScripted/GameMode/Components", description: "")]
-class SCR_SaveLoadComponentClass: SCR_BaseGameModeComponentClass
+class SCR_SaveLoadComponentClass : SCR_BaseGameModeComponentClass
 {
-};
-/*!
-Game mode-specific settings for session saving.
-*/
-class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
+}
+
+//! Game mode-specific settings for session saving.
+class SCR_SaveLoadComponent : SCR_BaseGameModeComponent
 {
 	[Attribute(desc: "Struct object which manages saved data. Must be defined, without it saving won't work.")]
 	protected ref SCR_MissionStruct m_Struct;
@@ -24,9 +23,9 @@ class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
 	/////////////////////////////////////////////////////////////////////////////
 	// Public
 	/////////////////////////////////////////////////////////////////////////////
-	/*!
-	\return Local instance of this component
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \return Local instance of this component
 	static SCR_SaveLoadComponent GetInstance()
 	{
 		BaseGameMode gameMode = GetGame().GetGameMode();
@@ -36,30 +35,24 @@ class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
 			return null;
 	}
 	
-	//----------------------------------------------------------------------------------------
-	/*!
-	\return True if the world should be saved on exit.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return true if the world should be saved on exit.
 	bool CanSaveOnExit()
 	{
 		return m_SaveOnExit;
 	}
 	
-	//----------------------------------------------------------------------------------------
-	/*!
-	\return Mission header used for debugging in World Editor (where mission headers are otherwise unavailable)
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return Mission header used for debugging in World Editor (where mission headers are otherwise unavailable)
 	ResourceName GetDebugHeaderResourceName()
 	{
 		return m_DebugHeaderResourceName;
 	}
 	
-	//----------------------------------------------------------------------------------------
-	/*!
-	Check if the mission struct contains a sub-struct of specific type.
-	\param structType Type of queried struct
-	\return True if the sub-struct is present
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Check if the mission struct contains a sub-struct of specific type.
+	//! \param[in] structType Type of queried struct
+	//! \return true if the sub-struct is present
 	bool ContainsStruct(typename structType)
 	{
 		return m_Struct && m_Struct.ContainsStruct(structType);
@@ -68,6 +61,8 @@ class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
 	/////////////////////////////////////////////////////////////////////////////
 	// Protected
 	/////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	protected void Autosave()
 	{	
 		GetGame().GetSaveManager().Save(ESaveType.AUTO);
@@ -76,12 +71,14 @@ class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
 	/////////////////////////////////////////////////////////////////////////////
 	// Overrides
 	/////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	override void OnGameModeEnd(SCR_GameModeEndData data)
 	{
 		GetGame().GetSaveManager().RemoveCurrentMissionLatestSave();
 	}
 	
-	//----------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		if (owner.GetWorld().IsEditMode())
@@ -93,9 +90,15 @@ class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
 		saveManager.SetStruct(ESaveType.AUTO, m_Struct);
 		saveManager.SetStruct(ESaveType.EDITOR, m_Struct);
 		
-		//--- Initialize autosave on server
+		//--- Initialise autosave on server
 		if (Replication.IsServer())
 		{
+			if (m_iAutosavePeriod == 0)
+			{
+				Print("SCR_SaveLoadComponent: Periodical autosave is disabled.", LogLevel.WARNING);
+				return;
+			}
+			
 			if (m_iAutosavePeriod > 0 && m_iAutosavePeriod < MINIMUM_AUTOSAVE_PERIOD)
 			{
 				Print("SCR_SaveLoadComponent: Autosave period set too low (" + m_iAutosavePeriod + "), setting to " + MINIMUM_AUTOSAVE_PERIOD, LogLevel.WARNING);
@@ -106,4 +109,4 @@ class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
 			GetGame().GetCallqueue().CallLater(Autosave, m_iAutosavePeriod * 1000, true);
 		}
 	}
-};
+}

@@ -22,7 +22,7 @@ class SCR_SettingsManagerVideoModule : SCR_SettingsManagerModuleBase
 		if (presetIndex == EVideoQualityPreset.SERIES_S_PRESET_QUALITY)
 		{
 			m_DisplayUserSettings.Set("OverallQuality", EVideoQualityPreset.SERIES_S_PRESET_QUALITY);
-			m_VideoUserSettings.Set("ResolutionScale", 0.75);
+			m_VideoUserSettings.Set("ResolutionScale", 0.7);
 			m_VideoUserSettings.Set("Fsaa", 2);
 			m_VideoSettings.Set("m_bNearDofEffect", false);
 			m_VideoSettings.Set("m_iDofType", DepthOfFieldTypes.SIMPLE);
@@ -34,7 +34,7 @@ class SCR_SettingsManagerVideoModule : SCR_SettingsManagerModuleBase
 		{
 			m_DisplayUserSettings.Set("OverallQuality", EVideoQualityPreset.SERIES_S_PRESET_PERFORMANCE);
 			m_VideoUserSettings.Set("ResolutionScale", 0.60);
-			m_VideoUserSettings.Set("Fsaa", 2);
+			m_VideoUserSettings.Set("Fsaa", 0);
 			m_VideoSettings.Set("m_bNearDofEffect", false);
 			m_VideoSettings.Set("m_iDofType", DepthOfFieldTypes.SIMPLE);
 			m_VideoUserSettings.Set("MaxFps", 60);
@@ -45,7 +45,7 @@ class SCR_SettingsManagerVideoModule : SCR_SettingsManagerModuleBase
 		{
 			m_DisplayUserSettings.Set("OverallQuality", EVideoQualityPreset.SERIES_X_PRESET_QUALITY);
 			m_VideoUserSettings.Set("ResolutionScale", 0.75);
-			m_VideoUserSettings.Set("Fsaa", 4);
+			m_VideoUserSettings.Set("Fsaa", 2);
 			m_VideoSettings.Set("m_bNearDofEffect", false);
 			m_VideoSettings.Set("m_iDofType", DepthOfFieldTypes.BOKEH);
 			m_VideoUserSettings.Set("MaxFps", 30);
@@ -56,7 +56,7 @@ class SCR_SettingsManagerVideoModule : SCR_SettingsManagerModuleBase
 		{
 			m_DisplayUserSettings.Set("OverallQuality", EVideoQualityPreset.SERIES_X_PRESET_PERFORMANCE);
 			m_VideoUserSettings.Set("ResolutionScale", 0.50);
-			m_VideoUserSettings.Set("Fsaa", 4);
+			m_VideoUserSettings.Set("Fsaa", 2);
 			m_VideoSettings.Set("m_bNearDofEffect", false);
 			m_VideoSettings.Set("m_iDofType", DepthOfFieldTypes.SIMPLE);
 			m_VideoUserSettings.Set("MaxFps", 60);

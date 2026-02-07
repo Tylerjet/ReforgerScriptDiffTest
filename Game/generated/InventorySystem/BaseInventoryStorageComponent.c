@@ -81,6 +81,10 @@ class BaseInventoryStorageComponent: InventoryItemComponent
 	proto external float GetMaxVolumeCapacity();
 	// return dimension limits for storage
 	proto external vector GetMaxDimensionCapacity();
+	//! get the weight of a prefab
+	proto external float GetWeightFromResource(ResourceName resourceName);
+	//! performs volume and item dimension validation.
+	proto external bool PerformVolumeAndDimensionValidationForResource(ResourceName resourceName, bool includeDimensionValidation = true);
 
 	// callbacks
 
@@ -89,6 +93,11 @@ class BaseInventoryStorageComponent: InventoryItemComponent
 	*IMPORTANT* This should contains one line with return true/false; The result is cached, so this function can't be made dynamic
 	*/
 	event bool OnOverrideCanStoreItem() { return false; };
+	/*!
+	It should return true or false depending if the scripter wants to override the behavior of the C++ function or not.
+	*IMPORTANT* This should contains one line with return true/false; The result is cached, so this function can't be made dynamic
+	*/
+	event bool OnOverrideCanStoreResource() { return false; };
 	/*!
 	It should return true or false depending if the scripter wants to override the behavior of the C++ function or not.
 	*IMPORTANT* This should contains one line with return true/false; The result is cached, so this function can't be made dynamic
@@ -113,6 +122,8 @@ class BaseInventoryStorageComponent: InventoryItemComponent
 	event protected InventoryStorageSlot GetEmptySlotForItem(IEntity item);
 	//! Implemented logics for can insert here, Manager will provide slotID of -1 in case slot is irrelevant.
 	event bool CanStoreItem(IEntity item, int slotID) { return true; };
+	//! Implemented logics for can insert here, Manager will provide slotID of -1 in case slot is irrelevant.
+	event bool CanStoreResource(ResourceName resourceName, int slotID) { return true; };
 	//! Implemented logics for can remove here,
 	event bool CanRemoveItem(IEntity item) { return true; };
 	//! Implemented logics for can replace to nextItem at slotID,

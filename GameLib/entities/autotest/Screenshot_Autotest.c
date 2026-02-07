@@ -25,6 +25,22 @@ Autotest can also store summary information, the it is stored in the summary.txt
 */
 class Screenshot_Autotest: GenericEntity
 {
+	[Attribute("1980", UIWidgets.SpinBox, "Year", "1900 2100 1")]
+	private int m_defaultYear;
+	
+	[Attribute("8", UIWidgets.SpinBox, "Month", "1 12 1")]
+	private int m_defaultMonth;
+	
+	[Attribute("20", UIWidgets.SpinBox, "Day", "1 31 1")]
+	private int m_defaultDay;
+	
+	[Attribute("12.0", UIWidgets.Slider, "Default Time of the Day", "0 24 0.01")]
+	private float m_defaultTimeOfTheDay;
+	
+	[Attribute("Clear", UIWidgets.EditBox, "Default Weather State", "")]
+	private string m_defaultWeatherState;
+	
+	
 	[Attribute("Camera1", UIWidgets.EditBox, "Name of camera entity", "")]
 	private string m_cameraEntityName; //< name of camera entity which will be used to take screenshots
 	[Attribute("", UIWidgets.EditBox, "Autotest description", "")]
@@ -68,6 +84,31 @@ class Screenshot_Autotest: GenericEntity
 	void ~Screenshot_Autotest()
 	{
 		delete m_FPSWidget;
+	}
+	
+	float GetDefaultTimeOfTheDay()
+	{
+		return m_defaultTimeOfTheDay; 
+	}
+	
+	int GetDefaultYear()
+	{
+		return m_defaultYear;
+	}
+	
+	int GetDefaultMonth()
+	{
+		return m_defaultMonth;
+	}
+	
+	int GetDefaultDay()
+	{
+		return m_defaultDay;
+	}
+	
+	string GetDefaultWeatherState()
+	{
+		return m_defaultWeatherState;
 	}
 
 	override void EOnInit(IEntity owner) //!EntityEvent.INIT
@@ -303,11 +344,22 @@ class Screenshot_Autotest: GenericEntity
 			m_waypoint.GetTransform(mat);
 			m_camera.SetTransform(mat);
 			m_waypoint.EOnEnter();
+			
 			g_Game.BeginPreload(GetWorld(), mat[3], 500);
 		}
 	}
 	
 	protected bool GetTimeAndDate(out float normTime, out int year, out int month, out int day)
+	{
+		return false;
+	}
+	
+	bool SetTimeAndDate(float timeOfTheDay24h, int year, int month, int day)
+	{
+		return false;
+	}
+	
+	bool SetWeatherState(string state)
 	{
 		return false;
 	}
@@ -319,7 +371,23 @@ class Screenshot_Waypoint: GenericEntity
 {
 	[Attribute("", UIWidgets.EditBox, "Waypoint description", "")]
 	private string m_description; //< description of the autotest
-
+	
+	[Attribute("", UIWidgets.EditBox, "Weather state", "")]
+	private string m_weatherState;
+	
+	[Attribute("-1", UIWidgets.Slider, "Time of the day", "-1 24 0.01")]
+	private float m_timeOfTheDay;
+	
+	[Attribute("-1", UIWidgets.SpinBox, "Year", "")]
+	private int m_year;
+	
+	[Attribute("-1", UIWidgets.SpinBox, "Month", "")]
+	private int m_month;
+	
+	[Attribute("-1", UIWidgets.SpinBox, "Day", "")]
+	private int m_day;
+	
+	
 	 void Screenshot_Waypoint(IEntitySource src, IEntity parent)
 	{
 		if (parent)
@@ -359,6 +427,42 @@ class Screenshot_Waypoint: GenericEntity
 	*/
 	event void EOnEnter()
 	{
+		Screenshot_Autotest parent = Screenshot_Autotest.Cast(GetParent());
+		
+		if(parent)
+		{
+			float time = parent.GetDefaultTimeOfTheDay();
+			int year = parent.GetDefaultYear();
+			int month = parent.GetDefaultMonth();
+			int day = parent.GetDefaultDay();
+			string state = parent.GetDefaultWeatherState();
+			
+			if(m_timeOfTheDay >= 0)
+			{
+				time = m_timeOfTheDay;
+			}
+			
+			if(m_year >= 1900 && m_year <= 2100)
+			{
+				year = m_year;
+			}
+			if(m_month >= 1 && m_month <= 12)
+			{
+				month = m_month;
+			}
+			if(m_day >= 1 && m_day <= 31)
+			{
+				day = m_day;
+			}
+			
+			if(m_weatherState.Length() > 0)
+			{
+				state = m_weatherState;
+			}
+			
+			parent.SetTimeAndDate(time, year, month, day);
+			parent.SetWeatherState(state);
+		}
 	}
 
 	event void EOnExit()

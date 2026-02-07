@@ -5,7 +5,7 @@ enum SCR_ERotorDamageState: EDamageState
 	CRITICAL = 5
 }
 
-class SCR_RotorHitZone : SCR_DestructibleHitzone
+class SCR_RotorHitZone : SCR_VehicleHitZone
 {
 	[Attribute(defvalue: "-1", uiwidget: UIWidgets.Auto, desc: "Rotor ID", category: "Rotor Damage")]
 	protected int m_iRotorId;
@@ -33,9 +33,6 @@ class SCR_RotorHitZone : SCR_DestructibleHitzone
 
 	[Attribute(defvalue: "0.6", uiwidget: UIWidgets.Auto, desc: "Efficiency with critical damage state", category: "Rotor Damage")]
 	protected float m_fEfficiencyCritical;
-	
-	[Attribute(EVehicleHitZoneGroup.DRIVE_TRAIN.ToString(), UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EVehicleHitZoneGroup))]
-	protected EVehicleHitZoneGroup m_eHitZoneGroup;
 
 	protected VehicleHelicopterSimulation m_Simulation;
 
@@ -67,12 +64,14 @@ class SCR_RotorHitZone : SCR_DestructibleHitzone
 	\param nodeID - bone index in mesh obj
 	\param isDOT - true if this is a calculation for DamageOverTime
 	*/
-	override float ComputeEffectiveDamage(EDamageType damageType, float rawDamage, IEntity hitEntity, HitZone struckHitZone, IEntity damageSource, notnull Instigator instigator, const GameMaterial hitMaterial, int colliderID, inout vector hitTransform[3], const vector impactVelocity, int nodeID, bool isDOT)
+	override float ComputeEffectiveDamage(notnull BaseDamageContext damageContext, bool isDOT)
 	{
-		if (!isDOT && damageType == EDamageType.KINETIC && m_RotorPointInfo && Math.RandomFloat01() > RotorHitChance(hitTransform))
+		vector hitTransform[3] = {damageContext.hitPosition, damageContext.hitDirection, damageContext.hitNormal};		
+		
+		if (!isDOT && damageContext.damageType == EDamageType.KINETIC && m_RotorPointInfo && Math.RandomFloat01() > RotorHitChance(hitTransform))
 			return 0;
 
-		return super.ComputeEffectiveDamage(damageType, rawDamage, hitEntity, struckHitZone, damageSource, instigator, hitMaterial, colliderID, hitTransform, impactVelocity, nodeID, isDOT);
+		return super.ComputeEffectiveDamage(damageContext, isDOT);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -105,10 +104,17 @@ class SCR_RotorHitZone : SCR_DestructibleHitzone
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override EHitZoneGroup GetHitZoneGroup()
+	float GetRotorRadius()
 	{
-		return m_eHitZoneGroup;
+		return m_fRotorRadius;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetBladeCount()
+	{
+		return m_iBladeCount;
+	}
+	
 
 	//------------------------------------------------------------------------------------------------
 	PointInfo GetPointInfo()

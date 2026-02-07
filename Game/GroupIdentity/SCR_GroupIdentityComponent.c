@@ -1,12 +1,12 @@
 void SCR_GroupIdentityComponent_OnChange(SCR_MilitarySymbol symbol, LocalizedString name);
 typedef func SCR_GroupIdentityComponent_OnChange;
 
-
 [ComponentEditorProps(category: "GameScripted/Misc", description: "")]
-class SCR_GroupIdentityComponentClass: ScriptComponentClass
+class SCR_GroupIdentityComponentClass : ScriptComponentClass
 {
-};
-class SCR_GroupIdentityComponent: ScriptComponent
+}
+
+class SCR_GroupIdentityComponent : ScriptComponent
 {
 	[Attribute()]
 	protected ref SCR_MilitarySymbol m_MilitarySymbol;
@@ -19,34 +19,31 @@ class SCR_GroupIdentityComponent: ScriptComponent
 	protected LocalizedString m_sName;
 	protected ref ScriptInvokerBase<SCR_GroupIdentityComponent_OnChange> m_OnIdentityChange = new ScriptInvokerBase<SCR_GroupIdentityComponent_OnChange>();
 	
-	/*!
-	Get group's symbol data.
-	\return Symbol data
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get group's symbol data.
+	//! \return Symbol data
 	SCR_MilitarySymbol GetMilitarySymbol()
 	{
 		return m_MilitarySymbol;
 	}
-	/*!
-	Get group's dynamic name.
-	\return Name
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get group's dynamic name.
+	//! \return Name
 	LocalizedString GetGroupName()
 	{
 		return m_sName;
 	}
-	/*!
-	Get invoker called when group identity changes.
-	\return Script invoker
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \return invoker called when group identity changes.
 	ScriptInvokerBase<SCR_GroupIdentityComponent_OnChange> GetOnIdentityChange()
 	{
 		return m_OnIdentityChange;
 	}
 	
-	/*!
-	Update group identity based on its current state.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Update group identity based on its current state.
 	void UpdateIdentity()
 	{
 		//--- Server only
@@ -74,6 +71,8 @@ class SCR_GroupIdentityComponent: ScriptComponent
 			Rpc(UpdateIdentityBroadcast, nameID, m_MilitarySymbol);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void UpdateIdentityBroadcast(int nameID, SCR_MilitarySymbol symbol)
 	{
@@ -87,6 +86,7 @@ class SCR_GroupIdentityComponent: ScriptComponent
 		m_OnIdentityChange.Invoke(m_MilitarySymbol, m_sName);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnGroupInit(SCR_AIGroup aiGroup)
 	{
 		UpdateIdentity();
@@ -94,15 +94,20 @@ class SCR_GroupIdentityComponent: ScriptComponent
 		m_Group.GetOnAgentRemoved().Insert(OnAgentRemoved);
 		m_Group.GetOnAgentRemoved().Remove(OnAgentRemoved);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnAgentAdded()
 	{
 		UpdateIdentity();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnAgentRemoved()
 	{
 		UpdateIdentity();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override bool RplSave(ScriptBitWriter writer)
 	{
 		m_MilitarySymbol.OnRplSave(writer);
@@ -110,6 +115,8 @@ class SCR_GroupIdentityComponent: ScriptComponent
 		
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	//--- JIP on client
 	override bool RplLoad(ScriptBitReader reader)
 	{
@@ -120,6 +127,8 @@ class SCR_GroupIdentityComponent: ScriptComponent
 		
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		if (SCR_Global.IsEditMode(owner))
@@ -133,11 +142,11 @@ class SCR_GroupIdentityComponent: ScriptComponent
 		}
 		
 		if (!m_bForced)
-		{
 			m_Group.GetOnInit().Insert(OnGroupInit);
-		}
 		//--- ToDo: When member gets in/out of vehicle
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnDelete(IEntity owner)
 	{
 		if (!m_bForced && m_Group)
@@ -147,4 +156,4 @@ class SCR_GroupIdentityComponent: ScriptComponent
 			m_Group.GetOnAgentRemoved().Remove(OnAgentRemoved);
 		}
 	}
-};
+}

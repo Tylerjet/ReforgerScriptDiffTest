@@ -21,11 +21,11 @@ class ServerBrowserCallback extends BackendCallback
 	protected EServerBrowserRequestResult m_Result = -1;
 	
 	// Invokers 
-	ref ScriptInvoker m_OnSuccess = new ref ScriptInvoker;
-	ref ScriptInvoker m_OnFail = new ref ScriptInvoker;
-	ref ScriptInvoker m_OnTimeOut = new ref ScriptInvoker;
+	ref ScriptInvoker m_OnSuccess = new ScriptInvoker;
+	ref ScriptInvoker m_OnFail = new ScriptInvoker;
+	ref ScriptInvoker m_OnTimeOut = new ScriptInvoker;
 	
-	ref ScriptInvoker<ServerBrowserCallback> event_OnResponse = new ref ScriptInvoker;
+	ref ScriptInvoker<ServerBrowserCallback> event_OnResponse = new ScriptInvoker;
 
 	//------------------------------------------------------------------------------------------------
 	// Override API
@@ -214,7 +214,21 @@ class RoomJoinData extends JsonApiStruct
 	int expiresAt = 0;
 	int createdAt = 0;
 	
-	void RoomJoinData()
+	//------------------------------------------------------------------------------------------------
+	override void OnPack()
+	{
+		UnregV("scope");
+		UnregV("type");
+		UnregV("reason");
+		UnregV("issuer");
+		UnregV("expiresAt");
+		UnregV("createdAt");
+		
+		if (!m_Password.IsEmpty())
+			StoreString("password", m_Password);
+	}
+	
+	override void OnExpand()
 	{
 		RegV("scope");
 		RegV("type");
@@ -222,12 +236,6 @@ class RoomJoinData extends JsonApiStruct
 		RegV("issuer");
 		RegV("expiresAt");
 		RegV("createdAt");
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void OnPack()
-	{
-		StoreString("password", m_Password);
 	}
 	
 	//------------------------------------------------------------------------------------------------

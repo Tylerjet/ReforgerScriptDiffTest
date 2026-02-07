@@ -3,7 +3,7 @@ For each platoon, holds availible squads
 */
 class SCR_CallsignPlatoonData
 {
-	protected ref array<int> m_mSquadCallsigns = new ref array<int>;
+	protected ref array<int> m_mSquadCallsigns = new array<int>;
 	
 	//---------------------------------------- On Init ----------------------------------------\\
 	/*!

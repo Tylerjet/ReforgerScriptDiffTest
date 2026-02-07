@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 class SCR_NewsTileComponent : SCR_TileBaseComponent
 {
 	[Attribute("Title")]
@@ -51,6 +50,7 @@ class SCR_NewsTileComponent : SCR_TileBaseComponent
 
 		if (!m_sReadButtonName.IsEmpty())
 			m_Read = SCR_InputButtonComponent.GetInputButtonComponent(m_sReadButtonName, w);
+
 		if (m_Read)
 			m_Read.m_OnActivated.Insert(OnRead);
 
@@ -111,7 +111,7 @@ class SCR_NewsTileComponent : SCR_TileBaseComponent
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateConnectionButtons()
 	{
-		SCR_ServicesStatusHelper.ForceConnectionButtonEnabled(m_Read, SCR_ServicesStatusHelper.IsBackendConnectionAvailable());
+		SCR_InputButtonComponent.ForceConnectionButtonEnabled(m_Read, SCR_ServicesStatusHelper.IsBackendConnectionAvailable());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -126,6 +126,8 @@ class SCR_NewsTileComponent : SCR_TileBaseComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] entry
 	void ShowTile(SCR_NewsEntry entry)
 	{
 		m_wRoot.SetOpacity(entry != null);

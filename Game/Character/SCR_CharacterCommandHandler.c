@@ -1,11 +1,11 @@
 [ComponentEditorProps(category: "GameScripted/Character", description: "Scripted character command handler", icon: HYBRID_COMPONENT_ICON)]
 class SCR_CharacterCommandHandlerComponentClass : CharacterCommandHandlerComponentClass
 {
-};
+}
 
 class SCR_CharacterCommandHandlerComponent : CharacterCommandHandlerComponent
 {
-	
+	//------------------------------------------------------------------------------------------------
 	override bool HandleMelee(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID)
 	{
 		if (pInputCtx.GetMeleeAttack())
@@ -15,21 +15,34 @@ class SCR_CharacterCommandHandlerComponent : CharacterCommandHandlerComponent
 			m_MeleeComponent.PerformAttack();
 			return true;
 		}
+
 		if (m_MeleeComponent)
-		{
 			m_MeleeComponent.Update(pDt);
-		}
 
 		return GetCommandModifier_Melee().IsMeleeAttackTag();
 	}
-		
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	ScriptInvokerInt GetOnCommandActivate()
+	{
+		if (!m_OnCommandActivate)
+			m_OnCommandActivate = new ScriptInvokerInt();
+
+		return m_OnCommandActivate;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnCommandActivate(int pCmdId)
 	{
-		m_OnCommandActivate.Invoke(pCmdId);
+		if (m_OnCommandActivate)
+			m_OnCommandActivate.Invoke(pCmdId);
 		
 		super.OnCommandActivate(pCmdId);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
 	void StartCommandLoitering()
 	{
 		if (IsLoitering())
@@ -43,6 +56,7 @@ class SCR_CharacterCommandHandlerComponent : CharacterCommandHandlerComponent
 		m_CharacterAnimComp.SetCurrentCommand(m_CmdLoiter);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected SCR_CharacterCommandLoiter GetLoiterCommand()
 	{
 		AnimPhysCommandScripted currentCmdScripted = m_CharacterAnimComp.GetCommandScripted();
@@ -52,6 +66,9 @@ class SCR_CharacterCommandHandlerComponent : CharacterCommandHandlerComponent
 		return SCR_CharacterCommandLoiter.Cast(currentCmdScripted);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] terminateFast
 	//terminateFast should be true when we are going into alerted or combat state.
 	void StopLoitering(bool terminateFast)
 	{
@@ -61,6 +78,9 @@ class SCR_CharacterCommandHandlerComponent : CharacterCommandHandlerComponent
 		Rpc(Rpc_StopLoiter_S, false);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] terminateFast
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void Rpc_StopLoiter_S(bool terminateFast)
 	{
@@ -68,16 +88,20 @@ class SCR_CharacterCommandHandlerComponent : CharacterCommandHandlerComponent
 			m_CmdLoiter.StopLoitering(terminateFast);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	bool IsLoitering()
 	{
 		return GetLoiterCommand() != null;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override protected void OnInit(IEntity owner)
 	{
 		super.OnInit(owner);
 
-		m_MovementState 		= new CharacterMovementState;
+		m_MovementState 		= new CharacterMovementState();
 		m_OwnerEntity 			= ChimeraCharacter.Cast(owner);
 		m_CharacterAnimComp 	= CharacterAnimationComponent.Cast(m_OwnerEntity.FindComponent(CharacterAnimationComponent));
 		m_MeleeComponent 		= SCR_MeleeComponent.Cast(m_OwnerEntity.FindComponent(SCR_MeleeComponent));
@@ -85,9 +109,7 @@ class SCR_CharacterCommandHandlerComponent : CharacterCommandHandlerComponent
 		m_ScrStaticTable		= new SCR_ScriptedCommandsStaticTable();
 		
 		if (!m_ScrStaticTable.Bind(m_CharacterAnimComp))
-		{
 			Print("Failed to bind scripted static table (see class SCR_ScriptedCommandsStaticTable). This can be caused by missing animation commands, tags, or events in the animation graph.");
-		}
 	}
 	
 	protected ChimeraCharacter 				m_OwnerEntity;
@@ -103,6 +125,5 @@ class SCR_CharacterCommandHandlerComponent : CharacterCommandHandlerComponent
 	protected ref CharacterCommandMoveSettings m_MoveSettings = new CharacterCommandMoveSettings();
 	protected ref CharacterCommandClimbSettings m_ClimbSettings = new CharacterCommandClimbSettings();
 	
-	ref ScriptInvoker m_OnCommandActivate = new ScriptInvoker();
-
-};
+	protected ref ScriptInvokerInt m_OnCommandActivate;
+}

@@ -8,7 +8,7 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 	protected TextWidget m_wText;
 	protected Widget m_wContent;
 	protected Widget m_wCountBar;
-	protected ref array<Widget> m_aHintElements = new ref array<Widget>();
+	protected ref array<Widget> m_aHintElements = new array<Widget>();
 
 	[Attribute("false", UIWidgets.CheckBox, "use light grey arrows instead of big yellow ones")]
 	protected bool m_bUseLightArrows;
@@ -83,9 +83,84 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 				m_wText.SetText(string.Empty);
 		}
 
-		SetInitialState();
+		SetInitialState(false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool OnFocus(Widget w, int x, int y)
+	{
+		super.OnFocus(w, x, y);
+
+		AddActionListeners();
+
+		UpdateHintBar(m_iSelectedItem, -1);
+		return false;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	override bool OnFocusLost(Widget w, int x, int y)
+	{
+		super.OnFocusLost(w, x, y);
+
+		if (!m_bAllowSwitchingWithoutFocus)
+			RemoveActionListeners();
+
+		UpdateHintBar(m_iSelectedItem, -1);
+		return false;
+	}
+
+	//TODO: revise this logic: there should be no reason to reset current item every time a new one is added or removed	
+	//------------------------------------------------------------------------------------------------
+	override int AddItem(string item, bool last = false, Managed data = null)
+	{
+		int i = super.AddItem(item, last, data);
+
+		SetInitialState(last);
+		return i;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void RemoveItem(int item, bool last = false)
+	{
+		super.RemoveItem(item, last);
+		SetInitialState(last);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void ClearAll()
+	{
+		super.ClearAll();
+		SetInitialState(true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool SetCurrentItem(int i, bool playSound = false, bool animate = false)
+	{
+		return SetCurrentItem_Internal(i, playSound, animate, true);
+	}
+
+	// --- Protected ---
+	//------------------------------------------------------------------------------------------------
+	protected bool SetCurrentItem_Internal(int i, bool playSound, bool animate, bool invokeOnChanged)
+	{
+		int lastIndex = m_iSelectedItem;
+		if (!super.SetCurrentItem(i, playSound, animate))
+			return false;
+
+		if (m_wText)
+			m_wText.SetText(m_aElementNames[i]);
+
+		if (m_bShowHints)
+			UpdateHintBar(i, lastIndex);
+
+		EnableArrows(i, animate);
+		
+		if (invokeOnChanged)
+			m_OnChanged.Invoke(this, m_iSelectedItem);
+		
+		return true;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	protected void CreateHintBar()
 	{
@@ -97,9 +172,10 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 		m_aHintElements.Clear();
 
 		m_wCountBar.SetVisible(true);
+		
 		for (int i = 0, len = m_aElementNames.Count(); i < len; i++)
 		{
-			Widget w = GetGame().GetWorkspace().CreateWidget(WidgetType.ImageWidgetTypeID, WidgetFlags.VISIBLE | WidgetFlags.STRETCH | WidgetFlags.BLEND | WidgetFlags.INHERIT_CLIPPING, Color.White, 0, m_wCountBar);
+			Widget w = GetGame().GetWorkspace().CreateWidget(WidgetType.ImageWidgetTypeID, WidgetFlags.VISIBLE | WidgetFlags.STRETCH | WidgetFlags.BLEND | WidgetFlags.INHERIT_CLIPPING, Color.FromInt(Color.WHITE), 0, m_wCountBar);
 			ImageWidget img = ImageWidget.Cast(w);
 			if (!img)
 				break;
@@ -120,6 +196,7 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 			m_aHintElements.Insert(img);
 			img.SetName(m_sHintBarElementName + i);
 		}
+		
 		UpdateHintBar(m_iSelectedItem, -1);
 	}
 
@@ -146,109 +223,21 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 				AnimateWidget.LayoutFill(m_aHintElements[currentIndex], m_fHintSelectedWidthMultiplier, m_fAnimationRate);
 		}
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	protected void SetInitialState()
+	protected void SetInitialState(bool invokeOnChanged = true)
 	{
 		int realIndex = m_iSelectedItem;
 		if (realIndex < 0 || realIndex >= m_aElementNames.Count())
 			realIndex = 0;
 
 		m_iSelectedItem = int.MIN;
-		SetCurrentItem(realIndex, false, false);
+		SetCurrentItem_Internal(realIndex, false, false, invokeOnChanged);
 
 		if (m_bShowHints && m_aElementNames && m_wCountBar)
 			CreateHintBar();
 	}
-
-	//------------------------------------------------------------------------------------------------
-	void AddActionListeners()
-	{
-		if (m_bHasActionListeners)
-			return;
-		
-		GetGame().GetInputManager().AddActionListener("MenuLeft", EActionTrigger.DOWN, OnMenuLeft);
-		GetGame().GetInputManager().AddActionListener("MenuRight", EActionTrigger.DOWN, OnMenuRight);
-		
-		m_bHasActionListeners = true;
-	}
 	
-	//------------------------------------------------------------------------------------------------
-	void RemoveActionListeners()
-	{
-		if (!m_bHasActionListeners)
-			return;
-		
-		GetGame().GetInputManager().RemoveActionListener("MenuLeft", EActionTrigger.DOWN, OnMenuLeft);
-		GetGame().GetInputManager().RemoveActionListener("MenuRight", EActionTrigger.DOWN, OnMenuRight);
-		
-		m_bHasActionListeners = false;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	// Determines if left/right page switch action listeners should be removed on focus lost
-	void SetKeepActionListeners(bool keep)
-	{
-		m_bAllowSwitchingWithoutFocus = keep;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override bool OnFocus(Widget w, int x, int y)
-	{
-		super.OnFocus(w, x, y);
-
-		AddActionListeners();
-
-		UpdateHintBar(m_iSelectedItem, -1);
-		return false;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override bool OnFocusLost(Widget w, int x, int y)
-	{
-		super.OnFocusLost(w, x, y);
-
-		if (!m_bAllowSwitchingWithoutFocus)
-			RemoveActionListeners();
-
-		UpdateHintBar(m_iSelectedItem, -1);
-		return false;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override bool SetCurrentItem(int i, bool playSound = false, bool animate = false)
-	{
-		int lastIndex = m_iSelectedItem;
-		if (!super.SetCurrentItem(i, playSound, animate))
-			return false;
-
-		if (m_wText)
-			m_wText.SetText(m_aElementNames[i]);
-
-		if (m_bShowHints)
-			UpdateHintBar(i, lastIndex);
-
-		/*if (m_ButtonLeft && m_ButtonRight)
-		{
-			if (m_bCycleMode)
-			{
-				bool enabled = m_aElementNames.Count() > 1;
-				m_ButtonLeft.SetEnabled(enabled, animate);
-				m_ButtonRight.SetEnabled(enabled, animate);
-			}
-			else
-			{
-				m_ButtonLeft.SetEnabled(i != 0, animate);
-				m_ButtonRight.SetEnabled(i != (m_aElementNames.Count() - 1), animate);
-			}
-		}*/
-		
-		EnableArrows(i, animate);
-
-		m_OnChanged.Invoke(this, m_iSelectedItem);
-		return true;
-	}
-
 	//------------------------------------------------------------------------------------------------
 	//! Based on cycle mode set which arrow should be enabled at given selection
 	protected void EnableArrows(int selected, bool animate)
@@ -327,29 +316,45 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 			m_ButtonRight.OnClick(m_ButtonRight.m_wRoot, 0, 0, 0); // TODO: Replace with other function, which accepts more params (turn of anims and sounds separately)
 	}
 
+	// --- Public ---
 	//------------------------------------------------------------------------------------------------
-	override int AddItem(string item, Managed data = null)
+	void AddActionListeners()
 	{
-		int i = super.AddItem(item, data);
-
-		SetInitialState();
-		return i;
+		if (m_bHasActionListeners)
+			return;
+		
+		GetGame().GetInputManager().AddActionListener("MenuLeft", EActionTrigger.DOWN, OnMenuLeft);
+		GetGame().GetInputManager().AddActionListener("MenuRight", EActionTrigger.DOWN, OnMenuRight);
+		
+		m_bHasActionListeners = true;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	override void RemoveItem(int item)
+	void RemoveActionListeners()
 	{
-		super.RemoveItem(item);
-		SetInitialState();
+		if (!m_bHasActionListeners)
+			return;
+		
+		GetGame().GetInputManager().RemoveActionListener("MenuLeft", EActionTrigger.DOWN, OnMenuLeft);
+		GetGame().GetInputManager().RemoveActionListener("MenuRight", EActionTrigger.DOWN, OnMenuRight);
+		
+		m_bHasActionListeners = false;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	override void ClearAll()
+	// Determines if left/right page switch action listeners should be removed on focus lost
+	void SetKeepActionListeners(bool keep)
 	{
-		super.ClearAll();
-		SetInitialState();
+		m_bAllowSwitchingWithoutFocus = keep;
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	void SetCycleMode(bool cycle)
+	{
+		m_bCycleMode = cycle;
+		EnableArrows(m_iSelectedItem, false);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetOnLeftArrowClick()
 	{
@@ -375,15 +380,4 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 	{
 		return SCR_SpinBoxComponent.Cast(SCR_ScriptedWidgetComponent.GetComponent(SCR_SpinBoxComponent, name, parent, searchAllChildren));
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	// API
-	//------------------------------------------------------------------------------------------------
-	
-	//------------------------------------------------------------------------------------------------
-	void SetCycleMode(bool cycle)
-	{
-		m_bCycleMode = cycle;
-		EnableArrows(m_iSelectedItem, false);
-	}
-};
+}

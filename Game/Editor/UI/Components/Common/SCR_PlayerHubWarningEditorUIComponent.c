@@ -1,4 +1,3 @@
-
 class SCR_PlayerHubWarningEditorUIComponent : SCR_BaseEditorUIComponent
 {	
 	protected static SCR_PlayerHubWarningEditorUIComponent m_Self;
@@ -10,12 +9,15 @@ class SCR_PlayerHubWarningEditorUIComponent : SCR_BaseEditorUIComponent
 	
 	[Attribute()]
 	protected string m_sTimerText;
+
 	protected TextWidget m_TimerText;
 	
 	protected IEntity m_PlayerRef;
 	
 	//======================== UPDATE TIMER ========================\\
-	//Todo: this is not acurate
+
+	//------------------------------------------------------------------------------------------------
+	//Todo: this is not accurate
 	protected void UpdateTimer()
 	{
 		m_iCurrentWarningTimer--;
@@ -28,8 +30,10 @@ class SCR_PlayerHubWarningEditorUIComponent : SCR_BaseEditorUIComponent
 		}
 	}
 	
-	//Use: Replication.Time()
 	//======================== TIMER COMPLETED/CANCELED ========================\\
+
+	//------------------------------------------------------------------------------------------------
+	//Use: Replication.Time()
 	protected void TimerDone(bool canceled = false)
 	{
 		//Remove Update
@@ -42,11 +46,16 @@ class SCR_PlayerHubWarningEditorUIComponent : SCR_BaseEditorUIComponent
 		HideTimer();
 	}
 	
-	
 	//======================== SET TIMER ========================\\
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] newTimer
+	//! \param[in] newHub
+	//! \param[in] playerInTrigger
 	static void SetWarningTimer(int newTimer, SCR_PlayerHubAreaTriggerEntity newHub, IEntity playerInTrigger)
 	{		
-		if (!m_Self) return;
+		if (!m_Self)
+			return;
 
 		//Cancel prev timer
 		if (m_Self.m_LinkedHub)
@@ -67,11 +76,16 @@ class SCR_PlayerHubWarningEditorUIComponent : SCR_BaseEditorUIComponent
 		m_Self.ShowTimer();
 	}
 	
-	
 	//======================== CANCEL TIMER ========================\\
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] hub
+	//! \param[in] hubDestroyed
 	static void CancelWarningTimer(SCR_PlayerHubAreaTriggerEntity hub, bool hubDestroyed = false)
 	{
-		if (!m_Self) return;
+		if (!m_Self)
+			return;
 		
 		if (m_Self.m_bTimerSet && (!hubDestroyed || ( hubDestroyed && m_Self.m_LinkedHub == hub))){
 			m_Self.TimerDone(true);
@@ -80,21 +94,23 @@ class SCR_PlayerHubWarningEditorUIComponent : SCR_BaseEditorUIComponent
 	
 	
 	//======================== VISIBILITY ========================\\
+
+	//------------------------------------------------------------------------------------------------
 	protected void ShowTimer()
 	{
 		m_TimerText.SetText(m_iCurrentWarningTimer.ToString());
 		m_WidgetRef.SetVisible(true);
 	}
 	
-	void HideTimer()
+	//------------------------------------------------------------------------------------------------
+	protected void HideTimer()
 	{
 		m_WidgetRef.SetVisible(false);
 	}
-	
-	
-	
 
 	//======================== INHERITED ========================\\
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{	
 		m_WidgetRef = w;
@@ -103,10 +119,10 @@ class SCR_PlayerHubWarningEditorUIComponent : SCR_BaseEditorUIComponent
 		
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		if (m_bTimerSet && m_Self)
 			GetGame().GetCallqueue().Remove(m_Self.UpdateTimer);
-
 	}
-};
+}

@@ -1,8 +1,10 @@
 // *************************************************************************************
 // ! CharacterCameraDebug - debug views
 // *************************************************************************************
-class CharacterCameraDebug extends CharacterCameraBase
+class CharacterCameraDebug : CharacterCameraBase
 {
+	//------------------------------------------------------------------------------------------------
+	// constructor
 	void CharacterCameraDebug(CameraHandlerComponent pCameraHandler)
 	{
 		m_iHeadBoneIndex = m_OwnerCharacter.GetAnimation().GetBoneIndex("Head");
@@ -10,14 +12,13 @@ class CharacterCameraDebug extends CharacterCameraBase
 		m_WeaponManager = BaseWeaponManagerComponent.Cast(m_OwnerCharacter.FindComponent(BaseWeaponManagerComponent));
 	}
 	
-
-	//
+	//------------------------------------------------------------------------------------------------
 	override void OnActivate (ScriptedCameraItem pPrevCamera, ScriptedCameraItemResult pPrevCameraResult)
 	{
 		super.OnActivate(pPrevCamera, pPrevCameraResult);
 	}
 
-	//	
+	//------------------------------------------------------------------------------------------------
 	override void OnUpdate(float pDt, out ScriptedCameraItemResult pOutResult)
 	{
 		pOutResult.m_bUpdateWhenBlendOut	= false;
@@ -84,4 +85,4 @@ class CharacterCameraDebug extends CharacterCameraBase
 	
 	protected int m_iHeadBoneIndex;
 	protected BaseWeaponManagerComponent m_WeaponManager = null;
-};
+}

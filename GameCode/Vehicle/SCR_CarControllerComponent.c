@@ -2,10 +2,8 @@ class SCR_CarControllerComponentClass : CarControllerComponentClass
 {
 }
 
-/*!
-	Class responsible for game car.
-	It connects all car components together and handles all comunication between them.
-*/
+//! Class responsible for game car.
+//! It connects all car components together and handles all comunication between them.
 class SCR_CarControllerComponent : CarControllerComponent
 {
 	protected ref ScriptInvokerVoid m_OnEngineStart, m_OnEngineStop;
@@ -62,31 +60,19 @@ class SCR_CarControllerComponent : CarControllerComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnDestroyed(IEntity ent)
 	{
-		ChimeraWorld world = ChimeraWorld.CastFrom(ent.GetWorld());
-		if (!world)
-			return;
-
-		Vehicle veh = Vehicle.Cast(ent);
-		if (!veh)
-			return;
-
-		GarbageManager garbageMan = world.GetGarbageManager();
-		if (garbageMan)
-			garbageMan.Insert(veh);
+		auto garbageSystem = SCR_GarbageSystem.GetByEntityWorld(ent);
+		if (garbageSystem)
+			garbageSystem.Insert(ent);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnCompartmentEntered(IEntity vehicle, BaseCompartmentManagerComponent mgr, IEntity occupant, int managerId, int slotID)
 	{
-		if (++m_iOccupants > 0)
+		if (m_iOccupants++ == 0)
 		{
-			ChimeraWorld world = ChimeraWorld.CastFrom(vehicle.GetWorld());
-			if (!world)
-				return;
-
-			GarbageManager garbageMan = world.GetGarbageManager();
-			if (garbageMan)
-				garbageMan.Withdraw(Vehicle.Cast(vehicle));
+			auto garbageSystem = SCR_GarbageSystem.GetByEntityWorld(vehicle);
+			if (garbageSystem)
+				garbageSystem.Withdraw(vehicle);
 		}
 	}
 
@@ -95,13 +81,9 @@ class SCR_CarControllerComponent : CarControllerComponent
 	{
 		if (--m_iOccupants == 0)
 		{
-			ChimeraWorld world = ChimeraWorld.CastFrom(vehicle.GetWorld());
-			if (!world)
-				return;
-
-			GarbageManager garbageMan = world.GetGarbageManager();
-			if (garbageMan)
-				garbageMan.Insert(Vehicle.Cast(vehicle));
+			auto garbageSystem = SCR_GarbageSystem.GetByEntityWorld(vehicle);
+			if (garbageSystem)
+				garbageSystem.Insert(vehicle);
 		}
 	}
 
@@ -293,4 +275,10 @@ class SCR_CarControllerComponent : CarControllerComponent
 			soundComponent.SoundEvent(SCR_SoundEvent.SOUND_ENGINE_STOP);
 		}
 	}
-};
+	//------------------------------------------------------------------------------------------------
+	//! Verifies Engine and Gearbox functionality.
+	override bool ValidateCanMove()
+	{
+		return m_DamageManager.GetMovementDamage() < 1;
+	}
+}

@@ -274,7 +274,7 @@ class SCR_EditorImageGeneratorEntity : GenericEntity
 	override void _WB_AfterWorldUpdate(float timeSlice)
 	{
 		WorldEditorAPI api = _WB_GetEditorAPI();
-		if (!api.IsEntitySelected(this))
+		if (!api.IsEntitySelected(api.EntityToSource(this)))
 			return;
 			
 		int screenW = api.GetScreenWidth();
@@ -296,6 +296,48 @@ class SCR_EditorImageGeneratorEntity : GenericEntity
 	{
 		GetWorld().GetBoundBox(min, max);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Generate new image file with placeholder texture 
+	//! Use when asset has no preview image
+	/*
+	protected void CreatePreviewImageFile()
+	{
+		string sourceFile = FilePath.ReplaceExtension(FilePath.StripPath(targetPath), m_sImagePlaceholderExt);
+		if (sourceFile.IsEmpty() || m_sImagePlaceholderSource.IsEmpty())
+			return;
+
+		//--- Read source meta file
+		string placeholderPath = m_ImagePlaceholder.GetPath();
+		string absolutePath;
+		Workbench.GetAbsolutePath(placeholderPath, absolutePath);
+
+		//--- Create directory
+		string imageDirectoryPath = FilePath.StripFileName(targetPath);
+		if (!config.CreateDirectoryFor(imageDirectoryPath, addonName))
+			return;
+
+		//--- Copy texture source
+		FileIO.CopyFile(m_sImagePlaceholderPath + m_sImagePlaceholderSource, addonName + FilePath.StripFileName(targetPath) + sourceFile);
+
+		//--- Register the file
+		Workbench.GetAbsolutePath(addonName + FilePath.StripFileName(targetPath) + sourceFile, absolutePath, false);
+		MetaFile metaContainer = m_ResourceManager.RegisterResourceFile(absolutePath);
+		if (metaContainer)
+		{
+			//--- Update meta file
+			targetPath = metaContainer.GetResourceID();
+			BaseContainerList configurations = metaContainer.GetObjectArray("Configurations");
+			if (configurations)
+			{
+				configurations.Get(0).Set("ColorSpace", "ToSRGB"); //--- Assume PC is the first
+				metaContainer.Save();
+				Print(string.Format("Editable entity preview image ADDED: @\"%1\"", targetPath), LogLevel.DEBUG);
+				return;
+			}
+		}
+	}
+	*/
 #endif
 };
 

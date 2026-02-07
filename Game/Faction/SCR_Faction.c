@@ -68,24 +68,31 @@ class SCR_Faction : ScriptedFaction
 	//~ Catalog map for quicker obtaining the catalog using EEntityCatalogType
 	protected ref map<EEntityCatalogType, ref SCR_EntityCatalog> m_mEntityCatalogs = new map<EEntityCatalogType, ref SCR_EntityCatalog>();
 	
+	protected bool m_bCatalogInitDone;
+	
 	protected ref set<Faction> m_FriendlyFactions = new set<Faction>;
 	
 	//------------------------------------------------------------------------------------------------
 	/*!
 	\return Order in which the faction appears in the list. Lower values are first.
 	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetOrder()
 	{
 		return m_iOrder;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetCanCreateOnlyPredefinedGroups()
 	{
 		return m_bCreateOnlyPredefinedGroups;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param groupArray
 	void GetPredefinedGroups(notnull array<ref SCR_GroupPreset> groupArray)
 	{
 		for (int i = 0, count = m_aPredefinedGroups.Count(); i < count; i++)
@@ -95,72 +102,87 @@ class SCR_Faction : ScriptedFaction
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param index
+	//! \return
 	ResourceName GetFlagName(int index)
 	{
 		return m_aFlagNames[index];
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[out] flagNames
+	//! \return
 	int GetFlagNames(out array<string> flagNames)
 	{
 		return flagNames.Copy(m_aFlagNames);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetGroupFlagImageSet()
 	{
 		return m_sGroupFlagsImageSet;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[out] textures
+	//! \return
 	int GetGroupFlagTextures(out array<ResourceName> textures)
 	{
 		return textures.Copy(m_aGroupFlags);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetFactionFlag()
 	{
 		return m_sFactionFlag;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetFactionFlagMaterial()
 	{
 		return m_FactionFlagMaterial;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param materialResource
 	void SetFactionFlagMaterial(ResourceName materialResource)
 	{
 		m_FactionFlagMaterial = materialResource;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	EEditableEntityLabel GetFactionLabel()
 	{
 		return m_FactionLabel;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_FactionCallsignInfo GetCallsignInfo()
 	{
 		return m_CallsignInfo;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	Color GetOutlineFactionColor()
 	{
-		return m_OutlineFactionColor;
+		return Color.FromInt(m_OutlineFactionColor.PackToInt());
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	// Called everywhere, used to generate initial data for this faction
 	void InitializeFaction()
 	{
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param ancestors
 	void SetAncestors(notnull array<string> ancestors)
 	{
 		m_aAncestors = {};
@@ -173,6 +195,9 @@ class SCR_Faction : ScriptedFaction
 	Non-playable factions will not appear in the respawn menu.
 	\return True when playable
 	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsPlayable()
 	{
 		return m_bIsPlayable;
@@ -184,6 +209,10 @@ class SCR_Faction : ScriptedFaction
 	Called on Init (if server) and on server join (is Client)
 	\param isPlayable Bool to set is playable
 	*/
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param isPlayable
 	void InitFactionIsPlayable(bool isPlayable)
 	{
 		m_bIsPlayable = isPlayable;
@@ -195,6 +224,10 @@ class SCR_Faction : ScriptedFaction
 	\param factionKey Ancestor faction key
 	\return True when inherited
 	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \param factionKey
+	//! \return
 	bool IsInherited(string factionKey)
 	{
 		return m_aAncestors && m_aAncestors.Contains(factionKey);
@@ -208,6 +241,10 @@ class SCR_Faction : ScriptedFaction
 	\param isPlayable Bool to set is playable
 	\param killPlayersIfNotPlayable Bool kills all players if on server if faction is set isplayable false
 	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \param isPlayable
+	//! \param killPlayersIfNotPlayable
 	void SetIsPlayable(bool isPlayable, bool killPlayersIfNotPlayable = false)
 	{
 		if (m_bIsPlayable == isPlayable)
@@ -267,6 +304,9 @@ class SCR_Faction : ScriptedFaction
 	Get On Playable Changed Script Invoker
 	\return ScriptInvoker_FactionPlayableChanged OnFactionPlayableChanged
 	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker_FactionPlayableChanged GetOnFactionPlayableChanged()
 	{
 		if (!m_OnFactionPlayableChanged)
@@ -293,6 +333,9 @@ class SCR_Faction : ScriptedFaction
 	If you add factionA friendly towards factionB but not the other way around then factionA will not retaliate if shot at by factionB
 	\param faction Faction to set friendly
 	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \param faction
 	void SetFactionFriendly(notnull Faction faction)
 	{
 		m_FriendlyFactions.Insert(faction);	
@@ -305,6 +348,9 @@ class SCR_Faction : ScriptedFaction
 	If you add factionB hostile towards factionA but not the other way around then factionA will not retaliate if shot at by factionB
 	\param faction Faction to set hostile
 	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \param faction
 	void SetFactionHostile(notnull Faction faction)
 	{
 		int index = m_FriendlyFactions.Find(faction);
@@ -317,6 +363,9 @@ class SCR_Faction : ScriptedFaction
 	/*!
 	Get the number of players assigned to this faction
 	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetPlayerCount()
 	{
 		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
@@ -350,6 +399,10 @@ class SCR_Faction : ScriptedFaction
 	\param[out] player ids List of players belonging to the faction
 	\return Number of players in faction
 	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[out] players
+	//! \return
 	int GetPlayersInFaction(notnull out array<int> players)
 	{
 		players.Clear();
@@ -372,12 +425,14 @@ class SCR_Faction : ScriptedFaction
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetFactionRadioEncryptionKey()
 	{
 		return m_sFactionRadioEncryptionKey;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetFactionRadioFrequency()
 	{
 		return m_iFactionRadioFrequency;
@@ -399,6 +454,8 @@ class SCR_Faction : ScriptedFaction
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param rankID
+	//! \return
 	string GetRankName(SCR_ECharacterRank rankID)
 	{
 		SCR_CharacterRank rank = GetRankByID(rankID);
@@ -410,6 +467,8 @@ class SCR_Faction : ScriptedFaction
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param rankID
+	//! \return
 	string GetRankNameUpperCase(SCR_ECharacterRank rankID)
 	{
 		SCR_CharacterRank rank = GetRankByID(rankID);
@@ -421,6 +480,8 @@ class SCR_Faction : ScriptedFaction
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param rankID
+	//! \return
 	string GetRankNameShort(SCR_ECharacterRank rankID)
 	{
 		SCR_CharacterRank rank = GetRankByID(rankID);
@@ -432,6 +493,8 @@ class SCR_Faction : ScriptedFaction
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param rankID
+	//! \return
 	string GetRankInsignia(SCR_ECharacterRank rankID)
 	{
 		SCR_CharacterRank rank = GetRankByID(rankID);
@@ -451,8 +514,18 @@ class SCR_Faction : ScriptedFaction
 	\param catalogType Type to get catalog of
 	\return Catalog. Can be null if not found. Note that Only one catalog of each type can be in the list
 	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \param catalogType
+	//! \return
 	SCR_EntityCatalog GetFactionEntityCatalogOfType(EEntityCatalogType catalogType)
-	{
+	{	
+		if (!m_bCatalogInitDone)
+		{
+			Debug.Error2("SCR_EntityCatalogManagerComponent", "Trying to obtain catalog of type: '" + typename.EnumToString(EEntityCatalogType, catalogType) + "' (faction: " + GetFactionKey() + ") but catalog is not yet initialized! Call your function one frame later!");
+			return null;
+		}
+		
 		//~ Get catalog 
 		SCR_EntityCatalog entityCatalog = m_mEntityCatalogs.Get(catalogType);
 		
@@ -471,6 +544,10 @@ class SCR_Faction : ScriptedFaction
 	\param[out] List of all catalogs within the faction
 	\return List size
 	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[out] outEntityCatalogs
+	//! \return number of result's entries
 	int GetAllFactionEntityCatalogs(notnull out array<SCR_EntityCatalog> outEntityCatalogs)
 	{
 		outEntityCatalogs.Clear();
@@ -534,6 +611,7 @@ class SCR_Faction : ScriptedFaction
 		
 		//~ Init the catalog for faster processing
 		SCR_EntityCatalogManagerComponent.InitCatalogs(m_aEntityCatalogs, m_mEntityCatalogs);
+		m_bCatalogInitDone = true;
 		
 		//~ Clear array as no longer needed
 		m_aEntityCatalogs = null;
@@ -557,6 +635,7 @@ class SCR_Faction : ScriptedFaction
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	array<int> GetBaseCallsignIndexes()
 	{
 		array<int> indexes = {};
@@ -570,6 +649,9 @@ class SCR_Faction : ScriptedFaction
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param index
+	//! \param offset
+	//! \return
 	SCR_MilitaryBaseCallsign GetBaseCallsignByIndex(int index, int offset = 0)
 	{
 		index += offset;
@@ -603,24 +685,28 @@ class SCR_MilitaryBaseCallsign
 	protected int m_iSignalIndex;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetCallsign()
 	{
 		return m_sCallsign;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetCallsignShort()
 	{
 		return m_sCallsignShort;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetCallsignUpperCase()
 	{
 		return m_sCallsignUpperCase;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetSignalIndex()
 	{
 		return m_iSignalIndex;

@@ -3,9 +3,6 @@
 [BaseContainerProps()]
 class SCR_NameTagRulesetSingle : SCR_NameTagRulesetBase
 {
-	[Attribute("20", UIWidgets.CheckBox, desc: "degrees \n base angle from center of the screen to entity required to display nametag, automatically scales with distance")]
-	protected float m_fBaseAngleToFocus;
-	
 	protected ref array<ref SCR_NameTagData> m_aSecondaryTags = {};	// nametags who passed secondary visibility rules
 	
 	//------------------------------------------------------------------------------------------------
@@ -18,7 +15,7 @@ class SCR_NameTagRulesetSingle : SCR_NameTagRulesetBase
 			return false;
 		
 		float distLerp = Math.InverseLerp(m_ZoneCfg.m_fFarthestZoneRangePow2, 0, data.m_fDistance);	// Reduce the angle required to show with distance -> the further is the entity, angle required to focus it gets smaller
-		distLerp *= m_fBaseAngleToFocus;
+		distLerp *= m_iMaxAngle;
 		
 		data.m_fAngleToScreenCenter = GetCameraToEntityAngle(data.m_vEntWorldPos, VERT_ANGLE_ADJUST);
 		if ( data.m_fAngleToScreenCenter > distLerp)	// within displayable angle

@@ -1,6 +1,5 @@
 class SCR_AIAttackBehavior : SCR_AIBehaviorBase
 {
-	
 #ifdef WORKBENCH
 	ref Shape m_Shape;
 #endif
@@ -14,7 +13,6 @@ class SCR_AIAttackBehavior : SCR_AIBehaviorBase
     SCR_AIWorld m_AIWorld;
 	SCR_AICombatComponent m_CombatComponent;
 	
-	bool m_bHasGrenades = true;
 	bool m_bSelected = false;
 
 	// This delay is executed before shooting starts
@@ -64,7 +62,7 @@ class SCR_AIAttackBehavior : SCR_AIBehaviorBase
 	}
 	
 	//----------------------------------------------------------------------------------	
-	void SCR_AIAttackBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, BaseTarget target, vector pos, float priorityLevel = PRIORITY_LEVEL_NORMAL)
+	void SCR_AIAttackBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, BaseTarget target, BaseTarget prevTarget, float priorityLevel = PRIORITY_LEVEL_NORMAL)
 	{
 		InitParameters(target, 4);
 		if (!utility)
@@ -79,6 +77,13 @@ class SCR_AIAttackBehavior : SCR_AIBehaviorBase
 		SetIsUniqueInActionQueue(false);
 		m_AIWorld = SCR_AIWorld.Cast(GetGame().GetAIWorld());
 		m_CombatComponent = utility.m_CombatComponent;
+		
+		// Init wait time, but only if we didn't have target before.
+		// Otherwise if we are switching between targets, it should be instant.
+		if (!prevTarget)
+			InitWaitTime(utility);
+		else
+			m_fWaitTime.m_Value = 0;
 	}
 	
 	//----------------------------------------------------------------------------------
@@ -92,60 +97,25 @@ class SCR_AIAttackBehavior : SCR_AIBehaviorBase
 		if (baseTarget != m_CombatComponent.GetCurrentTarget())
 			return 0;
 		
+		// Update m_bUseCombatMove
+		m_bUseCombatMove = !m_Utility.m_AIInfo.HasUnitState(EUnitState.IN_TURRET);
+		
 		float targetScore = m_Utility.m_CombatComponent.m_WeaponTargetSelector.CalculateTargetScore(baseTarget);
-		if (targetScore >= SCR_AICombatComponent.TARGET_SCORE_HIGH_PRIORITY_ATTACK ||
-			baseTarget.IsEndangering())
+				
+		if (baseTarget.IsEndangering() || baseTarget.GetTimeSinceEndangered() < SCR_AICombatComponent.TARGET_ENDANGERED_TIMEOUT_S)
+			targetScore *= SCR_AICombatComponent.ENDANGERING_TARGET_SCORE_MULTIPLIER;
+		
+		if (targetScore >= SCR_AICombatComponent.TARGET_SCORE_HIGH_PRIORITY_ATTACK)
 			return PRIORITY_BEHAVIOR_ATTACK_HIGH_PRIORITY;
-		else if (m_bSelected)
-			return PRIORITY_BEHAVIOR_ATTACK_SELECTED;
-		else
-			return PRIORITY_BEHAVIOR_ATTACK_NOT_SELECTED;
-	}
-	
-	//----------------------------------------------------------------------------------
-	void SendMessageThrowGrenadeTo(IEntity target, vector position, string reason)
-	{
-		if (!m_bHasGrenades)
-			return;
+			
+		if (m_bSelected)
+			return PRIORITY_BEHAVIOR_ATTACK_SELECTED;		
 		
-		AIAgent agent = AIAgent.Cast(m_Utility.GetOwner());
-		if (!agent || !m_AIWorld)
-			return;
-		
-		//Ensure there's at least 1 grenade in the inventory
-		SCR_InventoryStorageManagerComponent inventoryManager = SCR_InventoryStorageManagerComponent.Cast(agent.GetControlledEntity().FindComponent(SCR_InventoryStorageManagerComponent));
-		if (!inventoryManager)
-		{
-			m_bHasGrenades = false;
-			return;
-		}	
-	
-		array<typename> components = {};
-		components.Insert(WeaponComponent);
-		components.Insert(GrenadeMoveComponent);
-		IEntity grenade = inventoryManager.FindItemWithComponents(components, EStoragePurpose.PURPOSE_DEPOSIT);
-		if (!grenade)
-		{
-			m_bHasGrenades = false;
-			return;
-		}	
-		AICommunicationComponent mailbox = agent.GetCommunicationComponent();
-		if (!mailbox)
-			return;
-		
-		SCR_AIMessage_ThrowGrenadeTo msg = new SCR_AIMessage_ThrowGrenadeTo();
-		if (!msg)
-			Debug.Error("Unable to create valid message!");
-		msg.SetText(reason);
-		msg.m_MessageType = EMessageType_Goal.THROW_GRENADE_TO;
-		msg.m_TargetEntity = target;
-		msg.m_vTargetPosition = position;
-		msg.SetReceiver(agent);
-		mailbox.RequestBroadcast(msg, agent);
+		return PRIORITY_BEHAVIOR_ATTACK_NOT_SELECTED;
 	}
 	
 	// Sets the delay until shooting starts.
-	void InitWaitTime(SCR_AIUtilityComponent utility)
+	protected void InitWaitTime(SCR_AIUtilityComponent utility)
 	{
 		float threatMeasure = utility.m_ThreatSystem.GetThreatMeasure();
 		

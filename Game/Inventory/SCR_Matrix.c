@@ -34,7 +34,7 @@ class SCR_Matrix
 		if( ( sizeRows + row ) > m_iMatrix.Count() )	
 			return {-1,-1};	//the item doesn't fit vertically
 		
-		SCR_MatrixRow aRow = new ref SCR_MatrixRow( sizeCols );
+		SCR_MatrixRow aRow = new SCR_MatrixRow( sizeCols );
 		
 		//go through all rows
 		for( int iRow = row; iRow < ( sizeRows + row ); iRow++ )

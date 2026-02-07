@@ -70,7 +70,7 @@ class CharacterCamera1stPersonVehicle extends CharacterCamera1stPerson
 			
 			// Camera moves forward as the player looks sideways (providing better view off the shoulders when pitching down).
 			const float OneBy90 = 1.0 / 90.0;
-			float zOffset = -0.2 * Math.Clamp(Math.AbsFloat(additiveYaw[0] * OneBy90), 0.0, 1.0);
+			float zOffset = -0.07 - 0.13 * Math.Clamp(Math.AbsFloat(additiveYaw[0] * OneBy90), 0.0, 1.0);
 			vector offsetLS = { m_OffsetLS[0], m_OffsetLS[1], zOffset };
 						
 			vector resultTM[4];

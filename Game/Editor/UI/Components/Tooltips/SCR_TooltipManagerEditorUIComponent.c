@@ -1,8 +1,8 @@
-/** @ingroup Editor_UI Editor_UI_Components
-*/
-class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
+//! @ingroup Editor_UI Editor_UI_Components
+
+class SCR_TooltipManagerEditorUIComponent : SCR_BaseEditorUIComponent
 {
-	const float INERTIA_THRESHOLD = 0.001; //--- Squared value
+	protected static const float INERTIA_THRESHOLD = 0.001; //--- Squared value
 	
 	[Attribute()]
 	protected ref array<ref SCR_TooltipEditorEntry> m_Tooltips;
@@ -29,12 +29,11 @@ class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
 	protected Managed m_InfoInstance;
 	protected bool m_bTooltipShown;
 
-	/*!
-	Show tooltip with given params.
-	\param info UI info with all visual information
-	\param type Tooltip type, influences which layout will be selected
-	\param instance Instance, e.g., entity, which can be accessed for more information
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Show tooltip with given params.
+	//! \param[in] info UI info with all visual information
+	//! \param[in] type Tooltip type, influences which layout will be selected
+	//! \param[in] instance Instance, e.g., entity, which can be accessed for more information
 	void SetInfo(SCR_UIInfo info, EEditorTooltip type = 0, Managed instance = null)
 	{
 		if (!m_TooltipArea)
@@ -92,10 +91,10 @@ class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
 		m_Info = info;
 		m_InfoInstance = instance;
 	}
-	/*!
-	Hide currently shown tooltip.
-	\param info When not null, it will reset tooltip if this one is the current one
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Hide currently shown tooltip.
+	//! \param[in] info When not null, it will reset tooltip if this one is the current one
 	void ResetInfo(SCR_UIInfo info = null)
 	{
 		//--- Only reset if given info is currently shown
@@ -112,14 +111,19 @@ class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
 		m_Info = null;
 		m_InfoInstance = null;
 	}
-	/*!
-	Refresh currently shown tooltip, in case it's UI info changed (e.g., action state was toggled).
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Refresh currently shown tooltip, in case it's UI info changed (e.g., action state was toggled).
+	//! \param[in] info
+	//! \param[in] type
+	//! \param[in] instance
 	void RefreshInfo(SCR_UIInfo info, EEditorTooltip type = 0, Managed instance = null)
 	{
 		if (m_InfoInstance && instance == m_InfoInstance)
 			SetInfo(info, type, instance)
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void PlayAnimation()
 	{
 		//m_TooltipArea.GetWidget().SetOpacity(1);
@@ -127,12 +131,16 @@ class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
 		
 		m_bTooltipShown = true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void ResetAnimation()
 	{
 		AnimateWidget.StopAnimation(m_TooltipArea.GetWidget(), WidgetAnimationOpacity);
 		m_TooltipArea.GetWidget().SetOpacity(0);
 		m_bTooltipShown = false;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void ShowEntityTooltip(SCR_EditableEntityComponent entity)
 	{
 		if (!entity)
@@ -144,6 +152,8 @@ class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
 		if (entity)
 			SetInfo(entity.GetInfo(), EEditorTooltip.ENTITY, entity);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnHover(EEditableEntityState state, set<SCR_EditableEntityComponent> entitiesInsert, set<SCR_EditableEntityComponent> entitiesRemove)
 	{
 		if (!GetMenu().IsFocused())
@@ -162,6 +172,8 @@ class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
 			ShowEntityTooltip(entitiesInsert[0]);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
 		/*
@@ -174,6 +186,8 @@ class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
 			GetMenu().GetOnMenuUpdate().Remove(OnMenuUpdate);
 		*/
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnRadialMenuToggle(IEntity owner, bool isOpened)
 	{
 		if (isOpened)
@@ -185,18 +199,24 @@ class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
 		{
 			//--- Show entity tooltip when radial menu is closed again
 			SCR_BaseEditableEntityFilter hoverFilter = SCR_BaseEditableEntityFilter.GetInstance(EEditableEntityState.HOVER);
-			if (hoverFilter) ShowEntityTooltip(hoverFilter.GetFirstEntity());
+			if (hoverFilter)
+				ShowEntityTooltip(hoverFilter.GetFirstEntity());
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnContextMenuToggle(bool isOpened)
 	{
 		//--- Hide entity tooltip when context menu is opened
 		if (isOpened)
 			ResetInfo();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnMenuUpdate(float tDelta)
 	{
-		if (!m_Tooltip) return;
+		if (!m_Tooltip)
+			return;
 		
 		m_Tooltip.UpdateTooltip(m_InfoInstance);
 		
@@ -265,15 +285,19 @@ class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
 		
 		FrameSlot.SetPos(widget, posX, posY);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnMenuFocusLost()
 	{
 		ResetInfo();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttachedScripted(Widget w)
 	{
 		m_InputManager = GetGame().GetInputManager();
-		if (!m_InputManager) return;
+		if (!m_InputManager)
+			return;
 		
 		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 		
@@ -285,17 +309,20 @@ class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
 		}
 		
 		MenuRootComponent menuRoot = GetRootComponent();
-		if (!menuRoot) return;
+		if (!menuRoot)
+			return;
 		
 		m_Cursor = SCR_CursorEditorUIComponent.Cast(menuRoot.FindComponent(SCR_CursorEditorUIComponent));
-		//if (!m_Cursor) return;
+		//if (!m_Cursor)
+		//	return;
 		
 		m_ContextMenu = SCR_ContextMenuActionsEditorUIComponent.Cast(GetRootComponent().FindComponent(SCR_ContextMenuActionsEditorUIComponent));
 		if (m_ContextMenu)
 			m_ContextMenu.GetOnContextMenuToggle().Insert(OnContextMenuToggle);
 		
 		m_TooltipArea = SCR_TooltipAreaEditorUIComponent.Cast(menuRoot.FindComponent(SCR_TooltipAreaEditorUIComponent, true));
-		if (!m_TooltipArea) return;
+		if (!m_TooltipArea)
+			return;
 		
 		m_TooltipArea.GetWidget().SetOpacity(0);
 		
@@ -312,6 +339,8 @@ class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
 		
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_EDITOR_GUI_TOOLTIP_DEBUG, "", "Show debug in tooltips", "Editor GUI");
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		if (GetGame().OnInputDeviceIsGamepadInvoker())
@@ -324,7 +353,8 @@ class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
 			menu.GetOnMenuFocusLost().Remove(OnMenuFocusLost);
 		}
 		
-		if (m_TooltipArea) m_TooltipArea.ClearTooltips();
+		if (m_TooltipArea)
+			m_TooltipArea.ClearTooltips();
 		
 		if (m_bTrackHoverState)
 		{
@@ -338,7 +368,7 @@ class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
 		
 		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_EDITOR_GUI_TOOLTIP_DEBUG);
 	}
-};
+}
 
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EEditorTooltip, "m_TooltipType")]
 class SCR_TooltipEditorEntry
@@ -349,15 +379,20 @@ class SCR_TooltipEditorEntry
 	[Attribute(params: "layout")]
 	protected ResourceName m_TooltipLayout;
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	EEditorTooltip GetTooltipType()
 	{
 		return m_TooltipType;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetTooltipLayout()
 	{
 		return m_TooltipLayout;
 	}
-};
+}
 
 enum EEditorTooltip
 {
@@ -366,4 +401,4 @@ enum EEditorTooltip
 	ENTITY,
 	CONTEXT_ACTION,
 	TOOLBAR_ACTION
-};
+}

@@ -518,8 +518,8 @@ class SCR_ObstacleDetectorSplineInfo
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[inout] mins needed to obtain min, -clearance is also added to all the mins
-	//! \param[inout] maxs needed to obtain max, +clearance is also added to all the maxs
+	//! \param[in,out] mins needed to obtain min, -clearance is also added to all the mins
+	//! \param[in,out] maxs needed to obtain max, +clearance is also added to all the maxs
 	//! \param[out] min the bottom-left corner - clearance
 	//! \param[out] max the top-right corner + clearance
 	// minor performance gains to add clearance to mins/maxs but gains nonetheless (e.g 500ms on 20s calculation so ~= 2.5% on big area)

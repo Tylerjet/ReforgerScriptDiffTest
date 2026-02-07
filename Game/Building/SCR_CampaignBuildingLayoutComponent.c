@@ -1,10 +1,8 @@
-[EntityEditorProps(category: "GameScripted/Building", description: "Component attached to a laout of the composition, holding informations about final composition to be build")]
+[EntityEditorProps(category: "GameScripted/Building", description: "Component attached to a composition layout, holding information about the final composition to be built")]
 class SCR_CampaignBuildingLayoutComponentClass : ScriptComponentClass
 {
-
 }
 
-//------------------------------------------------------------------------------------------------
 class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 {
 	[RplProp(onRplName: "SpawnPreviewIfBuildingModeOpened")]
@@ -42,24 +40,23 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Sets the event on editor mode opening.
+	//! Set the event on editor mode opening.
+	//! \return
 	bool SetOnEditorOpenEvent()
 	{
 		SCR_EditorManagerEntity editorManagerEntity = SCR_EditorManagerEntity.GetInstance();
 		if (editorManagerEntity)
-		{
-			editorManagerEntity.GetOnOpened().Insert(OnEditorModeOpen);
 			editorManagerEntity.GetOnModeChange().Insert(OnEditorModeChanged);
-		}
 
 		SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
 		if (core)
 			core.Event_OnEditorManagerInitOwner.Remove(SetOnEditorOpenEvent);
 
-		return editorManagerEntity;
+		return editorManagerEntity != null;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvokerInt GetOnAddBuildingValueInt()
 	{
 		if (!m_OnAddBuildingValueInt)
@@ -69,6 +66,7 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvokerVoid GetOnAddBuildingValueVoid()
 	{
 		if (!m_OnAddBuildingValueVoid)
@@ -78,6 +76,7 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvokerVoid GetOnCompositionIdSet()
 	{
 		if (!m_OnCompositionIdSet)
@@ -87,19 +86,9 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Event called when the editor mode was opened to check if it's free roam mode and if so, spawn the previews of future compositions.
-	void OnEditorModeOpen()
-	{
-		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
-		if (!editorManager)
-			return;
-
-		if (editorManager.GetCurrentMode() == EEditorMode.BUILDING)
-			SpawnPreview();
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! Event called when the editor mode changed to delete the composition preview.
+	//! \param[in] currentModeEntity
+	//! \param[in] prevModeEntity
 	void OnEditorModeChanged(SCR_EditorModeEntity currentModeEntity, SCR_EditorModeEntity prevModeEntity)
 	{
 		if (currentModeEntity && currentModeEntity.GetModeType() == EEditorMode.BUILDING && IsLayoutInBuildingRange(currentModeEntity))
@@ -110,6 +99,8 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Is this layout in building radius of the provider
+	//! \param[in] editorModeEntity
+	//! \return
 	bool IsLayoutInBuildingRange(notnull SCR_EditorModeEntity editorModeEntity)
 	{
 		SCR_CampaignBuildingEditorComponent buildingEditorComponent = SCR_CampaignBuildingEditorComponent.Cast(editorModeEntity.FindComponent(SCR_CampaignBuildingEditorComponent));
@@ -124,13 +115,15 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Returns true if the building preview for this layout exists.
+	//! \return true if the building preview for this layout exists, false otherwise.
 	bool HasBuildingPreview()
 	{
 		return m_PreviewEntity;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] currentBuildValue
 	void EvaluateBuildingStatus(int currentBuildValue)
 	{
 #ifdef ENABLE_DIAG
@@ -150,7 +143,9 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Get the building value that defines how long it takes to build a composition (based on the tool, number of people building it etc.)
+	//! Get the building value that defines how long it takes to build a composition (based on the tool, number of people building it etc.)
+	//! \param[in] prefabID
+	//! \return
 	int GetBuildingValue(int prefabID)
 	{
 		ResourceName resName = GetCompositionResourceName(prefabID);
@@ -169,7 +164,9 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Return resource name based on prefab ID.
+	//!
+	//! \param[in] prefabID
+	//! \return resource name based on prefab ID.
 	protected ResourceName GetCompositionResourceName(int prefabID)
 	{
 		SCR_CampaignBuildingManagerComponent buildingManagerComponent = GetBuildingManagerComponent();
@@ -180,7 +177,6 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//Get BuildingManager component
 	protected SCR_CampaignBuildingManagerComponent GetBuildingManagerComponent()
 	{
 		BaseGameMode gameMode = GetGame().GetGameMode();
@@ -191,7 +187,8 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Save prefab ID of the composition, which is used by a Free Roam mode to know what composition this preview represents.
+	//! Save prefab ID of the composition, which is used by a Free Roam mode to know what composition this preview represents.
+	//! \param[in] prefabId
 	void SetPrefabId(int prefabId)
 	{
 		m_iPrefabId = prefabId;
@@ -206,13 +203,14 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetPrefabId()
 	{
 		return m_iPrefabId;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Spawns the composition belonging to this layout.
+	//! Spawn the composition belonging to this layout.
 	void SpawnComposition()
 	{
 		IEntity ent = GetOwner().GetRootParent();
@@ -234,7 +232,7 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 		SCR_EditableEntityComponent entity = SCR_EditableEntityComponent.GetEditableEntity(ent);
 		if (entity)
 		{
-			SCR_EditorPreviewParams params = SCR_EditorPreviewParams.CreateParams(spawnParams.Transform, EEditorTransformVertical.TERRAIN);
+			SCR_EditorPreviewParams params = SCR_EditorPreviewParams.CreateParams(spawnParams.Transform, verticalMode: EEditorTransformVertical.TERRAIN);
 			SCR_RefPreviewEntity.SpawnAndApplyReference(entity, params);
 		}
 
@@ -242,6 +240,7 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Create a preview if it does not exist
 	void SpawnPreview()
 	{
 		if (m_PreviewEntity)
@@ -272,22 +271,27 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 		ent.GetWorldTransform(spawnParams.Transform);
 
 		m_PreviewEntity = SCR_PrefabPreviewEntity.SpawnPreviewFromPrefab(res, "SCR_PrefabPreviewEntity", ent.GetWorld(), spawnParams, "{58F07022C12D0CF5}Assets/Editor/PlacingPreview/Preview.emat");
+		m_PreviewEntity.SetPreviewTransform(spawnParams.Transform, EEditorTransformVertical.TERRAIN);
 		if (!m_PreviewEntity)
 			return;
 
+		ent.AddChild(m_PreviewEntity, -1, EAddChildFlags.RECALC_LOCAL_TRANSFORM);
+
 		m_PreviewEntity.Update();
 
-		ent.AddChild(m_PreviewEntity, 0, EAddChildFlags.AUTO_TRANSFORM | EAddChildFlags.RECALC_LOCAL_TRANSFORM);
-
-		SCR_EditorModeEntity modeEntity = GetBuildingModeEntity();
-		if (!modeEntity)
+		IEntity playerEntity = SCR_PlayerController.GetLocalMainEntity();
+		if (!playerEntity)
 			return;
-
-		modeEntity.GetOnClosed().Insert(DeletePreview);
+		
+		SCR_CharacterControllerComponent characterController = SCR_CharacterControllerComponent.Cast(playerEntity.FindComponent(SCR_CharacterControllerComponent));
+		if (!characterController)
+			return;
+		
+		characterController.GetOnPlayerDeath().Insert(DeletePreview);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Spawns the composition preview, if the building mode is active (open)
+	//! Spawn the composition preview if the building mode is active (open)
 	void SpawnPreviewIfBuildingModeOpened()
 	{
 		SCR_EditorModeEntity modeEntity = GetBuildingModeEntity();
@@ -299,6 +303,7 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void DeletePreview()
 	{
 		IEntity playerEntity = SCR_PlayerController.GetLocalMainEntity();
@@ -320,6 +325,8 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] value
 	void AddBuildingValue(int value)
 	{
 		m_fCurrentBuildValue += value;
@@ -335,6 +342,8 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] newValue
 	void SetBuildingValue(float newValue)
 	{
 		newValue = Math.Clamp(newValue, 0, m_iToBuildValue);
@@ -350,21 +359,22 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Returns value that needs to be reached to spawn the composition.
+	//! \return value that needs to be reached to spawn the composition.
 	int GetToBuildValue()
 	{
 		return m_iToBuildValue;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Returns current value
+	//! \return current value
 	float GetCurrentBuildValue()
 	{
 		return m_fCurrentBuildValue;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Try to search for a editor mode entity (exists only when the player is in editor mode)
+	//! Search for an editor mode entity (exists only when the player is in editor mode)
+	//! \return
 	SCR_EditorModeEntity GetBuildingModeEntity()
 	{
 		SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
@@ -379,7 +389,8 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Once someone for the 1st time add a value to build a composition, set the lock at this composition to disallow any manipulation (deleting, moving) with this composition until it's fully build.
+	//! Once someone for the 1st time add a value to build a composition,
+	//! set the lock at this composition to disallow any manipulation (deleting, moving) with this composition until it's fully build.
 	void LockCompositionInteraction()
 	{
 		IEntity rootEnt = GetOwner().GetRootParent();
@@ -427,10 +438,10 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Destructor
+	// destructor
 	void ~SCR_CampaignBuildingLayoutComponent()
 	{
-		// Delete preview, when the layout was removed (composition build, layout deleted from editor mode, etc.);
+		// Delete preview when the layout is removed (composition build, layout deleted from editor mode, etc.);
 		DeletePreview();
 	}
 }

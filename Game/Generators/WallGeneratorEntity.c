@@ -1,250 +1,18 @@
-//------------------------------------------------------------------------------------------------
-class WallGeneratorPointData : ShapePointDataScriptBase
-{
-	[Attribute("", UIWidgets.ResourceNamePicker, "Prefab", "et")]
-	protected ResourceName MeshAtPoint;
-
-	[Attribute("0", UIWidgets.Slider, params: "-10 10 0.01")]
-	protected float PrePadding;
-
-	[Attribute("0", UIWidgets.Slider, params: "-10 10 0.01")]
-	protected float PostPadding;
-
-	[Attribute("0", UIWidgets.Slider, params: "-10 10 0.01")]
-	protected float m_fOffsetUp;
-
-	[Attribute("0", UIWidgets.CheckBox)]
-	protected bool m_bAlignWithNext;
-
-	[Attribute("0", UIWidgets.CheckBox)]
-	protected bool m_bAllowClipping;
-
-	[Attribute("1", UIWidgets.CheckBox)]
-	protected bool m_bGenerate;
-};
-
-//------------------------------------------------------------------------------------------------
-//! Properties exposed in the wall generator property grid after adding a new wall length group
-[BaseContainerProps()]
-class WallWeightPair
-{
-	[Attribute("", UIWidgets.ResourceNamePicker, "Prefab", "et")]
-	ResourceName m_sWallAsset;
-
-	[Attribute("1", UIWidgets.EditBox)]
-	float m_fWeight;
-
-	[Attribute("0", UIWidgets.Slider, params: "-10 10 0.01")]
-	float m_fPrePadding;
-
-	[Attribute("0", UIWidgets.Slider, params: "-10 10 0.01")]
-	float m_fPostPadding;
-};
-
-//------------------------------------------------------------------------------------------------
-[BaseContainerProps()]
-class WallLengthGroup
-{
-	[Attribute("", UIWidgets.Object, "Prefab", "et")]
-	ref array<ref WallWeightPair> m_aWallPrefabs;
-};
-
-//------------------------------------------------------------------------------------------------
-//! Data container that holds the individudal wall asset related information
-class WallGroupContainer
-{
-	bool m_bGenerated;
-	float m_fMiddleObjectLength;
-	float m_fSmallestWall = float.MAX;
-
-	// for quick access, wallgroup lengths are in a seperate array (indices corresponding with those in wallgroup array)
-	protected ref array<float> m_aLengths = {};
-
-	protected ref array<ref WallGroup> m_aWallGroups = {};
-	protected WallGeneratorEntity m_WallGenerator;
-
-#ifdef WORKBENCH
-	protected WorldEditorAPI m_Api;
-
-	//------------------------------------------------------------------------------------------------
-	void WallGroupContainer(WorldEditorAPI api, array<ref WallLengthGroup> items, bool forward, string middleObj, WallGeneratorEntity ent)
-	{
-		m_Api = api;
-		m_WallGenerator = ent;
-		PrepareWallGroups(items,forward, middleObj, api);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	bool IsEmpty()
-	{
-		return m_aWallGroups.IsEmpty();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	WallPair GetRandomWall(float biggestSmallerThan = -1)
-	{
-		int index = -1;
-		for (int i = m_aLengths.Count() - 1; i >= 0; i--) // find the longest wall which is smaller than given amount
-		{
-			if (m_aLengths.Get(i) < biggestSmallerThan)
-			{
-				index = i;
-				break;
-			}
-		}
-
-		if (index != -1)
-			return m_aWallGroups.Get(index).GetRandomWall();
-
-		return null;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Goes through walls and prepares a data structure that's used during wall generation
-	void PrepareWallGroups(array<ref WallLengthGroup> groups, bool forward, string middleObj, WorldEditorAPI api)
-	{
-		m_aWallGroups.Clear();
-
-		array<ref WallGroup> wallGroupsTmp = {};
-
-		int forwardAxis = 2;
-
-		if (forward)
-			forwardAxis = 0;
-
-		if (!middleObj.IsEmpty())
-			m_fMiddleObjectLength = WallGeneratorEntity.MeasureEntity(middleObj, forwardAxis, api);
-
-		WallGroup wallGroup;
-		WallPair wallPair;
-		float wallLength;
-		foreach (WallLengthGroup group : groups)
-		{
-			wallGroup = new WallGroup();
-
-			foreach (WallWeightPair pair : group.m_aWallPrefabs)
-			{
-				wallPair = new WallPair();
-
-				wallPair.m_sWallAsset = pair.m_sWallAsset;
-				wallPair.m_fPostPadding = pair.m_fPostPadding;
-				wallPair.m_fPrePadding = pair.m_fPrePadding;
-				wallGroup.m_aWeights.Insert(pair.m_fWeight);
-
-				wallLength = WallGeneratorEntity.MeasureEntity(wallPair.m_sWallAsset, forwardAxis, api);
-				// wallLength += wallPair.m_fPostPadding;
-				wallPair.m_fWallLength = wallLength;
-
-				if (wallLength > wallGroup.m_fWallLength)
-					wallGroup.m_fWallLength = wallLength; // biggest length is the one being used for the whole group
-
-				if (!wallPair.m_sWallAsset.IsEmpty())
-					wallGroup.m_aWallPairs.Insert(wallPair);
-			}
-
-			if (wallGroup.m_aWallPairs.Count() != 0)
-			{
-				wallGroupsTmp.Insert(wallGroup);
-				m_bGenerated = true;
-			}
-		}
-
-		float smallestSize;
-		int smallestIndex;
-
-		// order groups by length
-		while (wallGroupsTmp.Count() != 0)
-		{
-			smallestSize = float.MAX;
-			smallestIndex = 0;
-			foreach (int i, WallGroup g : wallGroupsTmp)
-			{
-				if (g.m_fWallLength < smallestSize)
-				{
-					smallestSize = g.m_fWallLength;
-					if (smallestSize < m_fSmallestWall)
-						m_fSmallestWall = smallestSize;
-					smallestIndex = i;
-				}
-			}
-
-			m_aWallGroups.Insert(wallGroupsTmp.Get(smallestIndex));
-			m_aLengths.Insert(wallGroupsTmp.Get(smallestIndex).m_fWallLength);
-			wallGroupsTmp.Remove(smallestIndex);
-		}
-
-		if (m_WallGenerator && m_WallGenerator.m_bDebug)
-		{
-			foreach (WallGroup group : m_aWallGroups)
-			{
-				Print(group.m_fWallLength);
-				foreach (WallPair pair : group.m_aWallPairs)
-				{
-					Print(pair.m_sWallAsset);
-					Print(pair.m_fWallWeight);
-				}
-			}
-		}
-	}
-#endif
-};
-
-//------------------------------------------------------------------------------------------------
-//! Wall pair data structure of wall asset + wall weight(extended with other params)
-class WallPair
-{
-	string m_sWallAsset;
-	float m_fWallWeight;
-	float m_fWallLength;
-	float m_fPostPadding;
-	float m_fPrePadding;
-};
-
-//------------------------------------------------------------------------------------------------
-//! Collection of wall pair data objects into a single wall group.
-//! Wall group is meant to group walls of the same length. It's possible to add shorter wall(s) to a wall group as well(a feature required by map designers), but the wall group as a whole is considered to have only a single length(that of the longest wall in the wallgroup) and when considering which wall group is selected during generation,
-//! it's the wall group length as a whole that's being considered, not individual walls within the group. When placing the walls during wall generation, after it's already been decided which wall group will satisfy the length requirenment,
-//! and after a particular wall pair was selected based on the weights, the actual prefab is placed in the world and the exact length of this prefab is then deducted from the remaining segment(so no gap is created by possibly using a shorter variance).
-class WallGroup
-{
-	ref array<ref WallPair> m_aWallPairs 	= {};
-	ref array<float> 		m_aWeights 		= {};
-
-	float m_fWallLength;
-
-	//------------------------------------------------------------------------------------------------
-	WallPair GetRandomWall()
-	{
-		int index = SCR_ArrayHelper.GetWeightedIndex(m_aWeights, Math.RandomFloat01());
-		return m_aWallPairs.Get(index);
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-// wall generator point metadata that's being operated on with the generator after the data gets extracted from raw polyline/spline data
-class WallGeneratorPoint
-{
-	vector Pos;
-	ResourceName CustomMesh;
-	float m_fPrePadding;
-	float m_fPostPadding;
-	bool m_bGenerate;
-	bool m_bAlignNext;
-	bool m_bClip;
-	float m_fOffsetUp;
-};
-
-//------------------------------------------------------------------------------------------------
 [EntityEditorProps(category: "GameLib/Scripted/Generator", description: "WallGeneratorEntity", dynamicBox: true, visible: false)]
 class WallGeneratorEntityClass : SCR_GeneratorBaseEntityClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class WallGeneratorEntity : SCR_GeneratorBaseEntity
 {
-	//--- Category: Middle Object
-	[Attribute("", UIWidgets.ResourceNamePicker, "Middle Object Prefab", "et", category: "Middle Object")]
+	/*
+		Middle Object
+	*/
+
+	[Attribute(defvalue: "1", desc: "Enable middle object", category: "Middle Object")]
+	protected bool m_bEnableMiddleObject;
+
+	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Middle Object Prefab", "et", category: "Middle Object")]
 	protected ResourceName MiddleObject;
 
 	[Attribute(defvalue: "1", desc: "Place middle prefab at vertex", category: "Middle Object")]
@@ -265,9 +33,14 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 	[Attribute("0", UIWidgets.Slider, "Middle object offset up/down", params: "-10 10 0.01", category: "Middle Object")]
 	protected float MiddleObjectOffsetUp;
 
-	//--- Category: First Object
+	/*
+		First Object
+	*/
 
-	[Attribute("", UIWidgets.ResourceNamePicker, "First Object Prefab", "et", category: "First Object")]
+	[Attribute(defvalue: "1", desc: "Enable first object", category: "First Object")]
+	protected bool m_bEnableFirstObject;
+
+	[Attribute("", UIWidgets.ResourcePickerThumbnail, "First Object Prefab", "et", category: "First Object")]
 	protected ResourceName FirstObject;
 
 	[Attribute("0", UIWidgets.Slider, "First object pre-padding, essentially a gap between previous vertex first object",params: "-5 5 0.01", category: "First Object")]
@@ -282,9 +55,14 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 	[Attribute("0", UIWidgets.Slider, "First object offset up/down", params: "-10 10 0.01", category: "First Object")]
 	protected float FirstObjectOffsetUp;
 
-	//--- Category: Last Object
+	/*
+		Last Object
+	*/
 
-	[Attribute("", UIWidgets.ResourceNamePicker, "Last Object Prefab", "et", category: "Last Object")]
+	[Attribute(defvalue: "1", desc: "Enable last object", category: "Last Object")]
+	protected bool m_bEnableLastObject;
+
+	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Last Object Prefab", "et", category: "Last Object")]
 	protected ResourceName LastObject;
 
 	[Attribute("0", UIWidgets.Slider, "Last object pre-padding, essentially a gap between previous vertex first object",params: "-5 5 0.01", category: "Last Object")]
@@ -299,19 +77,34 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 	[Attribute("0", UIWidgets.Slider, "Last object offset up/down", params: "-10 10 0.01", category: "Last Object")]
 	protected float LastObjectOffsetUp;
 
-	//--- Category: Global, Other and uncategorised
-
-	[Attribute("", UIWidgets.None, "Prefab", "et")] // legacy
-	protected ref array<ref ResourceName> WallPrefabs;
+	/*
+		Global
+	*/
 
 	[Attribute("0", UIWidgets.Slider, "Global object pre-padding, essentially a gap between previous prefab and this", params: "-2 2 0.01", category: "Global")]
 	protected float PrePadding;
 
+	[Attribute("0", UIWidgets.Slider, "Allow pre-padding on first wall asset in each line segment", params: "-2 2 0.01", category: "Global")]
+	protected float PostPadding;
+
+	[Attribute("0.5", UIWidgets.Slider, "Allow overshooting the segment line by this amount when placing assets", params: "-5 5 0.01", category: "Global")]
+	protected float m_fOvershoot;
+
+	[Attribute("0", UIWidgets.Slider, "Objects offset to the side", params: "-5 5 0.01", category: "Global")]
+	protected float m_fOffsetRight;
+
+	[Attribute("0", UIWidgets.Slider, "Object offset up/down", params: "-5 5 0.01", category: "Global")]
+	protected float m_fOffsetUp;
+
+	[Attribute(defvalue: "", uiwidget: UIWidgets.Object, "Contains wall groups which group Wall/Weight pairs by length", category: "Global")]
+	protected ref array<ref WallLengthGroup> m_aWallGroups;
+
+	/*
+		Other
+	*/
+
 	[Attribute(defvalue: "1", desc: "Allow pre-padding on first wall asset in each line segment", category: "Other")]
 	protected bool PrePadFirst;
-
-	[Attribute("0", UIWidgets.Slider, "Allow pre-padding on first wall asset in each line segment",params: "-2 2 0.01", category: "Global")]
-	protected float PostPadding;
 
 	[Attribute(defvalue: "0", desc: "Copy the polyline precisely while sacrificing wall assets contact", category: "Other")]
 	protected bool ExactPlacement;
@@ -325,20 +118,8 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 	[Attribute(defvalue: "0", desc: "Rotate object 180° around the Yaw axis", category: "Other")]
 	protected bool Rotate180;
 
-	[Attribute("0.5", UIWidgets.Slider, "Allow overshooting the segment line by this amount when placing assets", params: "-5 5 0.01", category: "Global")]
-	protected float m_fOvershoot;
-
 	[Attribute(defvalue: "0", desc: "If you want to generate objects smaller than 10 centimetres", category: "Other")]
 	protected bool UseForVerySmallObjects;
-
-	[Attribute("0", UIWidgets.Slider, "Objects offset to the side", params: "-5 5 0.01", category: "Global")]
-	protected float m_fOffsetRight;
-
-	[Attribute("0", UIWidgets.Slider, "Object offset up/down", params: "-5 5 0.01", category: "Global")]
-	protected float m_fOffsetUp;
-
-	[Attribute(defvalue: "", uiwidget: UIWidgets.Object, "Contains wall groups which group Wall/Weight pairs by length", category: "Global")]
-	protected ref array<ref WallLengthGroup> m_aWallGroups;
 
 	[Attribute(defvalue: "0", desc: "Draw developer debug", category: "Other")]
 	bool m_bDebug;
@@ -346,26 +127,22 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 	[Attribute(defvalue: "0", desc: "Whether or not walls should be snapped to the terrain", category: "Other")]
 	protected bool m_bSnapToTerrain;
 
-	protected float m_fFirstObjectLength; // unused?
-	protected float m_fLastObjectLength;
+	[Attribute(uiwidget: UIWidgets.None)] // obsolete, kept for Prefabs and layers retrocompatibility
+	protected ref array<ref ResourceName> WallPrefabs;
+
+#ifdef WORKBENCH
 
 	protected IEntitySource m_ParentSource;
 
-	protected ref WallGroupContainer wallGroupContainer;
+	protected ref SCR_WallGroupContainer m_WallGroupContainer;
 
-	protected ref array<ref WallGeneratorPoint> m_Points = {};
-	protected static ref array<ref Shape> m_DebugShapes = {};
+	protected ref array<ref SCR_WallGeneratorPoint> m_aPoints = {};
+	protected static ref array<ref Shape> s_aDebugShapes = {};
 
 	//------------------------------------------------------------------------------------------------
-	void WallGeneratorEntity(IEntitySource src, IEntity parent)
-	{
-		#ifdef WORKBENCH
-		SetEventMask(EntityEvent.INIT);
-		#endif
-	}
-
-	#ifdef WORKBENCH
-	//------------------------------------------------------------------------------------------------
+	//! \param entityName Prefab to measure
+	//! \param measureAxis 0 for X measure, 2 for Z measure
+	//! \param api required 
 	//! \return entity side on provided axis, 1 on close-to-zero (< 0.00001m) measurement, float.MAX on failure
 	static float MeasureEntity(ResourceName entityName, int measureAxis, WorldEditorAPI api)
 	{
@@ -374,12 +151,11 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 		if (entityName.IsEmpty())
 			return result;
 
-		GenericEntity wallEntity = null;
-
 		Resource resource = Resource.Load(entityName);
-		if (resource.IsValid())
-			wallEntity = GenericEntity.Cast(GetGame().SpawnEntityPrefab(resource, api.GetWorld()));
+		if (!resource.IsValid())
+			return result;
 
+		GenericEntity wallEntity = GenericEntity.Cast(GetGame().SpawnEntityPrefab(resource, api.GetWorld()));
 		if (!wallEntity)
 			return result;
 
@@ -394,6 +170,7 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 			Print("Wall asset " + entityName + " is too small, does it have a valid mesh?", LogLevel.ERROR);
 			return 1; // generating is invalid, just avoid infinite loop
 		}
+
 		return result;
 	}
 
@@ -406,35 +183,38 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 			return false;
 
 		WorldEditorAPI api = _WB_GetEditorAPI();
-		if (api == null || api.UndoOrRedoIsRestoring())
+		if (!api || api.UndoOrRedoIsRestoring())
 			return false;
 
-		IEntitySource entSrc = src.ToEntitySource();
-
-		IEntitySource parentSrc;
-
 		IEntitySource thisSrc = api.EntityToSource(this);
-		parentSrc = thisSrc.GetParent();
+		IEntitySource parentSrc = thisSrc.GetParent();
+
 		BaseContainerTools.WriteToInstance(this, thisSrc);
 		OnShapeChanged(parentSrc, ShapeEntity.Cast(parent), {}, {});
+
 		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Offsets the points in the 'points' array, used with m_fOffsetRight
-	void OffsetPoints(array<vector> points, float offset, bool debugAllowed = false)
+	protected void OffsetPoints(array<vector> points, float offset, bool debugAllowed = false)
 	{
 		array<vector> pointsTemp = {};
 		pointsTemp.Copy(points);
 		points.Clear();
+		int lastIndex = pointsTemp.Count() - 1;
+
+		vector matWrld[4];
+		if (m_bDebug && debugAllowed)
+			GetWorldTransform(matWrld);
 
 		vector forwardPrev = "1 1 1";
-		for (int i = 0, cnt = pointsTemp.Count(); i < cnt; i++)
+		foreach (int i, vector pointTemp : pointsTemp)
 		{
 			vector forwardNext;
 
-			if (i < cnt-1)
-				forwardNext = pointsTemp.Get(i+1) - pointsTemp.Get(i);
+			if (i < lastIndex)
+				forwardNext = pointsTemp[i + 1] - pointTemp;
 			else
 				forwardNext = -forwardPrev;
 
@@ -478,21 +258,17 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 			// debug
 			if (m_bDebug && debugAllowed)
 			{
-				vector matWrld[4];
-				GetWorldTransform(matWrld);
-
-				m_DebugShapes.Insert(Shape.Create(ShapeType.LINE, ARGB(255, 255, 255, 255), ShapeFlags.NOZBUFFER, pointsTemp.Get(i).Multiply4(matWrld), pointsTemp.Get(i).Multiply4(matWrld) + forwardNext));
-				m_DebugShapes.Insert(Shape.Create(ShapeType.LINE, ARGB(255, 0, 255, 0), ShapeFlags.NOZBUFFER, pointsTemp.Get(i).Multiply4(matWrld), pointsTemp.Get(i).Multiply4(matWrld) + forwardPrev));
-				m_DebugShapes.Insert(Shape.Create(ShapeType.LINE, ARGB(255, 255, 0, 0), ShapeFlags.NOZBUFFER, pointsTemp.Get(i).Multiply4(matWrld), pointsTemp.Get(i).Multiply4(matWrld) + diagonal));
+				pointTemp = pointTemp.Multiply4(matWrld); // variable reuse
+				s_aDebugShapes.Insert(Shape.Create(ShapeType.LINE, ARGB(255, 255, 255, 255), ShapeFlags.NOZBUFFER, pointTemp, pointTemp + forwardNext));
+				s_aDebugShapes.Insert(Shape.Create(ShapeType.LINE, ARGB(255, 0, 255, 0), ShapeFlags.NOZBUFFER, pointTemp, pointTemp + forwardPrev));
+				s_aDebugShapes.Insert(Shape.Create(ShapeType.LINE, ARGB(255, 255, 0, 0), ShapeFlags.NOZBUFFER, pointTemp, pointTemp + diagonal));
 			}
 		}
-	};
+	}
 
 	//------------------------------------------------------------------------------------------------
 	override void OnShapeInitInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity)
 	{
-		// already in an ifdef WORKBENCH
-		// #ifdef WORKBENCH
 		super.OnShapeInitInternal(shapeEntitySrc, shapeEntity);
 
 		// TODO: auto-trigger generation here as well
@@ -502,18 +278,17 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 
 		Preprocess(shapeEntitySrc);
 		Generate(shapeEntity);
-		// #endif
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void Preprocess(IEntitySource shapeEntitySrc)
 	{
-		m_Points.Clear();
+		m_aPoints.Clear();
 		WorldEditorAPI api = _WB_GetEditorAPI();
 
-		wallGroupContainer = new WallGroupContainer(api, m_aWallGroups, UseXAsForward, MiddleObject, this);
+		m_WallGroupContainer = new SCR_WallGroupContainer(api, m_aWallGroups, UseXAsForward, MiddleObject, this);
 		BaseContainerList points = shapeEntitySrc.GetObjectArray("Points");
-		if (points != null && points.Count() >= 2 && wallGroupContainer.m_bGenerated != 0)
+		if (points != null && points.Count() >= 2 && m_WallGroupContainer.m_bGenerated != 0)
 		{
 			bool isShapeClosed = false;
 			shapeEntitySrc.Get("IsClosed", isShapeClosed);
@@ -547,7 +322,7 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 			BaseContainerList dataArr;
 			BaseContainer data;
 			int dataCount, lastPointIndex;
-			WallGeneratorPoint genPoint;
+			SCR_WallGeneratorPoint genPoint;
 
 			for (int i = 0; i < pointCount; i++)
 			{
@@ -579,23 +354,23 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 					}
 				}
 
-				genPoint = new WallGeneratorPoint();
-				genPoint.Pos = pos;
-				genPoint.CustomMesh = customMesh;
+				genPoint = new SCR_WallGeneratorPoint();
+				genPoint.m_vPos = pos;
+				genPoint.m_sCustomMesh = customMesh;
 				genPoint.m_fPrePadding = prePadding;
 				genPoint.m_fPostPadding = postPadding;
 				genPoint.m_bGenerate = generate;
 				genPoint.m_bClip = clipping;
 				genPoint.m_fOffsetUp = offsetUp;
 				genPoint.m_bAlignNext = align;
-				m_Points.Insert(genPoint);
+				m_aPoints.Insert(genPoint);
 			}
 
 			if (addFirstAsLast)
 			{
-				m_Points.Insert(m_Points[0]);
-				lastPointIndex = m_Points.Count() - 1;
-				m_Points.Get(lastPointIndex).Pos = pointsVec[lastPointIndex];
+				m_aPoints.Insert(m_aPoints[0]);
+				lastPointIndex = m_aPoints.Count() - 1;
+				m_aPoints[lastPointIndex].m_vPos = pointsVec[lastPointIndex];
 			}
 		}
 	}
@@ -603,7 +378,7 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 	//------------------------------------------------------------------------------------------------
 	protected override void OnShapeChangedInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity, array<vector> mins, array<vector> maxes)
 	{
-		if (!shapeEntitySrc)
+		if (!shapeEntitySrc || _WB_GetEditorAPI().UndoOrRedoIsRestoring())
 			return;
 
 		Preprocess(shapeEntitySrc);
@@ -611,7 +386,7 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	IEntity PlacePrefab(
+	protected IEntitySource PlacePrefab(
 		bool generate,
 		ResourceName name,
 		out vector pos,
@@ -646,7 +421,7 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 			prepadDirection = prevDir;
 
 		pos += prepadDirection * prePadding;
-		IEntity ent;
+		IEntitySource ent;
 		WorldEditorAPI api = _WB_GetEditorAPI();
 		IEntitySource thisSource = api.EntityToSource(this);
 		int layerID = api.GetCurrentEntityLayerId();
@@ -674,7 +449,7 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 				GetWorldTransform(matWrld);
 
 				ent = api.CreateEntityExt(name, "", layerID, thisSource, (pos + offsetRight), rot, TraceFlags.WORLD);
-				api.ParentEntity(this, ent, true);
+				api.ParentEntity(thisSource, ent, true);
 			}
 			else
 			{
@@ -684,10 +459,10 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 			if (offsetUp != 0)
 			{
 				vector entPos;
-				api.EntityToSource(ent).Get("coords", entPos);
+				ent.Get("coords", entPos);
 				entPos[1] = entPos[1] + offsetUp;
 				string coords = entPos[0].ToString() + " " + entPos[1].ToString() + " " + entPos[2].ToString();
-				api.ModifyEntityKey(ent, "coords", coords);
+				api.SetVariableValue(ent, null, "coords", coords);
 			}
 
 			api.SetEntityVisible(ent, isGeneratorVisible, false);
@@ -707,47 +482,47 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void Generate(ShapeEntity shapeEntity)
+	protected void Generate(ShapeEntity shapeEntity)
 	{
+		if (!m_WallGroupContainer || m_WallGroupContainer.IsEmpty())
+			return;
+
 		WorldEditorAPI api = _WB_GetEditorAPI();
-		if (api == null || api.UndoOrRedoIsRestoring() || wallGroupContainer.IsEmpty())
+		if (api == null || m_WallGroupContainer.IsEmpty())
 			return;
 
 		IEntitySource entSrc = api.EntityToSource(this);
 		m_ParentSource = entSrc.GetParent();
 		int childCount = entSrc.GetNumChildren();
 
-		IEntitySource childSrc;
-		IEntity child;
 		for (int i = childCount - 1; i >= 0; --i)
 		{
-			childSrc = entSrc.GetChild(i);
-			child = api.SourceToEntity(childSrc);
-			api.DeleteEntity(child);
+			api.DeleteEntity(entSrc.GetChild(i));
 		}
 
-		if (m_Points.Count() < 2)
+		if (m_aPoints.Count() < 2)
 			return;
 
 		int forwardAxis = 2;
 		if (UseXAsForward)
 			forwardAxis = 0;
 
-		m_fFirstObjectLength = 0;
-		m_fLastObjectLength = 0;
+		float lastObjectLength;
 
-		if (FirstObject)
-			m_fFirstObjectLength = MeasureEntity(FirstObject, forwardAxis, api);
+		if (m_bEnableLastObject && LastObject)
+			lastObjectLength = MeasureEntity(LastObject, forwardAxis, api);
 
-		if (LastObject)
-			m_fLastObjectLength = MeasureEntity(LastObject, forwardAxis, api);
-
-		bool isGeneratorVisible = api.IsEntityVisible(this);
+		bool isGeneratorVisible = api.IsEntityVisible(entSrc);
 
 		// copy points so we have them after the entity is reinitialised
-		array<ref WallGeneratorPoint> localPoints = m_Points;
+		array<ref SCR_WallGeneratorPoint> localPoints = {};
+		foreach (SCR_WallGeneratorPoint wgPoint : m_aPoints)
+		{
+			localPoints.Insert(wgPoint);
+		}
+
 		if (m_bStartFromTheEnd)
-			InvertWallGeneratorPointArray(localPoints);
+			SCR_ArrayHelperT<ref SCR_WallGeneratorPoint>.Reverse(localPoints);
 
 		float rotationAdjustment = 0;
 
@@ -760,7 +535,7 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 		if (m_bStartFromTheEnd)
 			rotationAdjustment += 180;
 
-		vector from = localPoints[0].Pos;
+		vector from = localPoints[0].m_vPos;
 		vector to, dir, prevDir, rightVec;
 
 		bool firstUsed, exhausted, lastPoint, lastSegment, generate, firstPass;
@@ -773,7 +548,7 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 		bool allowClipping, alignNext, prepadNext, custom;
 		bool firstPlaced, placeMiddle, placeLast, lastPlaced, lastInSegmentDoNotPlace, middleOfSegmentDoNotPlace;
 		vector offsetRight;
-		WallPair wall;
+		SCR_WallPair wall;
 
 		for (int i, count = localPoints.Count(); i < count; i++)
 		{
@@ -786,27 +561,27 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 			if (ExactPlacement)
 			{
 				if (i == 1)
-					from = localPoints[i].Pos;
+					from = localPoints[i].m_vPos;
 				else
-					from = localPoints[i].Pos + (dir * PrePadding);
+					from = localPoints[i].m_vPos + (dir * PrePadding);
 			}
 
 			if (lastPoint)
 			{
-				to = localPoints[i].Pos;
-				dir = (localPoints[i].Pos - localPoints[i-1].Pos).Normalized();
+				to = localPoints[i].m_vPos;
+				dir = (localPoints[i].m_vPos - localPoints[i - 1].m_vPos).Normalized();
 			}
 			else
 			{
-				to = localPoints[i+1].Pos;
+				to = localPoints[i + 1].m_vPos;
 				dir = (to - from).Normalized();
 				if (i == 0)
 					prevDir = dir;
 			}
 
-			customMesh = localPoints[i].CustomMesh;
+			customMesh = localPoints[i].m_sCustomMesh;
 			generate = localPoints[i].m_bGenerate;
-			remaining = (to - from).Length() + m_fOvershoot;
+			remaining = vector.Distance(from, to) + m_fOvershoot;
 
 			firstPass = true; // first segment on the polyline
 
@@ -835,7 +610,7 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 				middleOfSegmentDoNotPlace = false;
 
 				// first object
-				if (i == 0 && firstPass && !FirstObject.IsEmpty())
+				if (i == 0 && firstPass && m_bEnableFirstObject && !FirstObject.IsEmpty())
 				{
 					bestWall = FirstObject;
 					bestLen = MeasureEntity(FirstObject, forwardAxis, api);
@@ -861,7 +636,7 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 				}
 				else if (!lastPoint)
 				{
-					wall = wallGroupContainer.GetRandomWall(remaining);
+					wall = m_WallGroupContainer.GetRandomWall(remaining);
 					if (wall)
 					{
 						bestLen = wall.m_fWallLength;
@@ -889,16 +664,16 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 
 				remaining -= (bestLen * !allowClipping) + prePaddingToUse + postPaddingToUse; // TODO: fix bool multiplier
 
-				placeMiddle = MiddleObject && !custom;
-				placeLast = !LastObject.IsEmpty() && lastSegment;
+				placeMiddle = !custom && m_bEnableMiddleObject && !MiddleObject.IsEmpty();
+				placeLast = lastSegment && m_bEnableLastObject && !LastObject.IsEmpty();
 
-				lengthRequirement = wallGroupContainer.m_fSmallestWall; // the minimal space required to place the next wall asset
+				lengthRequirement = m_WallGroupContainer.m_fSmallestWall; // the minimal space required to place the next wall asset
 
 				if (placeMiddle)
-					lengthRequirement += wallGroupContainer.m_fMiddleObjectLength;
+					lengthRequirement += m_WallGroupContainer.m_fMiddleObjectLength;
 
 				if (placeLast)
-					lengthRequirement += m_fLastObjectLength;
+					lengthRequirement += lastObjectLength;
 
 				if (remaining < lengthRequirement)
 					exhausted = true;
@@ -909,7 +684,7 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 				if (exhausted && placeLast)
 				{
 					bestWall = LastObject;
-					bestLen = m_fLastObjectLength;
+					bestLen = lastObjectLength;
 					prePaddingToUse = LastObjectPrePadding;
 					postPaddingToUse = LastObjectPostPadding;
 					offsetRight = rightVec * LastObjectOffsetRight;
@@ -932,8 +707,8 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 					{
 						from += dir * MiddleObjectPrePadding;
 						offsetRight = rightVec * MiddleObjectOffsetRight;
-						PlacePrefab(generate, MiddleObject, from, dir, prevDir, rotationAdjustment, isGeneratorVisible, wallGroupContainer.m_fMiddleObjectLength, MiddleObjectPrePadding, MiddleObjectPostPadding, MiddleObjectOffsetUp,true, prepadNext, true, false, offsetRight);
-						remaining -= wallGroupContainer.m_fMiddleObjectLength + MiddleObjectPrePadding + MiddleObjectPostPadding;
+						PlacePrefab(generate, MiddleObject, from, dir, prevDir, rotationAdjustment, isGeneratorVisible, m_WallGroupContainer.m_fMiddleObjectLength, MiddleObjectPrePadding, MiddleObjectPostPadding, MiddleObjectOffsetUp,true, prepadNext, true, false, offsetRight);
+						remaining -= m_WallGroupContainer.m_fMiddleObjectLength + MiddleObjectPrePadding + MiddleObjectPostPadding;
 					}
 				}
 
@@ -943,22 +718,16 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 
 		// get the array back to normal
 		if (m_bStartFromTheEnd)
-			InvertWallGeneratorPointArray(localPoints);
+			SCR_ArrayHelperT<ref SCR_WallGeneratorPoint>.Reverse(localPoints);
 	}
+#endif // WORKBENCH
 
-	protected void InvertWallGeneratorPointArray(notnull inout array<ref WallGeneratorPoint> items)
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	void WallGeneratorEntity(IEntitySource src, IEntity parent)
 	{
-		int itemsCount = items.Count();
-		if (itemsCount < 2)
-			return;
-
-		int flooredMiddle = itemsCount / 2;
-		itemsCount--;
-
-		for (int i; i < flooredMiddle; i++)
-		{
-			items.SwapItems(i, itemsCount - i);
-		}
+#ifdef WORKBENCH
+		SetEventMask(EntityEvent.INIT);
+#endif // WORKBENCH
 	}
-	#endif
-};
+}

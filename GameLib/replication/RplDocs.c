@@ -721,7 +721,7 @@ able to drive the car even when not running a multiplayer game.
 The replication provides you with tools to structure your networked code in
 minimal and readable manner.
 
-There's a bit of metal gymnastics involved along with a few rules of thumb that
+There's a bit of mental gymnastics involved along with a few rules of thumb that
 will carry you through the process:
 - Base your logic around the **roles and ownership**.
 - Your code will be running in more than one setting. **Verify that your
@@ -1320,6 +1320,67 @@ digraph g {
 	}
 }
 \enddot
+
+`RplComponent` sets up and maintains replication hierarchy by listening for
+changes in entity hierarchy and performing similar operations on node hierarchy
+in replication. This behavior is controlled using `RplComponent` property
+"Parent Node From Parent Entity", which is currently turned on by default. When
+turned off, replication node managed by this component will not have its parent
+replication node modified to match node of new parent entity. We can demonstrate
+this on above example. If we were to turn off "Parent Node from Parent Entity"
+on `RplComponent` r2, we would create two independent replication hierarchies:
+
+\dot
+digraph g {
+	graph [
+		rankdir = "TB"
+		fontname = "Helvetica"
+	];
+	node [ fontname = "Helvetica" ]
+	edge [ fontname = "Helvetica" ]
+
+	subgraph cluster_RplHierarchy {
+		label = "Replication hierarchy"
+		node [
+			shape = record
+			style = filled
+		]
+		edge [
+			dir = back
+		]
+		nodeR1 [
+			label = "r1|A|b|d"
+			fillcolor = lightblue
+		]
+		nodeR2 [
+			label = "r2|D|f|h"
+			fillcolor = lightgoldenrod
+		]
+		nodeR3 [
+			label = "r3|G|i|H|j|k"
+			fillcolor = lightcoral
+		]
+		nodeR4 [
+			label = "r4|J"
+			fillcolor = lightcyan
+		]
+		nodeR2 -> nodeR3
+		nodeR1 -> nodeR4
+	}
+}
+\enddot
+
+This can be a powerful tool when optimizing streaming. %Replication hierarchy is
+streamed all at once and, for larger hierarchies, this can lead to very large
+messages and expensive instantiation on clients. It may also lead to streaming
+unnecessary data to clients. Large buildings may have objects placed inside
+which are unlikely to become visible for particular client due to distance or
+obstacles, but if those objects are children of this building (in replication
+hierarchy), they will always be streamed together with the building itself.
+By turning off "Parent Node From Parent Entity" on these objects, scheduler can
+control them independently from building itself. As a consequence, one must keep
+in mind that presence of parent entity on client does not necessarily imply
+presence of children that turn this setting off.
 
 \section Prefabs Prefabs
 Remember that you must not add or remove items from node after it has been

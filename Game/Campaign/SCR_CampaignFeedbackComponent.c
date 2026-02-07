@@ -1,10 +1,7 @@
-#include "scripts/Game/config.c"
-//------------------------------------------------------------------------------------------------
 class SCR_CampaignFeedbackComponentClass : ScriptComponentClass
 {
 }
 
-//------------------------------------------------------------------------------------------------
 class SCR_CampaignFeedbackComponent : ScriptComponent
 {
 	[Attribute("{3EE26F4747B6E99D}Configs/Hints/Conflict/ConflictHints.conf", params: "conf class=SCR_CampaignHintStorage")]
@@ -36,13 +33,8 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 
 	protected float m_fNextAllowedHintTimestamp;
 
-	#ifndef AR_CAMPAIGN_TIMESTAMP
-	protected float m_fBaseWithPlayerCaptureStart;
-	protected float m_fBaseWithPlayerCaptureEnd;
-	#else
 	protected WorldTimestamp m_fBaseWithPlayerCaptureStart;
 	protected WorldTimestamp m_fBaseWithPlayerCaptureEnd;
-	#endif
 
 	static const float ICON_FLASH_DURATION = 20;
 	static const float ICON_FLASH_PERIOD = 0.5;
@@ -52,6 +44,7 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	protected static const int FEATURE_HINT_DELAY = 120000;
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	static SCR_CampaignFeedbackComponent GetInstance()
 	{
 		PlayerController pc = GetGame().GetPlayerController();
@@ -64,6 +57,7 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Serves for enabling spawn hint on map. Also saves player spawn position
+	//! \param[in] enable
 	void EnablePlayerSpawnHint(bool enable)
 	{
 		IEntity player = SCR_PlayerController.GetLocalControlledEntity();
@@ -91,6 +85,7 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] mapUi
 	void SetMapCampaignUI(SCR_MapCampaignUI mapUi)
 	{
 		m_MapCampaignUI = mapUi;
@@ -109,12 +104,15 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	TimeContainer GetSpawnTime()
 	{
 		return m_SpawnTime;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	bool CanShowPlayerSpawn()
 	{
 		return m_bCanShowSpawnPosition;
@@ -128,7 +126,7 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Returns true if map was already opened
+	//! \return true if map was already opened, false otherwise
 	bool WasMapOpened()
 	{
 		return m_bWasMapOpened;
@@ -136,12 +134,14 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Sets that map was already opened by player
+	//! \param[in] wasOpened
 	void SetMapOpened(bool wasOpened)
 	{
 		m_bWasMapOpened = wasOpened;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_CampaignMilitaryBaseComponent GetBaseWithPlayer()
 	{
 		return m_BaseWithPlayer;
@@ -192,6 +192,7 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] status
 	void SetIsPlayerInRadioRange(bool status)
 	{
 		m_bIsPlayerInRadioRange = status;
@@ -261,7 +262,7 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 		if (!player || player.IsInVehicle())
 			return;
 
-		SCR_MilitaryBaseManager baseManager = SCR_MilitaryBaseManager.GetInstance(false);
+		SCR_MilitaryBaseSystem baseManager = SCR_MilitaryBaseSystem.GetInstance();
 
 		if (!baseManager)
 			return;
@@ -314,6 +315,8 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] base
 	void BaseOutOfRangeHint(SCR_CampaignMilitaryBaseComponent base)
 	{
 		SCR_CampaignFaction playerFaction = SCR_CampaignFaction.Cast(SCR_FactionManager.SGetLocalPlayerFaction());
@@ -328,6 +331,7 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] config
 	void OnMapOpen(MapConfiguration config)
 	{
 		if (GetGame().GetWorld().GetWorldTime() < FEATURE_HINT_DELAY)
@@ -363,11 +367,7 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 			{
 				// If relay tower is being reconfigured, calculate the capture duration
 				if (m_BaseWithPlayer.GetType() == SCR_ECampaignBaseType.RELAY)
-					#ifndef AR_CAMPAIGN_TIMESTAMP
-					m_fBaseWithPlayerCaptureEnd = m_fBaseWithPlayerCaptureStart + SCR_CampaignMilitaryBaseComponent.RADIO_RECONFIGURATION_DURATION * 1000;
-					#else
 					m_fBaseWithPlayerCaptureEnd = m_fBaseWithPlayerCaptureStart.PlusSeconds(SCR_CampaignMilitaryBaseComponent.RADIO_RECONFIGURATION_DURATION);
-					#endif
 
 				// If capture timers are invalid, hide seizing popup
 				if (m_fBaseWithPlayerCaptureStart == 0 || m_fBaseWithPlayerCaptureEnd == 0 && currentMsg && (currentMsg.m_iPriority == SCR_ECampaignSeizingMessagePrio.SEIZING_YOU || currentMsg.m_iPriority == SCR_ECampaignSeizingMessagePrio.SEIZING_ENEMY))
@@ -425,6 +425,10 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] hintID
+	//! \param[in] showImmediately
+	//! \param[in] showMultipleTimes
 	void ShowHint(EHint hintID, bool showImmediately = false, bool showMultipleTimes = false)
 	{
 		if (m_Campaign.IsTutorial())
@@ -480,6 +484,7 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void PauseHintQueue()
 	{
 		GetGame().GetCallqueue().Remove(ProcessHintQueue);
@@ -487,18 +492,24 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Upon death, the unconscious state is no longer detectable, we need to cache it
+	//! \param[in] conscious
 	void OnConsciousnessChanged(bool conscious)
 	{
 		m_bIsConscious = conscious;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsConscious()
 	{
 		return m_bIsConscious;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] playerId
+	//! \param[in] playerEntity
+	//! \param[in] killerEntity
+	//! \param[in] killer
 	void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
 		if (playerEntity != SCR_PlayerController.GetLocalControlledEntity())
@@ -512,6 +523,8 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] base
+	//! \param[in] faction
 	void OnBaseFactionChanged(notnull SCR_MilitaryBaseComponent base, Faction faction)
 	{
 		SCR_CampaignMilitaryBaseComponent campaignBase = SCR_CampaignMilitaryBaseComponent.Cast(base);
@@ -521,7 +534,7 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 
 		if (faction == SCR_FactionManager.SGetLocalPlayerFaction() && GetGame().GetWorld().GetWorldTime() > FEATURE_HINT_DELAY)
 		{
-			SCR_MilitaryBaseManager baseManager = SCR_MilitaryBaseManager.GetInstance();
+			SCR_MilitaryBaseSystem baseManager = SCR_MilitaryBaseSystem.GetInstance();
 			array<SCR_MilitaryBaseComponent> bases = {};
 			baseManager.GetBases(bases);
 			int friendlyBases;
@@ -543,6 +556,7 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] base
 	void OnBaseEntered(notnull SCR_CampaignMilitaryBaseComponent base)
 	{
 		if (m_BaseWithPlayer)
@@ -560,11 +574,7 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 		}
 		else
 		{
-			#ifndef AR_CAMPAIGN_TIMESTAMP
-			OnSeizingTimerChange(0, 0);
-			#else
 			OnSeizingTimerChange(null, null);
-			#endif
 		}
 
 		SCR_CampaignFaction playerFaction = SCR_CampaignFaction.Cast(SCR_FactionManager.SGetLocalPlayerFaction());
@@ -631,6 +641,7 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] base
 	void OnBaseLeft(notnull SCR_CampaignMilitaryBaseComponent base)
 	{
 		SCR_CampaignSeizingComponent seizingComponent = SCR_CampaignSeizingComponent.Cast(base.GetOwner().FindComponent(SCR_CampaignSeizingComponent));
@@ -655,11 +666,9 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	#ifndef AR_CAMPAIGN_TIMESTAMP
-	void OnSeizingTimerChange(float start, float end)
-	#else
+	//! \param[in] start
+	//! \param[in] end
 	void OnSeizingTimerChange(WorldTimestamp start, WorldTimestamp end)
-	#endif
 	{
 		m_fBaseWithPlayerCaptureStart = start;
 		m_fBaseWithPlayerCaptureEnd = end;
@@ -667,6 +676,10 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] msgID
+	//! \param[in] playerID
+	//! \param[in] factionID
 	void MobileAssemblyFeedback(SCR_EMobileAssemblyStatus msgID, int playerID, int factionID)
 	{
 		SCR_CampaignFactionManager fManager = SCR_CampaignFactionManager.Cast(GetGame().GetFactionManager());
@@ -697,6 +710,7 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 				text2 = "#AR-Campaign_MobileAssemblyPlayerName";
 				break;
 			}
+
 			case SCR_EMobileAssemblyStatus.DISMANTLED:
 			{
 				text = "#AR-Campaign_MobileAssemblyDismantled-UC";
@@ -708,6 +722,7 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 
 				break;
 			}
+
 			case SCR_EMobileAssemblyStatus.DESTROYED:
 			{
 				text = "#AR-Campaign_MobileAssemblyDestroyed-UC";
@@ -725,6 +740,19 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] msg
+	//! \param[in] factionId
+	//! \param[in] baseCallsign
+	//! \param[in] callerCallsignCompany
+	//! \param[in] callerCallsignPlatoon
+	//! \param[in] callerCallsignSquad
+	//! \param[in] calledCallsignCompany
+	//! \param[in] calledCallsignPlatoon
+	//! \param[in] calledCallsignSquad
+	//! \param[in] param
+	//! \param[in] seed
+	//! \param[in] quality
 	void PlayRadioMsg(SCR_ERadioMsg msg, int factionId, int baseCallsign, int callerCallsignCompany, int callerCallsignPlatoon, int callerCallsignSquad, int calledCallsignCompany, int calledCallsignPlatoon, int calledCallsignSquad, int param, float seed, float quality)
 	{
 		if (m_Campaign.IsTutorial())
@@ -1235,7 +1263,7 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 			GetGame().GetInputManager().AddActionListener("TasksOpen", EActionTrigger.DOWN, RegisterTasksShown);
 			SCR_UITaskManagerComponent.s_OnTaskListVisible.Insert(ShowVolunteerHint);
 
-			SCR_MilitaryBaseManager.GetInstance().GetOnBaseFactionChanged().Insert(OnBaseFactionChanged);
+			SCR_MilitaryBaseSystem.GetInstance().GetOnBaseFactionChanged().Insert(OnBaseFactionChanged);
 
 			if (m_Campaign)
 			{
@@ -1263,7 +1291,7 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 			GetGame().GetInputManager().RemoveActionListener("TasksOpen", EActionTrigger.DOWN, RegisterTasksShown);
 			SCR_UITaskManagerComponent.s_OnTaskListVisible.Remove(ShowVolunteerHint);
 
-			SCR_MilitaryBaseManager baseManager = SCR_MilitaryBaseManager.GetInstance(false);
+			SCR_MilitaryBaseSystem baseManager = SCR_MilitaryBaseSystem.GetInstance();
 
 			if (baseManager)
 				baseManager.GetOnBaseFactionChanged().Remove(OnBaseFactionChanged);
@@ -1301,6 +1329,8 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] changing
+	//! \param[in] becameOwner
 	void OnOwnershipChanged(bool changing, bool becameOwner)
 	{
 		if (changing)
@@ -1322,6 +1352,12 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] interactionType
+	//! \param[in] playerController
+	//! \param[in] resourceComponentFrom
+	//! \param[in] resourceComponentTo
+	//! \param[in] resourceType
+	//! \param[in] resourceValue
 	void OnPlayerSuppliesInteraction(EResourcePlayerInteractionType interactionType, PlayerController playerController, SCR_ResourceComponent resourceComponentFrom, SCR_ResourceComponent resourceComponentTo, EResourceType resourceType, float resourceValue)
 	{
 		if (interactionType != EResourcePlayerInteractionType.VEHICLE_UNLOAD)
@@ -1372,13 +1408,13 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_CampaignFeedbackComponent()
 	{
 		ProcessEvents(false);
 	}
 }
 
-//------------------------------------------------------------------------------------------------
 //! Popup message priorities sorted from lowest to highest
 enum SCR_ECampaignPopupPriority
 {

@@ -22,13 +22,13 @@ class SCR_LoadoutStatisticsComponent : ScriptedWidgetComponent
 	protected CareerMenuUI m_CareerUI;
 	protected SCR_SpinBoxComponent m_LoadoutSpin;
 	
-	protected ref array<ref Widget> m_aStatWidgets = new ref array<ref Widget>();
+	protected ref array<ref Widget> m_aStatWidgets = new array<ref Widget>();
 	
 	// Values 
 	protected int m_iEntryCount = 0;
 	protected int m_iSelected = 0;
 	
-	ref ScriptInvoker m_OnLoadoutChange = new ref ScriptInvoker();
+	ref ScriptInvoker m_OnLoadoutChange = new ScriptInvoker();
 	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -59,12 +59,13 @@ class SCR_LoadoutStatisticsComponent : ScriptedWidgetComponent
 			return;
 		
 		// Get info from loadout stats 
-		foreach (LoadoutStatSet statSet : m_aLoadouts)
+		int total = m_aLoadouts.Count();
+		foreach (int i, LoadoutStatSet statSet : m_aLoadouts)
 		{
 			if (!statSet)
 				continue;
 			
-			m_LoadoutSpin.AddItem(statSet.GetLoadout().GetLoadoutName());
+			m_LoadoutSpin.AddItem(statSet.GetLoadout().GetLoadoutName(), i == total - 1);
 			
 			// Get max entry count 
 			int c = 0;

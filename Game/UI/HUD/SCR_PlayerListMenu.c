@@ -2,9 +2,8 @@ enum EPlayerListTab
 {
 	ALL = 0,
 	GROUPS = 1
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_PlayerListEntry
 {
 	SCR_ScoreInfo m_Info;
@@ -36,7 +35,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	protected ResourceName m_sScoreboardRow = "{65369923121A38E7}UI/layouts/Menus/PlayerList/PlayerListEntry.layout";
 
 	protected ref array<ref SCR_PlayerListEntry> m_aEntries = new array<ref SCR_PlayerListEntry>();
-	protected ref map<int, SCR_ScoreInfo> m_aAllPlayersInfo = new ref map<int, SCR_ScoreInfo>();
+	protected ref map<int, SCR_ScoreInfo> m_aAllPlayersInfo = new map<int, SCR_ScoreInfo>();
 	protected ref array<Faction> m_aFactions = {null};
 
 	protected SCR_InputButtonComponent m_Mute;
@@ -55,7 +54,6 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	protected PlayerController m_PlayerController;
 	SCR_SortHeaderComponent m_Header;
 	protected Widget m_wTable;
-	protected Widget m_wRoot;
 	protected bool m_bFiltering;
 	protected float m_fTimeSkip;
 
@@ -104,10 +102,10 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void InitSorting()
 	{
-		if (!m_wRoot)
+		if (!GetRootWidget())
 			return;
 
-		Widget w = m_wRoot.FindAnyWidget("SortHeader");
+		Widget w = GetRootWidget().FindAnyWidget("SortHeader");
 		if (!w)
 			return;
 
@@ -626,7 +624,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			if (!m_VotingManager.IsVoting(votingType, playerID))
 			{				
 				//--- Voting not in progress, start it
-				combo.AddItem(info.GetStartVotingName(), new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.START_VOTE));				
+				combo.AddItem(info.GetStartVotingName(), false, new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.START_VOTE));				
 			}
 			//--- Voting in progress
 			else
@@ -636,9 +634,9 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 				{
 					int currentVotes, VotesRequired;
 					if (m_VotingManager.GetVoteCounts(votingType, playerID, currentVotes, VotesRequired))
-						combo.AddItem(WidgetManager.Translate(VOTING_PLAYER_COUNT_FORMAT, info.GetCancelVotingName(), currentVotes, VotesRequired), new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.CANCEL_VOTE));
+						combo.AddItem(WidgetManager.Translate(VOTING_PLAYER_COUNT_FORMAT, info.GetCancelVotingName(), currentVotes, VotesRequired), false, new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.CANCEL_VOTE));
 					else 
-						combo.AddItem(info.GetCancelVotingName(), new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.CANCEL_VOTE));
+						combo.AddItem(info.GetCancelVotingName(), false, new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.CANCEL_VOTE));
 				}
 				else
 				{
@@ -649,13 +647,13 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 						int currentVotes, VotesRequired;
 						if (m_VotingManager.GetVoteCounts(votingType, playerID, currentVotes, VotesRequired))
 						{
-							combo.AddItem(WidgetManager.Translate(VOTING_PLAYER_COUNT_FORMAT, info.GetName(), currentVotes, VotesRequired), new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.VOTE));
-							combo.AddItem(info.GetAbstainVoteName(), new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.ABSTAIN_VOTE));
+							combo.AddItem(WidgetManager.Translate(VOTING_PLAYER_COUNT_FORMAT, info.GetName(), currentVotes, VotesRequired), false, new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.VOTE));
+							combo.AddItem(info.GetAbstainVoteName(), false, new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.ABSTAIN_VOTE));
 						}
 						else 
 						{
-							combo.AddItem(info.GetName(), new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.VOTE));
-							combo.AddItem(info.GetAbstainVoteName(), new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.ABSTAIN_VOTE));
+							combo.AddItem(info.GetName(), false, new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.VOTE));
+							combo.AddItem(info.GetAbstainVoteName(), false, new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.ABSTAIN_VOTE));
 						}
 					}
 					//~ The Player abstained from voting. Revote again
@@ -663,9 +661,9 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 					{
 						int currentVotes, VotesRequired;
 						if (m_VotingManager.GetVoteCounts(votingType, playerID, currentVotes, VotesRequired))
-							combo.AddItem(WidgetManager.Translate(VOTING_PLAYER_COUNT_FORMAT, info.GetRevoteName(), currentVotes, VotesRequired), new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.VOTE));
+							combo.AddItem(WidgetManager.Translate(VOTING_PLAYER_COUNT_FORMAT, info.GetRevoteName(), currentVotes, VotesRequired), false, new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.VOTE));
 						else 
-							combo.AddItem(info.GetRevoteName(), new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.VOTE));
+							combo.AddItem(info.GetRevoteName(), false, new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.VOTE));
 					}
 				}
 			}
@@ -684,11 +682,11 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 
 		if (requesters.Contains(playerID))
 		{
-			combo.AddItem(OPTIONS_COMBO_ACCEPT, new SCR_PlayerListComboEntryData(SCR_EPlayerListComboType.GROUP, SCR_EPlayerListComboAction.COMFIRM_JOIN_PRIVATE_GROUP));
-			combo.AddItem(OPTIONS_COMBO_CANCEL, new SCR_PlayerListComboEntryData(SCR_EPlayerListComboType.GROUP, SCR_EPlayerListComboAction.CANCEL_JOIN_PRIVATE_GROUP));
+			combo.AddItem(OPTIONS_COMBO_ACCEPT, false, new SCR_PlayerListComboEntryData(SCR_EPlayerListComboType.GROUP, SCR_EPlayerListComboAction.COMFIRM_JOIN_PRIVATE_GROUP));
+			combo.AddItem(OPTIONS_COMBO_CANCEL, false, new SCR_PlayerListComboEntryData(SCR_EPlayerListComboType.GROUP, SCR_EPlayerListComboAction.CANCEL_JOIN_PRIVATE_GROUP));
 		}
 		else if (m_PlayerGroupController.CanInvitePlayer(playerID))
-			combo.AddItem(INVITE_PLAYER_VOTE, new SCR_PlayerListComboEntryData(SCR_EPlayerListComboType.GROUP, SCR_EPlayerListComboAction.INVITE_TO_GROUP));
+			combo.AddItem(INVITE_PLAYER_VOTE, false, new SCR_PlayerListComboEntryData(SCR_EPlayerListComboType.GROUP, SCR_EPlayerListComboAction.INVITE_TO_GROUP));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1223,9 +1221,8 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		//~ None of the conditions met
 		return false;
 	}
+	
 	//------------------------------------------------------------------------------------------------
-
-
 	private void OnPlayerAdded(int playerId)
 	{
 		UpdatePlayerList(true, playerId);
@@ -1251,7 +1248,6 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	override void OnMenuOpen()
 	{
 		super.OnMenuOpen();
-		m_wRoot = GetRootWidget();
 
 		//if (!m_ChatPanel)
 		//	m_ChatPanel = SCR_ChatPanel.Cast(m_wRoot.FindAnyWidget("ChatPanel").FindHandler(SCR_ChatPanel));		
@@ -1302,11 +1298,11 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			fm.GetFactionsList(m_aFactions);
 		}
 
-		m_wTable = m_wRoot.FindAnyWidget("Table");
+		m_wTable = GetRootWidget().FindAnyWidget("Table");
 
 		// Create navigation buttons
-		Widget footer = m_wRoot.FindAnyWidget("FooterLeft");
-		Widget footerBack = m_wRoot.FindAnyWidget("Footer");
+		Widget footer = GetRootWidget().FindAnyWidget("FooterLeft");
+		Widget footerBack = GetRootWidget().FindAnyWidget("Footer");
 		SCR_InputButtonComponent back = SCR_InputButtonComponent.GetInputButtonComponent("Back", footerBack);
 		if (back)
 			back.m_OnActivated.Insert(OnBack);
@@ -1378,16 +1374,8 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			}
 
 		InitSorting();
-
-		Widget tab = m_wRoot.FindAnyWidget("TabViewRoot0");
-		if (!tab)
-			return;
-
-		SCR_TabViewComponent tabView = SCR_TabViewComponent.Cast(tab.FindHandler(SCR_TabViewComponent));
-		if (!tabView)
-			return;
-
-		tabView.m_OnChanged.Insert(OnTabChanged);
+		
+		m_SuperMenuComponent.GetTabView().GetOnChanged().Insert(OnTabChanged);
 
 		// Create new tabs
 		SCR_Faction scrFaction;
@@ -1401,7 +1389,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 				continue; //--- ToDo: Refresh dynamically when a new faction is added/removed
 
 			string name = faction.GetFactionName();
-			tabView.AddTab(ResourceName.Empty,name);
+			m_SuperMenuComponent.GetTabView().AddTab(ResourceName.Empty,name);
 			
 			AddFactionPlayerCounter(faction);
 		}
@@ -1415,7 +1403,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		
 		
 		if (!groupsManager || !playerFaction)
-			tabView.SetTabVisible(EPlayerListTab.GROUPS, false);
+			m_SuperMenuComponent.GetTabView().SetTabVisible(EPlayerListTab.GROUPS, false);
 		UpdateFrequencies();
 
 		s_OnPlayerListMenu.Invoke(true);
@@ -1652,7 +1640,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		if (!scriptedFaction)
 			return;
 		
-		Widget contentLayout = m_wRoot.FindAnyWidget("FactionPlayerNumbersLayout");
+		Widget contentLayout = GetRootWidget().FindAnyWidget("FactionPlayerNumbersLayout");
 		if (!contentLayout)
 			return;
 		

@@ -1,58 +1,63 @@
-enum EFractalDestructionForceModel
+enum SCR_EFractalDestructionForceModel
 {
 	FORCE_NONE = -1,
 	FORCE_UNFRACTURED,
 	FORCE_FRACTURED
-};
+}
 
 [ComponentEditorProps(category: "GameScripted/Destruction", description: "Fractal destruction component. For objects that should shatter/splinter etc")]
-class SCR_DestructionFractalComponentClass: SCR_DestructionBaseComponentClass
+class SCR_DestructionFractalComponentClass: SCR_DestructionDamageManagerComponentClass
 {
 	[Attribute(ResourceName.Empty, UIWidgets.ResourceNamePicker, "Particle effect to play when a fragment is destroyed", "ptc", category: "Destruction Fractal")]
 	ResourceName m_ParticleDestroyFragment;
+
 	[Attribute("", UIWidgets.Object, "Debris settings to use when a fragment is destroyed and debris is spawned", category: "Destruction Fractal")]
 	ref SCR_FragmentDebris m_DebrisDestroyFragment;
+
 	[Attribute("10", UIWidgets.Slider, "Health value of each fragment", "0.01 100000 0.01", category: "Destruction Fractal")]
 	float m_fFragmentHealth;
+
 	[Attribute("1", UIWidgets.Slider, "Whether to destroy the fragment at the impact point when damage leads to fracturing of the object", category: "Destruction Fractal")]
 	bool m_bDestroyFragmentOnFracture;
+
 	[Attribute("0", UIWidgets.CheckBox, "If true, the object will be deleted after the last fragment has been destroyed", category: "Destruction Fractal")]
 	bool m_bDeleteAfterFinalFragment;
+
 	[Attribute("1", UIWidgets.Slider, "Whether structural integrity is enabled (fragments that have no anchor fragments to hold on to fall as well when a nearby fragment is destroyed)", category: "Destruction Fractal")]
 	bool m_bEnableStructuralIntegrity;
+
 	[Attribute("", UIWidgets.Object, "List of fractal setup variations (chosen using position as seed)", category: "Destruction Fractal")]
 	ref array<ref SCR_FractalVariation> m_FractalVariants;
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Fractal destruction component. For objects that should shatter/splinter etc
-class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
+class SCR_DestructionFractalComponent: SCR_DestructionDamageManagerComponent
 {
-	//-----------------------------------------------------------------------------------------------
-	
 	#ifdef ENABLE_DESTRUCTION
 		protected SCR_FractalVariation m_UsedFractalData;
-		protected static ref array<SCR_FragmentEntity> s_FragmentList = new array<SCR_FragmentEntity>();
-		protected static ref array<SCR_FragmentEntity> s_FragmentToCheckList = new array<SCR_FragmentEntity>();
-		protected static ref array<SCR_FragmentEntity> s_FragmentCheckedList = new array<SCR_FragmentEntity>();
+		protected static ref array<SCR_FragmentEntity> s_FragmentList = {};
+		protected static ref array<SCR_FragmentEntity> s_FragmentToCheckList = {};
+		protected static ref array<SCR_FragmentEntity> s_FragmentCheckedList = {};
 		
 		#ifdef WORKBENCH
 			[Attribute("0", UIWidgets.CheckBox, "Check to generate fragment hierarchies for each fractal variant", category: "EDITOR: Destruction Fractal")]
-			bool GenerateFragmentHierarchies;
+			protected bool GenerateFragmentHierarchies;
+
 			[Attribute("0", UIWidgets.CheckBox, "Check to toggle display of visualizers in the World Editor", category: "EDITOR: Destruction Fractal")]
-			bool ToggleVisualizers;
+			protected bool ToggleVisualizers;
 			
 			static bool s_WBDisplayVisualizers = false;
 			static GenericEntity s_WBVisualizeEntity = null;
-			static ref array<SCR_PreviewEntity> s_WBFragmentList = new array<SCR_PreviewEntity>();
+			static ref array<SCR_PreviewEntity> s_WBFragmentList = {};
 			
 			//------------------------------------------------------------------------------------------------
 			protected static void ClearVisualizers()
 			{
 				s_WBVisualizeEntity = null;
-				for (int i = s_WBFragmentList.Count() -1; i >= 0; i--)
+				SCR_PreviewEntity fragVis;
+				foreach (SCR_PreviewEntity preview : s_WBFragmentList)
 				{
-					SCR_PreviewEntity fragVis = s_WBFragmentList[i];
+					fragVis = s_WBFragmentList[i];
 					delete fragVis;
 				}
 				s_WBFragmentList.Clear();
@@ -75,7 +80,7 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 					{
 						src.ClearVariable("GenerateFragmentHierarchies");
 				
-						Print("SCR_DestructionFractalComponent: Generating fragment hierarchies...");
+						Print("SCR_DestructionFractalComponent: Generating fragment hierarchies...", LogLevel.NORMAL);
 						
 						BaseContainerList srcFractalVariantList = src.GetObjectArray("m_FractalVariants");
 						int numVariants = m_FractalVariants.Count();
@@ -92,6 +97,7 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 						genOwner._WB_GetEditorAPI().UpdateSelectionGui();
 						break;
 					}
+
 					case "ToggleVisualizers":
 					{
 						src.ClearVariable("ToggleVisualizers");
@@ -100,83 +106,88 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 						s_WBDisplayVisualizers = !s_WBDisplayVisualizers;
 						if (!s_WBDisplayVisualizers)
 							ClearVisualizers();
+
 						genOwner._WB_GetEditorAPI().UpdateSelectionGui();
 						
 						break;
 					}
+
 					// The code below stores the newly set model to the MeshObject component on the entity
-					/*case "m_ModelNormal":
-					{
-						// Model has changed in a variation, check if it's the one we are using
-						int currentIndex = m_FractalVariants.Find(m_UsedFractalData);
-						if (currentIndex == -1)
-							break;
-						
-						// Get the fractal destruction component and mesh object component from parent entity (if present)
-						BaseContainer fractalComp = null;
-						BaseContainer meshComp = null;
-						BaseContainer ownerEnt = null;
-						int contCount = ownerContainers.Count();
-						if (contCount > 0)
-							fractalComp = ownerContainers.Get(contCount - 1);
-						if (contCount > 1)
-							ownerEnt = ownerContainers.Get(contCount - 2);
-						if (ownerEnt)
-						{
-							BaseContainerList ownerEntCompList = ownerEnt.GetObjectArray("components");
-							if (ownerEntCompList)
-							{
-								for (int i = 0, num = ownerEntCompList.Count(); i < num; i++)
-								{
-									BaseContainer cont = ownerEntCompList.Get(i);
-									if (cont.GetClassName() == "MeshObject")
-									{
-										meshComp = cont;
-										break;
-									}
-								}
-							}
-						}
-						
-						if (!meshComp || !fractalComp)
-							break;
-						
-						// Get the index of the fractal variant in the variants container
-						BaseContainerList fractalVariantsList = fractalComp.GetObjectArray("m_FractalVariants");
-						if (!fractalVariantsList)
-							break;
-						
-						int currentSrcIndex = -1;
-						for (int i = 0, num = fractalVariantsList.Count(); i < num; i++)
-						{
-							BaseContainer variant = fractalVariantsList.Get(i);
-							if (variant != src)
-								continue;
-							currentSrcIndex = i;
-							break;
-						}
-						
-						if (currentSrcIndex != currentIndex)
-							break;
-						
-						// Get the new model
-						ResourceName newModel = ResourceName.Empty;
-						if (!src.Get(key, newModel))
-							break;
-						
-						// Set the new model and store it to the instance
-						meshComp.Set("Object", newModel);
-						BaseContainerTools.WriteToInstance(this, meshComp);
-						UpdateModel(EFractalDestructionForceModel.FORCE_UNFRACTURED);
-						
-						break;
-					}*/
+//					case "m_ModelNormal":
+//					{
+//						// Model has changed in a variation, check if it's the one we are using
+//						int currentIndex = m_FractalVariants.Find(m_UsedFractalData);
+//						if (currentIndex == -1)
+//							break;
+//
+//						// Get the fractal destruction component and mesh object component from parent entity (if present)
+//						BaseContainer fractalComp = null;
+//						BaseContainer meshComp = null;
+//						BaseContainer ownerEnt = null;
+//						int contCount = ownerContainers.Count();
+//						if (contCount > 0)
+//							fractalComp = ownerContainers.Get(contCount - 1);
+//						if (contCount > 1)
+//							ownerEnt = ownerContainers.Get(contCount - 2);
+//						if (ownerEnt)
+//						{
+//							BaseContainerList ownerEntCompList = ownerEnt.GetObjectArray("components");
+//							if (ownerEntCompList)
+//							{
+//								for (int i = 0, num = ownerEntCompList.Count(); i < num; i++)
+//								{
+//									BaseContainer cont = ownerEntCompList.Get(i);
+//									if (cont.GetClassName() == "MeshObject")
+//									{
+//										meshComp = cont;
+//										break;
+//									}
+//								}
+//							}
+//						}
+//
+//						if (!meshComp || !fractalComp)
+//							break;
+//
+//						// Get the index of the fractal variant in the variants container
+//						BaseContainerList fractalVariantsList = fractalComp.GetObjectArray("m_FractalVariants");
+//						if (!fractalVariantsList)
+//							break;
+//
+//						int currentSrcIndex = -1;
+//						for (int i = 0, num = fractalVariantsList.Count(); i < num; i++)
+//						{
+//							BaseContainer variant = fractalVariantsList.Get(i);
+//							if (variant != src)
+//								continue;
+//							currentSrcIndex = i;
+//							break;
+//						}
+//
+//						if (currentSrcIndex != currentIndex)
+//							break;
+//
+//						// Get the new model
+//						ResourceName newModel = ResourceName.Empty;
+//						if (!src.Get(key, newModel))
+//							break;
+//
+//						// Set the new model and store it to the instance
+//						meshComp.Set("Object", newModel);
+//						BaseContainerTools.WriteToInstance(this, meshComp);
+//						UpdateModel(SCR_EFractalDestructionForceModel.FORCE_UNFRACTURED);
+//
+//						break;
+//					}
+
 					default:
 					{
 						// Get our fractal component source
 						BaseContainer srcFractalComp = null;
 						if (src.GetClassName() == "SCR_DestructionFractalComponent")
+						{
 							srcFractalComp = src;
+						}
 						else
 						{
 							for (int c = 0, srcCount = ownerContainers.Count(); c < srcCount; c++)
@@ -189,6 +200,7 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 								break;
 							}
 						}
+
 						// Now go through each fractal variant and validate hierarchies
 						if (srcFractalComp)
 						{
@@ -200,9 +212,11 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 								BaseContainer srcFVariant = srcFVariantList.Get(v);
 								if (!srcFVariant)
 									continue;
+
 								BaseContainer srcHier = srcFVariant.GetObject("m_Hierarchy");
 								if (!srcHier)
 									continue;
+
 								SCR_FractalVariation fracVariant = m_FractalVariants[v];
 								if (fracVariant.m_Hierarchy && fracVariant.m_Hierarchy.ValidateHierarchy(fracVariant, srcHier, v))
 									needResave = true;
@@ -219,11 +233,14 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 						break;
 					}
 				}
+
 				return true;
 			}
 			
 			//------------------------------------------------------------------------------------------------
-			//! Creates the fragment visualizer
+			//! Creates the fragment visualiser
+			//! \param[in] index
+			//! \return
 			SCR_PreviewEntity CreateFragmentVisualizer(int index)
 			{
 				bool isAnchor = false;
@@ -241,12 +258,23 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 				const int intensity = 200;
 				const int intensityOther = 16;
 				int mod = index % 6;
-				if (mod == 0) fragVis.m_Color = ARGB(255, intensityOther, intensityOther, intensity);
-				else if (mod == 1) fragVis.m_Color = ARGB(255, intensityOther, intensity, intensityOther);
-				else if (mod == 2) fragVis.m_Color = ARGB(255, intensity, intensityOther, intensityOther);
-				else if (mod == 3) fragVis.m_Color = ARGB(255, intensity, intensityOther, intensity);
-				else if (mod == 4) fragVis.m_Color = ARGB(255, intensityOther, intensity, intensity);
-				else if (mod == 5) fragVis.m_Color = ARGB(255, intensity, intensity, intensityOther);
+				if (mod == 0)
+					fragVis.m_Color = ARGB(255, intensityOther, intensityOther, intensity);
+				else
+				if (mod == 1)
+					fragVis.m_Color = ARGB(255, intensityOther, intensity, intensityOther);
+				else
+				if (mod == 2)
+					fragVis.m_Color = ARGB(255, intensity, intensityOther, intensityOther);
+				else
+				if (mod == 3)
+					fragVis.m_Color = ARGB(255, intensity, intensityOther, intensity);
+				else
+				if (mod == 4)
+					fragVis.m_Color = ARGB(255, intensityOther, intensity, intensity);
+				else
+				if (mod == 5)
+					fragVis.m_Color = ARGB(255, intensity, intensity, intensityOther);
 				
 				fragVis.SetObject(asset, remap);
 				fragVis.SetFlags(EntityFlags.ACTIVE);
@@ -264,6 +292,7 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 				{
 					if (s_WBVisualizeEntity)
 						ClearVisualizers();
+
 					return;
 				}
 				
@@ -272,6 +301,7 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 				{
 					if (s_WBVisualizeEntity == gEntity)
 						ClearVisualizers();
+
 					return;
 				}
 				
@@ -361,6 +391,7 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 									int numArrows = Math.Ceil(vector.Distance(fragCenter, fragOtherCenter) * 10 / distScale);
 									if (numArrows == 0)
 										numArrows = 1;
+
 									Shape.Create(ShapeType.LINE, arrowsColor, ShapeFlags.ONCE | ShapeFlags.TRANSP | ShapeFlags.NOZBUFFER, from, fragOtherCenter);
 								}
 								
@@ -369,7 +400,9 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 						}
 					}
 					else
+					{
 						fragVis.SetFlags(EntityFlags.VISIBLE, false);
+					}
 					
 					textMat[3] = textMat[3] + camMat[1] * textSize * distScale * -0.5;
 					CreateSimpleText(i.ToString(), textMat, textSize * distScale, textColor, ShapeFlags.ONCE | ShapeFlags.TRANSP | ShapeFlags.NOZBUFFER, null, 1, true, bgColor);
@@ -380,17 +413,17 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 					}
 				}
 			}
-		#endif
+		#endif // WORKBENCH
 		
 		//------------------------------------------------------------------------------------------------
-		//! Returns whether or not the object has been fractured
+		//! \return whether or not the object has been fractured
 		bool GetFractured()
 		{
 			return GetDestroyed();
 		}
 		
 		//------------------------------------------------------------------------------------------------
-		// Returns how many fragments are left
+		// \return how many fragments are left
 		int CountFragments()
 		{
 			int numFragments = 0;
@@ -409,12 +442,16 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 		
 		//------------------------------------------------------------------------------------------------
 		// Fills the input list with fragments and returns the maximum amount
-		int FillCompleteOrderedFragmentList(array<SCR_FragmentEntity> fragmentList)
+		//! \param[out] fragmentList
+		//! \return
+		int FillCompleteOrderedFragmentList(notnull array<SCR_FragmentEntity> fragmentList)
 		{
 			fragmentList.Clear();
 			int maxFragments = m_UsedFractalData.CountFragments();
 			for (int i = 0; i < maxFragments; i++)
+			{
 				fragmentList.Insert(null);
+			}
 			
 			IEntity child = m_Owner.GetChildren();
 			while (child)
@@ -430,7 +467,9 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 		
 		//------------------------------------------------------------------------------------------------
 		// Fills the input list with fragments and returns the amount
-		int FillFragmentList(array<SCR_FragmentEntity> fragmentList)
+		//! \param[in] fragmentList
+		//! \return
+		int FillFragmentList(notnull array<SCR_FragmentEntity> fragmentList)
 		{
 			fragmentList.Clear();
 			
@@ -448,6 +487,8 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 		
 		//------------------------------------------------------------------------------------------------
 		// Fills the input list with fragments' indexes and returns the amount
+		//! \param[in] fragmentIndexList
+		//! \return
 		int FillFragmentIndexList(array<int> fragmentIndexList)
 		{
 			fragmentIndexList.Clear();
@@ -465,14 +506,14 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 		}
 		
 		//------------------------------------------------------------------------------------------------
-		//! Returns the fractal variant for this entity
+		//! \return the fractal variant for this entity
 		SCR_FractalVariation GetCurrentFractalVariant()
 		{
 			return m_UsedFractalData;
 		}
 		
 		//------------------------------------------------------------------------------------------------
-		//! Returns a random fractal variant based on this entity's position
+		//! \return a random fractal variant based on this entity's position
 		SCR_FractalVariation GetRandomFractalVariant()
 		{
 			int numVariants = m_FractalVariants.Count();
@@ -488,7 +529,9 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 				seed = SCR_Global.CountChildren(m_Owner.GetParent()) * 11111;
 			}
 			else // Just use our position
+			{
 				pos = m_Owner.GetOrigin();
+			}
 			
 			int x = Math.Floor(pos[0] * 1000);
 			int z = Math.Floor(pos[2] * 1000);
@@ -523,6 +566,8 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 		
 		//------------------------------------------------------------------------------------------------
 		//! Finds the fragment with input index
+		//! \param[in]
+		//! \return the found fragment or null if the index is not found
 		SCR_FragmentEntity FindFragment(int index)
 		{
 			IEntity child = m_Owner.GetChildren();
@@ -539,6 +584,8 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 		
 		//------------------------------------------------------------------------------------------------
 		//! Creates a specific fragment
+		//! \param[in] index
+		//! \return
 		protected SCR_FragmentEntity CreateFragment(int index)
 		{
 			bool isAnchor = false;
@@ -554,6 +601,7 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 		
 		//------------------------------------------------------------------------------------------------
 		//! Creates all fragments for the object
+		//! \param[in] addToTraceIgnoreList
 		protected void CreateFragments(bool addToTraceIgnoreList = false)
 		{
 			if (!m_UsedFractalData)
@@ -573,6 +621,11 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 		
 		//------------------------------------------------------------------------------------------------
 		//! Updates and ensures structural integrity for fragments (uses lists s_FragmentList, s_FragmentToCheckList, s_FragmentCheckedList)
+		//! \param[in] fromFragment
+		//! \param[in] damageType
+		//! \param[in] damage
+		//! \param[in] hitPosition
+		//! \param[in] hitDirection
 		protected void UpdateStructuralIntegrity(SCR_FragmentEntity fromFragment, EDamageType damageType, float damage, vector hitPosition, vector hitDirection)
 		{
 			// First get ordered list of existing fragments
@@ -639,6 +692,8 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 		
 		//------------------------------------------------------------------------------------------------
 		//! Performs a structural integrity step check on the input fragment and returns true if the fragment is connected to an anchor (uses lists s_FragmentList, s_FragmentCheckedList)
+		//! \param[in] fragment
+		//! \param[in] numFragments
 		private bool CheckFragmentAnchored(SCR_FragmentEntity fragment, int numFragments)
 		{
 			if (s_FragmentCheckedList.Find(fragment) >= 0)
@@ -673,6 +728,11 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 		
 		//------------------------------------------------------------------------------------------------
 		//! Called when one of the pieces is destroyed
+		//! \param[in] fragment
+		//! \param[in] damageType
+		//! \param[in] damage
+		//! \param[in] hitPosition
+		//! \param[in] hitDirection
 		void OnFragmentDestroyed(SCR_FragmentEntity fragment, EDamageType damageType, float damage, vector hitPosition, vector hitDirection)
 		{
 			if (m_bDeleteAfterFinalFragment)
@@ -691,6 +751,11 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 		
 		//------------------------------------------------------------------------------------------------
 		//! Receive encoded hit data from server
+		//! \param[in] hitIndex
+		//! \param[in] damageType
+		//! \param[in] damage
+		//! \param[in] hitPosition
+		//! \param[in] hitDirection
 		override void NetReceiveHitData(int hitIndex, EDamageType damageType, float damage, vector hitPosition, vector hitDirection)
 		{
 			SCR_FragmentEntity fragment = FindFragment(hitIndex);
@@ -704,7 +769,6 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 		}
 		
 		//------------------------------------------------------------------------------------------------
-		//! Frame
 		override void OnFrame(IEntity owner, float timeSlice)
 		{
 			// If we are meant to delete after the final fragment, do so
@@ -716,20 +780,23 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 					EnableOnFrame(false);
 			}
 			else
+			{
 				super.OnFrame(owner, timeSlice);
+		}
 		}
 		
 		//------------------------------------------------------------------------------------------------
 		//! Updates the model to reflect damaged/destroyed status
-		protected void UpdateModel(EFractalDestructionForceModel forceState = EFractalDestructionForceModel.FORCE_NONE)
+		//! \param[in] forceState
+		protected void UpdateModel(SCR_EFractalDestructionForceModel forceState = SCR_EFractalDestructionForceModel.FORCE_NONE)
 		{
 			if (!m_UsedFractalData)
 				return;
 			
 			bool fractured = GetFractured();
-			if (forceState == EFractalDestructionForceModel.FORCE_UNFRACTURED)
+			if (forceState == SCR_EFractalDestructionForceModel.FORCE_UNFRACTURED)
 				fractured = false;
-			else if (forceState == EFractalDestructionForceModel.FORCE_FRACTURED)
+			else if (forceState == SCR_EFractalDestructionForceModel.FORCE_FRACTURED)
 				fractured = true;
 			
 			ResourceName assetPath;
@@ -752,7 +819,7 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 			else
 			{
 				Resource resource = Resource.Load(assetPath);
-				if (resource)
+				if (resource.IsValid())
 				{
 					BaseResourceObject baseResource = resource.GetResource();
 					if (baseResource)
@@ -793,7 +860,7 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 				if (m_bDestroyFragmentOnFracture)
 				{
 					// Now try to trace the fragment at the position we hit
-					autoptr TraceParam param = new TraceParam;
+					TraceParam param = new TraceParam();
 					param.Exclude = m_Owner;
 					param.Start = m_DestructionHitInfo.m_HitPosition + m_DestructionHitInfo.m_HitDirection * -0.25;
 					param.End = m_DestructionHitInfo.m_HitPosition + m_DestructionHitInfo.m_HitDirection * 0.25;
@@ -823,6 +890,7 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 		
 		//------------------------------------------------------------------------------------------------
 		//! Called when Item is initialized from replication stream. Carries the data from Master.
+		//! \param[in] reader
 		override void NetReadInit(ScriptBitReader reader)
 		{
 			int fractalVariantIndex;
@@ -835,7 +903,7 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 			SetHitZoneDamage(GetMaxHealth());
 			
 			m_UsedFractalData = m_FractalVariants[fractalVariantIndex];
-			UpdateModel(EFractalDestructionForceModel.FORCE_FRACTURED);
+			UpdateModel(SCR_EFractalDestructionForceModel.FORCE_FRACTURED);
 			
 			int numBitMasks;
 			reader.Read(numBitMasks, 32); // Read num bitmasks
@@ -843,7 +911,7 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 				return;
 			
 			// Create bitmask array with values of fragments
-			autoptr SCR_BitMaskArray fragmentsBitMaskArray = new SCR_BitMaskArray(numBitMasks);
+			SCR_BitMaskArray fragmentsBitMaskArray = new SCR_BitMaskArray(numBitMasks);
 			for (int i = 0; i < numBitMasks; i++)
 			{
 				int bitMask;
@@ -876,7 +944,7 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 				return;
 			}
 			
-			autoptr array<int> fragmentIndexList = new array<int>();
+			array<int> fragmentIndexList = {};
 			int numFragments = FillFragmentIndexList(fragmentIndexList);
 			
 			if (numFragments == 0) // All were destroyed
@@ -886,13 +954,15 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 			}
 			
 			// Now write existing fragments into a bitmask array that we can send (for compression)
-			autoptr SCR_BitMaskArray fragmentsBitMaskArray = new SCR_BitMaskArray(m_UsedFractalData.CountFragments());
+			SCR_BitMaskArray fragmentsBitMaskArray = new SCR_BitMaskArray(m_UsedFractalData.CountFragments());
 			int numBitMasks = fragmentsBitMaskArray.GetNumBitMasks();
 			writer.Write(numBitMasks, 32); // Write num bitmasks
 			
 			// Write fragment bits into bitmask array
 			for (int i = 0; i < numFragments; i++)
+			{
 				fragmentsBitMaskArray.SetBit(fragmentIndexList[i], true);
+			}
 			
 			// Write bitmask arrays
 			for (int i = 0; i < numBitMasks; i++)
@@ -903,7 +973,7 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 		}
 		
 		//------------------------------------------------------------------------------------------------
-		//! Initialize destruction
+		//! Initialise destruction
 		override void InitDestruction()
 		{
 			m_UsedFractalData = GetRandomFractalVariant();
@@ -921,56 +991,63 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 			if (GetFractured())
 				DeleteFragments();
 		}
-	#endif
-};
+	#endif // ENABLE_DESTRUCTION
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_FractalVariationTitle : BaseContainerCustomTitle
 {
+	//------------------------------------------------------------------------------------------------
 	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
 	{
-		array<ResourceName> fragMdls = new array<ResourceName>();
-		array<ResourceName> fragAnchorMdls = new array<ResourceName>();
+		array<ResourceName> fragMdls = {};
+		array<ResourceName> fragAnchorMdls = {};
 		source.Get("m_aModelFragments", fragMdls);
 		source.Get("m_aModelAnchorFragments", fragAnchorMdls);
 		int num = 0;
 		if (fragMdls)
 			num = fragMdls.Count();
+
 		if (fragAnchorMdls)
 			num += fragAnchorMdls.Count();
+
 		title = "Variation | FRAGS: " + num.ToString();
 		return true;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_FractalVariationTitle()]
 class SCR_FractalVariation
 {
 	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Model to use when the object is undamaged", "xob")]
-	ResourceName m_ModelNormal;
+	protected ResourceName m_ModelNormal;
+
 	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Model to use when the object is damaged/destroyed", "xob")]
-	ResourceName m_ModelDestroyed;
+	protected ResourceName m_ModelDestroyed;
+
 	[Attribute("", UIWidgets.ResourceAssignArray, "List of fragment models (excluding anchor fragments)", "xob")]
-	ref array<ResourceName> m_aModelFragments;
+	protected ref array<ResourceName> m_aModelFragments;
+
 	[Attribute("", UIWidgets.ResourceAssignArray, "List of anchor fragment models (these are fragments that are considered firmly attached and hold other fragments in place, if structural integrity is enabled)", "xob")]
-	ref array<ResourceName> m_aModelAnchorFragments;
+	protected ref array<ResourceName> m_aModelAnchorFragments;
+
 	[Attribute("", UIWidgets.ResourceAssignArray, "List of fragment debris models (excluding anchor fragments), if empty uses m_aModelFragments", "xob")]
-	ref array<ResourceName> m_aDebrisModelFragments;
+	protected ref array<ResourceName> m_aDebrisModelFragments;
+
 	[Attribute("", UIWidgets.ResourceAssignArray, "List of anchor fragment debris models (these are fragments that are considered firmly attached and hold other fragments in place, if structural integrity is enabled), if empty uses m_aModelAnchorFragments", "xob")]
-	ref array<ResourceName> m_aDebrisModelAnchorFragments;
+	protected ref array<ResourceName> m_aDebrisModelAnchorFragments;
+
 	[Attribute("", UIWidgets.Object, "Hierarchy between fragments")]
-	ref SCR_FragmentHierarchy m_Hierarchy;
+	protected ref SCR_FragmentHierarchy m_Hierarchy;
 	
 	//------------------------------------------------------------------------------------------------
-	//! Returns how many fragments are in the list (including anchor fragments)
+	//! \return how many fragments are in the list (including anchor fragments)
 	int CountFragments()
 	{
 		return m_aModelFragments.Count() + m_aModelAnchorFragments.Count();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Returns whether the input fragment index is an anchor
+	//! \return whether the input fragment index is an anchor
 	bool GetFragmentIndexIsAnchor(int index)
 	{
 		int numFrags = m_aModelFragments.Count();
@@ -978,14 +1055,13 @@ class SCR_FractalVariation
 		if (index >= (numFrags + numAnchorFrags))
 			return false;
 		
-		if (index >= numFrags)
-			return true;
-		else
-			return false;
+		return index >= numFrags;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Returns the model to use for the input fragment index
+	//! \param[in] index
+	//! \param[out] isAnchor
+	//! \return the model to use for the input fragment index
 	ResourceName GetFragmentModel(int index, out bool isAnchor)
 	{
 		isAnchor = false;
@@ -1007,7 +1083,9 @@ class SCR_FractalVariation
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Returns the debris model to use for the input fragment index
+	//! \param[in] index
+	//! \param[out] isAnchor
+	//! \return the debris model to use for the input fragment index
 	ResourceName GetFragmentDebrisModel(int index, out bool isAnchor)
 	{
 		isAnchor = false;
@@ -1036,31 +1114,31 @@ class SCR_FractalVariation
 				return m_aDebrisModelAnchorFragments[index];
 		}
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_Spawnable_FragmentDebrisTitle : BaseContainerCustomTitle
 {
+	//------------------------------------------------------------------------------------------------
 	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
 	{
 		title = "Fragment Debris";
 		return true;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_FragmentHierarchyTitle : BaseContainerCustomTitle
 {
+	//------------------------------------------------------------------------------------------------
 	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
 	{
 		title = "Fragment Hierarchy";
 		return true;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_FragmentLinkageTitle : BaseContainerCustomTitle
 {
+	//------------------------------------------------------------------------------------------------
 	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
 	{	
 		int index = -1;
@@ -1073,33 +1151,44 @@ class SCR_FragmentLinkageTitle : BaseContainerCustomTitle
 			title = "Anchor | Index: " + index.ToString();
 		else
 			title = "------ | Index: " + index.ToString();
+
 		return true;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_Spawnable_FragmentDebrisTitle()]
 class SCR_FragmentDebris
 {
 	[Attribute("10", UIWidgets.Slider, "Mass of the debris", "0.01 1000 0.01")]
-	float m_fMass;
+	protected float m_fMass;
+
 	[Attribute("5", UIWidgets.Slider, "Minimum lifetime value for the debris (in s)", "0 3600 0.5")]
-	float m_fLifetimeMin;
+	protected float m_fLifetimeMin;
+
 	[Attribute("10", UIWidgets.Slider, "Maximum lifetime value for the debris (in s)", "0 3600 0.5")]
-	float m_fLifetimeMax;
+	protected float m_fLifetimeMax;
+
 	[Attribute("200", UIWidgets.Slider, "Maximum distance from camera above which the debris is not spawned (in m)", "0 3600 0.5")]
-	float m_fDistanceMax;
+	protected float m_fDistanceMax;
+
 	[Attribute("0", UIWidgets.Slider, "Higher priority overrides lower priority if at or over debris limit", "0 100 1")]
-	int m_fPriority;
+	protected int m_fPriority;
+
 	[Attribute("0.1", UIWidgets.Slider, "Damage received to physics impulse (speed / mass) multiplier", "0 10000 0.01")]
-	float m_fDamageToImpulse;
+	protected float m_fDamageToImpulse;
+
 	[Attribute("0.5", UIWidgets.Slider, "Random linear velocity multiplier (m/s)", "0 200 0.1")]
-	float m_fRandomVelocityLinear;
+	protected float m_fRandomVelocityLinear;
+
 	[Attribute("180", UIWidgets.Slider, "Random angular velocity multiplier (deg/s)", "0 3600 0.1")]
-	float m_fRandomVelocityAngular;
+	protected float m_fRandomVelocityAngular;
 	
 	//------------------------------------------------------------------------------------------------
 	//! Spawns the object
+	//! \param[in] fragment
+	//! \param[in] parentPhysics
+	//! \param[in] damage
+	//! \param[in] hitDirection
 	void Spawn(SCR_FragmentEntity fragment, Physics parentPhysics, float damage, vector hitDirection)
 	{
 		#ifndef ENABLE_DESTRUCTION
@@ -1134,29 +1223,26 @@ class SCR_FragmentDebris
 			}
 			
 			SCR_DebrisSmallEntity debris = SCR_DebrisSmallEntity.SpawnDebris(fragment.GetWorld(), spawnMat, modelPath, m_fMass, Math.RandomFloat(m_fLifetimeMin, m_fLifetimeMax), m_fDistanceMax, m_fPriority, linearVelocity, angularVelocity);
-		#endif
+		#endif // ENABLE_DESTRUCTION
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_FragmentHierarchyTitle()]
 class SCR_FragmentHierarchy
 {
-	[Attribute("", UIWidgets.Object, "Hierarchical list of fragments containing which fragments they are connected to")]
-	ref array <ref SCR_FragmentLinkage> m_aLinks;
+	[Attribute(desc: "Hierarchical list of fragments containing which fragments they are connected to")]
+	protected ref array<ref SCR_FragmentLinkage> m_aLinks;
 	
 	#ifdef ENABLE_DESTRUCTION
 		//------------------------------------------------------------------------------------------------
-		//! Returns the fragment linkage object for the input index
+		//! \param[in] index
+		//! \return the fragment linkage object for the input index
 		SCR_FragmentLinkage GetFragmentLinkage(int index)
 		{
 			int numLinks = m_aLinks.Count();
-			for (int f = 0; f < numLinks; f++)
+			foreach (SCR_FragmentLinkage link : m_aLinks)
 			{
-				SCR_FragmentLinkage link = m_aLinks[f];
-				if (link.m_iIndex != index)
-					continue;
-				
+				if (link.m_iIndex == index)
 				return link;
 			}
 			
@@ -1166,6 +1252,10 @@ class SCR_FragmentHierarchy
 		#ifdef WORKBENCH
 			//------------------------------------------------------------------------------------------------
 			//! Validates linkage in the hierarchy and returns true if it was changed
+			//! \param[in] fractalVariant
+			//! \param[in] srcHierarchy
+			//! \param[in] variantIndex
+			//! \return
 			bool ValidateHierarchy(SCR_FractalVariation fractalVariant, BaseContainer srcHierarchy, int variantIndex)
 			{
 				if (!fractalVariant)
@@ -1177,7 +1267,7 @@ class SCR_FragmentHierarchy
 				bool result = false;
 				
 				BaseContainerList srcLinks = srcHierarchy.GetObjectArray("m_aLinks");
-				autoptr array<int> foundIndexes = new array<int>();
+				array<int> foundIndexes = {};
 				int numFrags = fractalVariant.CountFragments();
 				int numLinks = m_aLinks.Count();
 				for (int l = 0; l < numLinks; l++)
@@ -1201,12 +1291,13 @@ class SCR_FragmentHierarchy
 						result = true;
 						continue;
 					}
+
 					foundIndexes.Insert(srcLinkIndex);
 					
 					// Mismatch in stored anchor value to true anchor value, so update
 					if (srcLinkIsAnchor != fractalVariant.GetFragmentIndexIsAnchor(srcLinkIndex))
 					{
-						Print("SCR_DestructionFractalComponent: Updating anchor setting in linkage object index " + l.ToString() + " in variant index " + variantIndex.ToString());
+						Print("SCR_DestructionFractalComponent: Updating anchor setting in linkage object index " + l + " in variant index " + variantIndex, LogLevel.NORMAL);
 						srcLinkIsAnchor = !srcLinkIsAnchor;
 						srcLink.Set("m_bIsAnchor", srcLinkIsAnchor);
 						BaseContainerTools.WriteToInstance(this, srcLink);
@@ -1228,6 +1319,7 @@ class SCR_FragmentHierarchy
 							badOtherIndex = true;
 						}
 					}
+
 					if (badOtherIndex)
 					{
 						srcLink.Set("m_aOtherIndexes", srcOtherLinks);
@@ -1244,11 +1336,13 @@ class SCR_FragmentHierarchy
 			
 			//------------------------------------------------------------------------------------------------
 			//! Generate the hierarchical linkage structure between all fragments
+			//! \param[in] fractalVariant
 			void GenerateHierarchy(SCR_FractalVariation fractalVariant)
 			{
-				if (!m_aLinks)
-					m_aLinks = new array <ref SCR_FragmentLinkage>();
+				if (m_aLinks)
 				m_aLinks.Clear();
+				else
+					m_aLinks = {};
 				
 				if (!fractalVariant)
 					return;
@@ -1260,8 +1354,8 @@ class SCR_FragmentHierarchy
 				
 				// Create a generic entity for getting bounds sizes and then load each model and get its bounds
 				GenericEntity fragmentDummy = GenericEntity.Cast(GetGame().SpawnEntity(GenericEntity));
-				autoptr array<vector> fragment_mins = new array<vector>();
-				autoptr array<vector> fragment_maxs = new array<vector>();
+				array<vector> fragment_mins = {};
+				array<vector> fragment_maxs = {};
 				for (int f = 0; f < numFrags; f++)
 				{
 					Resource resource = Resource.Load(fractalVariant.m_aModelFragments[f]);
@@ -1273,6 +1367,7 @@ class SCR_FragmentHierarchy
 					fragment_mins.Insert(mins);
 					fragment_maxs.Insert(maxs);
 				}
+
 				for (int f = 0; f < numAnchorFrags; f++)
 				{
 					Resource resource = Resource.Load(fractalVariant.m_aModelAnchorFragments[f]);
@@ -1288,7 +1383,7 @@ class SCR_FragmentHierarchy
 				// Now do bounding box overlaps and find out which fragments overlap
 				for (int f = 0; f < numTotal; f++)
 				{
-					ref SCR_FragmentLinkage fragLinkage = null;
+					SCR_FragmentLinkage fragLinkage = null;
 					
 					vector fragMins = fragment_mins[f];
 					vector fragMaxs = fragment_maxs[f];
@@ -1306,12 +1401,13 @@ class SCR_FragmentHierarchy
 						// Frag linkage object not created yet, so create
 						if (!fragLinkage)
 						{
-							fragLinkage = new SCR_FragmentLinkage;
+							fragLinkage = new SCR_FragmentLinkage();
 							fragLinkage.m_bIsAnchor = f >= numFrags;
 							fragLinkage.m_iIndex = f;
-							fragLinkage.m_aOtherIndexes = new array<int>();
+							fragLinkage.m_aOtherIndexes = {};
 							m_aLinks.Insert(fragLinkage);
 						}
+
 						fragLinkage.m_aOtherIndexes.Insert(f2);
 					}
 				}
@@ -1319,23 +1415,30 @@ class SCR_FragmentHierarchy
 				delete fragmentDummy;
 			}
 			
+			//------------------------------------------------------------------------------------------------
+			//!
+			//! \param[in] mins1
+			//! \param[in] maxs1
+			//! \param[in] mins2
+			//! \param[in] maxs2
+			//! \return
 			bool IntersectionBoxBox(vector mins1, vector maxs1, vector mins2, vector maxs2)
 			{
 				return (mins1[0] > maxs2[0] || mins1[1] > maxs2[1] || mins1[2] > maxs2[2] || maxs1[0] < mins2[0] || maxs1[1] < mins2[1] || maxs1[2] < mins2[2]);
 			}
-		#endif
-	#endif
-};
+		#endif // WORKBENCH
+	#endif // ENABLE_DESTRUCTION
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_FragmentLinkageTitle()]
 class SCR_FragmentLinkage
 {
 	[Attribute("0", UIWidgets.None, "Whether the fragment is an anchor")]
 	bool m_bIsAnchor;
+
 	[Attribute("-1", UIWidgets.EditBox, "Index of the fragment")]
 	int m_iIndex;
+
 	[Attribute("", UIWidgets.EditBox, "List of indexes of the surrounding fragments")]
 	ref array<int> m_aOtherIndexes;
-};
-
+}

@@ -1,13 +1,9 @@
-class EffectManagerSystem: GameSystem
+class EffectManagerSystem : GameSystem
 {
 	protected ref array<SCR_BaseEffectManagerComponent> m_Components = {};
 	
-	protected override ESystemPoint GetSystemPoint()
-	{
-		return ESystemPoint.Frame;
-	}
-	
-	override protected void OnUpdate(ESystemPoint point)
+	//------------------------------------------------------------------------------------------------
+	protected override void OnUpdate(ESystemPoint point)
 	{
 		float timeSlice = GetWorld().GetFixedTimeSlice();
 		
@@ -17,6 +13,7 @@ class EffectManagerSystem: GameSystem
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnDiag(float timeSlice)
 	{
 		DbgUI.Begin("EffectManagerSystem");
@@ -34,6 +31,8 @@ class EffectManagerSystem: GameSystem
 		DbgUI.End();
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param component must not be null
 	void Register(SCR_BaseEffectManagerComponent component)
 	{
 		//About to be deleted
@@ -46,6 +45,7 @@ class EffectManagerSystem: GameSystem
 		m_Components.Insert(component);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	void Unregister(SCR_BaseEffectManagerComponent component)
 	{
 		int idx = m_Components.Find(component);

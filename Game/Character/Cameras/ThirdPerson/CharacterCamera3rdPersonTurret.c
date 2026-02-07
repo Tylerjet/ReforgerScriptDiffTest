@@ -109,16 +109,12 @@ class CharacterCamera3rdPersonTurret extends CharacterCameraBase
 		CharacterControllerComponent charController = m_OwnerCharacter.GetCharacterController();
 		
 		//! apply to rotation matrix
+		m_vLastCameraAngles = m_pControlledTurret.GetAimingDirectionWorld().VectorToAngles();
 		if (charController.IsFreeLookEnabled() || m_pTurretController.GetCanAimOnlyInADS())
 		{
-			m_vLastCameraAngles[0] = m_pControlledTurret.GetAimingDirectionWorld().VectorToAngles()[0];
-			Math3D.AnglesToMatrix(m_vLastCameraAngles - charAngles + lookAngles, pOutResult.m_CameraTM);
+			m_vLastCameraAngles += lookAngles;
 		}
-		else
-		{
-			m_vLastCameraAngles = m_pControlledTurret.GetAimingDirectionWorld().VectorToAngles();
-			Math3D.AnglesToMatrix(m_vLastCameraAngles - charAngles, pOutResult.m_CameraTM);
-		}
+		Math3D.AnglesToMatrix(m_vLastCameraAngles - charAngles, pOutResult.m_CameraTM);
 
 		// position
 		vector cameraPositionLS = turretMat[3].InvMultiply4(turretMat) + Vector(0, m_vCameraCenter[1], 0);

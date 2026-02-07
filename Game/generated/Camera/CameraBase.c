@@ -30,6 +30,8 @@ class CameraBase: GenericEntity
 	\return Reference to an entity if it was hit by the trace or null otherwise.
 	*/
 	proto external IEntity GetCursorTargetWithPosition(out vector outPosition);
+	//! Get projection type
+	proto external CameraType GetProjType();
 	/*!
 	Get the vertical FOV.
 	\return Returns the vertical FOV in degrees.

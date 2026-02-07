@@ -1,9 +1,8 @@
 [EntityEditorProps(category: "GameScripted/Mines", description: "Base component for handling animation.")]
 class SCR_MineAnimationComponentClass : WeaponAnimationComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_MineAnimationComponent : WeaponAnimationComponent
 {
 	protected AnimationEventID m_iMineDown = -1;
@@ -11,6 +10,10 @@ class SCR_MineAnimationComponent : WeaponAnimationComponent
 	protected IEntity m_Owner;
 	
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_MineAnimationComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		m_Owner = ent;

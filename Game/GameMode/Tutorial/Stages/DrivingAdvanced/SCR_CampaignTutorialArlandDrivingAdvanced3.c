@@ -11,12 +11,15 @@ class SCR_CampaignTutorialArlandDrivingAdvanced3 : SCR_BaseCampaignTutorialArlan
 	{
 		RegisterWaypoint("WP_DRIVINGHEAVY_2");
 		m_fWaypointCompletionRadius = 10;
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		if (!m_TutorialComponent.GetVoiceSystem().IsPlaying())
+			PlaySoundSystem("DrivingWet", true);
+		else
+			GetGame().GetCallqueue().CallLater(PlaySoundSystem, 1000, false, "DrivingWet", true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override protected bool GetIsFinished()
 	{
-		return m_Player.IsInVehicle();
+		return m_Player.IsInVehicle() && !m_TutorialComponent.GetVoiceSystem().IsPlaying();
 	}
 };

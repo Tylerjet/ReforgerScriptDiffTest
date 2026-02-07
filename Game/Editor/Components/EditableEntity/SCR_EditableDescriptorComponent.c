@@ -5,15 +5,12 @@ typedef ScriptInvokerBase<ScriptInvoker_EditableDescriptorLocationChangeMethod> 
 [ComponentEditorProps(category: "GameScripted/Editor (Editables)", description: "", icon: "WBData/ComponentEditorProps/componentEditor.png")]
 class SCR_EditableDescriptorComponentClass: SCR_EditableSystemComponentClass
 {
-};
+}
 
-/** @ingroup Editable_Entities
-*/
+//! @ingroup Editable_Entities
 
-/*!
-Editable entity which can contain location description.
-*/
-class SCR_EditableDescriptorComponent: SCR_EditableSystemComponent
+//! Editable entity which can contain location description.
+class SCR_EditableDescriptorComponent : SCR_EditableSystemComponent
 {
 	[Attribute("300", UIWidgets.Slider, "Detect locations within this radius.", params: "0 10000 1")]
 	protected float m_fMaxLocationSize;
@@ -22,18 +19,22 @@ class SCR_EditableDescriptorComponent: SCR_EditableSystemComponent
 	protected EntityID m_NearestLocationID;
 	protected SCR_EditableEntityComponent m_NearestLocation;
 	protected ref SCR_EditableDescriptorUIInfo m_UIInfoDescriptor;
-	protected ref ScriptInvoker_EditableDescriptorLocationChange m_OnChange = new ScriptInvoker_EditableDescriptorLocationChange();
-	
+	protected ref ScriptInvoker_EditableDescriptorLocationChange m_OnChange;
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker_EditableDescriptorLocationChange GetOnChange()
 	{
+		if (!m_OnChange)
+			m_OnChange = new ScriptInvoker_EditableDescriptorLocationChange();
+
 		return m_OnChange;
 	}
-	
-	/*!
-	Update location name.
-	\param pos Position from which the nearest location will be searched for.
-	\return True if there was a change
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Update location name.
+	//! \param pos Position from which the nearest location will be searched for.
+	//! \return True if there was a change
 	bool UpdateNearestLocation(vector pos = vector.Zero)
 	{
 		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
@@ -64,6 +65,8 @@ class SCR_EditableDescriptorComponent: SCR_EditableSystemComponent
 		Rpc(UpdateNearestLocationBroadcast, nearestLocationID);
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void UpdateNearestLocationBroadcast(EntityID nearestLocationID)
 	{	
@@ -73,12 +76,14 @@ class SCR_EditableDescriptorComponent: SCR_EditableSystemComponent
 		m_NearestLocation = SCR_EditableEntityComponent.GetEditableEntity(nearestLocationEntity);
 		
 		GetOnLocationChange(m_NearestLocation);
-		m_OnChange.Invoke(SCR_EditableCommentComponent.Cast(m_NearestLocation));
+		if (m_OnChange)
+			m_OnChange.Invoke(SCR_EditableCommentComponent.Cast(m_NearestLocation));
 	}
-	protected void GetOnLocationChange(SCR_EditableEntityComponent nearestLocation)
-	{
-	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	protected void GetOnLocationChange(SCR_EditableEntityComponent nearestLocation);
+
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateInfo(SCR_UIDescription from = null)
 	{
 		if (!m_UIInfoDescriptor)
@@ -99,7 +104,8 @@ class SCR_EditableDescriptorComponent: SCR_EditableSystemComponent
 		
 		Event_OnUIRefresh.Invoke();
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	override bool RplSave(ScriptBitWriter writer)
 	{
 		if (!super.RplSave(writer))
@@ -109,7 +115,8 @@ class SCR_EditableDescriptorComponent: SCR_EditableSystemComponent
 		
 		return true;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	override bool RplLoad(ScriptBitReader reader)
 	{
 		if (!super.RplLoad(reader))
@@ -122,8 +129,13 @@ class SCR_EditableDescriptorComponent: SCR_EditableSystemComponent
 		return true;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_EditableDescriptorComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		m_fMaxLocationSize *= m_fMaxLocationSize;
 	}
-};
+}

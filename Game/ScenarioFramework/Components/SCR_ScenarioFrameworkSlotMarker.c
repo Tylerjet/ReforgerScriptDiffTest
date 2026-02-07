@@ -1,10 +1,8 @@
-[EntityEditorProps(category: "GameScripted/ScriptWizard", description: "ScriptWizard generated script file.")]
+[EntityEditorProps(category: "GameScripted/ScenarioFramework/Slot", description: "")]
 class SCR_ScenarioFrameworkSlotMarkerClass : SCR_ScenarioFrameworkSlotBaseClass
 {
-	// prefab properties here
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_ScenarioFrameworkSlotMarker : SCR_ScenarioFrameworkSlotBase
 {
 	[Attribute(desc: "Marker Type", category: "Map Marker")]
@@ -13,32 +11,35 @@ class SCR_ScenarioFrameworkSlotMarker : SCR_ScenarioFrameworkSlotBase
 	protected ref SCR_MapMarkerBase m_MapMarker;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_ScenarioFrameworkMarkerType GetMapMarkerType()
 	{
 		return m_MapMarkerType;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] type
 	void SetMapMarkerType(SCR_ScenarioFrameworkMarkerType type)
 	{
 		m_MapMarkerType = type;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_MapMarkerBase GetMapMarker()
 	{
 		return m_MapMarker;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void AfterAllChildrenSpawned()
+	override void AfterAllChildrenSpawned(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		foreach (SCR_ScenarioFrameworkActivationConditionBase activationCondition : m_aActivationConditions)
 		{
 			//If just one condition is false, we don't continue and interrupt the init
 			if (!activationCondition.Init(GetOwner()))
 			{
-				super.AfterAllChildrenSpawned();
+				super.AfterAllChildrenSpawned(this);
 				return;
 			}
 		}
@@ -46,10 +47,11 @@ class SCR_ScenarioFrameworkSlotMarker : SCR_ScenarioFrameworkSlotBase
 		if (!m_MapMarker)
 			CreateMapMarker();
 		
-		super.AfterAllChildrenSpawned();
+		super.AfterAllChildrenSpawned(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void RemoveMapMarker()
 	{
 		if (!m_MapMarker)
@@ -65,18 +67,17 @@ class SCR_ScenarioFrameworkSlotMarker : SCR_ScenarioFrameworkSlotBase
 		if (!marker)
 			return;
 		
-		markerMgr.OnRemoveSynchedMarker(markerID);	//Remove server side
-		markerMgr.OnAskRemoveStaticMarker(markerID); //Remove client side
+		markerMgr.RemoveStaticMarker(marker);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void CreateMapMarker()
 	{
-		vector worldPos = GetOwner().GetOrigin();
-		m_MapMarker = new SCR_MapMarkerBase();
+		SCR_MapMarkerManagerComponent mapMarkerMgr = SCR_MapMarkerManagerComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_MapMarkerManagerComponent));
+		if (!mapMarkerMgr)
+			return;
 		
-		m_MapMarker.SetWorldPos(worldPos[0], worldPos[2]);
-		m_MapMarker.SetMarkerFactionKey(m_sFactionKey);
+		m_MapMarker = new SCR_MapMarkerBase();
 		
 		SCR_ScenarioFrameworkMarkerCustom mapMarkerCustom = SCR_ScenarioFrameworkMarkerCustom.Cast(m_MapMarkerType);
 		if (mapMarkerCustom)
@@ -85,34 +86,39 @@ class SCR_ScenarioFrameworkSlotMarker : SCR_ScenarioFrameworkSlotBase
 			m_MapMarker.SetIconEntry(mapMarkerCustom.m_eMapMarkerIcon);
 			m_MapMarker.SetRotation(mapMarkerCustom.m_iMapMarkerRotation);
 			m_MapMarker.SetColorEntry(mapMarkerCustom.m_eMapMarkerColor);
-			m_MapMarker.SetCustomText(mapMarkerCustom.m_sMapMarkerText);
 		}
 		else
 		{
 			SCR_ScenarioFrameworkMarkerMilitary mapMarkerMilitary = SCR_ScenarioFrameworkMarkerMilitary.Cast(m_MapMarkerType);
 			if (!mapMarkerMilitary)
 				return;
-		
-			m_MapMarker.SetType(SCR_EMapMarkerType.PLACED_MILITARY);
-			m_MapMarker.SetMarkerConfigID(mapMarkerMilitary.m_eMapMarkerIcon);
+			
+			m_MapMarker = mapMarkerMgr.PrepareMilitaryMarker(mapMarkerMilitary.m_eMapMarkerFactionIcon, mapMarkerMilitary.m_eMapMarkerDimension, mapMarkerMilitary.m_eMapMarkerType1Modifier | mapMarkerMilitary.m_eMapMarkerType2Modifier);
 		}
 		
-		SCR_MapMarkerManagerComponent mapMarkerMgr = SCR_MapMarkerManagerComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_MapMarkerManagerComponent));
-		if (mapMarkerMgr)
+		vector worldPos = GetOwner().GetOrigin();
+		m_MapMarker.SetWorldPos(worldPos[0], worldPos[2]);
+		m_MapMarker.SetCustomText(m_MapMarkerType.m_sMapMarkerText);
+		
+		FactionManager factionManager = GetGame().GetFactionManager();
+		if (factionManager)
 		{
-			mapMarkerMgr.OnAddSynchedMarker(m_MapMarker); //Call for server
-			mapMarkerMgr.OnAskAddStaticMarker(m_MapMarker); //Call for clients
+			Faction faction = factionManager.GetFactionByKey(m_sFactionKey);
+			if (faction)
+				m_MapMarker.AddMarkerFactionFlags(factionManager.GetFactionIndex(faction));
 		}
+		
+		mapMarkerMgr.InsertStaticMarker(m_MapMarker, false, true);
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ScenarioFrameworkMarkerType : ScriptAndConfig
 {
-};
+	[Attribute(desc: "Text which will be displayed for the Map Marker", category: "Map Marker")];
+	LocalizedString m_sMapMarkerText;
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ScenarioFrameworkMarkerCustom : SCR_ScenarioFrameworkMarkerType
 {
@@ -122,20 +128,25 @@ class SCR_ScenarioFrameworkMarkerCustom : SCR_ScenarioFrameworkMarkerType
 	[Attribute("0", UIWidgets.ComboBox, "Marker Color", "", ParamEnumArray.FromEnum(SCR_EScenarioFrameworkMarkerCustomColor), category: "Map Marker")]
 	SCR_EScenarioFrameworkMarkerCustomColor m_eMapMarkerColor;
 	
-	[Attribute(desc: "Text which will be displayed for the Map Marker", category: "Map Marker")];
-	string m_sMapMarkerText;
-	
 	[Attribute(defvalue: "0", uiwidget: UIWidgets.Slider, desc: "Rotation of the Map Marker", params: "-180 180 1", category: "Map Marker")]
 	int m_iMapMarkerRotation;
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ScenarioFrameworkMarkerMilitary : SCR_ScenarioFrameworkMarkerType
 {
-	[Attribute("0", UIWidgets.ComboBox, "Marker Icon", "", ParamEnumArray.FromEnum(SCR_EScenarioFrameworkMarkerMilitary), category: "Map Marker")]
-	SCR_EScenarioFrameworkMarkerMilitary m_eMapMarkerIcon;
-};
+	[Attribute(defvalue: EMilitarySymbolIdentity.BLUFOR.ToString(), UIWidgets.ComboBox, "Marker Faction Icon. Not all of these combinations will work as they have to be properly defined in MapMarkerConfig.conf", "", ParamEnumArray.FromEnum(EMilitarySymbolIdentity), category: "Map Marker")]
+	EMilitarySymbolIdentity m_eMapMarkerFactionIcon;
+	
+	[Attribute(defvalue: EMilitarySymbolDimension.LAND.ToString(), UIWidgets.ComboBox, "Marker Dimension. Not all of these combinations will work as they have to be properly defined in MapMarkerConfig.conf", "", ParamEnumArray.FromEnum(EMilitarySymbolDimension), category: "Map Marker")]
+	EMilitarySymbolDimension m_eMapMarkerDimension;
+	
+	[Attribute(defvalue: EMilitarySymbolIcon.INFANTRY.ToString(), UIWidgets.ComboBox, "Marker Type 1 modifier. Not all of these combinations will work as they have to be properly defined in MapMarkerConfig.conf", "", ParamEnumArray.FromEnum(EMilitarySymbolIcon), category: "Map Marker")]
+	EMilitarySymbolIcon m_eMapMarkerType1Modifier;
+	
+	[Attribute(defvalue: EMilitarySymbolIcon.INFANTRY.ToString(), UIWidgets.ComboBox, "Marker Type 2 modifier. Not all of these combinations will work as they have to be properly defined in MapMarkerConfig.conf", "", ParamEnumArray.FromEnum(EMilitarySymbolIcon), category: "Map Marker")]
+	EMilitarySymbolIcon m_eMapMarkerType2Modifier;
+}
 
 enum SCR_EScenarioFrameworkMarkerCustom
 {
@@ -229,7 +240,7 @@ enum SCR_EScenarioFrameworkMarkerCustom
 	ARROW_CURVE_SMALL,
 	ARROW_CURVE_SMALL2,
 	ARROW_CURVE_SMALL3
-};
+}
 
 enum SCR_EScenarioFrameworkMarkerCustomColor
 {
@@ -246,23 +257,4 @@ enum SCR_EScenarioFrameworkMarkerCustomColor
 	MAGENTA,
 	CIVILIAN,
 	DARK_PINK
-};
-
-enum SCR_EScenarioFrameworkMarkerMilitary
-{
-	LAND_INFANTRY_MOTORIZED = 0,
-	LAND_INFANTRY_ARMOR,
-	LAND_ARMOR,
-	LAND_MORTAR,
-	LAND_ARTILLERY,
-	LAND_MEDICAL,
-	LAND_ROTARY_WING,
-	LAND_MOBILEHQ,
-	LAND_MAINTENANCE,
-	LAND_SUPPLY,
-	LAND_RECON,
-	LAND_MACHINEGUN,
-	LAND_SNIPER,
-	LAND_ANTITANK,
-	INSTALLATION_NA
-};
+}

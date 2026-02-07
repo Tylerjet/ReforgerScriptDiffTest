@@ -1,42 +1,39 @@
-/*
-Handles looped sounds such as leaves rustles, or crickets played on entities close to camera
-*/
+//! Handles looped sounds such as leaves rustles, or crickets played on entities close to camera
 [BaseContainerProps(configRoot: true)]
-class SCR_LoopedPositionalSounds: SCR_AmbientSoundsEffect
+class SCR_LoopedPositionalSounds : SCR_AmbientSoundsEffect
 {
 	private const int MINIMUM_MOVE_DISTANCE_SQ = 2;
 	private const int INVALID = -1;	
 	private const int LOOP_SOUND_HEIGHT_LIMIT = 25;
 	private const int LOOP_SOUND_COUNT = 9;
-	private const int UPDATE_POSITION_THRESHOLD = 5;
     private const float BOUNDING_BOX_CROP_FACTOR = 0.3;
+    private const float BOUNDING_BOX_CROP_FACTOR_HEIGHT = 0.9;
 	private const int BUSH_LOOP_SOUND_COUNT_LIMIT = 4;
 	private const string ENTITY_SIZE_SIGNAL_NAME = "EntitySize";
-	
+	private const string SEED_SIGNAL_NAME = "Seed";
+
+	[Attribute("0.3", desc: "Ratio of bushes with insect sounds vs without")]
+	private float m_fBushCricketThreshold;
+
 	private int m_iEntitySizeSignalIdx;
+	private int m_iSeedSignalIdx;
 	
 	//! Camera position where looped sounds were processed the last time	
 	private vector m_vCameraPosLooped;
+
 	//! All closest entities arround camera				
-	private ref array<IEntity>  m_aClosestEntityID = new array<IEntity>;
+	private ref array<IEntity> m_aClosestEntityID = {};
+
 	//! Entities with plaing looped sound	
-	private ref array<IEntity>  m_aLoopedSoundID = new array<IEntity>;
-	//! Data for playing looped sounds
-	private ref array<ref SCR_TreeFoliage> m_aTreeFoliage = new array<ref SCR_TreeFoliage>;
+	private ref array<IEntity> m_aLoopedSoundID = {};
+
+	//! Playing sound audio handles
+	private ref array<AudioHandle> m_aLoopedSoundAudioHandle = {};
 		
 	//------------------------------------------------------------------------------------------------
-	/*
-	Called by SCR_AmbientSoundComponent in UpdateSoundJob()
-	*/
+	// Called by SCR_AmbientSoundComponent in UpdateSoundJob()
 	override void Update(float worldTime, vector cameraPos)
 	{
-		HandleLoopedSounds(worldTime, cameraPos);
-		UpdateTreeFoliageSoundPosition(cameraPos);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	private void HandleLoopedSounds(float worldTime, vector cameraPos)
-	{							
 		if (vector.DistanceSqXZ(m_vCameraPosLooped, cameraPos) < MINIMUM_MOVE_DISTANCE_SQ)
 			return;
 		
@@ -53,7 +50,7 @@ class SCR_LoopedPositionalSounds: SCR_AmbientSoundsEffect
 		// Play sounds on entities, that become closest				
 		PlayLoopedSounds(cameraPos);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	private void StopLoopedSounds()
 	{		
@@ -64,52 +61,87 @@ class SCR_LoopedPositionalSounds: SCR_AmbientSoundsEffect
 			if (index == INVALID)
 			{
 				m_aLoopedSoundID.Remove(i);
-				m_aTreeFoliage.Remove(i);			
+				m_AmbientSoundsComponent.Terminate(m_aLoopedSoundAudioHandle[i]);
+				m_aLoopedSoundAudioHandle.Remove(i);			
 			}		
 		}
 	}	
 	
 	//------------------------------------------------------------------------------------------------			
 	private void PlayLoopedSounds(vector cameraPos)
-	{		
+	{
 		foreach(IEntity entity: m_aClosestEntityID)
 		{
+			if (entity == null)
+				continue;
+			
 			int index = m_aLoopedSoundID.Find(entity);
 			
-			if (index == INVALID && entity != null)
-			{
-				m_aLoopedSoundID.Insert(entity);
+			if (index != INVALID)
+				continue;
+			
+			float foliageHight;
+			ETreeSoundTypes treeSoundType				
+			GetTreeProperties(entity, treeSoundType, foliageHight);
 				
-				float treeHeight, foliageHight;
-				ETreeSoundTypes treeSoundType				
-				GetTreeProperties(entity, treeSoundType, foliageHight);
-
-				// Create tree foliage class			
-				SCR_TreeFoliage treeFoliage;
-				string eventName;
+			// Get event name
+			string eventName;
 								
-				if (treeSoundType == ETreeSoundTypes.Leafy)
+			if (treeSoundType == ETreeSoundTypes.Leafy)
+			{					
+				eventName = GetTreeSoundEventName(foliageHight, treeSoundType);
+			}
+			else
+			{
+				vector v = entity.GetOrigin();
+				int seed = v[0] * v[2];
+				RandomGenerator ranGen = SCR_Math.GetMathRandomGenerator();
+				ranGen.SetSeed(seed);
+
+				if (ranGen.RandFloat01() > m_fBushCricketThreshold)
 				{
-					treeFoliage = CreateTreeFoliage(entity, foliageHight, treeHeight);	
-					eventName = GetTreeSoundEventName(foliageHight, treeSoundType);
+					float sampleSelector = Math.AbsInt(seed % 100) * 0.01;
+					m_LocalSignalsManager.SetSignalValue(m_iSeedSignalIdx, sampleSelector);
+					eventName = SCR_SoundEvent.SOUND_BUSH_CRICKETS_LP;
 				}
 				else
 				{
-					treeFoliage = CreateBushFoliage(entity);
 					eventName = SCR_SoundEvent.SOUND_BUSH_LP;
 				}
-											
-				// Get sound init position
-				vector mat[4];
-				if (treeFoliage.m_bUpdatePosition)
-					mat[3] = GetTreeFoliageSoundPosition(treeFoliage, cameraPos);	
-				else
-					mat[3] = treeFoliage.m_vCenter;					
-		
-				// Play sound					
-				treeFoliage.m_AudioHandle = m_AmbientSoundsComponent.SoundEventTransform(eventName, mat);
-				m_aTreeFoliage.Insert(treeFoliage);									
 			}
+											
+			// Get sound position
+			vector mat[4];
+			Math3D.MatrixIdentity4(mat);
+				
+			// Get world bounding box
+			vector mins, maxs;			
+			entity.GetWorldBounds(mins, maxs);									
+										
+			// Get height	
+			float BVHeight = (maxs[1] - mins[1] - foliageHight) * BOUNDING_BOX_CROP_FACTOR_HEIGHT;
+							
+			// Get average width
+			float widthX = (maxs[0] - mins[0]) * 0.5;
+			float widthZ = (maxs[2] - mins[2]) * 0.5;
+			float BVRadius = 0.5 * (widthX + widthZ) * BOUNDING_BOX_CROP_FACTOR;
+								
+			// Get center					
+			mat[3][0] = mins[0] + widthX;
+			mat[3][1] = mins[1] + foliageHight + 0.5 * BVHeight;
+			mat[3][2] = mins[2] + widthZ;
+					
+			// Play sound					
+			AudioHandle audioHandle = m_AmbientSoundsComponent.SoundEventTransform(eventName, mat);
+			if (!m_AmbientSoundsComponent.IsHandleValid(audioHandle))
+				continue;	
+			
+			// Set BV parameters	
+			AudioSystem.SetBoundingVolumeParams(audioHandle, AudioSystem.BV_Cylinder, BVRadius, BVHeight, 0);
+				
+			// Store references
+			m_aLoopedSoundID.Insert(entity);
+			m_aLoopedSoundAudioHandle.Insert(audioHandle);									
 		}
 	}
 		
@@ -138,71 +170,6 @@ class SCR_LoopedPositionalSounds: SCR_AmbientSoundsEffect
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected SCR_TreeFoliage CreateTreeFoliage(IEntity entity,float foliageHight, out float treeHight = 0, )
-	{		
-		// Get world vounding box
-		vector mins, maxs;			
-		entity.GetWorldBounds(mins, maxs);
-		
-		treeHight = maxs[1] - mins[1];
-						
-		// Set Tree treeFoliage	
-		ref SCR_TreeFoliage treeFoliage = new SCR_TreeFoliage();
-		vector mat[4];
-				
-		if (treeHight < UPDATE_POSITION_THRESHOLD)
-			treeFoliage.m_vCenter = vector.Lerp(mins, maxs, 0.5);
-		else
-		{							
-			// Set update position flag
-			treeFoliage.m_bUpdatePosition = true;
-			
-			// Get max/min height
-			treeFoliage.m_fMaxY = maxs[1];			
-			treeFoliage.m_fMinY = mins[1] + foliageHight;
-			
-			// Get average width
-			float widthX = (maxs[0] - mins[0]) * 0.5;
-			float widthZ = (maxs[2] - mins[2]) * 0.5;
-			treeFoliage.m_fWidth = 0.5 * (widthX + widthZ) * BOUNDING_BOX_CROP_FACTOR;
-						
-			// Get Center 2D
-			vector center;					
-			center[0] = mins[0] + widthX;
-			center[2] = mins[2] + widthZ;						
-			treeFoliage.m_vCenter = center;
-		}
-		
-		return treeFoliage;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected SCR_TreeFoliage CreateBushFoliage(IEntity entity)
-	{
-		// Get tree entity
-		Tree tree = Tree.Cast(entity);
-		if (!tree)
-			return null;
-		
-		// Get scaled foliage above ground height
-		TreeClass treeClass = TreeClass.Cast(tree.GetPrefabData());
-		if (!treeClass)
-			return null;
-		
-		// Get world vounding box
-		vector mins, maxs;			
-		entity.GetWorldBounds(mins, maxs);
-										
-		// Set Tree treeFoliage	
-		ref SCR_TreeFoliage treeFoliage = new SCR_TreeFoliage();
-		vector mat[4];
-				
-		treeFoliage.m_vCenter = vector.Lerp(mins, maxs, 0.5);
-
-		return treeFoliage;
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	protected string GetTreeSoundEventName(float foliageHeight, ETreeSoundTypes treeSoundType)
 	{
 			if (foliageHeight < 3)
@@ -215,64 +182,13 @@ class SCR_LoopedPositionalSounds: SCR_AmbientSoundsEffect
 				return SCR_SoundEvent.SOUND_LEAFYTREE_VERYLARGE_LP;	
 	}
 	
-	//------------------------------------------------------------------------------------------------
-	private void UpdateTreeFoliageSoundPosition(vector cameraPos)
-	{		
-		for (int i = 0, size = m_aLoopedSoundID.Count(); i < size; i++)
-		{
-			if (m_aTreeFoliage[i].m_bUpdatePosition == true)
-			{		
-				vector mat[4];										
-				mat[3] = GetTreeFoliageSoundPosition(m_aTreeFoliage[i], cameraPos);
-	
-				// Update sound position
-				m_AmbientSoundsComponent.SetSoundTransformation(m_aTreeFoliage[i].m_AudioHandle, mat);
-			}
-		}
-	}
-	
 	//------------------------------------------------------------------------------------------------	
-	private vector GetTreeFoliageSoundPosition(SCR_TreeFoliage treeFoliage, vector cameraPos)
-	{
-		vector position;
-		
-		// Set distance
-		float cameraDistance = vector.DistanceXZ(cameraPos, treeFoliage.m_vCenter);
-			
-		if (cameraDistance <= treeFoliage.m_fWidth)
-			position = cameraPos;
-		else
-		{					
-			vector cameraPos2D = cameraPos;
-			cameraPos2D[1] =0 ;
-			
-			position = treeFoliage.m_vCenter + (cameraPos2D - treeFoliage.m_vCenter).Normalized() * treeFoliage.m_fWidth;
-		}
-			
-		// Set height
-		position[1] = Math.Clamp(cameraPos[1], treeFoliage.m_fMinY, treeFoliage.m_fMaxY);				
-		
-		return position;
-	}
-
-	//------------------------------------------------------------------------------------------------		
-	private float VectorToRandomNumber(vector v)
-	{		
-		int i = v[0];
-		int j = v[2];		
-		int mod = (i * j) % 100;
-		
-		return Math.AbsInt(mod) * 0.01;
-	}
-
-	//------------------------------------------------------------------------------------------------	
-	/*
-	Called by SCR_AmbientSoundComponent in EOnPostInit()
-	*/	
+	// Called by SCR_AmbientSoundComponent in EOnPostInit()
 	override void OnPostInit(SCR_AmbientSoundsComponent ambientSoundsComponent, SignalsManagerComponent signalsManagerComponent)
 	{
 		super.OnPostInit(ambientSoundsComponent, signalsManagerComponent);
 
 		m_iEntitySizeSignalIdx = signalsManagerComponent.AddOrFindSignal(ENTITY_SIZE_SIGNAL_NAME);
+		m_iSeedSignalIdx = signalsManagerComponent.AddOrFindSignal(SEED_SIGNAL_NAME);
 	}
 }

@@ -37,69 +37,79 @@ class SCR_ButtonEffectPosition : SCR_ButtonEffectWidgetBase
 	[Attribute()]
 	vector m_vToggledOff;	
 	
-	
+	//------------------------------------------------------------------------------------------------
 	override void OnStateDefault(bool instant)
 	{
 		Apply(m_vDefault, instant);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void OnStateHovered(bool instant)
 	{
 		Apply(m_vHovered, instant);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void OnStateActivated(bool instant)
 	{
 		Apply(m_vActivated, instant);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void OnStateActivatedHovered(bool instant)
 	{
 		Apply(m_vActivatedHovered, instant);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void OnStateDisabled(bool instant)
 	{
 		Apply(m_vDisabled, instant);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnStateDisabledActivated(bool instant)
 	{
 		Apply(m_vDisabled, instant);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void OnClicked(bool instant)
 	{
 		Apply(m_vClicked, instant);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void OnFocusGained(bool instant)
 	{
 		Apply(m_vFocusGained, instant);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnFocusLost(bool instant)
 	{
 		Apply(m_vFocusLost, instant);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void OnToggledOn(bool instant)
 	{
 		Apply(m_vToggledOn, instant);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void OnToggledOff(bool instant)
 	{
 		Apply(m_vToggledOff, instant);
 	}
 	
-	
-	
+	//------------------------------------------------------------------------------------------------
 	override void OnDisabled()
 	{
 		AnimateWidget.StopAnimation(m_wTarget, WidgetAnimationPosition);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void Apply(vector value, bool instant)
 	{
 		if (m_wTarget)
@@ -116,4 +126,4 @@ class SCR_ButtonEffectPosition : SCR_ButtonEffectWidgetBase
 			}
 		}
 	}
-};
+}

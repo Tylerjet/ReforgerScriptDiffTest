@@ -1,5 +1,5 @@
-//Load a propper config file for player faction and open an asset browser.
-class SCR_ToolbarContextBrowserBuildingUIComponent: ScriptedWidgetComponent
+//! Load a proper config file for player faction and open an asset browser.
+class SCR_ToolbarContextBrowserBuildingUIComponent : ScriptedWidgetComponent
 {
 	[Attribute("BrowserButton")]
 	protected string m_sOpenContentBrowserButtonName;
@@ -7,6 +7,7 @@ class SCR_ToolbarContextBrowserBuildingUIComponent: ScriptedWidgetComponent
 	[Attribute()]
 	protected ref SCR_EditorContentBrowserDisplayConfig m_ContentBrowserDisplayConfig;
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OpenAssetBrowserButton(Widget widget, float value, EActionTrigger actionTrigger)
 	{
 		PlayerController playerController = GetGame().GetPlayerController();
@@ -47,10 +48,11 @@ class SCR_ToolbarContextBrowserBuildingUIComponent: ScriptedWidgetComponent
 			contentBrowserManager.OpenBrowserLabelConfigInstance(displayConfig);		
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		Widget buttonWidget = w.FindAnyWidget(m_sOpenContentBrowserButtonName);
 		if (buttonWidget)
 			ButtonActionComponent.GetOnAction(buttonWidget).Insert(OpenAssetBrowserButton);
 	}
-};
+}

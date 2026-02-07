@@ -1,5 +1,5 @@
 [BaseContainerProps(), BaseContainerCustomTitleField("m_sDisplayName")]
-class SCR_BloodTooltipDetail: SCR_DpsConditionBarBaseTooltipDetail
+class SCR_BloodTooltipDetail : SCR_DpsConditionBarBaseTooltipDetail
 {	
 	protected SCR_CharacterDamageManagerComponent m_CharacterDamageManager;
 	
@@ -23,16 +23,19 @@ class SCR_BloodTooltipDetail: SCR_DpsConditionBarBaseTooltipDetail
 	protected Widget m_UnconsciousBarTop;
 	protected Widget m_UnconsciousFillerRight;
 	
+	//------------------------------------------------------------------------------------------------
 	override bool NeedUpdate()
 	{
 		return m_CharacterDamageManager != null;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void UpdateDetail(SCR_EditableEntityComponent entity)
 	{
 		super.UpdateDetail(entity);
 		
-		HitZone bloodHitzone = m_CharacterDamageManager.GetBloodHitZone();
-		if (!bloodHitzone)
+		HitZone bloodHitZone = m_CharacterDamageManager.GetBloodHitZone();
+		if (!bloodHitZone)
 			return;
 		
 		//~ If character dead set blood 0
@@ -52,14 +55,15 @@ class SCR_BloodTooltipDetail: SCR_DpsConditionBarBaseTooltipDetail
 			return;
 		}
 		
-		float bloodLevel = Math.InverseLerp(bloodHitzone.GetDamageStateThreshold(ECharacterBloodState.DESTROYED), 1, bloodHitzone.GetHealthScaled());
+		float bloodLevel = Math.InverseLerp(bloodHitZone.GetDamageStateThreshold(ECharacterBloodState.DESTROYED), 1, bloodHitZone.GetHealthScaled());
 		
 		//~ Update blood visual
 		bloodLevel = Math.Clamp(bloodLevel, 0, 1);
-		UpdateBloodBar(bloodLevel, bloodHitzone.GetDamageStateThreshold(ECharacterBloodState.UNCONSCIOUS));
+		UpdateBloodBar(bloodLevel, bloodHitZone.GetDamageStateThreshold(ECharacterBloodState.UNCONSCIOUS));
 		SetBarAndPercentageValue(bloodLevel);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateBloodBar(float bloodLevel, float unconsciousLevel)
 	{
 		if (bloodLevel >= unconsciousLevel)
@@ -85,6 +89,7 @@ class SCR_BloodTooltipDetail: SCR_DpsConditionBarBaseTooltipDetail
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void SetBarColor(bool SetConditionColor)
 	{
 		super.SetBarColor(SetConditionColor);
@@ -105,6 +110,7 @@ class SCR_BloodTooltipDetail: SCR_DpsConditionBarBaseTooltipDetail
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override bool InitDetail(SCR_EditableEntityComponent entity, Widget widget)
 	{
 		if (!super.InitDetail(entity, widget))
@@ -114,8 +120,8 @@ class SCR_BloodTooltipDetail: SCR_DpsConditionBarBaseTooltipDetail
 		if (!m_CharacterDamageManager)
 			return false;
 		
-		HitZone bloodHitzone = m_CharacterDamageManager.GetBloodHitZone();
-		if (!bloodHitzone)
+		HitZone bloodHitZone = m_CharacterDamageManager.GetBloodHitZone();
+		if (!bloodHitZone)
 			return false;
 		
 		m_UnconsciousBarTop = widget.FindAnyWidget(m_sUnconsciousBarTopName);
@@ -130,7 +136,6 @@ class SCR_BloodTooltipDetail: SCR_DpsConditionBarBaseTooltipDetail
 		
 		if (m_CharacterDamageManager.GetState() == EDamageState.DESTROYED)
 			return false;
-			
 		
 		if (m_CharacterDamageManager.GetState() == EDamageState.DESTROYED)
 		{
@@ -145,4 +150,4 @@ class SCR_BloodTooltipDetail: SCR_DpsConditionBarBaseTooltipDetail
 		UpdateDetail(entity);
 		return true;
 	}
-};
+}

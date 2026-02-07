@@ -27,7 +27,10 @@ class SCR_CampaignTutorialArlandStageShooting11 : SCR_BaseCampaignTutorialArland
 			}
 		}
 		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("GrenadeThrow", false);
+		HintOnVoiceOver();
 	}
 	
 	//------------------------------------------------------------------------------------------------

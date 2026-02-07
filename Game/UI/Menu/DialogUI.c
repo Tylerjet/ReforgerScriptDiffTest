@@ -52,11 +52,7 @@ class DialogUI : ChimeraMenuBase
 		// Texts
 		m_wTitle = TextWidget.Cast(w.FindAnyWidget("Title"));
 		m_wContent = TextWidget.Cast(w.FindAnyWidget("Message"));
-/*
-		// Play animation
-		w.SetOpacity(0);
-		AnimateWidget.Opacity(w, 1, m_fAnimationRate);
-*/
+
 		// Find dialog component
 		m_DialogData = SCR_DialogDataComponent.Cast( w.FindHandler(SCR_DialogDataComponent));
 
@@ -102,7 +98,6 @@ class DialogUI : ChimeraMenuBase
 	protected void OnCancel()
 	{
 		m_OnCancel.Invoke();
-		//CloseAnimated();
 		Close();
 	}
 
@@ -118,20 +113,24 @@ class DialogUI : ChimeraMenuBase
 			return;
 
 		// Select color
-		Color color = Color.White;
+		Color color = Color.FromInt(Color.WHITE);
 
 		switch (m_iDialogType)
 		{
 			case EDialogType.ACTION:
-				color = UIColors.CONTRAST_CLICKED_HOVERED;
+				color = Color.FromInt(UIColors.CONTRAST_CLICKED_HOVERED.PackToInt());
 				break;
 
 			case EDialogType.WARNING:
-				color = UIColors.WARNING;
+				color = Color.FromInt(UIColors.WARNING.PackToInt());
 				break;
 			
 			case EDialogType.POSITIVE:
-				color = UIColors.CONFIRM;
+				color = Color.FromInt(UIColors.CONFIRM.PackToInt());
+				break;
+			
+			case EDialogType.ONLINE:
+				color = Color.FromInt(UIColors.ONLINE.PackToInt());
 				break;
 		}
 
@@ -232,38 +231,6 @@ class DialogUI : ChimeraMenuBase
 	{
 		return m_DynamicFooter;
 	}
-	
-	//////////////////////////////////////////////////////////////////////////////////////////////////
-	// --- Static functions to create common dialog types ----
-	//////////////////////////////////////////////////////////////////////////////////////////////////
-
-	//------------------------------------------------------------------------------------------------
-	//! Dialog with OK and CANCEL buttons
-	/*
-	static DialogUI CreateConfirmationDialog()
-	{
-		return DialogUI.Cast(GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.ConfirmationDialog, DialogPriority.CRITICAL));
-	}
-
-	//------------------------------------------------------------------------------------------------
-	static DialogUI CreateOkCancelDialog()
-	{
-		return DialogUI.CreateConfirmationDialog();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Dialog with OK button
-	static DialogUI CreateSimpleDialog()
-	{
-		return DialogUI.Cast(GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.SimpleDialog, DialogPriority.CRITICAL));
-	}
-
-	//------------------------------------------------------------------------------------------------
-	static DialogUI CreateOkDialog()
-	{
-		return DialogUI.CreateSimpleDialog();
-	}
-	*/
 };
 
 enum EDialogType
@@ -271,5 +238,6 @@ enum EDialogType
 	MESSAGE,
 	ACTION,
 	WARNING,
-	POSITIVE
+	POSITIVE,
+	ONLINE
 };

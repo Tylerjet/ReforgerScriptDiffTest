@@ -17,6 +17,9 @@ class SCR_AITalk: AITaskScripted
 	[Attribute("0", UIWidgets.CheckBox, "When true, request will be transmitted by speaker even if there is noone to potentially receive (hear) it.")]
 	protected bool m_bTransmitIfNoReceivers;
 	
+	[Attribute("1", UIWidgets.CheckBox, "When true, request will be transmitted by speaker being a passanger of a vehicle.")]
+	protected bool m_bTransmitIfPassenger;
+	
 	protected ref SCR_AITalkRequest m_Request;
 
 	//-----------------------------------	
@@ -86,7 +89,7 @@ class SCR_AITalk: AITaskScripted
 			GetVariableIn(PORT_INT, rqEnum);
 			
 			// Create and fill request
-			SCR_AITalkRequest rq = new SCR_AITalkRequest(m_messageType, rqTarget, rqPos, rqEnum, m_bTransmitIfNoReceivers, m_ePreset);
+			SCR_AITalkRequest rq = new SCR_AITalkRequest(m_messageType, rqTarget, rqPos, rqEnum, m_bTransmitIfNoReceivers, m_bTransmitIfPassenger, m_ePreset);
 			
 			commsHandler.AddRequest(rq);
 			

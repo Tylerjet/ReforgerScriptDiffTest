@@ -259,7 +259,7 @@ class SCR_PrefabManagementTool : WorldEditorTool
 	//------------------------------------------------------------------------------------------------
 	//! Strip a suffix of weird or unauthorised characters
 	//! Accepted characters: [a-zA-Z0-9_-]
-	//! \param suffix
+	//! \param[in] suffix
 	//! \return underscore-prefixed suffix or empty if wrong
 	protected string SanitiseAndFormatSuffix(string suffix)
 	{
@@ -290,5 +290,5 @@ class SCR_PrefabManagementTool : WorldEditorTool
 
 		return null;
 	}
-};
-#endif
+}
+#endif // WORKBENCH

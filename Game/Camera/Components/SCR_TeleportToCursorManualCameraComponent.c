@@ -1,13 +1,10 @@
-[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
-/** @ingroup ManualCamera
-*/
+//! @ingroup ManualCamera
 
-/*!
-Teleport the camera to the cursor's world position
-*/
+//! Teleport the camera to the cursor's world position
+[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
 class SCR_TeleportToCursorManualCameraComponent : SCR_BaseManualCameraComponent
 {
-	const float SETTLE_THRESHOLD = 0.01;
+	protected static const float SETTLE_THRESHOLD = 0.01;
 
 	[Attribute("")]
 	private string m_sActionTeleportToCursor;
@@ -51,20 +48,21 @@ class SCR_TeleportToCursorManualCameraComponent : SCR_BaseManualCameraComponent
 	private float m_fDistance;
 	private float m_fDistancePrev;
 	
-	/*!
-	Teleport camera to given coordiates.
-	\param position Target position
-	\param forceDefaultDistance True to force default offset from the target, even when the camera starts closer
-	\param forceDefaultAngle True to force default angle instead preserving current camera angle
-	\param forceStartAtCurrentPos True to move camera smoothly to the position, even when it's too far
-	\param disableInterruption True to prevent user input when teleporting animation is playing
-	\param distance How far from target position will the camera be positioned (also influenced by forceDefaultDistance setting)
-	\param noSound When true, no sound effect will be played
-	\return True when teleported
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Teleport camera to given coordinates.
+	//! \param[in] position Target position
+	//! \param[in] forceDefaultDistance True to force default offset from the target, even when the camera starts closer
+	//! \param[in] forceDefaultAngle True to force default angle instead preserving current camera angle
+	//! \param[in] forceStartAtCurrentPos True to move camera smoothly to the position, even when it's too far
+	//! \param[in] disableInterruption True to prevent user input when teleporting animation is playing
+	//! \param[in] distance How far from target position will the camera be positioned (also influenced by forceDefaultDistance setting)
+	//! \param[in] noSound When true, no sound effect will be played
+	//! \return True when teleported
 	bool TeleportCamera(vector position, bool forceDefaultDistance = false, bool forceDefaultAngle = false, bool forceStartAtCurrentPos = false, bool disableInterruption = false, float distance = -1, bool noSound = false)
 	{
-		if (position == vector.Zero) return false;
+		if (position == vector.Zero)
+			return false;
+
 		position = CoordToCamera(position);
 		
 		m_vTargetPos = position;
@@ -73,7 +71,9 @@ class SCR_TeleportToCursorManualCameraComponent : SCR_BaseManualCameraComponent
 		m_bIsDefaultAngle = forceDefaultAngle;
 		m_bIsStartAtCurrentPos = forceStartAtCurrentPos;
 		m_bDisableInterruption = disableInterruption;
-		if (distance < 0) distance = m_fMaxDistance;
+		if (distance < 0)
+			distance = m_fMaxDistance;
+
 		m_fDistance = distance;
 		
 		//--- Force default angle when the target position is off-screen
@@ -100,6 +100,8 @@ class SCR_TeleportToCursorManualCameraComponent : SCR_BaseManualCameraComponent
 		
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraFrame(SCR_ManualCameraParam param)
 	{
 		if (param.isManualInputEnabled)
@@ -108,8 +110,11 @@ class SCR_TeleportToCursorManualCameraComponent : SCR_BaseManualCameraComponent
 			{
 				//--- Teleport under cursor
 				vector pos;
-				if (!param.GetCursorWorldPos(pos)) return;
-				if (!TeleportCamera(pos)) return;
+				if (!param.GetCursorWorldPos(pos))
+					return;
+
+				if (!TeleportCamera(pos))
+					return;
 			}
 			if (m_sActionTeleportToPlayer && GetInputManager().GetActionValue(m_sActionTeleportToPlayer))
 			{
@@ -160,7 +165,7 @@ class SCR_TeleportToCursorManualCameraComponent : SCR_BaseManualCameraComponent
 			//--- When further than given limit, teleport the camera nearby, otherwise start transition from the current position.
 			if (!m_bIsStartAtCurrentPos && vector.Distance(m_vTargetPos, param.transform[3]) > m_fTeleportDistance)
 			{
-				//--- Modify original values, because normal ones get overriden later (see MatrixCopy)
+				//--- Modify original values, because normal ones get overridden later (see MatrixCopy)
 				param.transformOriginal[2] = m_vTargetRot;
 				vector dirTo = (m_vTargetPos - param.transformOriginal[3]).Normalized();
 				param.transformOriginal[3] = m_vTargetPos - dirTo * m_fSettleInDistance;
@@ -197,11 +202,15 @@ class SCR_TeleportToCursorManualCameraComponent : SCR_BaseManualCameraComponent
 			param.isDirty = true;
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool EOnCameraInit()
 	{
 		m_vInitPos = GetCameraEntity().GetOrigin();
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraParentChange(bool attached, IEntity parent)
 	{
 		if (attached)
@@ -209,4 +218,4 @@ class SCR_TeleportToCursorManualCameraComponent : SCR_BaseManualCameraComponent
 		else
 			m_vTargetPos = parent.CoordToParent(m_vTargetPos);
 	}
-};
+}

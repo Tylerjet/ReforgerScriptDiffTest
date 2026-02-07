@@ -673,7 +673,7 @@ class SCR_DownloadManager : GenericEntity
 	}
 	
 	//-----------------------------------------------------------------------------------------------
-	protected void OnDownloadProgress(SCR_WorkshopItemActionDownload action, int progressSize)
+	protected void OnDownloadProgress(SCR_WorkshopItemActionDownload action, float progressSize)
 	{
 		m_fDownloadedSize += progressSize;
 		
@@ -790,8 +790,8 @@ class SCR_DownloadManager : GenericEntity
 		m_aDownloadQueue.RemoveItem(action);
 					
 		// Remove canceled and failed from size count 
-		m_fDownloadQueueSize -= action.GetSizeBytes();
-		m_fDownloadedSize -= action.GetDownloadSize();
+		m_fDownloadQueueSize = Math.Clamp(m_fDownloadQueueSize - action.GetDownloadSize(), 0, float.MAX);
+		m_fDownloadedSize = Math.Clamp(m_fDownloadedSize - action.GetDownloadSize(), 0, float.MAX);
 		
 		if (m_OnAllDownloadsStopped && m_aDownloadQueue.IsEmpty())
 			m_OnAllDownloadsStopped.Invoke();

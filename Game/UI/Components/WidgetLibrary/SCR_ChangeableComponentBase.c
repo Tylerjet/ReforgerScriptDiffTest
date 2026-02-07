@@ -28,7 +28,7 @@ class SCR_ChangeableComponentBase : SCR_WLibComponentBase
 	protected Widget m_wBackground;
 	protected Widget m_wLabelRoot;
 	
-	ref ScriptInvoker m_OnChanged = new ref ScriptInvoker();
+	ref ScriptInvoker m_OnChanged = new ScriptInvoker();
 	// Arguments passed:
 	// Toolbox (multiselect off): SCR_ToolboxComponent, int (selected item)
 	// Toolbox (multiselect on): SCR_ToolboxComponent, int (current item), bool (is selected)
@@ -47,7 +47,7 @@ class SCR_ChangeableComponentBase : SCR_WLibComponentBase
 		m_wBackground = m_wRoot.FindAnyWidget("Background");
 		
 		if (m_wBackground)
-			m_wBackground.SetColor(UIColors.BACKGROUND_DEFAULT);
+			m_wBackground.SetColor(Color.FromInt(UIColors.BACKGROUND_DEFAULT.PackToInt()));
 		
 		if (m_wBorder)
 			m_wBorder.SetOpacity(0);
@@ -65,7 +65,7 @@ class SCR_ChangeableComponentBase : SCR_WLibComponentBase
 		if (m_wBorder)
 		AnimateWidget.Opacity(m_wBorder, 1, m_fAnimationRate);
 		
-		AnimateWidget.Color(m_wBackground, UIColors.BACKGROUND_HOVERED, m_fAnimationRate);
+		AnimateWidget.Color(m_wBackground, Color.FromInt(UIColors.BACKGROUND_HOVERED.PackToInt()), m_fAnimationRate);
 		return false;
 	}
 	
@@ -79,7 +79,7 @@ class SCR_ChangeableComponentBase : SCR_WLibComponentBase
 	
 		Widget mouseOver = WidgetManager.GetWidgetUnderCursor();
 		if (w != mouseOver && !IsChildWidget(w, mouseOver))
-			AnimateWidget.Color(m_wBackground, UIColors.BACKGROUND_DEFAULT, m_fAnimationRate);
+			AnimateWidget.Color(m_wBackground, Color.FromInt(UIColors.BACKGROUND_DEFAULT.PackToInt()), m_fAnimationRate);
 		
 		return false;
 	}
@@ -87,7 +87,7 @@ class SCR_ChangeableComponentBase : SCR_WLibComponentBase
 	//------------------------------------------------------------------------------------------------
 	override bool OnMouseEnter(Widget w, int x, int y)
 	{
-		AnimateWidget.Color(m_wBackground, UIColors.BACKGROUND_HOVERED, m_fAnimationRate);
+		AnimateWidget.Color(m_wBackground, Color.FromInt(UIColors.BACKGROUND_HOVERED.PackToInt()), m_fAnimationRate);
 		return super.OnMouseEnter(w, x, y);
 	}
 	
@@ -98,7 +98,7 @@ class SCR_ChangeableComponentBase : SCR_WLibComponentBase
 		if (GetGame().GetWorkspace().GetFocusedWidget() == w || IsChildWidget(w, enterW))
 			return false;
 		
-		AnimateWidget.Color(m_wBackground, UIColors.BACKGROUND_DEFAULT, m_fAnimationRate);
+		AnimateWidget.Color(m_wBackground, Color.FromInt(UIColors.BACKGROUND_DEFAULT.PackToInt()), m_fAnimationRate);
 		return false;
 	}
 	

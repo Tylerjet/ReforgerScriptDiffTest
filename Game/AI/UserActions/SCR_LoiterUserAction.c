@@ -3,7 +3,10 @@ enum ELoiteringType
 	NONE, 	  
 	SIT,	  
 	LEAN_LEFT,
-	LEAN_RIGHT
+	LEAN_RIGHT,
+	SMOKING,
+	LOITERING,
+	PUSHUPS
 }
 
 class SCR_LoiterUserAction: SCR_UserActionWithOccupancy

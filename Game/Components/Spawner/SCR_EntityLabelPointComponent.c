@@ -6,6 +6,8 @@ class SCR_EntityLabelPointComponentClass : ScriptComponentClass
 	
 	//------------------------------------------------------------------------------------------------
 	//! Outs all labels assigned to component
+	//! \param[out] labels
+	//! \return
 	bool GetEntityLabels(out notnull array<EEditableEntityLabel> labels)
 	{
 		if (m_aEntityLabels)
@@ -16,7 +18,7 @@ class SCR_EntityLabelPointComponentClass : ScriptComponentClass
 		
 		return m_aEntityLabels != null;
 	}
-};
+}
 
 class SCR_EntityLabelPointComponent : ScriptComponent
 {
@@ -24,7 +26,7 @@ class SCR_EntityLabelPointComponent : ScriptComponent
 	protected ref ScriptInvoker m_OnOwnerUpdated;
 
 	//------------------------------------------------------------------------------------------------
-	//! Returns true, if Component has label specified in input
+	//! \return true if Component has label specified in input
 	bool HasLabel(EEditableEntityLabel label)
 	{
 		SCR_EntityLabelPointComponentClass prefabData = SCR_EntityLabelPointComponentClass.Cast(GetComponentData(GetOwner()));
@@ -38,7 +40,7 @@ class SCR_EntityLabelPointComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Get invoker called with position updates. If none exist, it will create new one.
+	//! \return invoker called with position updates
 	ScriptInvoker GetOnOwnerUpdated()
 	{
 		if (!m_OnOwnerUpdated)
@@ -72,10 +74,11 @@ class SCR_EntityLabelPointComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_EntityLabelPointComponent()
 	{
 		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
 		if (core)
 			core.Event_OnEntityTransformChanged.Remove(OnEntityUpdated);
 	}
-};
+}

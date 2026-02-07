@@ -5,8 +5,8 @@ class SCR_FreeRoamBuildingClientTriggerEntityClass : SCR_FreeRoamBuildingBaseTri
 
 class SCR_FreeRoamBuildingClientTriggerEntity : SCR_FreeRoamBuildingBaseTriggerEntity
 {
-	protected ref ScriptInvoker m_OnEntityEnter;
-	protected ref ScriptInvoker m_OnEntityLeave;
+	protected ref ScriptInvokerEntity m_OnEntityEnter;
+	protected ref ScriptInvokerEntity m_OnEntityLeave;
 
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate(IEntity ent)
@@ -18,23 +18,23 @@ class SCR_FreeRoamBuildingClientTriggerEntity : SCR_FreeRoamBuildingBaseTriggerE
 	//! Entity leaves the trigger
 	override void OnDeactivate(IEntity ent)
 	{
-		GetOnEntityLeaveTrigger().Invoke(ent);
+		GetOnEntityLeaveTrigger().Invoke(ent); 
 	}
 		
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetOnEntityEnterTrigger()
+	ScriptInvokerEntity GetOnEntityEnterTrigger()
 	{
 		if (!m_OnEntityEnter)
-			m_OnEntityEnter =  new ScriptInvoker();
+			m_OnEntityEnter =  new ScriptInvokerEntity();
 		
 		return m_OnEntityEnter;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetOnEntityLeaveTrigger()
+	ScriptInvokerEntity GetOnEntityLeaveTrigger()
 	{
 		if (!m_OnEntityLeave)
-			m_OnEntityLeave =  new ScriptInvoker();
+			m_OnEntityLeave =  new ScriptInvokerEntity();
 		
 		return m_OnEntityLeave;
 	}

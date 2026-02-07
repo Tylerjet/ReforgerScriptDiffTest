@@ -10,8 +10,6 @@ class SCR_BuildingTutorialStage6 : SCR_BaseCampaignTutorialArlandStage
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
 	{
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
-		
 		m_MilitaryBaseComponent = SCR_CampaignMilitaryBaseComponent.Cast(GetGame().GetWorld().FindEntityByName("TownBaseFarm").FindComponent(SCR_CampaignMilitaryBaseComponent));
 		if (!m_MilitaryBaseComponent)
 			return;
@@ -20,6 +18,8 @@ class SCR_BuildingTutorialStage6 : SCR_BaseCampaignTutorialArlandStage
 		
 		m_bCheckWaypoint = false;
 		RegisterWaypoint(ent);
+		
+		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
 	}
 	
 	//------------------------------------------------------------------------------------------------

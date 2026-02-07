@@ -1,17 +1,20 @@
 [ComponentEditorProps(category: "GameScripted/AI", description: "Component for AI checking state of characters")]
-class SCR_AIInfoComponentClass: SCR_AIInfoBaseComponentClass
+class SCR_AIInfoComponentClass : SCR_AIInfoBaseComponentClass
 {
-};
+}
 
 enum EUnitRole
 {
-	NONE 			= 0,
-	RIFLEMAN 		= 1,
-	MEDIC 			= 2,
-	MACHINEGUNNER 	= 4,
-	AT_SPECIALIST 	= 8,
-	GRENADIER 		= 16,
-};
+	NONE 				= 0,
+	RIFLEMAN 			= 1,
+	MEDIC 				= 2,
+	MACHINEGUNNER 		= 4,
+	AT_SPECIALIST 		= 8,
+	GRENADIER 			= 16,
+	SNIPER				= 32,
+	HAS_SMOKE_GRENADE	= 64,
+	HAS_FRAG_GRENADE	= 128
+}
 
 enum EUnitState
 {
@@ -20,16 +23,15 @@ enum EUnitState
 	IN_TURRET		= 2,
 	IN_VEHICLE		= 4,
 	UNCONSCIOUS		= 8
-};
+}
 
 enum EUnitAIState
 {
 	AVAILABLE,
 	BUSY,
 	UNRESPONSIVE,
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 {
 	protected EUnitState m_iUnitStates;
@@ -38,10 +40,13 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 	protected BaseWeaponManagerComponent m_weaponManagerComponent;
 	protected SCR_CompartmentAccessComponent m_CompartmentAccessComponent;
 	protected SCR_AIThreatSystem m_ThreatSystem;
-	protected ScriptedDamageManagerComponent m_DamageManager;
+	protected SCR_CharacterDamageManagerComponent m_DamageManager;
 	protected SCR_AICombatComponent m_CombatComponent;
-	protected EventHandlerManagerComponent m_EventHandlerManagerComponent;
+	protected SCR_CharacterControllerComponent m_CharacterController;
 	PerceptionComponent m_Perception;
+	
+	protected SCR_CharacterBloodHitZone m_BloodHitZone;
+	protected float m_fUnconsciousBloodLevel;
 	
 	protected ECharacterStance m_eStance;
 	protected EMovementType m_eMovementType;
@@ -49,12 +54,18 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 	protected int m_iAttackCount;
 	protected int m_unitID;
 	
+	//------------------------------------------------------------------------------------------------
 	override protected void OnPostInit(IEntity owner)
 	{
 		super.OnPostInit(owner);
 		SetEventMask(owner, EntityEvent.INIT);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] vehicle
+	//! \param[in] manager
+	//! \param[in] mgrID
+	//! \param[in] slotID
 	void OnVehicleEntered( IEntity vehicle, BaseCompartmentManagerComponent manager, int mgrID, int slotID )
 	{
 		BaseCompartmentSlot compSlot = manager.FindCompartment(slotID, mgrID);
@@ -62,6 +73,11 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 			AddUnitState(EUnitState.IN_TURRET);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] vehicle
+	//! \param[in] manager
+	//! \param[in] mgrID
+	//! \param[in] slotID
 	void OnVehicleLeft( IEntity vehicle, BaseCompartmentManagerComponent manager, int mgrID, int slotID )
 	{
 		auto aiworld = SCR_AIWorld.Cast(GetGame().GetAIWorld());
@@ -72,21 +88,19 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 			return;
 		
 		RemoveUnitState(EUnitState.IN_TURRET);
-		
-		AIAgent owner = AIAgent.Cast(GetOwner());
-		if (!owner)
-			return;
-		AICommunicationComponent mailbox = owner.GetCommunicationComponent();
-		if (mailbox)
-		{
-			SCR_AIMessage_AttackStaticDone msg1 = new SCR_AIMessage_AttackStaticDone();
-
-			msg1.SetText("Get out of turret");
-			msg1.SetReceiver(owner);
-			mailbox.RequestBroadcast(msg1,owner);
-		}
 	}
 	
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	void InitBloodLevel()
+	{
+		m_BloodHitZone = SCR_CharacterBloodHitZone.Cast(m_DamageManager.GetBloodHitZone());
+		if (m_BloodHitZone)
+			m_fUnconsciousBloodLevel = m_BloodHitZone.GetMaxHealth() * m_BloodHitZone.GetDamageStateThreshold(EDamageState.STATE3);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override protected void EOnInit(IEntity owner)
 	{
 		IEntity ent = owner;
@@ -99,16 +113,12 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 			m_inventoryManagerComponent = SCR_InventoryStorageManagerComponent.Cast(ent.FindComponent(SCR_InventoryStorageManagerComponent));
 			m_weaponManagerComponent = BaseWeaponManagerComponent.Cast(ent.FindComponent(BaseWeaponManagerComponent));
 			m_CompartmentAccessComponent = SCR_CompartmentAccessComponent.Cast(ent.FindComponent(SCR_CompartmentAccessComponent));
-			m_DamageManager = ScriptedDamageManagerComponent.Cast(ent.FindComponent(ScriptedDamageManagerComponent));
+			m_DamageManager = SCR_CharacterDamageManagerComponent.Cast(ent.FindComponent(SCR_CharacterDamageManagerComponent));
 			m_CombatComponent = SCR_AICombatComponent.Cast(ent.FindComponent(SCR_AICombatComponent));
-			m_EventHandlerManagerComponent = EventHandlerManagerComponent.Cast(ent.FindComponent(EventHandlerManagerComponent));
-			
-			if (m_EventHandlerManagerComponent)
-				m_EventHandlerManagerComponent.RegisterScriptHandler("OnConsciousnessChanged", this, this.OnConsciousnessChanged, true);
-			
-			CharacterControllerComponent characterController = CharacterControllerComponent.Cast(ent.FindComponent(CharacterControllerComponent));
-			if (characterController)
-				OnConsciousnessChanged(!characterController.IsUnconscious());
+
+			m_CharacterController = SCR_CharacterControllerComponent.Cast(ent.FindComponent(SCR_CharacterControllerComponent));
+			if (m_CharacterController)
+				m_CharacterController.m_OnLifeStateChanged.Insert(OnLifeStateChanged);
 			
 			m_Perception = PerceptionComponent.Cast(ent.FindComponent(PerceptionComponent));
 		}
@@ -121,18 +131,22 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 		
 		if (m_DamageManager)
 		{
+			InitBloodLevel();
 			m_DamageManager.GetOnDamageOverTimeAdded().Insert(OnDamageOverTimeAdded);
 			m_DamageManager.GetOnDamageOverTimeRemoved().Insert(OnDamageOverTimeRemoved);
 			EvaluateWoundedState();
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_AIInfoComponent()
 	{
-		if (m_EventHandlerManagerComponent)
-			m_EventHandlerManagerComponent.RemoveScriptHandler("OnConsciousnessChanged", this, this.OnConsciousnessChanged, true);
+		if (m_CharacterController)
+			m_CharacterController.m_OnLifeStateChanged.Remove(OnLifeStateChanged);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override protected void OnDelete(IEntity owner)
 	{
 		if (m_CompartmentAccessComponent)
@@ -148,6 +162,10 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] agent
+	//! \return
 	bool IsOwnerAgent(AIAgent agent)
 	{
 		return GetOwner() == agent;
@@ -155,21 +173,30 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 	
 //----------- BIT operations on Roles
 
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] role
+	//! \return
 	bool HasRole(EUnitRole role)
 	{
 		switch (role)
 		{
-			case EUnitRole.MEDIC:			return m_inventoryManagerComponent.GetHealthComponentCount() > 0;
-			case EUnitRole.MACHINEGUNNER:	return m_CombatComponent.HasWeaponOfType(EWeaponType.WT_MACHINEGUN);
-			case EUnitRole.RIFLEMAN:		return m_CombatComponent.HasWeaponOfType(EWeaponType.WT_RIFLE);
-			case EUnitRole.AT_SPECIALIST:	return m_CombatComponent.HasWeaponOfType(EWeaponType.WT_ROCKETLAUNCHER);
-			case EUnitRole.GRENADIER:		return m_CombatComponent.HasWeaponOfType(EWeaponType.WT_GRENADELAUNCHER); // todo right now it will not detect a UGL muzzle, because weapon type is still rifle
+			case EUnitRole.MEDIC:				return m_inventoryManagerComponent.GetHealthComponentCount() > 0;
+			case EUnitRole.MACHINEGUNNER:		return m_CombatComponent.HasWeaponOfType(EWeaponType.WT_MACHINEGUN);
+			case EUnitRole.RIFLEMAN:			return m_CombatComponent.HasWeaponOfType(EWeaponType.WT_RIFLE);
+			case EUnitRole.AT_SPECIALIST:		return m_CombatComponent.HasWeaponOfType(EWeaponType.WT_ROCKETLAUNCHER);
+			case EUnitRole.GRENADIER:			return m_CombatComponent.HasWeaponOfType(EWeaponType.WT_GRENADELAUNCHER); // todo right now it will not detect a UGL muzzle, because weapon type is still rifle
+			case EUnitRole.SNIPER:			return m_CombatComponent.HasWeaponOfType(EWeaponType.WT_SNIPERRIFLE);
+			case EUnitRole.HAS_SMOKE_GRENADE:	return m_CombatComponent.HasWeaponOfType(EWeaponType.WT_SMOKEGRENADE);
+			case EUnitRole.HAS_FRAG_GRENADE:	return m_CombatComponent.HasWeaponOfType(EWeaponType.WT_FRAGGRENADE);
 		}
 		
 		return false;
 	}
 	
-	// ! Use only for debugging!
+	//------------------------------------------------------------------------------------------------
+	//! Use only for debugging!
+	//! \return
 	EUnitRole GetRoles()
 	{
 		typename t = EUnitRole;
@@ -186,34 +213,52 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 	}
 	
 //---------- BIT operation on States
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] state
 	void AddUnitState(EUnitState state)
 	{
 		m_iUnitStates = m_iUnitStates | state;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] state
 	void RemoveUnitState(EUnitState state)
 	{
 		if (HasUnitState(state))
 			m_iUnitStates = m_iUnitStates & ~state;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] state
+	//! \return
 	bool HasUnitState(EUnitState state)
 	{
 		return ( m_iUnitStates & state );
 	}
 	
-	// ! Use only for debugging!
+	//------------------------------------------------------------------------------------------------
+	//! Use only for debugging!
+	//! \return
 	EUnitState GetUnitStates()
 	{
 		return m_iUnitStates;
 	}
 	
 //--------- AI states are disjoined - one can be in only one state at the time
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] state
 	void SetAIState(EUnitAIState state)
 	{
 		m_iAIStates = state; 
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	EUnitAIState GetAIState()
 	{
 		return m_iAIStates;
@@ -221,47 +266,68 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 	
 //--------  Info about magazines available to SCR_AIResupplyActivity
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] magazinyWellType
+	//! \return
 	int GetMagazineCountByWellType(typename magazinyWellType)
 	{
 		return m_CombatComponent.GetMagazineCount(magazinyWellType, false);
 	}
 		
 //-------- 	Set or get AI stance, speed, raising weapon etc.
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] stance
 	void SetStance(ECharacterStance stance)
 	{
 		m_eStance = stance;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	ECharacterStance GetStance()
 	{
 		return m_eStance;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] mode
 	void SetMovementType(EMovementType mode)
 	{
 		m_eMovementType = mode;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	EMovementType GetMovementType()
 	{
 		return m_eMovementType;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] raised
 	void SetWeaponRaised(bool raised)
 	{
 		m_bWeaponRaised = raised;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetWeaponRaised()
 	{
 		return m_bWeaponRaised;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] threatSystem
 	void InitThreatSystem(SCR_AIThreatSystem threatSystem)
 	{
 		m_ThreatSystem = threatSystem;	
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	EAIThreatState GetThreatState()
 	{
 		if (m_ThreatSystem)
@@ -270,8 +336,16 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 			return EAIThreatState.SAFE;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	SCR_AIThreatSystem GetThreatSystem()
+	{
+		return m_ThreatSystem;
+	}
 	
 //-------- 	Evaluation of wounded state of AI
+
+	//------------------------------------------------------------------------------------------------
 	//! Returns true when state has changed and we must invoke an event
 	protected void EvaluateWoundedState()
 	{
@@ -282,6 +356,7 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 			RemoveUnitState(EUnitState.WOUNDED);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnDamageOverTimeAdded(EDamageType dType, float dps, HitZone hz)
 	{
 		if (dType != EDamageType.BLEEDING)
@@ -290,6 +365,7 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 		EvaluateWoundedState();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnDamageOverTimeRemoved(EDamageType dType, HitZone hz)
 	{
 		if (dType != EDamageType.BLEEDING)
@@ -299,15 +375,37 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnConsciousnessChanged(bool conscious)
+	//! \param[in] conscious
+	void OnLifeStateChanged(ECharacterLifeState previousLifeState, ECharacterLifeState newLifeState)
 	{
-		if (conscious)
+		if (newLifeState != ECharacterLifeState.INCAPACITATED)
 			RemoveUnitState(EUnitState.UNCONSCIOUS);
 		else
 			AddUnitState(EUnitState.UNCONSCIOUS);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return the time in seconds after which the agent loses consciousness due to bleeding or -1 if not bleeding
+	float GetBleedTimeToUnconscious()
+	{
+		if (!m_BloodHitZone || !m_fUnconsciousBloodLevel)
+			return -1;
+		
+		float bleedingPerSec = m_BloodHitZone.GetDamageOverTime(EDamageType.BLEEDING);
+				
+		float timeToUnconscious = -1;
+		
+		if (bleedingPerSec > 0)
+			timeToUnconscious = (m_BloodHitZone.GetHealth() - m_fUnconsciousBloodLevel) / bleedingPerSec;
+		
+		return timeToUnconscious;
+	}
+	
 //-------- Debugging
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] w
 	// Used in SCR_AIDebugInfoComponent
 	void DebugPrintToWidget(TextWidget w)
 	{
@@ -316,8 +414,8 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 		w.SetText(str);
 	}
 	
-	
-	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetBehaviorEditorDebugName()
 	{
 		AIAgent agent = AIAgent.Cast(GetOwner());
@@ -346,4 +444,4 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 		}
 		return str;
 	}
-};
+}

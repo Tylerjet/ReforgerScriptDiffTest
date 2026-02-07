@@ -48,6 +48,8 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 
 	protected SCR_VehicleCameraAimpoint m_pCameraAimpointData;
 	protected SCR_VehicleCameraAlignment m_pCameraAlignData;
+	
+	bool m_bCharacterWasJustEjected = false;
 
 	//-----------------------------------------------------------------------------
 	void CharacterCamera3rdPersonVehicle(CameraHandlerComponent pCameraHandler)
@@ -131,6 +133,13 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 		
 		InitCameraData();
 	}
+	
+	override void OnBlendOut()
+	{
+		CompartmentAccessComponent compartmentAccess = m_OwnerCharacter.GetCompartmentAccessComponent();
+		if (compartmentAccess && compartmentAccess.IsInCompartment())
+			m_bCharacterWasJustEjected = compartmentAccess.WasLastGettingOutTeleportation();
+	}
 
 	//-----------------------------------------------------------------------------
 	override void OnUpdate(float pDt, out ScriptedCameraItemResult pOutResult)
@@ -161,14 +170,29 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 		vector localAngVelocity = vector.Zero;
 		vector vehMat[4];
 		
+		bool bCharacterAttached = true;
+		
 		float steeringAngle;
 		if (m_OwnerVehicle)
 		{
-			vector charMat[4];
 			m_OwnerVehicle.GetTransform(vehMat);
-			m_OwnerCharacter.GetTransform(charMat);
-			characterOffset = m_OwnerVehicle.VectorToLocal(vehMat[3] - charMat[3]);
-			
+
+			vector vehToCharLocalMat[4];
+			if (!m_bCharacterWasJustEjected && m_OwnerCharacter.GetAncestorToLocalTransform(m_OwnerVehicle, vehToCharLocalMat))
+				characterOffset = m_vCenter.Multiply4(vehToCharLocalMat);
+			else
+			{
+				vector charMat[4];
+				if (m_bCharacterWasJustEjected && compartmentAccess)
+				{
+					compartmentAccess.GetTeleportTarget(charMat);
+				}
+				else
+					m_OwnerCharacter.GetTransform(charMat);
+				characterOffset = m_vCenter.Multiply4(vehMat).InvMultiply4(charMat);
+				bCharacterAttached = false;
+			}
+
 			Physics physics = m_OwnerVehicle.GetPhysics();
 			if (physics)
 			{
@@ -210,9 +234,10 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 		Math3D.AnglesToMatrix(lookAngles, pOutResult.m_CameraTM);
 		
 		//! Roll
+		if (bCharacterAttached)
 		{
 			//! Remove roll from parent
-			vector orientation[3]
+			vector orientation[3];
 			Math3D.AnglesToMatrix(Vector(0, 0, -yawPitchRoll[2]), orientation);
 			Math3D.MatrixMultiply3(orientation, pOutResult.m_CameraTM, pOutResult.m_CameraTM);
 			
@@ -221,10 +246,15 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 			//! Apply roll factor
 			float rollMask = Math.Max(0, vehMat[1][1]); // Do not apply roll factor when the vehicle is upside-down.
 			SCR_Math3D.RotateAround(pOutResult.m_CameraTM, vector.Zero, pOutResult.m_CameraTM[2], -angle * rollMask, pOutResult.m_CameraTM);
+
+			// Camera offset
+			float heightSign = vehMat[1][1]; // Adjust the sign of the height direction as the vehicle rolls.
+			pOutResult.m_CameraTM[3] = characterOffset + Vector(0, heightSign * m_fHeight, 0);
 		}
-		// Camera offset
-		float heightSign = vehMat[1][1]; // Adjust the sign of the height direction as the vehicle rolls.
-		pOutResult.m_CameraTM[3] = m_vCenter + characterOffset + Vector(0, heightSign * m_fHeight, 0);
+		else
+		{
+			pOutResult.m_CameraTM[3] = characterOffset + Vector(0, m_fHeight, 0);
+		}
 		
 		// viewbob update
 		UpdateViewBob(pDt, localVelocity, localAngVelocity);
@@ -279,6 +309,10 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 		pOutResult.m_fDistance 				= camDist;
 		pOutResult.m_pWSAttachmentReference = null;
 		pOutResult.m_pOwner 				= m_OwnerCharacter;
+		pOutResult.m_bAllowCollisionSolver	= bCharacterAttached;
+
+		pOutResult.m_bAllowInterpolation	= !m_bCharacterWasJustEjected;
+		m_bCharacterWasJustEjected = false;
 		
 		// Apply shake
 		if (m_CharacterCameraHandler)

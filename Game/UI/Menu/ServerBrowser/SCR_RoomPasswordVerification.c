@@ -13,7 +13,6 @@ class SCR_RoomPasswordVerification
 	protected SCR_LoadingOverlay m_LoadingOverlay;
 
 	protected ref SCR_BackendCallback m_Callback = new SCR_BackendCallback();
-	protected ref RoomJoinData m_PasswordParam = new RoomJoinData();
 
 	protected ref ScriptInvokerRoom m_OnVerified = new ScriptInvokerRoom();
 	protected ref ScriptInvokerString m_OnFailVerification = new ScriptInvokerString();
@@ -92,9 +91,7 @@ class SCR_RoomPasswordVerification
 		// Get edit box value
 		string value = editboxDialog.GetEditbox().GetValue();
 
-		// Try join with password
-		m_PasswordParam.SetPassword(value);
-		
+		// Try join with password			
 		m_Room.VerifyPassword(value, m_Callback);
 	}
 

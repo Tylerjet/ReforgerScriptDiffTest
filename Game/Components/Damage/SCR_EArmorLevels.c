@@ -1,7 +1,5 @@
-/*!
-Types of armor and their corresponding protection level. Protection level is int value used for damage reduction.
-@ingroup ArmorLevels
-*/
+//! Types of armor and their corresponding protection level. Protection level is int value used for damage reduction.
+//! @ingroup ArmorLevels
 enum SCR_EArmorLevels
 {
 	NONE = 0,			//!< No protection value
@@ -20,4 +18,4 @@ enum SCR_EArmorLevels
 	CLASS_3 = 80,
 	CLASS_4 = 90,
 	CLASS_5 = 121
-};
+}

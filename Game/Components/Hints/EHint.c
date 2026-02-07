@@ -1,14 +1,12 @@
-/*!
-Hint types.
-When a hint is shown, its type, when defined, is stored persistently.
-After that the hint won't be shown anymore.
-
-Assign specific value to each entry!
-Otherwise it may be shifted when new entries are added in front of it,
-resulting in unintended type change in existing hints.
-
-It's because values are saved as numbers in SCR_HintSettings.
-*/
+//! Hint types.
+//! When a hint is shown, its type, when defined, is stored persistently.
+//! After that the hint will not be shown anymore.
+//!
+//! Assign specific value to each entry!
+//! Otherwise it may be shifted when new entries are added in front of it,
+//! resulting in unintended type change in existing hints.
+//!
+//! This is because values are saved as numbers in SCR_HintSettings.
 enum EHint
 {
 	UNDEFINED = 0, ///< Hint type will not be stored persistently if it has default value
@@ -98,4 +96,6 @@ enum EHint
 	FREE_ROAM_BUILDING_BASE_INTRO	= 700,
 	FREE_ROAM_BUILDING_VEHICLE		= 701,
 	FREE_ROAM_BUILDING_EXITING		= 702,
-};
+	
+	EMOTES_INTRO					= 800,
+}

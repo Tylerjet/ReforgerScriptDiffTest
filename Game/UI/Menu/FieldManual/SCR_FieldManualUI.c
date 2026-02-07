@@ -166,6 +166,7 @@ class SCR_FieldManualUI : MenuRootBase
 #endif // WORKBENCH
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] w
 	void OnSubCategoryClicked(Widget w)
 	{
 		bool resetTiles = m_bIsInSearchMode || m_bIsInEntryViewMode || w != m_wLastClickedSubCategory;
@@ -387,7 +388,7 @@ class SCR_FieldManualUI : MenuRootBase
 
 	//------------------------------------------------------------------------------------------------
 	//! Opens an entry "from outside", e.g a hint
-	//! \param entryId if EFieldManualEntryId.NONE is used or if the entry is not found, the Field Manual is normally opened
+	//! \param[in] entryId if EFieldManualEntryId.NONE is used or if the entry is not found, the Field Manual is normally opened
 	void OpenEntry(EFieldManualEntryId entryId)
 	{
 		if (entryId == EFieldManualEntryId.NONE)

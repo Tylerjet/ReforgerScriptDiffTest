@@ -27,6 +27,7 @@ class SCR_SoundManagerEntity : GenericEntity
 	static const string G_IS_THIRD_PERSON_CAM_SIGNAL_NAME = "GIsThirdPersonCam";
 	static const string G_ROOM_SIZE = "GRoomSize";
 	static const string DYNAMIC_RANGE_SIGNAL_NAME = "DynamicRange";
+	static const string G_TINNITUS_SIGNAL_NAME = "GTinnitus";
 	static const string IN_EDITOR_SIGNAL_NAME = "InEditor";
 	
 	//! Global signal indexes
@@ -35,6 +36,7 @@ class SCR_SoundManagerEntity : GenericEntity
 	private static int s_iGIsThirdPersonCamIdx;
 	private static int s_iGRoomSizeIdx;
 	private static int s_iDynamicRangeIdx;
+	private static int s_iGTinnitusIdx;
 	private static int s_iInEditorIdx;
 
 	#ifdef ENABLE_DIAG
@@ -403,19 +405,35 @@ class SCR_SoundManagerEntity : GenericEntity
 	
 	//------------------------------------------------------------------------------------------------
 	/*!
-	Sets GDynamicRange signal value base of game settings
+	Sets GDynamicRange signal value based on game settings
 	*/	
 	protected void SetDynamicRangeSignalValue()
 	{			
 		BaseContainer settings = GetGame().GetGameUserSettings().GetModule("SCR_AudioSettings");    		
-    	if (!settings) 
-			return;       
-        
-		float value;	
-		settings.Get("m_fDynamicRange", value);    
+		if (!settings)
+			return;    
+
+		float value;
+		settings.Get("m_fDynamicRange", value);
 		
 		// DynamicRange has range <-1, 1>
 		GetGame().GetSignalsManager().SetSignalValue(s_iDynamicRangeIdx, value * 0.01 - 1);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Sets EnableTinnitus signal value based on game settings
+	*/	
+	protected void SetTinnitusSignalValue()
+	{
+		BaseContainer settings = GetGame().GetGameUserSettings().GetModule("SCR_AudioSettings");
+		if (!settings)
+			return;
+
+		bool value;
+		settings.Get("m_bGTinnitus", value);
+
+		GetGame().GetSignalsManager().SetSignalValue(s_iGTinnitusIdx, value);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -505,12 +523,16 @@ class SCR_SoundManagerEntity : GenericEntity
 		s_iGIsThirdPersonCamIdx = gameSignalsManager.AddOrFindSignal(G_IS_THIRD_PERSON_CAM_SIGNAL_NAME);
 		s_iGRoomSizeIdx = gameSignalsManager.AddOrFindSignal(G_ROOM_SIZE);
 		s_iDynamicRangeIdx = gameSignalsManager.AddOrFindSignal(DYNAMIC_RANGE_SIGNAL_NAME);
+		s_iGTinnitusIdx = gameSignalsManager.AddOrFindSignal(G_TINNITUS_SIGNAL_NAME);
 		s_iInEditorIdx = gameSignalsManager.AddOrFindSignal(IN_EDITOR_SIGNAL_NAME);
 		
 		// Event listeners for audio game settings
 		GetGame().OnUserSettingsChangedInvoker().Insert(SetDynamicRangeSignalValue);
+		GetGame().OnUserSettingsChangedInvoker().Insert(SetTinnitusSignalValue);
 		// Update DynamicRange signal
 		SetDynamicRangeSignalValue();
+		// Update EnableTinnitus signal
+		SetTinnitusSignalValue();
 		
 		//Event listeners for editor manager
 		EditorManagerEventsInit();

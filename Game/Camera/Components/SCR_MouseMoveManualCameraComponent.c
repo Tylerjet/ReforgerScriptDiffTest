@@ -1,10 +1,7 @@
-[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
-/** @ingroup ManualCamera
-*/
+//! @ingroup ManualCamera
 
-/*!
-Basic camera movement and rotation
-*/
+//! Basic camera movement and rotation
+[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
 class SCR_MouseMoveManualCameraComponent : SCR_BaseManualCameraComponent
 {
 	/*
@@ -26,4 +23,4 @@ class SCR_MouseMoveManualCameraComponent : SCR_BaseManualCameraComponent
 		}			
 	}
 	*/
-};
+}

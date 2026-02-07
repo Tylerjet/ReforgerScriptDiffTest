@@ -1,17 +1,16 @@
 [EntityEditorProps(category: "GameScripted/Tasks", description: "This is a task manager related component that allows you to display the available tasks.", color: "0 0 255 255")]
-class SCR_UITaskManagerComponentClass: ScriptComponentClass
+class SCR_UITaskManagerComponentClass : ScriptComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_UITaskManagerComponent : ScriptComponent
 {
 	protected static const string NO_ASSIGNED_TASK = "#AR-Tasks_NoAssignedTaskTitle";
 	protected static const string ASSIGN_TASK_HINT = "#AR-Tasks_NoAssignedTaskDescription";
 
 	protected ref array<SCR_BaseTask> m_aHUDIconUpdatedTasks = {};
-	
-	static ref ScriptInvoker s_OnTaskListVisible = new ScriptInvoker();
+
+	static const ref ScriptInvoker s_OnTaskListVisible = new ScriptInvoker();
 
 	protected Widget m_wWidgetToFocus = null;
 	protected Widget m_wTasksUI = null;
@@ -21,7 +20,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	protected Widget m_wExpandButton = null;
 
 	static SCR_UITaskManagerComponent s_Instance;
-	protected EventHandlerManagerComponent m_EventHandlerManager;
+	SCR_MapEntity m_MapEntity;
 
 	ref array<Widget> m_aWidgets = {};
 	ref map<SCR_BaseTask, TextWidget> m_mTasksTimers = new map<SCR_BaseTask, TextWidget>();
@@ -61,24 +60,30 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	protected Widget m_wCurrentTask;
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	static SCR_UITaskManagerComponent GetInstance()
 	{
 		return s_Instance;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsTaskListOpen()
 	{
 		return m_bVisible;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] w
 	void SetSelectedWidget(Widget w)
 	{
 		m_wWidgetToFocus = w;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] taskID
+	//! \param[in] task
 	static void PanMapToTask(int taskID = -1, SCR_BaseTask task = null)
 	{
 		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
@@ -103,6 +108,8 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] task
 	void StopHUDIconUpdates(SCR_BaseTask task)
 	{
 		m_aHUDIconUpdatedTasks.RemoveItem(task);
@@ -110,6 +117,9 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] msTime
+	//! \param[in] task
 	void KeepHUDIconUpdated(int msTime, SCR_BaseTask task)
 	{
 		if (m_aHUDIconUpdatedTasks.Find(task) != 0)
@@ -120,6 +130,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] task
 	void OnTaskDeleted(SCR_BaseTask task)
 	{
 		if (m_aHUDIconUpdatedTasks.Find(task) != -1)
@@ -127,6 +138,9 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] task
+	//! \param[in] w
 	void SelectTask(SCR_BaseTask task, Widget w = null)
 	{
 		m_SelectedTask = task;
@@ -135,30 +149,36 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_BaseTask GetSelectedTask()
 	{
 		return m_SelectedTask;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	Widget GetRootWidget()
 	{
 		return m_wUI;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	Widget GetParentWidget()
 	{
 		return m_wParentWidget;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	array<Widget> GetWidgetsArray()
 	{
 		return m_aWidgets;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] task
 	void UnregisterTimer(SCR_BaseTask task)
 	{
 		if (m_mTasksTimers)
@@ -166,6 +186,9 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] task
+	//! \param[in] timerWidget
 	void RegisterTimer(SCR_BaseTask task, TextWidget timerWidget)
 	{
 		if (m_mTasksTimers)
@@ -196,12 +219,14 @@ class SCR_UITaskManagerComponent : ScriptComponent
 			}
 		}
 		else
+		{
 			assigneeTime.SetVisible(false);
+		}
 
 		if (!assigneeNames)
 			return;
 
-		array<SCR_BaseTaskExecutor> assignees = new array<SCR_BaseTaskExecutor>();
+		array<SCR_BaseTaskExecutor> assignees = {};
 		task.GetAssignees(assignees);
 
 		bool hasAssignees = assignees.Count() > 0;
@@ -221,26 +246,27 @@ class SCR_UITaskManagerComponent : ScriptComponent
 
 		assigneeNames.SetText(namesText);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	void GenerateUI(Widget rootWidget ,SCR_BaseTask taskToFocus = null)
+	//!
+	//! \param[in] rootWidget
+	//! \param[in] taskToFocus
+	void GenerateUI(Widget rootWidget, SCR_BaseTask taskToFocus = null)
 	{
 		if (!GetTaskManager())
 			return;
-			
+
 		if (!rootWidget)
 			return;
-		
+
 		SCR_BaseTask locallyRequestedTask;
 		SCR_RequestedTaskSupportEntity supportEntity = SCR_RequestedTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_RequestedTaskSupportEntity));
 		if (supportEntity)
 			locallyRequestedTask = supportEntity.GetLocallyRequestedTask();
-		
+
 		SCR_BaseTaskExecutor localTaskExecutor = SCR_BaseTaskExecutor.GetLocalExecutor();
 		if (!localTaskExecutor)
 			return;
-		
-		
 
 		Faction faction;
 		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
@@ -261,10 +287,8 @@ class SCR_UITaskManagerComponent : ScriptComponent
 		SCR_BaseTask locallyAssignedTask = SCR_BaseTaskExecutor.GetLocalExecutor().GetAssignedTask();
 
 		Widget currentTaskUI;
-		for (int i = 0; i < tasks.Count(); i++)
+		foreach (SCR_BaseTask task : tasks)
 		{
-			SCR_BaseTask task = tasks[i];
-
 			if (!task)
 			{
 				Print("Null found in task list!", LogLevel.ERROR);
@@ -293,7 +317,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 					handler.SetCollapsed(false);
 			}
 		}
-		
+
 		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_HUD_TASK_MENU_OPEN);
 	}
 
@@ -324,12 +348,12 @@ class SCR_UITaskManagerComponent : ScriptComponent
 
 		m_mTasksTimers.Clear();
 
-		foreach (Widget widget: m_aWidgets)
+		foreach (Widget widget : m_aWidgets)
 		{
 			if (widget)
 				widget.RemoveFromHierarchy();
 		}
-		
+
 		m_aWidgets.Clear();
 	}
 
@@ -341,11 +365,15 @@ class SCR_UITaskManagerComponent : ScriptComponent
 			m_aHUDIconUpdatedTasks[i].UpdateHUDIcon();
 		}
 
-		if (m_bVisible || m_bTaskContextEnabled)
-		{
+		if (m_bTaskContextEnabled)
 			GetGame().GetInputManager().ActivateContext("TaskListContext");
-			// if (m_bPickAssigneeVisible)
-			// 	GetGame().GetInputManager().ActivateContext("PickAssigneeContext");
+
+		else if (m_bVisible)
+		{
+			if (m_MapEntity && m_MapEntity.IsOpen())
+				GetGame().GetInputManager().ActivateContext("TaskListMapContext");
+			else
+				GetGame().GetInputManager().ActivateContext("TaskListContext");
 		}
 
 		if (m_bCurrentTaskVisible)
@@ -360,6 +388,9 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] time
+	//! \return
+	// TODO: use SCR_DateTimeHelper
 	string GetFormattedTimerText(float time)
 	{
 		int minutes = Math.Floor(time / 60);
@@ -379,22 +410,26 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	Widget InitCurrentTaskWidget()
 	{
 		return GetGame().GetWorkspace().CreateWidgets(m_sCurrentTaskLayout);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	bool HasLocallyAssignedTask()
 	{
 		if (!GetTaskManager())
 			return false;
-		
+
 		SCR_BaseTask locallyRequestedTask;
 		SCR_RequestedTaskSupportEntity supportEntity = SCR_RequestedTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_RequestedTaskSupportEntity));
 		if (supportEntity)
 			locallyRequestedTask = supportEntity.GetLocallyRequestedTask();
-		
+
 		SCR_BaseTaskExecutor localTaskExecutor = SCR_BaseTaskExecutor.GetLocalExecutor();
 		if (!localTaskExecutor || !localTaskExecutor.GetAssignedTask())
 			return false;
@@ -403,6 +438,8 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] fade
 	void ToggleCurrentTask(bool fade = true)
 	{
 		m_bCurrentTaskVisible = !m_bCurrentTaskVisible;
@@ -460,6 +497,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void HidePickAssignee()
 	{
 		m_bPickAssigneeVisible = false;
@@ -467,6 +505,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void HideDetail()
 	{
 		GetGame().GetMenuManager().CloseMenuByPreset(ChimeraMenuPreset.TaskDetail);
@@ -476,6 +515,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void Action_PickAssignee()
 	{
 		Widget pickAssigneeWidget;
@@ -515,7 +555,6 @@ class SCR_UITaskManagerComponent : ScriptComponent
 				entriesCount++;
 
 				Widget playerEntry = playerList.GetWorkspace().CreateWidgets(m_wPlayerListEntry, playerList);
-
 				if (executorTask)
 					playerEntry.FindAnyWidget("IsAssigned").SetVisible(true);
 
@@ -524,7 +563,8 @@ class SCR_UITaskManagerComponent : ScriptComponent
 					entryHandler.SetExecutor(executor);
 
 				TextWidget playerName = TextWidget.Cast(playerEntry.FindAnyWidget("PlayerName"));
-				playerName.SetText(executor.GetPlayerName());
+				if (playerName)
+					playerName.SetText(executor.GetPlayerName());
 			}
 
 			if (entriesCount < 1)
@@ -551,11 +591,16 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void Action_TasksOpen()
 	{
 		if (m_bIsUnconscious)
 			return;
-		
+
+		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
+		if (mapEntity && !mapEntity.IsOpen())
+			GetGame().GetInputManager().AddActionListener("TasksClose", EActionTrigger.DOWN, Action_TasksClose);
+
 		if (!m_bVisible)
 			Action_ShowTasks(GetRootWidget());
 		else
@@ -563,13 +608,15 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void Action_ShowHint()
 	{
 		if (m_bIsUnconscious)
 			return;
-		
+
 		if (m_bVisible)
 			return;
+
 		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
 		if (!mapEntity || !mapEntity.IsOpen())
 		{
@@ -579,15 +626,19 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void Action_TasksClose()
 	{
 		m_SelectedTask = null;
-		
+
 		if (m_bVisible)
 			Action_HideTasks();
+
+		GetGame().GetInputManager().RemoveActionListener("TasksClose", EActionTrigger.DOWN, Action_TasksClose);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void Action_ShowOnMap()
 	{
 		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
@@ -602,15 +653,15 @@ class SCR_UITaskManagerComponent : ScriptComponent
 			IEntity player = SCR_PlayerController.GetLocalControlledEntity();
 			if (!player)
 				return;
-			
+
 			SCR_GadgetManagerComponent gadgetManager = SCR_GadgetManagerComponent.GetGadgetManager(player);
 			if (!gadgetManager)
 				return;
-					
+
 			IEntity mapGadget = gadgetManager.GetGadgetByType(EGadgetType.MAP);
 			if (!mapGadget)
 				return;
-			
+
 			m_bShowSelectedTaskOnMap = true;
 			gadgetManager.SetGadgetMode(mapGadget, EGadgetMode.IN_HAND);
 		}
@@ -621,6 +672,8 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] task
 	void Action_AssignTask(SCR_BaseTask task = null)
 	{
 		if (!task)
@@ -659,6 +712,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void Action_ShowDetail()
 	{
 		if (!m_SelectedTask)
@@ -693,6 +747,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Action expand task called from controller
 	void Action_Expand()
 	{
 		if (!m_SelectedTask)
@@ -710,19 +765,21 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] cfg
 	void OnMapOpen(MapConfiguration cfg)
 	{
 		if (cfg.MapEntityMode == EMapEntityMode.EDITOR)
 			return;
-		
-		if (!SCR_PlayerController.GetLocalControlledEntity() || !m_bOpenTaskListOnMapOpen) 
+
+		if (!SCR_PlayerController.GetLocalControlledEntity() || !m_bOpenTaskListOnMapOpen)
 			return;
-			
+
 		if (m_bShowSelectedTaskOnMap && m_LastSelectedTask)
 			PanMapToTask(-1, m_LastSelectedTask);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] config
 	void OnMapClose(MapConfiguration config)
 	{
 		m_bTaskContextEnabled = false;
@@ -732,6 +789,8 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] fade
 	void HideAllHUDIcons(bool fade = true)
 	{
 		for (int i = m_aHUDIconUpdatedTasks.Count() - 1; i >= 0; i--)
@@ -742,27 +801,31 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] targetWidget
+	//! \param[in] taskToFocus
 	void Action_ShowTasks(Widget targetWidget = null, SCR_BaseTask taskToFocus = null)
 	{
 		ClearUI();
 		m_bVisible = true;
-		
+
 		if (!targetWidget)
 			targetWidget = GetRootWidget();
-		
+
 		m_wUI = targetWidget;
-		
+
 		GenerateUI(targetWidget, taskToFocus);
 		if (m_wUI)
 			m_wUI.SetVisible(true);
-		
+
 		s_OnTaskListVisible.Invoke(true);
-		
+
 		if (m_wWidgetToFocus)
 			GetGame().GetWorkspace().SetFocusedWidget(m_wWidgetToFocus);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void Action_HideTasks()
 	{
 		//HUD Icon
@@ -772,28 +835,34 @@ class SCR_UITaskManagerComponent : ScriptComponent
 		if (m_wUI)
 			m_wUI.SetVisible(false);
 		s_OnTaskListVisible.Invoke(false);
-		
+
 		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_HUD_TASK_MENU_CLOSE);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] task
 	void Action_SelectTask(notnull SCR_BaseTask task)
 	{
-		foreach (Widget w: m_aWidgets)
+		if (!task)
+			return;
+
+		foreach (Widget w : m_aWidgets)
 		{
 			if (!w)
 				continue;
-			
+
 			SCR_TaskListEntryHandler handler = SCR_TaskListEntryHandler.Cast(w.FindHandler(SCR_TaskListEntryHandler));
-			if (handler && handler.GetTask() && handler.GetTask() == task)
+			if (handler && handler.GetTask() == task)
 			{
 				GetGame().GetWorkspace().SetFocusedWidget(w);
+				break;
 			}
-		}		
+		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	//! Don't close task list directly, but request it on mapTaskListUI. To unregister all events and set the variables.
+	//! Do not close task list directly, but request it on mapTaskListUI in ordero unregister all events and set the variables properly.
 	void Action_RequestTasksClose()
 	{
 		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
@@ -802,8 +871,11 @@ class SCR_UITaskManagerComponent : ScriptComponent
 
 		SCR_MapTaskListUI taskListUI = SCR_MapTaskListUI.Cast(mapEntity.GetMapUIComponent(SCR_MapTaskListUI));
 		if (!taskListUI)
+		{
+			Action_TasksClose();
 			return;
-		
+		}
+
 		taskListUI.HandleTaskList();
 	}
 
@@ -828,6 +900,8 @@ class SCR_UITaskManagerComponent : ScriptComponent
 					w.RemoveFromHierarchy();
 			}
 		}
+
+		task.ClearWidgetIcon();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -852,6 +926,8 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] enable
 	void EnableTaskContext(bool enable)
 	{
 		m_bTaskContextEnabled = enable;
@@ -872,65 +948,70 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	{
 		SetEventMask(owner, EntityEvent.INIT | EntityEvent.FRAME);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! SCR_PlayerController Event
 	//! Listeners are added back because they are previously removed on
 	//! unconsciousness and if character dies, they need to added back.
 	protected void OnDestroyed(Instigator killer, IEntity killerEntity)
-	{		
+	{
 		m_bIsUnconscious = false;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
+	//!
 	void AddActionListeners()
 	{
 		GetGame().GetInputManager().AddActionListener("TasksOpen", EActionTrigger.DOWN, Action_TasksOpen);
 		GetGame().GetInputManager().AddActionListener("TasksShowHint", EActionTrigger.DOWN, Action_ShowHint);
 		GetGame().GetInputManager().AddActionListener("TasksExpand", EActionTrigger.DOWN, Action_Expand);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
+	//!
 	void RemoveActionListeners()
 	{
 		GetGame().GetInputManager().RemoveActionListener("TasksOpen", EActionTrigger.DOWN, Action_TasksOpen);
 		GetGame().GetInputManager().RemoveActionListener("TasksShowHint", EActionTrigger.DOWN, Action_ShowHint);
 		GetGame().GetInputManager().RemoveActionListener("TasksExpand", EActionTrigger.DOWN, Action_Expand);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! SCR_PlayerController Event
 	//! Used to reinit Task manager Component when new entity is controlled
 	protected void OnControlledEntityChanged(IEntity from, IEntity to)
-	{		
+	{
 		Action_TasksClose();
-		
-		if (m_EventHandlerManager)
+
+		if (from)
 		{
-			m_EventHandlerManager.RemoveScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged);
-			m_EventHandlerManager = null;
+			ChimeraCharacter character = ChimeraCharacter.Cast(from);
+			if (!character)
+				return;
+
+			SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
+			if (controller)
+				controller.m_OnLifeStateChanged.Remove(LifeStateChanged);
 		}
-		
+
 		ChimeraCharacter character = ChimeraCharacter.Cast(to);
 		if (!character)
 			return;
-		
-		CharacterControllerComponent characterController = character.GetCharacterController();
+
+		SCR_CharacterControllerComponent characterController = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
 		if (!characterController)
 			return;
-		
+
 		m_bIsUnconscious = characterController.IsUnconscious();
-		
-        m_EventHandlerManager = EventHandlerManagerComponent.Cast(character.FindComponent(EventHandlerManagerComponent));
-        if (m_EventHandlerManager)
-            m_EventHandlerManager.RegisterScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged);
+		characterController.m_OnLifeStateChanged.Insert(LifeStateChanged);
 	}
-	
-	void OnConsciousnessChanged(bool conscious)
+
+	//------------------------------------------------------------------------------------------------
+	protected void LifeStateChanged(ECharacterLifeState previousLifeState, ECharacterLifeState newLifeState)
 	{
-		m_bIsUnconscious = !conscious;
-		
-		if (!conscious)
+		m_bIsUnconscious = newLifeState == ECharacterLifeState.INCAPACITATED;
+
+		if (!m_bIsUnconscious)
 			Action_TasksClose();
 	}
 
@@ -943,44 +1024,48 @@ class SCR_UITaskManagerComponent : ScriptComponent
 		SCR_MapEntity.GetOnMapOpen().Insert(OnMapOpen);
 		SCR_MapEntity.GetOnMapClose().Insert(OnMapClose);
 //		SCR_RespawnSuperMenu.Event_OnMenuOpen.Insert(OnMapClose);
-		
+
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (!gameMode)
 			return;
-        
+
 		gameMode.GetOnPlayerConnected().Insert(OnPlayerConnected);
+
+		m_MapEntity = SCR_MapEntity.GetMapInstance();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-    void OnPlayerConnected(int playerID)
-    {
-        SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
-        if (!playerController)
-            return;
-		
-        playerController.m_OnDestroyed.Insert(OnDestroyed);
-        int localPlayerID = playerController.GetLocalPlayerId();
-        if (playerID != localPlayerID)
-            return;
-        
+	void OnPlayerConnected(int playerID)
+	{
+		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
+		if (!playerController)
+			return;
+
+		playerController.m_OnDestroyed.Insert(OnDestroyed);
+		int localPlayerID = playerController.GetLocalPlayerId();
+		if (playerID != localPlayerID)
+			return;
+
 		playerController.m_OnControlledEntityChanged.Insert(OnControlledEntityChanged);
-    }
-	
+	}
+
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] w
+	//! \return
 	Widget CreateTaskList(Widget w = null)
 	{
 		if (w)
 			m_wUI = GetGame().GetWorkspace().CreateWidgets(m_UIResource, w);
 		else
 			m_wUI = GetGame().GetWorkspace().CreateWidgets(m_UIResource);
-		
+
 		if (m_wUI)
 		{
 			m_wTasksUI = m_wUI.FindAnyWidget("Tasks");
 			m_wUI.SetVisible(m_bVisible);
 			m_wExpandButton = m_wUI.FindAnyWidget("ExpandTaskButton");
 		}
-
 
 		OnInputDeviceIsGamepad(!GetGame().GetInputManager().IsUsingMouseAndKeyboard());
 		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
@@ -990,11 +1075,13 @@ class SCR_UITaskManagerComponent : ScriptComponent
 			hideTasks.m_OnActivated.Insert(Action_RequestTasksClose);
 
 		SCR_BaseTaskManager.s_OnTaskDeleted.Insert(RemoveTaskFromList);
-		
+		SCR_BaseTaskManager.s_OnTaskFinished.Insert(RemoveTaskFromList);
+
 		return m_wUI;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
+	//!
 	void ClearWidget()
 	{
 		if (m_wUI)
@@ -1002,6 +1089,10 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_UITaskManagerComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		if (!s_Instance)
@@ -1009,14 +1100,11 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_UITaskManagerComponent()
 	{
 		s_Instance = null;
-		m_aWidgets = null;
 		if (m_wUI)
 			m_wUI.RemoveFromHierarchy();
-		
-		if (m_EventHandlerManager)
-			m_EventHandlerManager.RemoveScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged);
 	}
-};
+}

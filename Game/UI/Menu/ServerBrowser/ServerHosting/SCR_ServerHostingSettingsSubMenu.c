@@ -7,20 +7,50 @@ class SCR_ServerHostingSettingsSubMenu : SCR_SubMenuBase
 	protected SCR_InputButtonComponent m_NavSave;
 	
 	protected bool m_bIsListeningForCommStatus;
+	
+	protected SCR_ConfigListComponent m_ConfigList;
+	
+	protected ref ScriptInvokerVoid m_OnHost;
+	protected ref ScriptInvokerVoid m_OnSave;
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
-
+		
 		SCR_ServicesStatusHelper.GetOnCommStatusCheckFinished().Remove(OnCommStatusCheckFinished);
 		m_bIsListeningForCommStatus = false;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuShow(SCR_SuperMenuBase parentMenu)
+	override void OnTabCreate(Widget menuRoot, ResourceName buttonsLayout, int index)
 	{
-		super.OnMenuShow(parentMenu);
+		super.OnTabCreate(menuRoot, buttonsLayout, index);
+		
+		m_ConfigList = SCR_ConfigListComponent.Cast(GetRootWidget().FindHandler(SCR_ConfigListComponent));
+		
+		m_NavHost = CreateNavigationButton("MenuSelectHold", "#AR-ServerHosting_HostLocally", true);
+		if (m_NavHost)
+			m_NavHost.m_OnActivated.Insert(OnHost);
+		
+		UpdateHostButton();
+		
+		// Tempory disabled saving
+		if (!GetGame().IsPlatformGameConsole())
+		{
+			m_NavSave = CreateNavigationButton("MenuSave", "#AR-PauseMenu_Save", true);
+			if (m_NavSave)
+				m_NavSave.m_OnActivated.Insert(OnSave);
+		}
+		
+		// Hide 
+		ShowNavigationButtons(m_bShown);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnTabShow()
+	{
+		super.OnTabShow();
 		
 		SCR_ServicesStatusHelper.RefreshPing();
 		
@@ -32,9 +62,9 @@ class SCR_ServerHostingSettingsSubMenu : SCR_SubMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuHide(SCR_SuperMenuBase parentMenu)
+	override void OnTabHide()
 	{
-		super.OnMenuHide(parentMenu);
+		super.OnTabHide();
 		
 		SCR_ServicesStatusHelper.GetOnCommStatusCheckFinished().Remove(OnCommStatusCheckFinished);
 		m_bIsListeningForCommStatus = false;
@@ -46,7 +76,7 @@ class SCR_ServerHostingSettingsSubMenu : SCR_SubMenuBase
 		if (!m_NavHost)
 			return;
 		
-		SCR_ServicesStatusHelper.SetConnectionButtonEnabled(m_NavHost, SCR_ServicesStatusHelper.SERVICE_BI_BACKEND_MULTIPLAYER);
+		SCR_InputButtonComponent.SetConnectionButtonEnabled(m_NavHost, SCR_ServicesStatusHelper.SERVICE_BI_BACKEND_MULTIPLAYER);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -56,38 +86,42 @@ class SCR_ServerHostingSettingsSubMenu : SCR_SubMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void Init(notnull SCR_SuperMenuComponent superMenu)
+	protected void OnHost()
 	{
-		SCR_SubMenuBase subMenu = SCR_SubMenuBase.Cast(GetRootWidget().FindHandler(SCR_SubMenuBase));
-		if (!subMenu)
-			return;
-		
-		subMenu.SetParentMenuComponent(superMenu);
-		
-		m_NavHost = CreateNavigationButton("MenuSelectHold", "#AR-ServerHosting_HostLocally", true);
-		UpdateHostButton();
-		
-		// Tempory disabled saving
-		if (!GetGame().IsPlatformGameConsole())
-			m_NavSave = CreateNavigationButton("MenuSave", "#AR-PauseMenu_Save", true);
-		
-		// Hide 
-		ShowNavigationButtons(m_bShown);
+		if (m_OnHost)
+			m_OnHost.Invoke();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnSave()
+	{
+		if (m_OnSave)
+			m_OnSave.Invoke();
 	}
 	
 	//-------------------------------------------------------------------------------------------
 	// API 
 	//-------------------------------------------------------------------------------------------
-	
-	//-------------------------------------------------------------------------------------------
-	SCR_InputButtonComponent GetNavHostButton()
+	SCR_ConfigListComponent GetConfigList()
 	{
-		return m_NavHost;
+		return m_ConfigList;
 	}
 	
 	//-------------------------------------------------------------------------------------------
-	SCR_InputButtonComponent GetNavSaveButton()
+	ScriptInvokerVoid GetOnHost()
 	{
-		return m_NavSave;
+		if (!m_OnHost)
+			m_OnHost = new ScriptInvokerVoid();
+		
+		return m_OnHost;
+	}
+	
+	//-------------------------------------------------------------------------------------------
+	ScriptInvokerVoid GetOnSave()
+	{
+		if (!m_OnSave)
+			m_OnSave = new ScriptInvokerVoid();
+		
+		return m_OnSave;
 	}
 }

@@ -11,11 +11,10 @@ class SCR_BaseDamageHealSupportStationComponentClass : SCR_BaseSupportStationCom
 	protected ref SCR_AudioSourceConfiguration m_OnDoTRemovedAudioSourceConfiguration;
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get Audio config to play
-	Will create it if it not yet exists. Returns null if no SoundFile or SoundEvent is set
-	\return Sound Config
-	*/
+	//! Get Audio config to play
+	//! Will create it if it not yet exists. Returns null if no SoundFile or SoundEvent is set
+	//! \param[in] soundEventName DSConfig
+	//! \return
 	SCR_AudioSourceConfiguration CreateSoundAudioConfig(string soundEventName)
 	{		
 		//~ Does not have audio assigned
@@ -36,9 +35,7 @@ class SCR_BaseDamageHealSupportStationComponentClass : SCR_BaseSupportStationCom
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return Sound Config for heal update. Will return null if no audio is assigned
-	*/
+	//! \return Sound Config for heal update. Will return null if no audio is assigned
 	SCR_AudioSourceConfiguration GetOnHealUpdateAudioConfig()
 	{		
 		//~ Create Audio source if it does not yet exist
@@ -49,9 +46,7 @@ class SCR_BaseDamageHealSupportStationComponentClass : SCR_BaseSupportStationCom
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return Sound Config for heal update. Will return null if no audio is assigned
-	*/
+	//! \return Sound Config for heal update. Will return null if no audio is assigned
 	SCR_AudioSourceConfiguration GetOnDoTRemovedAudioConfig()
 	{		
 		//~ Create Audio source if it does not yet exist
@@ -60,7 +55,7 @@ class SCR_BaseDamageHealSupportStationComponentClass : SCR_BaseSupportStationCom
 
 		return m_OnDoTRemovedAudioSourceConfiguration;
 	}	
-};
+}
 
 class SCR_BaseDamageHealSupportStationComponent : SCR_BaseSupportStationComponent
 {
@@ -164,7 +159,7 @@ class SCR_BaseDamageHealSupportStationComponent : SCR_BaseSupportStationComponen
 	{
 		m_fMaxDamageToHealSupplyCap = -1;
 		
-		if (!IsUsingSupplies())
+		if (!AreSuppliesEnabled())
 			return 0;
 		
 		EDamageType activeDoT;
@@ -210,7 +205,7 @@ class SCR_BaseDamageHealSupportStationComponent : SCR_BaseSupportStationComponen
 	override void OnExecutedServer(notnull IEntity actionOwner, notnull IEntity actionUser, notnull SCR_BaseUseSupportStationAction action)
 	{
 		//~ Consume supplies
-		if (IsUsingSupplies())
+		if (AreSuppliesEnabled())
 		{
 			//~ Failed to consume supplies, meaning there weren't enough supplies for the action. Also sets m_fMaxDamageToHealSupplyCap GetSupplyCostAction to make sure the system can still heal even if there is a limited amount of supplies
 			if (!OnConsumeSuppliesServer(GetSupplyCostAction(actionOwner, actionUser, action)))
@@ -283,6 +278,12 @@ class SCR_BaseDamageHealSupportStationComponent : SCR_BaseSupportStationComponen
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected override void OnExecute(IEntity actionOwner, IEntity actionUser, int playerId, SCR_BaseUseSupportStationAction action)
+	{
+		//~ Clear on execute so it does not call on complete as it has a custom on execute
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void OnExecuteDamageSystemBroadcast(RplId ownerId, RplId userId, SCR_EDamageSupportStationHealState healState, int actionId, float healthScaled)
 	{
@@ -304,6 +305,9 @@ class SCR_BaseDamageHealSupportStationComponent : SCR_BaseSupportStationComponen
 	//------------------------------------------------------------------------------------------------
 	protected void OnExecuteDamageSystem(IEntity actionOwner, IEntity actionUser, SCR_EDamageSupportStationHealState healState, SCR_BaseDamageHealSupportStationAction action, float healthScaled)
 	{
+		//~ On succesfully executed
+		OnSuccessfullyExecuted(actionOwner, actionUser, action);
+		
 		if (!actionOwner)
 			return;
 		
@@ -357,18 +361,17 @@ class SCR_BaseDamageHealSupportStationComponent : SCR_BaseSupportStationComponen
 	{
 		//~ Override in inherited classes
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 enum SCR_EDamageSupportStationHealState
 {
-	FIRE_EXTINGUISH_UPDATE, ///< To notify the system that the fire extinguish was updated but the fire state is not removed
-	FIRE_EXTINGUISH_DONE, ///< To notify the system that the fire extinguish was updated but the fire state was removed
-	DOT_REMOVED, ///< To notify the system that a Damage over time effect was removed
-	HEAL_UPDATE, ///< To notify the system that health was updated but healing is not done
-	HEAL_DONE_NOT_FULL_HEAL, ///< To notify the system that health was updated and healing is done. But the entity is not full heal aka the repair station cannot heal more
-	HEAL_DONE, ///< To notify the system that health was updated and healing is done.
-	BLOOD_UPDATE, ///< To notify the system that blood amount was updated but healing is not done
-	BLOOD_DONE_NOT_FULL_HEAL, ///< To notify the system that blood amount was updated and healing is done. But the entity is not full blood aka the heal station cannot heal more blood
-	BLOOD_DONE, ///< To notify the system that blood amount was updated and healing is done.
-};
+	FIRE_EXTINGUISH_UPDATE,		//!< To notify the system that the fire extinguish was updated but the fire state is not removed
+	FIRE_EXTINGUISH_DONE,		//!< To notify the system that the fire extinguish was updated but the fire state was removed
+	DOT_REMOVED,				//!< To notify the system that a Damage over time effect was removed
+	HEAL_UPDATE,				//!< To notify the system that health was updated but healing is not done
+	HEAL_DONE_NOT_FULL_HEAL,	//!< To notify the system that health was updated and healing is done. But the entity is not full heal aka the repair station cannot heal more
+	HEAL_DONE,					//!< To notify the system that health was updated and healing is done.
+	BLOOD_UPDATE,				//!< To notify the system that blood amount was updated but healing is not done
+	BLOOD_DONE_NOT_FULL_HEAL,	//!< To notify the system that blood amount was updated and healing is done, but the entity is not full blood aka the heal station cannot heal more blood
+	BLOOD_DONE,					//!< To notify the system that blood amount was updated and healing is done.
+}

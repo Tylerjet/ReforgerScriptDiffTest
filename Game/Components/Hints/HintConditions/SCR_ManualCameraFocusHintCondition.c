@@ -1,6 +1,7 @@
 [BaseContainerProps(), SCR_BaseContainerHintCondition()]
-class SCR_ManualCameraFocusHintCondition: SCR_BaseHintCondition
+class SCR_ManualCameraFocusHintCondition : SCR_BaseHintCondition
 {
+	//------------------------------------------------------------------------------------------------
 	protected SCR_FocusManualCameraComponent GetComponent(Managed owner)
 	{
 		SCR_ManualCamera camera = SCR_ManualCamera.Cast(owner);
@@ -9,16 +10,20 @@ class SCR_ManualCameraFocusHintCondition: SCR_BaseHintCondition
 		else
 			return null;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void OnInitCondition(Managed owner)
 	{
 		SCR_FocusManualCameraComponent component = GetComponent(owner);
 		if (component)
 			component.GetOnFocusChange().Insert(Activate);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void OnExitCondition(Managed owner)
 	{
 		SCR_FocusManualCameraComponent component = GetComponent(owner);
 		if (component)
 			component.GetOnFocusChange().Remove(Activate);
 	}
-};
+}

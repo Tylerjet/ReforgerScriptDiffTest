@@ -39,6 +39,7 @@ class ShapeEntity: GenericEntity
 	*/
 	proto void GetInfluenceBBoxesInSegments(IEntitySource shapeEntitySrc, int firstIncl, int lastIncl, out notnull array<vector> mins, out notnull array<vector> maxes);
 	proto external int GetPointCount();
+	proto external bool IsClosed();
 	//! Copies positions of points to given array
 	proto external void GetPointsPositions(notnull array<vector> outPoints);
 	proto external void AddPointData(IEntitySource entSrc, int idx, ShapePointDataScriptBase pointData);

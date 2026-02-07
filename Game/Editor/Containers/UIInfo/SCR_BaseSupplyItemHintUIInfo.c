@@ -1,55 +1,16 @@
 [BaseContainerProps()]
 class SCR_BaseSupplyItemHintUIInfo : SCR_InventoryItemHintUIInfo
-{			
+{	
+	protected SCR_ResourceComponent m_ResourceComponent;
+	
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShown(InventoryItemComponent item, SCR_InventorySlotUI focusedSlot)
-	{
-		if (!item)
+	{		
+		m_ResourceComponent = GetResourceComponent(item);
+		if (!m_ResourceComponent)
 			return false;
 			
 		return super.CanBeShown(item, focusedSlot);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void GetSupplyAmounts(InventoryItemComponent item, out float supplies, out float maxSupplies = -1)
-	{
-		supplies = 0;	
-		maxSupplies = 0;
-		
-		if (!item)
-			return;
-		
-		SCR_ResourceComponent resourceComp = GetResourceComponent(item);
-		if (!resourceComp)
-			return;
-				
-		SCR_ResourceConsumer consumer = GetConsumer(resourceComp);
-		if (!consumer)
-			return;
-		
-		supplies = consumer.GetAggregatedResourceValue();
-		maxSupplies = consumer.GetAggregatedMaxResourceValue();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected SCR_ResourceConsumer GetConsumer(SCR_ResourceComponent resourceComp)
-	{
-		if (!resourceComp)
-			return null;
-		
-		SCR_ResourceConsumer consumer = resourceComp.GetConsumer(EResourceGeneratorID.DEFAULT_STORAGE, EResourceType.SUPPLIES);
-		if (consumer)
-			return consumer;
-		
-		consumer = resourceComp.GetConsumer(EResourceGeneratorID.VEHICLE_UNLOAD, EResourceType.SUPPLIES);
-		if (consumer)
-			return consumer;
-		
-		consumer = resourceComp.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
-		if (consumer)
-			return consumer;
-		
-		return null;
 	}
 	
 	//------------------------------------------------------------------------------------------------

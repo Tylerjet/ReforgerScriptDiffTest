@@ -6,15 +6,20 @@ class SCR_CampaignTutorialArlandDrivingAdvanced1Class: SCR_BaseCampaignTutorialA
 //------------------------------------------------------------------------------------------------
 class SCR_CampaignTutorialArlandDrivingAdvanced1 : SCR_BaseCampaignTutorialArlandStage
 {
-		//------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
 	{
-		m_fDuration = 20;
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		m_fDuration = 10;
+		m_bConditionPassCheck = true;
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
 
 		m_TutorialComponent.ResetStage_VehiclesHeavy();
 		
 		Vehicle repairTruck = m_TutorialComponent.GetRepairTruck();
+		
+
+		GetGame().GetCallqueue().CallLater(PlaySoundSystem, 2000, false, "Start", false);
 		
 		if (!repairTruck)
 			return;
@@ -43,5 +48,11 @@ class SCR_CampaignTutorialArlandDrivingAdvanced1 : SCR_BaseCampaignTutorialArlan
 			return;
 
 		resourceGenerator.RequestGeneration(350);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool GetIsFinished()
+	{
+		return !m_TutorialComponent.GetVoiceSystem().IsPlaying();
 	}
 };

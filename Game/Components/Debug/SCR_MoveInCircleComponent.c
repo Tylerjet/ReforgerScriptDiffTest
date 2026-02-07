@@ -1,7 +1,6 @@
-//------------------------------------------------------------------------------------------------
-class SCR_MoveInCircleComponentClass: ScriptComponentClass
+class SCR_MoveInCircleComponentClass : ScriptComponentClass
 {
-};
+}
 
 class SCR_MoveInCircleComponent : ScriptComponent
 {
@@ -47,13 +46,11 @@ class SCR_MoveInCircleComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_MoveInCircleComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 	}
-
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_MoveInCircleComponent()
-	{
-	}
-
-};
+}

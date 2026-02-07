@@ -1,10 +1,12 @@
 [BaseContainerProps(), BaseContainerCustomTitleField("m_sDisplayName")]
-class SCR_AIStateTooltipDetail: SCR_EntityTooltipDetail
+class SCR_AIStateTooltipDetail : SCR_EntityTooltipDetail
 {
 	[Attribute("")]
 	protected LocalizedString m_sFollowingOrderStateText;
+
 	[Attribute("")]
 	protected LocalizedString m_sIdleStateText;
+
 	[Attribute("")]
 	protected LocalizedString m_sAutonomousStateText;
 	
@@ -16,15 +18,14 @@ class SCR_AIStateTooltipDetail: SCR_EntityTooltipDetail
 	//protected TextWidget m_Text;
 	protected ProgressBarWidget m_Bar;
 	
+	//------------------------------------------------------------------------------------------------
 	override void UpdateDetail(SCR_EditableEntityComponent entity)
 	{
 		if (m_Text && m_GroupInfoComponent.GetGroupControlMode() != m_CurrentState)
-		{
 			SetAIStateText(m_GroupInfoComponent.GetGroupControlMode());
-		}
 	}
 	
-	
+	//------------------------------------------------------------------------------------------------
 	protected void SetAIStateText(EGroupControlMode state)
 	{
 		m_CurrentState = state;
@@ -47,10 +48,11 @@ class SCR_AIStateTooltipDetail: SCR_EntityTooltipDetail
 		else 
 		{
 			m_Text.SetText("DEBUG UNKNOWN STATE!");
-			Print(string.Format("AIStateTooltipDetail, EGroupControlMode %1 is an unsupported AI state", typename.EnumToString(EGroupControlMode, m_CurrentState)));
+			Print(string.Format("AIStateTooltipDetail, EGroupControlMode %1 is an unsupported AI state", typename.EnumToString(EGroupControlMode, m_CurrentState)), LogLevel.NORMAL);
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override bool InitDetail(SCR_EditableEntityComponent entity, Widget widget)
 	{
 		SCR_EditableGroupComponent group = SCR_EditableGroupComponent.Cast(entity);
@@ -78,4 +80,4 @@ class SCR_AIStateTooltipDetail: SCR_EntityTooltipDetail
 		
 		return true;
 	}
-};
+}

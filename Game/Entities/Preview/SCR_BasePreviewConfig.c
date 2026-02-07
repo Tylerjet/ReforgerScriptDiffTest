@@ -13,6 +13,10 @@ class SCR_BasePreviewConfig
 	*/
 	bool SaveContainer(ResourceName resourceName, string fileName = string.Empty)
 	{
-		return BaseContainerTools.SaveContainer(BaseContainerTools.CreateContainerFromInstance(this).GetResource().ToBaseContainer(), resourceName, fileName);
+		Resource resource = BaseContainerTools.CreateContainerFromInstance(this);
+		if (!resource || !resource.IsValid())
+			return false;
+
+		return BaseContainerTools.SaveContainer(resource.GetResource().ToBaseContainer(), resourceName, fileName);
 	}
 };

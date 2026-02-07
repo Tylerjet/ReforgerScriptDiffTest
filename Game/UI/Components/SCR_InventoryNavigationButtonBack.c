@@ -27,7 +27,7 @@ class SCR_InventoryNavigationButtonBack : SCR_InputButtonComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override protected void OnInput(float value, EActionTrigger reason)
+	override protected void OnInput()
 	{
 		if (!m_wRoot)
 			return;

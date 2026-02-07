@@ -35,6 +35,10 @@ class UserActionContext: ScriptAndConfig
 	proto external bool IsOmnidirectional();
 	//! \return Returns the radius of this context in meters.
 	proto external float GetRadius();
+	//! \return Returns the height of this context capsule in meters.
+	proto external float GetHeight();
+	//! \return Returns true if the context's shape is a capsule, false if it spherical.
+	proto external bool IsCapsule();
 	//! Returns the context position in world space.
 	proto external vector GetOrigin();
 	/*!

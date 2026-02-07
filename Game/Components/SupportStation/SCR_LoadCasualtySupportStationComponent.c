@@ -79,11 +79,9 @@ class SCR_LoadCasualtySupportStationComponent : SCR_BaseSupportStationComponent
 			BaseCompartmentSlot compartmentSlot = m_CompartmentManager.GetFirstFreeCompartmentOfType(SCR_PatientCompartmentSlot);
 			if (compartmentSlot)
 			{
-				accessComp.MoveInVehicle(m_CompartmentManagerOwner, ECompartmentType.Cargo, compartmentSlot);
-			
-				//~ Execute default logic
-				super.OnExecutedServer(actionOwner, actionUser, action);
-				return;
+				//~ Successfully moved the character
+				if (accessComp.MoveInVehicle(m_CompartmentManagerOwner, ECompartmentType.Cargo, compartmentSlot))
+					super.OnExecutedServer(actionOwner, actionUser, action);
 			}
 		}
 	}	

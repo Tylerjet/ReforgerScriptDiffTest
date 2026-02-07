@@ -11,7 +11,8 @@ class SCR_CampaignTutorialArlandStageMovement5 : SCR_BaseCampaignTutorialArlandS
 	{
 		m_fWaypointHeightOffset = 0.2;
 		RegisterWaypoint("WP_WIREMESH");
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		PlaySoundSystem("Crawling", true);
+		HintOnVoiceOver();
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -1,8 +1,7 @@
 [BaseContainerProps(configRoot: true)]
 class SCR_HUDLayout
 {
-	// This map stores the Group Widgets by their Widget Name
-	protected ref map<string, ref Widget> m_mGroups = new map<string, ref Widget>();
+	protected ref array<ref Widget> m_aAllGroups = {};
 	protected ref array<ref SCR_HUDElement> m_aElements = {};
 
 	[Attribute()]
@@ -13,6 +12,35 @@ class SCR_HUDLayout
 
 	protected Widget m_wRoot;
 
+	//------------------------------------------------------------------------------------------------
+	void SetIdentifier(string id)
+	{
+		if (id == string.Empty)
+			return;
+		
+		PlayerController pController = GetGame().GetPlayerController();
+		if (!pController)
+			return;
+		
+		SCR_HUDManagerComponent hudManager = SCR_HUDManagerComponent.Cast(pController.FindComponent(SCR_HUDManagerComponent));
+		if (!hudManager)
+			return;
+		
+		SCR_HUDManagerLayoutHandler layoutHandler = SCR_HUDManagerLayoutHandler.Cast(hudManager.FindHandler(SCR_HUDManagerLayoutHandler));
+		if (!layoutHandler)
+			return;
+		
+		array <string> allIdentifiers = layoutHandler.GetAllIdentifiers();
+		
+		if (allIdentifiers.Contains(id))
+		{
+			Print("HUDManager: Identifier: " + id + " is already used! Check if your Identifier is Unique!", LogLevel.ERROR);
+			return;
+		}
+		
+		m_sIdentifier = id;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	int GetHUDElements(notnull out array<SCR_HUDElement> hudElements)
 	{
@@ -60,17 +88,32 @@ class SCR_HUDLayout
 					continue;
 				}
 
-				m_mGroups.Insert(iteratedWidget.GetName(), iteratedChildWidget);
+				m_aAllGroups.Insert(iteratedChildWidget);
 				iteratedChildWidget = iteratedChildWidget.GetSibling();
 			}
 
 			iteratedWidget = iteratedWidget.GetSibling();
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ResizeLayout()
+	{
+		array<SCR_HUDGroupUIComponent> groupsInLayout = {};
+		GetAllGroupComponents(groupsInLayout);
+
+		foreach (SCR_HUDGroupUIComponent groupComponent : groupsInLayout)
+		{
+			groupComponent.ResizeGroup();
+		}
+	}
 
 	//------------------------------------------------------------------------------------------------
 	void AddHudElement(notnull SCR_HUDElement element, bool replaceParent = false)
 	{
+		if (!m_wRoot)
+			return;
+		
 		Widget slotWidget = element.GetWidget();
 		if (!slotWidget)
 			return;
@@ -107,6 +150,9 @@ class SCR_HUDLayout
 	*/
 	Widget GetGroupWidgetByName(string groupName)
 	{
+		if (!m_wRoot)
+			return null;
+		
 		return m_wRoot.FindAnyWidget(groupName);
 	}
 
@@ -131,7 +177,7 @@ class SCR_HUDLayout
 	int GetAllGroupComponents(notnull out array<SCR_HUDGroupUIComponent> groupComponents)
 	{
 		groupComponents.Clear();
-		foreach (Widget groupWidget : m_mGroups)
+		foreach (Widget groupWidget : m_aAllGroups)
 		{
 			SCR_HUDGroupUIComponent groupComponent = SCR_HUDGroupUIComponent.Cast(groupWidget.FindHandler(SCR_HUDGroupUIComponent));
 			if (groupComponent)
@@ -150,7 +196,7 @@ class SCR_HUDLayout
 	{
 		slotComponents.Clear();
 
-		foreach (Widget groupWidget : m_mGroups)
+		foreach (Widget groupWidget : m_aAllGroups)
 		{
 			Widget childWidget = groupWidget.GetChildren();
 			while (childWidget)

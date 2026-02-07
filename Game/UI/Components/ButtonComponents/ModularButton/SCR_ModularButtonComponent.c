@@ -1,43 +1,39 @@
-/*
-Modular button implements all logic of a button.
-It can be customized by various SCR_ButtonEffectBase objects attached to it.
-*/
-
 //#define DEBUG_MODULAR_BUTTON
 
 
+//! These enum values correspond to change of button state,
+//! A button can only be in one state at a time
 enum EModularButtonState
 {
-	// These events correspond to change of button state,
-	// So button can only be in one state at a time
-	
-	STATE_DEFAULT 				= 1<<0,	// Default state
-	STATE_HOVERED				= 1<<1,	// Hovered
-	STATE_ACTIVATED				= 1<<2,	// Activated
-	STATE_ACTIVATED_HOVERED		= 1<<3,	// Activated and hovered	
-	STATE_DISABLED				= 1<<4,	// Disabled
-	STATE_DISABLED_ACTIVATED	= 1<<5	// Disabled and activated
-};
+	STATE_DEFAULT 				= 1 << 0,	//!< Default state
+	STATE_HOVERED				= 1 << 1,	//!< Hovered
+	STATE_ACTIVATED				= 1 << 2,	//!< Activated
+	STATE_ACTIVATED_HOVERED		= 1 << 3,	//!< Activated and hovered
+	STATE_DISABLED				= 1 << 4,	//!< Disabled
+	STATE_DISABLED_ACTIVATED	= 1 << 5	//!< Disabled and activated
+}
 
 //! Enum corresponding Enfusion native event types
 enum EModularButtonEventHandler
 {
-	CLICK			= 1<<0,
-	DOUBLE_CLICK	= 1<<1,
-	FOCUS_GAINED	= 1<<2,
-	FOCUS_LOST		= 1<<3,
-	MOUSE_ENTER		= 1<<4,
-	MOUSE_LEAVE		= 1<<5,
-};
+	CLICK			= 1 << 0,
+	DOUBLE_CLICK	= 1 << 1,
+	FOCUS_GAINED	= 1 << 2,
+	FOCUS_LOST		= 1 << 3,
+	MOUSE_ENTER		= 1 << 4,
+	MOUSE_LEAVE		= 1 << 5,
+}
 
+//! Modular button implements all logic of a button.
+//! It can be customised by various SCR_ButtonEffectBase objects attached to it.
 class SCR_ModularButtonComponent : ScriptedWidgetComponent
 {
 	// ---- Public and attributes ----
 	
 	// Attributes - effects
+
 	[Attribute()]
 	protected ref array<ref SCR_ButtonEffectBase> m_aEffects;
-	
 	
 	// Attributes - other properties
 	
@@ -80,22 +76,22 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 	protected bool m_bToggled;
 	protected EModularButtonState m_eState;
 	
-	
 	// Other
 	protected ref Managed m_UserData; // User data - can be accessed with SetData, GetData
-	
-	
 	
 	// ------------------------------- Public -----------------------------------
 	
 	//------------------------------------------------------------------------------------------------
 	//! Finds SCR_ModularButtonComponent on a widget
+	//! \param[in] w
+	//! \return
 	static SCR_ModularButtonComponent FindComponent(Widget w)
 	{
 		return SCR_ModularButtonComponent.Cast(w.FindHandler(SCR_ModularButtonComponent));
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] enabled
 	void SetEnabled(bool enabled)
 	{
 		#ifdef DEBUG_MODULAR_BUTTON
@@ -107,13 +103,15 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetEnabled()
 	{
 		return m_wRoot.IsEnabled();
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] toggled
+	//! \param[in] invokeOnToggled
 	void SetToggled(bool toggled, bool invokeOnToggled = true)
 	{
 		#ifdef DEBUG_MODULAR_BUTTON
@@ -127,59 +125,64 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 	}	
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetToggled()
 	{
 		return m_bToggled;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetFocused()
 	{
 		return m_bFocus;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetMouseOver()
 	{
 		return m_bMouseOver;
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] toggleable
 	void SetToggleable(bool toggleable)
 	{
 		m_bCanBeToggled = toggleable;
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] newValue
 	void SetTogglableOnlyThroughApi(bool newValue)
 	{
 		m_bToggledOnlyThroughApi = newValue;
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] data
 	void SetData(Managed data)
 	{
 		m_UserData = data;
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	Managed GetData()
 	{
 		return m_UserData;
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	Widget GetRootWidget()
 	{
 		return m_wRoot;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] visible
+	//! \return
 	bool SetVisible(bool visible)
 	{
 		if (!m_wRoot)
@@ -192,50 +195,58 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Returns first effect with given tag
+	//! \param[in] tag
+	//! \return
 	SCR_ButtonEffectBase FindEffect(string tag)
 	{
-		foreach (auto e : m_aEffects)
+		foreach (SCR_ButtonEffectBase e : m_aEffects)
 		{
 			if (e.m_aTags.Contains(tag))
 				return e;
 		}
+
 		return null;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Returns all effects with given tag
+	//! \param[in] tag
+	//! \return all effects with given tag
 	array<SCR_ButtonEffectBase> FindAllEffects(string tag)
 	{
-		array<SCR_ButtonEffectBase> effects = new array<SCR_ButtonEffectBase>;
-		foreach (auto e : m_aEffects)
+		array<SCR_ButtonEffectBase> effects = {};
+		foreach (SCR_ButtonEffectBase e : m_aEffects)
 		{
 			if (e.m_aTags.Contains(tag))
 				effects.Insert(e);
-		}		
+		}
+
 		return effects;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Returns all effects
+	//! \return all effects
 	array<SCR_ButtonEffectBase> GetAllEffects()
 	{
-		array<SCR_ButtonEffectBase> effects = new array<SCR_ButtonEffectBase>;
-		foreach (auto e : m_aEffects)
+		array<SCR_ButtonEffectBase> effects = {};
+		foreach (SCR_ButtonEffectBase e : m_aEffects)
 		{
 			effects.Insert(e);
-		}		
+		}
+
 		return effects;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Enables or disables all effects with given tag
+	//! \param[in] tag
+	//! \param[in] enable
 	void SetEffectsEnabled(string tag, bool enable)
 	{
 		#ifdef DEBUG_MODULAR_BUTTON
 		_print(string.Format("SetEffectsEnabled: %1, %2", tag, enable));
 		#endif
 		
-		foreach (auto e : m_aEffects)
+		foreach (SCR_ButtonEffectBase e : m_aEffects)
 		{
 			if (e.m_aTags.Contains(tag))
 				e.SetEnabled(enable);
@@ -244,9 +255,10 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Effects with at least one tag are enabled. Other effects are disabled.
-	void SetEffectsWithAnyTagEnabled(array<string> tags)
+	//! \param[in] tags
+	void SetEffectsWithAnyTagEnabled(notnull array<string> tags)
 	{		
-		foreach (auto e : m_aEffects)
+		foreach (SCR_ButtonEffectBase e : m_aEffects)
 		{
 			bool found = false;
 			foreach (string tag : tags)
@@ -257,24 +269,29 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 					break;
 				}
 			}
+
 			e.SetEnabled(found);
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Enabled ar disables all effects
+	//! Enables ar disables all effects
+	//! \param[in] enable
 	void SetAllEffectsEnabled(bool enable)
 	{
 		#ifdef DEBUG_MODULAR_BUTTON
 		_print(string.Format("SetAllEffectsEnabled: %1", enable));
 		#endif
 		
-		foreach (auto e : m_aEffects)
+		foreach (SCR_ButtonEffectBase e : m_aEffects)
+		{
 			e.SetEnabled(enable);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Applies all enabled effects.
+	//! \param[in] instant
 	void InvokeAllEnabledEffects(bool instant)
 	{
 		EModularButtonState state = GetCurrentState();
@@ -294,11 +311,7 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 			InvokeEffectsEvent(EModularButtonEventFlag.EVENT_FOCUS_LOST, instant);
 	}
 	
-	
-	
 	// ------------------------ Protected -------------------------------------
-	
-	
 	
 	//------------------------------------------------------------------------------------------------
 	//! Checks current state, invokes state change effects if state has changed.
@@ -313,13 +326,11 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 		#endif
 		
 		if (newState != oldState)
-		{
 			InvokeEffectsEvent(newState);
-		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Returns Enum with current state value
+	//! \return Enum with current state value
 	protected EModularButtonState GetCurrentState()
 	{	
 		if (m_wRoot.IsEnabled())
@@ -370,9 +381,10 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 		return EModularButtonState.STATE_DEFAULT;
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
 	//! Calls _OnEvent of all enabled effects.
+	//! \param[in] eventFlag
+	//! \param[in] instant
 	protected void InvokeEffectsEvent(EModularButtonEventFlag eventFlag, bool instant = false)
 	{
 		EInputDeviceType deviceType = GetGame().GetInputManager().GetLastUsedInputDevice();
@@ -384,15 +396,15 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 		foreach (SCR_ButtonEffectBase effect : m_aEffects)
 		{
 			if (effect.GetEnabled())
-			{
 				effect.Internal_OnEvent(eventFlag, deviceType, instant);
-			}
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Used for passing events from master button / slave button
 	//! This is called on a slave button by SCR_ButtonEffectSlaveButton
+	//! \param[in] eventFlag
+	//! \param[in] instant
 	void Internal_OnMasterButtonEvent(EModularButtonEventFlag eventFlag, bool instant)
 	{
 		InvokeEffectsEvent(eventFlag, instant);
@@ -418,15 +430,14 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 			m_OnToggled.Invoke(this, newToggled);
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
-	// Must only be called by the effect class	
+	//! Must only be called by the effect class
+	//! \param[in] effect
 	void Internal_OnEffectEnabled(SCR_ButtonEffectBase effect)
 	{
 		EModularButtonState state = GetCurrentState();
 		EInputDeviceType deviceType = GetGame().GetInputManager().GetLastUsedInputDevice();
 		effect.Internal_OnEvent(state, deviceType, true);
-		
 		
 		if (m_bCanBeToggled)
 		{
@@ -442,10 +453,7 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 			effect.Internal_OnEvent(EModularButtonEventFlag.EVENT_FOCUS_LOST, deviceType, true);
 	}
 	
-	
 	// --------- Event Handlers ------------
-	
-	
 	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -462,7 +470,6 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 		m_bToggled = m_bToggledAtStart;
 		
 		m_bFocus = GetGame().GetWorkspace().GetFocusedWidget() == m_wRoot;
-		
 		
 		// Iterate all effects, make sure that there are no effects which are affecting same widget,
 		// have same type and receive same event types
@@ -516,7 +523,6 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 		InvokeAllEnabledEffects(instant : true);
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
 	override bool OnClick(Widget w, int x, int y, int button)
 	{
@@ -527,7 +533,7 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 		// Auto focus is focusable
 		if (m_wRoot.IsFocusable())
 		{
-			auto workspace = GetGame().GetWorkspace();
+			WorkspaceWidget workspace = GetGame().GetWorkspace();
 			Widget currentFocus = workspace.GetFocusedWidget();
 			if (currentFocus != m_wRoot)
 				workspace.SetFocusedWidget(m_wRoot);
@@ -551,7 +557,6 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 		return eventReturnValue;
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
 	override bool OnDoubleClick(Widget w, int x, int y, int button)
 	{
@@ -561,7 +566,6 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 		m_OnDoubleClicked.Invoke(this);
 		return m_eEventReturnValue & EModularButtonEventHandler.DOUBLE_CLICK;
 	}
-	
 	
 	//------------------------------------------------------------------------------------------------
 	override bool OnMouseEnter(Widget w, int x, int y)
@@ -593,8 +597,6 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 		return m_eEventReturnValue & EModularButtonEventHandler.MOUSE_ENTER;
 	}
 	
-	
-	
 	//------------------------------------------------------------------------------------------------
 	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
 	{
@@ -619,8 +621,6 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 		return m_eEventReturnValue & EModularButtonEventHandler.MOUSE_LEAVE;
 	}
 	
-	
-	
 	//------------------------------------------------------------------------------------------------
 	override bool OnFocus(Widget w, int x, int y)
 	{
@@ -639,8 +639,6 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 		
 		return m_eEventReturnValue & EModularButtonEventHandler.FOCUS_GAINED;
 	}
-	
-	
 	
 	//------------------------------------------------------------------------------------------------
 	override bool OnFocusLost(Widget w, int x, int y)
@@ -662,26 +660,31 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] s
 	void _print(string s)
 	{
-		Print(string.Format("[SCR_ModularButtonComponent] %1: %2", GetRootWidget().GetName(), s));
+		Print(string.Format("[SCR_ModularButtonComponent] %1: %2", GetRootWidget().GetName(), s), LogLevel.NORMAL);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetIsFocusOnMouseEnter()
 	{
 		return m_bFocusOnMouseEnter;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] focus
 	void SetIsFocusOnMouseEnter(bool focus)
 	{
 		m_bFocusOnMouseEnter = focus;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetCurrentStateName()
 	{
 		return typename.EnumToString(EModularButtonState, m_eState);
 	}
-};
+}

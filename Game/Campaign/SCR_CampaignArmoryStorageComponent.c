@@ -1,6 +1,6 @@
 class SCR_CampaignArmoryStorageComponentClass : UniversalInventoryStorageComponentClass
 {
-};
+}
 
 class SCR_CampaignArmoryStorageComponent : UniversalInventoryStorageComponent
 {
@@ -13,18 +13,21 @@ class SCR_CampaignArmoryStorageComponent : UniversalInventoryStorageComponent
 	protected bool m_bCanStoreItems = false;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] enable
 	void AllowStoringItems(bool enable)
 	{
 		m_bCanStoreItems = enable;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_EArsenalItemType GetSupportedItems()
 	{
 		return m_eSupportedItemTypes;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_EArsenalItemMode GetAmmunitionMode()
 	{
 		return m_eArsenalAmmunitionMode;
@@ -51,4 +54,4 @@ class SCR_CampaignArmoryStorageComponent : UniversalInventoryStorageComponent
 		
 		return false;
 	}
-};
+}

@@ -1,5 +1,3 @@
-//------------------------------------------------------------------------------------------------
-//! Returns true if daytime matches the condition
 [BaseContainerProps()]
 class SCR_DaytimeCondition : SCR_AvailableActionCondition
 {
@@ -10,6 +8,8 @@ class SCR_DaytimeCondition : SCR_AvailableActionCondition
 	EDayTimeEnums m_TimeOfDay;
 
 	//------------------------------------------------------------------------------------------------
+	//! \param data true if daytime matches the condition
+	//! \return true if daytime matches the condition, false if not or if data or time manager is null
 	override bool IsAvailable(SCR_AvailableActionsConditionData data)
 	{
 		if (!data)

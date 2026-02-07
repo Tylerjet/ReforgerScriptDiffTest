@@ -1,9 +1,8 @@
 [EntityEditorProps(category: "GameScripted/Gadgets", description: "Consumable gadget")]
 class SCR_ConsumableItemComponentClass : SCR_GadgetComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 // Consumable gadget component
 class SCR_ConsumableItemComponent : SCR_GadgetComponent
 {
@@ -18,15 +17,18 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 
 	protected SCR_CharacterControllerComponent m_CharController;
 	
-	//Target character is the target set when it's not m_CharacterOwner
+	//! Target character is the target set when it's not m_CharacterOwner
 	protected IEntity m_TargetCharacter;
 	
 	protected int m_iStoredHealedGroup;
 	
 	//------------------------------------------------------------------------------------------------
 	//! Apply consumable effect
-	//! \param target is the target entity
-	void ApplyItemEffect(IEntity target, SCR_ConsumableEffectAnimationParameters animParams, IEntity item, bool deleteItem = true)
+	//! \param[in] target is the target entity
+	//! \param[in] animParams
+	//! \param[in] item
+	//! \param[in] deleteItem
+	void ApplyItemEffect(IEntity target, ItemUseParameters animParams, IEntity item, bool deleteItem = true)
 	{
 		if (!m_ConsumableEffect)
 			return;
@@ -41,7 +43,7 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! OnItemUseBegan event from SCR_CharacterControllerComponent
-	protected void OnUseBegan(IEntity item, SCR_ConsumableEffectAnimationParameters animParams)
+	protected void OnUseBegan(IEntity item, ItemUseParameters animParams)
 	{
 		if (m_bAlternativeModelOnAction)
 			SetAlternativeModel(true);
@@ -49,18 +51,18 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 		if (!m_CharacterOwner || !animParams)
 			return;
 		
-		SetHealedGroup(animParams.m_intParam, true);
+		SetHealedGroup(animParams.GetIntParam(), true);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! OnItemUseComplete event from SCR_CharacterControllerComponent
-	protected void OnApplyToCharacter(IEntity item, bool successful, SCR_ConsumableEffectAnimationParameters animParams)
+	protected void OnApplyToCharacter(IEntity item, bool successful, ItemUseParameters animParams)
 	{
-		ClearInvokers(animParams.m_intParam);
+		ClearInvokers(animParams.GetIntParam());
 		
 		if (!successful)
 		{
-			if (animParams.m_itemUseCommandId == -1)
+			if (animParams.GetCommandIntArg() == -1)
 			{
 				Print("Consumable item OnItemUseComplete event called with empty SCR_ConsumableEffectAnimationParameters", LogLevel.ERROR);
 				return;
@@ -113,7 +115,7 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 	
 	//-----------------------------------------------------------------------------
 	//! Switch item model
-	//! \param useAlternative determines whether alternative or base model is used
+	//! \param[in] useAlternative determines whether alternative or base model is used
 	void SetAlternativeModel(bool useAlternative)
 	{
 		InventoryItemComponent inventoryItemComp = InventoryItemComponent.Cast( GetOwner().FindComponent(InventoryItemComponent));
@@ -148,8 +150,9 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 	}
 
 	//-----------------------------------------------------------------------------
-	//! Set visibility of item
-	//! \Sets item visible on the outside of the physical character
+	// TODO: fix comment
+	// Get visibility of item
+	// \Sets item visible on the outside of the physical character
 	override bool IsVisibleEquipped()
 	{
 		return m_bVisibleEquipped;
@@ -239,14 +242,16 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] target
 	void SetTargetCharacter(IEntity target)
 	{
 		m_TargetCharacter = target;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	IEntity GetTargetCharacter()
 	{
 		return m_TargetCharacter;
 	}
-};
+}

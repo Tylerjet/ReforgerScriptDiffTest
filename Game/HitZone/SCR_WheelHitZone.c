@@ -1,38 +1,43 @@
-enum EWheelDamageState: EDamageState
+enum SCR_EWheelDamageState : EDamageState
 {
 	PUNCTURED = 3
-};
+}
 
-class SCR_WheelHitZone : SCR_DestructibleHitzone
+class SCR_WheelHitZone : SCR_VehicleHitZone
 {
 	[Attribute( defvalue: "-1", uiwidget: UIWidgets.Auto, desc: "Wheel ID", category: "Wheel Damage")]
 	protected int m_iWheelId;
 	
 	[Attribute( defvalue: "0.9", uiwidget: UIWidgets.Auto, desc: "Radius multiplier for a damaged wheel.", category: "Wheel Damage")]
 	protected float m_fDamagedRadiusScale;
+
 	[Attribute( defvalue: "0.4", uiwidget: UIWidgets.Auto, desc: "Longitudinal friction multiplier for a damaged wheel.", category: "Wheel Damage")]
 	protected float m_fDamagedLongitudinalFrictionScale;
+
 	[Attribute( defvalue: "0.4", uiwidget: UIWidgets.Auto, desc: "Lateral friction multiplier for a damaged wheel.", category: "Wheel Damage")]
 	protected float m_fDamagedLateralFrictionScale;
+
 	[Attribute( defvalue: "1.5", uiwidget: UIWidgets.Auto, desc: "Roughness increase for a damaged wheel.", category: "Wheel Damage")]
 	protected float m_fDamagedRoughnessIncrease;
+
 	[Attribute( defvalue: "0.1", uiwidget: UIWidgets.Auto, desc: "Drag of a damaged wheel.", category: "Wheel Damage")]
 	protected float m_fDamagedDrag;
 	
 	[Attribute( defvalue: "0.8", uiwidget: UIWidgets.Auto, desc: "Radius multiplier for a destroyed wheel.", category: "Wheel Damage")]
 	protected float m_fDestroyedRadiusScale;
+
 	[Attribute( defvalue: "0.2", uiwidget: UIWidgets.Auto, desc: "Longitudinal friction multiplier for a destroyed wheel.", category: "Wheel Damage")]
 	protected float m_fDestroyedLongitudinalFrictionScale;
+
 	[Attribute( defvalue: "0.2", uiwidget: UIWidgets.Auto, desc: "Lateral friction multiplier for a destroyed wheel.", category: "Wheel Damage")]
 	protected float m_fDestroyedLateralFrictionScale;
+
 	[Attribute( defvalue: "3.0", uiwidget: UIWidgets.Auto, desc: "Roughness increase for a destroyed wheel.", category: "Wheel Damage")]
 	protected float m_fDestroyedRoughnessIncrease;
+
 	[Attribute( defvalue: "1.0", uiwidget: UIWidgets.Auto, desc: "Drag of a destroyed wheel.", category: "Wheel Damage")]
 	protected float m_fDestroyedDrag;
 	
-	[Attribute(EVehicleHitZoneGroup.WHEELS.ToString(), UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EVehicleHitZoneGroup))]
-	protected EVehicleHitZoneGroup m_eHitZoneGroup;
-		
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(IEntity pOwnerEntity, GenericComponent pManagerComponent)
 	{
@@ -58,16 +63,23 @@ class SCR_WheelHitZone : SCR_DestructibleHitzone
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetWheelIndex()
 	{
 		return m_iWheelId;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param index
 	void SetWheelIndex(int index)
 	{
 		m_iWheelId = index;
 	
+		// Notify the relevant damage manager if present
+		SCR_WheeledDamageManagerComponent damageManager = SCR_WheeledDamageManagerComponent.Cast(m_RootDamageManager);
+		if (damageManager)
+			damageManager.RegisterVehicleHitZone(this);
+
 		UpdateWheelState();
 		UpdateDamageSignal();
 	}
@@ -96,8 +108,8 @@ class SCR_WheelHitZone : SCR_DestructibleHitzone
 			float drag;
 			
 			// Only run the rest of code if state has changed
-			EDamageState state = GetDamageState();
-			if (state == EWheelDamageState.DESTROYED)
+			SCR_EWheelDamageState state = GetDamageState();
+			if (state == SCR_EWheelDamageState.DESTROYED)
 			{
 				radius					*= m_fDestroyedRadiusScale;
 				longitudinalFriction	*= m_fDestroyedLongitudinalFrictionScale;
@@ -105,7 +117,7 @@ class SCR_WheelHitZone : SCR_DestructibleHitzone
 				roughness				+= m_fDestroyedRoughnessIncrease;
 				drag					=  m_fDestroyedDrag;
 			}
-			else if (state == EWheelDamageState.PUNCTURED)
+			else if (state == SCR_EWheelDamageState.PUNCTURED)
 			{
 				radius					*= m_fDamagedRadiusScale;
 				longitudinalFriction	*= m_fDamagedLongitudinalFrictionScale;
@@ -121,7 +133,7 @@ class SCR_WheelHitZone : SCR_DestructibleHitzone
 			simulation.WheelSetRollingDrag(m_iWheelId, drag);
 			
 			// Need to wake physics up when wheel becomes destroyed
-			if (state == EWheelDamageState.PUNCTURED || state == EWheelDamageState.DESTROYED)
+			if (state == SCR_EWheelDamageState.PUNCTURED || state == SCR_EWheelDamageState.DESTROYED)
 				WakeUpPhysics();	
 		}
 		else
@@ -139,8 +151,8 @@ class SCR_WheelHitZone : SCR_DestructibleHitzone
 			float drag;
 			
 			// Only run the rest of code if state has changed
-			EDamageState state = GetDamageState();
-			if (state == EWheelDamageState.DESTROYED)
+			SCR_EWheelDamageState state = GetDamageState();
+			if (state == SCR_EWheelDamageState.DESTROYED)
 			{
 				radius					*= m_fDestroyedRadiusScale;
 				longitudinalFriction	*= m_fDestroyedLongitudinalFrictionScale;
@@ -148,7 +160,7 @@ class SCR_WheelHitZone : SCR_DestructibleHitzone
 				roughness				+= m_fDestroyedRoughnessIncrease;
 				drag					=  m_fDestroyedDrag;
 			}
-			else if (state == EWheelDamageState.PUNCTURED)
+			else if (state == SCR_EWheelDamageState.PUNCTURED)
 			{
 				radius					*= m_fDamagedRadiusScale;
 				longitudinalFriction	*= m_fDamagedLongitudinalFrictionScale;
@@ -167,6 +179,11 @@ class SCR_WheelHitZone : SCR_DestructibleHitzone
 			if (!float.AlmostEqual(radius, previousRadius))
 				WakeUpPhysics();	
 		}
+
+		// Notify the relevant damage manager if present
+		SCR_WheeledDamageManagerComponent damageManager = SCR_WheeledDamageManagerComponent.Cast(m_RootDamageManager);
+		if (damageManager)
+			damageManager.UpdateVehicleState();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -194,9 +211,9 @@ class SCR_WheelHitZone : SCR_DestructibleHitzone
 	//------------------------------------------------------------------------------------------------
 	override void PlayDestructionSound(EDamageState damageState)
 	{
-		EWheelDamageState pDS = GetPreviousDamageState();
+		SCR_EWheelDamageState pDS = GetPreviousDamageState();
 		
-		if (pDS <= EWheelDamageState.INTERMEDIARY && damageState >= EWheelDamageState.DESTROYED)
+		if (pDS <= SCR_EWheelDamageState.INTERMEDIARY && damageState >= SCR_EWheelDamageState.DESTROYED)
 		{
 			IEntity owner = GetOwner();
 			
@@ -260,4 +277,11 @@ class SCR_WheelHitZone : SCR_DestructibleHitzone
 		physics.ApplyImpulseAt(centerOfMass, vector.Up * force);
 		physics.ApplyImpulseAt(centerOfMass, vector.Up * -force);
 	}
-};
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	float GetEfficiency()
+	{
+		return GetDamageStateThreshold(GetDamageState());
+	}
+}

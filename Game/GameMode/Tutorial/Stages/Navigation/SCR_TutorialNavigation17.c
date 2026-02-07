@@ -10,6 +10,9 @@ class SCR_TutorialNavigation17 : SCR_BaseCampaignTutorialArlandStage
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
 	{
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		
 		SCR_MapEntity mapEnt = SCR_MapEntity.GetMapInstance();
 		if (!mapEnt)
 			return;
@@ -21,11 +24,13 @@ class SCR_TutorialNavigation17 : SCR_BaseCampaignTutorialArlandStage
 		mapMarkersUI.GetOnCustomMarkerPlaced().Remove(MarkerPlaced);
 		mapMarkersUI.GetOnCustomMarkerPlaced().Insert(MarkerPlaced);
 		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		PlaySoundSystem("Navigation_OrientationGridPos", true);
+		HintOnVoiceOver();
+		
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void MarkerPlaced(int posX, int posY, bool isPublic)
+	void MarkerPlaced(int posX, int posY, bool isLocal)
 	{
 		IEntity ent = GetGame().GetWorld().FindEntityByName("WP_GREENHOUSE");
 		if (!ent)

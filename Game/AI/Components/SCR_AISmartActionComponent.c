@@ -1,21 +1,20 @@
-class SCR_AISmartActionComponentClass: AISmartActionComponentClass
+class SCR_AISmartActionComponentClass : AISmartActionComponentClass
 {
-};
+}
 
 void SCR_AIActionUserInvoker_Callback(AIAgent actionUser);
-
 typedef func SCR_AIActionUserInvoker_Callback;
 typedef ScriptInvokerBase<SCR_AIActionUserInvoker_Callback> SCR_AIActionUserInvoker;
 
 class SCR_AISmartActionComponent : AISmartActionComponent
 {
-	ref SCR_AIActionUserInvoker Event_EOnActionEnd;	
-	
-	ref SCR_AIActionUserInvoker Event_EOnActionFailed;
-	
-	SCR_CharacterDamageManagerComponent m_pDamageManager;
+	protected ref SCR_AIActionUserInvoker Event_EOnActionEnd;
+	protected ref SCR_AIActionUserInvoker Event_EOnActionFailed;
+	protected SCR_CharacterDamageManagerComponent m_pDamageManager;
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] owner
 	void ReserveAction(AIAgent owner)
 	{
 		// listen on death of the owner
@@ -29,6 +28,7 @@ class SCR_AISmartActionComponent : AISmartActionComponent
 	}	
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void ReleaseAction()
 	{
 		if(m_pDamageManager)
@@ -40,6 +40,7 @@ class SCR_AISmartActionComponent : AISmartActionComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] state
 	void OnDamageStateChanged(EDamageState state)
 	{
 		if (state == EDamageState.DESTROYED)
@@ -65,19 +66,23 @@ class SCR_AISmartActionComponent : AISmartActionComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] createNew
+	//! \return
 	// Invokers for the completion of the smartaction to be used by the children // 
 	SCR_AIActionUserInvoker GetOnActionEnd(bool createNew = true)
 	{
 		if (!Event_EOnActionEnd && createNew)
-			Event_EOnActionEnd = new ref SCR_AIActionUserInvoker();
+			Event_EOnActionEnd = new SCR_AIActionUserInvoker();
 		return Event_EOnActionEnd;
 	}	
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] createNew
+	//! \return
 	SCR_AIActionUserInvoker GetOnActionFailed(bool createNew = true)
 	{
 		if (!Event_EOnActionFailed && createNew)
-			Event_EOnActionFailed = new ref SCR_AIActionUserInvoker();
+			Event_EOnActionFailed = new SCR_AIActionUserInvoker();
 		return Event_EOnActionFailed;
 	}
 	
@@ -87,5 +92,4 @@ class SCR_AISmartActionComponent : AISmartActionComponent
 		if (m_pDamageManager)
 			m_pDamageManager.GetOnDamageStateChanged().Remove(OnDamageStateChanged);
 	}
-};
-
+}

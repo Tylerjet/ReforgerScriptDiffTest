@@ -1,6 +1,4 @@
-/*
-Array size has to have the same count as EDayTimeCurve
-*/
+//! Array size has to have the same count as EDayTimeCurve
 [BaseContainerProps(configRoot: true)]
 class SCR_DayTimeCurveDefConfig
 {

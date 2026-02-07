@@ -18,4 +18,6 @@ enum DataError
 	WORLD_LOAD_INCONSISTENCY,
 	//! Addon loading failed
 	ADDON_LOAD_ERROR,
+	//! Attempting to create connection between developer and non-developer binaries.
+	IS_DEV_BINARY_MISMATCH,
 }

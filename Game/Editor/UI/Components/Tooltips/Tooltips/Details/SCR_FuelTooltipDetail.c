@@ -1,5 +1,5 @@
 [BaseContainerProps(), BaseContainerCustomTitleField("m_sDisplayName")]
-class SCR_FuelTooltipDetail: SCR_EntityTooltipDetail
+class SCR_FuelTooltipDetail : SCR_EntityTooltipDetail
 {
 	[Attribute(desc: "If any of these are set and none of the Ignore are then it is used to display the fuel tooltip. (Leave empty to get all and none SCR_FuelNodes are always displayed)", uiwidget: UIWidgets.Flags, enums: ParamEnumArray.FromEnum(SCR_EFuelNodeTypeFlag))]
 	protected SCR_EFuelNodeTypeFlag m_eFuelNodeTypes;
@@ -60,4 +60,4 @@ class SCR_FuelTooltipDetail: SCR_EntityTooltipDetail
 		
 		return totalMaxFuel > 0;
 	}
-};
+}

@@ -31,7 +31,7 @@ class SCR_AIGetSplinePoint: AITaskScripted
 		if(!GetVariableIn(PORT_ENTITY,ent))
 			ent = owner.GetControlledEntity();
 		
-		m_aOffsetPath = new ref array <vector>;
+		m_aOffsetPath = new array <vector>;
 			
 		if (ent.GetChildren())
 		{

@@ -1,13 +1,13 @@
 [EntityEditorProps(category: "GameScripted/ScriptWizard", description: "Handles client > server communication in Campaign tasks. Should be attached to PlayerController.", color: "0 0 255 255")]
-class SCR_CampaignTaskNetworkComponentClass: SCR_TaskNetworkComponentClass
+class SCR_CampaignTaskNetworkComponentClass : SCR_TaskNetworkComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_CampaignTaskNetworkComponent : SCR_TaskNetworkComponent
 {
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void RequestReinforcements()
 	{
 		int playerID = GetPlayerId();
@@ -18,6 +18,9 @@ class SCR_CampaignTaskNetworkComponent : SCR_TaskNetworkComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] positionFrom
+	//! \param[in] positionTo
 	void RequestTransport(vector positionFrom, vector positionTo)
 	{
 		int playerID = GetPlayerId();
@@ -28,6 +31,8 @@ class SCR_CampaignTaskNetworkComponent : SCR_TaskNetworkComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] position
 	void RequestRefuel(vector position)
 	{
 		int playerID = GetPlayerId();
@@ -130,6 +135,8 @@ class SCR_CampaignTaskNetworkComponent : SCR_TaskNetworkComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Requests refuel for the vehicle local player is currently in
+	//! \param[in] requesterID
+	//! \param[in] position
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void RPC_RequestRefuel(int requesterID, vector position)
 	{
@@ -180,6 +187,8 @@ class SCR_CampaignTaskNetworkComponent : SCR_TaskNetworkComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Requests evacuation of the local player
+	//! \param[in] requesterID
+	//! \param[in] position
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void RPC_RequestEvacuation(int requesterID, vector position)
 	{
@@ -217,10 +226,13 @@ class SCR_CampaignTaskNetworkComponent : SCR_TaskNetworkComponent
 		msg.SetPosition(position);
 		transmitter.BeginTransmission(msg);
 	}
+
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] playerController
+	//! \param[in] character
+	//! \return
 	BaseRadioComponent GetRadioComponent(PlayerController playerController, ChimeraCharacter character)
 	{
-		
 		SCR_GadgetManagerComponent gadgetManager = SCR_GadgetManagerComponent.Cast(character.FindComponent(SCR_GadgetManagerComponent));
 		if (!gadgetManager)
 			return null;
@@ -237,6 +249,7 @@ class SCR_CampaignTaskNetworkComponent : SCR_TaskNetworkComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetPlayerId()
 	{
 		int playerID = m_PlayerController.GetPlayerId();
@@ -244,12 +257,11 @@ class SCR_CampaignTaskNetworkComponent : SCR_TaskNetworkComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_CampaignTaskNetworkComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 	}
-
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_CampaignTaskNetworkComponent()
-	{
-	}
-};
+}

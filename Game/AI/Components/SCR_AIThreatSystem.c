@@ -8,7 +8,7 @@ enum EAIThreatState
 	VIGILANT,
 	ALERTED,
 	THREATENED
-};
+}
 
 typedef func SCR_AIThreatStateChangedCallback;
 void SCR_AIThreatStateChangedCallback(EAIThreatState prevState, EAIThreatState newState);
@@ -16,49 +16,56 @@ typedef ScriptInvokerBase<SCR_AIThreatStateChangedCallback> SCR_AIThreatStateCha
 
 class SCR_AIThreatSystem
 {	
-	private static const float THREAT_SHOT_DROP_RATE = 	0.11 * 0.001; // Falloff (percentual drop per milisecond)
-	private static const float THREAT_SUPPRESSION_DROP_RATE = 0.4 * 0.001;
+	private static const float THREAT_SHOT_DROP_RATE = 	0.11 * 0.001;	//!< Falloff (percentual drop per milisecond)
+	private static const float THREAT_SUPPRESSION_DROP_RATE = 0.1 * 0.001;
 	private static const float THREAT_ENDANGERED_DROP_RATE = 	0.2 * 0.001;
 	
 	private static const float BLEEDING_FIXED_INCREMENT = 0.3;
 	private static const float SUPPRESSION_BULLET_INCREMENT = 0.10;
 	private static const float ZERO_DISTANCE_SHOT_INCREMENT = 0.008;
 	private static const float DISTANT_SHOT_INCREMENT = 0.002;
+	private static const float EXPLOSION_MAX_INCREMENT = 0.6;
+	
+	private static const float EXPLOSION_CLOSE_DISTANCE = 12;	//!< What distance in m is considered close - max increment is used
+	static const float EXPLOSION_MAX_DISTANCE = 700;			//!< Maxmial distance from explosion to have any influence on threat level
+	
 	private static const float ENDANGERED_INCREMENT = 0.2;
 	
 	static const float VIGILANT_THRESHOLD = 0.05;
-	static const float ALERTED_THRESHOLD = 0.33;
+	protected static const float ALERTED_THRESHOLD = 0.33;
 	static const float THREATENED_THRESHOLD = 0.66;
 	
-	// When threat is below this level, our attack against enemy is delayed
-	static const float ATTACK_DELAYED_THRESHOLD = 0.001; // ~36 seconds until m_fThreatIsEndangered drops to this value
+	//! When threat is below this level, our attack against enemy is delayed
+	//! count about 36 seconds until m_fThreatIsEndangered drops to this value
+	static const float ATTACK_DELAYED_THRESHOLD = 0.001;
 
 	//range between <0,1>
 	private float m_fThreatTotal;
 	private float m_fThreatSuppression;
 	private float m_fThreatShotsFired;
-	private float m_fThreatIsEndangered; // Endangered mean somebody is aiming at me
+	private float m_fThreatIsEndangered; //!< Endangered mean somebody is aiming at me
 	private float m_fThreatInjury;
 
 	private SCR_AIUtilityComponent				m_Utility;
 	private SCR_AIConfigComponent				m_Config;
 	private SCR_AICombatComponent				m_Combat;
-	private ScriptedDamageManagerComponent		m_DamageManager;
+	private SCR_DamageManagerComponent		m_DamageManager;
 	
 	private SCR_ChimeraAIAgent m_Agent;
 	
 	private EAIThreatState m_State;
 		
-	
 	private ref SCR_AIThreatStateChangedInvoker m_OnThreatStateChanged = new SCR_AIThreatStateChangedInvoker();
 	
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] utility
 	void SCR_AIThreatSystem(SCR_AIUtilityComponent utility)
 	{
 		m_Utility = utility;
 		m_Config = utility.m_ConfigComponent;	
 		m_Combat = utility.m_CombatComponent;
-		m_DamageManager = ScriptedDamageManagerComponent.Cast(utility.m_OwnerEntity.FindComponent(ScriptedDamageManagerComponent));
+		m_DamageManager = SCR_DamageManagerComponent.Cast(utility.m_OwnerEntity.FindComponent(SCR_DamageManagerComponent));
 		SCR_ChimeraAIAgent agent = SCR_ChimeraAIAgent.Cast(utility.GetOwner());
 		if (!agent)
 			return;
@@ -75,25 +82,28 @@ class SCR_AIThreatSystem
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_AIThreatStateChangedInvoker GetOnThreatStateChanged()
 	{
 		return m_OnThreatStateChanged;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	EAIThreatState GetState()
 	{
 		return m_State;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Sum of all threats without the effect of injuries - used for deciding to patch oneself
+	//! \return Sum of all threats without the effect of injuries - used for deciding to patch oneself
 	float GetThreatMeasureWithoutInjuryFactor()
 	{
 		return m_fThreatTotal - m_fThreatInjury;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetThreatMeasure()
 	{
 		return m_fThreatTotal;
@@ -101,6 +111,7 @@ class SCR_AIThreatSystem
 
 #ifdef WORKBENCH
 	//------------------------------------------------------------------------------------------------
+	//!
 	void ShowDebug()
 	{
 		// Show message above AI's head
@@ -109,32 +120,31 @@ class SCR_AIThreatSystem
 		
 		switch (m_State)
 		{
-			case EAIThreatState.SAFE :
+			case EAIThreatState.SAFE:
 			{
-				color = Color.Green;
+				color = Color.FromInt(Color.GREEN);
 				break;
 			}
 			case EAIThreatState.VIGILANT:
 			{
-				color = Color.DarkGreen;
+				color = Color.FromInt(Color.DARK_GREEN);
 				break;
 			}
-			case EAIThreatState.ALERTED :
+			case EAIThreatState.ALERTED:
 			{
-				color = Color.DarkYellow;
+				color = Color.FromInt(Color.DARK_YELLOW);
 				break;
 			}
-			case EAIThreatState.THREATENED :
+			case EAIThreatState.THREATENED:
 			{
-				color = Color.DarkRed;
+				color = Color.FromInt(Color.DARK_RED);
 				break;
 			}
 		}
 		
-		
 		SCR_AIDebugVisualization.VisualizeMessage(m_Utility.m_OwnerEntity, typename.EnumToString(EAIThreatState, m_State), EAIDebugCategory.THREAT, 1.4, color);	
 	}
-#endif
+#endif // WORKBENCH
 	
 	//------------------------------------------------------------------------------------------------
 	private void StateTransition(EAIThreatState newState)
@@ -162,8 +172,11 @@ class SCR_AIThreatSystem
 		StateTransition(newState);
 	}
 
-	// Called by utilityComponent each EvaluateBehavior call
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! Called by utilityComponent each EvaluateBehavior call
+	//! \param[in] utility
+	//! \param[in] timeSlice
 	void Update(SCR_AIUtilityComponent utility, float timeSlice)
 	{
 		// Threat falloff
@@ -240,6 +253,8 @@ class SCR_AIThreatSystem
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] count
 	void ThreatBulletImpact(int count)
 	{
 		#ifdef AI_DEBUG
@@ -250,6 +265,32 @@ class SCR_AIThreatSystem
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] distance
+	void ThreatExplosion(float distance)
+	{
+		#ifdef AI_DEBUG
+		AddDebugMessage(string.Format("ThreatExplosion: %1", distance));
+		#endif
+		
+		// Max increment is default as we assume that explosion happened cloaser than EXPLOSION_CLOSE_DISTANCE
+		float increment = EXPLOSION_MAX_INCREMENT;
+		
+		// If distance is more than EXPLOSION_CLOSE_DISTANCE perform reversed linear mapping of threat increment
+		if (distance > EXPLOSION_CLOSE_DISTANCE)
+			increment = Math.Map(distance, EXPLOSION_CLOSE_DISTANCE, EXPLOSION_MAX_DISTANCE, EXPLOSION_MAX_INCREMENT, 0);
+		
+		// Increment has to be positive or 0
+		if (increment < 0)
+			return;
+		
+		m_fThreatSuppression += increment;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] distance
+	//! \param[in] count
 	void ThreatShotFired(float distance, int count)
 	{
 		#ifdef AI_DEBUG
@@ -261,6 +302,20 @@ class SCR_AIThreatSystem
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] count
+	void ThreatProjectileFlyby(int count)
+	{
+		#ifdef AI_DEBUG
+		AddDebugMessage(string.Format("ThreatProjectileFlyby"));
+		#endif
+		
+		m_fThreatSuppression = Math.Clamp(m_fThreatSuppression + count * SUPPRESSION_BULLET_INCREMENT, 0, 1);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] w
 	void DebugPrintToWidget(TextWidget w)
 	{
 		w.SetText(
@@ -280,4 +335,4 @@ class SCR_AIThreatSystem
 		m_Utility.m_AIInfo.AddDebugMessage(str, msgType: EAIDebugMsgType.THREAT);
 	}
 	#endif
-};
+}

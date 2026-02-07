@@ -13,7 +13,7 @@ class SCR_TaskDestroyObject : SCR_ScenarioFrameworkTask
 		if (state != EDamageState.DESTROYED || !m_Asset || !m_SupportEntity)
 			return;
 		
-		ScriptedDamageManagerComponent objectDmgManager = ScriptedDamageManagerComponent.Cast(ScriptedDamageManagerComponent.GetDamageManager(m_Asset));
+		SCR_DamageManagerComponent objectDmgManager = SCR_DamageManagerComponent.Cast(SCR_DamageManagerComponent.GetDamageManager(m_Asset));
 		if (objectDmgManager)
 		{
 			objectDmgManager.GetOnDamageStateChanged().Remove(OnObjectDamage);
@@ -39,7 +39,7 @@ class SCR_TaskDestroyObject : SCR_ScenarioFrameworkTask
 			vehicleController.GetOnEngineStop().Remove(CheckEngineDrowned);
 			GetGame().GetCallqueue().Remove(CheckEngineDrowned);
 			
-			ScriptedDamageManagerComponent objectDmgManager = ScriptedDamageManagerComponent.Cast(ScriptedDamageManagerComponent.GetDamageManager(m_Asset));
+			SCR_DamageManagerComponent objectDmgManager = SCR_DamageManagerComponent.Cast(SCR_DamageManagerComponent.GetDamageManager(m_Asset));
 			if (objectDmgManager)
 		 		objectDmgManager.GetOnDamageStateChanged().Remove(OnObjectDamage);
 			
@@ -55,7 +55,7 @@ class SCR_TaskDestroyObject : SCR_ScenarioFrameworkTask
 		
 		m_Asset = object;
 		
-		ScriptedDamageManagerComponent objectDmgManager = ScriptedDamageManagerComponent.Cast(ScriptedDamageManagerComponent.GetDamageManager(m_Asset));
+		SCR_DamageManagerComponent objectDmgManager = SCR_DamageManagerComponent.Cast(SCR_DamageManagerComponent.GetDamageManager(m_Asset));
 		if (objectDmgManager)
 			objectDmgManager.GetOnDamageStateChanged().Insert(OnObjectDamage);
 		
@@ -93,7 +93,7 @@ class SCR_TaskDestroyObject : SCR_ScenarioFrameworkTask
 		if (!m_Asset)
 			return;
 				
-		ScriptedDamageManagerComponent objectDmgManager = ScriptedDamageManagerComponent.Cast(ScriptedDamageManagerComponent.GetDamageManager(m_Asset));
+		SCR_DamageManagerComponent objectDmgManager = SCR_DamageManagerComponent.Cast(SCR_DamageManagerComponent.GetDamageManager(m_Asset));
 		if (objectDmgManager)
 			objectDmgManager.GetOnDamageStateChanged().Insert(OnObjectDamage);
 		

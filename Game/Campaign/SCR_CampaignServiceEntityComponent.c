@@ -1,9 +1,8 @@
 #define ENABLE_BASE_DESTRUCTION
-//------------------------------------------------------------------------------------------------
-[EntityEditorProps(category: "GameScripted/Campaign", description: "This component handle a destruction of entity in composition and how it affects composition operability.")]
+[EntityEditorProps(category: "GameScripted/Campaign", description: "This component handles a destruction of entity in composition and how it affects composition operability.")]
 class SCR_CampaignServiceEntityComponentClass : ScriptComponentClass
 {
-};
+}
 
 class SCR_CampaignServiceEntityComponent : ScriptComponent
 {
@@ -26,6 +25,7 @@ class SCR_CampaignServiceEntityComponent : ScriptComponent
 	{
 		SetEventMask(owner, EntityEvent.INIT);
 	}
+
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
@@ -46,6 +46,7 @@ class SCR_CampaignServiceEntityComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void EvaluateHit()
 	{
 		if (IsProxy())
@@ -53,6 +54,7 @@ class SCR_CampaignServiceEntityComponent : ScriptComponent
 
 		if (!m_bCanEvaluateHit || !m_DestMultiComp || !m_ServiceCompositionComp)
 			return;
+
 #ifdef ENABLE_BASE_DESTRUCTION
 		if (m_DestMultiComp.GetDestroyed())
 		{
@@ -77,24 +79,26 @@ class SCR_CampaignServiceEntityComponent : ScriptComponent
 		SetHitEvaluation(true);
 	}
 #endif
+
 	//------------------------------------------------------------------------------------------------
-	//! Return if is proxy or not
+	//! \return if is proxy or not
 	bool IsProxy()
 	{
 		return (m_RplComponent && m_RplComponent.IsProxy());
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Return cost of repair
+	//! \return cost of repair
 	int GetRepairCost()
 	{
 		return m_iRepairCost;
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	//prevent multiple executions of onDamage event
+	//! Prevent multiple executions of onDamage event
+	//! \param[in] canEvaluate
 	void SetHitEvaluation(bool canEvaluate)
 	{
 		m_bCanEvaluateHit = canEvaluate;
 	}
-};
+}

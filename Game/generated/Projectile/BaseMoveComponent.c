@@ -13,6 +13,7 @@ class BaseMoveComponent: BaseProjectileComponent
 {
 	proto external void EnableSimulation(IEntity owner);
 	proto external void Launch(vector direction, vector parentVelocity, float initSpeedCoef, IEntity projectileEntity, IEntity gunner, IEntity parentEntity, IEntity lockedTarget, IEntity weaponComponent);
+	proto external vector GetVelocity();
 	/*!
 	* Queries the rewind duration (equal to the RTT of the remote shooter's connection at the time of the shot) from the projectile for lag compensation.
 	* \warning This has to be performed on authority, and before a shell is launched or on non-network shots, the return value will be zero.

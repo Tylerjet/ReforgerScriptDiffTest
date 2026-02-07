@@ -63,31 +63,19 @@ class VehicleControllerComponent_SA : BaseVehicleControllerComponent_SA
 	//------------------------------------------------------------------------------------------------
 	protected void OnDestroyed(IEntity ent)
 	{
-		ChimeraWorld world = ChimeraWorld.CastFrom(ent.GetWorld());
-		if (!world)
-			return;
-
-		Vehicle veh = Vehicle.Cast(ent);
-		if (!veh)
-			return;
-
-		GarbageManager garbageMan = world.GetGarbageManager();
-		if (garbageMan)
-			garbageMan.Insert(veh);
+		auto garbageSystem = SCR_GarbageSystem.GetByEntityWorld(ent);
+		if (garbageSystem)
+			garbageSystem.Insert(ent);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnCompartmentEntered(IEntity vehicle, BaseCompartmentManagerComponent mgr, IEntity occupant, int managerId, int slotID)
 	{
-		if (++m_iOccupants > 0)
+		if (m_iOccupants++ == 0)
 		{
-			ChimeraWorld world = ChimeraWorld.CastFrom(vehicle.GetWorld());
-			if (!world)
-				return;
-
-			GarbageManager garbageMan = world.GetGarbageManager();
-			if (garbageMan)
-				garbageMan.Withdraw(Vehicle.Cast(vehicle));
+			auto garbageSystem = SCR_GarbageSystem.GetByEntityWorld(vehicle);
+			if (garbageSystem)
+				garbageSystem.Withdraw(vehicle);
 		}
 	}
 
@@ -96,13 +84,9 @@ class VehicleControllerComponent_SA : BaseVehicleControllerComponent_SA
 	{
 		if (--m_iOccupants == 0)
 		{
-			ChimeraWorld world = ChimeraWorld.CastFrom(vehicle.GetWorld());
-			if (!world)
-				return;
-
-			GarbageManager garbageMan = world.GetGarbageManager();
-			if (garbageMan)
-				garbageMan.Insert(Vehicle.Cast(vehicle));
+			auto garbageSystem = SCR_GarbageSystem.GetByEntityWorld(vehicle);
+			if (garbageSystem)
+				garbageSystem.Insert(vehicle);
 		}
 	}
 
@@ -293,5 +277,10 @@ class VehicleControllerComponent_SA : BaseVehicleControllerComponent_SA
 
 			soundComponent.SoundEvent(SCR_SoundEvent.SOUND_ENGINE_STOP);
 		}
+	}
+	//------------------------------------------------------------------------------------------------
+	override bool ValidateCanMove()
+	{
+		return m_DamageManager.GetMovementDamage() < 1;
 	}
 }

@@ -1,5 +1,5 @@
 [BaseContainerProps(), BaseContainerCustomTitleField("m_sDisplayName")]
-class SCR_DpsConditionBarBaseTooltipDetail: SCR_EntityTooltipDetail
+class SCR_DpsConditionBarBaseTooltipDetail : SCR_EntityTooltipDetail
 {
 	[Attribute("#AR-ValueUnit_Percentage")]
 	private string m_sPercentageText;
@@ -19,11 +19,13 @@ class SCR_DpsConditionBarBaseTooltipDetail: SCR_EntityTooltipDetail
 	
 	protected bool m_bBarIsColored;
 	
+	//------------------------------------------------------------------------------------------------
 	override bool NeedUpdate()
 	{
 		return m_DamageManager != null;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void UpdateDetail(SCR_EditableEntityComponent entity)
 	{
 		if (m_aDamageOverTimeConditions.IsEmpty())
@@ -42,7 +44,7 @@ class SCR_DpsConditionBarBaseTooltipDetail: SCR_EntityTooltipDetail
 		SetBarColor(damageOverTime);
 	}
 	
-	
+	//------------------------------------------------------------------------------------------------
 	protected void SetBarColor(bool SetConditionColor)
 	{
 		if (!m_Bar || m_bBarIsColored == SetConditionColor)
@@ -57,6 +59,7 @@ class SCR_DpsConditionBarBaseTooltipDetail: SCR_EntityTooltipDetail
 	
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void SetBarAndPercentageValue(float newValue)
 	{
 		if (m_Bar)
@@ -65,11 +68,11 @@ class SCR_DpsConditionBarBaseTooltipDetail: SCR_EntityTooltipDetail
 		if (m_Value)
 			m_Value.SetTextFormat(m_sPercentageText, Math.Round(newValue * 100));
 	}
-		
+
+	//------------------------------------------------------------------------------------------------
 	override bool InitDetail(SCR_EditableEntityComponent entity, Widget widget)
 	{
 		m_DamageManager = DamageManagerComponent.Cast(entity.GetOwner().FindComponent(DamageManagerComponent));
-		
 		if (!m_DamageManager)
 			return false;
 		
@@ -86,4 +89,4 @@ class SCR_DpsConditionBarBaseTooltipDetail: SCR_EntityTooltipDetail
 		
 		return true;
 	}
-};
+}

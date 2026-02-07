@@ -4,7 +4,7 @@ class SCR_AnimationResourceHolderComponentClass : ScriptComponentClass
 {
 }
 
-class SCR_AnimationResourceHolderComponent: GenericComponent
+class SCR_AnimationResourceHolderComponent : GenericComponent
 {
 	[Attribute(params: "anm", desc: "Animation resource")]
 	ResourceName 	m_sAnimation;

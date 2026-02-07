@@ -12,13 +12,13 @@ class SCR_HeliCourse_stage7 : SCR_BaseCampaignTutorialArlandStage
 	{
 		m_fWaypointCompletionRadius = 100;
 		RegisterWaypoint("WP_HELICOURSE_FLIGHT2");
-		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
 	
 		Vehicle helicopter = Vehicle.Cast(GetGame().GetWorld().FindEntityByName("UH1COURSE"));
 		if (!helicopter)
 			return;
 		
 		m_SignalsManagerComponent = SignalsManagerComponent.Cast(helicopter.FindComponent(SignalsManagerComponent));
+		PlaySoundSystem("Heli_FlyEast", true);
+		HintOnVoiceOver();
 	}
 };

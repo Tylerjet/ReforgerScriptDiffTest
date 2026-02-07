@@ -3,25 +3,32 @@ class SCR_SoundHandle
 {
 	//! Sound transformation
 	vector m_aMat[4];	
+
 	//! Sound group defines a group of sounds. E.g. birds playing on trees close to the camera, or insects, or birds playing in the distance
 	int m_iSoundGroup;
+
 	//! SoundType defines a group of sounds that can be played on a given location or entity. The definition varies based on the used ESpawnMethod
 	int m_iSoundType;
+
 	//! SoundDef defines basic sound behaviour such as the number of repetitions, or daytime/wind behaviour
 	int m_iSoundDef;
+
 	//! SoundDefinition
 	SCR_SoundDef m_SoundDef;
+
 	//! Sequence of worldTimes, when sound events will be triggered		
 	ref array<int> m_aRepTime;
+
 	//! Index of next worldTime, when event will be trigged
 	int m_iRepTimeIdx;
+
 	//! Percentage ratio between sequence length and total length of played samples
 	float m_fDensity;
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Updates density
-	*/
+	//! Updates density
+	//! \param[in] sampleLenght
+	//! \param[in] worldTime
 	void UpdateDensity(float sampleLenght, float worldTime)
 	{		
 		float sequenceLenght = GetSequenceLenght(worldTime);
@@ -35,9 +42,9 @@ class SCR_SoundHandle
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Returns sequence lenght
-	*/
+	//! Returns sequence length
+	//! \param[in] worldTime
+	//! \return
 	float GetSequenceLenght(float worldTime)
 	{
 		int size = m_aRepTime.Count();
@@ -77,9 +84,8 @@ class SCR_SoundHandle
 	}
 		
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Returns sequence lenght
-	*/
+	//! Returns sequence length
+	//! \param[in] gameTime
 	void UpdateRepTime(float gameTime)
 	{				
 		if (m_aRepTime)
@@ -96,6 +102,13 @@ class SCR_SoundHandle
 	}
 		
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] soundGroupIdx
+	//! \param[in] soundTypeIdx
+	//! \param[in] soundDefIdx
+	//! \param[in] mat
+	//! \param[in] soundGroup
+	//! \param[in] worldTime
 	void SCR_SoundHandle(int soundGroupIdx, int soundTypeIdx, int soundDefIdx, vector mat[4], array<ref SCR_SoundGroup> soundGroup, float worldTime)
 	{
 		m_iSoundGroup = soundGroupIdx;
@@ -106,4 +119,4 @@ class SCR_SoundHandle
 		UpdateRepTime(worldTime);				
 		UpdateDensity(m_SoundDef.m_iSampleLength, worldTime);
 	}	
-};
+}

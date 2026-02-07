@@ -77,7 +77,7 @@ class SCR_InspectCasualtyWidget : SCR_InfoDisplayExtended
 		if (!char)
 			return;
 		
-		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(char.FindComponent(SCR_CharacterControllerComponent));
+		CharacterControllerComponent controller = char.GetCharacterController();
 		if (controller.GetLifeState() == ECharacterLifeState.DEAD)
 		{
 			DisableWidget();

@@ -1,6 +1,6 @@
 class TimeAndWeatherManagerEntityClass: BaseTimeAndWeatherManagerEntityClass
 {
-};
+}
 
 //~ Script invokers
 void SCR_TimeAndWeatherManager_OnWeatherStatePreview(bool previewEnabled, string weatherState);
@@ -12,10 +12,8 @@ typedef func SCR_TimeAndWeatherManager_OnWindPreview;
 void SCR_TimeAndWeatherManager_OnDateTimePreview(bool previewEnabled, int year, int month, int day, float timeOfTheDay);
 typedef func SCR_TimeAndWeatherManager_OnDateTimePreview;
 
-/*!
-Manager entity responsible for managing in-game time and weather,
-providing the script and gamecode with usable in-game API.
-*/
+//! Manager entity responsible for managing in-game time and weather,
+//! providing the script and gamecode with usable in-game API.
 class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 {	
 	[Attribute(desc: "An ordered array of daytime info. Starting just after midnight and ending at midnight, the daytime must be ordered!")]
@@ -45,12 +43,10 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 	protected bool m_bWeatherIsLooping = false;
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Set Weather state preview. Can be called locally and will send an scriptInvoker when called succesfully
-	\param preview True to enable preview, false to disable
-	\param stateName Weather State name to preview, no need to give if preview is false
-	\return True if preview changed succesfully
-	*/
+	//! Set Weather state preview. Can be called locally and will send an scriptInvoker when called succesfully
+	//! \param preview True to enable preview, false to disable
+	//! \param stateName Weather State name to preview, no need to give if preview is false
+	//! \return True if preview changed succesfully
 	bool SetWeatherStatePreview(bool preview, string stateName = "")
 	{
 		WeatherStateTransitionManager weatherStateTransitionManager = GetTransitionManager();
@@ -68,13 +64,11 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Set wind preview. Can be called locally and will send an scriptInvoker when called succesfully
-	\param preview True to enable preview, false to disable
-	\param windSpeed Windspeed to preview, no need to give if preview is false
-	\param windAngleDegrees Wind Angle in Degrees to preview, no need to give if preview is false
-	\return True if preview changed succesfully
-	*/
+	//! Set wind preview. Can be called locally and will send an scriptInvoker when called succesfully
+	//! \param preview True to enable preview, false to disable
+	//! \param windSpeed Windspeed to preview, no need to give if preview is false
+	//! \param windAngleDegrees Wind Angle in Degrees to preview, no need to give if preview is false
+	//! \return True if preview changed succesfully
 	bool SetWindPreview(bool preview, float windSpeed = -1, float windAngleDegrees = -1)
 	{
 		WeatherStateTransitionManager weatherStateTransitionManager = GetTransitionManager();
@@ -92,15 +86,13 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Set date time Preview. Can be called locally and will send an scriptInvoker when called succesfully
-	\param preview True to enable preview, false to disable
-	\param year Year to preview, no need to give if preview is false
-	\param month Month to preview, no need to give if preview is false
-	\param day Day to preview, no need to give if preview is false
-	\param timeOfTheDay Time of day to preview in 24.0, no need to give if preview is false
-	\return True if preview changed succesfully
-	*/
+	//! Set date time Preview. Can be called locally and will send an scriptInvoker when called succesfully
+	//! \param preview True to enable preview, false to disable
+	//! \param year Year to preview, no need to give if preview is false
+	//! \param month Month to preview, no need to give if preview is false
+	//! \param day Day to preview, no need to give if preview is false
+	//! \param timeOfTheDay Time of day to preview in 24.0, no need to give if preview is false
+	//! \return True if preview changed succesfully
 	bool SetDateTimePreview(bool preview, int year = -1, int month = -1, int day = -1, float timeOfTheDay = -1)
 	{
 		WeatherStateTransitionManager weatherStateTransitionManager = GetTransitionManager();
@@ -118,22 +110,18 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get if the sun is set for the current time, latitude/longitude/date configuration
-	\return True if sun is set
-	*/
+	//! Get if the sun is set for the current time, latitude/longitude/date configuration.\
+	//! \return True if sun is set
 	bool IsSunSet()
 	{
 		return IsSunSet(GetTimeOfTheDay());
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get if the sun is set at given time. 
-	Note this will use current latitude/longitude/date configuration
-	\param timeToCheck time to check. Uses 24 hour format e.g. 12.50 is 12:30 A.M
-	\return True if sun is set for the given time
-	*/
+	//! Get if the sun is set at given time.
+	//! Note this will use current latitude/longitude/date configuration
+	//! \param timeToCheck time to check. Uses 24 hour format e.g. 12.50 is 12:30 A.M
+	//! \return True if sun is set for the given time
 	bool IsSunSet(float timeToCheck)
 	{
 		float sunSetTime, sunRiseTime;
@@ -151,10 +139,8 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Use current date to get day of the week localized string (eg Monday, Tuesday ect)
-	\return Day of the week
-	*/
+	//! Use current date to get day of the week localized string (eg Monday, Tuesday ect)
+	//! \return Day of the week
 	string GetWeekDayString()
 	{		
 		int weekdayIndex = GetWeekDay();
@@ -165,10 +151,9 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 		return m_aOrderedDaysOfWeek[weekdayIndex];
 	}
 	
-	/*!
-	Use given date to get day of the week localized string (eg Monday, Tuesday ect)
-	\return Day of the week
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Use given date to get day of the week localized string (eg Monday, Tuesday ect)
+	//! \return Day of the week as defined in m_aOrderedDaysOfWeek
 	string GetWeekDayStringForDate(int year, int month, int day)
 	{
 		int weekdayIndex = GetWeekDayForDate(year, month, day);
@@ -180,27 +165,28 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 	}
 	
 	
-	/*!
-	Sets current weather to looping true or false.  (server only)
-	Use ForceWeatherTo to have more control over transition time and state duration
-	\param setLooping Set looping true or false
-	\param playerChangedLooping ID of player that set weather to looping
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Sets weather looping (server only)
+	//! Use ForceWeatherTo to have more control over transition time and state duration
+	//! \see ForceWeatherTo
+	//! \see UpdateWeatherLooping
+	//! \see IsWeatherLooping
+	//! \param setLooping Set looping true or false
+	//! \param playerChangedLooping ID of player that set weather to looping
 	void SetCurrentWeatherLooping(bool setLooping, int playerChangedLooping = 0)
 	{
 		ForceWeatherTo(setLooping, playerThatChangedWeather: playerChangedLooping);
 	}
 	
-	/*!
-	Forces weather to the given state. Does not care if the transition is valid or not. (Server only)
-	Use this if you want to set weather to looping or change the weather on the fly
-	Do not change weather from looping true/false outside of this function
-	\param setLooping Set looping true or false
-	\param weatherID weather to set. Leave empty if you want to change the current weather to looping true/false
-	\param transitionDuration transition duration of weather
-	\param stateDuration state duration of weather
-	\param playerThatChangedWeather ID of player that changed the weather for notifications. Leave empty if no notifications should be called
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Forces weather to the given state. Does not care if the transition is valid or not. (Server only)
+	//! Use this if you want to set weather to looping or change the weather on the fly
+	//! Do not change weather from looping true/false outside of this function
+	//! \param setLooping Set looping true or false
+	//! \param weatherID weather to set. Leave empty if you want to change the current weather to looping true/false
+	//! \param transitionDuration transition duration of weather
+	//! \param stateDuration state duration of weather
+	//! \param playerThatChangedWeather ID of player that changed the weather for notifications. Leave empty if no notifications should be called
 	void ForceWeatherTo(bool setLooping, string weatherID = string.Empty, float transitionDuration = 0, float stateDuration = 0.001, int playerThatChangedWeather = 0)
 	{
 		if (!Replication.IsServer())
@@ -266,21 +252,27 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! Set weather's looping over the network
+	//! \param isLooping
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void UpdateWeatherLooping(bool isLooping)
 	{	
 		m_bWeatherIsLooping = isLooping;
 	}
 	
-	/*!
-	Get if weather is looping
-	\return true if weather currently is looping
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get if weather is looping
+	//! \see SetCurrentWeatherLooping
+	//! \return true if weather currently is looping
 	bool IsWeatherLooping()
 	{
 		return m_bWeatherIsLooping;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! Get moon phase for the current date
+	//! \return SCR_MoonPhaseUIInfo moonphase info. This includes the full name of the moonphase as well as a simplified name (eg: first and Third quarter will be called half moon)
 	SCR_MoonPhaseUIInfo GetCurrentMoonPhaseInfoForDate()
 	{
 		int day, month, year;
@@ -288,16 +280,15 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 		return GetMoonPhaseInfoForDate(year, month, day, GetTimeOfTheDay(), GetTimeZoneOffset(), GetDSTOffset(), GetCurrentLatitude());
 	}
 	
-	/*!
-	Gets moon phase name for supplied date, geo location is not needed but timezone yes in order to calculate UTC correctly.
-	\param year Year.
-	\param month Month in range <1, 12>
-	\param day Day in range <1, 31>
-	\param timeOfTheDay24 Time of the day in 24 hour floating point format.
-	\param timezone TimeZone Offset in hours ranging <-12, +14>
-	\param dstOffset DST (daylight savings time) offset, must be 0.0 or positive value.
-	\return SCR_MoonPhaseUIInfo moonphase info. This includes the full name of the moonphase as well as a simplified name (eg: first and Third quarter will be called half moon)
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Gets moon phase name for supplied date, geo location is not needed but timezone yes in order to calculate UTC correctly.
+	//! \param year Year.
+	//! \param month Month in range <1, 12>
+	//! \param day Day in range <1, 31>
+	//! \param timeOfTheDay24 Time of the day in 24 hour floating point format.
+	//! \param timezone TimeZone Offset in hours ranging <-12, +14>
+	//! \param dstOffset DST (daylight savings time) offset, must be 0.0 or positive value.
+	//! \return SCR_MoonPhaseUIInfo moonphase info. This includes the full name of the moonphase as well as a simplified name (eg: first and Third quarter will be called half moon)
 	SCR_MoonPhaseUIInfo GetMoonPhaseInfoForDate(int year, int month, int day, float timeOfTheDay24, float timezone, float dstOffset, float Latitude)
 	{
 		if (m_aMoonPhasesInfo.IsEmpty())
@@ -364,52 +355,50 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 		return uiInfo;
 	}
 	
-	/*!
-		Sets the current weather.
-		Only issuable by the authority.
-		Automatically broadcast to all clients.	
-		\param hours Current weather as a normalized value <0.0, 1.0>
-		\param immediateChange Whether change should be applied immediately, forcing recomputation. This should be true only in case of editor and similar items.
-		\return Returns true when command is issued successfully, false otherwise.
-	*/
+	//------------------------------------------------------------------------------------------------
+	// Sets the current weather.
+	// Only issuable by the authority.
+	// Automatically broadcast to all clients.
+	// \param hours Current weather as a normalized value <0.0, 1.0>
+	// \param immediateChange Whether change should be applied immediately, forcing recomputation. This should be true only in case of editor and similar items.
+	// \return Returns true when command is issued successfully, false otherwise.
 	//proto native bool SetCurrentWeather(float weather01, bool immediateChange = false);
 	
-	/*!
-		Retrieves the current weather.
-		\return Current weather as a normalized value <0.0, 1.0>
-	*/
+	//------------------------------------------------------------------------------------------------
+	// Retrieves the current weather.
+	// \return Current weather as a normalized value <0.0, 1.0>
 	//proto native float GetCurrentWeather();
 	
-
-
-	/*!
-		Sets the current preset.
-		Only issuable by the authority.
-		Automatically broadcast to all clients.	
-		\param hours Current preset as a normalized value <0.0, 1.0>
-		\param immediateChange Whether change should be applied immediately, forcing recomputation. This should be true only in case of editor and similar items.
-		\return Returns true when command is issued successfully, false otherwise.
-	*/
+	//------------------------------------------------------------------------------------------------
+	// Sets the current preset.
+	// Only issuable by the authority.
+	// Automatically broadcast to all clients.
+	// \param hours Current preset as a normalized value <0.0, 1.0>
+	// \param immediateChange Whether change should be applied immediately, forcing recomputation. This should be true only in case of editor and similar items.
+	// \return Returns true when command is issued successfully, false otherwise.
 	//proto native bool SetCurrentPreset(float preset01, bool immediateChange = false);
 	
-	/*!
-		Retrieves the current preset.
-		\return Current preset as a normalized value <0.0, 1.0>
-	*/
-	//proto native float GetCurrentPreset();
+	//------------------------------------------------------------------------------------------------
+	// Retrieves the current preset.
+	// \return Current preset as a normalized value <0.0, 1.0>
+	// proto native float GetCurrentPreset();
 
 	
-	/*!
-		Retrieves current time of the day and returns it as a script wrapper for hours, minutes and seconds.
-		\return Returns script wrapper for time
-	*/
-	ref TimeContainer GetTime()
+	//------------------------------------------------------------------------------------------------
+	//! Retrieves current time of the day and returns it as a script wrapper for hours, minutes and seconds.
+	//! \return Returns script wrapper for time
+	TimeContainer GetTime()
 	{
 		ref TimeContainer cont = new TimeContainer();
 		GetHoursMinutesSeconds(cont.m_iHours, cont.m_iMinutes, cont.m_iSeconds);
 		return cont;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param year
+	//! \param month
+	//! \param day
 	protected void CreateDayTimeInfoArray(int year = -1, int month = -1, int day = -1)
 	{
 		foreach (SCR_DayTimeInfoBase dayTimeInfo: m_aOrderedDaytimeInfo)
@@ -419,22 +408,20 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 			dayTimeInfo.SetDayTime(m_aOrderedDaytimeInfo, this, year, month, day);
 	}
 	
-	/*!
-	Gets the UI info of the current time of day. Also returns the index of the current time of day info
-	\param[out] uiInfo ui info of time of day
-	\return int time of day info index
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Gets the UI info of the current time of day. Also returns the index of the current time of day info
+	//! \param[out] uiInfo ui info of time of day
+	//! \return int time of day info index
 	int GetCurrentDayTimeUIInfo(out SCR_UIInfo uiInfo)
 	{
 		CreateDayTimeInfoArray();
 		return GetDayTimeUIInfo(GetTimeOfTheDay(), uiInfo);		
 	}
 	
-	/*!
-	Gets the current daytime Ui info and Phase
-	\param[out] uiInfo ui info of time of day
-	\return Current DayTimePhase
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Gets the current daytime Ui info and Phase
+	//! \param[out] uiInfo ui info of time of day
+	//! \return Current DayTimePhase
 	EDayTimeEnums GetCurrentDayTimeUIInfoAndPhase(out SCR_UIInfo uiInfo)
 	{
 		CreateDayTimeInfoArray();
@@ -442,16 +429,15 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 		return GetDayTimeUIInfo(GetTimeOfTheDay(), uiInfo, dayTimePhase);		
 	}
 	
-	/*!
-	Gets an array of daytime info which holds the UIinfo of specific times of the day
-	\param TimeOfDay the time of day to get time info of
-	\param[out] uiInfo time info of the given day time
-	\param[out] dayTimePhase Phase of current daytime
-	\param year date to get time info of
-	\param month date to get time info of
-	\param day date to get time info of
-	\return int time of day info index
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Gets an array of daytime info which holds the UIinfo of specific times of the day
+	//! \param TimeOfDay the time of day to get time info of
+	//! \param[out] uiInfo time info of the given day time
+	//! \param[out] dayTimePhase Phase of current daytime
+	//! \param year date to get time info of
+	//! \param month date to get time info of
+	//! \param day date to get time info of
+	//! \return int time of day info index
 	int GetDayTimeUIInfo(float TimeOfDay, out SCR_UIInfo uiInfo, out EDayTimeEnums dayTimePhase = -1, int year = -1, int month = -1, int day = -1)
 	{
 		CreateDayTimeInfoArray(year, month, day);
@@ -482,13 +468,13 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 		return count -2;
 	}
 	
-	/*!
-	Gets an array of daytime info which holds the UIinfo of specific times of the day
-	\param[out] dayTimeInfoArray array with time of day infos
-	\param year date to get time info of
-	\param month date to get time info of
-	\param day date to get time info of
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Gets an array of daytime info which holds the UIinfo of specific times of the day
+	//! \param[out] dayTimeInfoArray array with time of day infos
+	//! \param year date to get time info of
+	//! \param month date to get time info of
+	//! \param day date to get time info of
+	//! \return dayTimeInfoArray's count
 	int GetDayTimeInfoArray(out notnull array<SCR_DayTimeInfoBase> dayTimeInfoArray, int year = -1, int month = -1, int day = -1)
 	{
 		CreateDayTimeInfoArray(year, month, day);
@@ -506,6 +492,10 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 	\param[out] orderedWindDirectionInfo array of winddirection info
 	\return int count of array
 	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \param orderedWindDirectionInfo
+	//! \return
 	int GetOrderedWindDirectionInfoArray(notnull array<SCR_WindDirectionInfo> orderedWindDirectionInfo)
 	{
 		foreach (SCR_WindDirectionInfo windInfo: m_OrderedWindDirectionInfo)
@@ -520,6 +510,11 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 	\param[out] windDirectionInfo found winddirection info
 	\return bool returns true if winddirection info found
 	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \param index
+	//! \param[out] windDirectionInfo
+	//! \return
 	bool GetWindDirectionInfoFromIndex(int index, out SCR_WindDirectionInfo windDirectionInfo)
 	{
 		if (m_OrderedWindDirectionInfo.IsEmpty() || index < 0 || index >= m_OrderedWindDirectionInfo.Count())
@@ -536,6 +531,12 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 	\param[out] windDirectionInfo found winddirection info
 	\return bool returns true if winddirection info found
 	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \param windDirectionFloat
+	//! \param[out] index
+	//! \param[out] windDirectionInfo
+	//! \return
 	bool GetWindDirectionInfoFromFloat(float windDirectionFloat, out int index, out SCR_WindDirectionInfo windDirectionInfo)
 	{
 		if (m_OrderedWindDirectionInfo.IsEmpty() || m_OrderedWindDirectionInfo.Count() < 2)
@@ -588,6 +589,11 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 	\param overrideWind if true wind will be set to override using m_fDelayedWindSpeedOverride and m_fDelayedWindDirectionOverride
 	\param playerChangingWind player who changed the wind override to show a notification
 	*/
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param overrideWind
+	//! \param playerChangingWind
 	void DelayedSetWindOverride(bool overrideWind, int playerChangingWind = -1)
 	{
 		m_bDelayedWindOverride = overrideWind;
@@ -603,6 +609,11 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 	\params windSpeed new windspeed
 	\param playerChangingWind player who changed the wind override to show a notification
 	*/
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param windSpeed
+	//! \param playerChangingWind
 	void DelayedOverrideWindSpeed(float windSpeed, int playerChangingWind = -1)
 	{
 		m_fDelayedWindSpeedOverride = windSpeed;
@@ -618,6 +629,11 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 	\params windDirection new winddirection
 	\param playerChangingWind player who changed the wind override to show a notification
 	*/
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param windDirection
+	//! \param playerChangingWind
 	void DelayedOverrideWindDirection(float windDirection, int playerChangingWind = -1)
 	{
 		m_fDelayedWindDirectionOverride = windDirection;
@@ -694,6 +710,10 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 	\params cont Script wrapper for time in hours, minutes and seconds
 	\return Returns true when command is issued successfully, false otherwise.
 	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \param cont
+	//! \return
 	bool SetTime(TimeContainer cont)
 	{
 		return SetHoursMinutesSeconds(cont.m_iHours, cont.m_iMinutes, cont.m_iSeconds);
@@ -703,6 +723,9 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 	/*!
 	\return Get on weather state preview enabled/disabled
 	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvokerBase<SCR_TimeAndWeatherManager_OnWeatherStatePreview> GetOnWeatherStatePreview()
 	{
 		if (!m_OnWeatherStatePreview)
@@ -712,9 +735,7 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return Get on wind preview enabled/disabled
-	*/
+	//! \return Get on wind preview enabled/disabled
 	ScriptInvokerBase<SCR_TimeAndWeatherManager_OnWindPreview> GetOnWindPreview()
 	{
 		if (!m_OnWindPreview)
@@ -727,6 +748,9 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 	/*!
 	\return Get on date time preview enabled/disabled
 	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvokerBase<SCR_TimeAndWeatherManager_OnDateTimePreview> GetOnDateTimePreview()
 	{
 		if (!m_OnDateTimePreview)
@@ -736,13 +760,16 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 	}
 	
 	//======================================== RPL ========================================\\
+
+	//------------------------------------------------------------------------------------------------
 	override bool RplSave(ScriptBitWriter writer)
     {	
         writer.WriteBool(m_bWeatherIsLooping); 
         return true;
     }
-     
-    override bool RplLoad(ScriptBitReader reader)
+
+	//------------------------------------------------------------------------------------------------
+	override bool RplLoad(ScriptBitReader reader)
     {
 		int isLooping;
 		
@@ -800,11 +827,9 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 	\return WeatherTransitionRequestResponse with result of call
 	*/
 	//proto native WeatherTransitionRequestResponse RequestWeatherVariantTransition(string variantName, float durationHrs = 0);
-};
+}
 
-/*!
-	Simple container holding in-game time data in hours, minutes, seconds format.
-*/
+//! Simple container holding in-game time data in hours, minutes, seconds format.
 class TimeContainer
 {
 	//!< In-game hours <0, 24>
@@ -821,6 +846,12 @@ class TimeContainer
 		\param minutes Minutes <0,60>
 		\param seconds Seconds <0,60>
 	*/
+
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param hours
+	//! \param minutes
+	//! \param seconds
 	void TimeContainer(int hours = 0, int minutes = 0, int seconds = 0)
 	{
 		m_iHours = hours;
@@ -831,6 +862,13 @@ class TimeContainer
 	/*
 		Creates new time container from hours, minutes and seconds.
 	*/
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param hours
+	//! \param minutes
+	//! \param seconds
+	//! \return
 	static TimeContainer FromHoursMinutesSeconds(int hours, int minutes, int seconds)
 	{
 		return new TimeContainer(hours, minutes, seconds);
@@ -839,6 +877,11 @@ class TimeContainer
 	/*
 		Creates new time container from time of  the day <0.0, 0.24>
 	*/
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param hours24
+	//! \return
 	static TimeContainer FromTimeOfTheDay(float hours24)
 	{
 		int h, m, s;
@@ -849,11 +892,15 @@ class TimeContainer
 	/*
 		Converts the content of this container into in-game time as a fraction of day <0.0, 0.24>.
 	*/
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	float ToTimeOfTheDay()
 	{
 		return TimeAndWeatherManagerEntity.HoursMinutesSecondsToTime(m_iHours, m_iMinutes, m_iSeconds);
 	}
-};
+}
 
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EDayTimeEnums, "m_dayTimeEnum")]
 class SCR_DayTimeInfoBase
@@ -866,46 +913,41 @@ class SCR_DayTimeInfoBase
 	
 	protected float m_fTimeOfDay = -1;
 	
-	/*!
-	Gets time of day UI info
-	/return SCR_UIInfo ui info of time of day
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Gets time of day UI info
+	//! \return SCR_UIInfo ui info of time of day
 	SCR_UIInfo GetDayTimeUIInfo()
 	{
 		return m_UIInfo;
 	}
 	
-	/*!
-	Gets time of day enum
-	/return EDayTimeEnums time of day enum
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Gets time of day enum
+	//! \return time of day enum
 	EDayTimeEnums GetDaytimeEnum()
 	{
 		return m_DayTimeEnum;
 	}
 	
-	/*!
-	Gets time of day in seconds. This is when the time of day starts
-	/return seconds of starting time of time of day
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Gets time of day in seconds. This is when the time of day starts
+	//! \return seconds of starting time of time of day
 	float GetDayTime()
 	{
 		return m_fTimeOfDay;
 	}
-	
-	/*!
-	Clear the data
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Clear the data
 	void Clear()
 	{
 		m_fTimeOfDay = -1;
 	}
-	
-	/*!
-	Gets time of day in seconds. This is when the time of day starts. Used when init other times of day
-	/param daytimeInfo array of other time of days to get info from
-	/return seconds of starting time of time of day
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Gets time of day in seconds. This is when the time of day starts. Used when init other times of day
+	//! \param daytimeInfo array of other time of days to get info from
+	//! \return seconds of starting time of time of day
 	float GetDayTime(notnull array<ref SCR_DayTimeInfoBase> daytimeInfo, TimeAndWeatherManagerEntity timeAndWeatherEntity)
 	{
 		if (m_fTimeOfDay < 0)
@@ -913,23 +955,27 @@ class SCR_DayTimeInfoBase
 		
 		return m_fTimeOfDay;
 	}
-	
-	/*!
-	Sets the starting time of the time of day in seconds
-	/param daytimeInfo array of other time of days to get info from
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Sets the starting time of the time of day in seconds
+	//! \param daytimeInfo array of other time of days to get info from
+	//! \param timeAndWeatherEntity
+	//! \param year
+	//! \param month
+	//! \param day
 	void SetDayTime(notnull array<ref SCR_DayTimeInfoBase> daytimeInfo, TimeAndWeatherManagerEntity timeAndWeatherEntity, int year = -1, int month = -1, int day = -1)
-	{		
-		Print(string.Format("%1 Uses the SCR_DayTimeInfoBase use one of the inherented classes instead!", typename.EnumToString(EDayTimeEnums, m_DayTimeEnum)), LogLevel.WARNING);
+	{
+		Print(string.Format("%1 Uses the SCR_DayTimeInfoBase use one of the inherited classes instead!", typename.EnumToString(EDayTimeEnums, m_DayTimeEnum)), LogLevel.WARNING);
 	}
-};
+}
 
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EDayTimeEnums, "m_dayTimeEnum")]
 class SCR_DayTimeInfoStatic: SCR_DayTimeInfoBase
 {
 	[Attribute(desc: "Hour which this daytime starts, is a value of 0 to 24.0")]
 	protected int m_iHour;
-	
+
+	//------------------------------------------------------------------------------------------------
 	override void SetDayTime(notnull array<ref SCR_DayTimeInfoBase> daytimeInfo, TimeAndWeatherManagerEntity timeAndWeatherEntity, int year = -1, int month = -1, int day = -1)
 	{
 		if (m_fTimeOfDay > -1)
@@ -937,11 +983,12 @@ class SCR_DayTimeInfoStatic: SCR_DayTimeInfoBase
 		
 		m_fTimeOfDay = m_iHour;
 	}
-};
+}
 
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EDayTimeEnums, "m_dayTimeEnum")]
 class SCR_DayTimeInfoAuto: SCR_DayTimeInfoBase
 {
+	//------------------------------------------------------------------------------------------------
 	override void SetDayTime(notnull array<ref SCR_DayTimeInfoBase> daytimeInfo, TimeAndWeatherManagerEntity timeAndWeatherEntity, int year = -1, int month = -1, int day = -1)
 	{
 		if (m_fTimeOfDay > -1)
@@ -982,7 +1029,7 @@ class SCR_DayTimeInfoAuto: SCR_DayTimeInfoBase
 			
 		Print(string.Format("%1 is not supported with autoTime!", typename.EnumToString(EDayTimeEnums, m_DayTimeEnum)), LogLevel.WARNING);
 	}
-};
+}
 
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EDayTimeEnums, "m_dayTimeEnum")]
 class SCR_DayTimeInfoBetween: SCR_DayTimeInfoBase
@@ -992,7 +1039,8 @@ class SCR_DayTimeInfoBetween: SCR_DayTimeInfoBase
 	
 	[Attribute("0", UIWidgets.ComboBox, "Day Time Y", "", ParamEnumArray.FromEnum(EDayTimeEnums))]
 	protected EDayTimeEnums m_DaytimeBefore;
-	
+
+	//------------------------------------------------------------------------------------------------
 	override void SetDayTime(notnull array<ref SCR_DayTimeInfoBase> daytimeInfo, TimeAndWeatherManagerEntity timeAndWeatherEntity, int year = -1, int month = -1, int day = -1)
 	{
 		if (m_DayTimeEnum == m_DaytimeAfter || m_DayTimeEnum == m_DaytimeBefore)
@@ -1050,7 +1098,7 @@ class SCR_DayTimeInfoBetween: SCR_DayTimeInfoBase
 		
 		m_fTimeOfDay = (dayTimeAfterSeconds + DayTimeBeforeSeconds) / 2;
 	}
-};
+}
 
 [BaseContainerProps(), SCR_BaseContainerCustomTitleUIInfo("m_UIInfo")]
 class SCR_WindDirectionInfo
@@ -1061,16 +1109,20 @@ class SCR_WindDirectionInfo
 	[Attribute()]
 	protected int m_iWindDirection;
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_UIInfo GetUIInfo()
 	{
 		return m_UIInfo;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return wind direction in degrees
 	int GetWindDirectionValue()
 	{
 		return m_iWindDirection;
 	}
-};
+}
 
 [BaseContainerProps(), SCR_BaseContainerCustomTitleUIInfo("m_UIInfo")]
 class SCR_MoonPhaseInfo
@@ -1084,15 +1136,23 @@ class SCR_MoonPhaseInfo
 	[Attribute(desc: "IsMoonPhase will return true if moonPhaseAmount is equal or greater then m_fPhaseEqualOrGreater and less then m_fPhaseLessThen")]
 	protected float m_fPhaseLessThen;
 	
-	//Before full moon meaning first quarter and waxing Crescent/Gibbous. After full moon meaning it is third Quarter and Waning Crescent/Gibbous. And doesn't matter means full moon or new moon
-	[Attribute("0", UIWidgets.ComboBox, "Before Or AfterFull Moon", "", ParamEnumArray.FromEnum(EMoonPhaseEnums) )]	
+	//! Before full moon means first quarter and waxing Crescent/Gibbous\
+	//! After full moon meaning it is third Quarter and Waning Crescent/Gibbous\
+	//! Ignore means full moon or new moon
+	[Attribute("0", UIWidgets.ComboBox, "Before Or AfterFull Moon", "", ParamEnumArray.FromEnum(EMoonPhaseEnums))]
 	protected EMoonPhaseEnums m_iBeforeOrAfterFullMoon;
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_MoonPhaseUIInfo GetUIInfo()
 	{
 		return m_UIInfo;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param moonPhaseAmount
+	//! \param beforeOrAfterFullMoon
+	//! \return true if the moon phase matches, false otherwise
 	bool IsMoonPhase(float moonPhaseAmount, EMoonPhaseEnums beforeOrAfterFullMoon)
 	{
 		if (m_iBeforeOrAfterFullMoon != EMoonPhaseEnums.IGNORE && beforeOrAfterFullMoon != EMoonPhaseEnums.IGNORE)
@@ -1103,16 +1163,14 @@ class SCR_MoonPhaseInfo
 		
 		return moonPhaseAmount >= m_fPhaseEqualOrGreater && moonPhaseAmount < m_fPhaseLessThen;
 	}
-	
-	
-};
+}
 
 enum EMoonPhaseEnums
 {
 	IGNORE,
 	BEFORE_FULL_MOON,
 	AFTER_FULL_MOON
-};
+}
 
 enum EDayTimeEnums
 {
@@ -1122,4 +1180,4 @@ enum EDayTimeEnums
 	DAYTIME_DUSK,
 	DAYTIME_EVENING,
 	DAYTIME_NIGHT
-};
+}

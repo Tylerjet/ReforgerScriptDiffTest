@@ -1,37 +1,16 @@
-class SCR_GroupSubMenu : SCR_SubMenuBase
-{
-	[Attribute("6", params: "1 100 1")]
-	protected int m_iMaxColumnNumber;
-	
-	[Attribute()]
-	protected ResourceName m_ButtonLayout;
-	
-	[Attribute("#AR-PauseMenu_Continue", UIWidgets.LocaleEditBox)]
-	protected LocalizedString m_sContinueButtonText;
-	
-	protected Widget m_wGridWidget;
-	
-	protected const string CREATE_GROUP = "#AR_DeployMenu_AddNewGroup";
-	protected const string JOIN_GROUP = "#AR-DeployMenu_JoinGroup";
-	protected const string ACCEPT_INVITE = "#AR-DeployMenu_AcceptInvite";
-	
-	protected static SCR_PlayerControllerGroupComponent s_PlayerGroupController;
-	protected SCR_InputButtonComponent m_AddGroupButton;
-	protected SCR_InputButtonComponent m_JoinGroupButton;
-	protected SCR_InputButtonComponent m_AcceptInviteButton;
-	protected SCR_InputButtonComponent m_GroupSettingsButton;
+class SCR_GroupSubMenu : SCR_GroupSubMenuBase
+{	
 	protected Faction m_PlayerFaction;
-	protected SCR_GroupsManagerComponent m_GroupManager;
 	protected SCR_ChatPanel m_ChatPanelComponent;
+	protected static SCR_PlayerControllerGroupComponent s_PlayerGroupController;
 	
 	protected static ref ScriptInvoker s_OnJoinGroupRequestSent;
 	
-		
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuOpen(SCR_SuperMenuBase parentMenu)
+	override void OnTabCreate(Widget menuRoot, ResourceName buttonsLayout, int index)
 	{
-		super.OnMenuOpen(parentMenu);
-		s_PlayerGroupController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
+		super.OnTabCreate(menuRoot, buttonsLayout, index);
+		
 		m_GroupManager = SCR_GroupsManagerComponent.GetInstance();
 		CreateAddGroupButton();
 		CreateJoinGroupButton();
@@ -42,22 +21,21 @@ class SCR_GroupSubMenu : SCR_SubMenuBase
 		
 		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 		if (factionManager)
-		{
 			m_PlayerFaction = SCR_Faction.Cast(factionManager.GetLocalPlayerFaction());
-		}
 		else
 			m_PlayerFaction = null;
 		
-		Widget chatPanel = parentMenu.GetRootWidget().FindAnyWidget("ChatPanel");
+		Widget chatPanel = menuRoot.FindAnyWidget("ChatPanel");
 		if (!chatPanel)
 			return;
-		 m_ChatPanelComponent = SCR_ChatPanel.Cast(chatPanel.FindHandler(SCR_ChatPanel));
+		 
+		m_ChatPanelComponent = SCR_ChatPanel.Cast(chatPanel.FindHandler(SCR_ChatPanel));
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuShow(SCR_SuperMenuBase parentMenu)
+	override void OnTabShow()
 	{
-		super.OnMenuShow(parentMenu);
+		super.OnTabShow();
 			
 		UpdateGroupsMenu();
 						
@@ -70,9 +48,10 @@ class SCR_GroupSubMenu : SCR_SubMenuBase
 			
 			if (m_ChatPanelComponent.GetFadeOut() == false)
 			{
-				Widget chatContent = m_ParentMenu.GetRootWidget().FindAnyWidget("ChatContent");
+				Widget chatContent = m_wMenuRoot.FindAnyWidget("ChatContent");
 				if (chatContent)
 					chatContent.SetVisible(true);
+				
 				SCR_FadeInOutAnimator chatAnimator = m_ChatPanelComponent.GetFadeInOutAnimator();
 				if (chatAnimator)
 					chatAnimator.GetOnStateChanged().Insert(OnAnimatorStateChanged);
@@ -94,6 +73,12 @@ class SCR_GroupSubMenu : SCR_SubMenuBase
 		SetAcceptButtonStatus();
 	}	
 	
+	static void Init()
+	{
+		if (!s_PlayerGroupController)
+			s_PlayerGroupController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	static ScriptInvoker GetOnJoingGroupRequestSent()
 	{
@@ -106,14 +91,14 @@ class SCR_GroupSubMenu : SCR_SubMenuBase
 	//------------------------------------------------------------------------------------------------
 	void UpdateGroupsMenu()
 	{
-		m_wGridWidget = m_ParentMenu.GetRootWidget().FindAnyWidget("GroupList");
+		m_wGridWidget = m_wMenuRoot.FindAnyWidget("GroupList");
 		if (!m_wGridWidget || !m_AddGroupButton || !m_ButtonLayout || !m_GroupSettingsButton)
 			return;
 		
 		SetAcceptButtonStatus();
-		InitGroups(m_wGridWidget, m_AddGroupButton, m_JoinGroupButton, m_GroupSettingsButton, m_ButtonLayout, m_ParentMenu);
+		InitGroups(s_PlayerGroupController);
 		
-		SCR_GroupMenu groupMenu = SCR_GroupMenu.Cast(m_ParentMenu.GetRootWidget().FindHandler(SCR_GroupMenu));
+		SCR_GroupMenu groupMenu = SCR_GroupMenu.Cast(m_wMenuRoot.FindHandler(SCR_GroupMenu));
 		if (!groupMenu)
 			return;
 		
@@ -121,18 +106,10 @@ class SCR_GroupSubMenu : SCR_SubMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	static void InitGroups(Widget grid, SCR_InputButtonComponent addGroupButton, SCR_InputButtonComponent joinGroupButton, SCR_InputButtonComponent groupSettingsButton, ResourceName buttonWidgetLayout, SCR_SuperMenuBase parentMenu)
-	{
-		if (!grid)
-			return;
-		
-		GetGame().GetCallqueue().CallLater(UpdateGroups, 1, false, grid, addGroupButton, joinGroupButton, groupSettingsButton, buttonWidgetLayout, parentMenu);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void OnMenuHide(SCR_SuperMenuBase parentMenu) 
+	override void OnTabHide() 
 	{ 
-		super.OnMenuHide(parentMenu);
+		super.OnTabHide();
+		
 		m_GroupManager = SCR_GroupsManagerComponent.GetInstance();
 		if (m_GroupManager)
 		{
@@ -159,83 +136,7 @@ class SCR_GroupSubMenu : SCR_SubMenuBase
 		if (s_PlayerGroupController)
 			s_PlayerGroupController.GetOnInviteReceived().Remove(SetAcceptButtonStatus);	
 		
-		GetGame().GetCallqueue().CallLater(m_GroupSettingsButton.SetVisible, 100, false, false, true);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected static void UpdateGroups(notnull Widget gridWidget, SCR_InputButtonComponent addGroupbutton, SCR_InputButtonComponent joinGroupButton, SCR_InputButtonComponent groupSettingsButton, ResourceName buttonWidgetLayout, SCR_SuperMenuBase parentMenu)
-	{
-		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
-		if (!factionManager)
-			return;
-		
-		SCR_Faction playerFaction = SCR_Faction.Cast(factionManager.GetLocalPlayerFaction());
-		if (!playerFaction)
-			return;
-		
-		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
-		if (!groupManager)
-			return;
-		
-		//iun case the method was called from playerlist while skipping deployscreen try to get the group controller
-		if (!s_PlayerGroupController)
-		{
-			s_PlayerGroupController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
-			if (!s_PlayerGroupController)
-				return;
-		}
-		
-		//no need to check playerFaction for null, because groups are not enabled for players without faction
-		addGroupbutton.SetEnabled(groupManager.CanCreateNewGroup(playerFaction));
-		Widget children = gridWidget.GetChildren();
-		while (children)
-		{
-			gridWidget.RemoveChild(children);
-			children = gridWidget.GetChildren();
-		}
-				
-		SetGroupSettingsButton(groupSettingsButton);
-		
-		array<SCR_AIGroup> playableGroups = groupManager.GetPlayableGroupsByFaction(playerFaction);
-		if (!playableGroups)
-			return;
-		
-		int selectedGroupID = s_PlayerGroupController.GetSelectedGroupID();
-		
-		if (playableGroups.IsIndexValid(selectedGroupID) && parentMenu.GetRootWidget())
-		{
-			ImageWidget privateIcon = ImageWidget.Cast(parentMenu.GetRootWidget().FindAnyWidget("PrivateIconDetail"));
-			if (privateIcon)
-				privateIcon.SetVisible(playableGroups[selectedGroupID].IsPrivate());
-		}
-		
-		int groupCount = playableGroups.Count();
-		
-		for (int i = 0; i < groupCount; i++)
-		{ 
-			Widget groupTile = GetGame().GetWorkspace().CreateWidgets(buttonWidgetLayout, gridWidget);	
-			if (!groupTile)
-				continue;
-					
-			ButtonWidget buttonWidget = ButtonWidget.Cast(groupTile.FindAnyWidget("Button"));
-			if (!buttonWidget)
-				continue;
-			
-			SCR_GroupTileButton buttonComponent = SCR_GroupTileButton.Cast(buttonWidget.FindHandler(SCR_GroupTileButton));
-			if (buttonComponent)
-			{
-				buttonComponent.SetGroupID(playableGroups[i].GetGroupID());
-				buttonComponent.SetGroupFaction(playerFaction);
-				buttonComponent.SetJoinGroupButton(joinGroupButton);
-				buttonComponent.InitiateGroupTile();				
-				if (s_PlayerGroupController.GetGroupID() == -1 && i == 0 && s_PlayerGroupController.GetSelectedGroupID() < 0)
-					GetGame().GetCallqueue().CallLater(buttonComponent.RefreshPlayers, 1, false);
-				if (selectedGroupID < 0 && playableGroups[i].GetGroupID() == s_PlayerGroupController.GetGroupID() )
-					GetGame().GetCallqueue().CallLater(buttonComponent.RefreshPlayers, 1, false);
-				if (selectedGroupID == playableGroups[i].GetGroupID())
-					GetGame().GetCallqueue().CallLater(buttonComponent.RefreshPlayers, 1, false);
-			}
-		}
+		SetNavigationButtonVisibile(m_GroupSettingsButton, false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -273,11 +174,10 @@ class SCR_GroupSubMenu : SCR_SubMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void CreateGroupSettingsButton()
 	{
-		m_GroupSettingsButton = CreateNavigationButton("MenuSettingsGroup", "#AR-Player_Groups_Settings", true);
+		m_GroupSettingsButton = CreateNavigationButton("MenuSettingsGroup", "#AR-Player_Groups_Settings", true, false);
 		if (!m_GroupSettingsButton)
 			return;
 		m_GroupSettingsButton.GetRootWidget().SetZOrder(0);
-		m_GroupSettingsButton.SetVisible(false);
 		m_GroupSettingsButton.m_OnActivated.Insert(OpenGroupSettingsDialog);
 	}
 	
@@ -391,7 +291,7 @@ class SCR_GroupSubMenu : SCR_SubMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void OnChatOpen()
 	{
-		Widget chatContent = m_ParentMenu.GetRootWidget().FindAnyWidget("ChatContent");
+		Widget chatContent = m_wMenuRoot.FindAnyWidget("ChatContent");
 		if (chatContent)
 			chatContent.SetVisible(true);
 	}
@@ -401,7 +301,7 @@ class SCR_GroupSubMenu : SCR_SubMenuBase
 	{
 		if (SCR_ChatPanelManager.GetInstance().GetMessages().Count() == 0)
 		{
-			Widget chatContent = m_ParentMenu.GetRootWidget().FindAnyWidget("ChatContent");
+			Widget chatContent = m_wMenuRoot.FindAnyWidget("ChatContent");
 			if (chatContent)
 				chatContent.SetVisible(false);
 			return;
@@ -417,21 +317,11 @@ class SCR_GroupSubMenu : SCR_SubMenuBase
 	{
 		if (formerState == 2 && actualState == 3)
 		{
-			Widget chatContent = m_ParentMenu.GetRootWidget().FindAnyWidget("ChatContent");
+			Widget chatContent = m_wMenuRoot.FindAnyWidget("ChatContent");
 			if (chatContent)
 				chatContent.SetVisible(false);
 			m_ChatPanelComponent.GetFadeInOutAnimator().GetOnStateChanged().Remove(OnAnimatorStateChanged);
 		}	
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected static void SetGroupSettingsButton(notnull SCR_InputButtonComponent button)
-	{
-		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();		
-		if (!groupsManager)
-			return;
-		
-		button.SetVisible(s_PlayerGroupController.IsPlayerLeaderOwnGroup() && groupsManager.CanPlayersChangeAttributes());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -471,4 +361,12 @@ class SCR_GroupSubMenu : SCR_SubMenuBase
 		
 		s_PlayerGroupController.RequestPrivateGroupChange(s_PlayerGroupController.GetPlayerID() , !group.IsPrivate());
 	}
-};
+	
+	//------------------------------------------------------------------------------------------------
+	// In case the method was called from playerlist while skipping deployscreen try to get the group controller
+	static void UpdatePlayerGroupController()
+	{
+		if (!s_PlayerGroupController)
+			s_PlayerGroupController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
+	}
+}

@@ -12,7 +12,10 @@ class SCR_CampaignTutorialArlandStageMedical11: SCR_BaseCampaignTutorialArlandSt
 		m_bCheckWaypoint = false;
 		RegisterWaypoint("Figurant");
 
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("FirstAid_TourniquetApply", true);
+		HintOnVoiceOver();
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -4,10 +4,10 @@
 //------------------------------------------------------------------------------------------------
 class SCR_ButtonSplitComponent : SCR_ButtonComponent 
 {
-	protected ref array<ref Widget> m_aWidgetCells = new ref array<ref Widget>();
-	protected ref array<bool> m_aPreventContentChange = new ref array<bool>; 
+	protected ref array<ref Widget> m_aWidgetCells = new array<ref Widget>();
+	protected ref array<bool> m_aPreventContentChange = new array<bool>; 
 	
-	protected ref array<SCR_ButtonComponent> m_aInnerButtons = new ref array<SCR_ButtonComponent>; 
+	protected ref array<SCR_ButtonComponent> m_aInnerButtons = new array<SCR_ButtonComponent>; 
 	
 	protected Color m_cColorContent;
 	
@@ -175,5 +175,8 @@ class SCR_ButtonSplitComponent : SCR_ButtonComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	Color GetColorContent() { return m_cColorContent; }
+	Color GetColorContent()
+	{
+		return Color.FromInt(m_cColorContent.PackToInt());
+	}
 };

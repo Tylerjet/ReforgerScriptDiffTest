@@ -1,21 +1,22 @@
-/** @ingroup Editor_UI Editor_UI_Components
-*/
-class SCR_ModesEditorUIComponent: SCR_DialogEditorUIComponent
+//! @ingroup Editor_UI Editor_UI_Components
+
+class SCR_ModesEditorUIComponent : SCR_DialogEditorUIComponent
 {	
 	//Rename to active modes
-	protected ref array<EEditorMode> m_aActiveModes = new ref array<EEditorMode>;
-	protected ref SCR_SortedArray<SCR_EditorModePrefab> m_aOrderedEditorModePrefabs = new ref SCR_SortedArray<SCR_EditorModePrefab>;
+	protected ref array<EEditorMode> m_aActiveModes = {};
+	protected ref SCR_SortedArray<SCR_EditorModePrefab> m_aOrderedEditorModePrefabs = new SCR_SortedArray<SCR_EditorModePrefab>();
 	//Combobox
 	protected SCR_CustomDropdownEditorUIComponent m_DropdownWidget;
 	
 	protected SCR_EditorManagerEntity m_EditorManager;
 	
+//	//------------------------------------------------------------------------------------------------
+//	protected override bool IsUnique()
+//	{
+//		return false;
+//	}
 	
-	/*protected override bool IsUnique()
-	{
-		return false;
-	}*/
-	
+	//------------------------------------------------------------------------------------------------
 	protected void OnModeAdd(SCR_EditorModeEntity modeEntity)
 	{
 		if (!modeEntity)
@@ -24,6 +25,8 @@ class SCR_ModesEditorUIComponent: SCR_DialogEditorUIComponent
 		m_aActiveModes.Insert(modeEntity.GetModeType());
 		RefreshModes();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnModeRemove(SCR_EditorModeEntity modeEntity)
 	{
 		if (!modeEntity) 
@@ -37,6 +40,7 @@ class SCR_ModesEditorUIComponent: SCR_DialogEditorUIComponent
 		RefreshModes();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void CreateDropdown()
 	{			
 		//m_DropdownWidget.ClearAll();
@@ -64,6 +68,7 @@ class SCR_ModesEditorUIComponent: SCR_DialogEditorUIComponent
 		RefreshModes();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnModeSelected(SCR_CustomDropdownEditorUIComponent dropdown, int index)
 	{
 		if (!m_EditorManager) 
@@ -73,7 +78,7 @@ class SCR_ModesEditorUIComponent: SCR_DialogEditorUIComponent
 		m_DropdownWidget.CloseDropdown();
 	}
 	
-	
+	//------------------------------------------------------------------------------------------------
 	protected void OnModeChange(SCR_EditorModeEntity currentModeEntity, SCR_EditorModeEntity prevModeEntity)
 	{	
 		//Close if dialog or close list if not (mainly for if mode is forced changed)
@@ -93,7 +98,7 @@ class SCR_ModesEditorUIComponent: SCR_DialogEditorUIComponent
 		RefreshModes();
 	}
 	
-	
+	//------------------------------------------------------------------------------------------------
 	protected void RefreshModes()
 	{		
 		SCR_EditorModeEntity currentModeEntity = m_EditorManager.GetCurrentModeEntity();
@@ -120,6 +125,7 @@ class SCR_ModesEditorUIComponent: SCR_DialogEditorUIComponent
 		//m_DropdownWidget.SetDropdownEnable(modeCount > 1);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected override void OnDialogOpened(SCR_DialogEditorUIComponent linkedComponent)
 	{		
 		super.OnDialogOpened(linkedComponent);
@@ -144,12 +150,13 @@ class SCR_ModesEditorUIComponent: SCR_DialogEditorUIComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void SetSiblingMode(int relIndex)
 	{
 		if (!m_EditorManager || m_EditorManager.IsModeChangeRequested())
 			return;
 		
-		array<EEditorMode> modes = new array<EEditorMode>;
+		array<EEditorMode> modes = {};
 		int modesCount = m_EditorManager.GetModes(modes);
 		if (modesCount <= 1)
 			return;
@@ -158,23 +165,26 @@ class SCR_ModesEditorUIComponent: SCR_DialogEditorUIComponent
 		m_EditorManager.SetCurrentMode(modes[(index + modesCount) % modesCount])
 	}
 	
-	
+	//------------------------------------------------------------------------------------------------
 	protected void OnEditorModePrev(float value, EActionTrigger reason)
 	{
 		SetSiblingMode(-1);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnEditorModeNext(float value, EActionTrigger reason)
 	{
 		SetSiblingMode(1);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void OnRepeat()
 	{
 		if (m_EditorManager)
 			m_EditorManager.RestorePreviousMode();
 	}
-	
 
+	//------------------------------------------------------------------------------------------------
 	override void OnInputDeviceIsGamepad(bool isGamepad)
 	{		
 		if (m_bIsInDialog)
@@ -183,7 +193,7 @@ class SCR_ModesEditorUIComponent: SCR_DialogEditorUIComponent
 		m_DropdownWidget.CloseDropdown();
 	}
 	
-	
+	//------------------------------------------------------------------------------------------------
 	protected void OnDropdownOpen(SCR_CustomDropdownEditorUIComponent dropdown)
 	{
 		if (m_bIsInDialog)
@@ -191,6 +201,7 @@ class SCR_ModesEditorUIComponent: SCR_DialogEditorUIComponent
 
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnDropdownClosed(SCR_CustomDropdownEditorUIComponent dropdown)
 	{
 		if (m_bIsInDialog)
@@ -200,6 +211,7 @@ class SCR_ModesEditorUIComponent: SCR_DialogEditorUIComponent
 		}		
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttachedScripted(Widget w)
 	{				
 		super.HandlerAttachedScripted(w);
@@ -224,7 +236,7 @@ class SCR_ModesEditorUIComponent: SCR_DialogEditorUIComponent
 		m_DropdownWidget.GetOnChanged().Insert(OnModeSelected);
 		m_DropdownWidget.GetOnOpened().Insert(OnDropdownOpen);
 		
-		array<SCR_EditorModeEntity> modeEntities = new array<SCR_EditorModeEntity>;
+		array<SCR_EditorModeEntity> modeEntities = {};
 		int modesCount = m_EditorManager.GetModeEntities(modeEntities);
 		for (int i = 0; i < modesCount; i++)
 		{
@@ -249,6 +261,7 @@ class SCR_ModesEditorUIComponent: SCR_DialogEditorUIComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
@@ -274,4 +287,4 @@ class SCR_ModesEditorUIComponent: SCR_DialogEditorUIComponent
 			m_DropdownWidget.GetOnClosed().Remove(OnDropdownClosed);
 		}
 	}
-};
+}

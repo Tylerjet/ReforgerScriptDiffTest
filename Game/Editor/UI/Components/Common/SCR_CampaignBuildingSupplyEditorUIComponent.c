@@ -1,11 +1,11 @@
 class SCR_CampaignBuildingSupplyEditorUIComponent : SCR_BaseEditorUIComponent
 {
 	protected SCR_FactionAffiliationComponent m_FactionComponent;
-	protected TextWidget m_ProviderName
-	protected TextWidget m_ProviderCallsign
+	protected TextWidget m_ProviderName;
+	protected TextWidget m_ProviderCallsign;
 	protected Widget m_wInGameSupply;
-	protected TextWidget m_ProviderSupplyCurrent
-	protected TextWidget m_ProviderSupplyMax
+	protected TextWidget m_ProviderSupplyCurrent;
+	protected TextWidget m_ProviderSupplyMax;
 	protected OverlayWidget m_ProviderIcon;
 	
 	protected SCR_ResourceComponent	m_ResourceComponent;
@@ -95,16 +95,19 @@ class SCR_CampaignBuildingSupplyEditorUIComponent : SCR_BaseEditorUIComponent
 				baseIcon.SetIdentity(EMilitarySymbolIdentity.INDFOR);
 				break;
 			}
+
 			case campaign.GetFactionKeyByEnum(SCR_ECampaignFaction.OPFOR):
 			{
 				baseIcon.SetIdentity(EMilitarySymbolIdentity.OPFOR);
 				break;
 			}
+
 			case campaign.GetFactionKeyByEnum(SCR_ECampaignFaction.BLUFOR):
 			{
 				baseIcon.SetIdentity(EMilitarySymbolIdentity.BLUFOR);				
 				break;
 			}
+
 			case "Unknown":
 			{
 				baseIcon.SetIdentity(EMilitarySymbolIdentity.UNKNOWN);
@@ -147,6 +150,7 @@ class SCR_CampaignBuildingSupplyEditorUIComponent : SCR_BaseEditorUIComponent
 		
 		if (m_ProviderSupplyCurrent)
 			m_ProviderSupplyCurrent.SetText(consumer.GetAggregatedResourceValue().ToString());
+
 		if (m_ProviderSupplyMax)
 			m_ProviderSupplyMax.SetText(consumer.GetAggregatedMaxResourceValue().ToString());
 		
@@ -154,7 +158,7 @@ class SCR_CampaignBuildingSupplyEditorUIComponent : SCR_BaseEditorUIComponent
 		if (consumer.GetAggregatedResourceValue() == 0)
 			m_wInGameSupply.SetColor(UIColors.WARNING);
 		else
-			m_wInGameSupply.SetColor(Color.White);
+			m_wInGameSupply.SetColor(Color.FromInt(Color.WHITE));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -165,12 +169,12 @@ class SCR_CampaignBuildingSupplyEditorUIComponent : SCR_BaseEditorUIComponent
 			return;
 		
 		SCR_ResourceConsumer consumer = m_ResourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
-		
 		if (!consumer)
 			return;
 		
 		if (m_ProviderSupplyCurrent)
 			m_ProviderSupplyCurrent.SetText(consumer.GetAggregatedResourceValue().ToString());
+
 		if (m_ProviderSupplyMax)
 			m_ProviderSupplyMax.SetText(consumer.GetAggregatedMaxResourceValue().ToString());
 		
@@ -178,7 +182,7 @@ class SCR_CampaignBuildingSupplyEditorUIComponent : SCR_BaseEditorUIComponent
 		if (consumer.GetAggregatedResourceValue() == 0)
 			m_wInGameSupply.SetColor(UIColors.WARNING);
 		else
-			m_wInGameSupply.SetColor(Color.White);
+			m_wInGameSupply.SetColor(Color.FromInt(Color.WHITE));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -188,15 +192,15 @@ class SCR_CampaignBuildingSupplyEditorUIComponent : SCR_BaseEditorUIComponent
 		if (!providerComponent)
 			return;
 		
+		m_ProviderCallsign.SetText(providerComponent.GetProviderDisplayName());
+		
 		SCR_MilitaryBaseComponent targetBase = SCR_MilitaryBaseComponent.Cast(providerComponent.GetMilitaryBaseComponent());
 		if (targetBase)
 		{
-			m_ProviderName.SetText("#AR-MapLocation_MilitaryBase");
 			m_ProviderCallsign.SetText(targetBase.GetCallsignDisplayName());
 			return;
 		}
 
 		m_ProviderName.SetText("");
-		m_ProviderCallsign.SetText("#AR-Vehicle_SupplyTruck_Name-UC");
 	}
-};
+}

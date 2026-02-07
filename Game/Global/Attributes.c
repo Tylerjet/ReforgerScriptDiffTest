@@ -279,6 +279,58 @@ class SCR_BaseContainerCustomTitleEnum : BaseContainerCustomTitle
 };
 
 /*!
+	\brief Attribute for setting any enum property as custom title with an aditional varriable. Do note to set the defaultValue to what ever the attribute default value is
+	@code
+	[BaseContainerProps(), BaseContainerCustomEnumWithValue(EEditorMode, "m_Mode", "m_iValue", "2")]
+	class TestConfigClass
+	{
+		[Attribute()]
+		protected EEditorMode m_Mode;
+
+		[Attribute("2")]
+		protected int m_iValue;
+	}
+	@endcode
+*/
+class BaseContainerCustomEnumWithValue : BaseContainerCustomTitle
+{
+	protected typename m_EnumType;
+	protected string m_sEnumName;
+	protected string m_sValueName;
+	protected string m_sDefaultValue;
+	protected string m_sFormat;
+
+	//------------------------------------------------------------------------------------------------
+	void BaseContainerCustomEnumWithValue(typename enumType, string enumName, string valueName, string defaultValue, string format = "%1: %2")
+	{
+		m_EnumType = enumType;
+		m_sEnumName = enumName;
+		m_sValueName = valueName;
+		m_sDefaultValue = defaultValue;
+		m_sFormat = format;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
+	{
+		int enumValue;
+		if (!source.Get(m_sEnumName, enumValue))
+			return false;
+		
+		string value;
+		if (!source.Get(m_sValueName, value))
+			return false;
+		
+		//~ No value found so use default
+		if (value.IsEmpty())
+			value = m_sDefaultValue;
+
+		title = string.Format(m_sFormat, typename.EnumToString(m_EnumType, enumValue), value);
+		return true;
+	}
+};
+
+/*!
 	\brief Attribute for setting any flags enum property as custom title.
 	@code
 	[BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EEditorMode, "m_Modes")]
@@ -311,15 +363,16 @@ class SCR_BaseContainerCustomTitleFlags : BaseContainerCustomTitle
 			return false;
 
 		array<int> values = {};
+		string enumName;
 		for (int i = 0, count = SCR_Enum.BitToIntArray(enumValue, values); i < count; i++)
 		{
 			if (i > 0)
-				title += " | ";
+				enumName += " | ";
 
-			title += typename.EnumToString(m_EnumType, values[i]);
+			enumName += typename.EnumToString(m_EnumType, values[i]);
 		}
 
-		title = string.Format(m_sFormat, title);
+		title = string.Format(m_sFormat, enumName);
 		return true;
 	}
 };
@@ -635,6 +688,85 @@ class BaseContainerCustomCheckIntTitleField : BaseContainerCustomTitle
 		return true;
 	}
 };
+
+/*!
+	\brief Attribute for setting a custom format if the given checkVar is equal to checkVarEqual with showing flags (%1 in the condition format). If condition met just shows default TitleField, if false it show default within given format
+	@code
+	[BaseContainerProps(), BaseContainerCustomCheckIntWithFlagTitleField(EEditorMode, "m_eValidEditorModes", "m_bEnabled", 1, "EditorData - %1", "DISABLED - EditorData - %1")]
+	class TestConfigClass
+	{
+		[Attribute()]
+		protected EEditorMode m_eValidEditorModes;
+
+		[Attribute()]
+		protected bool m_bEnabled;
+	}
+	@endcode
+*/
+class BaseContainerCustomCheckIntWithFlagTitleField : BaseContainerCustomTitle
+{
+	protected typename m_FlagEnumType;
+	protected string m_sFlagName;
+	protected string m_sFlagDivider;
+	protected string m_sCheckVar;
+	protected string m_sConditionTrueText;
+	protected string m_sConditionFalseText;
+	protected int m_iCheckVarEqual;
+
+	//------------------------------------------------------------------------------------------------
+	void BaseContainerCustomCheckIntWithFlagTitleField(typename flagEnumType, string flagName, string checkVar, int checkVarEqual, string conditionTrueText = "DEFAULT TRUE - %1", string conditionFalseText = "DEFAULT FALSE - %2", string flagDivider = " & ")
+	{
+		m_FlagEnumType = flagEnumType;
+		m_sFlagName = flagName;
+		m_sFlagDivider = flagDivider;
+		m_sCheckVar = checkVar;
+		m_sConditionTrueText = conditionTrueText;
+		m_sConditionFalseText = conditionFalseText;
+		m_iCheckVarEqual = checkVarEqual;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
+	{
+		int checkVar;
+
+		if (!source.Get(m_sCheckVar, checkVar))
+			return false;
+
+		if (checkVar == m_iCheckVarEqual)
+		{
+			title = m_sConditionTrueText;
+		}
+		else
+		{
+			title = m_sConditionFalseText;
+			return true;
+		}
+			
+		string enumName = "NONE";
+		
+		int enumValue;
+		if (source.Get(m_sFlagName, enumValue))
+		{
+			array<int> values = {};
+			for (int i = 0, count = SCR_Enum.BitToIntArray(enumValue, values); i < count; i++)
+			{
+				if (i == 0)
+					enumName = string.Empty;
+				
+				if (i > 0)
+					enumName += m_sFlagDivider;
+	
+				enumName += typename.EnumToString(m_FlagEnumType, values[i]);
+			}
+		}
+		
+		//~ Add flags
+		title = title.Format(title, enumName);
+		
+		return true;
+	}
+}
 
 /*!
 	\brief Attribute for setting UIInfo's name property as (Localized) custom title.

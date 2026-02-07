@@ -7,6 +7,7 @@ class SCR_BaseTourStageClass: SCR_BaseCampaignTutorialArlandStageClass
 class SCR_BaseTourStage : SCR_BaseCampaignTutorialArlandStage
 {
 	IEntity m_AntennaPos, m_ArmoryPos, m_FieldHospitalPos, m_FuelDepotPos, m_HQPos, m_LivingQuartersPos, m_LightVehDepotPos, m_HeavyVehDepotPos, m_HeliportPos;
+	ref array <IEntity> m_aVisitedServices = {};
 	bool m_bIsShowingHint;
 	
 	//------------------------------------------------------------------------------------------------
@@ -15,7 +16,10 @@ class SCR_BaseTourStage : SCR_BaseCampaignTutorialArlandStage
 		m_bCheckWaypoint = false;
 		RegisterWaypoint("TeleportRadio");
 		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage(), "Start"));
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		GetGame().GetCallqueue().CallLater(PlaySoundSystem, 2000, false, "BaseTour_Start", false);
+		GetGame().GetCallqueue().CallLater(HintOnVoiceOver, 2000, false);
 		
 		m_AntennaPos = GetGame().GetWorld().FindEntityByName("WP_Tour_Antenna");
 		if (m_AntennaPos)
@@ -66,6 +70,8 @@ class SCR_BaseTourStage : SCR_BaseCampaignTutorialArlandStage
 		m_TutorialComponent.SetStagesComplete(7, true);	
 	}
 	
+	
+	
 	//------------------------------------------------------------------------------------------------
 	protected bool IsInRange(IEntity ent, float range)
 	{
@@ -81,6 +87,8 @@ class SCR_BaseTourStage : SCR_BaseCampaignTutorialArlandStage
 		if (m_bIsShowingHint)
 			return;
 		
+		SCR_HintManagerComponent.ClearLatestHint();
+		
 		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage(), serviceName));
 		m_bIsShowingHint = true;
 	}
@@ -94,57 +102,175 @@ class SCR_BaseTourStage : SCR_BaseCampaignTutorialArlandStage
 		}
 		else if (IsInRange(m_AntennaPos, 8))
 		{
-			ShowServiceHint("Antenna");
+			if (!m_aVisitedServices.Contains(m_AntennaPos))
+			{
+				CancelHintOnVoiceOver();
+				SCR_HintManagerComponent.HideHint();
+				SCR_HintManagerComponent.ClearLatestHint();
+				m_aVisitedServices.Insert(m_AntennaPos);
+				PlaySoundSystem("BaseTour_Antenna");	
+			}
+			else
+			{
+				if (!m_TutorialComponent.GetVoiceSystem().IsPlaying())
+					ShowServiceHint("Antenna");
+			}
+			
 			return;
 		}
 		else if (IsInRange(m_ArmoryPos, 8))
 		{
-			ShowServiceHint("Armory");
+			if (!m_aVisitedServices.Contains(m_ArmoryPos))
+			{
+				CancelHintOnVoiceOver();
+				SCR_HintManagerComponent.HideHint();
+				SCR_HintManagerComponent.ClearLatestHint();
+				m_aVisitedServices.Insert(m_ArmoryPos);
+				PlaySoundSystem("BaseTour_Armory", true);	
+			}
+			else
+			{
+				if (!m_TutorialComponent.GetVoiceSystem().IsPlaying())
+					ShowServiceHint("Armory");
+			}
+			
 			return;
 		}
 		else if (IsInRange(m_FieldHospitalPos, 14))
 		{
-			ShowServiceHint("Hospital");
+			if (!m_aVisitedServices.Contains(m_FieldHospitalPos))
+			{
+				CancelHintOnVoiceOver();
+				SCR_HintManagerComponent.HideHint();
+				SCR_HintManagerComponent.ClearLatestHint();
+				m_aVisitedServices.Insert(m_FieldHospitalPos);
+				PlaySoundSystem("BaseTour_Hospital", true);	
+			}
+			else
+			{
+				if (!m_TutorialComponent.GetVoiceSystem().IsPlaying())
+					ShowServiceHint("Hospital");
+			}
+			
 			return;
 		}
 		else if (IsInRange(m_FuelDepotPos, 8))
 		{
-			ShowServiceHint("Fuel");
+			if (!m_aVisitedServices.Contains(m_FuelDepotPos))
+			{
+				CancelHintOnVoiceOver();
+				SCR_HintManagerComponent.HideHint();
+				SCR_HintManagerComponent.ClearLatestHint();
+				m_aVisitedServices.Insert(m_FuelDepotPos);
+				PlaySoundSystem("BaseTour_Fuel", true);	
+			}
+			else
+			{
+				if (!m_TutorialComponent.GetVoiceSystem().IsPlaying())
+					ShowServiceHint("Fuel");
+			}
+			
 			return;
 		}
 		else if (IsInRange(m_LivingQuartersPos, 8))
 		{
-			ShowServiceHint("Living");
+			if (!m_aVisitedServices.Contains(m_LivingQuartersPos))
+			{
+				CancelHintOnVoiceOver();
+				SCR_HintManagerComponent.HideHint();
+				SCR_HintManagerComponent.ClearLatestHint();
+				m_aVisitedServices.Insert(m_LivingQuartersPos);
+				PlaySoundSystem("BaseTour_LivingQuarters", true);	
+			}
+			else
+			{
+				if (!m_TutorialComponent.GetVoiceSystem().IsPlaying())
+					ShowServiceHint("Living");
+			}
+			
 			return;
 		}
 		else if (IsInRange(m_HQPos, 8))
 		{
-			ShowServiceHint("HQ");
+			if (!m_aVisitedServices.Contains(m_HQPos))
+			{
+				CancelHintOnVoiceOver();
+				SCR_HintManagerComponent.HideHint();
+				SCR_HintManagerComponent.ClearLatestHint();
+				m_aVisitedServices.Insert(m_HQPos);
+				PlaySoundSystem("BaseTour_HQTents");	
+			}
+			else
+			{
+				if (!m_TutorialComponent.GetVoiceSystem().IsPlaying())
+					ShowServiceHint("HQ");
+			}
+			
 			return;
 		}
 		else if (IsInRange(m_LightVehDepotPos, 8))
 		{
-			ShowServiceHint("LightVeh");
+			if (!m_aVisitedServices.Contains(m_LightVehDepotPos))
+			{
+				CancelHintOnVoiceOver();
+				SCR_HintManagerComponent.HideHint();
+				SCR_HintManagerComponent.ClearLatestHint();
+				m_aVisitedServices.Insert(m_LightVehDepotPos);
+				PlaySoundSystem("BaseTour_LightVeh", true);	
+			}
+			else
+			{
+				if (!m_TutorialComponent.GetVoiceSystem().IsPlaying())
+					ShowServiceHint("LightVeh");
+			}
+			
 			return;
 		}
 		else if (IsInRange(m_HeavyVehDepotPos, 18))
 		{
-			ShowServiceHint("HeavyVeh");
+			if (!m_aVisitedServices.Contains(m_HeavyVehDepotPos))
+			{
+				CancelHintOnVoiceOver();
+				SCR_HintManagerComponent.HideHint();
+				SCR_HintManagerComponent.ClearLatestHint();
+				m_aVisitedServices.Insert(m_HeavyVehDepotPos);
+				PlaySoundSystem("BaseTour_HeavyVeh", true);	
+			}
+			else
+			{
+				if (!m_TutorialComponent.GetVoiceSystem().IsPlaying())
+					ShowServiceHint("HeavyVeh");
+			}
+			
 			return;
 		}
 		else if (IsInRange(m_HeliportPos, 12))
 		{
-			ShowServiceHint("Heli");
+			if (!m_aVisitedServices.Contains(m_HeliportPos))
+			{
+				CancelHintOnVoiceOver();
+				SCR_HintManagerComponent.HideHint();
+				SCR_HintManagerComponent.ClearLatestHint();
+				m_aVisitedServices.Insert(m_HeliportPos);
+				PlaySoundSystem("BaseTour_Heli", true);	
+			}
+			else
+			{
+				if (!m_TutorialComponent.GetVoiceSystem().IsPlaying())
+					ShowServiceHint("Heli");
+			}
+			
 			return;
 		}
 		else
 		{
-			if (m_bIsShowingHint)
+			if (m_bIsShowingHint && !m_TutorialComponent.GetVoiceSystem().IsPlaying())
 				SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage(), "Default"));
 			
 			m_bIsShowingHint = false;
 		}
 	}
+	
 	//------------------------------------------------------------------------------------------------
 	override protected bool GetIsFinished()
 	{

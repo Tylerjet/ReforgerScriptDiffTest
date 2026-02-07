@@ -7,6 +7,13 @@ It lists all current and previous downloads.
 This is required because the menu can be opened after any of the downloads have been started,
 but by that time we must store the download references somewhere.
 */
+enum SCR_EDownloadManagerTabs
+{
+	ACTIVE = 0,
+	HISTORY
+}
+
+// TODO: move tab specific stuff to a child of SCR_SuperMenuComponent
 class SCR_DownloadManager_Dialog : SCR_TabDialog
 {
 	protected const string STATE_DOWNLOADING = "#AR-Workshop_TabName_Downloaded";
@@ -15,7 +22,8 @@ class SCR_DownloadManager_Dialog : SCR_TabDialog
 	protected const string STR_AFFECTED_MODS = "#AR-Workshop_FailedModsDownload";
 
 	protected const ResourceName DOWNLOAD_LINE_LAYOUT = "{FB196DBC0ABA6AE4}UI/layouts/Menus/ContentBrowser/DownloadManager/DownloadManagerEntry.layout";
-	protected const string DOWNLOAD_SUMMARY_FORMAT = "<color rgba=\"226, 167, 79, 255\">%1</color> / <color rgba=\"226, 167, 79, 255\">%2</color>";
+	protected const string DOWNLOAD_SUMMARY_FORMAT = "%1 / %2";
+	protected const string DOWNLOAD_SUMMARY_COLORED_FORMAT = "<color rgba=%1>%2</color>";
 	
 	protected const string FAILED_ADDON_FORMAT = "- %1 \n"; 
 	protected const string FAILED_ADDON_LIST_DIALOG = "failed_dialogs_list";
@@ -43,43 +51,29 @@ class SCR_DownloadManager_Dialog : SCR_TabDialog
 	//-----------------------------------------------------------------------------------------------
 	static SCR_DownloadManager_Dialog Create()
 	{
-		MenuBase menu = GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.DownloadManagerDialog);
-		
-		return SCR_DownloadManager_Dialog.Cast(menu);
+		return SCR_CommonDialogs.CreateDownloadManagerDialog();
 	}
-	
-	//------------------------------------------------------------------------------------------
-	//! Cretes a navigation button to open download manager
-	//! Use this in your menu: SCR_DownloadManager_Dialog.CreateNavigationButton(this);
-	static void CreateNavigationButton2(notnull SCR_SuperMenuBase superMenu)
-	{
-		SCR_InputButtonComponent button = superMenu.AddNavigationButton("MenuDownloadManager", "#AR-DownloadManager_ButtonDownloads", rightFooter: false);
-		button.m_OnActivated.Insert(SCR_DownloadManager_Dialog.Create);
-	}
-	
+
 	//------------------------------------------------------------------------------------------
 	// Override
 	//------------------------------------------------------------------------------------------
-	
 	//-----------------------------------------------------------------------------------------------
-	override void OnMenuOpen()
+	override void OnMenuOpen(SCR_ConfigurableDialogUiPreset preset)
 	{	
-		super.OnMenuOpen();
+		super.OnMenuOpen(preset);
 		
-		InitWidgets();
+		// Init widgets
+		m_Widgets.Init(GetRootWidget());
+		GetGame().GetInputManager().AddActionListener("MenuDownloadManager", EActionTrigger.DOWN, OnBackButton);
 		
-		SCR_SuperMenuComponent superMenu = SCR_SuperMenuComponent.Cast(GetRootWidget().FindHandler(SCR_SuperMenuComponent));
+		m_Widgets.m_Overlay.SetVisible(false);
+		m_Widgets.m_DownloadSummaryText.SetVisible(false);
+		m_Widgets.m_ProgressText.SetVisible(false);
 		
 		// Setup submenus 
-		m_ActiveDownloads = SCR_DownloadManagerListComponent.Cast(
-			m_SuperMenu.GetTabView().GetEntryContent(0).m_wTab.FindHandler(SCR_DownloadManagerListComponent));
+		m_ActiveDownloads = SCR_DownloadManagerListComponent.Cast(m_SuperMenuComponent.GetSubMenu(SCR_EDownloadManagerTabs.ACTIVE));
+		m_HistoryDownloads = SCR_DownloadManagerListComponent.Cast(m_SuperMenuComponent.GetSubMenu(SCR_EDownloadManagerTabs.HISTORY));
 		
-		m_ActiveDownloads.Init(superMenu);
-		
-		m_HistoryDownloads = SCR_DownloadManagerListComponent.Cast(
-			m_SuperMenu.GetTabView().GetEntryContent(1).m_wTab.FindHandler(SCR_DownloadManagerListComponent));
-		
-		m_HistoryDownloads.Init(superMenu);
 		m_HistoryDownloads.ShowPauseResumeAllButton(false);
 		
 		InitList();
@@ -198,17 +192,19 @@ class SCR_DownloadManager_Dialog : SCR_TabDialog
 			{
 				float downloadDoneSize =  SCR_DownloadManager.GetInstance().GetDownloadedSize();
 
-				string downloadTotalSizeStr = SCR_ByteFormat.ContentDownloadFormat(downloadTotalSize);
 				string downloadDoneSizeStr = SCR_ByteFormat.ContentDownloadFormat(downloadDoneSize);
+				string downloadTotalSizeStr = SCR_ByteFormat.ContentDownloadFormat(downloadTotalSize);
 				
-				m_Widgets.m_DownloadSummaryText.SetText(string.Format(DOWNLOAD_SUMMARY_FORMAT, downloadDoneSizeStr, downloadTotalSizeStr));
+				string coloredDone = WidgetManager.Translate(DOWNLOAD_SUMMARY_COLORED_FORMAT, UIColors.SRGBAFloatToInt(UIColors.CONTRAST_COLOR), downloadDoneSizeStr);
+				string coloredTotal = WidgetManager.Translate(DOWNLOAD_SUMMARY_COLORED_FORMAT, UIColors.SRGBAFloatToInt(UIColors.CONTRAST_COLOR), downloadTotalSizeStr);
+				
+				m_Widgets.m_DownloadSummaryText.SetText(string.Format(DOWNLOAD_SUMMARY_FORMAT, coloredDone, coloredTotal));
 			}
 		}
 		else
 		{
 			m_Widgets.m_ProgressBarComponent.SetValue(0);
 		}
-		
 	}
 	
 	//------------------------------------------------------------------------------------------
@@ -241,21 +237,9 @@ class SCR_DownloadManager_Dialog : SCR_TabDialog
 		m_Widgets.m_DownloadSpeed.SetText(Math.Round(speed).ToString() + unit);
 	}
 	
-	//------------------------------------------------------------------------------------------
-	// Custom
-	//------------------------------------------------------------------------------------------
-	
 	//-----------------------------------------------------------------------------------------------
-	protected void InitWidgets()
-	{
-		m_Widgets.Init(GetRootWidget());
-		GetGame().GetInputManager().AddActionListener("MenuDownloadManager", EActionTrigger.DOWN, OnBackButton);
-		
-		m_Widgets.m_Overlay.SetVisible(false);
-		m_Widgets.m_DownloadSummaryText.SetVisible(false);
-		m_Widgets.m_ProgressText.SetVisible(false);
-	}
-	
+	// Custom
+	//-----------------------------------------------------------------------------------------------
 	//-----------------------------------------------------------------------------------------------
 	// Init list of downloads
 	protected void InitList()
@@ -302,7 +286,6 @@ class SCR_DownloadManager_Dialog : SCR_TabDialog
 	//------------------------------------------------------------------------------------------
 	// Callbacks
 	//------------------------------------------------------------------------------------------
-	
 	//------------------------------------------------------------------------------------------
 	protected void OnNewDownload(SCR_WorkshopItem item, SCR_WorkshopItemActionDownload action)
 	{
@@ -357,7 +340,7 @@ class SCR_DownloadManager_Dialog : SCR_TabDialog
 			m_ActiveDownloads.ChangeEntryCategory(entry.GetRootWidget(), EDownloadManagerActionState.FAILED);
 		
 		// Open active and scroll up 
-		m_SuperMenu.GetTabView().ShowTab(0, false);
+		m_SuperMenuComponent.GetTabView().ShowTab(SCR_EDownloadManagerTabs.ACTIVE, false);
 		m_ActiveDownloads.ScrollTop();
 		
 		// Show error dialog 
@@ -515,12 +498,12 @@ class SCR_DownloadManager_Dialog : SCR_TabDialog
 	{
 		
 	}
-};
+}
 
 /*!
 A mini download manager dialog. It only has a few actions and a basic download progress indicator.
 */
-
+//------------------------------------------------------------------------------------------
 class SCR_DownloadManager_MiniDialog : SCR_ConfigurableDialogUi
 {
 	SCR_InputButtonComponent m_PauseResumeButton;
@@ -534,8 +517,6 @@ class SCR_DownloadManager_MiniDialog : SCR_ConfigurableDialogUi
 		return dlg;
 	}
 	
-	
-	
 	//------------------------------------------------------------------------------------------
 	override void OnMenuOpen(SCR_ConfigurableDialogUiPreset preset)
 	{
@@ -545,8 +526,6 @@ class SCR_DownloadManager_MiniDialog : SCR_ConfigurableDialogUi
 		m_PauseResumeButton.m_OnActivated.Insert(OnPauseResumeButton);
 		m_CancelButton.m_OnActivated.Insert(OnCancelButton);
 	}
-	
-	
 	
 	//------------------------------------------------------------------------------------------
 	override void OnMenuUpdate(float tDelta)
@@ -568,8 +547,6 @@ class SCR_DownloadManager_MiniDialog : SCR_ConfigurableDialogUi
 		m_CancelButton.SetEnabled(nTotal > 0);
 	}
 	
-	
-	
 	//------------------------------------------------------------------------------------------
 	protected void OnPauseResumeButton()
 	{
@@ -581,8 +558,6 @@ class SCR_DownloadManager_MiniDialog : SCR_ConfigurableDialogUi
 		bool paused = mgr.GetDownloadsPaused();
 		mgr.SetDownloadsPaused(!paused);
 	}
-	
-	
 	
 	//------------------------------------------------------------------------------------------
 	protected void OnCancelButton()
@@ -601,4 +576,4 @@ class SCR_DownloadManager_MiniDialog : SCR_ConfigurableDialogUi
 			action.Cancel();
 		}
 	}
-};
+}

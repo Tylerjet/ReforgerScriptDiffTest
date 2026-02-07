@@ -201,6 +201,16 @@ class SCR_DynamicFooterComponent : SCR_ScriptedWidgetComponent
 		return m_Buttons.Get(tag);
 	}
 
+	//----------------------------------------------------------------------------------------
+	//! Returns a button's tag
+	string GetButtonTag(SCR_InputButtonComponent button)
+	{
+		if(!button)
+			return string.Empty;
+		
+		return m_Buttons.GetKeyByValue(button);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Removes an existing button
 	bool RemoveButton(string tag)

@@ -12,7 +12,7 @@ class SCR_ConsumableMorphine : SCR_ConsumableEffectHealthItems
 	protected float m_fItemAbsoluteRegenerationAmount;
 	
 	//------------------------------------------------------------------------------------------------
-	override void ApplyEffect(notnull IEntity target, notnull IEntity user, IEntity item, SCR_ConsumableEffectAnimationParameters animParams)
+	override void ApplyEffect(notnull IEntity target, notnull IEntity user, IEntity item, ItemUseParameters animParams)
 	{
 		super.ApplyEffect(target, user, item, animParams);
 
@@ -28,11 +28,11 @@ class SCR_ConsumableMorphine : SCR_ConsumableEffectHealthItems
 		damageMgr.GetPhysicalHitZones(physicalHitZones);
 		foreach (HitZone physicalHitZone: physicalHitZones)
 		{
-			ScriptedHitZone scriptedHitZone = ScriptedHitZone.Cast(physicalHitZone);
-			if (!scriptedHitZone)
+			SCR_HitZone hitzone = SCR_HitZone.Cast(physicalHitZone);
+			if (!hitzone)
 				continue;
 
-			scriptedHitZone.CustomRegeneration(target, m_fItemRegenerationDuration, m_fItemRegenerationSpeed, m_fItemAbsoluteRegenerationAmount);
+			hitzone.CustomRegeneration(target, m_fItemRegenerationDuration, m_fItemRegenerationSpeed, m_fItemAbsoluteRegenerationAmount);
 		}		
 	}
 	
@@ -74,6 +74,7 @@ class SCR_ConsumableMorphine : SCR_ConsumableEffectHealthItems
 	}
 		
 	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_ConsumableMorphine()
 	{
 		m_eConsumableType = SCR_EConsumableType.MORPHINE;

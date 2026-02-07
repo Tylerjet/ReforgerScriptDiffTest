@@ -1,9 +1,8 @@
 [ComponentEditorProps(category: "GameScripted/Test", description: "Test component showcasing doing the replication from script the WRONG way")]
-class SCR_RplTestComponentWrongClass: ScriptComponentClass
+class SCR_RplTestComponentWrongClass : ScriptComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_RplTestComponentWrong : ScriptComponent
 {
 	[RplProp(condition: RplCondition.NoOwner)]
@@ -16,7 +15,7 @@ class SCR_RplTestComponentWrong : ScriptComponent
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	void NetTestRpc(int testNum)
 	{
-		Print("RPC RECEIVE: " + testNum.ToString());
+		Print("RPC RECEIVE: " + testNum, LogLevel.NORMAL);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -30,7 +29,7 @@ class SCR_RplTestComponentWrong : ScriptComponent
 			// When performed on server, this is broadcast to everyone.
 			// However when executed on client, this is only performed on the client.
 			Rpc(NetTestRpc, rndRPCNum);
-			Print("RPC SEND: " + rndRPCNum.ToString());
+			Print("RPC SEND: " + rndRPCNum, LogLevel.NORMAL);
 		}
 		
 		/*
@@ -61,7 +60,8 @@ class SCR_RplTestComponentWrong : ScriptComponent
 				in an array depending on your needs.
 			*/
 			if (m_iTestLast != m_iTest)
-				Print("RPLPROP CHANGED: " + m_iTest);
+				Print("RPLPROP CHANGED: " + m_iTest, LogLevel.NORMAL);
+
 			m_iTestLast = m_iTest;
 		}
 		else
@@ -89,9 +89,4 @@ class SCR_RplTestComponentWrong : ScriptComponent
 		SetEventMask(ent, EntityEvent.FRAME);
 		ent.SetFlags(EntityFlags.ACTIVE, true);
 	}
-
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_RplTestComponentWrong()
-	{
-	}
-};
+}

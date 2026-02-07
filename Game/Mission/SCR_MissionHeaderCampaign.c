@@ -5,9 +5,6 @@ class SCR_MissionHeaderCampaign : SCR_MissionHeader
 	
 	[Attribute("-1", UIWidgets.EditBox, "How long a faction needs to hold the control points, in seconds (override, -1 for default)")]
 	float m_fVictoryTimeout;
-	
-	[Attribute("-1", UIWidgets.EditBox, "Maximum amount of active respawn radios (override, -1 for default)")]
-	int m_iMaximumRespawnRadios;
 
 	[Attribute("-1", UIWidgets.EditBox, "How much supplies should the main HQ start with")]
 	int m_iStartingHQSupplies;

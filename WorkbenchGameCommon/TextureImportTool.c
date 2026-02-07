@@ -123,6 +123,7 @@ class TextureType
 		COType.AddBaseConfig("XBOX_ONE", "{91D862F89991BFBE}configs/ResourceTypes/XBOX_ONE/TextureColorMap.conf");
 		COType.AddBaseConfig("XBOX_SERIES", "{5FEAED1642ECE679}configs/ResourceTypes/XBOX_SERIES/TextureColorMap.conf");
 		COType.AddBaseConfig("PS4", "{12273E1A0928F0C4}configs/ResourceTypes/PS4/TextureColorMap.conf");
+		COType.AddBaseConfig("PS5", "{531A0D167B1ABD97}configs/ResourceTypes/PS5/TextureColorMap.conf");
 		COType.AddBaseConfig("HEADLESS", "{BEAF5CD0C438676E}configs/ResourceTypes/HEADLESS/TextureColorMap.conf");
 
 		ref TextureType BCType = new TextureType(container, "_BC.");
@@ -158,6 +159,7 @@ class TextureType
 		EMType.AddBaseConfig("XBOX_ONE", "{91D862F89991BFBE}configs/ResourceTypes/XBOX_ONE/TextureColorMap.conf");
 		EMType.AddBaseConfig("XBOX_SERIES", "{5FEAED1642ECE679}configs/ResourceTypes/XBOX_SERIES/TextureColorMap.conf");
 		EMType.AddBaseConfig("PS4", "{12273E1A0928F0C4}configs/ResourceTypes/PS4/TextureColorMap.conf");
+		EMType.AddBaseConfig("PS5", "{531A0D167B1ABD97}configs/ResourceTypes/PS5/TextureColorMap.conf");
 		EMType.AddBaseConfig("HEADLESS", "{BEAF5CD0C438676E}configs/ResourceTypes/HEADLESS/TextureColorMap.conf");
 
 		//--------------------------------------------------------------------
@@ -169,6 +171,7 @@ class TextureType
 		MCRType.AddBaseConfig("XBOX_ONE", "{224B78299A038E4A}configs/ResourceTypes/XBOX_ONE/TextureMCRMap.conf");
 		MCRType.AddBaseConfig("XBOX_SERIES", "{B5FA7506CF384E79}configs/ResourceTypes/XBOX_SERIES/TextureMCRMap.conf");
 		MCRType.AddBaseConfig("PS4", "{E7A6FCCE55593073}configs/ResourceTypes/PS4/TextureMCRMap.conf");
+		MCRType.AddBaseConfig("PS5", "{E3BE705DB85AD3CA}configs/ResourceTypes/PS5/TextureMCRMap.conf");
 		MCRType.AddBaseConfig("HEADLESS", "{D49C34F7354B6F47}configs/ResourceTypes/HEADLESS/TextureMCRMap.conf");
 
 		//--------------------------------------------------------------------
@@ -179,6 +182,7 @@ class TextureType
 		NOType.AddBaseConfig("XBOX_ONE", "{5B84FAB5D39FB8AA}configs/ResourceTypes/XBOX_ONE/TextureNormalMap.conf");
 		NOType.AddBaseConfig("XBOX_SERIES", "{1B409AA3788B720F}configs/ResourceTypes/XBOX_SERIES/TextureNormalMap.conf");
 		NOType.AddBaseConfig("PS4", "{9533DFD9EDDCEDD2}configs/ResourceTypes/PS4/TextureNormalMap.conf");
+		NOType.AddBaseConfig("PS5", "{5CEA2418C9F889F8}configs/ResourceTypes/PS5/TextureTerrainNormal.conf");
 		NOType.AddBaseConfig("HEADLESS", "{FC84ABE4B37D0DA0}configs/ResourceTypes/HEADLESS/TextureNormalMap.conf");
 
 		ref TextureType NType = new TextureType(container, "_N.");
@@ -199,6 +203,7 @@ class TextureType
 		NMOType.AddBaseConfig("XBOX_ONE", "{7F6A4D372443A88D}configs/ResourceTypes/XBOX_ONE/TextureNType.conf");
 		NMOType.AddBaseConfig("XBOX_SERIES", "{065D289C7FF8B20D}configs/ResourceTypes/XBOX_SERIES/TextureNType.conf");
 		NMOType.AddBaseConfig("PS4", "{29DF4A6CBBABE916}configs/ResourceTypes/PS4/TextureNType.conf");
+		NMOType.AddBaseConfig("PS5", "{DED3C8CA8494EA99}configs/ResourceTypes/PS5/TextureNType.conf");
 		NMOType.AddBaseConfig("HEADLESS", "{AFD658E4D0EB5FBC}configs/ResourceTypes/HEADLESS/TextureNType.conf");
 
 		ref TextureType NHOType = new TextureType(container, "_NHO.");
@@ -217,6 +222,7 @@ class TextureType
 		VFXType.AddBaseConfig("XBOX_ONE", "{CA41B00C72F6D179}configs/ResourceTypes/XBOX_ONE/TextureEffect.conf");
 		VFXType.AddBaseConfig("XBOX_SERIES", "{5DF0BD2327CD114A}configs/ResourceTypes/XBOX_SERIES/TextureEffect.conf");
 		VFXType.AddBaseConfig("PS4", "{0FAC34EBBDAC6F40}configs/ResourceTypes/PS4/TextureEffect.conf");
+		VFXType.AddBaseConfig("PS5", "{0BB4B87850AF8CF9}configs/ResourceTypes/PS5/TextureEffect.conf");
 		VFXType.AddBaseConfig("HEADLESS", "{3C96FCD2DDBE3074}configs/ResourceTypes/HEADLESS/TextureEffect.conf");
 
 		//--------------------------------------------------------------------
@@ -227,6 +233,7 @@ class TextureType
 		MASKQType.AddBaseConfig("XBOX_ONE", "{3B78A666261DD8B4}configs/ResourceTypes/XBOX_ONE/TextureMask.conf");
 		MASKQType.AddBaseConfig("XBOX_SERIES", "{9A79E1F659B378E7}configs/ResourceTypes/XBOX_SERIES/TextureMask.conf");
 		MASKQType.AddBaseConfig("PS4", "{5CB64ED6EEBDE368}configs/ResourceTypes/PS4/TextureMask.conf");
+		MASKQType.AddBaseConfig("PS5", "{64796311C22F7B3C}configs/ResourceTypes/PS5/TextureMask.conf");
 		MASKQType.AddBaseConfig("HEADLESS", "{0B025DFAF55852CD}configs/ResourceTypes/HEADLESS/TextureMask.conf");
 
 		ref TextureType MASK1QType = new TextureType(container, "_MASK1.");
@@ -235,6 +242,7 @@ class TextureType
 		MASK1QType.AddBaseConfig("XBOX_ONE", "{870BE93DB3625C84}configs/ResourceTypes/XBOX_ONE/TextureMask1.conf");
 		MASK1QType.AddBaseConfig("XBOX_SERIES", "{FE3C8C96E8D94604}configs/ResourceTypes/XBOX_SERIES/TextureMask1.conf");
 		MASK1QType.AddBaseConfig("PS4", "{D1BEEE662C8A1D1F}configs/ResourceTypes/PS4/TextureMask1.conf");
+		MASK1QType.AddBaseConfig("PS5", "{26B26CC013B51E90}configs/ResourceTypes/PS5/TextureMask1.conf");
 		MASK1QType.AddBaseConfig("HEADLESS", "{57B7FCEE47CAABB5}configs/ResourceTypes/HEADLESS/TextureMask1.conf");
 
 		ref TextureType MASK2QType = new TextureType(container, "_MASK2.");
@@ -243,6 +251,7 @@ class TextureType
 		MASK2QType.AddBaseConfig("XBOX_ONE", "{D9E3C07E0CEFD28B}configs/ResourceTypes/XBOX_ONE/TextureMask2.conf");
 		MASK2QType.AddBaseConfig("XBOX_SERIES", "{A0D4A5D55754C80B}configs/ResourceTypes/XBOX_SERIES/TextureMask2.conf");
 		MASK2QType.AddBaseConfig("PS4", "{8F56C72593079310}configs/ResourceTypes/PS4/TextureMask2.conf");
+		MASK2QType.AddBaseConfig("PS5", "{785A4583AC38909F}configs/ResourceTypes/PS5/TextureMask2.conf");
 		MASK2QType.AddBaseConfig("HEADLESS", "{095FD5ADF84725BA}configs/ResourceTypes/HEADLESS/TextureMask2.conf");
 
 		
@@ -258,6 +267,7 @@ class TextureType
 		CMASKType.AddBaseConfig("XBOX_ONE", "{B131630EAD4622F8}configs/ResourceTypes/XBOX_ONE/TextureCMask.conf");
 		CMASKType.AddBaseConfig("XBOX_SERIES", "{C80606A5F6FD3877}configs/ResourceTypes/XBOX_SERIES/TextureCMask.conf");
 		CMASKType.AddBaseConfig("PS4", "{E784645532AE636D}configs/ResourceTypes/PS4/TextureCMask.conf");
+		CMASKType.AddBaseConfig("PS5", "{1088E6F30D9160E3}configs/ResourceTypes/PS5/TextureCMask.conf");
 		CMASKType.AddBaseConfig("HEADLESS", "{618D76DD59EED5C6}configs/ResourceTypes/HEADLESS/TextureCMask.conf");
 	
 		
@@ -269,6 +279,7 @@ class TextureType
 		AType.AddBaseConfig("XBOX_ONE", "{DC95471339A9BC2B}configs/ResourceTypes/XBOX_ONE/TextureOneChannel.conf");
 		AType.AddBaseConfig("XBOX_SERIES", "{C2F053ADC70F3804}configs/ResourceTypes/XBOX_SERIES/TextureOneChannel.conf");
 		AType.AddBaseConfig("PS4", "{19FBA5E0ACB1C98E}configs/ResourceTypes/PS4/TextureOneChannel.conf");
+		AType.AddBaseConfig("PS5", "{EE57BA009CACD0D1}configs/ResourceTypes/PS5/TextureOneChannel.conf");
 		AType.AddBaseConfig("HEADLESS", "{6866463573917E52}configs/ResourceTypes/HEADLESS/TextureOneChannel.conf");
 
 		ref TextureType HType = new TextureType(container, "_H.");
@@ -287,6 +298,7 @@ class TextureType
 		layerType.AddBaseConfig("XBOX_ONE", "{9843D16A29542D5A}configs/ResourceTypes/XBOX_ONE/TextureTerrainLayer.conf");
 		layerType.AddBaseConfig("XBOX_SERIES", "{2071F9D39E062268}configs/ResourceTypes/XBOX_SERIES/TextureTerrainLayer.conf");
 		layerType.AddBaseConfig("PS4", "{4C431036F57D4D58}configs/ResourceTypes/PS4/TextureTerrainLayer.conf");
+		layerType.AddBaseConfig("PS5", "{BA3AFE83BEFD6794}configs/ResourceTypes/PS5/TextureTerrainLayer.conf");
 		layerType.AddBaseConfig("HEADLESS", "{3B38AD285230D19F}configs/ResourceTypes/HEADLESS/TextureTerrainLayer.conf");
 
 		ref TextureType supertextureType = new TextureType(container, "_supertexture.");
@@ -296,6 +308,7 @@ class TextureType
 		supertextureType.AddBaseConfig("XBOX_ONE", "{F67DC4532F3BBA43}configs/ResourceTypes/XBOX_ONE/TextureTerrainSuper.conf");
 		supertextureType.AddBaseConfig("XBOX_SERIES", "{4E4FECEA9869B571}configs/ResourceTypes/XBOX_SERIES/TextureTerrainSuper.conf");
 		supertextureType.AddBaseConfig("PS4", "{227D050FF312DA41}configs/ResourceTypes/PS4/TextureTerrainSuper.conf");
+		supertextureType.AddBaseConfig("PS5", "{D404EBBAB892F08D}configs/ResourceTypes/PS5/TextureTerrainSuper.conf");
 		supertextureType.AddBaseConfig("HEADLESS", "{5506B811545F4686}configs/ResourceTypes/HEADLESS/TextureTerrainSuper.conf");
 
 		ref TextureType normaltextureType = new TextureType(container, "_normal.");
@@ -304,6 +317,7 @@ class TextureType
 		normaltextureType.AddBaseConfig("XBOX_ONE", "{6C5EFFA712A52100}configs/ResourceTypes/XBOX_ONE/TextureTerrainNormal.conf");
 		normaltextureType.AddBaseConfig("XBOX_SERIES", "{90ADE65A903F3042}configs/ResourceTypes/XBOX_SERIES/TextureTerrainNormal.conf");
 		normaltextureType.AddBaseConfig("PS4", "{6F6E5A1432381FD2}configs/ResourceTypes/PS4/TextureTerrainNormal.conf");
+		normaltextureType.AddBaseConfig("PS5", "{5CEA2418C9F889F8}configs/ResourceTypes/PS5/TextureTerrainNormal.conf");
 		normaltextureType.AddBaseConfig("HEADLESS", "{EAB38BDFD096C0A6}configs/ResourceTypes/HEADLESS/TextureTerrainNormal.conf");
 
 		// UI texture atlas
@@ -313,6 +327,7 @@ class TextureType
 		UITextureAtlasType.AddBaseConfig("XBOX_ONE", "{96767353535A4256}configs/ResourceTypes/XBOX_ONE/TextureUIAtlas.conf");
 		UITextureAtlasType.AddBaseConfig("XBOX_SERIES", "{8A3A5BA26FD3DE70}configs/ResourceTypes/XBOX_SERIES/TextureUIAtlas.conf");
 		UITextureAtlasType.AddBaseConfig("PS4", "{962DE8F3FC2848A3}configs/ResourceTypes/PS4/TextureUIAtlas.conf");
+		UITextureAtlasType.AddBaseConfig("PS5", "{BED5DFAD2A554849}configs/ResourceTypes/PS5/TextureUIAtlas.conf");
 		UITextureAtlasType.AddBaseConfig("HEADLESS", "{15892FB1C3E30D2C}configs/ResourceTypes/HEADLESS/TextureUIAtlas.conf");
 
 		// UI textures
@@ -321,6 +336,7 @@ class TextureType
 		uiType.AddBaseConfig("XBOX_ONE", "{5E6D8E2B87D36B34}configs/ResourceTypes/XBOX_ONE/TextureUI.conf");
 		uiType.AddBaseConfig("XBOX_SERIES", "{03194CD39583675A}configs/ResourceTypes/XBOX_SERIES/TextureUI.conf");
 		uiType.AddBaseConfig("PS4", "{A752014F057BCE60}configs/ResourceTypes/PS4/TextureUI.conf");
+		uiType.AddBaseConfig("PS5", "{8BEB72EF65A8FB2E}configs/ResourceTypes/PS5/TextureUI.conf");
 		uiType.AddBaseConfig("HEADLESS", "{E604D15366D985DF}configs/ResourceTypes/HEADLESS/TextureUI.conf");
 		
 		// UI textures uncompressed
@@ -329,6 +345,7 @@ class TextureType
 		uiTypeUncompressed.AddBaseConfig("XBOX_ONE", "{712BC6681ADE741A}configs/ResourceTypes/XBOX_ONE/TextureUIUncompressed.conf");
 		uiTypeUncompressed.AddBaseConfig("XBOX_SERIES", "{B613AECC9D415504}configs/ResourceTypes/XBOX_SERIES/TextureUIUncompressed.conf");
 		uiTypeUncompressed.AddBaseConfig("PS4", "{9A726D592B629239}configs/ResourceTypes/PS4/TextureUIUncompressed.conf");
+		uiTypeUncompressed.AddBaseConfig("PS5", "{30FCD9651534E6BB}configs/ResourceTypes/PS5/TextureUIUncompressed.conf");
 		uiTypeUncompressed.AddBaseConfig("HEADLESS", "{A677FEF8099B272E}configs/ResourceTypes/HEADLESS/TextureUIUncompressed.conf");
 		
 		// Env. map (Generate env map from panorama, HDR compression enabled by default)
@@ -337,6 +354,7 @@ class TextureType
 		environmentMapType.AddBaseConfig("XBOX_ONE", "{841CE65D460ACA08}configs/ResourceTypes/XBOX_ONE/TextureEnvMap.conf");
 		environmentMapType.AddBaseConfig("XBOX_SERIES", "{13ADEB7213310A3B}configs/ResourceTypes/XBOX_SERIES/TextureEnvMap.conf");
 		environmentMapType.AddBaseConfig("PS4", "{41F162BA89507431}configs/ResourceTypes/PS4/TextureEnvMap.conf");
+		environmentMapType.AddBaseConfig("PS5", "{45E9EE2964539788}configs/ResourceTypes/PS5/TextureEnvMap.conf");
 		environmentMapType.AddBaseConfig("HEADLESS", "{72CBAA83E9422B05}configs/ResourceTypes/HEADLESS/TextureEnvMap.conf");
 
 		//Lut texture
@@ -345,6 +363,7 @@ class TextureType
 		lutType.AddBaseConfig("XBOX_ONE", "{9AE8215636729E7A}configs/ResourceTypes/XBOX_ONE/TextureLut.conf");
 		lutType.AddBaseConfig("XBOX_SERIES", "{CBB7E88AA7DE5748}configs/ResourceTypes/XBOX_SERIES/TextureLut.conf");
 		lutType.AddBaseConfig("PS4", "{F34906600DC4FE84}configs/ResourceTypes/PS4/TextureLut.conf");
+		lutType.AddBaseConfig("PS5", "{5D15FD30EDF58E3B}configs/ResourceTypes/PS5/TextureLut.conf");
 		lutType.AddBaseConfig("HEADLESS", "{3D6CF9FDEC095638}configs/ResourceTypes/HEADLESS/TextureLut.conf");
 		
 		//this is special type, it looks if file with same name but .fnt extension is exist next to .edds
@@ -353,6 +372,7 @@ class TextureType
 		fontType.AddBaseConfig("XBOX_ONE", "{02B393E0229C74CB}configs/ResourceTypes/XBOX_ONE/TextureFonts.conf");
 		fontType.AddBaseConfig("XBOX_SERIES", "{85ECC27BD918BA89}configs/ResourceTypes/XBOX_SERIES/TextureFonts.conf");
 		fontType.AddBaseConfig("PS4", "{3C102C974458DF07}configs/ResourceTypes/PS4/TextureFonts.conf");
+		fontType.AddBaseConfig("PS5", "{863E314F45203AC4}configs/ResourceTypes/PS5/TextureFonts.conf");
 		fontType.AddBaseConfig("HEADLESS", "{D20F8633D63483FA}configs/ResourceTypes/HEADLESS/TextureFonts.conf");
 		
 		//this is special type which will be assigned when no one from normal types above matches
@@ -362,6 +382,7 @@ class TextureType
 		unspecifiedType.AddBaseConfig("XBOX_ONE", "{8F13AE697AE60784}configs/ResourceTypes/XBOX_ONE/TextureUnspecified.conf");
 		unspecifiedType.AddBaseConfig("XBOX_SERIES", "{D28E01700D90F52C}configs/ResourceTypes/XBOX_SERIES/TextureUnspecified.conf");
 		unspecifiedType.AddBaseConfig("PS4", "{C6CD3D8752652D2A}configs/ResourceTypes/PS4/TextureUnspecified.conf");
+		unspecifiedType.AddBaseConfig("PS5", "{6248F71B9D7C1E93}configs/ResourceTypes/PS5/TextureUnspecified.conf");
 		unspecifiedType.AddBaseConfig("HEADLESS", "{699C82A6807668A7}configs/ResourceTypes/HEADLESS/TextureUnspecified.conf");
 
 		// new TextureType(container, "_ads.");

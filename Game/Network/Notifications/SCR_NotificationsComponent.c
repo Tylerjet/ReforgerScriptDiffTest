@@ -4,16 +4,14 @@ class SCR_NotificationsComponentClass: ScriptComponentClass
 	[Attribute("{7134157CA6B1FA8E}Configs/Notifications/Notifications.conf", desc: "Link to config that holds all notification data", params: "conf class=SCR_NotificationConfig")]
 	protected ResourceName m_sNotificationConfig;
 	
-	//Notification Display Data Map
-	protected ref map<ENotification, ref SCR_NotificationDisplayData> m_mNotificationDisplayDataMap = new map<ENotification, ref SCR_NotificationDisplayData>;
+	protected ref map<ENotification, ref SCR_NotificationDisplayData> m_mNotificationDisplayDataMap = new map<ENotification, ref SCR_NotificationDisplayData>();
 	
 	protected ref SCR_NotificationConfig notificationConfig;
 	
-	/*!
-	Get notification display data from notification ID
-	\param notificationID ID of notification
-	\return DisplayData of notification
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get notification display data from notification ID
+	//! \param[in] notificationID ID of notification
+	//! \return DisplayData of notification
 	SCR_NotificationDisplayData GetNotificationDisplayData(ENotification notificationID)
 	{
 		SCR_NotificationDisplayData notificationData;
@@ -27,17 +25,23 @@ class SCR_NotificationsComponentClass: ScriptComponentClass
 		return notificationData;
 	}
 	
-	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	array<string> GetStickyNotifications()
 	{
 		return notificationConfig.GetStickyNotifications();
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	array<ref SCR_NotificationDisplayColor> GetNotificationDisplayColor()
 	{
 		return notificationConfig.GetNotificationDisplayColor();
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] prefab
 	//~ Constructor creates notification map for the system to get the notification data for each ENotification
 	void SCR_NotificationsComponentClass(BaseContainer prefab)
 	{
@@ -66,15 +70,13 @@ class SCR_NotificationsComponentClass: ScriptComponentClass
 				Print("Notification data in 'SCR_NotificationsLogDisplay' has duplicate notification info key: '" + typename.EnumToString(ENotification, data[i].m_NotificationKey) + "'. There should only be one of each key!", LogLevel.WARNING);
         }
 	}		
-};
+}
 
-/*!
-Framework for sending notifications to players.
-*/
+//! Framework for sending notifications to players.
 class SCR_NotificationsComponent : ScriptComponent
 {
-	protected ref array<ref SCR_NotificationData> m_aHistory = new array<ref SCR_NotificationData>;
-	protected ref ScriptInvoker Event_OnNotification = new ScriptInvoker;
+	protected ref array<ref SCR_NotificationData> m_aHistory = {};
+	protected ref ScriptInvoker Event_OnNotification = new ScriptInvoker();
 	
 	protected SCR_NotificationData m_LastNotificationWithLocation;
 	protected bool m_bIsUpdatingNotificationData;
@@ -86,38 +88,35 @@ class SCR_NotificationsComponent : ScriptComponent
 	static const int NOTIFICATION_HISTORY_LENGTH = 10;
 	
 	//Hot fix for when player names cannot be found
-	protected ref map <int, string> m_mPlayerNameHistory = new ref map <int, string>;
+	protected ref map <int, string> m_mPlayerNameHistory = new map <int, string>();
 
-	/*!
-	Get invoker called on player's machine when a notification is received
-	\return Script invoker
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get invoker called on player's machine when a notification is received
+	//! \return Script invoker
 	ScriptInvoker GetOnNotification()
 	{
 		return Event_OnNotification;
 	}
 	
-	/*!
-	Get the list of previous notifications. (new to old)
-	\param[out] outHistory Array to be filled with notifications, newest first
-	\return Number of notifications
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get the list of previous notifications. (new to old)
+	//! \param[out] outHistory Array to be filled with notifications, newest first - not emptied before filling
+	//! \return Number of notifications
 	int GetHistoryNewToOld(out notnull array<SCR_NotificationData> outHistory)
 	{
 		int count = m_aHistory.Count();
-		for (int i = 0; i < count; i++)
+		foreach (SCR_NotificationData entry : m_aHistory)
 		{
-			outHistory.Insert(m_aHistory[i]);
+			outHistory.Insert(entry);
 		}
 		return count;
 	}
 	
-	/*!
-	Get the list of previous notifications. (old to new)
-	\param[out] outHistory Array to be filled with notifications, oldest first
-	\param how far back the history needs to be taken from. -1 means this is ignored
-	\return Number of notifications
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get the list of previous notifications. (old to new)
+	//! \param[out] outHistory Array to be filled with notifications, oldest first - not emptied before filling
+	//! \param how far back the history needs to be taken from. -1 means this is ignored
+	//! \return Number of notifications
 	int GetHistoryOldToNew(out notnull array<SCR_NotificationData> outHistory, int maxHistoryIndex = -1)
 	{
 		int count = m_aHistory.Count();
@@ -131,12 +130,11 @@ class SCR_NotificationsComponent : ScriptComponent
 		return count;
 	}
 	
-	/*!
-	Get the the specific history entry
-	\param index int index of history entry
-	\param[out] data SCR_NotificationData of the history entry with given index
-	\return false if index was not found
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get the the specific history entry
+	//! \param[in] index int index of history entry
+	//! \param[out] data SCR_NotificationData of the history entry with given index
+	//! \return false if index was not found
 	bool GetHistoryEntry(int index, out SCR_NotificationData data = null)
 	{		
 		if (index < m_aHistory.Count())
@@ -150,11 +148,10 @@ class SCR_NotificationsComponent : ScriptComponent
 		}
 	}
 	
-	/*!
-	Get last ping location
-	\param[out] lastPingLocation last ping location vector
-	\return false if no last location
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get last ping location
+	//! \param[out] lastPingLocation last ping location vector
+	//! \return false if no last location
 	bool GetLastNotificationLocation(out vector lastLocation)
 	{
 		if (!m_LastNotificationWithLocation || !m_LastNotificationWithLocation.GetDisplayData())
@@ -163,10 +160,9 @@ class SCR_NotificationsComponent : ScriptComponent
 		return m_LastNotificationWithLocation.GetDisplayData().GetPosition(m_LastNotificationWithLocation, lastLocation);
 	}
 	
-	/*!
-	Get local instance of the notifications system.
-	\return Notifications component
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get local instance of the notifications system.
+	//! \return Notifications component
 	static SCR_NotificationsComponent GetInstance()
 	{
 		PlayerController playerController = GetGame().GetPlayerController();
@@ -176,35 +172,32 @@ class SCR_NotificationsComponent : ScriptComponent
 			return null;
 	}
 	
-	
-	/*!
-	Send notification to all players
-	\param notificationID ID of the notification MessageBox
-  	\param param1
-	\param param2
-	\param param3
-	\param param4
-	\param param5
-	\param param6
-	\return True if the notification was sent successfully
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Send notification to all players
+	//! \param[in] notificationID ID of the notification MessageBox
+	//! \param[in] param1
+	//! \param[in] param2
+	//! \param[in] param3
+	//! \param[in] param4
+	//! \param[in] param5
+	//! \param[in] param6
+	//! \return True if the notification was sent successfully
 	static bool SendToEveryone(ENotification notificationID, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
 		return SendToEveryone(notificationID, vector.Zero, param1, param2, param3, param4, param5, param6);
 	}
 	
-	/*!
-	Send notification to all players
-	\param notificationID ID of the notification message
-	\param position notification position
-	\param param1
-	\param param2
-	\param param3
-	\param param4
-	\param param5
-	\param param6
-	\return True if the notification was sent successfully
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Send notification to all players
+	//! \param[in] notificationID ID of the notification message
+	//! \param[in] position notification position
+	//! \param[in] param1
+	//! \param[in] param2
+	//! \param[in] param3
+	//! \param[in] param4
+	//! \param[in] param5
+	//! \param[in] param6
+	//! \return True if the notification was sent successfully
 	static bool SendToEveryone(ENotification notificationID, vector position, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
 		//~ Send from client to server to broadcast
@@ -230,7 +223,8 @@ class SCR_NotificationsComponent : ScriptComponent
 		newNotificationData.SetPosition(position);
 		return SendToEveryoneData(notificationID, newNotificationData);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	//~ Allows client to broadcast notification to everyone
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void Rpc_SendToEveryone(ENotification notificationID, vector position, notnull array<int> paramArray)
@@ -241,6 +235,7 @@ class SCR_NotificationsComponent : ScriptComponent
 		SendToEveryone(notificationID, position, param1, param2, param3, param4, param5, param6);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//Set the actual data to players
 	protected static bool SendToEveryoneData(ENotification notificationID, SCR_NotificationData data)
 	{
@@ -248,44 +243,42 @@ class SCR_NotificationsComponent : ScriptComponent
 		if (!Replication.IsServer()) 
 			return false;
 		
-		array<int> players = new array<int>;
+		array<int> players = {};
 		for (int i = 0, count = GetGame().GetPlayerManager().GetPlayers(players); i < count; i++)
 		{
 			SendToPlayerData(players[i], notificationID, data);
 		}
 		return true;
 	}
-	
-	/*!
-	Send notification to player with given ID
-	\param playerID Id of the recipient
-	\param notificationID ID of the notification message
-	\param param1
-	\param param2
-	\param param3
-	\param param4
-	\param param5
-	\param param6
-	\return True if the notification was sent successfully
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Send notification to player with given ID
+	//! \param[in] playerID Id of the recipient
+	//! \param[in] notificationID ID of the notification message
+	//! \param[in] param1
+	//! \param[in] param2
+	//! \param[in] param3
+	//! \param[in] param4
+	//! \param[in] param5
+	//! \param[in] param6
+	//! \return True if the notification was sent successfully
 	static bool SendToPlayer(int playerID, ENotification notificationID, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
 		return SendToPlayer(playerID, notificationID, vector.Zero, param1, param2, param3, param4, param5, param6);
 	}
-	
-	/*!
-	Send notification to player with given ID
-	\param playerID Id of the recipient
-	\param notificationID ID of the notification message
-	\param position notification position
-	\param param1
-	\param param2
-	\param param3
-	\param param4
-	\param param5
-	\param param6
-	\return True if the notification was sent successfully
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Send notification to player with given ID
+	//! \param[in] playerID Id of the recipient
+	//! \param[in] notificationID ID of the notification message
+	//! \param[in] position notification position
+	//! \param[in] param1
+	//! \param[in] param2
+	//! \param[in] param3
+	//! \param[in] param4
+	//! \param[in] param5
+	//! \param[in] param6
+	//! \return True if the notification was sent successfully
 	static bool SendToPlayer(int playerID, ENotification notificationID, vector position, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
 		//~ Send from client to server
@@ -312,6 +305,7 @@ class SCR_NotificationsComponent : ScriptComponent
 		return SendToPlayerData(playerID, notificationID, newNotificationData);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//~ Allows client to broadcast notification to specific player
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void Rpc_SendToPlayer(int playerID, ENotification notificationID, vector position, notnull array<int> paramArray)
@@ -322,6 +316,7 @@ class SCR_NotificationsComponent : ScriptComponent
 		SendToPlayer(playerID, notificationID, position, param1, param2, param3, param4, param5, param6);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//Set the actual data to player
 	protected static bool SendToPlayerData(int playerID, ENotification notificationID, SCR_NotificationData data)
 	{
@@ -340,39 +335,37 @@ class SCR_NotificationsComponent : ScriptComponent
 		notificationsComponent.SendToOwner(notificationID, data);
 		return true;
 	}
-	
-	/*!
-	Send notification to player with given ID
-	\param faction Faction of players to send notification to
-	\param includeFriendlyFactions If true it will also send the notification to factions friendly to the given faction
-	\param notificationID ID of the notification message
-	\param param1
-	\param param2
-	\param param3
-	\param param4
-	\param param5
-	\param param6
-	\return True if the notification was sent successfully
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Send notification to player with given ID
+	//! \param[in] faction Faction of players to send notification to
+	//! \param[in] includeFriendlyFactions If true it will also send the notification to factions friendly to the given faction
+	//! \param[in] notificationID ID of the notification message
+	//! \param[in] param1
+	//! \param[in] param2
+	//! \param[in] param3
+	//! \param[in] param4
+	//! \param[in] param5
+	//! \param[in] param6
+	//! \return True if the notification was sent successfully
 	static bool SendToFaction(notnull SCR_Faction faction, bool includeFriendlyFactions, ENotification notificationID, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
 		return SendToFaction(faction, includeFriendlyFactions, notificationID, vector.Zero, param1, param2, param3, param4, param5, param6);
 	}
-	
-	/*!
-	Send notification to player with given ID
-	\param faction Faction of players to send notification to
-	\param includeFriendlyFactions If true it will also send the notification to factions friendly to the given faction
-	\param notificationID ID of the notification message
-	\param position notification position
-	\param param1
-	\param param2
-	\param param3
-	\param param4
-	\param param5
-	\param param6
-	\return True if the notification was sent successfully
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Send notification to player with given ID
+	//! \param[in] faction Faction of players to send notification to
+	//! \param[in] includeFriendlyFactions If true it will also send the notification to factions friendly to the given faction
+	//! \param[in] notificationID ID of the notification message
+	//! \param[in] position notification position
+	//! \param[in] param1
+	//! \param[in] param2
+	//! \param[in] param3
+	//! \param[in] param4
+	//! \param[in] param5
+	//! \param[in] param6
+	//! \return True if the notification was sent successfully
 	static bool SendToFaction(notnull SCR_Faction faction, bool includeFriendlyFactions, ENotification notificationID, vector position, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
 		//~ Send from client to server
@@ -403,6 +396,7 @@ class SCR_NotificationsComponent : ScriptComponent
 		return SendToFactionData(faction, includeFriendlyFactions, notificationID, newNotificationData);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//~ Allows client to broadcast notification to faction
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void Rpc_SendToFaction(int factionIndex, bool includeFriendlyFactions, ENotification notificationID, vector position, notnull array<int> paramArray)
@@ -421,6 +415,7 @@ class SCR_NotificationsComponent : ScriptComponent
 		SendToFaction(faction, includeFriendlyFactions, notificationID, position, param1, param2, param3, param4, param5, param6);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//Set the actual data to players in faction
 	protected static bool SendToFactionData(notnull SCR_Faction faction, bool includeFriendlyFactions, ENotification notificationID, SCR_NotificationData data)
 	{		
@@ -471,35 +466,33 @@ class SCR_NotificationsComponent : ScriptComponent
 		
 		return true;
 	}
-	
-	/*!
-	Send notification to all players that have an unlimited editor
-	\param notificationID ID of the notification MessageBox
-  	\param param1
-	\param param2
-	\param param3
-	\param param4
-	\param param5
-	\param param6
-	\return True if the notification was sent successfully
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Send notification to all players that have an unlimited editor
+	//! \param[in] notificationID ID of the notification MessageBox
+	//! \param[in] param1
+	//! \param[in] param2
+	//! \param[in] param3
+	//! \param[in] param4
+	//! \param[in] param5
+	//! \param[in] param6
+	//! \return True if the notification was sent successfully
 	static bool SendToUnlimitedEditorPlayers(ENotification notificationID, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
 		return SendToUnlimitedEditorPlayers(notificationID, vector.Zero, param1, param2, param3, param4, param5, param6);
 	}
-	
-	/*!
-	Send notification to all players that have an unlimited editor
-	\param notificationID ID of the notification message
-	\param position notification position
-	\param param1
-	\param param2
-	\param param3
-	\param param4
-	\param param5
-	\param param6
-	\return True if the notification was sent successfully
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Send notification to all players that have an unlimited editor
+	//! \param[in] notificationID ID of the notification message
+	//! \param[in] position notification position
+	//! \param[in] param1
+	//! \param[in] param2
+	//! \param[in] param3
+	//! \param[in] param4
+	//! \param[in] param5
+	//! \param[in] param6
+	//! \return True if the notification was sent successfully
 	static bool SendToUnlimitedEditorPlayers(ENotification notificationID, vector position, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
 		//~ Send from client to server to broadcast
@@ -526,6 +519,7 @@ class SCR_NotificationsComponent : ScriptComponent
 		return SendToUnlimitedEditorPlayersData(notificationID, newNotificationData);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//~ Allows client to broadcast notification to players with unlimited editors
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void Rpc_SendToUnlimitedEditorPlayers(ENotification notificationID, vector position, notnull array<int> paramArray)
@@ -536,6 +530,7 @@ class SCR_NotificationsComponent : ScriptComponent
 		SendToUnlimitedEditorPlayers(notificationID, position, param1, param2, param3, param4, param5, param6);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//Set the actual data to players that have an unlimited editor
 	protected static bool SendToUnlimitedEditorPlayersData(ENotification notificationID, SCR_NotificationData data, int playerID = -1)
 	{
@@ -543,7 +538,7 @@ class SCR_NotificationsComponent : ScriptComponent
 		if (!Replication.IsServer()) 
 			return false;
 		
-		array<int> players = new array<int>;
+		array<int> players = {};
 		for (int i = 0, count = GetGame().GetPlayerManager().GetPlayers(players); i < count; i++)
 		{		
 			if (playerID == players[i])
@@ -553,49 +548,48 @@ class SCR_NotificationsComponent : ScriptComponent
 			}
 				
 			SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
-			if (!core) continue;
+			if (!core)
+				continue;
 		
 			SCR_EditorManagerEntity editorManager = core.GetEditorManager(players[i]);
-			if (!editorManager) continue;
+			if (!editorManager)
+				continue;
 			
 			if (!editorManager.IsLimited())
-			{
 				SendToPlayerData(players[i], notificationID, data);
-			}	
 		}
+
 		return true;
 	}
-	
-	/*!
-	Send notification to all players that have an unlimited editor including the given player
-	\param playerID notification is also send to this player, regardless if they have an unlimited editor or not
-	\param notificationID ID of the notification MessageBox
-  	\param param1
-	\param param2
-	\param param3
-	\param param4
-	\param param5
-	\param param6
-	\return True if the notification was sent successfully
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Send notification to all players that have an unlimited editor including the given player
+	//! \param[in] playerID notification is also send to this player, regardless if they have an unlimited editor or not
+	//! \param[in] notificationID ID of the notification MessageBox
+	//! \param[in] param1
+	//! \param[in] param2
+	//! \param[in] param3
+	//! \param[in] param4
+	//! \param[in] param5
+	//! \param[in] param6
+	//! \return True if the notification was sent successfully
 	static bool SendToUnlimitedEditorPlayersAndPlayer(int playerID, ENotification notificationID, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
 		return SendToUnlimitedEditorPlayersAndPlayer(playerID, notificationID, vector.Zero, param1, param2, param3, param4, param5, param6);
 	}
-	
-	/*!
-	Send notification to all players that have an unlimited editor including the given player
-	\param playerID notification is also send to this player, regardless if they have an unlimited editor or not
-	\param notificationID ID of the notification message
-	\param position notification position
-	\param param1
-	\param param2
-	\param param3
-	\param param4
-	\param param5
-	\param param6
-	\return True if the notification was sent successfully
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Send notification to all players that have an unlimited editor including the given player
+	//! \param[in] playerID notification is also send to this player, regardless if they have an unlimited editor or not
+	//! \param[in] notificationID ID of the notification message
+	//! \param[in] position notification position
+	//! \param[in] param1
+	//! \param[in] param2
+	//! \param[in] param3
+	//! \param[in] param4
+	//! \param[in] param5
+	//! \param[in] param6
+	//! \return True if the notification was sent successfully
 	static bool SendToUnlimitedEditorPlayersAndPlayer(int playerID, ENotification notificationID, vector position, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
 		//~ Send from client to server to broadcast
@@ -622,6 +616,7 @@ class SCR_NotificationsComponent : ScriptComponent
 		return SendToUnlimitedEditorPlayersData(notificationID, newNotificationData, playerID);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//~ Allows client to broadcast notification to all players with unlimited editors and an the given specific player
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void Rpc_SendToUnlimitedEditorPlayersAndPlayer(int playerID, ENotification notificationID, vector position, notnull array<int> paramArray)
@@ -631,37 +626,35 @@ class SCR_NotificationsComponent : ScriptComponent
 		
 		SendToUnlimitedEditorPlayersAndPlayer(playerID, notificationID, position, param1, param2, param3, param4, param5, param6);
 	}
-	
-	/*!
-	Send notification to all players in a group
-	\param groupID ID of group which players need to be a part of to recieve the notification
-	\param notificationID ID of the notification MessageBox
-  	\param param1
-	\param param2
-	\param param3
-	\param param4
-	\param param5
-	\param param6
-	\return True if the notification was sent successfully
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Send notification to all players in a group
+	//! \param[in] groupID ID of group which players need to be a part of to recieve the notification
+	//! \param[in] notificationID ID of the notification MessageBox
+	//! \param[in] param1
+	//! \param[in] param2
+	//! \param[in] param3
+	//! \param[in] param4
+	//! \param[in] param5
+	//! \param[in] param6
+	//! \return True if the notification was sent successfully
 	static bool SendToGroup(int groupID, ENotification notificationID, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
 		return SendToGroup(groupID, notificationID, vector.Zero, param1, param2, param3, param4, param5, param6);
 	}
-	
-	/*!
-	Send notification to all players in a group
-	\param groupID ID of group which players need to be a part of to recieve the notification
-	\param notificationID ID of the notification message
-	\param position notification position
-	\param param1
-	\param param2
-	\param param3
-	\param param4
-	\param param5
-	\param param6
-	\return True if the notification was sent successfully
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Send notification to all players in a group
+	//! \param[in] groupID ID of group which players need to be a part of to recieve the notification
+	//! \param[in] notificationID ID of the notification message
+	//! \param[in] position notification position
+	//! \param[in] param1
+	//! \param[in] param2
+	//! \param[in] param3
+	//! \param[in] param4
+	//! \param[in] param5
+	//! \param[in] param6
+	//! \return True if the notification was sent successfully
 	static bool SendToGroup(int groupID, ENotification notificationID, vector position, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
 		//~ Send from client to server to broadcast
@@ -688,6 +681,7 @@ class SCR_NotificationsComponent : ScriptComponent
 		return SendToGroupData(notificationID, newNotificationData, groupID);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//~ Allows client to broadcast notification to all players within the given group
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void Rpc_SendToGroup(int groupID, ENotification notificationID, vector position, notnull array<int> paramArray)
@@ -698,6 +692,7 @@ class SCR_NotificationsComponent : ScriptComponent
 		SendToGroup(groupID, notificationID, position, param1, param2, param3, param4, param5, param6);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//Set the actual data to players in the given group
 	protected static bool SendToGroupData(ENotification notificationID, SCR_NotificationData data, int groupID)
 	{
@@ -725,35 +720,33 @@ class SCR_NotificationsComponent : ScriptComponent
 		
 		return true;
 	}
-	
-	/*!
-	Send notification to the player on this machine.
-	\param notificationID ID of the notification message
-	\param param1
-	\param param2
-	\param param3
-	\param param4
-	\param param5
-	\param param6
-	\return True if the notification was sent successfully
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Send notification to the player on this machine.
+	//! \param[in] notificationID ID of the notification message
+	//! \param[in] param1
+	//! \param[in] param2
+	//! \param[in] param3
+	//! \param[in] param4
+	//! \param[in] param5
+	//! \param[in] param6
+	//! \return True if the notification was sent successfully
 	static bool SendLocal(ENotification notificationID, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
 		return SendLocal(notificationID, vector.Zero, param1, param2, param3, param4, param5, param6);
 	}
-	
-	/*!
-	Send notification to the player on this machine.
-	\param notificationID ID of the notification message
-	\param position notification position
-	\param param1
-	\param param2
-	\param param3
-	\param param4
-	\param param5
-	\param param6
-	\return True if the notification was sent successfully
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Send notification to the player on this machine.
+	//! \param[in] notificationID ID of the notification message
+	//! \param[in] position notification position
+	//! \param[in] param1
+	//! \param[in] param2
+	//! \param[in] param3
+	//! \param[in] param4
+	//! \param[in] param5
+	//! \param[in] param6
+	//! \return True if the notification was sent successfully
 	static bool SendLocal(ENotification notificationID, vector position, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
 		SCR_NotificationData newNotificationData = SCR_NotificationData();
@@ -761,35 +754,33 @@ class SCR_NotificationsComponent : ScriptComponent
 		newNotificationData.SetPosition(position); 
 		return SendLocalData(notificationID, newNotificationData);
 	}
-	
-	/*!
-	Send notification to the player on this machine (if has Game master rights).
-	\param notificationID ID of the notification message
-	\param param1
-	\param param2
-	\param param3
-	\param param4
-	\param param5
-	\param param6
-	\return True if the notification was sent successfully
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Send notification to the player on this machine (if has Game master rights).
+	//! \param[in] notificationID ID of the notification message
+	//! \param[in] param1
+	//! \param[in] param2
+	//! \param[in] param3
+	//! \param[in] param4
+	//! \param[in] param5
+	//! \param[in] param6
+	//! \return True if the notification was sent successfully
 	static bool SendLocalUnlimitedEditor(ENotification notificationID, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
 		return SendLocalUnlimitedEditor(notificationID, vector.Zero, param1, param2, param3, param4, param5, param6);
 	}
-	
-	/*!
-	Send notification to the player on this machine (if has Game master rights).
-	\param notificationID ID of the notification message
-	\param position notification position
-	\param param1
-	\param param2
-	\param param3
-	\param param4
-	\param param5
-	\param param6
-	\return True if the notification was sent successfully
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Send notification to the player on this machine (if has Game master rights).
+	//! \param[in] notificationID ID of the notification message
+	//! \param[in] position notification position
+	//! \param[in] param1
+	//! \param[in] param2
+	//! \param[in] param3
+	//! \param[in] param4
+	//! \param[in] param5
+	//! \param[in] param6
+	//! \return True if the notification was sent successfully
 	static bool SendLocalUnlimitedEditor(ENotification notificationID, vector position, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
 		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
@@ -801,35 +792,33 @@ class SCR_NotificationsComponent : ScriptComponent
 		newNotificationData.SetPosition(position); 
 		return SendLocalData(notificationID, newNotificationData);
 	}
-	
-	/*!
-	Send notification to the player on this machine (if has Game master rights).
-	\param notificationID ID of the notification message
-	\param param1
-	\param param2
-	\param param3
-	\param param4
-	\param param5
-	\param param6
-	\return True if the notification was sent successfully
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Send notification to the player on this machine (if has Game master rights).
+	//! \param[in] notificationID ID of the notification message
+	//! \param[in] param1
+	//! \param[in] param2
+	//! \param[in] param3
+	//! \param[in] param4
+	//! \param[in] param5
+	//! \param[in] param6
+	//! \return True if the notification was sent successfully
 	static bool SendLocalLimitedEditor(ENotification notificationID, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
 		return SendLocalLimitedEditor(notificationID, vector.Zero, param1, param2, param3, param4, param5, param6);
 	}
-	
-	/*!
-	Send notification to the player on this machine (if has Game master rights).
-	\param notificationID ID of the notification message
-	\param position notification position
-	\param param1
-	\param param2
-	\param param3
-	\param param4
-	\param param5
-	\param param6
-	\return True if the notification was sent successfully
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Send notification to the player on this machine (if has Game master rights).
+	//! \param[in] notificationID ID of the notification message
+	//! \param[in] position notification position
+	//! \param[in] param1
+	//! \param[in] param2
+	//! \param[in] param3
+	//! \param[in] param4
+	//! \param[in] param5
+	//! \param[in] param6
+	//! \return True if the notification was sent successfully
 	static bool SendLocalLimitedEditor(ENotification notificationID, vector position, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
 		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
@@ -842,7 +831,8 @@ class SCR_NotificationsComponent : ScriptComponent
 		return SendLocalData(notificationID, newNotificationData);
 	}
 	
-	//Send actual notification data localy
+	//------------------------------------------------------------------------------------------------
+	//Send actual notification data locally
 	protected static bool SendLocalData(ENotification notificationID, SCR_NotificationData data)
 	{
 		SCR_NotificationsComponent notificationsComponent = GetInstance();
@@ -853,23 +843,30 @@ class SCR_NotificationsComponent : ScriptComponent
 		return true;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//~ Create array of params
 	protected static void CreateParamArray(notnull out array<int> paramArray, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
 		if (param1 != 0)
 			paramArray.Insert(param1);
+
 		if (param2 != 0)
 			paramArray.Insert(param2);
+
 		if (param3 != 0)
 			paramArray.Insert(param3);
+
 		if (param4 != 0)
 			paramArray.Insert(param4);
+
 		if (param5 != 0)
 			paramArray.Insert(param5);
+
 		if (param6 != 0)
 			paramArray.Insert(param6);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//~ Get all params from array of params
 	protected static void GetParamsFromArray(notnull array<int> paramArray, out int param1 = 0, out int param2 = 0, out int param3 = 0, out int param4 = 0, out int param5 = 0, out int param6 = 0)
 	{
@@ -915,32 +912,36 @@ class SCR_NotificationsComponent : ScriptComponent
 			param6 = paramArray[5];
 		}
 	}
-	
-	/*!
-	Send notification to player who owns this player controller.
-	\param id ID of the notification message
-	\param data Notification data
-	\return True if the notification was sent successfully
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Send notification to player who owns this player controller.
+	//! \param[in] id ID of the notification message
+	//! \param[in] data Notification data
+	//! \return true if the notification was sent successfully
 	bool SendToOwner(ENotification id, SCR_NotificationData data = null)
 	{
 		if (data)
 			Rpc(ReceiveSCR_NotificationData, id, data);
 		else
 			Rpc(ReceiveNotification, id); //--- Don't send data when it's not needed (replication complains when null is received)
+
 		return true;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void ReceiveNotification(ENotification id)
 	{
 		ReceiveSCR_NotificationData(id, null);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void ReceiveSCR_NotificationData(ENotification id, SCR_NotificationData data)
 	{
 		SCR_NotificationData entry = data;
-		if (!entry) entry = new SCR_NotificationData;
+		if (!entry)
+			entry = new SCR_NotificationData();
 		
 		//--- Set Meta data
 		entry.SetMeta(id, GetNotificationDisplayData(id));
@@ -964,10 +965,9 @@ class SCR_NotificationsComponent : ScriptComponent
 			UpdateNotificationData(true);
 	}
 	
-	/*!
-	Get Sticky notificatons Widget names from Config
-	\retrun String array
-	!*/
+	//------------------------------------------------------------------------------------------------
+	//! Get Sticky notificatons Widget names from Config
+	//! \return String arr
 	array<string> GetStickyNotifications()
 	{
 		SCR_NotificationsComponentClass notificationClass = SCR_NotificationsComponentClass.Cast(GetComponentData(GetOwner()));
@@ -976,11 +976,10 @@ class SCR_NotificationsComponent : ScriptComponent
 		
 		return notificationClass.GetStickyNotifications();
 	}
-	
-	/*!
-	Get Notification colors
-	\retrun SCR_NotificationDisplayColor array
-	!*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get Notification colors
+	//! \return SCR_NotificationDisplayColor arr
 	array<ref SCR_NotificationDisplayColor> GetNotificationDisplayColor()
 	{
 		SCR_NotificationsComponentClass notificationClass = SCR_NotificationsComponentClass.Cast(GetComponentData(GetOwner()));
@@ -990,7 +989,7 @@ class SCR_NotificationsComponent : ScriptComponent
 		return notificationClass.GetNotificationDisplayColor();
 	}
 	
-	//======================== GET NOTIFICATION DISPLAY DATA ========================\\
+	//------------------------------------------------------------------------------------------------
 	protected SCR_NotificationDisplayData GetNotificationDisplayData(ENotification notificationID)
 	{		
 		SCR_NotificationsComponentClass notificationClass = SCR_NotificationsComponentClass.Cast(GetComponentData(GetOwner()));
@@ -1001,11 +1000,11 @@ class SCR_NotificationsComponent : ScriptComponent
 	}
 	
 	//======================== PLAYER NAME HOTFIX ========================\\
-	/*!
-	Hot fix to Get player names when the name cannot be found anymore in the playerManager
-	\param playerID id of player to get name from
-	\return saved player name
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Hotfix to Get player names when the name cannot be found anymore in the playerManager
+	//! \param[in] playerID id of player to get name from
+	//! \return saved player name
 	string GetPlayerNameFromHistory(int playerID)
 	{
 		string playerName = string.Empty;
@@ -1014,6 +1013,7 @@ class SCR_NotificationsComponent : ScriptComponent
 		return playerName;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//~Hotfix to get player names when the player disconnected
 	protected void AddPlayerNameToHistory(int playerID)
 	{
@@ -1025,6 +1025,8 @@ class SCR_NotificationsComponent : ScriptComponent
 	}
 
 	//======================== START LISTENING TO UPDATE ========================\\
+
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateNotificationData(bool updateNotificationData)
 	{
 		if (updateNotificationData == m_bIsUpdatingNotificationData)
@@ -1038,6 +1040,7 @@ class SCR_NotificationsComponent : ScriptComponent
 			DisconnectFromNotificationsSystem();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void ConnectToNotificationsSystem()
 	{
 		World world = GetOwner().GetWorld();
@@ -1048,6 +1051,7 @@ class SCR_NotificationsComponent : ScriptComponent
 		notificationsSystem.Register(this);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void DisconnectFromNotificationsSystem()
 	{
 		World world = GetOwner().GetWorld();
@@ -1057,8 +1061,10 @@ class SCR_NotificationsComponent : ScriptComponent
 		
 		notificationsSystem.Unregister(this);
 	}
-	
-	//======================== UPDATE ========================\\
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] timeSlice
 	void Update(float timeSlice)
 	{
 		int count = m_aHistory.Count();
@@ -1081,7 +1087,7 @@ class SCR_NotificationsComponent : ScriptComponent
 			UpdateNotificationData(false);
 	}
 	
-	//======================== ON INIT ========================\\
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		PlayerController playerController = PlayerController.Cast(owner);
@@ -1099,15 +1105,18 @@ class SCR_NotificationsComponent : ScriptComponent
 				gameMode.GetOnPlayerRegistered().Insert(AddPlayerNameToHistory);
 			
 			//~ Get a list of connected players as OnPostInit might be called after connected players were registered
-			array<int> players = new array<int>;
+			array<int> players = {};
 			
 			GetGame().GetPlayerManager().GetPlayers(players);
 			
-			foreach (int player: players)
+			foreach (int player : players)
+			{
 				AddPlayerNameToHistory(player);
+			}
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnDelete(IEntity owner)
 	{
 		DisconnectFromNotificationsSystem();
@@ -1122,6 +1131,4 @@ class SCR_NotificationsComponent : ScriptComponent
 		
 		super.OnDelete(owner);
 	}
-};
-
-
+}

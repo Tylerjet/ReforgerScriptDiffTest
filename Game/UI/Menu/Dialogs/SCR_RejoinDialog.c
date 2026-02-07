@@ -87,4 +87,10 @@ class SCR_RejoinDialog : SCR_ErrorDialog
 		if (m_wLoading)
 			m_wLoading.SetVisible(show);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	static SCR_RejoinDialog FindRejoinComponent(notnull Widget w)
+	{
+		return SCR_RejoinDialog.Cast(w.FindHandler(SCR_RejoinDialog));
+	}
 };

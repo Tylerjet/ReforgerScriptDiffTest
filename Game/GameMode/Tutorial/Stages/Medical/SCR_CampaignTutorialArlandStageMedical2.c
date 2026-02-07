@@ -15,10 +15,11 @@ class SCR_CampaignTutorialArlandStageMedical2: SCR_BaseCampaignTutorialArlandSta
 		m_fWaypointHeightOffset = 5;
 		m_bCheckWaypoint = false;
 		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
-	
 		m_Ambulance = Vehicle.Cast(GetGame().GetWorld().FindEntityByName("Ambulance"));
 		m_TutorialComponent.SetWaypointMiscImage("GETIN", true);
+		
+		PlaySoundSystem("FirstAid_Board");
+		HintOnVoiceOver();
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 [BaseContainerProps(), SCR_BaseContainerCustomTitleUIInfo("m_Info")]
 class SCR_CreateLayerWithSelectionContextAction : SCR_BaseContextAction
 {
-	protected ref set<SCR_EditableEntityComponent> m_EntitiesToMove = new ref set<SCR_EditableEntityComponent>();
+	protected ref set<SCR_EditableEntityComponent> m_EntitiesToMove = new set<SCR_EditableEntityComponent>();
 	protected SCR_EditableEntityCore m_Core;
 	protected SCR_BaseEditableEntityFilter m_SelectionFilter;
 	protected bool m_bSelectionCanceled;

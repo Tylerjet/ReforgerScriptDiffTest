@@ -15,7 +15,7 @@ class SCR_ToolboxComponent : SCR_SelectionWidgetComponent
 	[Attribute("false", UIWidgets.CheckBox, "On last item and pressing right arrow, it will go to the start of the list")]
 	bool m_bCycleMode;
 
-	ref array<SCR_ButtonBaseComponent> m_aSelectionElements = new ref array<SCR_ButtonBaseComponent>;
+	ref array<SCR_ButtonBaseComponent> m_aSelectionElements = new array<SCR_ButtonBaseComponent>;
 	SCR_ButtonBaseComponent m_FocusedElement;
 	
 	//------------------------------------------------------------------------------------------------
@@ -302,9 +302,9 @@ class SCR_ToolboxComponent : SCR_SelectionWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override int AddItem(string item, Managed data = null)
+	override int AddItem(string item, bool last = false, Managed data = null)
 	{
-		int i = super.AddItem(item, data);
+		int i = super.AddItem(item, last, data);
 		ClearWidgets();
 		CreateWidgets();
 		return i;
@@ -318,9 +318,9 @@ class SCR_ToolboxComponent : SCR_SelectionWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void RemoveItem(int item)
+	override void RemoveItem(int item, bool last = false)
 	{
-		super.RemoveItem(item);
+		super.RemoveItem(item, last);
 		ClearWidgets();
 		CreateWidgets();
 	}

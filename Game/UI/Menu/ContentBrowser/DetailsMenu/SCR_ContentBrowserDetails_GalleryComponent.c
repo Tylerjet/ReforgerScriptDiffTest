@@ -26,10 +26,12 @@ class SCR_ContentBrowserDetails_GalleryComponent : ScriptedWidgetComponent
 	void SetImages(array<BackendImage> images)
 	{
 		m_aImages.Clear();
-		foreach (auto img : images)
+		
+		int total = images.Count();
+		foreach (int i, BackendImage img : images)
 		{
 			m_aImages.Insert(img);
-			m_Widgets.m_SpinBoxComponent.AddItem(string.Empty);
+			m_Widgets.m_SpinBoxComponent.AddItem(string.Empty, i == total - 1);
 		}
 			
 		UpdateAllWidgets();

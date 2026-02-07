@@ -118,10 +118,17 @@ class SCR_HealingUserAction : ScriptedUserAction
 		if (!targetDamageMan)
 			return;
 		
-		SCR_ConsumableEffectAnimationParameters animationParameters = new SCR_ConsumableEffectAnimationParameters(desiredCmd, 1, 0.0, 
-			consumableEffect.GetApplyToOtherDuraction(), targetDamageMan.FindAssociatedBandagingBodyPart(m_eHitZoneGroup), 0.0, false);
+		ItemUseParameters params = ItemUseParameters();
+		params.SetEntity(item);
+		params.SetAllowMovementDuringAction(false);
+		params.SetKeepInHandAfterSuccess(true);
+		params.SetCommandID(desiredCmd);
+		params.SetCommandIntArg(1);
+		params.SetCommandFloatArg(0.0);
+		params.SetMaxAnimLength(consumableEffect.GetApplyToOtherDuraction());
+		params.SetIntParam(targetDamageMan.FindAssociatedBandagingBodyPart(m_eHitZoneGroup));
 		
-		consumableEffect.ActivateEffect(pOwnerEntity, pUserEntity, item, animationParameters);
+		consumableEffect.ActivateEffect(pOwnerEntity, pUserEntity, item, params);
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -1,6 +1,6 @@
-/** @ingroup Editor_UI Editor_UI_Components
-*/
-class SCR_EntityTooltipEditorUIComponent: SCR_BaseTooltipEditorUIComponent
+//! @ingroup Editor_UI Editor_UI_Components
+
+class SCR_EntityTooltipEditorUIComponent : SCR_BaseTooltipEditorUIComponent
 {
 	[Attribute()]
 	protected string m_sImageWidgetName;
@@ -31,11 +31,15 @@ class SCR_EntityTooltipEditorUIComponent: SCR_BaseTooltipEditorUIComponent
 	
 	protected SCR_EntityTooltipDetailType m_DetailType;
 	
+	//------------------------------------------------------------------------------------------------
 	override void UpdateTooltip(Managed instance = null)
 	{
 		SCR_EditableEntityComponent entity = SCR_EditableEntityComponent.Cast(instance);
-		if (m_DetailType) m_DetailType.UpdateDetailType(entity);
+		if (m_DetailType)
+			m_DetailType.UpdateDetailType(entity);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool SetTooltip(SCR_UIInfo info, Managed instance = null)
 	{
 		//--- Get entity
@@ -69,6 +73,7 @@ class SCR_EntityTooltipEditorUIComponent: SCR_BaseTooltipEditorUIComponent
 					break;
 				}
 			}
+
 			detailsWidget.SetVisible(m_DetailType != null);
 		}
 		
@@ -95,7 +100,6 @@ class SCR_EntityTooltipEditorUIComponent: SCR_BaseTooltipEditorUIComponent
 			}
 			
 			SCR_CallsignBaseComponent callsignComponent = SCR_CallsignBaseComponent.Cast(entity.GetOwner().FindComponent(SCR_CallsignBaseComponent));;
-			
 			if (callsignComponent)
 			{
 				TextWidget callsignWidget = TextWidget.Cast(widget.FindAnyWidget(m_sHeaderTypeName)); 
@@ -110,7 +114,7 @@ class SCR_EntityTooltipEditorUIComponent: SCR_BaseTooltipEditorUIComponent
 			}
 			
 			//--- Get faction color
-			Color factionColor = Color.White;
+			Color factionColor = Color.FromInt(Color.WHITE);
 			Faction faction = entity.GetFaction();
 			if (faction) 
 			{
@@ -136,14 +140,13 @@ class SCR_EntityTooltipEditorUIComponent: SCR_BaseTooltipEditorUIComponent
 			}
 			
 			//--- Entity icon
-			/*
-			ImageWidget imageWidget = ImageWidget.Cast(widget.FindAnyWidget(m_sIconWidgetName));
-			if (imageWidget && !info.GetIconPath().IsEmpty())
-			{
-				imageWidget.LoadImageTexture(0, info.GetIconPath());
-				imageWidget.SetColor(factionColor);
-			}
-			*/
+
+//			ImageWidget imageWidget = ImageWidget.Cast(widget.FindAnyWidget(m_sIconWidgetName));
+//			if (imageWidget && !info.GetIconPath().IsEmpty())
+//			{
+//				imageWidget.LoadImageTexture(0, info.GetIconPath());
+//				imageWidget.SetColor(factionColor);
+//			}
 			
 			Widget slotWidget = widget.FindAnyWidget(m_sIconWidgetName);
 			if (slotWidget)
@@ -180,19 +183,20 @@ class SCR_EntityTooltipEditorUIComponent: SCR_BaseTooltipEditorUIComponent
 		}
 		
 		//--- Asset card (experimental)
-		/*Widget assetCardWidget = widget.FindAnyWidget(m_sAssetCardWidgetName);
-		if (assetCardWidget)
-		{
-			SCR_AssetCardFrontUIComponent assetCard = SCR_AssetCardFrontUIComponent.Cast(assetCardWidget.FindHandler(SCR_AssetCardFrontUIComponent));
-			if (assetCard)
-			{
-				assetCard.InitCard(info, true);
-			}
-		}*/
+
+//		Widget assetCardWidget = widget.FindAnyWidget(m_sAssetCardWidgetName);
+//		if (assetCardWidget)
+//		{
+//			SCR_AssetCardFrontUIComponent assetCard = SCR_AssetCardFrontUIComponent.Cast(assetCardWidget.FindHandler(SCR_AssetCardFrontUIComponent));
+//			if (assetCard)
+//			{
+//				assetCard.InitCard(info, true);
+//			}
+//		}
 		
 		return true;
 	}
-};
+}
 
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EEditableEntityType, "m_EntityType")]
 class SCR_EntityTooltipDetailType
@@ -218,6 +222,9 @@ class SCR_EntityTooltipDetailType
 	[Attribute()]
 	protected ref array<ref SCR_EntityTooltipDetail> m_aDetails;
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] entity
 	void UpdateDetailType(SCR_EditableEntityComponent entity)
 	{
 		foreach (SCR_EntityTooltipDetail detail: m_aDetails)
@@ -226,6 +233,14 @@ class SCR_EntityTooltipDetailType
 				detail.UpdateDetail(entity);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] type
+	//! \param[in] parent
+	//! \param[in] entity
+	//! \param[out] showImage
+	//! \return
 	bool CreateDetailType(EEditableEntityType type, Widget parent, SCR_EditableEntityComponent entity, out bool showImage = true)
 	{
 		if (type != m_EntityType || !m_bEnabled)
@@ -263,6 +278,7 @@ class SCR_EntityTooltipDetailType
 				detailWidget.RemoveFromHierarchy();
 			}
 		}
+
 		return showDetails;
 	}
-};
+}

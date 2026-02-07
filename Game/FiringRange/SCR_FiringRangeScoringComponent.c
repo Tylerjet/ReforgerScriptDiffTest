@@ -1,19 +1,17 @@
 [EntityEditorProps(category: "GameScripted/FiringRange", description: "Handles Score on Firing Range.", color: "0 0 255 255")]
-class SCR_FiringRangeScoringComponentClass: SCR_BaseGameModeComponentClass
+class SCR_FiringRangeScoringComponentClass : SCR_BaseGameModeComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_FiringRangeScoringComponent : SCR_BaseGameModeComponent
 {
-
 	SCR_FiringRangeManager s_Manager;
 	
-	//Player array
 	[RplProp()]
-	protected ref array<ref SCR_PlayerScoreInfoFiringRange> m_aAllPlayersInfo = new array<ref SCR_PlayerScoreInfoFiringRange>(); //! Contains score info of all the players.
+	protected ref array<ref SCR_PlayerScoreInfoFiringRange> m_aAllPlayersInfo = {}; //!< Contains score info of all the players.
 		
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] playerID
 	void OnDisconnected(int playerID)
 	{
 		RemovePlayer(playerID);	
@@ -30,6 +28,10 @@ class SCR_FiringRangeScoringComponent : SCR_BaseGameModeComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! What happens when a player is killed. 
+	//! \param[in] playerId
+	//! \param[in] playerEntity
+	//! \param[in] killerEntity
+	//! \param[in] killer
 	void OnKill(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
 		// Remove player from assigned firing line
@@ -43,7 +45,7 @@ class SCR_FiringRangeScoringComponent : SCR_BaseGameModeComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Add a player to the player array m_aAllPlayersInfo.
-	//! \param playerID, is unique player identifier.
+	//! \param[in] playerID, is unique player identifier.
 	SCR_PlayerScoreInfoFiringRange AddPlayer(int playerID)
 	{
 		SCR_PlayerScoreInfoFiringRange playerInfo = new SCR_PlayerScoreInfoFiringRange();
@@ -56,7 +58,7 @@ class SCR_FiringRangeScoringComponent : SCR_BaseGameModeComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Remove a player from the player array m_aAllPlayersInfo.
-	//! \param playerID, is unique player identifier.
+	//! \param[in] playerID, is unique player identifier.
 	void RemovePlayer(int playerID)
 	{
 		m_aAllPlayersInfo.RemoveItem(GetPlayerScoreInfo(playerID));
@@ -64,6 +66,8 @@ class SCR_FiringRangeScoringComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerID
 	void ClearScore(int playerID)
 	{
 		SCR_PlayerScoreInfoFiringRange playerScoreInfoFiringRange = GetPlayerScoreInfo(playerID);
@@ -72,6 +76,9 @@ class SCR_FiringRangeScoringComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerID
+	//! \param[in] scorePoints
 	void AddScore(int playerID, int scorePoints)
 	{
 		SCR_PlayerScoreInfoFiringRange playerScoreInfoFiringRange = GetPlayerScoreInfo(playerID);
@@ -81,7 +88,8 @@ class SCR_FiringRangeScoringComponent : SCR_BaseGameModeComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Set the maximal score of given firing line
-	
+	//! \param[in] playerID
+	//! \param[in] scorePointsMax
 	void SetScoreMax(int playerID, int scorePointsMax)
 	{
 		SCR_PlayerScoreInfoFiringRange playerScoreInfoFiringRange = GetPlayerScoreInfo(playerID);
@@ -91,9 +99,8 @@ class SCR_FiringRangeScoringComponent : SCR_BaseGameModeComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Get the integer equal to the player's kill count.
-	//! \param playerID, is unique player identifier.
+	//! \param[in] playerID, is unique player identifier.
 	//! \return the player's kill count.
-	
 	int GetScore(int playerID)
 	{
 		SCR_PlayerScoreInfoFiringRange playerScoreInfoFiringRange = GetPlayerScoreInfo(playerID);
@@ -103,20 +110,18 @@ class SCR_FiringRangeScoringComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Get the number of players.
-	
+	//! \return the number of players.
 	int GetPlayersCount()
 	{
-		int playersCount = m_aAllPlayersInfo.Count();
-		return playersCount;
+		return m_aAllPlayersInfo.Count();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Finds a SCR_PlayerScoreInfoFiringRange by playerID from m_aAllPlayersInfo array.
-	//! \param playerID, is unique player identifier.
+	//! \param[in] playerID, is unique player identifier.
 	private SCR_PlayerScoreInfoFiringRange GetPlayerScoreInfo(int playerID)
 	{
-		for (int i = 0; i < m_aAllPlayersInfo.Count(); i++)
+		for (int i = 0, count = m_aAllPlayersInfo.Count(); i < count; i++)
 		{
 			if (m_aAllPlayersInfo[i].m_iID == playerID)
 				return m_aAllPlayersInfo[i];
@@ -126,7 +131,8 @@ class SCR_FiringRangeScoringComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Return score info of all players.
+	//! \param[out] output
+	//! \return score info of all players.
 	int GetAllPlayersScoreInfo(notnull out array<SCR_PlayerScoreInfoFiringRange> output)
 	{
 		output.Clear();
@@ -159,7 +165,7 @@ class SCR_FiringRangeScoringComponent : SCR_BaseGameModeComponent
 		gameMode.GetOnPlayerDisconnected().Insert(OnDisconnected);
 		gameMode.GetOnPlayerKilled().Insert(OnKill);
 		
-		array<int> playerIds = new array<int>();
+		array<int> playerIds = {};
 		GetGame().GetPlayerManager().GetPlayers(playerIds);
 		
 		foreach (int id : playerIds)
@@ -169,23 +175,12 @@ class SCR_FiringRangeScoringComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_FiringRangeScoringComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		s_Manager = SCR_FiringRangeManager.Cast(ent);
 	}
-
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_FiringRangeScoringComponent()
-	{
-		if (m_aAllPlayersInfo)
-		{
-			int count = m_aAllPlayersInfo.Count();
-			for (int i = 0; i < count; i++)
-			{
-				m_aAllPlayersInfo[i] = null;
-			}
-			m_aAllPlayersInfo.Clear();
-			m_aAllPlayersInfo = null;
-		}
-	}
-};
+}

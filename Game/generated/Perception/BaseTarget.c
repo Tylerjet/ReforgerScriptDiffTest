@@ -42,9 +42,23 @@ class BaseTarget: ScriptAndConfig
 	proto external bool IsEndangering();
 	// Returns how we perceive whether the target is disarmed or not. The actual value is updated periodically.
 	proto external bool IsDisarmed();
+	/*!
+	Returns value from 0 to 1.0 representing where is obstruction which blocks our visibility of the target.
+	1.0 - We could fully trace to target AND exposure is above zero
+	0.0 < ... < 1.0 - Target has no visible aimpoints, trace is interrupted by obstacle
+	0.0 - Target is not in view cone OR is out of perception range
+	*/
+	proto external float GetTraceFraction();
+	/*
+	Returns a value from 0 to 1.0 which shows how much target is visible based on visibility of each aimpoint.
+	This is affected both by amount of visible aimpoint and by how much each of them is visible.
+	*/
 	proto external float GetExposure();
 	// Returns perceivable component of target
 	proto external PerceivableComponent GetPerceivableComponent();
+	proto external DamageManagerComponent GetDamageManagerComponent();
+	proto external BaseWeaponManagerComponent GetWeaponManagerComponent();
+	proto external FactionAffiliationComponent GetFactionAffiliationComponent();
 	proto void GetAccumulatedRecognition(out float outRecognitionDetect, out float outRecognitionIdentify);
 	// Sets the last seen position to provided value if the timestamp is newer than existing last seen time
 	proto external void UpdateLastSeenPosition(vector pos, float perceptionMgrTimestamp);

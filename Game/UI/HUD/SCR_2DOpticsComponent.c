@@ -22,7 +22,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	const float NEAR_PLANE_ZOOMED = 0.05;
 
 	// Optics setup
-	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Layout used for 2D sights HUD\n", params: "layout", category: "Resources")]
+	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Layout used for 2D sights HUD\n[OBSOLETE]", params: "layout", category: "Resources")]
 	protected ResourceName m_sLayoutResource;
 
 	[Attribute("", UIWidgets.ResourceNamePicker, desc: "Texture of reticle\n", params: "edds imageset", category: "Resources")]
@@ -34,7 +34,13 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	[Attribute("0", category: "Resources")]
 	protected bool m_bHasIllumination;
 
-	[Attribute("0 0 0", UIWidgets.ColorPicker, category: "Resources")]
+	[Attribute("0 0 0 1", UIWidgets.ColorPicker, category: "Resources")]
+	protected ref Color m_ReticleColor;
+
+	[Attribute("1 1 1 1", UIWidgets.ColorPicker, category: "Resources")]
+	protected ref Color m_ReticleOutlineColor;
+
+	[Attribute("1 0 0 1", UIWidgets.ColorPicker, category: "Resources")]
 	protected ref Color m_cReticleTextureIllumination;
 
 	[Attribute("0.05", UIWidgets.Slider, desc: "Reticle glow texture alpha\n[ % ]", params: "0 1 0.001", category: "Resources", precision: 3)]
@@ -146,6 +152,9 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	[Attribute("0 0 0", UIWidgets.EditBox, "Camera angles when looking through scope", category: "Sights", params: "inf inf 0 purpose=angles space=entity anglesVar=m_vCameraAngles")]
 	protected vector m_vCameraAngles;
 
+	[Attribute("1 1 1", UIWidgets.EditBox, "Camera misalignment scale for 2D optics", category: "Sights")]
+	protected vector m_vCameraMisalignmentScale;
+
 	protected float m_fCurrentReticleOffsetY;
 	protected float m_fCurrentCameraPitch;
 
@@ -166,11 +175,6 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	float GetReticleOffsetX()
 	{
 		return m_fReticleOffsetX;
-	}
-
-	float GetCurrentReticleOffsetY()
-	{
-		return m_fCurrentReticleOffsetY;
 	}
 
 	void GetReticleTextures(out ResourceName reticleTexture, out ResourceName reticleTextureGlow, out ResourceName filterTexture)
@@ -346,7 +350,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		// m_fMagnification value may change during gameplay
 		// But player camera may not exist at the moment, so at first we store magnification to compute it from and then compute it on first use
 		if (m_fFovZoomed < 0)
-		 	m_fFovZoomed = CalculateZoomFOV(-m_fFovZoomed);
+			m_fFovZoomed = CalculateZoomFOV(-m_fFovZoomed);
 
 		return m_fFovZoomed;
 	}
@@ -386,30 +390,6 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	float GetAnimationSpeedBlur()
 	{
 		return m_fAnimationSpeedBlur;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetDefaultSize()
-	{
-		return m_fDefaultSize;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void SetDefaultSize(float value)
-	{
-		m_fDefaultSize = value;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetCurrentReticleSize()
-	{
-		return m_fCurrentReticleSize;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void SetCurrentReticleSize(float value)
-	{
-		m_fCurrentReticleSize = value;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -474,7 +454,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		s_OnSightsADSChanged.Invoke(false, 0);
 
 		// Initialize to current zero value
-		m_fCurrentReticleOffsetY = GetReticleYOffsetTarget();
+		m_fCurrentReticleOffsetY = GetReticleOffsetYTarget();
 
 		if (m_bWasEntityHidden)
 		{
@@ -505,15 +485,10 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	{
 		float interp = Math.Min(1, timeSlice * m_fReticleOffsetInterpSpeed);
 		// Interpolate zeroing values
-		float reticleTarget = GetReticleYOffsetTarget();
+		float reticleTarget = GetReticleOffsetYTarget();
 		m_fCurrentReticleOffsetY = Math.Lerp(m_fCurrentReticleOffsetY, reticleTarget, interp);
 		float pitchTarget = GetCameraPitchTarget();
 		m_fCurrentCameraPitch = Math.Lerp(m_fCurrentCameraPitch, pitchTarget, interp);
-
-#ifdef ENABLE_DIAG
-		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_WEAPONS_OPTICS))
-			DebugOptics();
-#endif
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -575,48 +550,51 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*! Get sight angles in camera space and vertical FOV of the camera for further use
-	\param fov field of view of main camera
-	\param sightM sight orientation in camera space
-	\return Math3D.MatrixToAngles(cameraMat)
+	/*! Get sight angles in camera space
+	//! \param camera entity to get misalignment against
+	//! \return angles sight yaw, pitch and roll in camera space
 	*/
-	vector GetMisalignment(out vector sightMat[4], out float fov)
+	vector GetMisalignmentAngles(notnull CameraBase camera)
 	{
-		CameraManager cameraManager = GetGame().GetCameraManager();
-		if (!cameraManager)
-			return vector.Zero;
 
-		CameraBase camera = cameraManager.CurrentCamera();
-		if (!camera)
-			return vector.Zero;
+		// Get camera parent to sight matrix
+		vector parentToSightMat[4];
+		GetParentToLocalTransform(parentToSightMat, camera.GetParent());
 
-		// Get FOV since we are already having camera
-		fov = camera.GetVerticalFOV();
+		// Camera in parent space
+		vector cameraMat[4];
+		camera.GetLocalTransform(cameraMat);
 
-		// Get sight orientation
-		// Turrets require local sight transform for reliability
-		GetSightsTransform(sightMat, true);
+		// Sight camera angles offset
+		vector sightMat[3];
+		vector sightAngles = {-m_vCameraAngles[1], - m_vCameraAngles[0] - m_fCurrentCameraPitch, 0};
+		Math3D.AnglesToMatrix(sightAngles, sightMat);
 
-		// Add optic orientation
-		vector opticMat[4];
-		GetCameraLocalTransform(opticMat);
-		Math3D.MatrixMultiply3(opticMat, sightMat, sightMat);
+		// Sight camera angles mat in parent space
+		Math3D.MatrixMultiply3(sightMat, parentToSightMat, sightMat);
 
-		// Convert to world orientation
-		vector ownerMat[3];
-		GetOwner().GetWorldTransform(ownerMat);
-		Math3D.MatrixMultiply3(ownerMat, sightMat, sightMat);
+		// Sight and camera in parent space
+		Math3D.MatrixMultiply3(sightMat, cameraMat, sightMat);
 
-		vector cameraMat[3];
-		camera.GetWorldTransform(cameraMat);
-		Math3D.MatrixInvMultiply3(cameraMat, sightMat, cameraMat);
+		// Sight transform which is important for turrets
+		vector turretMat[3];
+		GetSightsTransform(turretMat, true);
+		Math3D.MatrixInvMultiply3(sightMat, turretMat, sightMat);
 
-		//! Fix for PGO-7, however it breaks other types of optics.
-		//! Different solution is needed, because this does not handle leaning gracefully.
-		if (m_eZeroingType == SCR_EPIPZeroingType.EPZ_NONE)
-			Math3D.MatrixInvMultiply3(opticMat, cameraMat, cameraMat);
+		// Sight angles as seen by camera
+		vector angles = Math3D.MatrixToAngles(sightMat);
 
-		vector angles = Math3D.MatrixToAngles(cameraMat);
+		// Account for additional optic camera roll
+		angles[2] = angles[2] + m_vCameraAngles[2];
+
+		// Scale misalignment for off-axis scopes
+		angles[0] = angles[0] * m_vCameraMisalignmentScale[0];
+		angles[1] = angles[1] * m_vCameraMisalignmentScale[1];
+		angles[2] = angles[2] * m_vCameraMisalignmentScale[2];
+
+		// Misalignment should not exceed 180 degrees
+		angles[0] = fixAngle_180_180(angles[0]);
+		angles[1] = fixAngle_180_180(angles[1]);
 
 		return angles;
 	}
@@ -702,7 +680,19 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	Color GetReticleTextureIllumination()
+	Color GetReticleColor()
+	{
+		return Color.FromInt(m_ReticleColor.PackToInt());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	Color GetReticleOutlineColor()
+	{
+		return Color.FromInt(m_ReticleOutlineColor.PackToInt());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	Color GetReticleIlluminationColor()
 	{
 		return Color.FromInt(m_cReticleTextureIllumination.PackToInt());
 	}
@@ -716,29 +706,29 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 
 		if (m_bHasIllumination && enable)
 		{
-			reticleTint = GetReticleTextureIllumination();
-			glowTint = GetReticleTextureIllumination();
+			reticleTint = GetReticleIlluminationColor();
+			glowTint = GetReticleIlluminationColor();
 		}
 		else
 		{
-			reticleTint = Color.FromInt(Color.BLACK);
-			glowTint = Color.FromInt(Color.WHITE);
+			reticleTint = GetReticleColor();
+			glowTint = GetReticleOutlineColor();
 		}
 
-		glowTint.SetA(m_fReticleTextureGlowAlpha);
+		glowTint.SetA(m_fReticleTextureGlowAlpha * glowTint.A());
 		s_OnIlluminationChange.Invoke(reticleTint, glowTint);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected float GetReticleYOffsetTarget()
+	protected float GetReticleOffsetYTarget()
 	{
 		return 0.0;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	float GetCurrentReticleYOffset()
+	float GetCurrentReticleOffsetY()
 	{
-		return m_fReticleOffsetY;
+		return m_fCurrentReticleOffsetY;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -767,29 +757,29 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	{
 		return m_vCameraAngles;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	/*!
-		\param matrix Out transformation from character's model space to our local space.
+		\param matrix Out transformation from parent model space to our local space.
+		\param parent Parent to override. The loop will quit on a node matching this.
+		\return lastNode Last node that was processed
 	*/
-	void GetCharacterToLocalTransform(out vector result[4])
+	IEntity GetParentToLocalTransform(out vector result[4], IEntity parent = null)
 	{
 		vector temp[4];
 		Math3D.MatrixIdentity4(temp);
-		
-		IEntity parent = GetOwner();
-		IEntity lastNode = parent;
-		
+
+		IEntity lastNode = GetOwner();
+
 		while (lastNode)
 		{
-			// Stop on character, that is final node
-			ChimeraCharacter chara = ChimeraCharacter.Cast(lastNode);
-			if (chara)
+			// Stop on defined parent entity, that is final node
+			if (parent == lastNode)
 				break;
-			
+
 			vector localTransform[4];
 			lastNode.GetLocalTransform(localTransform);
-			
+
 			// If using a pivot, we need to apply the pivot transformation
 			TNodeId pivotIndex = lastNode.GetPivot();
 			if (pivotIndex != -1)
@@ -800,7 +790,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 				{
 					vector pivotTM[4];
 					parentNode.GetAnimation().GetBoneMatrix(pivotIndex, pivotTM);
-					
+
 					// This should not be happening - there should
 					// rather be no pivot, yet it triggers at times.
 					// ??? TODO@AS: See if we can have better API for pivoting like this
@@ -808,14 +798,16 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 						Math3D.MatrixMultiply4(pivotTM, localTransform, localTransform);
 				}
 			}
-			
+
 			Math3D.MatrixMultiply4(localTransform, temp, result);
 			Math3D.MatrixCopy(result, temp);
-			
+
 			lastNode = lastNode.GetParent();
 		}
-		
+
 		Math3D.MatrixGetInverse4(temp, result);
+
+		return lastNode;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -886,97 +878,45 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		return parent;
 	}
 
-#ifdef ENABLE_DIAG
-	protected static bool s_bOpticDiagRegistered;
-	protected float m_fDebugAngle = 6;
-	protected float m_fDebugUnit = 1;
-
 	//------------------------------------------------------------------------------------------------
-	//! Constructor
-	void SCR_2DOpticsComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
+	void SetObjectiveFov(float objectiveFov)
 	{
-		if (!s_bOpticDiagRegistered)
-		{
-			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_WEAPONS_OPTICS, "", "Show optics diag", "Weapons");
-			s_bOpticDiagRegistered = true;
-		}
+		m_fObjectiveFov = objectiveFov;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void InputFloatClamped(inout float value, string label, float min, float max, int pxWidth = 100)
+	void SetObjectiveScale(float objectiveScale)
 	{
-		DbgUI.InputFloat(label, value, pxWidth);
-		value = Math.Clamp(value, min, max);
+		m_fObjectiveScale = objectiveScale;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void DebugOptics()
+	void SetReticleBaseZoom(float reticleBaseZoom)
 	{
-		DbgUI.Begin("Optics");
-		{
-			InputFloatClamped(m_fDebugUnit, "m_fDebugUnit", -100, 100);
-			InputFloatClamped(m_fDebugAngle, "m_fDebugAngle", -1000, 1000);
-			InputFloatClamped(m_fReticleAngularSize, "m_fReticleAngularSize", 0, 100);
-			InputFloatClamped(m_fReticlePortion, "m_fReticlePortion", 0, 100);
-			InputFloatClamped(m_fObjectiveFov, "m_fObjectiveFov", 0, 100);
-			InputFloatClamped(m_fObjectiveScale, "m_fObjectiveScale", -100, 100);
-			InputFloatClamped(m_fVignetteScale, "m_fVignetteScale", -100, 100.0);
-			InputFloatClamped(m_fVignetteMoveSpeed, "m_fVignetteMoveSpeed", -100, 100.0);
-			InputFloatClamped(m_fMisalignmentDampingSpeed, "m_fMisalignmentDampingSpeed", -100, 100);
-			InputFloatClamped(m_fRotationScale, "m_fRotationScale", -100, 100);
-			InputFloatClamped(m_fRotationDampingSpeed, "m_fRotationDampingSpeed", -100, 100);
-			InputFloatClamped(m_fMovementScale, "m_fMovementScale", -100, 100);
-			InputFloatClamped(m_fMovementDampingSpeed, "m_fMovementDampingSpeed", -100, 100);
-			InputFloatClamped(m_fRollScale, "m_fRollScale", -100, 100);
-			InputFloatClamped(m_fRollDampingSpeed, "m_fRollDampingSpeed", -100, 100);
-			InputFloatClamped(m_fMisalignmentScale, "m_fMisalignmentScale", -100, 100);
-			InputFloatClamped(m_fReticleTextureGlowAlpha, "m_fReticleTextureGlowAlpha", 0, 1);
-		}
-		DbgUI.End();
+		m_fReticleBaseZoom = reticleBaseZoom;
+	}
 
-		SCR_2DPIPSightsComponent pip = SCR_2DPIPSightsComponent.Cast(this);
-		if (!pip || !pip.IsPIPActive())
-			s_OnSetupOpticImage.Invoke();
+	//------------------------------------------------------------------------------------------------
+	void SetReticleAngularSize(float reticleAngularSize)
+	{
+		m_fReticleAngularSize = reticleAngularSize;
+	}
 
-		float targetSize = 0.5 * Math.Tan(Math.DEG2RAD * m_fDebugAngle * m_fDebugUnit);
-		float range = 1000;
+	//------------------------------------------------------------------------------------------------
+	void SetReticlePortion(float reticlePortion)
+	{
+		m_fReticlePortion = reticlePortion;
+	}
 
-		vector sightMat[4];
-		GetSightsTransform(sightMat, true);
-		vector ownerMat[4];
-		GetOwner().GetWorldTransform(ownerMat);
-		Math3D.MatrixMultiply4(ownerMat, sightMat, sightMat);
+	//------------------------------------------------------------------------------------------------
+	void SetReticleOffsetX(float reticleOffsetX)
+	{
+		m_fReticleOffsetX = reticleOffsetX;
+	}
 
-		vector opticSide = sightMat[0];
-		vector opticUp = sightMat[1];
-		vector opticDir = sightMat[2];
-		vector opticPos = sightMat[3];
-
-		vector targetPos = opticPos + opticDir * range;
-		vector targetSide = opticSide * targetSize * range;
-		vector targetUp = opticUp * targetSize * range;
-
-		vector target[8];
-		target[0] = targetPos - targetSide + targetUp;
-		target[1] = targetPos + targetSide + targetUp;
-		target[2] = targetPos + targetSide - targetUp;
-		target[3] = targetPos - targetSide - targetUp;
-		target[4] = targetPos - targetSide + targetUp;
-		target[5] = targetPos + targetSide - targetUp;
-		target[6] = targetPos + targetSide + targetUp;
-		target[7] = targetPos - targetSide - targetUp;
-
-		vector target2[6];
-		target2[0] = targetPos + targetSide;
-		target2[1] = targetPos - targetSide;
-		target2[2] = targetPos - targetUp;
-		target2[3] = targetPos + targetSide;
-		target2[4] = targetPos + targetUp;
-		target2[5] = targetPos - targetSide;
-
-		Shape.CreateLines(COLOR_RED, ShapeFlags.ONCE | ShapeFlags.NOZBUFFER, target, 8);
-		Shape.CreateLines(COLOR_RED, ShapeFlags.ONCE | ShapeFlags.NOZBUFFER, target2, 6);
-		Shape.CreateSphere(COLOR_YELLOW_A, ShapeFlags.ONCE | ShapeFlags.NOZBUFFER | ShapeFlags.TRANSP | ShapeFlags.NOOUTLINE | ShapeFlags.NOZWRITE, targetPos, targetSize * range);
-		}
-#endif
+	//------------------------------------------------------------------------------------------------
+	void SetReticleOffsetY(float reticleOffsetY)
+	{
+		m_fReticleOffsetY = reticleOffsetY;
+	}
 }

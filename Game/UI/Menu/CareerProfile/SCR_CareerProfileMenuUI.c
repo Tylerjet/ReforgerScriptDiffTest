@@ -1,15 +1,15 @@
-//------------------------------------------------------------------------------------------------
-class SCR_CareerProfileMenuUI: SCR_SuperMenuBase
+class SCR_CareerProfileMenuUI : SCR_SuperMenuBase
 {
-		
+	protected const float SMOOTH_BORDER = 0.8;
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen()
 	{
 		super.OnMenuOpen();
 
-		SCR_InputButtonComponent comp = SCR_InputButtonComponent.GetInputButtonComponent("Back",GetRootWidget());
+		SCR_InputButtonComponent comp = m_DynamicFooter.FindButton("Back");
 		if (comp)
-			comp.m_OnActivated.Insert(OnBack);
+			comp.m_OnActivated.Insert(Close);
 
 		bool showBlur = !GetGame().m_bIsMainMenuOpen;
 
@@ -25,14 +25,8 @@ class SCR_CareerProfileMenuUI: SCR_SuperMenuBase
 			{
 				float w, h;
 				GetGame().GetWorkspace().GetScreenSize(w, h);
-				blur.SetSmoothBorder(0, 0, w * 0.8, 0);
+				blur.SetSmoothBorder(0, 0, w * SMOOTH_BORDER, 0);
 			}
 		}
 	}
-
-	//------------------------------------------------------------------------------------------------
-	void OnBack()
-	{
-		Close();
-	}
-};
+}

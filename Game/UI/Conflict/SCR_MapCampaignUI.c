@@ -58,7 +58,7 @@ class SCR_MapCampaignUI : SCR_MapUIElementContainer
 	//------------------------------------------------------------------------------
 	protected void InitBases()
 	{
-		SCR_MilitaryBaseManager baseManager = SCR_MilitaryBaseManager.GetInstance();
+		SCR_MilitaryBaseSystem baseManager = SCR_MilitaryBaseSystem.GetInstance();
 		array<SCR_MilitaryBaseComponent> bases = {};
 		baseManager.GetBases(bases);
 		SCR_CampaignFaction faction = SCR_CampaignFaction.Cast(SCR_FactionManager.SGetLocalPlayerFaction());
@@ -191,7 +191,7 @@ class SCR_MapCampaignUI : SCR_MapUIElementContainer
 		if(image)
 		{
 			image.LoadImageFromSet(0, imageSet, "PlayerSpawnHint");
-			image.SetColor(Color.Orange);
+			image.SetColor(Color.FromInt(Color.ORANGE));
 		}
 		
 		//Sets time to spawn icon

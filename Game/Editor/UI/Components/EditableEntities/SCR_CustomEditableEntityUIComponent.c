@@ -1,8 +1,9 @@
-class SCR_CustomEditableEntityUIComponent: SCR_BaseEditableEntityUIComponent
+class SCR_CustomEditableEntityUIComponent : SCR_BaseEditableEntityUIComponent
 {
 	[Attribute("Icon")]
 	protected string m_sIconWidgetName;
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnInit(SCR_EditableEntityComponent entity, SCR_UIInfo info, SCR_EditableEntityBaseSlotUIComponent slot)
 	{
 		if (info)
@@ -12,4 +13,4 @@ class SCR_CustomEditableEntityUIComponent: SCR_BaseEditableEntityUIComponent
 			info.SetIconTo(iconWidget);
 		}
 	}
-};
+}

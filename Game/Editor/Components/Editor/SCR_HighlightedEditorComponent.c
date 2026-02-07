@@ -14,15 +14,15 @@ class SCR_HighlightedEditorComponent : SCR_BaseEditorComponent
 	protected SCR_DelegateFactionManagerComponent m_DelegateFactionManager;
 	
 	//Main Script invokers
-	protected ref ScriptInvoker Event_OnAddHighlight = new ref ScriptInvoker;
-	protected ref ScriptInvoker Event_OnUpdateHighlight = new ref ScriptInvoker;
-	protected ref ScriptInvoker Event_OnRemoveHighlight = new ref ScriptInvoker;
+	protected ref ScriptInvoker Event_OnAddHighlight = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnUpdateHighlight = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnRemoveHighlight = new ScriptInvoker;
 	
 	//State
 	protected bool m_bReplicationIsRunning;
 	
 	//Highlighted entities
-	protected ref map<SCR_EditableEntityComponent, EEditableEntityHighlight> m_HighlightedEntities = new ref map<SCR_EditableEntityComponent, EEditableEntityHighlight>;
+	protected ref map<SCR_EditableEntityComponent, EEditableEntityHighlight> m_HighlightedEntities = new map<SCR_EditableEntityComponent, EEditableEntityHighlight>;
 	
 	//-------------------------- Add Highlight types --------------------------\\
 	protected void AddHighlight(SCR_EditableEntityComponent entity, EEditableEntityHighlight highlight) //Highlights instead of highlight singilar

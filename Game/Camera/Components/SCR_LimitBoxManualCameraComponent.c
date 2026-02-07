@@ -1,10 +1,7 @@
-[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
-/** @ingroup ManualCamera
-*/
+//! @ingroup ManualCamera
 
-/*!
-Limit camera movement within specific box area
-*/
+//! Limit camera movement within specific box area
+[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
 class SCR_LimitBoxManualCameraComponent : SCR_BaseManualCameraComponent
 {
 	[Attribute(defvalue: "-2000 -2000 -2000")]
@@ -18,6 +15,7 @@ class SCR_LimitBoxManualCameraComponent : SCR_BaseManualCameraComponent
 	
 	private vector m_vPos;
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraFrame(SCR_ManualCameraParam param)
 	{
 		if (!param.isDirty) return;
@@ -28,15 +26,19 @@ class SCR_LimitBoxManualCameraComponent : SCR_BaseManualCameraComponent
 		m_vPos[2] = Math.Clamp(m_vPos[2], m_vBoundsMin[2], m_vBoundsMax[2]);
 		param.transform[3] = m_vPos;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool EOnCameraInit()
 	{
 		if (!m_RelativeToWorld) return true;
 		
 		ArmaReforgerScripted game = GetGame();
-		if (!game) return false;
+		if (!game)
+			return false;
 		
 		BaseWorld world = game.GetWorld();
-		if (!world) return false;
+		if (!world)
+			return false;
 		
 		vector worldBoundBoxMin, worldBoundBoxMax;
 		world.GetBoundBox(worldBoundBoxMin, worldBoundBoxMax);
@@ -46,4 +48,4 @@ class SCR_LimitBoxManualCameraComponent : SCR_BaseManualCameraComponent
 		
 		return true;
 	}
-};
+}

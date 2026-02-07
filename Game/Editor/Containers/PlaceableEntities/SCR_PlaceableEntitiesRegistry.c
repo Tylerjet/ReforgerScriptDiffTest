@@ -68,6 +68,18 @@ class SCR_PlaceableEntitiesRegistry
 		if (!m_Prefabs) m_Prefabs = new array<ResourceName>;
 		m_Prefabs.Copy(prefabs);
 	}
+	
+	void AddPrefabs(notnull array<ResourceName> prefabs)
+	{
+		if (!m_Prefabs) 
+			m_Prefabs = {};
+		
+		foreach (ResourceName prefab: prefabs)
+		{
+			m_Prefabs.Insert(prefab)
+		}
+		
+	}
 };
 
 class SCR_PlaceableEntitiesRegistryTitleField: BaseContainerCustomTitle

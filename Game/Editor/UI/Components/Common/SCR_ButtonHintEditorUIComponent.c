@@ -5,6 +5,7 @@ class SCR_ButtonHintEditorUIComponent : MenuRootSubComponent
 	
 	protected int m_Show;
 	
+	//------------------------------------------------------------------------------------------------
 	protected void RefreshVisibility()
 	{
 		bool show = m_Show == (CONDITION_DEVICE | CONDITION_FOCUS);
@@ -12,18 +13,24 @@ class SCR_ButtonHintEditorUIComponent : MenuRootSubComponent
 		GetWidget().SetEnabled(show);
 		GetWidget().SetVisible(show);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnMenuFocusGained()
 	{
 		m_Show |= CONDITION_FOCUS;
 		
 		RefreshVisibility();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnMenuFocusLost()
 	{
 		m_Show &= ~CONDITION_FOCUS;
 		
 		RefreshVisibility();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
 		if (isGamepad)
@@ -33,10 +40,14 @@ class SCR_ButtonHintEditorUIComponent : MenuRootSubComponent
 		
 		RefreshVisibility();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected bool IsUnique()
 	{
 		return false;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttachedScripted(Widget w)
 	{
 		MenuRootBase menu = GetMenu();
@@ -51,6 +62,8 @@ class SCR_ButtonHintEditorUIComponent : MenuRootSubComponent
 		OnMenuFocusGained();
 		OnInputDeviceIsGamepad(!GetGame().GetInputManager().IsUsingMouseAndKeyboard());
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		MenuRootBase menu = GetMenu();
@@ -62,4 +75,4 @@ class SCR_ButtonHintEditorUIComponent : MenuRootSubComponent
 		
 		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 	}
-};
+}

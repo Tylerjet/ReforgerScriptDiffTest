@@ -1,5 +1,32 @@
 //////////////////// MUZZLE ATTACHMENTS PER CALIBER ////////////////////
 
+class AttachmentMuzzlePistolClass {}
+AttachmentMuzzlePistolClass AttachmentMuzzlePistolSource;
+class AttachmentMuzzlePistol : AttachmentMuzzle
+{
+};
+
+class AttachmentMuzzle9_18Class {}
+
+AttachmentMuzzle9_18Class AttachmentMuzzle9_18Source;
+class AttachmentMuzzle9_18 : AttachmentMuzzlePistol
+{
+};
+
+class AttachmentMuzzle9_19Class {}
+
+AttachmentMuzzle9_19Class AttachmentMuzzle9_19Source;
+class AttachmentMuzzle9_19 : AttachmentMuzzlePistol
+{
+};
+
+class AttachmentMuzzle45Class {}
+
+AttachmentMuzzle45Class AttachmentMuzzle45Source;
+class AttachmentMuzzle45 : AttachmentMuzzlePistol
+{
+};
+
 class AttachmentMuzzle556_45Class {}
 
 AttachmentMuzzle556_45Class AttachmentMuzzle556_45Source;
@@ -32,5 +59,12 @@ class AttachmentMuzzle762_39Class {}
 
 AttachmentMuzzle762_39Class AttachmentMuzzle762_39Source;
 class AttachmentMuzzle762_39 : AttachmentMuzzle
+{
+};
+
+
+class AttachmentMuzzle308Class {}
+AttachmentMuzzle308Class AttachmentMuzzle308Source;
+class AttachmentMuzzle308 : AttachmentMuzzle
 {
 };

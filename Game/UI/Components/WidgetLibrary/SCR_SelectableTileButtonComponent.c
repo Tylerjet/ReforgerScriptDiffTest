@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------------------------
 class SCR_SelectableTileButtonComponent : SCR_ButtonComponent 
 {
-	ref ScriptInvoker m_OnChanged = new ref ScriptInvoker();
+	ref ScriptInvoker m_OnChanged = new ScriptInvoker();
 	private bool m_bIsSelected = false;
 	protected bool m_bIsTriggered = true;
 	

@@ -1,9 +1,10 @@
 [BaseContainerProps(), SCR_BaseContainerHintCondition()]
-class SCR_EditorPlacingHintCondition: SCR_BaseEditorHintCondition
+class SCR_EditorPlacingHintCondition : SCR_BaseEditorHintCondition
 {
 	[Attribute("-1", uiwidget: UIWidgets.ComboBox, enums: SCR_Enum.GetList(EEditableEntityType, new ParamEnum("<None>", "-1")))]
 	protected EEditableEntityType m_Type;
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnSelectedPrefabChange(ResourceName prefab, ResourceName prefabPrev)
 	{
 		if (prefab)
@@ -29,16 +30,19 @@ class SCR_EditorPlacingHintCondition: SCR_BaseEditorHintCondition
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override protected void OnInitConditionEditor(SCR_EditorManagerEntity editorManager)
 	{
 		SCR_PlacingEditorComponent placingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent));
 		if (placingManager)
 			placingManager.GetOnSelectedPrefabChange().Insert(OnSelectedPrefabChange);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void OnExitConditionEditor(SCR_EditorManagerEntity editorManager)
 	{
 		SCR_PlacingEditorComponent placingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent));
 		if (placingManager)
 			placingManager.GetOnSelectedPrefabChange().Remove(OnSelectedPrefabChange);
 	}
-};
+}

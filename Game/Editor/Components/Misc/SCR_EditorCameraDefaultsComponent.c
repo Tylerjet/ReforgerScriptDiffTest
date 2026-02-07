@@ -96,7 +96,7 @@ class SCR_EditorCameraDefaultsComponent : ScriptComponent
 		if (!genericOwner) return;
 		
 		WorldEditorAPI api = genericOwner._WB_GetEditorAPI();
-		if (!api || !api.IsEntitySelected(owner)) return;
+		if (!api || !api.IsEntitySelected(api.EntityToSource(owner))) return;
 		
 		float length = 200;
 		float width = 160;

@@ -1,9 +1,8 @@
 [EntityEditorProps(category: "GameScripted/ScriptWizard", description: "THIS IS THE SCRIPT DESCRIPTION.", color: "0 0 255 255")]
-class SCR_PowerComponentClass: ScriptGameComponentClass
+class SCR_PowerComponentClass : ScriptGameComponentClass
 {
-};
-		
-//------------------------------------------------------------------------------------------------
+}
+
 class SCR_PowerComponent : ScriptGameComponent
 {
 	[Attribute( defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Should the engine output be reduced when there's no power (batteries destroyed)")]
@@ -17,28 +16,33 @@ class SCR_PowerComponent : ScriptGameComponent
 	private bool m_bHasPower = true;
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool HasPower()
 	{
 		return m_bHasPower; 
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool ShouldApplyNoPowerPenalty()
 	{
 		return m_bShouldApplyNoPowerPenalty;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetNoPowerMultiplier()
 	{
 		return m_fNoPowerMultiplier;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	ref ScriptInvoker GetEventBatteryStateChanged(bool createNew = true)
+	//! \param[in] createNew
+	//! \return
+	ScriptInvoker GetEventBatteryStateChanged(bool createNew = true)
 	{
 		if (createNew && !m_EventBatteryStateChanged)
-			m_EventBatteryStateChanged = new ref ScriptInvoker();
+			m_EventBatteryStateChanged = new ScriptInvoker();
 		
 		return m_EventBatteryStateChanged;
 	}
@@ -52,7 +56,7 @@ class SCR_PowerComponent : ScriptGameComponent
 	
 		if (m_aBatteryHitZones)
 		{
-			foreach (HitZone hitZone: m_aBatteryHitZones)
+			foreach (HitZone hitZone : m_aBatteryHitZones)
 			{
 				if (hitZone.GetDamageState() != EDamageState.DESTROYED)
 				{
@@ -72,6 +76,8 @@ class SCR_PowerComponent : ScriptGameComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] hitZone
 	void RegisterBatteryHitZone(notnull HitZone hitZone)
 	{
 		if (!m_aBatteryHitZones)
@@ -84,13 +90,4 @@ class SCR_PowerComponent : ScriptGameComponent
 		if (m_bHasPower != hasPower)
 			UpdatePowerState();
 	}
-
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_PowerComponent()
-	{
-		if (m_aBatteryHitZones)
-			m_aBatteryHitZones.Clear();
-		
-		m_aBatteryHitZones = null;
-	}
-};
+}

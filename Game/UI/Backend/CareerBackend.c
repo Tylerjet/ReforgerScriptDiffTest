@@ -151,7 +151,7 @@ class CareerBackendData : JsonApiStruct
 	{
 		if (!m_sessionInfo)
 		{
-			m_sessionInfo = new ref SCR_SessionInfo();
+			m_sessionInfo = new SCR_SessionInfo();
 			BackendApi bApi = GetGame().GetBackendApi();
 		
 			if (bApi)

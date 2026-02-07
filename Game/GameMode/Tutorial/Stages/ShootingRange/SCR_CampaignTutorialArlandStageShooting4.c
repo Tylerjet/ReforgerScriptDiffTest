@@ -12,7 +12,10 @@ class SCR_CampaignTutorialArlandStageShooting4 : SCR_BaseCampaignTutorialArlandS
 		RegisterWaypoint("WP_FIREPOZ_1");
 		m_fWaypointCompletionRadius = 2;
 		m_fWaypointHeightOffset = 0;
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("FireOne", true);
+		HintOnVoiceOver();
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -10,7 +10,7 @@ class SCR_PrefabHelper
 	//------------------------------------------------------------------------------------------------
 	//! Create a clone of the provided prefab at the provided destination, overriding file if any
 	//! Destination directory is created if it does not exist
-	//! \param absoluteFilePath the directory is automatically created if needed and a trailing '.et' is automatically added if missing
+	//! \param[in] absoluteFilePath the directory is automatically created if needed and a trailing '.et' is automatically added if missing
 	//! \return created clone's ResourceName
 	static ResourceName ClonePrefab(ResourceName sourcePrefab, string absoluteFilePath)
 	{
@@ -79,7 +79,7 @@ class SCR_PrefabHelper
 	//------------------------------------------------------------------------------------------------
 	//! Create a child of the provided prefab at the provided destination, overriding file if any
 	//! Destination directory is created if it does not exist
-	//! \param absoluteFilePath the directory is automatically created if needed and a trailing '.et' is automatically added if missing
+	//! \param[in] absoluteFilePath the directory is automatically created if needed and a trailing '.et' is automatically added if missing
 	//! \return created child's ResourceName
 	static ResourceName CreateChildPrefab(ResourceName sourcePrefab, string absoluteFilePath)
 	{
@@ -142,10 +142,10 @@ class SCR_PrefabHelper
 	//! Create Prefabs from the provided XOBs - only setting MeshObject to these Prefabs.
 	//! Destination directory is created if it does not exist
 	//! The difference with CreatePrefabFromXOB is that prefabs here cannot be named, their name will be based on XOB filename
-	//! \param xobs list of XOBs to import
-	//! \param absoluteDirPath a trailing '/' is automatically added if missing
-	//! \param parentPrefab if not provided, GenericEntity is used
-	//! \param createBasePrefab if a prefab_base.et should be created (from which prefab.et inherits)
+	//! \param[in] xobs list of XOBs to import
+	//! \param[in] absoluteDirPath a trailing '/' is automatically added if missing
+	//! \param[in] parentPrefab if not provided, GenericEntity is used
+	//! \param[in] createBasePrefab if a prefab_base.et should be created (from which prefab.et inherits)
 	//! \return created prefabs, null on error
 	static array<ResourceName> CreatePrefabsFromXOBs(notnull array<ResourceName> xobs, string absoluteDirPath, ResourceName parentPrefab = string.Empty, bool createBasePrefab = false)
 	{
@@ -226,10 +226,10 @@ class SCR_PrefabHelper
 	//! Destination directory is created if it does not exist
 	//! The difference with CreatePrefabsFromXOBs is that providing the .et path extracts the final file name
 	//! the base prefab (if requested) will be named accordingly (name without extension + '_base.et')
-	//! \param xob path of the XOB to import
-	//! \param absoluteDestinationPath can be either a directory (a trailing '/' is automatically added if missing) or a file path (.et), the directory is automatically created if needed
-	//! \param parentPrefab if not provided, GenericEntity is used
-	//! \param createBasePrefab if a prefab_base.et should be created (from which prefab.et inherits)
+	//! \param[in] xob path of the XOB to import
+	//! \param[in] absoluteDestinationPath can be either a directory (a trailing '/' is automatically added if missing) or a file path (.et), the directory is automatically created if needed
+	//! \param[in] parentPrefab if not provided, GenericEntity is used
+	//! \param[in] createBasePrefab if a prefab_base.et should be created (from which prefab.et inherits)
 	//! \return created prefabs, null on error
 	static ResourceName CreatePrefabFromXOB(ResourceName xob, string absoluteDestinationPath, ResourceName parentPrefab = string.Empty, bool createBasePrefab = false)
 	{
@@ -285,7 +285,7 @@ class SCR_PrefabHelper
 	//------------------------------------------------------------------------------------------------
 	//! Create an entity and return an IEntitySource
 	//! Keeps the entity in the world, does NOT delete the entity itself
-	//! \param parentPrefab if not provided, GenericEntity is used
+	//! \param[in] parentPrefab if not provided, GenericEntity is used
 	//! \return created entity's IEntitySource or null on error
 	static IEntitySource CreateEntitySource(ResourceName parentPrefab = string.Empty)
 	{
@@ -301,19 +301,10 @@ class SCR_PrefabHelper
 
 		bool manageEditAction = BeginEntityAction();
 
-		IEntity entity = worldEditorAPI.CreateEntity(parentPrefab, "", worldEditorAPI.GetCurrentEntityLayerId(), null, vector.Zero, vector.Zero);
-		if (!entity)
-		{
-			Print("Entity could not be created (parent = " + parentPrefab + ")", LogLevel.ERROR);
-			EndEntityAction(manageEditAction);
-			return null;
-		}
-
-		IEntitySource entitySource = worldEditorAPI.EntityToSource(entity);
+		IEntitySource entitySource = worldEditorAPI.CreateEntity(parentPrefab, "", worldEditorAPI.GetCurrentEntityLayerId(), null, vector.Zero, vector.Zero);
 		if (!entitySource)
 		{
-			Print("Entity source could not be found (parent = " + parentPrefab + ")", LogLevel.ERROR);
-			worldEditorAPI.DeleteEntity(entity);
+			Print("Entity could not be created (parent = " + parentPrefab + ")", LogLevel.ERROR);
 			EndEntityAction(manageEditAction);
 			return null;
 		}
@@ -325,7 +316,7 @@ class SCR_PrefabHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! A wrapper method for CreateEntitySource + DeleteEntityFromSource and World Editor action management
-	//! \param parentPrefab if not provided, GenericEntity is used
+	//! \param[in] parentPrefab if not provided, GenericEntity is used
 	//! \return created entity's IEntitySource or null on error
 	protected static IEntitySource CreateEntitySourceWithoutEntity(ResourceName parentPrefab = string.Empty)
 	{
@@ -345,8 +336,8 @@ class SCR_PrefabHelper
 	//! Create an entity from an XOB and return an IEntitySource
 	//! Keeps the entity in the world, does NOT delete the entity itself
 	//  protected for now
-	//! \param xob path of the XOB to import
-	//! \param parentPrefab if not provided, GenericEntity is used
+	//! \param[in] xob path of the XOB to import
+	//! \param[in] parentPrefab if not provided, GenericEntity is used
 	//! \return created entity's IEntitySource
 	protected static IEntitySource CreateEntitySourceFromXOB(ResourceName xob, ResourceName parentPrefab = string.Empty)
 	{
@@ -398,8 +389,8 @@ class SCR_PrefabHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Create and add a Component to the provided entitySource if not present
-	//! \param entitySource
-	//! \param componentClassname
+	//! \param[in] entitySource
+	//! \param[in] componentClassname
 	//! \return found or created component, null on error
 	static IEntityComponentSource CreateEntitySourceComponentIfNeeded(notnull IEntitySource entitySource, string componentClassname)
 	{
@@ -428,8 +419,8 @@ class SCR_PrefabHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Get the absolute file path of the provided resourceName
-	//! \param resourceName the resourceName from which to obtain the absolute file path
-	//! \param mustExist if true, the file MUST exist to return a valid value
+	//! \param[in] resourceName the resourceName from which to obtain the absolute file path
+	//! \param[in] mustExist if true, the file MUST exist to return a valid value
 	//! \return the provided resourceName's absolute file path or string.Empty on error / file not existing with mustExist true
 	static string GetResourceNameAbsolutePath(ResourceName resourceName, bool mustExist = true)
 	{
@@ -450,8 +441,8 @@ class SCR_PrefabHelper
 	//! Print(result); // Prefabs/Miniatures/Rocks/Granite
 	//! @endcode
 	//! See SCR_PrefabHelper.FormatRelativePath
-	//! \param relativeSourceDirectory the relative source directory, e.g Assets/Rocks/Granite
-	//! \param relativeTargetDirectory the relative target directory, e.g Prefabs/Miniatures
+	//! \param[in] relativeSourceDirectory the relative source directory, e.g Assets/Rocks/Granite
+	//! \param[in] relativeTargetDirectory the relative target directory, e.g Prefabs/Miniatures
 	//! \return target relative directory without leading or trailing slash, e.g Prefabs/Miniatures/Rocks/Granite
 	static string GetRelativeParentDirectory(string relativeSourceDirectory, string relativeTargetDirectory)
 	{
@@ -492,7 +483,7 @@ class SCR_PrefabHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Format provided relative path, removing leading and trailing slashes, replacing antislashes by slashes, etc.
-	//! \param relativePath the relative path
+	//! \param[in] relativePath the relative path
 	//! \return formatted relativePath
 	protected static string FormatRelativePath(string relativePath)
 	{
@@ -515,8 +506,8 @@ class SCR_PrefabHelper
 	//! Save a Prefab from the provided IEntitySource, with a _base Prefab or not
 	//! Destination directory is created if it does not exist
 	//! Keeps the entity in the world, does NOT delete the entity itself
-	//! \param absoluteDirPath a trailing '/' is automatically added if missing
-	//! \param prefabFileName a trailing '.et' is automatically added if missing
+	//! \param[in] absoluteDirPath a trailing '/' is automatically added if missing
+	//! \param[in] prefabFileName a trailing '.et' is automatically added if missing
 	//! \return ResourceName, empty on error
 	static ResourceName SaveEntitySourceAsPrefab(notnull IEntitySource entitySource, string absoluteDirPath, string prefabFileName, bool createBasePrefab = false)
 	{
@@ -602,7 +593,7 @@ class SCR_PrefabHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Update a Prefab
-	//! \param actualPrefab the spawned Prefab's IEntitySource ancestor
+	//! \param[in] actualPrefab the spawned Prefab's IEntitySource ancestor
 	//! \return true on success, false on failure
 	static bool UpdatePrefab(IEntitySource actualPrefab)
 	{
@@ -635,12 +626,12 @@ class SCR_PrefabHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! End an Entity Action in World Editor API if required
-	//! \param manageEditAction if World Editor Entity Action should be terminated, result of an earlier BeginEntityAction call
+	//! \param[in] manageEditAction if World Editor Entity Action should be terminated, result of an earlier BeginEntityAction call
 	protected static void EndEntityAction(bool manageEditAction)
 	{
 		if (manageEditAction)
 			SCR_WorldEditorToolHelper.GetWorldEditorAPI().EndEntityAction();
 	}
 
-};
-#endif
+}
+#endif // WORKBENCH

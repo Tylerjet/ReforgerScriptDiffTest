@@ -21,6 +21,6 @@ class SCR_SupplyCostItemHintUIInfo : SCR_InventoryItemHintUIInfo
 	//------------------------------------------------------------------------------------------------
 	override string GetItemHintName(InventoryItemComponent item)
 	{
-		return WidgetManager.Translate(GetName(), m_fItemSupplyCost);
+		return WidgetManager.Translate(GetName(), SCR_ResourceSystemHelper.SuppliesToString(m_fItemSupplyCost));
 	}
 }

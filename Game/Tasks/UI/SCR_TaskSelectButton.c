@@ -28,8 +28,8 @@ class SCR_TaskSelectButton : ScriptedWidgetComponent
 		SCR_MapTaskListUI taskListUI = SCR_MapTaskListUI.Cast(mapEntity.GetMapUIComponent(SCR_MapTaskListUI));
 		if (!taskListUI)
 			return false;
-		
-		taskListUI.HandleTaskList();
+
+		taskListUI.HandleTaskList(taskToFocus: m_MapUiTask.GetTask());
 
 		return false;
 	}
@@ -80,7 +80,7 @@ class SCR_TaskSelectButton : ScriptedWidgetComponent
 		if (!taskListUI)
 			return;
 		
-		taskListUI.HandleTaskList();
+		taskListUI.HandleTaskList(taskToFocus: m_MapUiTask.GetTask());
 	}
 	//------------------------------------------------------------------------------
 	bool HasAssigneeBool()

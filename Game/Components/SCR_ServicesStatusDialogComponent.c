@@ -93,7 +93,7 @@ class SCR_ServicesStatusDialogComponent : ScriptedWidgetComponent
 		if (m_wPingWidget)
 		{
 			m_sPingText = m_wPingWidget.GetText();
-			m_wPingWidget.SetColor(UIColors.WARNING);
+			m_wPingWidget.SetColor(Color.FromInt(UIColors.WARNING.PackToInt()));
 		}
 
 		// lines
@@ -176,29 +176,29 @@ class SCR_ServicesStatusDialogComponent : ScriptedWidgetComponent
 		if (!m_wPingWidget)
 			return;
 
-		Color color = UIColors.WARNING;
+		Color color = Color.FromInt(UIColors.WARNING.PackToInt());
 		if (pingInMs < SCR_ServicesStatusHelper.PING_THRESHOLD_BAD)
-			color = UIColors.HIGHLIGHTED;
+			color = Color.FromInt(UIColors.HIGHLIGHTED.PackToInt());
 		if (pingInMs < SCR_ServicesStatusHelper.PING_THRESHOLD_GOOD)
-			color = UIColors.CONFIRM;
+			color = Color.FromInt(UIColors.CONFIRM.PackToInt());
 		
 		string sPing;
 		if (pingInMs == -1)
 		{
 			sPing = m_sNoPing;
-			color = UIColors.WARNING;
+			color = Color.FromInt(UIColors.WARNING.PackToInt());
 		}
 		
 		else if (pingInMs == 0)
 		{
 			sPing = m_sUpdatingPing;
-			color = UIColors.NEUTRAL_ACTIVE_STANDBY;
+			color = Color.FromInt(UIColors.NEUTRAL_ACTIVE_STANDBY.PackToInt());
 		}
 		
 		else if (pingInMs < 0 || pingInMs > SCR_ServicesStatusHelper.PING_MAX)
 		{
 			sPing = string.Format(m_sBigPing, SCR_ServicesStatusHelper.PING_MAX);
-			color = UIColors.WARNING;
+			color = Color.FromInt(UIColors.WARNING.PackToInt());
 		}
 		
 		else
@@ -211,6 +211,7 @@ class SCR_ServicesStatusDialogComponent : ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	array<ref SCR_BackendServiceDisplay> GetAllServices()
 	{
 		array<ref SCR_BackendServiceDisplay> services = {};
@@ -221,6 +222,7 @@ class SCR_ServicesStatusDialogComponent : ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] status
 	void SetAllServicesState(EServiceStatus status)
 	{
 		if (!m_ServicesPresets)
@@ -236,6 +238,8 @@ class SCR_ServicesStatusDialogComponent : ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] serviceId
+	//! \param[in] status
 	void SetServiceState(string serviceId, EServiceStatus status)
 	{
 		Widget line = m_wLinesParentWidget.FindAnyWidget(serviceId);
@@ -262,6 +266,9 @@ class SCR_ServicesStatusDialogComponent : ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] commStatus
+	//! \param[in] servicesStatus
 	// The message reflects first of all the communication status with backend.
 	// Should communication succeed, the message will then change depending on the state of services
 	void UpdateServicesMessage(SCR_ECommStatus commStatus, EServiceStatus servicesStatus)
@@ -312,6 +319,7 @@ class SCR_ServicesStatusDialogComponent : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] pingAge
 	// pingAge is in milliseconds
 	void SetLastUpdateMessage(int pingAge)
 	{
@@ -335,6 +343,8 @@ class SCR_ServicesStatusDialogComponent : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] countdown
+	//! \param[in] visible
 	void SetRefreshMessage(int countdown, bool visible = true)
 	{
 		if (!m_wRefreshMessage)
@@ -368,6 +378,9 @@ class SCR_ServicesStatusDialogComponent : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] iconWidget
+	//! \param[in] serviceStatus
+	//! \param[in] mainIcon
 	void SetStatusImageAndColor(ImageWidget iconWidget, EServiceStatus serviceStatus, bool mainIcon = false)
 	{
 		SCR_ServicesStatusDialogComponent_Status status;
@@ -458,7 +471,6 @@ class SCR_ServicesStatusDialogComponent : ScriptedWidgetComponent
 	}
 }
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
 class SCR_ServicesStatusDialogComponent_Status
 {
@@ -481,7 +493,6 @@ class SCR_ServicesStatusDialogComponent_Status
 	ref Color m_sTextColor;
 }
 
-//------------------------------------------------------------------------------------------------
 class SCR_ServicesStatusDialogLineComponent : SCR_EventHandlerComponent
 {
 	protected EServiceStatus m_eStatus;
@@ -501,21 +512,26 @@ class SCR_ServicesStatusDialogLineComponent : SCR_EventHandlerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] status
 	void CacheStatus(EServiceStatus status)
 	{
 		m_eStatus = status;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	EServiceStatus GetStatus()
 	{
 		return m_eStatus;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] w
+	//! \return
 	static SCR_ServicesStatusDialogLineComponent FindComponent(notnull Widget w)
 	{
 		return SCR_ServicesStatusDialogLineComponent.Cast(w.FindHandler(SCR_ServicesStatusDialogLineComponent));
 	}
-	
 }

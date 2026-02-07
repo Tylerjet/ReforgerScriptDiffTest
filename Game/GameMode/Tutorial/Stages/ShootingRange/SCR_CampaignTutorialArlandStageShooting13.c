@@ -17,7 +17,10 @@ class SCR_CampaignTutorialArlandStageShooting13 : SCR_BaseCampaignTutorialArland
 		if (gun)
 			GetWaypoint().SetOrigin(gun.GetOrigin());
 		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));	
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("PickMachinegun", true);
+		HintOnVoiceOver();
 		m_TutorialComponent.SetWaypointMiscImage("GUNLOWER", true);
 	}
 	

@@ -1,8 +1,7 @@
 [ComponentEditorProps(category: "GameScripted/Respawn/PlayerController")]
 class SCR_PlayerFactionAffiliationComponentClass : SCR_FactionAffiliationComponentClass
 {
-};
-
+}
 
 void PlayerFactionRequestDelegate(SCR_PlayerFactionAffiliationComponent component, int factionIndex);
 typedef func PlayerFactionRequestDelegate;
@@ -12,11 +11,8 @@ void PlayerFactionResponseDelegate(SCR_PlayerFactionAffiliationComponent compone
 typedef func PlayerFactionResponseDelegate;
 typedef ScriptInvokerBase<PlayerFactionResponseDelegate> OnPlayerFactionResponseInvoker;
 
-//------------------------------------------------------------------------------------------------
-/*!
-	This component should be attached to a PlayerController.
-	It manages player-specific faction and the communication between player and authority regarding so.
-*/
+//! This component should be attached to a PlayerController.
+//! It manages player-specific faction and the communication between player and authority regarding so.
 class SCR_PlayerFactionAffiliationComponent : SCR_FactionAffiliationComponent
 {
 	private PlayerController m_PlayerController;
@@ -25,84 +21,78 @@ class SCR_PlayerFactionAffiliationComponent : SCR_FactionAffiliationComponent
 	private SCR_SpawnLockComponent m_Lock;
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Returns owner PlayerController this component is attached to.
-	*/
+	//! \return owner PlayerController this component is attached to.
 	PlayerController GetPlayerController()
 	{
 		return m_PlayerController;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Returns owner player PlayerController id.
-	*/
+	//! \return owner player PlayerController id.
 	int GetPlayerId()
 	{
 		return GetPlayerController().GetPlayerId();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Returns owner PlayerController lock component (if any).
-	*/
+	//! \return owner PlayerController lock component (if any).
 	protected SCR_SpawnLockComponent GetLock()
 	{
 		return m_Lock;
 	}
 
-	//------------------------------------------------------------------------------------------------
 	// ON CAN FACTION REQUEST
 	protected ref OnPlayerFactionRequestInvoker m_OnCanPlayerFactionRequestInvoker_O = new OnPlayerFactionRequestInvoker();
-	/*!
-		Returns an invoker that is invoked after this component requests a faction change from the authority.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \return an invoker that is invoked after this component requests a faction change from the authority.
 	OnPlayerFactionRequestInvoker GetOnCanPlayerFactionRequestInvoker_O()
 	{
 		return m_OnCanPlayerFactionRequestInvoker_O;
 	}
+
 	protected ref OnPlayerFactionRequestInvoker m_OnCanPlayerFactionRequestInvoker_S = new OnPlayerFactionRequestInvoker();
-	/*!
-		Returns an invoker that is invoked after this component requests a faction change from the authority.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \return an invoker that is invoked after this component requests a faction change from the authority.
 	OnPlayerFactionRequestInvoker GetOnCanPlayerFactionRequestInvoker_S()
 	{
 		return m_OnCanPlayerFactionRequestInvoker_S;
 	}
 
-	//------------------------------------------------------------------------------------------------
 	// ON CAN FACTION RESPONSE
 	protected ref OnPlayerFactionResponseInvoker m_OnCanPlayerFactionResponseInvoker_O = new OnPlayerFactionResponseInvoker();
-	/*!
-		Returns an invoker that is invoked after this component receives a response from the authority regarding faction change.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \return an invoker that is invoked after this component receives a response from the authority regarding faction change.
 	OnPlayerFactionResponseInvoker GetOnCanPlayerFactionResponseInvoker_O()
 	{
 		return m_OnCanPlayerFactionResponseInvoker_O;
 	}
+
 	protected ref OnPlayerFactionResponseInvoker m_OnCanPlayerFactionResponseInvoker_S = new OnPlayerFactionResponseInvoker();
-	/*!
-		Returns an invoker that is invoked after this component receives a response from the authority regarding faction change.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \return an invoker that is invoked after this component receives a response from the authority regarding faction change.
 	OnPlayerFactionResponseInvoker GetOnCanPlayerFactionResponseInvoker_S()
 	{
 		return m_OnCanPlayerFactionResponseInvoker_S;
 	}
 
-	//------------------------------------------------------------------------------------------------
 	// ON FACTION REQUEST
 	protected ref OnPlayerFactionRequestInvoker m_OnPlayerFactionRequestInvoker_O = new OnPlayerFactionRequestInvoker();
-	/*!
-		Returns an invoker that is invoked after this component requests a faction change from the authority.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \return an invoker that is invoked after this component requests a faction change from the authority.
 	OnPlayerFactionRequestInvoker GetOnPlayerFactionRequestInvoker_O()
 	{
 		return m_OnPlayerFactionRequestInvoker_O;
 	}
+
 	protected ref OnPlayerFactionRequestInvoker m_OnPlayerFactionRequestInvoker_S = new OnPlayerFactionRequestInvoker();
-	/*!
-		Returns an invoker that is invoked after this component requests a faction change from the authority.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \return an invoker that is invoked after this component requests a faction change from the authority.
 	OnPlayerFactionRequestInvoker GetOnPlayerFactionRequestInvoker_S()
 	{
 		return m_OnPlayerFactionRequestInvoker_S;
@@ -111,17 +101,16 @@ class SCR_PlayerFactionAffiliationComponent : SCR_FactionAffiliationComponent
 	//------------------------------------------------------------------------------------------------
 	// ON FACTION RESPONSE
 	protected ref OnPlayerFactionResponseInvoker m_OnPlayerFactionResponseInvoker_O = new OnPlayerFactionResponseInvoker();
-	/*!
-		Returns an invoker that is invoked after this component receives a response from the authority regarding faction change.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \return an invoker that is invoked after this component receives a response from the authority regarding faction change.
 	OnPlayerFactionResponseInvoker GetOnPlayerFactionResponseInvoker_O()
 	{
 		return m_OnPlayerFactionResponseInvoker_O;
 	}
 	protected ref OnPlayerFactionResponseInvoker m_OnPlayerFactionResponseInvoker_S = new OnPlayerFactionResponseInvoker();
-	/*!
-		Returns an invoker that is invoked after this component receives a response from the authority regarding faction change.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return an invoker that is invoked after this component receives a response from the authority regarding faction change.
 	OnPlayerFactionResponseInvoker GetOnPlayerFactionResponseInvoker_S()
 	{
 		return m_OnPlayerFactionResponseInvoker_S;
@@ -158,16 +147,15 @@ class SCR_PlayerFactionAffiliationComponent : SCR_FactionAffiliationComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Sends a request to get assignedf provided faction.
-		\return True if request was sent, false if request was caught (on owner, still!) because it was invalid.
-		NOTE: This is not the final result of the assignation. That result is can be listened to by hooking
-		onto GetOnPlayerFactionResponseInvoker(), successful request will have a response of SCR_ESpawnResult.OK.
-	*/
+	//! Sends a request to get assignedf provided faction.
+	//! \param[in] faction
+	//! \return True if request was sent, false if request was caught (on owner, still!) because it was invalid.
+	//! NOTE: This is not the final result of the assignation. That result is can be listened to by hooking
+	//! onto GetOnPlayerFactionResponseInvoker(), successful request will have a response of SCR_ESpawnResult.OK.
 	bool RequestFaction(Faction faction)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::RequestFaction(faction: %2)", Type().ToString(), faction);
+		Print(string.Format("%1::RequestFaction(faction: %2)", Type().ToString(), faction), LogLevel.NORMAL);
 		#endif
 		
 		// Lock this
@@ -182,6 +170,7 @@ class SCR_PlayerFactionAffiliationComponent : SCR_FactionAffiliationComponent
 		// Notify owner
 		if (IsOwner())
 			GetOnPlayerFactionRequestInvoker_O().Invoke(this, factionIndex);
+
 		if (!IsProxy())
 			GetOnPlayerFactionRequestInvoker_S().Invoke(this, factionIndex);
 
@@ -190,14 +179,13 @@ class SCR_PlayerFactionAffiliationComponent : SCR_FactionAffiliationComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Ask the authority to assign provided faction.
-	*/
+	//! Ask the authority to assign provided faction.
+	//! \param[in] factionIndex
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void Rpc_RequestFaction_S(int factionIndex)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::Rpc_RequestFaction_S(factionIdx: %2)", Type().ToString(), factionIndex);
+		Print(string.Format("%1::Rpc_RequestFaction_S(factionIdx: %2)", Type().ToString(), factionIndex), LogLevel.NORMAL);
 		#endif
 
 		// Lock server
@@ -227,15 +215,14 @@ class SCR_PlayerFactionAffiliationComponent : SCR_FactionAffiliationComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Authority:
-			Handles request on the authority:
-		\return Returns true if request was processed successfully.
-	*/
+	//! Authority:
+	//! 	Handles request on the authority:
+	//! \param[in] faction
+	//! \return true if request was processed successfully.
 	protected bool SetFaction_S(Faction faction)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::RequestFaction_S(Faction: %2)", Type().ToString(), faction);
+		Print(string.Format("%1::RequestFaction_S(Faction: %2)", Type().ToString(), faction), LogLevel.NORMAL);
 		#endif
 
 		// Assign faction
@@ -256,15 +243,14 @@ class SCR_PlayerFactionAffiliationComponent : SCR_FactionAffiliationComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Authority:
-			Sends response to the owner whether faction assignation was successfull or not.
-			\param response Was faction assigned?
-	*/
+	//! Authority:
+	//! 	Sends response to the owner whether faction assignation was successfull or not.
+	//! \param[in] factionIndex
+	//! \param[in] response Was faction assigned?
 	protected void SendRequestFactionResponse_S(int factionIndex, bool response)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::SendRequestFactionResponse_S(factionIdx: %2, response: %3)", Type().ToString(), factionIndex, response);
+		Print(string.Format("%1::SendRequestFactionResponse_S(factionIdx: %2, response: %3)", Type().ToString(), factionIndex, response), LogLevel.NORMAL);
 		#endif
 
 		// Unlock server
@@ -272,7 +258,7 @@ class SCR_PlayerFactionAffiliationComponent : SCR_FactionAffiliationComponent
 		if (lock)
 		{
 			lock.Unlock(this, true);
-			// And unlock it's "requester/proxy" side in case request came from self
+			// And unlock its "requester/proxy" side in case request came from self
 			lock.Unlock(this, false);
 		}
 		
@@ -284,15 +270,15 @@ class SCR_PlayerFactionAffiliationComponent : SCR_FactionAffiliationComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Owner:
-			Response from the authority about whether faction was set successfully or not.
-	*/
+	//! Owner:
+	//! 	Response from the authority about whether faction was set successfully or not.
+	//! \param[in] factionIndex
+	//! \param[in] response
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void RequestFactionResponse_O(int factionIndex, bool response)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::RequestFactionResponse_O(factionIdx: %2, response: %3)", Type().ToString(), factionIndex, response);
+		Print(string.Format("%1::RequestFactionResponse_O(factionIdx: %2, response: %3)", Type().ToString(), factionIndex, response), LogLevel.NORMAL);
 		#endif
 
 		// Unlock this
@@ -305,17 +291,15 @@ class SCR_PlayerFactionAffiliationComponent : SCR_FactionAffiliationComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		/*!
-		Sends a can-ask request to the authority.
-		\return True if request was sent, false if request was caught (on owner, still!) because it was invalid.
-		NOTE: This is not the final result of the assignation. That result is can be listened to by hooking
-		onto GetOnCanPlayerFactionResponseInvoker(), successful request will have a response of SCR_ESpawnResult.OK.
-	*/
+	//! Sends a can-ask request to the authority.
+	//! NOTE: This is not the final result of the assignation. That result is can be listened to by hooking
+	//! onto GetOnCanPlayerFactionResponseInvoker(), successful request will have a response of SCR_ESpawnResult.OK.
+	//! \param[in] faction
+	//! \return true if request was sent, false if request was caught (on owner, still!) because it was invalid.
 	bool CanRequestFaction(Faction faction)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::CanRequestFaction(faction: %2)", Type().ToString(), faction);
+		Print(string.Format(Format("%1::CanRequestFaction(faction: %2)", Type().ToString(), faction), LogLevel.NORMAL);
 		#endif
 		
 		// Lock this		
@@ -327,9 +311,11 @@ class SCR_PlayerFactionAffiliationComponent : SCR_FactionAffiliationComponent
 		}
 
 		int factionIndex = GetGame().GetFactionManager().GetFactionIndex(faction);
+
 		// Notify owner
 		if (IsOwner())
 			GetOnCanPlayerFactionRequestInvoker_O().Invoke(this, factionIndex);
+
 		// Notify au
 		if (!IsProxy())
 			GetOnCanPlayerFactionRequestInvoker_S().Invoke(this, factionIndex);
@@ -339,14 +325,13 @@ class SCR_PlayerFactionAffiliationComponent : SCR_FactionAffiliationComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Ask the authority to whether provided faction can be assigned.
-	*/
+	//! Ask the authority to whether provided faction can be assigned.
+	//! \param[in] factionIndex
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void Rpc_CanRequestFaction_S(int factionIndex)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::Rpc_CanRequestFaction_S(factionIdx: %2)", Type().ToString(), factionIndex);
+		Print(string.Format("%1::Rpc_CanRequestFaction_S(factionIdx: %2)", Type().ToString(), factionIndex), LogLevel.NORMAL);
 		#endif
 
 		// Lock server
@@ -371,38 +356,34 @@ class SCR_PlayerFactionAffiliationComponent : SCR_FactionAffiliationComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Authority:
-			Handles ask request on the authority:
-		\return Returns true if faction can be assigned successfully.
-	*/
+	//! Authority:
+	//! 	Handles ask request on the authority:
+	//! \param[in] faction
+	//! \return Returns true if faction can be assigned successfully.
 	protected bool CanRequestFaction_S(Faction faction)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::CanRequestFaction_S(Faction: %2)", Type().ToString(), faction);
+		Print(string.Format("%1::CanRequestFaction_S(Faction: %2)", Type().ToString(), faction), LogLevel.NORMAL);
 		#endif
 		
 		// Do not allow to set faction to faction that is already set,
 		// that will just lead to spam and invokes of irrelevant stuff
 		if (GetAffiliatedFaction() == faction)
 			return false;
-		
 
 		// Any arbitrary logic
 		return true;
 	}
 
-
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Authority:
-			Sends response to the owner whether faction assignation can be done or not.
-			\param response Can faction be assigned?
-	*/
+	//! Authority:
+	//! 	Sends response to the owner whether faction assignation can be done or not.
+	//! \param[in] factionIndex
+	//! \param[in] response Can faction be assigned?
 	protected void SendCanRequestFactionResponse_S(int factionIndex, bool response)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::SendCanRequestFactionResponse_S(factionIdx: %2, response: %3)", Type().ToString(), factionIndex, response);
+		Print(string.Format("%1::SendCanRequestFactionResponse_S(factionIdx: %2, response: %3)", Type().ToString(), factionIndex, response), LogLevel.NORMAL);
 		#endif
 
 		// Unlock server
@@ -422,32 +403,29 @@ class SCR_PlayerFactionAffiliationComponent : SCR_FactionAffiliationComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Owner:
-			Response from the authority about whether faction was set successfully or not.
-	*/
+	//! Owner:
+	//! 	Response from the authority about whether faction was set successfully or not.
+	//! \param[in] factionIndex
+	//! \param[in] response
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void CanRequestFactionResponse_O(int factionIndex, bool response)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::CanRequestFactionResponse_O(factionIdx: %2, response: %3)", Type().ToString(), factionIndex, response);
+		Print(string.Format("%1::CanRequestFactionResponse_O(factionIdx: %2, response: %3)", Type().ToString(), factionIndex, response), LogLevel.NORMAL);
 		#endif
 
 		// Unlock this
 		SCR_SpawnLockComponent lock = GetLock();
 		if (lock)
-		{
 			lock.Unlock(this, false);
-		}
 
 		// Notify owner
 		GetOnCanPlayerFactionResponseInvoker_O().Invoke(this, factionIndex, response);
 	}
 
 	#ifdef ENABLE_DIAG
-	/*!
-		Draw diagnostics for this component.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Draw diagnostics for this component.
 	protected void OnDiag()
 	{
 		if (!DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_RESPAWN_PLAYER_FACTION_DIAG))
@@ -501,4 +479,4 @@ class SCR_PlayerFactionAffiliationComponent : SCR_FactionAffiliationComponent
 		DbgUI.End();
 	}
 	#endif
-};
+}

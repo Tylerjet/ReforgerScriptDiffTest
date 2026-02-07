@@ -125,23 +125,23 @@ class SCR_BaseVehicleInfo : SCR_InfoDisplayExtended
 		switch(state)
 		{
 			case EVehicleInfoState.DISABLED:
-				m_wIcon.SetColor(GUIColors.DISABLED);
-				m_wGlow.SetColor(GUIColors.DISABLED_GLOW);
+				m_wIcon.SetColor(Color.FromInt(GUIColors.DISABLED.PackToInt()));
+				m_wGlow.SetColor(Color.FromInt(GUIColors.DISABLED_GLOW.PackToInt()));
 				break;
 			
 			case EVehicleInfoState.ENABLED:
-				m_wIcon.SetColor(m_aColors[color]);
-				m_wGlow.SetColor(m_aColorsGlow[color]);
+				m_wIcon.SetColor(Color.FromInt(m_aColors[color].PackToInt()));
+				m_wGlow.SetColor(Color.FromInt(m_aColorsGlow[color].PackToInt()));
 				break;
 			
 			case EVehicleInfoState.WARNING:
-				m_wIcon.SetColor(GUIColors.ORANGE);
-				m_wGlow.SetColor(GUIColors.ORANGE_DARK);
+				m_wIcon.SetColor(Color.FromInt(GUIColors.ORANGE.PackToInt()));
+				m_wGlow.SetColor(Color.FromInt(GUIColors.ORANGE_DARK.PackToInt()));
 				break;			
 			
 			case EVehicleInfoState.ERROR:
-				m_wIcon.SetColor(GUIColors.RED);
-				m_wGlow.SetColor(GUIColors.RED_DARK);
+				m_wIcon.SetColor(Color.FromInt(GUIColors.RED.PackToInt()));
+				m_wGlow.SetColor(Color.FromInt(GUIColors.RED_DARK.PackToInt()));
 				break;
 		}		
 	}	

@@ -1,9 +1,9 @@
-/** @ingroup Editor_UI Editor_UI_Components
-*/
-class SCR_PlacingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
+//! @ingroup Editor_UI Editor_UI_Components
+
+class SCR_PlacingEditorUIComponent : SCR_PreviewEntityEditorUIComponent
 {
 	//--- When ASL vertical mode is on, how far from camera the entity appears when no ground intersection was found
-	const float MAX_PREVIEW_DIS = 50;
+	protected static const float MAX_PREVIEW_DIS = 50;
 	
 	private InputManager m_InputManager;
 	private SCR_StatesEditorComponent m_StatesManager;
@@ -14,30 +14,41 @@ class SCR_PlacingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 	//private SCR_SiteSlotEntity m_Slot;
 	private bool m_bClicked;
 	private bool m_bCanPlace;
-	private ref array<Widget> m_aClickWhitelist = new array<Widget>;
+	private ref array<Widget> m_aClickWhitelist = {};
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnHoverChange(EEditableEntityState state, set<SCR_EditableEntityComponent> entitiesInsert, set<SCR_EditableEntityComponent> entitiesRemove)
 	{
 		if (m_StatesManager && m_StatesManager.GetState() == EEditorState.PLACING)
 			super.OnHoverChange(state, entitiesInsert, entitiesRemove);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnEditorTransformRotationModifierUp(float value, EActionTrigger reason)
 	{
 		if (m_StatesManager && m_StatesManager.GetState() == EEditorState.PLACING)
 			super.OnEditorTransformRotationModifierUp(value, reason);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnEditorPlace(float value, EActionTrigger reason)
 	{
 		Place(false);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnEditorPlaceAndCancel(float value, EActionTrigger reason)
 	{
 		Place(true);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnEditorPlacePlayer(float value, EActionTrigger reason)
 	{
 		Place(false, true);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnEditorPlacePlayerAndCancel(float value, EActionTrigger reason)
 	{
 		Place(true, true);
@@ -46,6 +57,8 @@ class SCR_PlacingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 		if (m_SelectionComponent)
 			m_SelectionComponent.DisableMultiSelection();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void Place(bool cancelAfterwards, bool canBePlayer = false)
 	{		
 		//--- Placing not enabled
@@ -66,19 +79,28 @@ class SCR_PlacingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 		//if (cancelAfterwards) CancelPlacing();
 		m_bClicked = false;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnEditorCancelPlacingUp(float value, EActionTrigger reason)
 	{
 		if (OnCancelUp())
 			CancelPlacing();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void CancelPlacing()
 	{
-		if (m_PlacingManager) m_PlacingManager.SetSelectedPrefab();
+		if (m_PlacingManager)
+			m_PlacingManager.SetSelectedPrefab();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void EnablePlacing()
 	{
 		m_bCanPlace = true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected bool CanClick()
 	{
 		if (m_CursorComponent && m_MouseArea && !m_MouseArea.IsMouseOn() && m_InputManager.IsUsingMouseAndKeyboard())
@@ -92,7 +114,7 @@ class SCR_PlacingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 					//--- Get all widgets under cursor
 					int mouseX, mouseY;
 					m_CursorComponent.GetCursorPos(mouseX, mouseY);
-					array<Widget> widgets = new array<Widget>;
+					array<Widget> widgets = {};
 					WidgetManager.TraceWidgets(mouseX, mouseY, rootWidget, widgets);
 					
 					//--- Check if the widgets are whitelisted. If not, terminate
@@ -103,29 +125,39 @@ class SCR_PlacingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 						{
 							canClick |= IsChildOf(widget, widgetWhitelisted);
 						}
-						if (!canClick) return false;
+
+						if (!canClick)
+							return false;
 					}
 				}
 			}
 		}
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected bool IsChildOf(Widget widget, Widget parent)
 	{
 		while (widget)
 		{
-			if (widget == parent) return true;
+			if (widget == parent)
+				return true;
+
 			widget = widget.GetParent();
 		}
 		return false;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnSelectedPrefabChange(ResourceName prefab, ResourceName prefabPrev)
 	{
 		ArmaReforgerScripted game = GetGame();
-		if (!game) return;
+		if (!game)
+			return;
 		
 		ScriptCallQueue queue = game.GetCallqueue();
-		if (!queue) return;
+		if (!queue)
+			return;
 		
 		//--- Ignore input right after starting placing. Important for gamepads, because 'A' button is still held after selection.
 		queue.CallLater(EnablePlacing, 50);
@@ -136,16 +168,18 @@ class SCR_PlacingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 		if (previewManager && previewManager.GetVerticalMode() == EEditorTransformVertical.SEA)
 		{
 			BaseWorld world = game.GetWorld();
-			if (!world) return;
+			if (!world)
+				return;
 			
 			WorkspaceWidget workspace = game.GetWorkspace();
-			if (!workspace) return;
+			if (!workspace)
+				return;
 			
 			//--- Get intersection in the middle of the screen (don't use cursor, it just returned form a sub-menu ans is not relevant)
 			float screenW, screenH;
 			workspace.GetScreenSize(screenW, screenH);
 			vector cameraDir;
-			vector cameraPos = workspace.ProjScreenToWorldNative(screenW / 2, screenH / 2, cameraDir, world, -1);
+			vector cameraPos = workspace.ProjScreenToWorldNative(screenW * 0.5, screenH * 0.5, cameraDir, world, -1);
 			
 			//--- Find ground intersection, or use maximum distance when none is found
 			float traceDis = GetTraceDis(cameraPos, cameraDir * TRACE_DIS, cameraPos[1]);
@@ -158,11 +192,14 @@ class SCR_PlacingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 			previewManager.SetPreviewHeight(cameraPos + cameraDir * traceDis);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnMenuUpdate(float tDelta)
 	{
 		ActivatePreviewContext();
 		
-		if (m_StatesManager && m_StatesManager.GetState() != EEditorState.PLACING) return;
+		if (m_StatesManager && m_StatesManager.GetState() != EEditorState.PLACING)
+			return;
 		
 		if (m_InputManager && m_PlacingManager)
 		{
@@ -173,14 +210,20 @@ class SCR_PlacingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 
 		ProcessInput(tDelta);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnMenuFocusGained()
 	{
 		GetMenu().GetOnMenuUpdate().Insert(OnMenuUpdate);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnMenuFocusLost()
 	{
 		GetMenu().GetOnMenuUpdate().Remove(OnMenuUpdate);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected SCR_EPreviewState GetPreviewStateToShow()
 	{
 		if (m_PlacingManager && m_PlacingManager.CanCreateEntity())
@@ -188,6 +231,8 @@ class SCR_PlacingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 		else
 			return SCR_EPreviewState.BLOCKED;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttachedScripted(Widget w)
 	{
 		super.HandlerAttachedScripted(w);
@@ -200,10 +245,15 @@ class SCR_PlacingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 			m_CursorComponent = SCR_CursorEditorUIComponent.Cast(root.FindComponent(SCR_CursorEditorUIComponent));
 			m_SelectionComponent = SCR_SelectionEditorUIComponent.Cast(root.FindComponent(SCR_SelectionEditorUIComponent));
 			
-			if (m_MouseArea) m_aClickWhitelist.Insert(m_MouseArea.GetWidget());
-			if (m_EntitiesComponent) m_aClickWhitelist.Insert(m_EntitiesComponent.GetWidget());
+			if (m_MouseArea)
+				m_aClickWhitelist.Insert(m_MouseArea.GetWidget());
+
+			if (m_EntitiesComponent)
+				m_aClickWhitelist.Insert(m_EntitiesComponent.GetWidget());
 		}
-		if (!m_CursorComponent) Print("SCR_PlacingEditorUIComponent requires SCR_CursorEditorUIComponent!", LogLevel.ERROR);
+
+		if (!m_CursorComponent)
+			Print("SCR_PlacingEditorUIComponent requires SCR_CursorEditorUIComponent!", LogLevel.ERROR);
 				
 		m_PlacingManager.GetOnSelectedPrefabChange().Insert(OnSelectedPrefabChange);
 		
@@ -232,11 +282,14 @@ class SCR_PlacingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 			}
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
 		
-		if (m_PlacingManager) m_PlacingManager.GetOnSelectedPrefabChange().Remove(OnSelectedPrefabChange);
+		if (m_PlacingManager)
+			m_PlacingManager.GetOnSelectedPrefabChange().Remove(OnSelectedPrefabChange);
 		
 		MenuRootBase menu = GetMenu();
 		if (menu)
@@ -261,4 +314,4 @@ class SCR_PlacingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 			}
 		}
 	}
-};
+}

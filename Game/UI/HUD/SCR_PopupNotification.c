@@ -1,4 +1,3 @@
-#include "scripts/Game/config.c"
 //------------------------------------------------------------------------------------------------
 class SCR_PopupMessage
 {
@@ -10,15 +9,9 @@ class SCR_PopupMessage
 	string m_aTextParams[4] = {"", "", "", ""};
 	string m_aSubtitleParams[4] = {"", "", "", ""};
 	SCR_EPopupMsgFilter m_eFilter;
-	#ifndef AR_CAMPAIGN_TIMESTAMP
-	float m_fProgressStart;
-	float m_fProgressEnd;
-	float m_fHideTimestamp = -1;
-	#else
 	WorldTimestamp m_fProgressStart;
 	WorldTimestamp m_fProgressEnd;
 	WorldTimestamp m_fHideTimestamp;
-	#endif
 };
 
 //------------------------------------------------------------------------------------------------
@@ -196,12 +189,8 @@ class SCR_PopUpNotification : GenericEntity
 	//! \param progressStart Progress bar start value (relative to Replication.Time())
 	//! \param progressEnd Progress bar end value (relative to Replication.Time()
 	void PopupMsg(string text, float duration = DEFAULT_DURATION, string text2 = "", int prio = -1, string param1 = "", string param2 = "", string param3 = "", string param4 = "", string text2param1 = "", string text2param2 = "", string text2param3 = "", string text2param4 = "", string sound = "", SCR_EPopupMsgFilter category = SCR_EPopupMsgFilter.ALL,
-		#ifndef AR_CAMPAIGN_TIMESTAMP
-		float progressStart = 0, float progressEnd = 0
-		#else
 		WorldTimestamp progressStart = null,
 		WorldTimestamp progressEnd = null
-		#endif
 	)
 	{
 		// Don't show UI on headless
@@ -247,39 +236,11 @@ class SCR_PopUpNotification : GenericEntity
 		if (!m_ShownMsg)
 			return;
 
-		#ifndef AR_CAMPAIGN_TIMESTAMP
-		m_ShownMsg.m_fHideTimestamp = 0;
-		#else
 		ChimeraWorld world = GetWorld();
 		m_ShownMsg.m_fHideTimestamp = world.GetServerTimestamp();
-		#endif
 	}
 
 	//------------------------------------------------------------------------------------------------
-	#ifndef AR_CAMPAIGN_TIMESTAMP
-	void ChangeProgressBarFinish(float progressEnd)
-	{
-		if (!m_ShownMsg || m_ShownMsg.m_fProgressEnd == 0)
-			return;
-
-		float curTime = Replication.Time();
-
-		// Save progress bar status so only its filling speed is changed
-		float curProgress = Math.InverseLerp(m_ShownMsg.m_fProgressStart, m_ShownMsg.m_fProgressEnd, curTime);
-
-		// Avoid possible division by 0 later
-		if (curProgress == 1)
-			return;
-
-		m_ShownMsg.m_fProgressEnd = progressEnd;
-
-		// Recalculate start value so the bar keeps its original progress
-		m_ShownMsg.m_fProgressStart = curTime - ((m_ShownMsg.m_fProgressEnd - curTime) / (1 - curProgress)) * curProgress;
-
-		// Needed to reset the progress bar limits
-		m_wStatusProgress.SetVisible(false);
-	}
-	#else
 	void ChangeProgressBarFinish(WorldTimestamp progressEnd)
 	{
 		if (!m_ShownMsg || m_ShownMsg.m_fProgressEnd == 0)
@@ -308,7 +269,6 @@ class SCR_PopUpNotification : GenericEntity
 		// Needed to reset the progress bar limits
 		m_wStatusProgress.SetVisible(false);
 	}
-	#endif
 
 	//------------------------------------------------------------------------------------------------
 	protected void FadeWidget(notnull Widget widget, bool fadeOut = false)
@@ -395,14 +355,10 @@ class SCR_PopUpNotification : GenericEntity
 			HideMsg(m_ShownMsg);
 
 		if (msg.m_fDuration != -1)
-		#ifndef AR_CAMPAIGN_TIMESTAMP
-			msg.m_fHideTimestamp = Replication.Time() + (msg.m_fDuration * 1000);
-		#else
 		{
 			ChimeraWorld world = GetWorld();
 			msg.m_fHideTimestamp = world.GetServerTimestamp().PlusSeconds(msg.m_fDuration);
 		}
-		#endif
 
 		m_wPopupMsg.SetTextFormat(msg.m_sText, msg.m_aTextParams[0], msg.m_aTextParams[1], msg.m_aTextParams[2], msg.m_aTextParams[3]);
 		FadeWidget(m_wPopupMsg);
@@ -413,19 +369,10 @@ class SCR_PopUpNotification : GenericEntity
 			FadeWidget(m_wPopupMsgSmall);
 		}
 
-		#ifndef AR_CAMPAIGN_TIMESTAMP
-		if (msg.m_fProgressStart > 0 && msg.m_fProgressEnd > 0)
-		#else
 		if (msg.m_fProgressStart != 0 && msg.m_fProgressEnd != 0)
-		#endif
 		{
-			#ifndef AR_CAMPAIGN_TIMESTAMP
-			m_wStatusProgress.SetMin(msg.m_fProgressStart);
-			m_wStatusProgress.SetMax(msg.m_fProgressEnd);
-			#else
 			m_wStatusProgress.SetMin(0);
 			m_wStatusProgress.SetMax(msg.m_fProgressEnd.DiffMilliseconds(msg.m_fProgressStart));
-			#endif
 			m_wStatusProgress.SetVisible(false);
 			FadeWidget(m_wStatusProgress);
 		}
@@ -478,15 +425,9 @@ class SCR_PopUpNotification : GenericEntity
 		if (!world)
 			return;
 
-		#ifndef AR_CAMPAIGN_TIMESTAMP
-		float curTime = Replication.Time();
-
-		if (m_ShownMsg.m_fHideTimestamp != -1 && Replication.Time() >= m_ShownMsg.m_fHideTimestamp)
-		#else
 		ChimeraWorld chimWorld = world;
 		WorldTimestamp curTime = chimWorld.GetServerTimestamp();
 		if (m_ShownMsg.m_fHideTimestamp != 0 && curTime.GreaterEqual(m_ShownMsg.m_fHideTimestamp))
-		#endif
 		{
 			HideMsg(m_ShownMsg);
 			return;
@@ -498,29 +439,16 @@ class SCR_PopUpNotification : GenericEntity
 		if (m_ShownMsg.m_sSubtitle && !m_wPopupMsgSmall.IsVisible())
 			m_wPopupMsgSmall.SetVisible(true);
 
-		#ifndef AR_CAMPAIGN_TIMESTAMP
-		if (m_ShownMsg.m_fProgressEnd > curTime)
-		#else
 		if (m_ShownMsg.m_fProgressEnd.Greater(curTime))
-		#endif
 		{
 			if (!m_wStatusProgress.IsVisible())
 			{
 				m_wStatusProgress.SetVisible(true);
-				#ifndef AR_CAMPAIGN_TIMESTAMP
-				m_wStatusProgress.SetMin(m_ShownMsg.m_fProgressStart);
-				m_wStatusProgress.SetMax(m_ShownMsg.m_fProgressEnd);
-				#else
 				m_wStatusProgress.SetMin(0);
 				m_wStatusProgress.SetMax(m_ShownMsg.m_fProgressEnd.DiffMilliseconds(m_ShownMsg.m_fProgressStart));
-				#endif
 			}
 
-			#ifndef AR_CAMPAIGN_TIMESTAMP
-			m_wStatusProgress.SetCurrent(curTime);
-			#else
 			m_wStatusProgress.SetCurrent(curTime.DiffMilliseconds(m_ShownMsg.m_fProgressStart));
-			#endif
 		}
 		else if (m_wStatusProgress.IsVisible())
 		{

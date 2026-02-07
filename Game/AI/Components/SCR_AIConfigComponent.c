@@ -1,9 +1,8 @@
 [ComponentEditorProps(category: "GameScripted/AI", description: "Component for utility AI system calculations")]
-class SCR_AIConfigComponentClass: ScriptComponentClass
+class SCR_AIConfigComponentClass : ScriptComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_AIConfigComponent : ScriptComponent
 {
 	// @TODO: Implement into the rest of the AI
@@ -12,20 +11,28 @@ class SCR_AIConfigComponent : ScriptComponent
 	
 	[Attribute( defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Alow movement" )]
 	bool m_EnableMovement;
+
 	[Attribute( defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Allow reacting on danger events" )]
 	bool m_EnableDangerEvents;
+
 	[Attribute( defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Allow reacting on perceived targets" )]
 	bool m_EnablePerception;
+
 	[Attribute( defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Allow shooting and attacking in general" )]
 	bool m_EnableAttack;
+
 	[Attribute( defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Allow finding and taking cover" )]
 	bool m_EnableTakeCover;
+
 	[Attribute( defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Allow aiming and gestures in general" )]
 	bool m_EnableLooking;
+
 	[Attribute( defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Allow sending AI messages" )]
 	bool m_EnableCommunication;
+
 	[Attribute( defvalue: "0", uiwidget: UIWidgets.CheckBox, desc: "Allow leader to stop when formation is deformed" )]
 	bool m_EnableLeaderStop;
+
 	[Attribute( defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Allow artificial aiming error for AI." )]
 	bool m_EnableAimingError;
 	
@@ -38,20 +45,22 @@ class SCR_AIConfigComponent : ScriptComponent
 	
 	[Attribute("", UIWidgets.Object)]
 	ref array<ref SCR_AIGoalReaction> m_aGoalReactions;	
-	ref array<ref SCR_AIGoalReaction> m_aGoalReactionsPacked = new array<ref SCR_AIGoalReaction>();
+
+	ref array<ref SCR_AIGoalReaction> m_aGoalReactionsPacked = {};
 	
 	[Attribute("", UIWidgets.Object)]
 	ref array<ref SCR_AIInfoReaction> m_aInfoReactions;	
-	ref array<ref SCR_AIInfoReaction> m_aInfoReactionsPacked = new array<ref SCR_AIInfoReaction>();	
 
-	[Attribute("", UIWidgets.Object)]
-    ref SCR_AITargetReactionBase m_Reaction_EnemyTarget;
+	ref array<ref SCR_AIInfoReaction> m_aInfoReactionsPacked = {};
 	
 	[Attribute("", UIWidgets.Object)]
     ref SCR_AITargetReactionBase m_Reaction_UnknownTarget;
 	
 	[Attribute("", UIWidgets.Object)]
 	ref SCR_AITargetReactionBase m_Reaction_RetreatFromTarget;
+	
+	[Attribute("", UIWidgets.Object)]
+	ref SCR_AITargetReaction_SelectedTargetChangedBase m_Reaction_SelectedTargetChanged;
 	
 	[Attribute("", UIWidgets.Auto, "Specifies which behavior tree is used for specific weapon type", category: "Weapon Handling")]
 	ref array<ref SCR_AIWeaponTypeSelectionConfig> m_aWeaponTypeSelectionConfig;
@@ -108,6 +117,9 @@ class SCR_AIConfigComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] utility
+	//! \param[in] message
 	void PerformGoalReaction(SCR_AIUtilityComponent utility, SCR_AIMessageBase message)
 	{
 		SCR_AIMessageGoal goalMessage = SCR_AIMessageGoal.Cast(message);
@@ -125,6 +137,9 @@ class SCR_AIConfigComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] utility
+	//! \param[in] message
 	void PerformGoalReaction(SCR_AIGroupUtilityComponent utility, SCR_AIMessageBase message)
 	{
 		SCR_AIMessageGoal goalMessage = SCR_AIMessageGoal.Cast(message);
@@ -142,6 +157,9 @@ class SCR_AIConfigComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] utility
+	//! \param[in] message
 	void PerformInfoReaction(SCR_AIGroupUtilityComponent utility, SCR_AIMessageBase message)
 	{
 		SCR_AIMessageInfo infoMessage = SCR_AIMessageInfo.Cast(message);
@@ -159,6 +177,9 @@ class SCR_AIConfigComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] utility
+	//! \param[in] message
 	void PerformInfoReaction(SCR_AIUtilityComponent utility, SCR_AIMessageBase message)
 	{
 		SCR_AIMessageInfo infoMessage = SCR_AIMessageInfo.Cast(message);
@@ -176,6 +197,10 @@ class SCR_AIConfigComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] utility
+	//! \param[in] dangerEvent
+	//! \return
 	bool PerformDangerReaction(SCR_AIUtilityComponent utility, AIDangerEvent dangerEvent)
 	{
 		SCR_AIDangerReaction reaction = m_mDangerReactions[dangerEvent.GetDangerType()];
@@ -187,6 +212,8 @@ class SCR_AIConfigComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] utility
 	void AddDefaultBehaviors(SCR_AIUtilityComponent utility)
 	{
 		foreach (SCR_AIReactionBase reaction : m_aDefaultReactions)
@@ -196,6 +223,8 @@ class SCR_AIConfigComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] utility
 	void AddDefaultActivities(SCR_AIGroupUtilityComponent utility)
 	{
 		foreach (SCR_AIReactionBase reaction : m_aDefaultReactions)
@@ -220,4 +249,4 @@ class SCR_AIConfigComponent : ScriptComponent
 		}
 		return m_sDefaultWeaponBehaviorTree;
 	}
-};
+}

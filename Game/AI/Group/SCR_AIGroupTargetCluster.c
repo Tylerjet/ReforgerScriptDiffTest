@@ -49,7 +49,8 @@ class SCR_AIGroupTargetCluster : Managed
 	
 	float m_fAngleMin;
 	float m_fAngleMax;
-		
+	
+	//---------------------------------------------------------------------------
 	void AddTarget(SCR_AITargetInfo target, float angle, float dist)
 	{
 		m_aTargets.Insert(target);
@@ -58,6 +59,7 @@ class SCR_AIGroupTargetCluster : Managed
 		m_aEntities.Insert(target.m_Entity);
 	}
 	
+	//---------------------------------------------------------------------------
 	// Adds targets from other cluster to this cluster. Adjusts min/max angles limits.
 	// ! Doesn't modify orders
 	void AddCluster(SCR_AIGroupTargetCluster other)
@@ -87,6 +89,7 @@ class SCR_AIGroupTargetCluster : Managed
             m_fAngleMin = other.m_fAngleMin;
 	}
 	
+	//---------------------------------------------------------------------------
 	// Moves state from other cluster to this one
 	// The other cluster's state is reset
 	void MoveStateFrom(SCR_AIGroupTargetCluster other)
@@ -96,6 +99,7 @@ class SCR_AIGroupTargetCluster : Managed
 		other.m_State = null;
 	}
 	
+	//---------------------------------------------------------------------------
 	// Returns distance to closest target
 	float GetMinDistance()
 	{

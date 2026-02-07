@@ -71,6 +71,9 @@ class SCR_EditorLinkComponent : ScriptComponent
 	{
 		if (s_bIgnoreSpawning)
 		{
+			SCR_EditableEntityComponent editable = SCR_EditableEntityComponent.Cast(owner.FindComponent(SCR_EditableEntityComponent));
+			if (editable)
+				editable.SetEntityFlag(EEditableEntityFlag.SPAWN_UNFINISHED, true);
 			s_bIgnoreSpawning = false;
 			return;
 		}

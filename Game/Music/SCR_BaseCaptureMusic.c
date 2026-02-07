@@ -29,7 +29,7 @@ class SCR_BaseCaptureMusic : ScriptedMusic
 		if (!m_MusicManager)
 			return;
 		
-		SCR_MilitaryBaseManager baseManager = SCR_MilitaryBaseManager.GetInstance();
+		SCR_MilitaryBaseSystem baseManager = SCR_MilitaryBaseSystem.GetInstance();
 		
 		if (!baseManager)
 			return;
@@ -39,7 +39,7 @@ class SCR_BaseCaptureMusic : ScriptedMusic
 	
 	override void OnDelete()
 	{
-		SCR_MilitaryBaseManager baseManager = SCR_MilitaryBaseManager.GetInstance(false);
+		SCR_MilitaryBaseSystem baseManager = SCR_MilitaryBaseSystem.GetInstance();
 		
 		if (!baseManager)
 			return;

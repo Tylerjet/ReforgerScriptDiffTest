@@ -29,6 +29,7 @@ class SCR_AIMedicHealBehavior : SCR_AIBehaviorBase
 	{
 		super.OnActionCompleted();
 		m_Utility.m_AIInfo.SetAIState(EUnitAIState.AVAILABLE);
+		
 #ifdef WORKBENCH
 		SCR_AIDebugVisualization.VisualizeMessage(m_Utility.m_OwnerEntity, "Unit healed", EAIDebugCategory.INFO, 5);
 #endif
@@ -38,6 +39,7 @@ class SCR_AIMedicHealBehavior : SCR_AIBehaviorBase
 	{
 		super.OnActionFailed();
 		m_Utility.m_AIInfo.SetAIState(EUnitAIState.AVAILABLE);
+		
 #ifdef WORKBENCH
 		SCR_AIDebugVisualization.VisualizeMessage(m_Utility.m_OwnerEntity, "Failed heal", EAIDebugCategory.INFO, 5);
 #endif

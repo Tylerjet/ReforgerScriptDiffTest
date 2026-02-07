@@ -1,5 +1,5 @@
 [BaseContainerProps(), SCR_BaseContainerHintCondition()]
-class SCR_EditorEntityToEntityHintCondition: SCR_BaseEditorHintCondition
+class SCR_EditorEntityToEntityHintCondition : SCR_BaseEditorHintCondition
 {
 	//[Attribute("-1", uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EEditableEntityType))]
 	//protected EEditableEntityType m_EditedType;
@@ -7,6 +7,7 @@ class SCR_EditorEntityToEntityHintCondition: SCR_BaseEditorHintCondition
 	[Attribute("-1", uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EEditableEntityType))]
 	protected EEditableEntityType m_TargetType;
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnTargetChange(SCR_EditableEntityComponent target)
 	{
 		if (target)
@@ -20,16 +21,19 @@ class SCR_EditorEntityToEntityHintCondition: SCR_BaseEditorHintCondition
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override protected void OnInitConditionEditor(SCR_EditorManagerEntity editorManager)
 	{
 		SCR_PreviewEntityEditorComponent previewManager = SCR_PreviewEntityEditorComponent.Cast(SCR_PreviewEntityEditorComponent.GetInstance(SCR_PreviewEntityEditorComponent));
 		if (previewManager)
 			previewManager.GetOnTargetChange().Insert(OnTargetChange);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void OnExitConditionEditor(SCR_EditorManagerEntity editorManager)
 	{
 		SCR_PreviewEntityEditorComponent previewManager = SCR_PreviewEntityEditorComponent.Cast(SCR_PreviewEntityEditorComponent.GetInstance(SCR_PreviewEntityEditorComponent));
 		if (previewManager)
 			previewManager.GetOnTargetChange().Remove(OnTargetChange);
 	}
-};
+}

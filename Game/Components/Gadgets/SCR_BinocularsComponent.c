@@ -1,16 +1,15 @@
 [EntityEditorProps(category: "GameScripted/Gadgets", description: "Binoculars gadget", color: "0 0 255 255")]
-class SCR_BinocularsComponentClass: SCR_GadgetComponentClass
+class SCR_BinocularsComponentClass : SCR_GadgetComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_BinocularsComponent : SCR_GadgetComponent
 {
-	static ref ScriptInvoker s_OnBinocToggled = new ref ScriptInvoker();
+	protected static ref ScriptInvoker s_OnBinocToggled = new ScriptInvoker();
 	
 	protected Widget m_RootWidget = null;	// binoculars layout
 	
-	static bool m_sZoomed = false;		// local character zoomed state
+	protected static bool m_bZoomed = false;		// local character zoomed state
 	
 	// Optics reference 
 	protected SCR_2DOpticsComponent m_Optic;
@@ -19,12 +18,12 @@ class SCR_BinocularsComponent : SCR_GadgetComponent
 	//! Get whether the local character is in a zoomed state
 	static bool IsZoomedView()
 	{
-		return m_sZoomed;
+		return m_bZoomed;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Switch between zoomed view
-	//! \param state is desired state
+	//! \param[in] state is desired state
 	private void SetZoomedView(bool state)
 	{
 		// Check for optics 
@@ -41,12 +40,12 @@ class SCR_BinocularsComponent : SCR_GadgetComponent
 		if (state)
 		{
 			m_Optic.OnSightADSActivated();
-			m_sZoomed = true;
+			m_bZoomed = true;
 		}
 		else
 		{
 			m_Optic.OnSightADSDeactivated();
-			m_sZoomed = false;
+			m_bZoomed = false;
 		}
 		
 		// Invoke use
@@ -71,7 +70,7 @@ class SCR_BinocularsComponent : SCR_GadgetComponent
 			return;
 		}
 		
-		if (m_iMode == EGadgetMode.IN_HAND && m_sZoomed)
+		if (m_iMode == EGadgetMode.IN_HAND && m_bZoomed)
 			ToggleFocused(false);
 		
 		super.ModeClear(mode);
@@ -110,6 +109,7 @@ class SCR_BinocularsComponent : SCR_GadgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_BinocularsComponent()
 	{
 		if (m_RootWidget)
@@ -118,5 +118,4 @@ class SCR_BinocularsComponent : SCR_GadgetComponent
 			delete m_RootWidget;
 		}
 	}
-
-};
+}

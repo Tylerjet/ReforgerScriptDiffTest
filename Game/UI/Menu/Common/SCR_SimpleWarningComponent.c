@@ -10,9 +10,13 @@ class SCR_SimpleWarningComponent : SCR_ScriptedWidgetComponent
 	[Attribute(UIColors.GetColorAttribute(UIColors.WARNING))]
 	protected ref Color m_Color;
 	
+	[Attribute(UIColors.GetColorAttribute(UIColors.WARNING))]
+	protected ref Color m_TextColor;
+	
 	protected TextWidget m_wWarning;
 	protected Widget m_wWarningWrapper;
 	protected ImageWidget m_wWarningImage;
+	protected SizeLayoutWidget m_wWarningImageSize;
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -21,40 +25,61 @@ class SCR_SimpleWarningComponent : SCR_ScriptedWidgetComponent
 
 		m_wWarning = TextWidget.Cast(w.FindAnyWidget("WarningText"));
 		m_wWarningImage = ImageWidget.Cast(w.FindAnyWidget("WarningImage"));
+		m_wWarningImageSize = SizeLayoutWidget.Cast(w.FindAnyWidget("WarningImageSize"));
 		m_wWarningWrapper = w.FindAnyWidget("WarningWrapper");
 		ResetWarning();
+		ResetWarningColor();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void ResetWarning()
 	{
-		SetWarning(m_sWarning, m_sIconName, m_Color);
+		SetWarning(m_sWarning, m_sIconName);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetWarning(string text, string iconName, Color color)
+	void ResetWarningColor()
+	{
+		SetWarningColor(m_Color, m_TextColor);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetWarning(string text, string iconName)
 	{
 		if (m_wWarning)
-		{
 			m_wWarning.SetText(text);
-			m_wWarning.SetColor(color);
-		}
+		
+		if (m_wWarningImage && !iconName.IsEmpty())
+			m_wWarningImage.LoadImageFromSet(0, UIConstants.ICONS_IMAGE_SET, iconName);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetWarningColor(Color color, Color textColor)
+	{
+		if (m_wWarning)
+			m_wWarning.SetColor(textColor);
 		
 		if (m_wWarningImage)
-		{
-			m_wWarningImage.LoadImageFromSet(0, UIConstants.ICONS_IMAGE_SET, iconName);
 			m_wWarningImage.SetColor(color);
-		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void SetWarningVisible(bool visible, bool preserveSpace = true)
 	{
-		if (!preserveSpace)
-			m_wRoot.SetVisible(visible);
+		m_wRoot.SetVisible(visible || !visible && preserveSpace);
 		
 		if (m_wWarningWrapper)
 			m_wWarningWrapper.SetVisible(visible);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetIconVisible(bool visible, bool preserveSpace = false)
+	{
+		if (m_wWarningImage)
+			m_wWarningImage.SetVisible(visible);
+		
+		if (m_wWarningImageSize)
+			m_wWarningImageSize.SetVisible(visible || !visible && preserveSpace);
 	}
 	
 	//------------------------------------------------------------------------------------------------

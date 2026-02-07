@@ -14,9 +14,12 @@ class SCR_BuildingTutorialStage16 : SCR_BaseCampaignTutorialArlandStage
 		m_bCheckWaypoint = false;
 		RegisterWaypoint("TownBaseFarm");
 		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
-	
 		m_SupplyTruck = GetGame().GetWorld().FindEntityByName("BuildingSupplyTruck");
+		
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("Building_Exit2", true);
+		HintOnVoiceOver();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -25,6 +28,6 @@ class SCR_BuildingTutorialStage16 : SCR_BaseCampaignTutorialArlandStage
 		if (!m_WP)
 			m_WP = GetGame().GetWorld().FindEntityByName("TownBaseFarm");
 		
-		return vector.DistanceSq(m_SupplyTruck.GetOrigin(), m_WP.GetOrigin()) <= 100;
+		return vector.DistanceSq(m_SupplyTruck.GetOrigin(), m_WP.GetOrigin()) <= 300;
 	}
 };

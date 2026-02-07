@@ -49,70 +49,62 @@ class SCR_GameCoreBase
 	[Attribute(desc: "Core processing priority. Higher value = higher priority")]
 	private int m_iPriority;
 	
-	/*!
-		Executed when the game starts (whole game, not just a world)
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Executed when the game starts (whole game, not just a world)
 	void OnAfterInit();
 	
-	/*!
-	Executed after world entities are initialized
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Executed after world entities are initialized
 	void OnGameStart();
 	
-	/*!
-	Executed once loading of all entities of the world have been finished. (still within the loading)
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Executed once loading of all entities of the world have been finished. (still within the loading)
 	void OnWorldPostProcess(World world);
 	
-	/*!
-	Executed every frame
-	\param timeSlice Time passed since previous frame
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Executed every frame
+	//! \param timeSlice Time passed since previous frame
 	void OnUpdate(float timeSlice);
 	
-	/*!
-	Executed when the world ends
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Executed when the world ends
 	void OnGameEnd();
 	
-	/*!
-	Get core priority. Cores with higher number will be executed first.
-	\return Priority
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get core priority. Cores with higher number will be executed first.
+	//! \return priority
 	int GetPriority()
 	{
 		return m_iPriority;
 	}
 	
-	/*!
-	Check if the core is enabled.
-	\return True when enabled
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Check if the core is enabled.
+	//! \return True when enabled
 	bool IsEnabled()
 	{
 		return m_bEnabled;
 	}
 	
-	/*!
-	Check if the core can be created.
-	\override to setup custom condition
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Check if the core can be created.
+	//! Override to setup custom condition
+	//! \return true
 	bool CanCreate()
 	{
 		return true;
 	}
 	
-	/*!
-	Get instance of a core class.
-	Example:
-	~~~
-	SCR_MyNameCore myCore = SCR_MyNameCore.GetInstance(SCR_MyNameCore);
-	~~~
-	\param type Type of the core class
-	\return Core instance
-	*/
+	//---
+	//! Get instance of a core class.
+	//! Example:
+	//! \code
+	//! SCR_MyNameCore myCore = SCR_MyNameCore.GetInstance(SCR_MyNameCore);
+	//! \code
+	//! \param type Type of the core class
+	//! \return Core instance
 	static SCR_GameCoreBase GetInstance(typename type)
 	{
 		return SCR_GameCoresManager.GetCore(type);
 	}
-};
+}

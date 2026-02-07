@@ -1,8 +1,7 @@
-//------------------------------------------------------------------------------------------------
 //! Compass in map UI
-class SCR_MapCompassUI: SCR_MapRTWBaseUI
+class SCR_MapCompassUI : SCR_MapRTWBaseUI
 {		
-	const string ICON_NAME = "compass";
+	protected static const string ICON_NAME = "compass";
 	
 	protected SCR_CompassComponent m_CompassComp;
 	protected string m_sPrefabResource;
@@ -138,8 +137,9 @@ class SCR_MapCompassUI: SCR_MapRTWBaseUI
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_MapCompassUI()
 	{
 		m_eGadgetType = EGadgetType.COMPASS;
 	}
-};
+}

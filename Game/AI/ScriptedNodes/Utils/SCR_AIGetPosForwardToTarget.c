@@ -41,18 +41,11 @@ class SCR_AIGetPosForwardToTarget: AITaskScripted
 		else if (GetVariableType(true, PORT_TARGET) == IEntity)
 		{
 			GetVariableIn(PORT_TARGET,m_Target);
-			if (m_Target == NULL)
-			{
-				NodeError(this, owner, PORT_TARGET + " can't be NULL entity");
-			}	
+			if (!m_Target)
+				return ENodeResult.FAIL;
 			
 			if (m_Target == owner || m_Target == controlledEntity)
-			{
-				string calls;
-				GetCallstackStr(calls);
-				Print(calls);
-				NodeError(this, owner, PORT_TARGET + " can't be the same as owner entity");
-			}
+				return NodeError(this, owner, PORT_TARGET + " can't be the same as owner entity");
 		}
 		
 		if (GetVariableType(true, PORT_DISTANCE) == int)

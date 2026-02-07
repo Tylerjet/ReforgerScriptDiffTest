@@ -1,7 +1,8 @@
 
 [BaseContainerProps(), BaseContainerCustomTitleField("m_sDisplayName")]
-class SCR_SupplyRefundTooltipDetail: SCR_EntityTooltipDetail
-{	
+class SCR_SupplyRefundTooltipDetail : SCR_EntityTooltipDetail
+{
+	//------------------------------------------------------------------------------------------------
 	override bool InitDetail(SCR_EditableEntityComponent entity, Widget widget)
 	{		
 		TextWidget text = TextWidget.Cast(widget.FindAnyWidget("Text"));
@@ -41,7 +42,7 @@ class SCR_SupplyRefundTooltipDetail: SCR_EntityTooltipDetail
 			return false;
 		
 		//~ Calculate refund amound
-		text.SetText(Math.Round(conflictBudget * (buildingManager.GetCompositionRefundPercentage() / 100)).ToString());
+		text.SetText(Math.Round(conflictBudget * (buildingManager.GetCompositionRefundPercentage() * 0.01)).ToString());
 		
 		return true;
 	}

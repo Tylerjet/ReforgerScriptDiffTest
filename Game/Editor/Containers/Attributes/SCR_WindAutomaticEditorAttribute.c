@@ -1,10 +1,8 @@
-/**
-Weather attribute if it should override certain weather values
-*/
-// Script File 
+//! Weather attribute if it should override certain weather values
 [BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
 class SCR_WindAutomaticEditorAttribute : SCR_BaseEditorAttribute
 {	
+	//------------------------------------------------------------------------------------------------
 	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)
 	{
 		//If opened in global attributes
@@ -20,6 +18,7 @@ class SCR_WindAutomaticEditorAttribute : SCR_BaseEditorAttribute
 		return SCR_BaseEditorAttributeVar.CreateBool(!weatherManager.IsWindSpeedOverridden() || !weatherManager.IsWindDirectionOverridden());
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void UpdateInterlinkedVariables(SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, bool isInit = false)
 	{
 		if (isInit)
@@ -36,6 +35,7 @@ class SCR_WindAutomaticEditorAttribute : SCR_BaseEditorAttribute
 		manager.SetAttributeEnabled(SCR_WindDirectionEditorAttribute, var && !isAutomatic);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)
 	{
 		if (!var)
@@ -96,6 +96,7 @@ class SCR_WindAutomaticEditorAttribute : SCR_BaseEditorAttribute
 		weatherManager.DelayedSetWindOverride(!var.GetBool(), playerID);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void PreviewVariable(bool setPreview, SCR_AttributesManagerEditorComponent manager)
 	{
 		//Set preview (Also called from SCR_WindSpeedEditorAttribute and SCR_WindDirectionEditorAttribute)
@@ -119,4 +120,4 @@ class SCR_WindAutomaticEditorAttribute : SCR_BaseEditorAttribute
 				weatherManager.SetWindPreview(false);
 		}
 	}
-};
+}

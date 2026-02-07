@@ -1,22 +1,28 @@
 [ComponentEditorProps(category: "GameScripted/Character", description: "Scripted character camera handler (new)")]
-class SCR_CharacterCameraHandlerComponentClass: CameraHandlerComponentClass
+class SCR_CharacterCameraHandlerComponentClass : CameraHandlerComponentClass
 {
-};
+}
 
 class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 {
 	[Attribute(category: "Camera Shake")]
-	ref SCR_RecoilCameraShakeParams m_pRecoilShakeParams;
+	protected ref SCR_RecoilCameraShakeParams m_pRecoilShakeParams;
 	
 	//! Progress of recoil based camera shake
-	ref SCR_RecoilCameraShakeProgress m_pRecoilShake = new SCR_RecoilCameraShakeProgress();
+	protected ref SCR_RecoilCameraShakeProgress m_pRecoilShake = new SCR_RecoilCameraShakeProgress();
 	
 	protected ref ScriptInvoker m_OnThirdPersonSwitch = new ScriptInvoker();
-	static protected float s_fOverlayCameraFOV;
+	protected static float s_fOverlayCameraFOV;
 	
 	protected int m_iHipsBoneIndex = 0;
 	
+	protected bool m_bCameraActive;
+	
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_CharacterCameraHandlerComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		#ifdef ENABLE_DIAG 
@@ -39,16 +45,17 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		m_iHeadBoneIndex = m_OwnerCharacter.GetAnimation().GetBoneIndex("Head");
 		m_iHipsBoneIndex = m_OwnerCharacter.GetAnimation().GetBoneIndex("Hips");
 	}
+
 	//------------------------------------------------------------------------------------------------
 	override void OnCameraActivate()
 	{
 		OnCameraDeactivate();
+		m_bCameraActive = true;
 		
 		if (m_OwnerCharacter && m_AnimationComponent)
 		{
 			OnThirdPersonSwitch(IsInThirdPerson());
 		}
-		
 		
 		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
 		if (playerController)
@@ -57,27 +64,28 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 				SetThirdPerson(true);
 			playerController.m_bRetain3PV = false;
 		}
+
 		if (!IsInThirdPerson() && m_OwnerCharacter)
 		{
 			OnAlphatestChange(m_OwnerCharacter.m_fFaceAlphaTest);
 		}
 	}
+
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] a
 	void OnAlphatestChange(int a)
 	{
 		m_OwnerCharacter.m_fFaceAlphaTest = a;
 		
 		if (m_IdentityComponent)
-		{
 			m_IdentityComponent.SetHeadAlpha(a);
-		}
 		
 		if (m_LoadoutStorage)
 		{
-			auto ent = m_LoadoutStorage.GetClothFromArea(LoadoutHeadCoverArea);
+			IEntity ent = m_LoadoutStorage.GetClothFromArea(LoadoutHeadCoverArea);
 			if (ent)
 			{
-				auto cloth = BaseLoadoutClothComponent.Cast(ent.FindComponent(BaseLoadoutClothComponent));
+				BaseLoadoutClothComponent cloth = BaseLoadoutClothComponent.Cast(ent.FindComponent(BaseLoadoutClothComponent));
 				if (cloth)
 					cloth.SetAlpha(a);
 			}
@@ -93,8 +101,12 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		m_fFocusTargetValue = 0.0;
 		m_fFocusValue = 0.0;
 		SetFocusMode(m_fFocusValue);
+		
+		m_bCameraActive = false;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsDebugView()
 	{
 		#ifdef ENABLE_DIAG
@@ -104,8 +116,11 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		#endif
 	}
 
-	//------------------------------------------------------------------------------------------------
 	private bool m_bWasVehicleADS;
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	bool CheckVehicleADS()
 	{
 		CheckIsInTurret(m_bWasVehicleADS);
@@ -113,6 +128,9 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[out] isInAds
+	//! \return
 	bool CheckIsInTurret(out bool isInAds)
 	{
 		isInAds = false;
@@ -135,6 +153,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 				}
 			}
 		}
+
 		return false;
 	}
 
@@ -152,23 +171,33 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 
 		if (!IsInThirdPerson())
 		{
-			if (m_ControllerComponent.IsDead())
+			ECharacterLifeState lifeState = m_ControllerComponent.GetLifeState();
+			if (lifeState == ECharacterLifeState.DEAD)
 				return CharacterCameraSet.CHARACTERCAMERA_1ST_BONE_TRANSFORM;
 		
-			if (m_ControllerComponent.IsUnconscious())
+			if (lifeState == ECharacterLifeState.INCAPACITATED)
 				return CharacterCameraSet.CHARACTERCAMERA_1ST_UNCONSCIOUS;
+		}
+		else
+		{
+			if (m_ControllerComponent.IsUnconscious())
+				return CharacterCameraSet.CHARACTERCAMERA_3RD_UNCONSCIOUS;
+		}
+		
+		if (m_ControllerComponent.IsSwimming())
+		{
+			if (IsInThirdPerson())
+				return CharacterCameraSet.CHARACTERCAMERA_3RD_FLOAT;
+			else
+				return CharacterCameraSet.CHARACTERCAMERA_1ST_FLOAT;
 		}
 
 		if (SCR_BinocularsComponent.IsZoomedView())
-		{
 			return CharacterCameraSet.CHARACTERCAMERA_BINOCULARS;
-		}
 		
 		//! game camera selection
 		if (m_ControllerComponent.IsWeaponADS() || (m_ControllerComponent.GetInputContext().IsWeaponADS() && m_ControllerComponent.IsChangingStance()))
-		{
 			return CharacterCameraSet.CHARACTERCAMERA_ADS;
-		}
 		
 		if (m_ControllerComponent.IsGadgetRaisedModeWanted() && !m_OwnerCharacter.IsInVehicle())
 			return CharacterCameraSet.CHARACTERCAMERA_1ST;
@@ -176,9 +205,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		CompartmentAccessComponent compartmentAccess = m_OwnerCharacter.GetCompartmentAccessComponent();
 		
 		if (m_ControllerComponent.GetInspect() && !m_OwnerCharacter.IsInVehicle())
-		{
 			return CharacterCameraSet.CHARACTERCAMERA_1ST;
-		}
 		
 		bool isRolling = false;
 		if (m_ControllerComponent.IsRoll() && m_CmdHandler)
@@ -198,24 +225,19 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 				if (inTurret)
 				{
 					if (isTurretAds)
-					{
 						return CharacterCameraSet.CHARACTERCAMERA_ADS_VEHICLE;
-					}
+
 					return CharacterCameraSet.CHARACTERCAMERA_3RD_TURRET;
 				}
 				
 				if (m_ControllerComponent.GetInspect())
-				{
 					return CharacterCameraSet.CHARACTERCAMERA_1ST_VEHICLE;
-				}
 
 				return CharacterCameraSet.CHARACTERCAMERA_3RD_VEHICLE;
 			}
 			
 			if (compartmentAccess && (compartmentAccess.IsGettingOut() || compartmentAccess.IsGettingIn()))
-			{
 				return CharacterCameraSet.CHARACTERCAMERA_3RD_ERC;
-			}
 
 			if( m_CharMovementState.m_CommandTypeId == ECharacterCommandIDs.CLIMB )
 				return CharacterCameraSet.CHARACTERCAMERA_3RD_CLIMB;
@@ -248,7 +270,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 			}
 			
 			if (ShouldForceFirstPersonInThirdPerson(m_ControllerComponent))
-					return CharacterCameraSet.CHARACTERCAMERA_1ST;
+				return CharacterCameraSet.CHARACTERCAMERA_1ST;
 			
 			return CharacterCameraSet.CHARACTERCAMERA_3RD_ERC;
 		}
@@ -263,13 +285,14 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 			if (inTurret)
 			{
 				if (isTurretAds)
-				{
 					return CharacterCameraSet.CHARACTERCAMERA_ADS_VEHICLE;
-				}
+
 				return CharacterCameraSet.CHARACTERCAMERA_1ST_TURRET;
 			}
 			else if( CheckVehicleADS() )
-					return CharacterCameraSet.CHARACTERCAMERA_ADS_VEHICLE;
+			{
+				return CharacterCameraSet.CHARACTERCAMERA_ADS_VEHICLE;
+			}
 
 			return CharacterCameraSet.CHARACTERCAMERA_1ST_VEHICLE;
 		}
@@ -279,9 +302,11 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		{
 			return CharacterCameraSet.CHARACTERCAMERA_1ST_BONE_TRANSFORM;
 		}
+
 		return CharacterCameraSet.CHARACTERCAMERA_1ST;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected bool ShouldForceFirstPersonInThirdPerson(CharacterControllerComponent controller)
 	{
 		if (!m_ControllerComponent.GetWeaponADSInput())
@@ -296,6 +321,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	protected float m_fADSProgress;
 	protected float m_fADSTime;
 	
+	//------------------------------------------------------------------------------------------------
 	override float GetCameraTransitionTime(int pFrom, int pTo)
 	{
 		float transTime = 0.4;
@@ -305,6 +331,8 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 			transTime = 1.4;
 		else if (pFrom == CharacterCameraSet.CHARACTERCAMERA_3RD_CRO && pTo == CharacterCameraSet.CHARACTERCAMERA_3RD_PRO
 			  || pFrom == CharacterCameraSet.CHARACTERCAMERA_3RD_PRO && pTo == CharacterCameraSet.CHARACTERCAMERA_3RD_CRO)
+			transTime = 0.8;
+		else if (pTo == CharacterCameraSet.CHARACTERCAMERA_1ST_UNCONSCIOUS || pTo == CharacterCameraSet.CHARACTERCAMERA_3RD_UNCONSCIOUS)
 			transTime = 0.8;
 		else if (pFrom == CharacterCameraSet.CHARACTERCAMERA_DEBUG || pTo == CharacterCameraSet.CHARACTERCAMERA_DEBUG)
 			transTime = 0.0;
@@ -348,15 +376,21 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 			}
 		}
 		else if ((pFrom == CharacterCameraSet.CHARACTERCAMERA_ADS_VEHICLE/* || pFrom == CharacterCameraSet.CHARACTERCAMERA_1ST_TURRET*/) && pTo == CharacterCameraSet.CHARACTERCAMERA_1ST_READY)
+		{
 			transTime = 0.0;
+		}
 		else if ((pFrom == CharacterCameraSet.CHARACTERCAMERA_ADS_VEHICLE/* || pFrom == CharacterCameraSet.CHARACTERCAMERA_3RD_TURRET*/) && pTo == CharacterCameraSet.CHARACTERCAMERA_3RD_ERC)
+		{
 			transTime = 0.0;
+		}
 		else if (pFrom == CharacterCameraSet.CHARACTERCAMERA_1ST_VEHICLE_TRANSITION || pTo == CharacterCameraSet.CHARACTERCAMERA_1ST_VEHICLE_TRANSITION)
 		{
 			transTime = 0.8;
 		}
 		else
+		{
 			transTime = GetCameraSet().GetTransitionTime(pFrom, pTo);
+		}
 
 		return transTime;
 	}	
@@ -375,6 +409,8 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		m_OnThirdPersonSwitch.Invoke();		
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetThirdPersonSwitchInvoker()
 	{
 		return m_OnThirdPersonSwitch;
@@ -498,13 +534,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnAfterCameraUpdate(float pDt, bool pIsKeyframe, inout vector transformMS[4], inout vector transformWS[4])
 	{
-		//! update head visibility
-		vector headBoneMat[4];
-		m_OwnerCharacter.GetAnimation().GetBoneMatrix(m_iHeadBoneIndex, headBoneMat);
-		vector charMat[4];
-		m_OwnerCharacter.GetWorldTransform(charMat);
-		Math3D.MatrixMultiply4(charMat, headBoneMat, headBoneMat);
-		OnAlphatestChange(255 - Math.Clamp((vector.Distance(transformWS[3], headBoneMat[3]) - 0.2) / 0.15, 0.0, 1.0)*255);
+		UpdateHeadVisibility(transformWS[3]);
 		
 		if (m_ControllerComponent.IsDead())
 			return;
@@ -521,6 +551,19 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void UpdateHeadVisibility(vector cameraPositionWS)
+	{
+		vector headBoneMat[4];
+		m_OwnerCharacter.GetAnimation().GetBoneMatrix(m_iHeadBoneIndex, headBoneMat);
+		vector charMat[4];
+		m_OwnerCharacter.GetWorldTransform(charMat);
+		Math3D.MatrixMultiply4(charMat, headBoneMat, headBoneMat);
+		
+		// Set alpha based on distance from camera
+		OnAlphatestChange(255 - Math.Clamp((vector.Distance(cameraPositionWS, headBoneMat[3]) - 0.2) / 0.15, 0.0, 1.0)*255);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateShake(float pDt)
 	{
 		// Update and apply recoil based camera shake
@@ -529,6 +572,9 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in,out] transform
+	//! \param[in,out] fieldOfView
 	void AddShakeToToTransform(inout vector transform[4], inout float fieldOfView)
 	{
 		bool applyRecoilShake = true;
@@ -678,9 +724,11 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 				parent = parent.GetParent();
 			}
 			
+			const float TRACE_RADIUS = 0.06;
+
 			BaseWorld world = m_OwnerCharacter.GetWorld();
-			autoptr TraceSphere param = new TraceSphere;
-			param.Radius = 0.06;
+			TraceSphere param = new TraceSphere();
+			param.Radius = TRACE_RADIUS;
 			param.ExcludeArray = excludeArray;
 			param.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
 			param.LayerMask = TRACE_LAYER_CAMERA;
@@ -712,15 +760,42 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 			Math3D.MatrixInvMultiply4(resultWorldTransform, camTransformWS, camTransformLS);
 			
 			// 2. Backwards collision. Vars are defined outside the scope because of the debug spheres.
+			vector backtraceDir = pOutResult.m_vBacktraceDir.Multiply3(charRot).Multiply3(resultWorldTransform);
+			backtraceDir = vector.Lerp(camTransformWS[2], backtraceDir, pOutResult.m_fUseBacktraceDir);
+
 			float backTrace = 1;
 			vector backTraceStart = camTransformWS[3];
-			vector backTraceEnd = camTransformWS[3] - BACK_TRACE_MARGIN_MULTIPLIER * pOutResult.m_fDistance * camTransformWS[2];
-			if (pOutResult.m_fPositionModelSpace <= 2.0 && pOutResult.m_fDistance > 0.0)
+			vector backTraceEnd = camTransformWS[3] - BACK_TRACE_MARGIN_MULTIPLIER * pOutResult.m_fDistance * backtraceDir;
+			// Trace N rays at a thickness of TRACE_RADIUS around the direction backTraceEnd - backTraceStart, approximating a sphere trace.
+			const int N = 4;
+			vector traceMat[N];
+			float rayBackTrace[N];
+			SCR_Math3D.LookAt(backTraceStart, backTraceEnd, {0, 1, 0}, traceMat); // Get a transform with Z axis facing the ray direction.
+			vector traceOffset[N] = {
+				TRACE_RADIUS *  traceMat[0],
+				TRACE_RADIUS *  traceMat[1],
+				TRACE_RADIUS * -traceMat[0],
+				TRACE_RADIUS * -traceMat[1]
+			};
+
+			if (pOutResult.m_fPositionModelSpace <= 2.0 && pOutResult.m_fDistance > 0.001)
 			{
-				param.Start = backTraceStart;
-				param.End = backTraceEnd;
-				
-				backTrace = world.TraceMove(param, null);
+				TraceParam rayParam();
+				rayParam.ExcludeArray = excludeArray;
+				rayParam.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
+				rayParam.LayerMask = TRACE_LAYER_CAMERA;
+
+				backTrace = 1;
+				for (int i = 0; i < N; ++i)
+				{
+					rayParam.Start = backTraceStart + traceOffset[i];
+					rayParam.End = backTraceEnd + traceOffset[i];
+					rayBackTrace[i] = world.TraceMove(rayParam, null);
+					backTrace = Math.Min(backTrace, rayBackTrace[i]);
+				}
+				if (backTrace < 1)
+					Math.Max(0, backTrace - TRACE_RADIUS); // Push the point inwards by TRACE_RADIUS amount, approximating a sphere trace.
+
 				// Unlike with slide, distance will not move "in anticipation", so we can directly multiply this value and compare it to 1.
 				// We still want to have it a bit longer though, to cover the param.Radius margin.
 				backTrace = BACK_TRACE_MARGIN_MULTIPLIER * backTrace;
@@ -747,13 +822,21 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 				int baseColor = ARGB(255, 0, 110, 255);
 				ShapeFlags shFlags = ShapeFlags.WIREFRAME|ShapeFlags.ONCE;
 				
-				Shape.CreateSphere(ARGB(255, 255, 255, 255), shFlags, inputCameraPosWS, param.Radius);								// WHITE
+				Shape.CreateSphere(ARGB(255, 255, 255, 255), shFlags, inputCameraPosWS, param.Radius);				// WHITE
 				
-				Shape.CreateSphere(ARGB(255, 0, 255, 0), shFlags, sideTraceStart, param.Radius);									// GREEN
-				Shape.CreateSphere(ARGB(255, 255, 255 * rightTrace, 0), shFlags, sideTraceEnd, param.Radius);						// YELLOW - RED
+				Shape.CreateSphere(ARGB(255, 0, 255, 0), shFlags, sideTraceStart, param.Radius);					// GREEN
+				Shape.CreateSphere(ARGB(255, 255, 255 * rightTrace, 0), shFlags, sideTraceEnd, param.Radius);		// YELLOW - RED
 		
-				Shape.CreateSphere(ARGB(255, 150, 0, 255), shFlags, backTraceStart, param.Radius * 0.9);							// PURPLE
-				Shape.CreateSphere(ARGB(255, 0, 255, 255), shFlags, vector.Lerp(backTraceStart, backTraceEnd, 0.25), param.Radius * 0.35);	// TEAL
+				for (int i = 0; i < N; ++i)
+				{
+					vector rayStart = backTraceStart + traceOffset[i];
+					vector rayEnd = backTraceEnd + traceOffset[i];
+					
+					Shape.CreateSphere(ARGB(255, 150, 0, 255), shFlags, rayStart, param.Radius * 0.2);				// PURPLE
+					Shape.CreateSphere(ARGB(255, 0, 255, 255), shFlags, vector.Lerp(rayStart, rayEnd, Math.Lerp(0.05, 0.4, backTrace) * rayBackTrace[i]), param.Radius * 0.1);
+																													// ^ TEAL
+				}
+
 				if (backTrace < 1)
 					Shape.CreateSphere(ARGB(255, 255, 255 * backTrace, 0), shFlags, backTraceStart + (backTraceEnd - backTraceStart).Normalized() * (m_fCameraDistanceFilter - param.Radius), param.Radius * (1 - backTrace));
 			}
@@ -765,7 +848,10 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		
 		if (pOutResult.m_fPositionModelSpace < 2.0 && pOutResult.m_fDistance > 0.0)
 		{
-			resCamTM[3] = resCamTM[3] - pOutResult.m_fDistance * resCamTM[2];
+			vector camBoomDir = pOutResult.m_vBacktraceDir.Multiply3(charRot);
+			camBoomDir = vector.Lerp(resCamTM[2], camBoomDir, pOutResult.m_fUseBacktraceDir);
+			
+			resCamTM[3] = resCamTM[3] - pOutResult.m_fDistance * camBoomDir;
 		}
 	}
 
@@ -778,6 +864,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		float freeLookOffsetScale = 0;
 		if (m_ControllerComponent.IsFreeLookEnabled() || m_ControllerComponent.IsTrackIREnabled())
 			freeLookOffsetScale = 1;
+
 		m_fBobFreelokFilter = Math.SmoothCD(m_fBobFreelokFilter, 1 - Math.Pow(1 - freeLookOffsetScale, 3), m_fBobFreelokFilterVel, 0.3, 1000, pDt);
 		freeLookOffsetScale = m_fBobFreelokFilter;
 		
@@ -799,9 +886,11 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 				stanceBobScale = 0.25;
 			else if (stance == ECharacterStance.CROUCH)
 				stanceBobScale = 0.55;
+
 			m_fBob_Up += Math.Clamp(pDt * 2 * stanceBobScale * m_fBob_ScaleFast, 0, 1);
 			if (m_fBob_Up >= 1)
 				m_fBob_Up -= 1;
+
 			m_fBob_Right += Math.Clamp(pDt * 2.5 * stanceBobScale * m_fBob_ScaleFast, 0, 1);
 			if (m_fBob_Right >= 1)
 				m_fBob_Right -= 1;
@@ -809,6 +898,11 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in,out] pOutTransform
+	//! \param[in] pBobScale
+	//! \param[in] pAllowTranslation
+	//! \return
 	float AddViewBobToTransform(inout vector pOutTransform[4], float pBobScale, bool pAllowTranslation)
 	{
 		// Add bob
@@ -824,6 +918,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 			bobTranslation = pOutTransform[1] * bobUp + bobTranslation;
 			pOutTransform[3] = pOutTransform[2] * bobFw + bobTranslation;
 		}
+
 		vector angBob = vector.Zero;
 		angBob[0] = Math.Sin(m_fBob_Up * 360 * Math.DEG2RAD) * 0.3 * bobMoveScale;		// YAW		< >
 		angBob[1] = Math.Sin(m_fBob_Right * 360 * Math.DEG2RAD) * 0.3 * bobMoveScale;	// PITCH	^ v
@@ -842,52 +937,50 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	private void UpdateAiming(vector transformMS[4])
 	{
 		return;
-		/*
-		vector characterMat[4];
-		m_OwnerCharacter.GetWorldTransform(characterMat);
-		
-		if( Is3rdPersonView() )
-		{
-			vector dirLS = transformMS[2];
-			vector dirWS = dirLS.Multiply3(characterMat);
-			vector aimposLS = transformMS[3];
-			vector aimposWS = aimposLS.Multiply4(characterMat);
-			
-			// Trace aiming for 3rd person
-			autoptr TraceParam param = new TraceParam;
-			param.Start = aimposWS + dirWS * 3;
-			param.End = param.Start + dirWS * 100;
-			param.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
-			param.Exclude = m_OwnerCharacter;
-			param.LayerMask = TRACE_LAYER_CAMERA;
-			vector aimpos = param.End;
-			
-			float traced = m_OwnerCharacter.GetWorld().TraceMove(param, null);
-			if (traced < 1)
-				aimpos = (param.End - param.Start) * traced + param.Start;
-			
-			m_ControllerComponent.SetLookAtPosition(aimpos);
-			if (m_ControllerComponent.IsFreeLookEnabled() || m_ControllerComponent.IsWeaponObstructed())
-				m_ControllerComponent.SetAimPosition(vector.Zero);
-			else
-				m_ControllerComponent.SetAimPosition(aimpos);
-		}
-		else
-		{
-			m_ControllerComponent.SetAimPosition(vector.Zero);
-			m_ControllerComponent.SetLookAtPosition(vector.Zero);
-		}
-		*/
+
+//		vector characterMat[4];
+//		m_OwnerCharacter.GetWorldTransform(characterMat);
+//
+//		if( Is3rdPersonView() )
+//		{
+//			vector dirLS = transformMS[2];
+//			vector dirWS = dirLS.Multiply3(characterMat);
+//			vector aimposLS = transformMS[3];
+//			vector aimposWS = aimposLS.Multiply4(characterMat);
+//
+//			// Trace aiming for 3rd person
+//			autoptr TraceParam param = new TraceParam;
+//			param.Start = aimposWS + dirWS * 3;
+//			param.End = param.Start + dirWS * 100;
+//			param.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
+//			param.Exclude = m_OwnerCharacter;
+//			param.LayerMask = TRACE_LAYER_CAMERA;
+//			vector aimpos = param.End;
+//
+//			float traced = m_OwnerCharacter.GetWorld().TraceMove(param, null);
+//			if (traced < 1)
+//				aimpos = (param.End - param.Start) * traced + param.Start;
+//
+//			m_ControllerComponent.SetLookAtPosition(aimpos);
+//			if (m_ControllerComponent.IsFreeLookEnabled() || m_ControllerComponent.IsWeaponObstructed())
+//				m_ControllerComponent.SetAimPosition(vector.Zero);
+//			else
+//				m_ControllerComponent.SetAimPosition(aimpos);
+//		}
+//		else
+//		{
+//			m_ControllerComponent.SetAimPosition(vector.Zero);
+//			m_ControllerComponent.SetLookAtPosition(vector.Zero);
+//		}
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool Is3rdPersonView()
 	{
 		return !IsDebugView() && IsInThirdPerson() && !(m_ControllerComponent && m_ControllerComponent.IsWeaponADS());
 	}
-	
 
-	//------------------------------------------------------------------------------------------------
 	private SCR_ChimeraCharacter m_OwnerCharacter;
 	private SCR_CharacterControllerComponent m_ControllerComponent;
 	private CharacterAnimationComponent m_AnimationComponent;
@@ -920,6 +1013,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 
 	private ref CharacterMovementState m_CharMovementState = new CharacterMovementState();
 
+	//------------------------------------------------------------------------------------------------
 	private void ResetSlide()
 	{
 		m_fCameraSlideFilter = 1;
@@ -928,6 +1022,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		m_fChangedTimer = 0;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	private bool ApplySmoothedSlide(float pDt, float slide, vector sideTraceStart, vector sideTraceDiff, float sideTraceMarginMultiplier, float shoulderDist, inout vector inoutMat[4])
 	{
 		// Slide will only be enabled in one branch.
@@ -936,15 +1031,15 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		bool slideInside = Math.AbsFloat(slide) < Math.AbsFloat(m_fCameraSlideFilter);
 		// Apply timer only when direction of slide is changed
 		if (m_bPrevSlideDirectionInside && !slideInside)
-		{
 			m_fChangedTimer = m_fSlideTimeout;
-		}
+
 		m_bPrevSlideDirectionInside = slideInside;
 		
 		if (m_fChangedTimer > 0)
 		{
 			m_fChangedTimer = m_fChangedTimer - pDt;
 		}
+
 		// No smoothing while we are switching shoulders.
 		if (Math.AbsFloat(shoulderDist) < 0.98 && m_fCameraSlideFilter > slide)
 		{
@@ -953,6 +1048,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 			inoutMat[3] = sideTraceStart + sideTraceDiff * m_fCameraSlideFilter;
 			return slideInside;
 		}
+
 		// Hard limit for the maximum slide to the side is the trace distance.
 		if (slideInside && m_fCameraSlideFilter > slide * sideTraceMarginMultiplier)
 		{
@@ -962,9 +1058,8 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		else
 		{
 			if (IsCameraBlending())
-			{
 				m_fChangedTimer = 0;
-			}
+
 			if (m_fChangedTimer <= 0 && m_fCameraSlideFilter != slide)
 			{
 				float slideTime = m_fSlideTimeout;
@@ -1013,16 +1108,18 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		if (!CanUseOverlayCameraFOV())
 			return 0.0;
 		
-		return 1.0;
+		return m_fADSProgress;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_RecoilCameraShakeParams GetRecoilShakeParams()
 	{
 		return m_pRecoilShakeParams;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] fov
 	static void SetOverlayCameraFOV(float fov)
 	{
 		s_fOverlayCameraFOV = fov;
@@ -1037,4 +1134,11 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		
 		return fov / 90;
 	}
-};
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	bool IsCameraActive()
+	{
+		return m_bCameraActive;
+	}
+}

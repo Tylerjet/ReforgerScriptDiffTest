@@ -1,15 +1,11 @@
-class GadgetsSystem: GameSystem
+class GadgetsSystem : GameSystem
 {
 	protected bool m_bUpdating = false;
 	protected ref array<SCR_GadgetComponent> m_Components = {};
 	protected ref array<SCR_GadgetComponent> m_DeletedComponents = {};
 	
-	override protected ESystemPoint GetSystemPoint()
-	{
-		return ESystemPoint.Frame;
-	}
-	
-	override protected void OnUpdate(ESystemPoint point)
+	//------------------------------------------------------------------------------------------------
+	protected override void OnUpdate(ESystemPoint point)
 	{
 		float timeSlice = GetWorld().GetTimeSlice();
 		
@@ -29,7 +25,8 @@ class GadgetsSystem: GameSystem
 		m_DeletedComponents.Clear();
 	}
 	
-	override protected void OnDiag(float timeSlice)
+	//------------------------------------------------------------------------------------------------
+	protected override void OnDiag(float timeSlice)
 	{
 		DbgUI.Begin("GadgetsSystem");
 		
@@ -46,6 +43,8 @@ class GadgetsSystem: GameSystem
 		DbgUI.End();
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param component must not be null
 	void Register(SCR_GadgetComponent component)
 	{
 		//About to be deleted
@@ -58,6 +57,7 @@ class GadgetsSystem: GameSystem
 		m_Components.Insert(component);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	void Unregister(SCR_GadgetComponent component)
 	{
 		int idx = m_Components.Find(component);

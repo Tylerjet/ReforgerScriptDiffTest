@@ -5,6 +5,7 @@ enum EResourceReason
 	UNAVAILABLE		// No Resource Available
 }
 
+// TODO: rename Consumtion -> Consumption
 class SCR_ResourceConsumtionResponse
 {
 	protected float				m_fAvailableResource;
@@ -68,4 +69,9 @@ class SCR_ResourceConsumtionResponse
 	{
 		m_eReason = reasonCode;
 	}
-};
+}
+
+// //! classname typo fix
+// class SCR_ResourceConsumptionResponse : SCR_ResourceConsumtionResponse
+// {
+// }

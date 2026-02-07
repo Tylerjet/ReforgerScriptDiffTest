@@ -1,4 +1,4 @@
-class SCR_EditableEntityCustomSlotUIComponent: SCR_EditableEntitySceneSlotUIComponent
+class SCR_EditableEntityCustomSlotUIComponent : SCR_EditableEntitySceneSlotUIComponent
 {
 	[Attribute()]
 	protected string m_sBoneName;
@@ -13,6 +13,7 @@ class SCR_EditableEntityCustomSlotUIComponent: SCR_EditableEntitySceneSlotUIComp
 	protected int m_iBoneIndex;
 	protected CameraManager m_CameraManager;
 	
+	//------------------------------------------------------------------------------------------------
 	override vector UpdateSlot(int screenW, int screenH, vector posCenter, vector posCam)
 	{
 		if (m_iBoneIndex == -1)
@@ -56,9 +57,12 @@ class SCR_EditableEntityCustomSlotUIComponent: SCR_EditableEntitySceneSlotUIComp
 				}
 			}
 		}
+
 		m_Widget.SetVisible(false);
 		return vector.Zero;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void InitSlot(SCR_EditableEntityComponent entity)
 	{
 		super.InitSlot(entity);
@@ -70,4 +74,4 @@ class SCR_EditableEntityCustomSlotUIComponent: SCR_EditableEntitySceneSlotUIComp
 		
 		FrameSlot.SetAlignment(m_Widget, 0.5, 0.5);
 	}
-};
+}

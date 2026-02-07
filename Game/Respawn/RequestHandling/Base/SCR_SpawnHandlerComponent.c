@@ -1,26 +1,21 @@
-//------------------------------------------------------------------------------------------------
 class SCR_SpawnHandlerComponentClass : ScriptComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
-/*!
-	SCR_SpawnRequestComponent <-> SCR_SpawnHandlerComponent
-
-	SCR_SpawnRequestComponent allows communication between client and the authority,
-	SCR_SpawnHandlerComponent handles the requests on authority as desired.
-
-	The handler is the authority component of the respawn process which handles client (or authority-issued) request to respawn
-	from a specific player controller and ensures that the spawning process is handled and streamlined.
-	The process is further streamlined via the usage of a unified parent manager, the SCR_RespawnSystemComponent.
-*/
+//! SCR_SpawnRequestComponent <-> SCR_SpawnHandlerComponent
+//!
+//! SCR_SpawnRequestComponent allows communication between client and the authority,
+//! SCR_SpawnHandlerComponent handles the requests on authority as desired.
+//!
+//! The handler is the authority component of the respawn process which handles client (or authority-issued) request to respawn
+//! from a specific player controller and ensures that the spawning process is handled and streamlined.
+//! The process is further streamlined via the usage of a unified parent manager, the SCR_RespawnSystemComponent.
 class SCR_SpawnHandlerComponent : ScriptComponent
 {
 	private SCR_RespawnSystemComponent m_RespawnSystemComponent;
 
-	/*!
-		Returns parent handler manager component.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return parent handler manager component.
 	protected SCR_RespawnSystemComponent GetRespawnSystemComponent()
 	{
 		return m_RespawnSystemComponent;
@@ -33,9 +28,8 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 	protected bool m_bDeletePreviousControlledEntity;
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Initializes the handler by finding necessary dependencies.
-	*/
+	//! Initialises the handler by finding necessary dependencies.
+	//! \param[in] owner
 	protected override void OnPostInit(IEntity owner)
 	{
 		super.OnPostInit(owner);
@@ -46,19 +40,16 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Can a player be spawned with provided data?
-		Ensures:
-		\param requestComponent Instigator of this request
-		\param data Request/ask data
-	*/
+	//! Can a player be spawned with provided data?
+	//! \param[in] requestComponent Instigator of this request
+	//! \param[in] data Request/ask data
 	SCR_ESpawnResult CanHandleRequest_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data)
 	{
 		int playerId = requestComponent.GetPlayerController().GetPlayerId();
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::CanHandleRequest_S(playerId: %2, data: %3)", Type().ToString(),
+		Print(string.Format("%1::CanHandleRequest_S(playerId: %2, data: %3)", Type().ToString(),
 					playerId,
-					data);
+					data), LogLevel.NORMAL);
 		#endif
 
 		// The authority can activate and deactivate respawn handlers at will, but
@@ -83,16 +74,18 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Handle request - validate resources, try to spawn, prepare and pass ownership to player.
-	*/
+	//! Handle request - validate resources, try to spawn, prepare and pass ownership to player.
+	//! \param[in] requestComponent
+	//! \param[in] data
+	//! \param[out] spawnedEntity
+	//! \return
 	SCR_ESpawnResult HandleRequest_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data, out IEntity spawnedEntity)
 	{
 		int playerId = requestComponent.GetPlayerController().GetPlayerId();
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::HandleRequest_S(playerId: %2, data: %3)", Type().ToString(),
+		Print(string.Format("%1::HandleRequest_S(playerId: %2, data: %3)", Type().ToString(),
 					playerId,
-					data);
+					data), LogLevel.NORMAL);
 		#endif
 
 		// Validate whether spawn can happen
@@ -124,9 +117,7 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Called when the finalization process begins.
-	*/
+	//! Called when the finalisation process begins.
 	void OnFinalizeBegin_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data, IEntity entity)
 	{
 		if (SCR_BaseGameMode.Cast(GetGame().GetGameMode()).CanStartSpawnPreload())
@@ -134,26 +125,29 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Called periodically to ask whether finalization can be finished.
-		\return True to finalize request, resulting in FinalizeRequest_S call, false to await further.
-	*/
+	//! Called periodically to ask whether finalization can be finished.
+	//! \param[in] requestComponent
+	//! \param[in] data
+	//! \param[in] entity
+	//! \return True to finalize request, resulting in FinalizeRequest_S call, false to await further.
 	bool CanFinalize_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data, IEntity entity)
 	{
 		return !requestComponent.IsPreloading();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Finalize request - validate resources, try to spawn, prepare and pass ownership to player.
-	*/
+	//! Finalise request - validate resources, try to spawn, prepare and pass ownership to player.
+	//! \param[in] requestComponent
+	//! \param[in] data
+	//! \param[in] entity
+	//! \return
 	SCR_ESpawnResult FinalizeRequest_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data, IEntity entity)
 	{
 		int playerId = requestComponent.GetPlayerId();
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::FinalizeRequest_S(playerId: %2, data: %3)", Type().ToString(),
+		Print(string.Format("%1::FinalizeRequest_S(playerId: %2, data: %3)", Type().ToString(),
 					playerId,
-					data);
+					data), LogLevel.NORMAL);
 		#endif
 
 		if (!AssignEntity_S(requestComponent, entity, data))
@@ -166,37 +160,38 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Request finalized (player spawned).
-	*/
-	void OnFinalizeDone_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data, IEntity entity)
-	{
-	}
+	//! Request finalized (player spawned).
+	//! \param[in] requestComponent
+	//! \param[in] data
+	//! \param[in] entity
+	void OnFinalizeDone_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data, IEntity entity);
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Verifies provided data.
-	*/
+	//! Verifies provided data.
+	//! \param[in] requestComponent
+	//! \param[in] data
+	//! \return
 	protected bool ValidateData_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::ValidateData_S(playerId: %1, data: %2)", Type().ToString(), requestComponent.GetPlayerId(), data);
+		Print(string.Format("%1::ValidateData_S(playerId: %1, data: %2)", Type().ToString(), requestComponent.GetPlayerId(), data), LogLevel.NORMAL);
 		#endif
 		return data.IsValid();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Can a player spawn, based on the provided data?
-
-		Handle game logic, ask game mode, respawn timers -> anything relevant for proper evaluation.
-		Return true if spawn is possible, false otherwise.
-	*/
+	//! Can a player spawn, based on the provided data?
+	//!
+	//! Handle game logic, ask game mode, respawn timers -> anything relevant for proper evaluation.
+	//! \param[in] requestComponent
+	//! \param[in] data
+	//! \param[out] result
+	//! \return true if spawn is possible, false otherwise.
 	bool CanRequestSpawn_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data, out SCR_ESpawnResult result)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::CanRequestSpawn_S(playerId: %2, data: %3)", Type().ToString(),
-					requestComponent.GetPlayerId(), data);
+		Print(string.Format("%1::CanRequestSpawn_S(playerId: %2, data: %3)", Type().ToString(),
+					requestComponent.GetPlayerId(), data), LogLevel.NORMAL);
 		#endif
 
 		SCR_RespawnSystemComponent respawnSystem = SCR_RespawnSystemComponent.GetInstance();
@@ -204,20 +199,22 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		1. Validate prefab on server
-		2. Validate input data on server
-		3. Spawn entity on server
-		4. Prepare entity on server (e.g. seat in vehicle)
-		On success next step is to Finalize.
-	*/
+	//! 1. Validate prefab on server
+	//! 2. Validate input data on server
+	//! 3. Spawn entity on server
+	//! 4. Prepare entity on server (e.g. seat in vehicle)
+	//! On success next step is to Finalise.
+	//! \param[in] requestComponent
+	//! \param[in] data
+	//! \param[out] spawnedEntity
+	//! \return
 	protected SCR_ESpawnResult SpawnEntity_S(SCR_SpawnRequestComponent requestComponent, notnull SCR_SpawnData data, out IEntity spawnedEntity)
 	{
 		int playerId = requestComponent.GetPlayerId();
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::SpawnEntity_S(playerId: %2, data: %3)", Type().ToString(),
+		Print(string.Format("%1::SpawnEntity_S(playerId: %2, data: %3)", Type().ToString(),
 					playerId,
-					data);
+					data), LogLevel.NORMAL);
 		#endif
 
 		ResourceName prefab = data.GetPrefab();
@@ -234,7 +231,6 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 		Math3D.AnglesToMatrix(yawPitchRoll, params.Transform);
 		params.Transform[3] = data.GetPosition();
 
-		
 		#ifdef ENABLE_DIAG
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_RESPAWN_COMPONENT_TIME))
 			Debug.BeginTimeMeasure();
@@ -242,7 +238,6 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 		
 		// Spawn
 		Resource res = Resource.Load(prefab);
-		
 		
 		#ifdef ENABLE_DIAG
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_RESPAWN_COMPONENT_TIME))
@@ -256,11 +251,8 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 		
 		#ifdef ENABLE_DIAG
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_RESPAWN_COMPONENT_TIME))
-		{
 			Debug.EndTimeMeasure("Game::SpawnEntityPrefab");
-		}
 		#endif
-		
 
 		if (!PrepareEntity_S(requestComponent, entity, data))
 		{
@@ -273,21 +265,20 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Verifies provided prefab.
-		Returns true if provided prefab is a valid and has a controller component.
-	*/
+	//! Verifies provided prefab.
+	//! \param[in] resourceName
+	//! \return true if provided prefab is a valid and has a controller component.
 	protected bool ValidatePrefab_S(ResourceName resourceName)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::ValidatePrefab_S(pref: %2)", Type().ToString(), resourceName);
+		Print(string.Format("%1::ValidatePrefab_S(pref: %2)", Type().ToString(), resourceName), LogLevel.NORMAL);
 		#endif
 
 		if (resourceName.IsEmpty())
 			return false;
 
-		ref Resource res = Resource.Load(resourceName);
-		if (!res)
+		Resource res = Resource.Load(resourceName);
+		if (!res.IsValid())
 			return false;
 
 		IEntityComponentSource rplComponent = SCR_BaseContainerTools.FindComponentSource(res, RplComponent);
@@ -302,35 +293,38 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Prepare an entity on the server side prior to passing ownership.
-		For example in this case character can have items added, can be seated in vehicle, etc.
-	*/
+	//! Prepare an entity on the server side prior to passing ownership.
+	//! For example in this case character can have items added, can be seated in vehicle, etc.
+	//! \param[in] requestComponent
+	//! \param[in] entity
+	//! \param[in] data
+	//! \return
 	protected bool PrepareEntity_S(SCR_SpawnRequestComponent requestComponent, IEntity entity, SCR_SpawnData data)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::PrepareEntity_S(playerId: %2, entity: %3, data: %4)", Type().ToString(),
+		Print(string.Format("%1::PrepareEntity_S(playerId: %2, entity: %3, data: %4)", Type().ToString(),
 					requestComponent.GetPlayerController().GetPlayerId(),
 					entity,
-					data);
+					data), LogLevel.NORMAL);
 		#endif
 
-		SCR_RespawnSystemComponent respawnSystem = GetRespawnSystemComponent();
-		return respawnSystem.PreparePlayerEntity_S(requestComponent, this, data, entity);
+		return GetRespawnSystemComponent().PreparePlayerEntity_S(requestComponent, this, data, entity);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Assign the entity ownership and set is as the controlled entity of provided player.
-	*/
+	//! Assign the entity ownership and set is as the controlled entity of provided player.
+	//! \param[in] requestComponent
+	//! \param[in] entity
+	//! \param[in] data
+	//! \return
 	protected bool AssignEntity_S(SCR_SpawnRequestComponent requestComponent, IEntity entity, SCR_SpawnData data)
 	{
 		int playerId = requestComponent.GetPlayerController().GetPlayerId();
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::AssignEntity_S(playerId: %2, entity: %3, data: %4)", Type().ToString(),
+		Print(string.Format("%1::AssignEntity_S(playerId: %2, entity: %3, data: %4)", Type().ToString(),
 					playerId,
 					entity,
-					data);
+					data), LogLevel.NORMAL);
 		#endif
 
 		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(playerId));
@@ -348,51 +342,53 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		In cases where an entity is spawned, it might be desirable to dispose of it
-		if it e.g. cannot be prepared, or assigned to the target player.
-		Such cases can be handled by overriding this method. By default, the entity is deleted.
-		\param entity The entity that should be spawned, but could not be given over (prepared, assigned, ..)
-	*/
+	//! In cases where an entity is spawned, it might be desirable to dispose of it
+	//! if it e.g. cannot be prepared, or assigned to the target player.
+	//! Such cases can be handled by overriding this method. By default, the entity is deleted.
+	//! \param[in] requestComponent
+	//! \param[in] entity The entity that should be spawned, but could not be given over (prepared, assigned, ..)
+	//! \param[in] data
+	//! \param[in] reason
 	protected void HandleSpawnEntityFailure_S(SCR_SpawnRequestComponent requestComponent, IEntity entity, SCR_SpawnData data, SCR_ESpawnResult reason)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::HandleSpawnEntityFailure_S(playerId: %2, entity: %2, data: %3, res: %4)", Type().ToString(),
-					requestComponent.GetPlayerId(), entity, data, typename.EnumToString(SCR_ESpawnResult, reason));
+		Print(string.Format("%1::HandleSpawnEntityFailure_S(playerId: %2, entity: %2, data: %3, res: %4)", Type().ToString(),
+					requestComponent.GetPlayerId(), entity, data, typename.EnumToString(SCR_ESpawnResult, reason)), LogLevel.NORMAL);
 		#endif
 		
 		SCR_RespawnSystemComponent respawnSystem = GetRespawnSystemComponent();
 		respawnSystem.OnSpawnPlayerEntityFailure_S(requestComponent, this, entity, data, reason);
 
 		if (entity && ShouldDeleteEntityOnSpawnFailure_S(requestComponent, entity, data, reason))
-		{
 			RplComponent.DeleteRplEntity(entity, false);
-		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Check whether spawned entity should be deleted if the spawn process failed.
-	*/
+	//! Check whether spawned entity should be deleted if the spawn process failed.
+	//! \param[in] requestComponent
+	//! \param[in] entity
+	//! \param[in] data
+	//! \param[in] reason
+	//! \return
 	protected bool ShouldDeleteEntityOnSpawnFailure_S(SCR_SpawnRequestComponent requestComponent, IEntity entity, SCR_SpawnData data, SCR_ESpawnResult reason)
 	{
 		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Called after new entity is assigned to the player.
-		\param previousEntity Last controlled entity or null if none.
-		\param newEntity New controlled entity.
-	*/
+	//! Called after new entity is assigned to the player.
+	//! \param[in] requestComponent
+	//! \param[in] previousEntity Last controlled entity or null if none.
+	//! \param[in] newEntity New controlled entity.
+	//! \param[in] data
 	protected void HandleEntityChange_S(SCR_SpawnRequestComponent requestComponent, IEntity previousEntity, IEntity newEntity, SCR_SpawnData data)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::HandleEntityChange_S(playerId: %2, previousEntity: %3, newEntity: %4, data: %5)", Type().ToString(),
+		Print(string.Format("%1::HandleEntityChange_S(playerId: %2, previousEntity: %3, newEntity: %4, data: %5)", Type().ToString(),
 					requestComponent.GetPlayerController().GetPlayerId(),
 					previousEntity,
 					newEntity,
-					data);
+					data), LogLevel.NORMAL);
 		#endif
 
 		// Notify manager
@@ -411,8 +407,6 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 		}
 
 		if (m_bDeletePreviousControlledEntity)
-		{
 			RplComponent.DeleteRplEntity(previousEntity, false);
-		}
 	}
-};
+}

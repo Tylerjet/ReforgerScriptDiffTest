@@ -11,6 +11,10 @@ class SCR_FuelInventoryItemComponent : InventoryItemComponent
 	protected SCR_FuelManagerComponent m_FuelManager;
 	
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_FuelInventoryItemComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		if (SCR_Global.IsEditMode())
@@ -44,6 +48,7 @@ class SCR_FuelInventoryItemComponent : InventoryItemComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_FuelInventoryItemComponent()
 	{
 		if (m_FuelManager)

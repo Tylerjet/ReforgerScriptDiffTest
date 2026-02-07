@@ -1,9 +1,10 @@
-/** @ingroup Editor_UI Editor_UI_Components
-The Filter window of the Content Browser
-*/
+//! @ingroup Editor_UI Editor_UI_Components
+
+//! The Filter window of the Content Browser
+
 class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent 
 {
-	const string FILTERGROUP_VLAYOUT_NAME = "FilterOptions";
+	protected static const string FILTERGROUP_VLAYOUT_NAME = "FilterOptions";
 	
 	[Attribute(desc: "Name of widget in which labels will be spawned.", defvalue: "FilterList")]
 	private string m_sLayoutName;
@@ -38,19 +39,19 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 	[Attribute("0.5")]
 	private float m_fLabelClickDelay;
 	
-	private Widget m_Layout;
+	private Widget m_wLayout;
 	
-	private ref map<EEditableEntityLabel, SCR_ListBoxElementComponent> m_ButtonByLabel = new map<EEditableEntityLabel, SCR_ListBoxElementComponent>;
+	private ref map<EEditableEntityLabel, SCR_ListBoxElementComponent> m_ButtonByLabel = new map<EEditableEntityLabel, SCR_ListBoxElementComponent>();
 	
-	private ref map<EEditableEntityLabel, ref set<Widget>> m_GroupWidgetByConditionalLabel = new map<EEditableEntityLabel, ref set<Widget>>;
-	private ref map<EEditableEntityLabelGroup, Widget> m_GroupWidgetByGroupLabel = new map<EEditableEntityLabelGroup, Widget>;
+	private ref map<EEditableEntityLabel, ref set<Widget>> m_GroupWidgetByConditionalLabel = new map<EEditableEntityLabel, ref set<Widget>>();
+	private ref map<EEditableEntityLabelGroup, Widget> m_GroupWidgetByGroupLabel = new map<EEditableEntityLabelGroup, Widget>();
 	
 	private SCR_ContentBrowserEditorComponent m_ContentBrowserEditorComponent;
 	
 	private ScriptInvoker m_ShowLoadingCallback;
 	private ScriptInvoker m_LabelApplyCallback;
-	protected ref ScriptInvoker Event_OnFiltersReset = new ScriptInvoker;
-	protected ref ScriptInvoker Event_OnActiveFilterClicked = new ScriptInvoker;
+//	protected ref ScriptInvoker Event_OnFiltersReset = new ScriptInvoker();
+//	protected ref ScriptInvoker Event_OnActiveFilterClicked = new ScriptInvoker();
 	
 	protected Widget m_wFirstButton;
 	
@@ -62,36 +63,42 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 	protected ScrollLayoutWidget m_wScrollview;
 	protected float m_fFiltersScrollPosY;
 	
+	//------------------------------------------------------------------------------------------------
 	protected void SetFilterToggled(EEditableEntityLabel entityLabel, bool state, bool setData = false, SCR_ListBoxElementComponent handler = null)
 	{
 		if (!handler)
-		{
 			handler = m_ButtonByLabel.Get(entityLabel);
-		}
+
 		if (handler)
-		{
 			handler.SetToggled(state, false);
-		}
+
 		CheckConditionalGroup(entityLabel, state);
 		m_ContentBrowserEditorComponent.SetLabel(entityLabel, state);
 	}
 	
-	/*!
-	On Active filter pressed
-	\param entityLabel EEditableEntityLabel to set disabled
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! On Active filter pressed
+	//! \param entityLabel EEditableEntityLabel to set disabled
 	void DisableFilterFromActiveFilters(EEditableEntityLabel entityLabel)
 	{
 		SetFilterToggled(entityLabel, false, true);
 		ApplyFiltersDelayed();
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] filterHandler
+	//! \param[out] label
+	//! \param[out] isToggled
+	//! \param[out] groupLabel
+	//! \return
 	bool GetLabelFromHandler(SCR_ListBoxElementComponent filterHandler, out EEditableEntityLabel label, out bool isToggled, out EEditableEntityLabelGroup groupLabel)
 	{
-		if (!filterHandler) return false;
+		if (!filterHandler)
+			return false;
 		
 		SCR_EditableEntityCoreLabelSetting labelSettings = SCR_EditableEntityCoreLabelSetting.Cast(filterHandler.GetData());
-		if (!labelSettings) return false;
+		if (!labelSettings)
+			return false;
 		
 		label = labelSettings.GetLabelType();
 		groupLabel = labelSettings.GetLabelGroupType();
@@ -99,12 +106,11 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 		return true;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void CheckConditionalGroup(EEditableEntityLabel filterLabel, bool value)
 	{
 		if (!m_GroupWidgetByConditionalLabel.Contains(filterLabel))
-		{
 			return;
-		}
 		
 		float x;
 		m_wScrollview.GetSliderPosPixels(x, m_fFiltersScrollPosY);
@@ -113,23 +119,28 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 		set<Widget> conditionalGroupWidgets = m_GroupWidgetByConditionalLabel.Get(filterLabel);		
 		foreach (Widget conditionalGroupWidget : conditionalGroupWidgets)
 		{
-			if (!conditionalGroupWidget) continue;
+			if (!conditionalGroupWidget)
+				continue;
+
 			conditionalGroupWidget.SetVisible(value);
 			
 			if (!value)
 			{
 				// Deactivate all filters in this group if filter is deactivated and conditional group is hidden
 				Widget filterVerticalLayout = conditionalGroupWidget.FindAnyWidget(FILTERGROUP_VLAYOUT_NAME);
-				if (!filterVerticalLayout) continue;
+				if (!filterVerticalLayout)
+					continue;
 				
 				Widget filterLayout = filterVerticalLayout.GetChildren();
 				while (filterLayout)
 				{
 					SCR_ListBoxElementComponent filterHandler = SCR_ListBoxElementComponent.Cast(filterLayout.FindHandler(SCR_ListBoxElementComponent));
-					if (!filterHandler) continue;
+					if (!filterHandler)
+						continue;
 					
 					SCR_EditableEntityCoreLabelSetting labelSettings = SCR_EditableEntityCoreLabelSetting.Cast(filterHandler.GetData());
-					if (!labelSettings) continue;
+					if (!labelSettings)
+						continue;
 					
 					SetFilterToggled(labelSettings.GetLabelType(), false, false, filterHandler);
 					
@@ -140,6 +151,7 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 		m_wScrollview.SetSliderPosPixels(0, m_fFiltersScrollPosY);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnFilterToggled(SCR_ModularButtonComponent handler, bool newToggle)
 	{
 		EEditableEntityLabel toggledLabel;
@@ -152,11 +164,16 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] handler
 	void OnMouseEnterFilterWidget(SCR_ModularButtonComponent handler)
 	{
 		OnFilterLabelFocus(handler.GetRootWidget(), handler);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] label
+	//! \param[in] handler
 	void OnFilterLabelFocus(Widget label, SCR_ModularButtonComponent handler)
 	{
 		if (m_bUsingGamePad && label == m_wFirstButton)
@@ -166,6 +183,8 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 			m_wLastFocusedLabel = label;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	Widget GetLastFocusedLabel()
 	{
 		if (!m_wLastFocusedLabel)
@@ -174,6 +193,7 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 			return m_wLastFocusedLabel;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	void OnResetClicked()
 	{
 		array<EEditableEntityLabel> activeLabels = {};
@@ -189,7 +209,7 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 		//~ Check always active labels to make sure conditional groups are displayed correctly on reset
 		if (m_ContentBrowserEditorComponent.GetContentBrowserDisplayConfig())
 		{
-			array<EEditableEntityLabel> alwaysActiveLabels = new array<EEditableEntityLabel>;
+			array<EEditableEntityLabel> alwaysActiveLabels = {};
 			m_ContentBrowserEditorComponent.GetContentBrowserDisplayConfig().GetAlwaysActiveLabels(alwaysActiveLabels);
 			
 			foreach (EEditableEntityLabel label: alwaysActiveLabels)
@@ -199,10 +219,11 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//~ Before Browser state is loaded
 	protected void OnBrowserStatePreloaded(SCR_EditorContentBrowserSaveStateData state)
 	{
-		array<EEditableEntityLabel> savedLabels = new array<EEditableEntityLabel>;
+		array<EEditableEntityLabel> savedLabels = {};
 		m_ContentBrowserEditorComponent.GetActiveLabels(savedLabels);
 		
 		//~ Reset labels
@@ -212,10 +233,11 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//~ After Browser state is loaded
 	protected void OnBrowserStateLoaded(SCR_EditorContentBrowserSaveStateData state)
 	{
-		array<EEditableEntityLabel> savedLabels = new array<EEditableEntityLabel>;
+		array<EEditableEntityLabel> savedLabels = {};
 		state.GetLabels(savedLabels);
 		
 		//~ Set saved Labels
@@ -225,6 +247,8 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
 	void ApplyLabelChanges()
 	{
 		if (m_LabelApplyCallback == null)
@@ -243,11 +267,16 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 			GetGame().GetWorkspace().SetFocusedWidget(focusedWidget);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] groupLabel
+	//! \param[in] ignoreButton
 	void ResetLabelsOfGroupLabel(EEditableEntityLabelGroup groupLabel, Widget ignoreButton = null)
 	{
 		Widget filterGroupLayout = m_GroupWidgetByGroupLabel.Get(groupLabel);
 		
-		if (!filterGroupLayout) return;
+		if (!filterGroupLayout)
+			return;
 		
 		Widget filterWidget = filterGroupLayout.GetChildren();
 		int i = 0;
@@ -255,22 +284,26 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 		{
 			SCR_ListBoxElementComponent buttonComponent = SCR_ListBoxElementComponent.Cast(filterWidget.FindHandler(SCR_ListBoxElementComponent));
 			if (buttonComponent && buttonComponent.GetToggled() && (!ignoreButton || ignoreButton != buttonComponent.GetRootWidget()))
-			{
 				buttonComponent.SetToggled(false, true);
-			}
 			
 			filterWidget = filterWidget.GetSibling();
 			i++;
-			if (i > 100) break; //Failsafe
+			if (i > 100)
+				break; // Failsafe
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] showLoadingCallback
+	//! \param[in] labelApplyCallback
 	void SetContentBrowserCallbacks(ScriptInvoker showLoadingCallback, ScriptInvoker labelApplyCallback)
 	{
 		m_ShowLoadingCallback = showLoadingCallback;
 		m_LabelApplyCallback = labelApplyCallback;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
 	void InitializeLabels()
 	{
 		if (!m_ContentBrowserEditorComponent)
@@ -281,7 +314,7 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 		
 		WorkspaceWidget workspace = GetGame().GetWorkspace();
 		
-		Widget existingLabelWidget = m_Layout.GetChildren();
+		Widget existingLabelWidget = m_wLayout.GetChildren();
 		while (existingLabelWidget)
 		{
 			existingLabelWidget.RemoveFromHierarchy();
@@ -322,7 +355,7 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 			
 			m_ContentBrowserEditorComponent.GetLabelsOfGroup(groupLabel, groupLabels);
 			
-			labelGroupWidget = workspace.CreateWidgets(m_LabelGroupPrefab, m_Layout);
+			labelGroupWidget = workspace.CreateWidgets(m_LabelGroupPrefab, m_wLayout);
 			labelGroupLayout = labelGroupWidget.FindAnyWidget(m_sLabelGroupLayoutName);
 			
 			SCR_UIInfo labelGroupInfo = labelGroup.GetInfo();
@@ -398,20 +431,14 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 				
 				ImageWidget labelImageWidget = ImageWidget.Cast(labelOptionHandler.GetRootWidget().FindAnyWidget(m_sLabelImageWidgetName));
 				if (labelImageWidget)
-				{
 					labelUIInfo.SetIconTo(labelImageWidget);
-				}
 				
 				SCR_LinkTooltipTargetEditorUIComponent linkedTooltipComponent = SCR_LinkTooltipTargetEditorUIComponent.Cast(labelLayout.FindHandler(SCR_LinkTooltipTargetEditorUIComponent));
 				if (linkedTooltipComponent)
-				{
 					linkedTooltipComponent.SetInfo(labelUIInfo);
-				}
 				
 				if (!m_wFirstButton)
-				{
 					m_wFirstButton = labelLayout;
-				}
 				
 				bool isLabelActive = m_ContentBrowserEditorComponent.IsLabelActive(entityLabel);
 				
@@ -432,11 +459,13 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
 		m_bUsingGamePad = isGamepad;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnFilterClicked(SCR_ListBoxElementComponent handler)
 	{
 		if (m_bIsDoubleClick)
@@ -455,6 +484,7 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnFilterDoubleClicked(SCR_ListBoxElementComponent handler)
 	{
 		if (m_ContentBrowserEditorComponent.GetActiveLabelCount() <= 1)
@@ -473,32 +503,32 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void ApplyFiltersDelayed()
 	{
 		m_fLabelSelectedTimer = m_fLabelClickDelay;
 		if (m_ShowLoadingCallback)
-		{
 			m_ShowLoadingCallback.Invoke(true);
-		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnMenuUpdate(float timeSlice)
 	{
 		if (m_fLabelSelectedTimer > 0)
 		{
 			m_fLabelSelectedTimer -= timeSlice;
 			if (m_fLabelSelectedTimer < 0)
-			{
 				ApplyLabelChanges();
-			}
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttachedScripted(Widget w)
 	{
 		super.HandlerAttachedScripted(w);
 		
-		if (SCR_Global.IsEditMode()) return;
+		if (SCR_Global.IsEditMode())
+			return;
 		
 		OnInputDeviceIsGamepad(!GetGame().GetInputManager().IsUsingMouseAndKeyboard());
 		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
@@ -508,12 +538,12 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 		m_ContentBrowserEditorComponent.GetOnBrowserStateLoaded().Insert(OnBrowserStateLoaded);
 		m_ContentBrowserEditorComponent.GetOnBrowserStatePreload().Insert(OnBrowserStatePreloaded);
 		
-		m_Layout = w.FindAnyWidget(m_sLayoutName);
+		m_wLayout = w.FindAnyWidget(m_sLayoutName);
 		
 		m_wScrollview = ScrollLayoutWidget.Cast(w.FindAnyWidget(m_sScrollLayoutName));
 		
 		// Remove any existing filter groups, used for configuring UI layouts
-		Widget debugFilterGroup = m_Layout.GetChildren();
+		Widget debugFilterGroup = m_wLayout.GetChildren();
 		int i = 0;
 		while(debugFilterGroup && i++ < 100)
 		{
@@ -522,7 +552,7 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 			debugFilterGroup = debugFilterSibling;
 		}
 		
-		if (!m_Layout)
+		if (!m_wLayout)
 		{
 			Print("Can't find layout for content browser label list", LogLevel.ERROR);
 			return;
@@ -537,6 +567,7 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 		InitializeLabels();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		if (m_ContentBrowserEditorComponent)
@@ -546,8 +577,10 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 		}
 		
 		super.HandlerDeattached(w);
-		if (SCR_Global.IsEditMode()) return;
+		if (SCR_Global.IsEditMode())
+			return;
+
 		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 		GetMenu().GetOnMenuUpdate().Remove(OnMenuUpdate);
 	}
-};
+}

@@ -2,6 +2,7 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 {
 	[Attribute("UIIconsContainer")];
 	protected string m_sIconsContainer;
+
 	protected Widget m_wIconsContainer;
 
 	[Attribute("{E78DE3FD19654C1B}UI/layouts/Campaign/SpawnPointElement.layout", params: "layout")]
@@ -12,6 +13,7 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 
 	[Attribute("{C013EB43E812F9C1}UI/layouts/Menus/DeployMenu/WarningHintTemp.layout")]
 	protected ResourceName m_sWarningWidget;
+
 	protected Widget m_wWarningWidget;
 
 	[Attribute("0")]
@@ -42,6 +44,7 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 		m_bIsEditor = SCR_EditorManagerEntity.IsOpenedInstance(false);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void AddSpawnPoint(SCR_SpawnPoint spawnPoint)
 	{
 		Faction playerFaction = SCR_FactionManager.SGetLocalPlayerFaction();
@@ -55,6 +58,7 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void RemoveSpawnPoint(SCR_SpawnPoint spawnPoint)
 	{
 		RplId pointId = spawnPoint.GetRplId();
@@ -62,6 +66,7 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 		UpdateIcons();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnSpawnPointFactionChange(SCR_SpawnPoint spawnPoint)
 	{
 		if (spawnPoint.GetFactionKey() == m_PlyFactionAffilComp.GetAffiliatedFaction().GetFactionKey())
@@ -70,6 +75,20 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 			RemoveSpawnPoint(spawnPoint);
 	}
 
+	//------------------------------------------------------------------------------------------------	
+	protected void UpdateSpawnPointName(RplId id, string name)
+	{
+		foreach (Widget w, SCR_MapUIElement icon : m_mIcons)
+		{
+			if (icon && icon.GetSpawnPointId() == id)
+			{
+				icon.SetName(name);
+				break;
+			}
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void HideSpawnPoint(RplId spawnPointId)
 	{
 		foreach (Widget w, SCR_MapUIElement icon : m_mIcons)
@@ -82,6 +101,7 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void OnPlayerFactionResponse(SCR_PlayerFactionAffiliationComponent component, int factionIndex, bool response)
 	{
 		if (response)
@@ -137,6 +157,7 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 			InitTaskMarkers();
 		
 		m_MapEntity.GetOnMapPan().Insert(OnMapPan);
+		SCR_SpawnPoint.OnSpawnPointNameChanged.Insert(UpdateSpawnPointName);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -155,6 +176,7 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 		SCR_BaseTaskManager.s_OnTaskUpdate.Remove(OnTaskAdded);
 
 		m_MapEntity.GetOnMapPan().Remove(OnMapPan);
+		SCR_SpawnPoint.OnSpawnPointNameChanged.Remove(UpdateSpawnPointName);
 
 		foreach(Widget w, SCR_MapUIElement e : m_mIcons)
 		{
@@ -167,6 +189,9 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] panX
+	//! \param[in] panY
+	//! \param[in] adjustedPan
 	void OnMapPan(float panX, float panY, bool adjustedPan)
 	{
 		 UpdateIcons();
@@ -290,6 +315,9 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 
 	protected void InitTaskIcon(SCR_BaseTask task)
 	{
+		if (task.GetTaskState() == SCR_TaskState.FINISHED || task.GetTaskState() == SCR_TaskState.CANCELLED)
+			return;
+
 		Widget w = GetGame().GetWorkspace().CreateWidgets(m_sTaskElement, m_wIconsContainer);
 		if (!w)
 			return;
@@ -308,7 +336,7 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 
 	protected void OnTaskAdded(SCR_BaseTask task)
 	{
-		if (!m_bShowTasks)
+		if (!m_bShowTasks || !task)
 			return;
 
 		if (task.GetTargetFaction() != SCR_FactionManager.SGetLocalPlayerFaction())
@@ -341,6 +369,9 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 		m_mIcons.Clear();
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] icon
 	void RemoveIcon(SCR_MapUIElement icon)
 	{
 		delete m_mIcons.GetKeyByValue(icon);
@@ -357,6 +388,8 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 		return null;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] id
 	void OnSpawnPointSelectedExt(RplId id) // called when selected via deploy menu spinbox
 	{
 		SCR_MapUIElement icon = FindSpawnPointIconById(id);
@@ -364,16 +397,22 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 			icon.SelectIcon(false);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] element
 	void OnElementSelected(notnull SCR_MapUIElement element)
 	{
 		GetOnElementSelected().Invoke(element);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] spId
 	void OnSpawnPointSelected(RplId spId = RplId.Invalid())
 	{
 		GetOnSpawnPointSelected().Invoke(spId);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnPlayerGroupChanged(SCR_AIGroup group)
 	{
 		int pid = SCR_PlayerController.GetLocalPlayerId();
@@ -403,6 +442,10 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] id
+	//! \return
 	SCR_MapUISpawnPoint FindSpawnPoint(RplId id)
 	{
 		foreach (Widget w, SCR_MapUIElement e : m_mIcons)
@@ -418,6 +461,8 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 		return null;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnSpawnPointSelected()
 	{
 		if (!m_OnSpawnPointSelected)
@@ -426,16 +471,13 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 		return m_OnSpawnPointSelected;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvoker GetOnElementSelected()
 	{
 		if (!m_OnElementSelected)
 			m_OnElementSelected = new ScriptInvoker();
 
 		return m_OnElementSelected;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_MapUIElementContainer()
-	{
 	}
 }

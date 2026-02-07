@@ -5,10 +5,12 @@ class SCR_MapJournalUI : SCR_MapUIBaseComponent
 
 	[Attribute("EntryList")]
 	protected string m_sEntryList;
+
 	protected Widget m_wEntryList;
 
 	[Attribute("EntryLayout")]
 	protected string m_sEntryLayout;
+
 	protected Widget m_wEntryLayout;
 
 	protected ref array<SCR_MapJournalUIButton> m_aEntries = {};
@@ -16,6 +18,7 @@ class SCR_MapJournalUI : SCR_MapUIBaseComponent
 
 	[Attribute("JournalFrame", desc: "Root frame widget name")]
 	protected string m_sRootWidgetName;
+
 	protected Widget m_wJournalFrame;
 
 	[Attribute("exclamationCircle", desc: "Toolmenu imageset quad name")]
@@ -32,6 +35,9 @@ class SCR_MapJournalUI : SCR_MapUIBaseComponent
 	[Attribute("faction", desc: "Map task list imageset quad name")]
 	protected string m_sTaskListToolMenuIconName;
 
+	//We'll store the bool in order to know if is it the first opening or not
+	protected bool m_bFirstOpening = true;
+	
 	//------------------------------------------------------------------------------------------------
 	override void Init()
 	{
@@ -86,6 +92,18 @@ class SCR_MapJournalUI : SCR_MapUIBaseComponent
 		GetJournalForPlayer();		
 		
 		ToggleVisible();
+		
+		if (m_bFirstOpening)
+		{
+			//if opened for the first time, use the value from config
+			ShowEntryByID(m_JournalConfig.GetJournalEntryToBeShown());
+			m_bFirstOpening = false;
+		}
+		else
+		{
+			//if opened the second and other times, use the last opened one
+			ShowEntryByID(m_iCurrentEntryId);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -159,11 +177,15 @@ class SCR_MapJournalUI : SCR_MapUIBaseComponent
 			return;
 
 		array<ref SCR_JournalEntry> journalEntries = factionJournal.GetEntries();
+		SCR_JournalEntry entry;
+		Widget e;
+		SCR_MapJournalUIButton entryBtn;
+		WorkspaceWidget workspace = GetGame().GetWorkspace();
 		for (int entryId = 0; entryId < journalEntries.Count(); ++entryId)
 		{
-			SCR_JournalEntry entry = journalEntries[entryId];
-			Widget e = GetGame().GetWorkspace().CreateWidgets(entry.GetEntryButtonLayout(), m_wEntryList);
-			SCR_MapJournalUIButton entryBtn = SCR_MapJournalUIButton.Cast(e.FindHandler(SCR_MapJournalUIButton));
+			entry = journalEntries[entryId];
+			e = workspace.CreateWidgets(entry.GetEntryButtonLayout(), m_wEntryList);
+			entryBtn = SCR_MapJournalUIButton.Cast(e.FindHandler(SCR_MapJournalUIButton));
 			entryBtn.SetContent(entry.GetEntryName());
 			entryBtn.SetEntry(entry, entryId);
 			entryBtn.m_OnClicked.Insert(ShowEntry);
@@ -171,6 +193,31 @@ class SCR_MapJournalUI : SCR_MapUIBaseComponent
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! Show the entry defined by the parameter
+	//! \param[in] id index of the entry defined in the SCR_JournalConfig
+	protected void ShowEntryByID(int id)
+	{
+		if (id < 0)
+			return;
+		SCR_MapJournalUIButton entryBtn;
+		Widget child = m_wEntryList.GetChildren();
+		while (child)
+		{
+			entryBtn = SCR_MapJournalUIButton.Cast(child.FindHandler(SCR_MapJournalUIButton));
+			if (!entryBtn)
+				continue;
+
+			if (entryBtn.GetId() == id)
+			{
+				ShowEntry(entryBtn);
+				break;
+			}
+
+			child = child.GetSibling();
+		}
+	}	
+	
 	//------------------------------------------------------------------------------------------------
 	protected void ShowEntry(SCR_MapJournalUIButton journalBtn)
 	{
@@ -182,16 +229,14 @@ class SCR_MapJournalUI : SCR_MapUIBaseComponent
 		{
 			Widget child = m_wEntryLayout.GetChildren();
 			if (child)
-			{
 				delete child;
-			}
 
 			m_iCurrentEntryId = journalBtn.GetId();
 			journalBtn.ShowEntry(m_wEntryLayout);
 			m_wEntryLayout.SetVisible(true);
 		}
 	}
-};
+}
 
 class SCR_MapJournalUIButton : SCR_ButtonComponent
 {
@@ -199,6 +244,8 @@ class SCR_MapJournalUIButton : SCR_ButtonComponent
 	protected int m_iEntryId;
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] entry
+	//! \param[in] id
 	void SetEntry(SCR_JournalEntry entry, int id)
 	{
 		m_Entry = entry;
@@ -206,14 +253,17 @@ class SCR_MapJournalUIButton : SCR_ButtonComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] target
 	void ShowEntry(Widget target)
 	{
 		m_Entry.SetEntryLayoutTo(target);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetId()
 	{
 		return m_iEntryId;
 	}
-};
+}

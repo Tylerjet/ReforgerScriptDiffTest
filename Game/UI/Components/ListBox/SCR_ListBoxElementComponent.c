@@ -1,6 +1,4 @@
-/*
-Element of a listbox.
-*/
+//! Element of a listbox.
 class SCR_ListBoxElementComponent : SCR_ModularButtonComponent
 {
 	[Attribute("Image")]
@@ -17,6 +15,9 @@ class SCR_ListBoxElementComponent : SCR_ModularButtonComponent
 		m_bToggledOnlyThroughApi = true;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] imageOrImageset
+	//! \param[in] iconName
 	void SetImage(ResourceName imageOrImageset, string iconName)
 	{
 		ImageWidget w = ImageWidget.Cast(m_wRoot.FindAnyWidget(m_sWidgetImageName));
@@ -32,14 +33,17 @@ class SCR_ListBoxElementComponent : SCR_ModularButtonComponent
 					w.LoadImageFromSet(0, imageOrImageset, iconName);
 			}
 			else
+			{
 				w.LoadImageTexture(0, imageOrImageset);
+			}
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] text
 	void SetText(string text)
 	{
 		TextWidget w = TextWidget.Cast(m_wRoot.FindAnyWidget(m_sWidgetTextName));
-		
 		if (w)
 			w.SetText(text);
 	}

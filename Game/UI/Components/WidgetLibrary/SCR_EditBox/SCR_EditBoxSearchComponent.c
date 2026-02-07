@@ -16,6 +16,9 @@ class SCR_EditBoxSearchComponent : SCR_EditBoxComponent
 	[Attribute()]
 	protected string m_sMessage;
 	
+	[Attribute("1", desc: "Should the message be hidden if there's text in the search bar")]
+	protected bool m_bHideMessageOnSearch;
+	
 	protected ref array<Widget> m_aColorizedElements = {};
 	protected SCR_ESearchBoxState m_eState;
 	protected bool m_bIsFilterActive;
@@ -108,7 +111,9 @@ class SCR_EditBoxSearchComponent : SCR_EditBoxComponent
 		if (!m_wMessage)
 			return;
 
-		m_wMessage.SetVisible(!m_bIsInWriteMode && GetEditBoxText().IsEmpty());
+		bool hideMessage = m_bHideMessageOnSearch && (m_bIsInWriteMode || !GetEditBoxText().IsEmpty());
+		
+		m_wMessage.SetVisible(!hideMessage);
 	}
 	
 	//------------------------------------------------------------------------------------------------

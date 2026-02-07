@@ -1,13 +1,10 @@
-[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
-/** @ingroup ManualCamera
-*/
+//! @ingroup ManualCamera
 
-/*!
-Adjust camera field of view.
-*/
+//! Adjust camera field of view.
+[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
 class SCR_RotateRollManualCameraComponent : SCR_BaseManualCameraComponent
 {
-	const float INERTIA_THRESHOLD = 0.001;
+	protected static const float INERTIA_THRESHOLD = 0.001;
 	
 	[Attribute(defvalue: "100", desc: "Value coefficient.")]	
 	private float m_fCoef;
@@ -15,18 +12,23 @@ class SCR_RotateRollManualCameraComponent : SCR_BaseManualCameraComponent
 	[Attribute(defvalue: "2", desc: "When roll is below this angle, return it back to 0.")]	
 	private float m_fMinRoll;
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraReset()
 	{
 		vector angles = GetCameraEntity().GetAngles();
 		angles[2] = 0;
 		GetCameraEntity().SetAngles(angles);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraSave(SCR_ManualCameraComponentSave data)
 	{
 		vector angles = GetCameraEntity().GetAngles();
 		if (angles[2] != 0)
 			data.m_aValues = {angles[2]};
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraLoad(SCR_ManualCameraComponentSave data)
 	{
 		if (!data.m_aValues || data.m_aValues.IsEmpty())
@@ -36,6 +38,8 @@ class SCR_RotateRollManualCameraComponent : SCR_BaseManualCameraComponent
 		angles[2] = data.m_aValues[0];
 		GetCameraEntity().SetAngles(angles);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraFrame(SCR_ManualCameraParam param)
 	{
 		if (!param.isManualInputEnabled) return;
@@ -60,8 +64,10 @@ class SCR_RotateRollManualCameraComponent : SCR_BaseManualCameraComponent
 			}
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool EOnCameraInit()
 	{
 		return true;
 	}
-};
+}

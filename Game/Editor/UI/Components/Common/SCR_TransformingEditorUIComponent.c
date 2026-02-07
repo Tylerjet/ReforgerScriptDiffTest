@@ -1,6 +1,6 @@
-/** @ingroup Editor_UI Editor_UI_Components
-*/
-class SCR_TransformingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
+//! @ingroup Editor_UI Editor_UI_Components
+
+class SCR_TransformingEditorUIComponent : SCR_PreviewEntityEditorUIComponent
 {
 	protected InputManager m_InputManager;
 	protected SCR_TransformingEditorComponent m_TransformingManager;
@@ -16,31 +16,34 @@ class SCR_TransformingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 	protected vector m_vClickTransform[4];
 	protected bool m_bClicked;
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnHoverChange(EEditableEntityState state, set<SCR_EditableEntityComponent> entitiesInsert, set<SCR_EditableEntityComponent> entitiesRemove)
 	{
 		if (m_StatesManager && m_StatesManager.GetState() == EEditorState.TRANSFORMING)
 			super.OnHoverChange(state, entitiesInsert, entitiesRemove);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnEditorTransformRotationModifierUp(float value, EActionTrigger reason)
 	{
 		if (m_StatesManager && m_StatesManager.GetState() == EEditorState.TRANSFORMING)
 			super.OnEditorTransformRotationModifierUp(value, reason);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnEditorTransformToggleDown(float value, EActionTrigger reason)
 	{
 		if (m_TransformingManager.IsEditing())
-		{
 			ConfirmEditing();
-		}
 		else
-		{
 			OnEditorTransformDown(value, reason);
-		}
-		
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnEditorTransformDown(float value, EActionTrigger reason)
 	{
-		if (!m_InputManager || !m_SelectedFilter || !m_TransformingManager || !m_CursorComponent) return;
+		if (!m_InputManager || !m_SelectedFilter || !m_TransformingManager || !m_CursorComponent)
+			return;
 		
 		//--- Can't rotate from the entity toolbar
 		if (m_EntityToolbar && m_EntityToolbar.IsUnderCursor() && m_InputManager.GetActionTriggered("EditorTransformRotateYawModifier"))
@@ -49,7 +52,8 @@ class SCR_TransformingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 		//--- Ignore when not hovering over an entity
 		bool isDelegate;
 		SCR_EditableEntityComponent hoverEntity = m_HoverFilter.GetEntityUnderCursor(isDelegate);
-		if (!hoverEntity) return;
+		if (!hoverEntity)
+			return;
 		
 		m_HoverEntity = hoverEntity;
 		m_HoverEntity.GetOwner().GetWorldTransform(m_vClickTransform);
@@ -64,48 +68,51 @@ class SCR_TransformingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 		if (isDelegate)
 		{
 			//--- Clicked on icon - use entity's position as a pivot
-			if (!m_HoverEntity.GetPos(worldPos)) return;
+			if (!m_HoverEntity.GetPos(worldPos))
+				return;
 		}
 		else
 		{
 			//--- Use cursor world position as a pivot
-			if (!m_CursorComponent.GetCursorWorldPos(worldPos)) return;
+			if (!m_CursorComponent.GetCursorWorldPos(worldPos))
+				return;
 		}
 		
 		m_vClickTransform[3] = worldPos;
 		m_bClicked = true;
 		
 		if (m_InputManager.IsUsingMouseAndKeyboard())
-		{
-			//--- Don't start editing just yet, do so only after cursor moves a bit
-			SetClickPos(m_CursorComponent.GetCursorPos());
-		}
+			SetClickPos(m_CursorComponent.GetCursorPos()); //--- Don't start editing just yet, do so only after cursor moves a bit
 		else
-		{
 			StartEditing();
-		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnEditorCancelTransformingUp(float value, EActionTrigger reason)
 	{
 		if (OnCancelUp())
 			CancelEditing();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void StartEditing()
 	{
-		if (m_StatesManager && !m_StatesManager.CanSet(EEditorState.TRANSFORMING) || m_StatesManager.GetState() == EEditorState.TRANSFORMING) return;
+		if (m_StatesManager && !m_StatesManager.CanSet(EEditorState.TRANSFORMING) || m_StatesManager.GetState() == EEditorState.TRANSFORMING)
+			return;
 		
 		//--- Transforming unselected entity - replace the selection upon click
 		if (!m_SelectedFilter.Contains(m_ActiveHoverEntity))
 			m_SelectedFilter.Replace(m_ActiveHoverEntity);
 		
 		//--- Get selected entities
-		set<SCR_EditableEntityComponent> entities = new set<SCR_EditableEntityComponent>;
+		set<SCR_EditableEntityComponent> entities = new set<SCR_EditableEntityComponent>();
 		m_SelectedFilter.GetEntities(entities);
 		
 		//--- Start editing process
 		m_TransformingManager.StartEditing(m_HoverEntity, entities, m_vClickTransform);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void ConfirmEditing()
 	{
 		if (!m_TransformingManager.IsEditing() && !m_bClicked)
@@ -131,13 +138,20 @@ class SCR_TransformingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 				m_TransformingManager.CancelEditing();
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void CancelEditing()
 	{
-		if (!m_TransformingManager.IsEditing() && !m_bClicked) return;
+		if (!m_bClicked && !m_TransformingManager.IsEditing())
+			return;
 		
-		if (m_TransformingManager) m_TransformingManager.CancelEditing();
+		if (m_TransformingManager)
+			m_TransformingManager.CancelEditing();
+
 		Clean();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void Clean()
 	{
 		m_bClicked = false;
@@ -145,10 +159,14 @@ class SCR_TransformingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 		m_HoverEntity = null;
 		m_ActiveHoverEntity = null;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnTransformationEnd()
 	{
 		Clean();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
 		CancelEditing();
@@ -156,12 +174,18 @@ class SCR_TransformingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Update
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnMenuUpdate(float tDelta)
 	{
 		ActivatePreviewContext();
 		
-		bool mapShown = SCR_MapEntity.GetMapInstance() && SCR_MapEntity.GetMapInstance().IsOpen();
-		if (!m_InputManager || !m_StatesManager || !m_CursorComponent || mapShown) return;
+		if (!m_InputManager || !m_StatesManager || !m_CursorComponent)
+			return;
+
+		if (SCR_MapEntity.GetMapInstance() && SCR_MapEntity.GetMapInstance().IsOpen()) // map shown
+			return;
 		
 		m_InputManager.ActivateContext("EditorTransformingContext");
 		
@@ -175,32 +199,38 @@ class SCR_TransformingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 		}
 		
 		//--- Exit when not transforming
-		if (m_StatesManager.GetState() != EEditorState.TRANSFORMING) return;
+		if (m_StatesManager.GetState() != EEditorState.TRANSFORMING)
+			return;
 		
 		ProcessInput(tDelta);
 	}
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//--- Default functions
+	//--- Default methods
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttachedScripted(Widget w)
 	{	
 		super.HandlerAttachedScripted(w);
 		
 		MenuRootComponent root = GetRootComponent();
 		if (root)
-		{
 			m_CursorComponent = SCR_CursorEditorUIComponent.Cast(root.FindComponent(SCR_CursorEditorUIComponent, true));
-		}
-		if (!m_CursorComponent) return;
+
+		if (!m_CursorComponent)
+			return;
 		
 		m_TransformingManager = SCR_TransformingEditorComponent.Cast(SCR_TransformingEditorComponent.GetInstance(SCR_TransformingEditorComponent, true));
-		if (!m_TransformingManager) return;
+		if (!m_TransformingManager)
+			return;
 
 		m_TransformingManager.GetOnTransformationConfirm().Insert(OnTransformationEnd);
 		m_TransformingManager.GetOnTransformationCancel().Insert(OnTransformationEnd);
 		
 		m_StatesManager = SCR_StatesEditorComponent.Cast(SCR_StatesEditorComponent.GetInstance(SCR_StatesEditorComponent, true));
-		if (!m_StatesManager) return;
+		if (!m_StatesManager)
+			return;
 		
 		SCR_EntitiesManagerEditorComponent entitiesManager = SCR_EntitiesManagerEditorComponent.Cast(SCR_EntitiesManagerEditorComponent.GetInstance(SCR_EntitiesManagerEditorComponent, true));
 		if (entitiesManager)
@@ -247,11 +277,13 @@ class SCR_TransformingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] config
 	void OnMapOpen(MapConfiguration config)
 	{
 		CancelEditing();
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
@@ -301,4 +333,4 @@ class SCR_TransformingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 		else
 			return SCR_EPreviewState.BLOCKED;
 	}
-};
+}

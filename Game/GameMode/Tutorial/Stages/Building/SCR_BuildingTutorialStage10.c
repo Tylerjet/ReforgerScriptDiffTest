@@ -13,7 +13,11 @@ class SCR_BuildingTutorialStage10 : SCR_BaseCampaignTutorialArlandStage
 		RegisterWaypoint("FIA_SupplyDepot");
 		m_TutorialComponent.SetWaypointMiscImage("CUSTOM", true);
 		m_bCheckWaypoint = false;
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("Building_Exit", true);
+		HintOnVoiceOver();
 	
 		m_SupplyTruck = Vehicle.Cast(GetGame().GetWorld().FindEntityByName("BuildingSupplyTruck"));
 	}

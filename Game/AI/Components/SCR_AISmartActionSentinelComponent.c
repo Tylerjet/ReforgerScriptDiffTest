@@ -1,13 +1,13 @@
-class SCR_AISmartActionSentinelComponentClass: SCR_AISmartActionComponentClass
+class SCR_AISmartActionSentinelComponentClass : SCR_AISmartActionComponentClass
 {
-};
+}
 
 enum ELeaningType
 {
 	LEFT = -1,
 	NONE = 0,
 	RIGHT = 1,
-};
+}
 
 class SCR_AISmartActionSentinelComponent : SCR_AISmartActionComponent
 {	
@@ -28,39 +28,44 @@ class SCR_AISmartActionSentinelComponent : SCR_AISmartActionComponent
 	protected ELeaningType m_eLeaningType;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	vector GetLookPosition()
 	{
 		return m_vLookPosition;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetLookDirectionRange()
 	{
 		return m_fLookDirectionRange;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetDesiredStance()
 	{
 		return m_iCharacterStance;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetUseBinoculars()
 	{
 		return m_bUseBinoculars;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] useBinoculars
 	void SetUseBinoculars(bool useBinoculars)
 	{
 		m_bUseBinoculars = useBinoculars;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ELeaningType GetLeaningType()
 	{
 		return m_eLeaningType;
 	}
-};
-
+}

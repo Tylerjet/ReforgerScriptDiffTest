@@ -27,7 +27,10 @@ class SCR_CampaignTutorialArlandStageShooting10 : SCR_BaseCampaignTutorialArland
 		if (ammobox)
 			GetWaypoint().SetOrigin(ammobox.GetOrigin());
 		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("GrenadePick", true);
+		HintOnVoiceOver();
 		m_TutorialComponent.SetWaypointMiscImage("AMMO", true);
 	}
 	

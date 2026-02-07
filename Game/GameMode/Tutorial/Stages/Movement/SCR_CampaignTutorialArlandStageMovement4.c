@@ -12,6 +12,6 @@ class SCR_CampaignTutorialArlandStageMovement4 : SCR_BaseCampaignTutorialArlandS
 		m_fWaypointCompletionRadius = 0.5;
 		m_fConditionCheckPeriod = 0.1;
 		RegisterWaypoint("WP_OVERPASS");
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		PlaySoundSystem("Scaffolding", true);
 	}
 };

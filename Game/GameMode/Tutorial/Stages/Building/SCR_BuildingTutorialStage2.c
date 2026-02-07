@@ -15,8 +15,6 @@ class SCR_BuildingTutorialStage2 : SCR_BaseCampaignTutorialArlandStage
 		m_fWaypointHeightOffset = 2;
 		m_TutorialComponent.SetWaypointMiscImage("CUSTOM", true);
 		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
-		
 		IEntity baseEnt = GetGame().GetWorld().FindEntityByName("TownBaseFarm");
 		if (!baseEnt)
 			return;
@@ -25,7 +23,9 @@ class SCR_BuildingTutorialStage2 : SCR_BaseCampaignTutorialArlandStage
 		if (!baseComp)
 			return;
 		
-		baseComp.SetSupplies(DESIRED_SUPPLIES)
+		baseComp.SetSupplies(DESIRED_SUPPLIES);
+	
+		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
 	}
 	
 	//------------------------------------------------------------------------------------------------

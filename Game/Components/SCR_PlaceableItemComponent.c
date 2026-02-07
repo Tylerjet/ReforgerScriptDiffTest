@@ -1,9 +1,8 @@
-[EntityEditorProps(category: "GameScripted/Components", description: "ScriptWizard generated script file.")]
+[EntityEditorProps(category: "GameScripted/Components", description: "")]
 class SCR_PlaceableItemComponentClass : ScriptComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_PlaceableItemComponent : ScriptComponent
 {
 	[Attribute(params: "xob")]
@@ -16,18 +15,21 @@ class SCR_PlaceableItemComponent : ScriptComponent
 	protected SCR_EPlacementType m_ePlacementType;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_EPlacementType GetPlacementType()
 	{
 		return m_ePlacementType;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetMaxPlacementDistance()
 	{
 		return m_fMaxPlacementDistance;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	VObject GetPreviewVobject()
 	{
 		if (m_sPreviewObject.IsEmpty())
@@ -45,7 +47,6 @@ class SCR_PlaceableItemComponent : ScriptComponent
 	}
 }
 
-//------------------------------------------------------------------------------------------------
 enum SCR_EPlacementType
 {
 	XZ_FIXED,

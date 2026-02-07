@@ -75,7 +75,7 @@ class SCR_VideoSettingsSubMenu : SCR_SettingsSubMenuBase
 	};
 
 	//------------------------------------------------------------------------------------------------
-	protected override void OnMenuItemChanged(SCR_SettingsBindingBase binding)
+	override void OnMenuItemChanged(SCR_SettingsBindingBase binding)
 	{
 		// ignore this if we are loading settings
 		if (m_bLoadingSettings)
@@ -108,9 +108,10 @@ class SCR_VideoSettingsSubMenu : SCR_SettingsSubMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected override void OnMenuOpen(SCR_SuperMenuBase parentMenu)
+	override void OnTabCreate(Widget menuRoot, ResourceName buttonsLayout, int index)
 	{
-		super.OnMenuOpen(parentMenu);
+		super.OnTabCreate(menuRoot, buttonsLayout, index);
+		
 		m_ResourceManager = GetGame().GetEngineUserSettings().GetModule("ResourceManagerUserSettings");
 		m_Pipeline = GetGame().GetEngineUserSettings().GetModule("PipelineUserSettings");
 		m_Video = GetGame().GetEngineUserSettings().GetModule("VideoUserSettings");
@@ -365,6 +366,8 @@ class SCR_VideoSettingsSubMenu : SCR_SettingsSubMenuBase
 		}
 		OnCustomMenuItemChanged("DrawDistance");
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void OnGrassDistanceChanged(SCR_SliderComponent comp, float value)
 	{
 		GetGame().SetGrassDistance(value);
@@ -523,6 +526,8 @@ class SCR_VideoSettingsSubMenu : SCR_SettingsSubMenuBase
 		distance.SetValue(current);
 		distance.GetOnChangedFinal().Insert(OnViewDistanceChanged);
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void SetupGrassDistance()
 	{
 		SCR_SliderComponent distance = SCR_SliderComponent.GetSliderComponent("GrassDistance", m_wRoot);
@@ -690,4 +695,4 @@ class SCR_VideoSettingsSubMenu : SCR_SettingsSubMenuBase
 
 		m_MaxFPS.m_OnChanged.Insert(OnMaxFPSChanged);
 	}
-};
+}

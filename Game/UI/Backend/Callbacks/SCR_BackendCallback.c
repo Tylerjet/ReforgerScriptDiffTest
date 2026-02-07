@@ -146,7 +146,7 @@ class SCR_BackendCallback : BackendCallback
 		m_Result = result;
 		m_iCode = code;
 		m_iRestCode = restCode;
-		m_iApiCode = m_iApiCode;
+		m_iApiCode = apiCode;
 	}
 	
 	

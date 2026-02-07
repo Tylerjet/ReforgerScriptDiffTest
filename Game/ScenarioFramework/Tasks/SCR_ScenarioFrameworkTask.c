@@ -11,6 +11,7 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 	protected SCR_ScenarioFrameworkLayerTask						m_LayerTask;
 	protected SCR_ScenarioFrameworkSlotTask							m_SlotTask;
 	protected string 												m_sTaskExecutionBriefing;
+	string 															m_sTaskIntroVoiceline;
 	protected string 												m_sSpawnedEntityName;
 	
 	//------------------------------------------------------------------------------------------------

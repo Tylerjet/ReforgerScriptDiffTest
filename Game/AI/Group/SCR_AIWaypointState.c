@@ -16,11 +16,11 @@ class SCR_AIWaypointState : Managed
 	
 	
 	//! Called when group selects the waypoint as current.
-	//! Can be overriden in inherited class. Don't forget to call OnSelected of base class.
+	//! Can be overridden in inherited class. Don't forget to call OnSelected of base class.
 	void OnSelected();
 	
 	//! Called when group deselects the waypoint as current, also including completion or removal.
-	//! Can be overriden in inherited class. Don't forget to call OnDeselected of base class.
+	//! Can be overridden in inherited class. Don't forget to call OnDeselected of base class.
 	void OnDeselected()
 	{
 		m_Utility.CancelActivitiesRelatedToWaypoint(m_Waypoint);

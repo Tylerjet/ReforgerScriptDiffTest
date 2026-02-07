@@ -1,6 +1,5 @@
 /*!
 Script component for handling server config editing UI 
-
 */
 
 class SCR_ServerConfigListComponent : SCR_ConfigListComponent
@@ -67,7 +66,7 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 	}
 	
 	//-------------------------------------------------------------------------------------------
-	// Overriden widget api
+	// Overridden widget API
 	//-------------------------------------------------------------------------------------------
 	
 	//-------------------------------------------------------------------------------------------
@@ -162,6 +161,15 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 			if (allMissions[i].GetPlayerCount() == 1)
 				continue;
 			
+			// Check scenario from mod and modded scenario
+			WorkshopItem scenarioAddon = allMissions[i].GetOwner();
+			if (scenarioAddon)
+			{
+				// Exclude scenarios comming from incompatible addon 
+				if (SCR_AddonManager.ItemAvailability(scenarioAddon) != SCR_ERevisionAvailability.ERA_AVAILABLE)
+					continue;
+			}
+			
 			// Exclude broken mod scenarios
 			if (allMissions[i].GetOwner())
 			{
@@ -197,7 +205,7 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 		for (int i = 0, count = m_aScenarioSources.Count(); i < count; i++)
 		{		
 			MissionWorkshopItem mission = m_aScenarioSources[i].m_Scenario;
-				
+			
 			// Scenario structure - label: name, propertyName: id	
 			if (mission && scenario.Id() == mission.Id())
 			{

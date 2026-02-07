@@ -275,6 +275,10 @@ class SCR_ShapeAnalyserEntity : /*SCR_*/GeneratorBaseEntity
 
 #endif // WORKBENCH
 
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] parent
 	void SCR_ShapeAnalyserEntity(IEntitySource src, IEntity parent)
 	{
 	}

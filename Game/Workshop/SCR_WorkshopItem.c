@@ -23,19 +23,19 @@ class SCR_WorkshopItem
 	// friend class SCR_WorkshopItemAction
 	
 	// ---- Public variables ----
-	ref ScriptInvoker m_OnChanged = new ref ScriptInvoker();				// (SCR_WorkshopItem item) - Called on any change and any event which affects state. Might be called on next frame!
-	ref ScriptInvoker m_OnGetAsset = new ref ScriptInvoker();				// (SCR_WorkshopItem item) - Called on failure to load details too.
-	ref ScriptInvoker m_OnDependenciesLoaded = new ref ScriptInvoker();	// (SCR_WorkshopItem item)
-	ref ScriptInvoker m_OnScenariosLoaded = new ref ScriptInvoker();		// (SCR_WorkshopItem item)
-	ref ScriptInvoker m_OnError = new ref ScriptInvoker();				// (SCR_WorkshopItem item) - Called on any error event
-	ref ScriptInvoker m_OnTimeout = new ref ScriptInvoker();				// (SCR_WorkshopItem item) - Called on any timeout event
-	ref ScriptInvoker m_OnDownloadComplete = new ref ScriptInvoker();		// (SCR_WorkshopItem item) - Called when any download has been completed (including an update)
-	ref ScriptInvoker m_OnOfflineStateChanged = new ref ScriptInvoker();	// (SCR_WorkshopItem item, bool newState) - Called when the addon was downloaded first time or deleted (OFFLINE flag changed its value)
-	ref ScriptInvoker m_OnReportStateChanged = new ref ScriptInvoker();	// (SCR_WorkshopItem, bool newReported) - Called when reported state has changed
-	ref ScriptInvoker m_OnMyReportLoaded = new ref ScriptInvoker();		// (SCR_WorkshopItem item) - called after report loading is done.
-	ref ScriptInvoker m_OnMyReportLoadError = new ref ScriptInvoker();
-	ref ScriptInvoker m_OnRedownload = new ref ScriptInvoker();
-	ref ScriptInvoker m_OnCanceled = new ref ScriptInvoker();
+	ref ScriptInvoker m_OnChanged = new ScriptInvoker();				// (SCR_WorkshopItem item) - Called on any change and any event which affects state. Might be called on next frame!
+	ref ScriptInvoker m_OnGetAsset = new ScriptInvoker();				// (SCR_WorkshopItem item) - Called on failure to load details too.
+	ref ScriptInvoker m_OnDependenciesLoaded = new ScriptInvoker();	// (SCR_WorkshopItem item)
+	ref ScriptInvoker m_OnScenariosLoaded = new ScriptInvoker();		// (SCR_WorkshopItem item)
+	ref ScriptInvoker m_OnError = new ScriptInvoker();				// (SCR_WorkshopItem item) - Called on any error event
+	ref ScriptInvoker m_OnTimeout = new ScriptInvoker();				// (SCR_WorkshopItem item) - Called on any timeout event
+	ref ScriptInvoker m_OnDownloadComplete = new ScriptInvoker();		// (SCR_WorkshopItem item) - Called when any download has been completed (including an update)
+	ref ScriptInvoker m_OnOfflineStateChanged = new ScriptInvoker();	// (SCR_WorkshopItem item, bool newState) - Called when the addon was downloaded first time or deleted (OFFLINE flag changed its value)
+	ref ScriptInvoker m_OnReportStateChanged = new ScriptInvoker();	// (SCR_WorkshopItem, bool newReported) - Called when reported state has changed
+	ref ScriptInvoker m_OnMyReportLoaded = new ScriptInvoker();		// (SCR_WorkshopItem item) - called after report loading is done.
+	ref ScriptInvoker m_OnMyReportLoadError = new ScriptInvoker();
+	ref ScriptInvoker m_OnRedownload = new ScriptInvoker();
+	ref ScriptInvoker m_OnCanceled = new ScriptInvoker();
 	
 	// ---- Protected / Private ----
 	
@@ -291,6 +291,35 @@ class SCR_WorkshopItem
 	}
 	
 	//-----------------------------------------------------------------------------------------------
+	//! Returns true if downloaded revision was uploded after 1.0
+	bool IsDownloadedVersionCompatible()
+	{
+		if (!GetOffline())
+			return false;
+		
+		// Hard coded check for 1.0 - should be replaced with specific version 
+		string targetClientVersion = "1.0.0";
+		string addonClientVersion = m_Item.GetActiveRevision().GetGameVersion();
+		
+		array<string> targetNumbers = {};
+		targetClientVersion.Split(".", targetNumbers, false);
+		
+		array<string> addonNumbers = {};
+		addonClientVersion.Split(".", addonNumbers, false);
+		
+		for (int i = 0, count = targetNumbers.Count(); i < count; i++)
+		{
+			int targetNumber = targetNumbers[i].ToInt();
+			int addonNumber = addonNumbers[i].ToInt();
+			
+			if (targetNumber > addonNumber)
+				return false;
+		} 
+		
+		return true;
+	}
+	
+	//-----------------------------------------------------------------------------------------------
 	void SetMyRating(bool newRating)
 	{
 		if (!m_Item)
@@ -351,7 +380,7 @@ class SCR_WorkshopItem
 		
 		m_bFavourite = true;
 		
-		m_Item.SetFavorite(favourite);
+		m_Item.SetFavorite(NULL,favourite);
 		m_bFavourite = favourite;
 		
 		#ifdef WORKSHOP_DEBUG
@@ -1523,9 +1552,15 @@ class SCR_WorkshopItem
 		#endif
 		
 		if (!m_Item)
-			return false;
-		
-		m_Item.Download(callback, targetRevision);
+		{
+			if (!m_Dependency)
+			{
+				return false;
+			}
+			m_Dependency.Download(callback);
+		}
+		else
+			m_Item.Download(callback, targetRevision);
 		
 		return true;
 	}
@@ -1962,6 +1997,8 @@ class SCR_WorkshopItem
 	//! Returns true when it can be unregistered bu addon manager
 	WorkshopItem Internal_GetWorkshopItem()
 	{
+		if (!m_Item)
+			m_Item = m_Dependency.GetCachedItem();
 		return m_Item;
 	}
 	
@@ -1972,6 +2009,24 @@ class SCR_WorkshopItem
 			return 0;
 		
 		return m_Item.GetProgress();
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	bool Internal_GetIsProcessing()
+	{
+		if (!m_Item)
+			return false;
+		
+		return m_Item.IsProcessing();
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	float Internal_GetProcessingProgress()
+	{
+		if (!m_Item)
+			return 0;
+		
+		return m_Item.GetProcessingProgress();
 	}
 	
 	//-----------------------------------------------------------------------------------------------

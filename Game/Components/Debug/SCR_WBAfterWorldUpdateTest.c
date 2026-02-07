@@ -1,11 +1,15 @@
 [ComponentEditorProps(category: "GameScripted/Debug", description: "debug")]
-class SCR_WBAfterWorldUpdateTestClass: ScriptComponentClass
+class SCR_WBAfterWorldUpdateTestClass : ScriptComponentClass
 {
-};
+}
 
 class SCR_WBAfterWorldUpdateTest : ScriptComponent
 {
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_WBAfterWorldUpdateTest(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		ent.SetFlags(EntityFlags.ACTIVE, false);
@@ -21,4 +25,4 @@ class SCR_WBAfterWorldUpdateTest : ScriptComponent
 				Print(owner);
 		}
 	#endif
-};
+}

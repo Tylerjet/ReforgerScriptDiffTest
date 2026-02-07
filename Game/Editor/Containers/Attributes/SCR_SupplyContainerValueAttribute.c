@@ -11,24 +11,16 @@ class SCR_SupplyContainerValueAttribute : SCR_BaseValueListEditorAttribute
 		if (!entity)
 			return null;
 
-		SCR_ResourceComponent resourceComponent = SCR_ResourceComponent.FindResourceComponent(entity);
-		if (!resourceComponent)
+		SCR_ResourceComponent resourceComponent;
+		SCR_ResourceContainer supplyContainer = GetContainer(entity, resourceComponent);
+		if (!supplyContainer)
 			return null;
 
-		//:| Dont display Attribute for encapsulated Containers.
-		SCR_ResourceContainer supplyContainer = resourceComponent.GetContainer(EResourceType.SUPPLIES);
-		if (!supplyContainer || supplyContainer.IsEncapsulated())
-			return null;
+		float currentValue = supplyContainer.GetResourceValue();
+		float maxValue = supplyContainer.GetMaxResourceValue();
 
-		SCR_ResourceInteractor supplyInteractor;
-		SCR_ResourceConsumer supplyConsumer;
-		SCR_ResourceGenerator supplyGenerator;
-		GetInteractors(editableEntity.GetEntityType(entity), resourceComponent, supplyConsumer, supplyGenerator, supplyInteractor);
-		if (!supplyInteractor)
+		if (maxValue == 0)
 			return null;
-
-		float currentValue = supplyInteractor.GetAggregatedResourceValue();
-		float maxValue = supplyInteractor.GetAggregatedMaxResourceValue();
 
 		return SCR_BaseEditorAttributeVar.CreateFloat((currentValue / maxValue) * 100);
 	}
@@ -43,49 +35,45 @@ class SCR_SupplyContainerValueAttribute : SCR_BaseValueListEditorAttribute
 		if (!entity)
 			return;
 
-		SCR_ResourceComponent resourceComponent = SCR_ResourceComponent.FindResourceComponent(entity);
-		if (!resourceComponent)
-			return;
-
-		//:| Dont display Attribute for encapsulated Containers.
-		SCR_ResourceContainer supplyContainer = resourceComponent.GetContainer(EResourceType.SUPPLIES);
-		if (!supplyContainer || supplyContainer.IsEncapsulated())
-			return;
-
-		SCR_ResourceInteractor supplyInteractor;
-		SCR_ResourceConsumer supplyConsumer;
-		SCR_ResourceGenerator supplyGenerator;
-		GetInteractors(editableEntity.GetEntityType(entity), resourceComponent, supplyConsumer, supplyGenerator, supplyInteractor);
-		if (!supplyInteractor)
+		SCR_ResourceComponent resourceComponent;
+		SCR_ResourceContainer supplyContainer = GetContainer(entity, resourceComponent);
+		if (!supplyContainer)
 			return;
 
 		float percentage = var.GetFloat();
-		float maxValue = supplyInteractor.GetAggregatedMaxResourceValue();
+		float currentValue = supplyContainer.GetResourceValue();
+		float maxValue = supplyContainer.GetMaxResourceValue();
 		float newValue = (maxValue * percentage) / 100;
 
-		supplyContainer.SetResourceValueEx(newValue);
+		supplyContainer.SetResourceValue(newValue);
 	}
 
-	void GetInteractors(EEditableEntityType entityType, notnull SCR_ResourceComponent resourceComponent, out SCR_ResourceConsumer consumer, out SCR_ResourceGenerator generator, out SCR_ResourceInteractor anyInteractor)
+	SCR_ResourceContainer GetContainer(notnull IEntity entity, out SCR_ResourceComponent component)
 	{
-		//:| Vehicles have a different type of consumer and generator, hence the branching below.
-		if (entityType == EEditableEntityType.VEHICLE)
-		{
-			consumer = resourceComponent.GetConsumer(EResourceGeneratorID.VEHICLE_UNLOAD, EResourceType.SUPPLIES);
-			anyInteractor = consumer;
+		component = SCR_ResourceComponent.Cast(entity.FindComponent(SCR_ResourceComponent));
+		SCR_ResourceContainer container;
 
-			generator = resourceComponent.GetGenerator(EResourceGeneratorID.VEHICLE_LOAD, EResourceType.SUPPLIES);
-			if (!anyInteractor)
-				anyInteractor = generator;
-		}
-		else
+		if (component)
 		{
-			consumer = resourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT_STORAGE, EResourceType.SUPPLIES);
-			anyInteractor = consumer;
-
-			generator = resourceComponent.GetGenerator(EResourceGeneratorID.DEFAULT_STORAGE, EResourceType.SUPPLIES);
-			if (!anyInteractor)
-				anyInteractor = generator;
+			container = component.GetContainer(EResourceType.SUPPLIES);
+			if (container)
+				return container;
 		}
+
+		IEntity iteratedEntity = entity.GetChildren();
+		while (iteratedEntity)
+		{
+			component = SCR_ResourceComponent.Cast(iteratedEntity.FindComponent(SCR_ResourceComponent));
+			if (component)
+			{
+				container = component.GetContainer(EResourceType.SUPPLIES);
+				if (container)
+					return container;
+			}
+
+			iteratedEntity = iteratedEntity.GetSibling();
+		}
+
+		return null;
 	}
 }

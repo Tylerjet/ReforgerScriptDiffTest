@@ -60,13 +60,13 @@ class SCR_XPInfoDisplay : SCR_InfoDisplayExtended
 		m_wProgress = ProgressBarWidget.Cast(m_wRoot.FindWidget("Progress"));
 		m_wProgressDiff = ProgressBarWidget.Cast(m_wRoot.FindWidget("ProgressDiff"));
 		
-		m_wProgress.SetColor(UIColors.CONTRAST_COLOR);
+		m_wProgress.SetColor(Color.FromInt(UIColors.CONTRAST_COLOR.PackToInt()));
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void RecolorXPBar()
 	{
-		AnimateWidget.Color(m_wProgressDiff, UIColors.CONTRAST_COLOR, UIConstants.FADE_RATE_SLOW);
+		AnimateWidget.Color(m_wProgressDiff, Color.FromInt(UIColors.CONTRAST_COLOR.PackToInt()), UIConstants.FADE_RATE_SLOW);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -120,7 +120,7 @@ class SCR_XPInfoDisplay : SCR_InfoDisplayExtended
 		{
 			m_wRankNoIcon.SetText(string.Empty);
 			m_wRankIcon.LoadImageFromSet(0, RANK_ICON_IMAGESET, rankIconName);
-			m_wRankIcon.SetColor(UIColors.CONTRAST_COLOR);
+			m_wRankIcon.SetColor(Color.FromInt(UIColors.CONTRAST_COLOR.PackToInt()));
 			m_wRankIcon.SetVisible(true);
 			m_wRank.SetTextFormat(rankText);
 		}
@@ -143,13 +143,13 @@ class SCR_XPInfoDisplay : SCR_InfoDisplayExtended
 			// Show green portion of the progress bar when XP gets added, red portion if substracted
 			if (XP > 0)
 			{
-				m_wTitle.SetColor(UIColors.CONFIRM);
-				m_wProgressDiff.SetColor(UIColors.CONFIRM);
+				m_wTitle.SetColor(Color.FromInt(UIColors.CONFIRM.PackToInt()));
+				m_wProgressDiff.SetColor(Color.FromInt(UIColors.CONFIRM.PackToInt()));
 			}
 			else
 			{
-				m_wTitle.SetColor(UIColors.WARNING);
-				m_wProgressDiff.SetColor(UIColors.WARNING);
+				m_wTitle.SetColor(Color.FromInt(UIColors.WARNING.PackToInt()));
+				m_wProgressDiff.SetColor(Color.FromInt(UIColors.WARNING.PackToInt()));
 				m_bNegativeXP = true;
 			}
 		}

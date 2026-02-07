@@ -18,4 +18,4 @@ class SCR_FieldManualConfigRoot
 
 	[Attribute(defvalue: "", uiwidget: UIWidgets.ResourcePickerThumbnail, desc: "Tile backgrounds from which randomly pick", params: "edds")]
 	ref array<ResourceName> m_aTileBackgrounds;
-};
+}

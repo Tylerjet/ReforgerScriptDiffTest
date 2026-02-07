@@ -18,6 +18,10 @@ class SCR_AIHealActivity : SCR_AIActivityBase
 	
 	protected float m_fTimeCheckConditions_world;
 	
+	// Features
+	static ref array<ref SCR_AIActivityFeatureBase> s_ActivityFeatures = {new SCR_AIHealActivitySmokeCoverFeature()};
+	override array<ref SCR_AIActivityFeatureBase> GetActivityFeatures() { return s_ActivityFeatures; }
+	
 	override float CustomEvaluate()
     {
 		float worldTime = GetGame().GetWorld().GetWorldTime();

@@ -8,13 +8,14 @@ class SCR_MapMarkerSquadLeaderClass : SCR_MapMarkerEntityClass
 class SCR_MapMarkerSquadLeader : SCR_MapMarkerEntity
 {
 	[RplProp(onRplName: "OnPlayerIdUpdate")]
-	protected int m_PlayerID;				// target ID, needed for visibility rules and fetching group
+	protected int m_PlayerID;							// target ID, needed for visibility rules and fetching group
 	
-	const float SL_UPDATE_DELAY = 15; 		// seconds 
-	const float ASPECT_RATIO_FLAG = 1.45;	// temp -> force aspect ratio of a military symbol
-	
-	bool m_bDoGroupTextUpdate;				// group text update flag
-	protected bool m_bDoGroupSymbolUpdate;	// group symbol update flag
+	const float SL_UPDATE_DELAY = 1; 					// seconds 
+	const float ASPECT_RATIO_FLAG = 1.45;				// temp -> force aspect ratio of a military symbol
+	const int SIZE_FLAG = 56;							// temp -> required due to aspect ratio's need to be set
+		
+	bool m_bDoGroupTextUpdate;							// group text update flag
+	protected bool m_bDoGroupSymbolUpdate;				// group symbol update flag
 	protected SCR_AIGroup m_Group;
 	protected SCR_MapMarkerSquadLeaderComponent m_SquadLeaderWidgetComp;
 		
@@ -32,7 +33,6 @@ class SCR_MapMarkerSquadLeader : SCR_MapMarkerEntity
 		else
 		{
 			SetLocalVisible(true);
-			m_bDoGroupTextUpdate = true;
 		}
 	}
 	
@@ -54,6 +54,12 @@ class SCR_MapMarkerSquadLeader : SCR_MapMarkerEntity
 	
 	//------------------------------------------------------------------------------------------------
 	// EVENTS & OTHERS
+	//------------------------------------------------------------------------------------------------
+	void SetTextUpdate()
+	{
+		m_bDoGroupTextUpdate = true;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	SCR_AIGroup GetGroup()
 	{
@@ -94,10 +100,10 @@ class SCR_MapMarkerSquadLeader : SCR_MapMarkerEntity
 		SetTarget(null);
 		SetGlobalVisible(false);
 	}
-	
+		
 	//------------------------------------------------------------------------------------------------
 	//! Set military symbol image, can change during lifetime
-	protected void InitGroupMilitarySymbol()
+	protected void UpdateGroupMilitarySymbol()
 	{
 		if (!m_Group)
 		{
@@ -118,19 +124,16 @@ class SCR_MapMarkerSquadLeader : SCR_MapMarkerEntity
 			SetImage(faction.GetGroupFlagImageSet(), flag);
 		}
 		
-		m_SquadLeaderWidgetComp.SetImage(m_sImageset, m_sIconName, ASPECT_RATIO_FLAG);
-
-		if (m_Group.IsPlayerInGroup(GetGame().GetPlayerController().GetPlayerId()))
-			m_SquadLeaderWidgetComp.SetGroupActive(true);
-		else
-			m_SquadLeaderWidgetComp.SetGroupActive(false);
+		if (m_SquadLeaderWidgetComp)
+			m_SquadLeaderWidgetComp.SetImage(m_sImageset, m_sIconName, ASPECT_RATIO_FLAG, SIZE_FLAG);	
 		
+		UpdatePlayerAffiliation();
 		m_bDoGroupSymbolUpdate = false;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Set group text, can change during lifetime
-	protected void InitGroupText()
+	protected void UpdateGroupText()
 	{
 		if (!m_Group)
 		{
@@ -149,14 +152,51 @@ class SCR_MapMarkerSquadLeader : SCR_MapMarkerEntity
 			SetText(WidgetManager.Translate(format, company, platoon, squad, character));
 		}
 		
-		if (m_MarkerWidgetComp)
-			m_MarkerWidgetComp.SetText(m_sText);
+		if (m_SquadLeaderWidgetComp)
+			m_SquadLeaderWidgetComp.SetText(m_sText);
 		
 		m_bDoGroupTextUpdate = false;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Check whether we are in a squad and if it should be visible on map
+	void UpdatePlayerAffiliation()
+	{	
+		if (!m_wRoot)
+			return;
+		
+		if (m_Group.IsPlayerInGroup(GetGame().GetPlayerController().GetPlayerId()))
+			m_SquadLeaderWidgetComp.SetGroupActive(true, m_Group.GetFactionName());
+		else
+			m_SquadLeaderWidgetComp.SetGroupActive(false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Update names when user settings are changed (f.e. xbox UGC)
+	protected void OnUserSettingsChanged()
+	{
+		m_bDoGroupTextUpdate = true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! SCR_AIGroup event
+	//! Triggers when squad flag is changed
+	protected void OnFlagSelected()
+	{
+		m_bDoGroupSymbolUpdate = true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	// OVERRIDES
+	//------------------------------------------------------------------------------------------------
+	override protected void OnMapLayerChanged(int layerID)
+	{
+		super.OnMapLayerChanged(layerID);
+		
+		if (m_SquadLeaderWidgetComp)
+			m_SquadLeaderWidgetComp.SetLayerID(layerID);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnCreateMarker()
 	{
@@ -179,6 +219,18 @@ class SCR_MapMarkerSquadLeader : SCR_MapMarkerEntity
 		m_bDoGroupTextUpdate = true;
 		
 		m_SquadLeaderWidgetComp = SCR_MapMarkerSquadLeaderComponent.Cast(m_MarkerWidgetComp);
+		
+		GetGame().OnUserSettingsChangedInvoker().Insert(OnUserSettingsChanged);
+		SCR_AIGroup.GetOnFlagSelected().Insert(OnFlagSelected);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnDelete()
+	{
+		super.OnDelete();
+		
+		GetGame().OnUserSettingsChangedInvoker().Remove(OnUserSettingsChanged);
+		SCR_AIGroup.GetOnFlagSelected().Remove(OnFlagSelected);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -190,10 +242,10 @@ class SCR_MapMarkerSquadLeader : SCR_MapMarkerEntity
 		super.OnUpdate();
 		
 		if (m_bDoGroupSymbolUpdate)
-			InitGroupMilitarySymbol();
+			UpdateGroupMilitarySymbol();
 		
 		if (m_bDoGroupTextUpdate)
-			InitGroupText();
+			UpdateGroupText();
 		
 		if (m_SquadLeaderWidgetComp.m_bIsHovered)
 			m_SquadLeaderWidgetComp.UpdateGroupInfoPosition(m_iScreenX, m_iScreenY);

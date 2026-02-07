@@ -36,7 +36,7 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 	protected ref array<EEditableEntityLabel> m_eBlackListedLabels;
 
 	//~ Saved content browser state when content browser is opened with config
-	protected ref map<ref SCR_EditorContentBrowserDisplayConfig, ref SCR_EditorContentBrowserSaveStateData> m_mContentBrowserConfigStates = new ref map<ref SCR_EditorContentBrowserDisplayConfig, ref SCR_EditorContentBrowserSaveStateData>;
+	protected ref map<ref SCR_EditorContentBrowserDisplayConfig, ref SCR_EditorContentBrowserSaveStateData> m_mContentBrowserConfigStates = new map<ref SCR_EditorContentBrowserDisplayConfig, ref SCR_EditorContentBrowserSaveStateData>;
 
 	protected ref set<ref SCR_EditableEntityCache> m_aExtendedEntitiesCache = new set<ref SCR_EditableEntityCache>();
 
@@ -464,7 +464,7 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 
 	/*!
 	Order given labels. Using group order and label order
-	\param[inout] labels that need to be ordered
+	\param[in,out] labels that need to be ordered
 	*/
 	void OrderLabels(inout notnull array<EEditableEntityLabel> activeLabels)
 	{
@@ -860,6 +860,10 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 	*/
 	bool CanPlace(notnull array<ResourceName> prefabs, EEditableEntityType fallbackBudgetType = -1)
 	{
+		//~ No budget manager so get default one (Ignoring mode)
+		if (!m_BudgetManager)
+			m_BudgetManager = SCR_BudgetEditorComponent.Cast(FindEditorComponent(SCR_BudgetEditorComponent, false, false));
+		
 		if (!m_PlacingManager || !m_BudgetManager)
 			return false;
 
@@ -1359,7 +1363,6 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 		editorSettings.Set("m_aSavedContentBrowserStates", settingBrowserStates);
 
 		GetGame().UserSettingsChanged();
-		GetGame().SaveUserSettings();
 	}
 
 	//~ Load Persistent browser state from where the player left off last time

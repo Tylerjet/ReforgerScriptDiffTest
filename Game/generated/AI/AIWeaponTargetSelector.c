@@ -15,7 +15,7 @@ class AIWeaponTargetSelector: ScriptAndConfig
 	/*!
 	Initializes properties for target/weapon selection
 	*/
-	proto external void SetSelectionProperties(float maxLastSeenDirect, float maxLastSeenIndirect, float maxDistanceInfantry, float maxDistanceVehicles, float maxTimeSinceEndangered, float maxDistanceDisarmed);
+	proto external void SetSelectionProperties(float maxLastSeenDirect, float maxLastSeenIndirect, float maxLastSeen, float minTraceFractionIndirect, float maxDistanceInfantry, float maxDistanceVehicles, float maxTimeSinceEndangered, float maxDistanceDisarmed);
 	/*!
 	Sets constants for target score calculation. Formula is: score = offset + slope*distance
 	*/
@@ -49,17 +49,17 @@ class AIWeaponTargetSelector: ScriptAndConfig
 	*/
 	proto external bool SelectWeaponAgainstUnitType(EAIUnitType targetUnitType, bool useCompartmentWeapons);
 	/*!
-	Checks if character has a wepaon of type. It's a fast check which uses a cache.
-	*/
-	proto external bool CharacterHasWeaponOfType(EWeaponType weaponType);
-	/*!
-	Returns amount of magazines for magazine well. Performs a fast lookup from internal cache.
-	*/
-	proto external int GetCharacterMagazineCount(typename magazineWellType);
-	/*!
 	Returns score of the target.
 	*/
 	proto external float CalculateTargetScore(BaseTarget target);
+	/*!
+	Methods below perform fast lookup from inventory caches. They should be prefered for weapon or magazine searches for AI instead of inventory queries.
+	searchCompartments - if true, the inventory cache for current compartment is used. Otherwise character's cache is used.
+	*/
+	proto external bool HasWeaponOfType(EWeaponType weaponType, bool searchCompartment);
+	proto external BaseWeaponComponent FindWeaponOfType(EWeaponType weaponType, bool searchCompartment);
+	//! Returns amount of magazines for magazine well.
+	proto external int GetMagazineCount(typename magazineWellType, bool searchCompartment);
 }
 
 /*!

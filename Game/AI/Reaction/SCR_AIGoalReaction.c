@@ -3,8 +3,12 @@
 //------------------------------------------------------------------------------------------------
 
 [BaseContainerProps()]
-class SCR_AIGoalReaction : SCR_AIReactionBase
+class SCR_AIGoalReaction
 {
+	// Don't use, it's here for backwards compatibility, not guaranteed to work in all classes
+	[Attribute(defvalue: "", uiwidget: UIWidgets.EditBox, desc: "Don't use, it's here for backwards compatibility, not guaranteed to work in all classes", params: "bt")]
+	string m_OverrideBehaviorTree;
+	
 	[Attribute("0", UIWidgets.ComboBox, "Type of event activating the reaction", "", ParamEnumArray.FromEnum(EMessageType_Goal) )]
 	EMessageType_Goal m_eType;
 	
@@ -28,11 +32,6 @@ class SCR_AIGoalReaction_Attack : SCR_AIGoalReaction
 		
 		utility.m_CombatComponent.UpdateLastSeenPosition(msg.m_TargetInfo.m_Entity, msg.m_TargetInfo);
 		utility.m_CombatComponent.SetAssignedTargets({msg.m_TargetInfo.m_Entity}, null);
-	}
-	
-	override void PerformReaction(notnull SCR_AIGroupUtilityComponent utility, SCR_AIMessageBase message)
-	{
-
 	}
 };
 
@@ -96,7 +95,7 @@ class SCR_AIGoalReaction_AttackCluster : SCR_AIGoalReaction
 			SCR_AICommsHandler commsHandler = utility.m_CommsHandler;
 			if (!commsHandler.CanBypass())
 			{
-				SCR_AITalkRequest rq = new SCR_AITalkRequest(ECommunicationType.REPORT_COVERING, null, vector.Zero, 0, false, SCR_EAITalkRequestPreset.MEDIUM);
+				SCR_AITalkRequest rq = new SCR_AITalkRequest(ECommunicationType.REPORT_COVERING, null, vector.Zero, 0, false, false, SCR_EAITalkRequestPreset.MEDIUM);
 				commsHandler.AddRequest(rq);
 			}
 		}
@@ -126,47 +125,11 @@ class SCR_AIGoalReaction_CoverCluster : SCR_AIGoalReaction
 		SCR_AICommsHandler commsHandler = utility.m_CommsHandler;
 		if (!commsHandler.CanBypass())
 		{
-			SCR_AITalkRequest rq = new SCR_AITalkRequest(ECommunicationType.REPORT_COVERING, null, vector.Zero, 0, false, SCR_EAITalkRequestPreset.MEDIUM);
+			SCR_AITalkRequest rq = new SCR_AITalkRequest(ECommunicationType.REPORT_COVERING, null, vector.Zero, 0, false, false, SCR_EAITalkRequestPreset.MEDIUM);
 			commsHandler.AddRequest(rq);
 		}
 	}
 }
-
-
-[BaseContainerProps()]
-class SCR_AIGoalReaction_AttackStatic : SCR_AIGoalReaction_Attack
-{
-	override void PerformReaction(notnull SCR_AIUtilityComponent utility, SCR_AIMessageBase message)
-	{
-		SCR_AIMessage_AttackStatic msg = SCR_AIMessage_AttackStatic.Cast(message); // new approach: m_Target can be null!
-		if (!msg)
-			return;
-		
-		BaseTarget baseTarget = utility.m_CombatComponent.FindTargetByEntity(msg.m_TargetInfo.m_Entity);
-		if (!baseTarget)
-			return;
-		
-		utility.m_CombatComponent.UpdateLastSeenPosition(baseTarget, msg.m_TargetInfo);
-		SCR_AIAttackStaticBehavior behavior = new SCR_AIAttackStaticBehavior(utility, msg.m_RelatedGroupActivity, baseTarget, msg.m_TargetInfo.m_vWorldPos, msg.m_fPriorityLevel);
-		if (m_OverrideBehaviorTree != string.Empty)
-			behavior.m_sBehaviorTree = m_OverrideBehaviorTree;
-
-		utility.AddAction(behavior);
-	}
-};
-
-[BaseContainerProps()]
-class SCR_AIGoalReaction_AttackStaticDone : SCR_AIGoalReaction
-{
-	override void PerformReaction(notnull SCR_AIUtilityComponent utility, SCR_AIMessageBase message)
-	{
-		// only relevant for static attacks, others may receive it for the sake of simplicity of trees
-		if (utility.m_AIInfo.HasUnitState(EUnitState.IN_TURRET))
-		{
-			utility.SetStateAllActionsOfType(SCR_AIAttackStaticBehavior, EAIActionState.COMPLETED);
-		}
-	}
-};
 
 [BaseContainerProps()]
 class SCR_AIGoalReaction_Move : SCR_AIGoalReaction
@@ -241,7 +204,7 @@ class SCR_AIGoalReaction_Investigate : SCR_AIGoalReaction
 		utility.SetStateAllActionsOfType(SCR_AIMoveAndInvestigateBehavior, EAIActionState.FAILED);
 			
 		auto behavior = new SCR_AIMoveAndInvestigateBehavior(utility, msg.m_RelatedGroupActivity, msg.m_vMovePosition,
-			SCR_AIActionBase.PRIORITY_BEHAVIOR_MOVE_AND_INVESTIGATE, msg.m_fPriorityLevel, isDangerous: msg.m_bIsDangerous, targetUnitType: msg.m_eTargetUnitType, duration: msg.m_fDuration);
+			SCR_AIActionBase.PRIORITY_BEHAVIOR_MOVE_AND_INVESTIGATE, msg.m_fPriorityLevel, isDangerous: msg.m_bIsDangerous, radius: msg.m_fRadius, targetUnitType: msg.m_eTargetUnitType, duration: msg.m_fDuration);
 		utility.AddAction(behavior);
 	}
 };
@@ -470,35 +433,19 @@ class SCR_AIGoalReaction_Cancel : SCR_AIGoalReaction
 [BaseContainerProps()]
 class SCR_AIGoalReaction_Retreat : SCR_AIGoalReaction
 {
-	override void PerformReaction(notnull SCR_AIUtilityComponent utility, SCR_AIMessageBase message)
-	{
-	}
 };
 
 [BaseContainerProps()]
 class SCR_AIGoalReaction_ThrowGrenadeTo : SCR_AIGoalReaction
 {
-	private static float THROW_PREDICTION_DISTANCE = 5.0;
-
 	override void PerformReaction(notnull SCR_AIUtilityComponent utility, SCR_AIMessageBase message)
 	{
 		SCR_AIMessage_ThrowGrenadeTo msg = SCR_AIMessage_ThrowGrenadeTo.Cast(message);
 		if (!msg)
 			return;
 		
-		SCR_AIThrowGrenadeToBehavior behavior = new SCR_AIThrowGrenadeToBehavior(utility, msg.m_RelatedGroupActivity, msg.m_vTargetPosition, msg.m_fPriorityLevel);
-		
-		if (m_OverrideBehaviorTree != string.Empty)
-			behavior.m_sBehaviorTree = m_OverrideBehaviorTree;
-		
-		if (msg.m_TargetEntity)
-		{
-			bool found = behavior.TraceForGrenadeThrow(utility.GetOrigin(), msg.m_TargetEntity.GetOrigin(), THROW_PREDICTION_DISTANCE, utility.m_OwnerEntity, msg.m_TargetEntity);
-			if (found)
-				behavior.UpdatePositionInfo(msg.m_TargetEntity.GetOrigin());
-			
-			utility.AddAction(behavior);
-		}
+		SCR_AIThrowGrenadeToBehavior behavior = new SCR_AIThrowGrenadeToBehavior(utility, msg.m_RelatedGroupActivity, msg.m_vTargetPosition, msg.e_WeaponType, msg.m_fDelay, msg.m_fPriorityLevel);
+		utility.AddAction(behavior);
 	}
 };
 

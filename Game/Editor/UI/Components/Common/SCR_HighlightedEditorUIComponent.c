@@ -1,35 +1,40 @@
-/**
-Is an highlighted icon which, if animated pulsates
-*/
-class SCR_HighlightedEditorUIComponent: SCR_BaseEditableEntityUIComponent
+//! Is an highlighted icon which, if animated pulsates
+
+class SCR_HighlightedEditorUIComponent : SCR_BaseEditableEntityUIComponent
 {
 	[Attribute("Icon")]
 	protected string m_ImageWidgetName;
+
 	[Attribute("IconText")]
 	protected string m_TextWidgetName;
+
 	[Attribute("Animation")]
 	protected string m_AnimWidgetName;
+
 	[Attribute(desc: "If Highlight has no specific icon")]
 	protected ResourceName m_DefaultIcon;
+
 	[Attribute(desc: "If multiple highlights")]
 	protected ResourceName m_MultiHighlightIcon;
+
 	[Attribute(desc: "Array of highlights and icons")]
 	protected ref array<ref SCR_HighlightVisual> m_aHighlightVisuals;
 	
 	[Attribute("1")]
 	protected bool m_bAnimate;
 	
-	
 	//Ref
 	protected SCR_HighlightedEditorComponent m_HighlightedEditorComponent;
 	protected ImageWidget m_ImageWidget;
 	protected TextWidget m_TextWidget;
-	
 
 	//-------------------------- On Highlight update --------------------------\\
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnUpdateHighlight(SCR_EditableEntityComponent entity, EEditableEntityHighlight highlight, int highlightCount)
 	{
-		if (entity != m_Entity) return;
+		if (entity != m_Entity)
+			return;
 		
 		if (highlightCount > 1)
 		{	
@@ -40,7 +45,7 @@ class SCR_HighlightedEditorUIComponent: SCR_BaseEditableEntityUIComponent
 		}
 		else 
 		{
-			m_TextWidget.SetVisible(false);			
+			m_TextWidget.SetVisible(false);
 			foreach (SCR_HighlightVisual visual: m_aHighlightVisuals)
 			{
 				if (visual.GetHighlightType() == highlight)
@@ -56,11 +61,15 @@ class SCR_HighlightedEditorUIComponent: SCR_BaseEditableEntityUIComponent
 			m_ImageWidget.SetImage(0);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnSelectedChange(EEditableEntityState state, set<SCR_EditableEntityComponent> entitiesInsert, set<SCR_EditableEntityComponent> entitiesRemove)
 	{
 		if (entitiesInsert && entitiesInsert.Contains(m_Entity))
 			StopAnimations(GetWidget());
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void StopAnimations(Widget w)
 	{
 		if (m_bAnimate)
@@ -79,6 +88,8 @@ class SCR_HighlightedEditorUIComponent: SCR_BaseEditableEntityUIComponent
 	}
 	
 	//-------------------------- Init --------------------------\\
+
+	//------------------------------------------------------------------------------------------------
 	override void OnInit(SCR_EditableEntityComponent entity, SCR_UIInfo info, SCR_EditableEntityBaseSlotUIComponent slot)
 	{
 		super.OnInit(entity, info, slot);
@@ -117,12 +128,14 @@ class SCR_HighlightedEditorUIComponent: SCR_BaseEditableEntityUIComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override bool OnClick(Widget w, int x, int y, int button)
 	{
 		StopAnimations(w);
 		return super.OnClick(w, x, y, button);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
@@ -132,24 +145,28 @@ class SCR_HighlightedEditorUIComponent: SCR_BaseEditableEntityUIComponent
 		
 		StopAnimations(w);
 	}
-};
-
+}
 
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EEditableEntityHighlight, "m_HighlightType")]
 class SCR_HighlightVisual
 {
 	[Attribute("0", UIWidgets.ComboBox, "", enums: ParamEnumArray.FromEnum(EEditableEntityHighlight))]
 	protected EEditableEntityHighlight m_HighlightType;
+
 	[Attribute()]
 	protected ResourceName m_Icon;
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	EEditableEntityHighlight GetHighlightType()
 	{
 		return m_HighlightType;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetIcon()
 	{
 		return m_Icon;
 	}
-};
+}

@@ -1,7 +1,7 @@
 [ComponentEditorProps(category: "GameScripted/GameMode/Components", description: "Component to handle night mode")]
 class SCR_NightModeGameModeComponentClass : SCR_BaseGameModeComponentClass
 {
-};
+}
 
 class SCR_NightModeGameModeComponent : SCR_BaseGameModeComponent
 {
@@ -24,17 +24,17 @@ class SCR_NightModeGameModeComponent : SCR_BaseGameModeComponent
 	protected string m_sToggleLocalNightModeShortcut;
 	
 	//~ States
-	protected bool m_bLocalEditorNightModeEnabled; ///< Can only be true if editor is open and unlimited
-	protected bool m_bLocalEditorNightModeOnEditorClose; ///< Saved local nightmode value when editor is closed to enable it again when opened
+	protected bool m_bLocalEditorNightModeEnabled;			//!< Can only be true if editor is open and unlimited
+	protected bool m_bLocalEditorNightModeOnEditorClose;	//!< Saved local nightmode value when editor is closed to enable it again when opened
 	protected bool m_bUnlimitedEditorIsOpen;
 	protected bool m_bGlobalNightModeEnabled;
-	protected bool m_IsPreviewingTimeOrWeather; ///< If player is locally previewing dateTime or weather and Local nightmode is enabled it will disable local nightmode
+	protected bool m_IsPreviewingTimeOrWeather; //!< If player is locally previewing dateTime or weather and Local nightmode is enabled it will disable local nightmode
 	protected float m_fNightModeAlpha = 0; ///< This is the current nightmode alpha for the transition lerp.
 	
 	//~ Update
-	protected bool m_bUpdateEachFrame; //~ If false it will not update each frame but instead each UPDATE_TICK_IN_SECONDS
-	protected float m_fCurrentUpdateTickInSeconds; //~ Current tick in seconds
-	protected const float UPDATE_TICK_IN_SECONDS = 1; //~ Update speed when m_bUpdateEachFrame is false
+	protected bool m_bUpdateEachFrame;							//!< If false it will not update each frame but instead each UPDATE_TICK_IN_SECONDS
+	protected float m_fCurrentUpdateTickInSeconds;				//!< Current tick in seconds
+	protected static const float UPDATE_TICK_IN_SECONDS = 1;	//!< Update speed when m_bUpdateEachFrame is false
 	
 	//~ Ref
 	protected BaseWorld m_World;
@@ -82,25 +82,23 @@ class SCR_NightModeGameModeComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return True if local editor night mode is enabled
-	*/
+	//! \return true if local editor night mode is enabled
 	bool IsLocalEditorNightModeEnabled()
 	{
 		return m_bLocalEditorNightModeEnabled;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void ToggleLocalNightModeShortcut()
 	{
 		EnableLocalEditorNightMode(!m_bLocalEditorNightModeEnabled);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Enable local editor night mode
-	Note that enable might fail if the conditions are not met
-	\param enable To enable or not
-	*/
+	//! Enable local editor night mode
+	//! Note that enable might fail if the conditions are not met
+	//! \param[in] enable To enable or not
+	//! \param[in] playSound To play a sound or not
 	void EnableLocalEditorNightMode(bool enable, bool playSound = true)
 	{		
 		if (m_bLocalEditorNightModeEnabled == enable)
@@ -123,30 +121,24 @@ class SCR_NightModeGameModeComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return True if scenario allows for global night mode to be enabled
-	*/
+	//! \return true if scenario allows for global night mode to be enabled
 	bool IsGlobalNightModeAllowed()
 	{
 		return m_bAllowGlobalNightMode;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return True if global night mode is enabled for all players
-	*/
+	//! \return true if global night mode is enabled for all players
 	bool IsGlobalNightModeEnabled()
 	{
 		return m_bGlobalNightModeEnabled;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Enable global night mode
-	Note that enable might fail if the conditions are not met
-	\param enable To enable or not
-	\param nightModeChangerPlayerID If a player ID is given then a notification is sent to all players if global night mode is enabled/disabled
-	*/
+	//! Enable global night mode
+	//! Note that enable might fail if the conditions are not met
+	//! \param[in] enable To enable or not
+	//! \param[in] nightModeChangerPlayerID If a player ID is given then a notification is sent to all players if global night mode is enabled/disabled
 	void EnableGlobalNightMode(bool enable, int nightModeChangerPlayerID = -1)
 	{		
 		//~ Server only and check if value can be changed and is changed
@@ -166,7 +158,7 @@ class SCR_NightModeGameModeComponent : SCR_BaseGameModeComponent
 	protected void RPC_EnableGlobalNightMode(bool enable, int nightModeChangerPlayerID)
 	{
 		//~ Cannot change global nightmode or is already the same state as given state
-		if (!IsGlobalNightModeAllowed() || m_bGlobalNightModeEnabled == enable)
+		if (m_bGlobalNightModeEnabled == enable || !IsGlobalNightModeAllowed())
 			return;
 		
 		m_bGlobalNightModeEnabled = enable;
@@ -189,18 +181,14 @@ class SCR_NightModeGameModeComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return True if local editor night mode and/or global night mode is enabled
-	*/
+	//! \return true if local editor night mode and/or global night mode is enabled
 	bool IsNightModeEnabled()
 	{
 		return IsLocalEditorNightModeEnabled() || IsGlobalNightModeEnabled();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return True if general night mode can be enabled
-	*/
+	//! \return true if general night mode can be enabled
 	bool CanEnableNightMode()
 	{
 		return m_TimeAndWeatherManager != null;
@@ -300,9 +288,7 @@ class SCR_NightModeGameModeComponent : SCR_BaseGameModeComponent
 		{
 			//~ Pause the OnFrame
 			if (SCR_Enum.HasPartialFlag(GetEventMask(), EntityEvent.FRAME))
-			{				
 				ClearEventMask(GetOwner(), EntityEvent.FRAME);
-			}
 			
 			//~ Disable nightmode
 			if (m_fNightModeAlpha != 0)
@@ -348,9 +334,7 @@ class SCR_NightModeGameModeComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return ScriptInvoker On Local editor night mode enabled changed
-	*/
+	//! \return ScriptInvoker On Local editor night mode enabled changed
 	ScriptInvokerBool GetOnLocalEditorNightModeEnabledChanged()
 	{
 		if (!m_OnLocalEditorNightModeEnabledChanged)
@@ -360,9 +344,7 @@ class SCR_NightModeGameModeComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return ScriptInvoker On Global night mode enabled changed
-	*/
+	//! \return ScriptInvoker On Global night mode enabled changed
 	ScriptInvokerBool GetOnGlobalNightModeEnabledChanged()
 	{
 		if (!m_OnGlobalNightModeEnabledChanged)
@@ -372,9 +354,7 @@ class SCR_NightModeGameModeComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	\return ScriptInvoker On Local Editor or Global night mode enabled changed
-	*/
+	//! \return ScriptInvoker On Local Editor or Global night mode enabled changed
 	ScriptInvokerBool GetOnNightModeEnabledChanged()
 	{
 		if (!m_OnNightModeEnabledChanged)
@@ -514,5 +494,4 @@ class SCR_NightModeGameModeComponent : SCR_BaseGameModeComponent
         	
         return true;
     }
-};
-
+}

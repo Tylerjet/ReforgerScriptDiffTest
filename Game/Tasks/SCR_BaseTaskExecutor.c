@@ -8,7 +8,7 @@ class SCR_BaseTaskExecutor : GenericEntity
 {
 	
 	static const int INVALID_PLAYER_ID = -1;
-	protected static ref map<SCR_BaseTaskExecutor, int> s_mTaskExecutors = new ref map<SCR_BaseTaskExecutor, int>();
+	protected static ref map<SCR_BaseTaskExecutor, int> s_mTaskExecutors = new map<SCR_BaseTaskExecutor, int>();
 	protected static SCR_BaseTaskExecutor s_LocalTaskExecutor = null;
 	
 	//**************************//

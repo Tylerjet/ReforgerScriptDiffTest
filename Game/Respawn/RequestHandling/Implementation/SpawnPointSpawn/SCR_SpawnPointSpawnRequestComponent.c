@@ -1,27 +1,28 @@
-//------------------------------------------------------------------------------------------------
 [ComponentEditorProps(category: "GameScripted/Respawn/PlayerController")]
 class SCR_SpawnPointRespawnRequestComponentClass : SCR_SpawnRequestComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_SpawnPointRespawnRequestComponent : SCR_SpawnRequestComponent
 {
+	//------------------------------------------------------------------------------------------------
 	override typename GetHandlerType()
 	{
 		return SCR_SpawnPointSpawnHandlerComponent;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override typename GetDataType()
 	{
 		return SCR_SpawnPointSpawnData;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override bool DoCanRequestRespawn(SCR_SpawnData data)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::DoCanRequestRespawn(playerId: %2, data: %3)", Type().ToString(),
-					GetPlayerController().GetPlayerId(), data);
+		Print(string.Format("%1::DoCanRequestRespawn(playerId: %2, data: %3)", Type().ToString(),
+					GetPlayerController().GetPlayerId(), data), LogLevel.NORMAL);
 		#endif
 
 		SCR_SpawnPointSpawnData spawnPointData = SCR_SpawnPointSpawnData.Cast(data);
@@ -32,14 +33,15 @@ class SCR_SpawnPointRespawnRequestComponent : SCR_SpawnRequestComponent
 		return true;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	private void Rpc_CanRequestRespawn_S(int spawnPointId, ResourceName prefab)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::Rpc_CanRequestRespawn_S(playerId: %2, spawnPointId: %3, pref: %4)", Type().ToString(),
+		Print(string.Format("%1::Rpc_CanRequestRespawn_S(playerId: %2, spawnPointId: %3, pref: %4)", Type().ToString(),
 					GetPlayerController().GetPlayerId(),
 					spawnPointId,
-					prefab);
+					prefab), LogLevel.NORMAL);
 		#endif
 
 		// Prepare data for handler
@@ -47,11 +49,12 @@ class SCR_SpawnPointRespawnRequestComponent : SCR_SpawnRequestComponent
 		ProcessCanRequest_S(data);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override bool DoRequestRespawn(SCR_SpawnData data)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::DoRequestRespawn(playerId: %2, data: %3)", Type().ToString(),
-					GetPlayerController().GetPlayerId(), data);
+		Print(string.Format("%1::DoRequestRespawn(playerId: %2, data: %3)", Type().ToString(),
+					GetPlayerController().GetPlayerId(), data), LogLevel.NORMAL);
 		#endif
 
 		SCR_SpawnPointSpawnData spawnPointData = SCR_SpawnPointSpawnData.Cast(data);
@@ -62,27 +65,30 @@ class SCR_SpawnPointRespawnRequestComponent : SCR_SpawnRequestComponent
 		return true;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	private void Rpc_RequestRespawn_S(int spawnPointId, ResourceName prefab)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::Rpc_RequestRespawn_S(playerId: %2, spawnPointId: %3, pref: %4)", Type().ToString(),
+		Print(string.Format("%1::Rpc_RequestRespawn_S(playerId: %2, spawnPointId: %3, pref: %4)", Type().ToString(),
 					GetPlayerController().GetPlayerId(),
 					spawnPointId,
-					prefab);
+					prefab), LogLevel.NORMAL);
 		#endif
 
 		// Prepare data for handler
 		SCR_SpawnPointSpawnData data = new SCR_SpawnPointSpawnData(prefab, spawnPointId);
 		ProcessRequest_S(data);
 	}
+
 	#ifdef ENABLE_DIAG
-	override ref SCR_BaseRespawnDiag CreateDiag()
+	//------------------------------------------------------------------------------------------------
+	override SCR_BaseRespawnDiag CreateDiag()
 	{
 		return new SCR_SpawnPointRespawnDiag();
 	}
 	#endif
-};
+}
 
 #ifdef ENABLE_DIAG
 class SCR_SpawnPointRespawnDiag : SCR_RespawnDiag<SCR_SpawnPointRespawnRequestComponent>
@@ -127,9 +133,10 @@ class SCR_SpawnPointRespawnDiag : SCR_RespawnDiag<SCR_SpawnPointRespawnRequestCo
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected override SCR_SpawnData CreateData()
 	{
 		return new SCR_SpawnPointSpawnData(m_Prefab, m_RplId);
 	}
-};
+}
 #endif

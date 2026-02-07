@@ -9,60 +9,83 @@ Do not modify, this script is generated
 \{
 */
 
-/*!
-Allows semi-automatic management and disposal of 'garbage'.
-
-Any entity with InventoryItemComponent can be marked as Garbage, providing the
-correct configuration for its class.
-
-Instances of such types can be inserted and removed from automatic collection.
-Default life time of individual categories can be set in entity attributes.
-
-Each garbage instance has separate lifetime which can be adjusted by either
-inserting the garbage with custom lifetime, or by using the Bump method.
-
-Garbage collection is server-only. Any requests to insert or withdraw objects
-on the client side will be ignored. No collection pass occurs on clients.
-*/
 class GarbageSystem: GameSystem
 {
 	/*!
-	Enqueues provided instance for garbage collection. Not all types are supported!
-	\param lifeTime Life time of instance in seconds. If less than 0, default manager value is used.
-	\param forceCollection If enabled inserts the instance for collection regardless of whether collection of this type is enabled by the manager.
-	\return Returns true on success, false if instance is already enqueued or if it can not be enqueued.
+	Requests the garbage handling of the provided entity.
+	\param lifeTime Life time of instance in seconds. If <= 0, the config rule values are used.
+	\return Returns true on success, false if instance is already or can not be inserted.
 	*/
-	proto external bool Insert(IEntity ent, float lifeTime = -1, bool forceCollection = false);
+	proto external bool Insert(notnull IEntity entity, float lifetime = -1, bool ignoreBlacklist = false);
 	/*!
-	Returns whether provided instance is enqueued for garbage collection.
-	\return True if instance is enqueued for garbage collection, false otherwise.
+	Check if the entity is tracked.
+	\return True if instance is tracked, false otherwise.
 	*/
-	proto external bool IsInserted(IEntity ent);
+	proto external bool IsInserted(notnull IEntity entity);
 	/*!
-	Dequeues provided instance from garbage collection.
-	\return True if instance was dequeued, false otherwise.
+	Removes the provided entity from the garbage system.
+	\return True if successfull, false otherwise.
 	*/
-	proto external bool Withdraw(IEntity ent);
+	proto external bool Withdraw(notnull IEntity entity);
 	/*!
-	Adds additional life time to instance, prolonging its life time.
+	Adds additional lifetime to the provided entity.
 	\param additionalLifetime Lifetime to add to current lifetime (in seconds)
-	\return Returns true on success, false if instance is not garbage.
+	\return Returns true on success, false if instance is not tracked.
 	*/
-	proto external bool Bump(IEntity ent, float additionalLifetime);
+	proto external bool Bump(notnull IEntity entity, float additionalLifetime);
 	/*!
-	Returns the lifetime of an instance or -1 if not inserted.
-	\return Lifetime duration in seconds or -1 if none.
+	Returns the original lifetime the provided entity was inserted with.
+	\return Lifetime duration in seconds or -1 if not tracked..
 	*/
-	proto external float GetLifetime(IEntity ent);
+	proto external float GetLifetime(notnull IEntity entity);
 	/*!
-	Returns the remaining lifetime of an instance or -1 if not inserted.
-	\return Remaining lifetime in seconds or -1 if none.
+	Returns the remaining lifetime of the provided entity.
+	Note: Nearby players and their lifetime effect are only processed in the general system interval defined in the config.
+		  Thus the return value might briefly be 0 and jump back to a higher number in a later frame.
+	\return Remaining lifetime in seconds or -1 if not tracked.
 	*/
-	proto external float GetRemainingLifetime(IEntity ent);
+	proto external float GetRemainingLifetime(notnull IEntity entity);
 	/*!
-	Forcefully disposes of all enqueued garbage instances in a single pass.
+	Forcefully disposes all entities that are tracked at least for x seconds.
 	*/
-	proto external void Flush(bool bFlushInsideRange = true);
+	proto external void Flush(float minTrackedSeconds = 60);
+	/*!
+	Determine if the provided entity instance is blacklisted from being inserted.
+	Will widthdraw the entity if it is currently tracked and blacklist was enabled for it.
+	Can by bypassed via Insert(..., ignoreBlacklist: true)
+	\return True if blacklist update was successful, false otherwise.
+	*/
+	proto external bool UpdateBlacklist(notnull IEntity entity, bool blacklisted);
+
+	// callbacks
+
+	/*
+	React to or change the behavior of the garbage insertion.
+	\param ent Entity instance to check logic for.
+	\param lifetime Original lifetime the insertion was requested with.
+	\return Returns a lifetime >0 for insertion and <= 0 to prevent it.
+
+	Example override to use in modded classes:
+	@code
+	override protected float OnInsertRequested(IEntity entity, float lifetime)
+	{
+		if (someCondition)
+			return -1; // Prevent insertion by returning negative values
+
+		if (someOtherCondition)
+			return lifetime * 0.5; // Cut lifetime in half based on specific needs.
+
+		return lifetime; // Return unmodified value
+	}
+	@endcode
+	*/
+	event protected float OnInsertRequested(IEntity entity, float lifetime);
+	/*
+	React to or skip the deletion of a tracked entity of which the lifetime has run out.
+	\param ent Entity instance to check logic for.
+	\return Return true to proceed with deletion, false to skip it (tracking for the item will end regardless).
+	*/
+	event protected bool OnBeforeDelete(IEntity entity);
 }
 
 /*!

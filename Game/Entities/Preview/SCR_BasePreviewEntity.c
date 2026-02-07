@@ -205,7 +205,8 @@ class SCR_BasePreviewEntity: GenericEntity
 								}
 							}
 
-							MeshObject meshObject = SCR_Shape.CreateAreaMesh(positions, dimensions[1] * 2, material, true);
+							Resource res = SCR_Shape.CreateAreaMesh(positions, dimensions[1] * 2, material, true);
+							MeshObject meshObject = res.GetResource().ToMeshObject();
 							if (meshObject)
 								entity.SetObject(meshObject, "");
 						}
@@ -427,12 +428,12 @@ class SCR_BasePreviewEntity: GenericEntity
 	}
 	/*!
 	Init event called when the preview is created.
-	To be overriden by child classes
+	To be overridden by child classes
 	*/
 	protected void EOnPreviewInit(SCR_BasePreviewEntry entry, SCR_BasePreviewEntity root);
 	/*!
 	Init event called on preview root entity.
-	To be overriden by child classes
+	To be overridden by child classes
 	*/
 	protected void EOnRootPreviewInit(array<ref SCR_BasePreviewEntry> entries);
 	
@@ -455,7 +456,7 @@ class SCR_BasePreviewEntity: GenericEntity
 	override void _WB_AfterWorldUpdate(float timeSlice)
 	{
 		//--- Show mesh name for easier World Editor debugging
-		if (_WB_GetEditorAPI() && _WB_GetEditorAPI().IsEntitySelectedAsMain(this))
+		if (_WB_GetEditorAPI() && _WB_GetEditorAPI().IsEntitySelectedAsMain(_WB_GetEditorAPI().EntityToSource(this)))
 		{
 			string text = "<No Mesh>";
 			if (GetVObject())

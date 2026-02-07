@@ -1,24 +1,38 @@
 [ComponentEditorProps(category: "GameScripted/Editor", description: "Attribute for managing attributes. Works only with SCR_EditorBaseEntity!", icon: "WBData/ComponentEditorProps/componentEditor.png")]
-class SCR_AttributesManagerEditorComponentClass: SCR_BaseEditorComponentClass
+class SCR_AttributesManagerEditorComponentClass : SCR_BaseEditorComponentClass
 {
 	[Attribute(category: "Attributes")]
 	protected ref array<ref SCR_EditorAttributeList> m_AttributeLists;
 	
 	protected ref array<SCR_BaseEditorAttribute> m_aAttributes = {};
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] index
+	//! \return
 	SCR_BaseEditorAttribute GetAttribute(int index)
 	{
 		return m_aAttributes[index];
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetAttributesCount()
 	{
 		return m_aAttributes.Count();
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] attribute
+	//! \return
 	int FindAttribute(SCR_BaseEditorAttribute attribute)
 	{
 		return m_aAttributes.Find(attribute);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] prefab
 	void SCR_AttributesManagerEditorComponentClass(BaseContainer prefab)
 	{
 		foreach (SCR_EditorAttributeList list: m_AttributeLists)
@@ -26,22 +40,18 @@ class SCR_AttributesManagerEditorComponentClass: SCR_BaseEditorComponentClass
 			list.InsertAllAttributes(m_aAttributes);
 		}
 	}
-};
+}
 
-/** @ingroup Editor_Components
-*/
+//! @ingroup Editor_Components
 
-/*!
-Manager ofeditor attributes.
-
-All available attributes (SCR_BaseEditorAttribute and inherited classes) are defined here, each attribute (added in the EditorMode prefab) must be an unique class inherited from SCR_BaseEditorAttribute!
-
-To edit attributes, follow these steps:
-1. Call StartEditing() to create snapshots of all attributes and open them for editing
-2. Call ConfirmEditing() to confirm changes or CancelEditing() to do nothing
-   
-*/
-class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
+//! Manager ofeditor attributes.
+//!
+//! All available attributes (SCR_BaseEditorAttribute and inherited classes) are defined here, each attribute (added in the EditorMode prefab) must be an unique class inherited from SCR_BaseEditorAttribute!
+//!
+//! To edit attributes, follow these steps:
+//! 1. Call StartEditing() to create snapshots of all attributes and open them for editing
+//! 2. Call ConfirmEditing() to confirm changes or CancelEditing() to do nothing
+class SCR_AttributesManagerEditorComponent : SCR_BaseEditorComponent
 {
 	const int SNAPSHOT_SIZE = 96;
 		
@@ -56,28 +66,30 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 	private bool m_bHasServerAttributes;
 	private ref array<Managed> m_aEditedItems;
 	private ref array<SCR_BaseEditorAttribute> m_aEditedAttributes; //~~! Class, BaseEditorAttributeVar. Get this by SetInstance
-	private ref ScriptInvoker Event_OnAttributesRequest = new ScriptInvoker;
-	private ref ScriptInvoker Event_OnAttributesStart = new ScriptInvoker;
-	private ref ScriptInvoker Event_OnAttributesConfirm = new ScriptInvoker;
-	private ref ScriptInvoker Event_OnAttributesCancel = new ScriptInvoker;
-	private ref ScriptInvoker Event_OnResetAttributes = new ScriptInvoker;
-	private ref ScriptInvoker Event_OnAttributeChangesApplied = new ScriptInvoker;
-	private ref ScriptInvoker Event_OnAttributeDescriptionChanged = new ScriptInvoker;
-	private ref ScriptInvoker Event_OnAttributeCategoryChanged = new ScriptInvoker;
+	private ref ScriptInvoker Event_OnAttributesRequest = new ScriptInvoker();
+	private ref ScriptInvoker Event_OnAttributesStart = new ScriptInvoker();
+	private ref ScriptInvoker Event_OnAttributesConfirm = new ScriptInvoker();
+	private ref ScriptInvoker Event_OnAttributesCancel = new ScriptInvoker();
+	private ref ScriptInvoker Event_OnResetAttributes = new ScriptInvoker();
+	private ref ScriptInvoker Event_OnAttributeChangesApplied = new ScriptInvoker();
+	private ref ScriptInvoker Event_OnAttributeDescriptionChanged = new ScriptInvoker();
+	private ref ScriptInvoker Event_OnAttributeCategoryChanged = new ScriptInvoker();
 	
 	protected bool m_bHasChangedAttributesOnce = false;
 	//protected bool m_CanOpenAttributes;
 	
-	//protected ref map<EEditorMode, int> m_mSavedGlobalAttributeTabs = new ref map<EEditorMode, int>;
-	protected ResourceName m_CurrentCategory;	
+	//protected ref map<EEditorMode, int> m_mSavedGlobalAttributeTabs = new map<EEditorMode, int>;
+	protected ResourceName m_CurrentCategory;
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//--- Start
-	/*!
-	Start attributes editing of single item.
-	Must be called on editor owner.
-	\return item Edited item
-	*/
+	//--- StartEditing
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
+	//! Start attributes editing of single item.
+	//! Must be called on editor owner.
+	//! \param[in] item
+	//! \return item Edited MapItem
 	void StartEditing(Managed item)
 	{				
 		if (!item || item.IsInherited(array) || item.IsInherited(set) || item.IsInherited(map)) //--- Lists themselves are Managed
@@ -99,18 +111,19 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 		StartEditing(items);
 	}
 	
-	/*!
-	Start attributes editing of multiple items.
-	Must be called on editor owner.
-	- Server attributes will be sent to server, which will fill them with values and send them back.
-	- Once back, Event_OnAttributesStart is invoked.
-	- If all attributes are local, no server verification is performed.
-	\return item Edited items (must be explicitly array<Managed>, not another type! Even when the array element itself inherits from Managed)
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Start attributes editing of multiple items.
+	//! Must be called on editor owner.
+	//! - Server attributes will be sent to server, which will fill them with values and send them back.
+	//! - Once back, Event_OnAttributesStart is invoked.
+	//! - If all attributes are local, no server verification is performed.
+	//! \param[in] items
+	//! \param[in] onlyServer
+	//! \return item Edited items (must be explicitly array<Managed>, not another type! Even when the array element itself inherits from Managed)
 	void StartEditing(notnull array<Managed> items, bool onlyServer = true)
 	{		
 		//--- Not an owner, ignore
-		if (!IsOwner() || !m_PrefabData) 
+		if (!m_PrefabData || !IsOwner())
 			return;
 		
 		//--- Already editing, ignore
@@ -125,8 +138,8 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 		if (onlyServer && m_bHasServerAttributes)
 		{
 			//--- Editing server attributes, ask for values
-			array<int> itemIds = new array<int>;
-			m_aEditedItems = new array<Managed>;
+			array<int> itemIds = {};
+			m_aEditedItems = {};
 			foreach (Managed item: items)
 			{
 				int id = Replication.FindId(item);
@@ -142,35 +155,37 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 		else
 		{
 			//--- Editing only local attributes, skip server communication
-			m_aEditedItems = new array<Managed>;
+			m_aEditedItems = {};
 			foreach (Managed item: items)
 			{
-				if (m_aEditedItems.Find(item) == -1) m_aEditedItems.Insert(item);
+				if (m_aEditedItems.Find(item) == -1)
+					m_aEditedItems.Insert(item);
 			}
-			array<int> attributesIds = new array<int>;
-			array<ref SCR_BaseEditorAttributeVar> attributesVars = new array<ref SCR_BaseEditorAttributeVar>;
-			array<ref EEditorAttributeMultiSelect> attributesMultiSelect = new array<ref EEditorAttributeMultiSelect>;
-			StartEditingOwner(attributesIds, attributesVars, attributesMultiSelect);
+
+			StartEditingOwner({}, {}, {});
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void StartEditingServer(array<int> itemIds)
 	{
-		m_aEditedItems = new array<Managed>;
+		m_aEditedItems = {};
 		foreach (int id: itemIds)
 		{
 			Managed item = Replication.FindItem(id);
-			if (item) m_aEditedItems.Insert(item);
+			if (item)
+				m_aEditedItems.Insert(item);
 		}
 		
 		//--- Get attribute values from server
-		array<int> attributesIds = new array<int>;
-		array<ref SCR_BaseEditorAttributeVar> attributesVars = new array<ref SCR_BaseEditorAttributeVar>;
-		array<ref EEditorAttributeMultiSelect> attributesMultiSelect = new array<ref EEditorAttributeMultiSelect>;
+		array<int> attributesIds = {};
+		array<ref SCR_BaseEditorAttributeVar> attributesVars = {};
+		array<ref EEditorAttributeMultiSelect> attributesMultiSelect = {};
 		GetVariables(true, m_aEditedItems, attributesIds, attributesVars, attributesMultiSelect);
 		
 		//--- Remember edited attributes
-		m_aEditedAttributes = new array<SCR_BaseEditorAttribute>;
+		m_aEditedAttributes = {};
 		foreach (int i, int attributeId: attributesIds)
 		{
 			SCR_BaseEditorAttribute attribute = m_PrefabData.GetAttribute(attributeId);
@@ -195,7 +210,7 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 			Rpc(StartEditingOwner, attributesIds, attributesVars, attributesMultiSelect);
 	}
 	
-	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void StartEditingOwner(notnull array<int> attributesIds, notnull array<ref SCR_BaseEditorAttributeVar> attributesVars, notnull array<ref EEditorAttributeMultiSelect> attributesMultiSelect)
 	{
@@ -213,7 +228,7 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 		GetVariables(false, m_aEditedItems, attributesIds, attributesVars, attributesMultiSelect);
 		
 		//--- Process all edited attributes
-		m_aEditedAttributes = new array<SCR_BaseEditorAttribute>;
+		m_aEditedAttributes = {};
 		foreach (int i, int attributeId: attributesIds)
 		{
 			//-- Register to an array that is sent to the invoker
@@ -255,7 +270,8 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 		}
 	}
 	
-	//Checks if the given attribute is a dupplicant
+	//------------------------------------------------------------------------------------------------
+	// Checks if the given attribute is a dupplicant
 	protected bool GetIsAttributeDuplicate(typename type)
 	{
 		//Ignore Attributes that can be duplicated
@@ -272,18 +288,21 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 	}
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//--- Confirm
-	/*!
-	Confirm changes made during editing.
-	Must be called on editor owner.
-	*/
+	//--- ConfirmEditing
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
+	//! Confirm changes made during editing.
+	//! Must be called on editor owner.
 	void ConfirmEditing()
 	{		
 		//--- Not an owner, ignore
-		if (!IsOwner()) return;
+		if (!IsOwner())
+			return;
 		
 		//--- Not editing, ignore
-		if (!m_aEditedItems) return;
+		if (!m_aEditedItems)
+			return;
 		
 		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
 		int PlayerID = -1;
@@ -294,20 +313,22 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 		bool attributeChangesApplied = false;
 		
 		//--- Apply changed values
-		array<int> attributesIds = new array<int>;
-		array<ref SCR_BaseEditorAttributeVar> attributesVars = new array<ref SCR_BaseEditorAttributeVar>;
+		array<int> attributesIds = {};
+		array<ref SCR_BaseEditorAttributeVar> attributesVars = {};
 		foreach (SCR_BaseEditorAttribute attribute: m_aEditedAttributes)
 		{
 			SCR_BaseEditorAttributeVar var = attribute.GetVariable();
 			SSnapshot snapshot = attribute.GetSnapshot();
 			
 			//--- Non-shared value wasn't set, skip
-			if (!var) continue;
+			if (!var)
+				continue;
 			
 			//~ Attribute is not enabled so skip
-			if (!attribute.IsEnabled()) continue;
+			if (!attribute.IsEnabled())
+				continue;
 			
-			//~ If attribute edits multiple entities and the value on the entities differ from eachother and that value is being changed overriden (even if it might be the same as some entities) then consider the value changed
+			//~ If attribute edits multiple entities and the value on the entities differ from eachother and that value is being changed overridden (even if it might be the same as some entities) then consider the value changed
 			//~ Else check if attribute was changed using snapshot
 			if (!attribute.GetIsMultiSelect() || !attribute.GetHasConflictingValues() || !attribute.GetIsOverridingValues())
 			{
@@ -356,12 +377,14 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 			if (!m_bHasChangedAttributesOnce)
 				m_bHasChangedAttributesOnce = true;
 		}
-			
 	}
+
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void ConfirmEditingServer(notnull array<int> attributesIds, notnull array<ref SCR_BaseEditorAttributeVar> attributesVars, int PlayerID)
 	{
-		if (!m_PrefabData) return;
+		if (!m_PrefabData)
+			return;
 		
 		foreach (int i, int attributeId: attributesIds)
 		{
@@ -386,25 +409,31 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Cancel
-	/*!
-	Cancel changes made during editing.
-	Must be called on editor owner.
-	*/
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
+	//! Cancel changes made during editing.
+	//! Must be called on editor owner.
 	void CancelEditing()
 	{
 		//--- Not an owner, ignore (not used, would kill the process when the world is shutting down and the owner is already null)
 		//if (!IsOwner()) return;
 		
 		//--- Not editing, ignore
-		if (!m_aEditedItems) return;
+		if (!m_aEditedItems)
+			return;
 		
 		//--- Restore original values
 		Reset(false);
 		
-		if (!IsRemoved()) Rpc(CancelEditingServer); //--- Send Rpc only when the entity is not being deleted, e.g., when closing the game
+		if (!IsRemoved())
+			Rpc(CancelEditingServer); //--- Send Rpc only when the entity is not being deleted, e.g., when closing the game
+
 		Event_OnAttributesCancel.Invoke(m_aEditedAttributes);
 		Clean();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void CancelEditingServer()
 	{
@@ -414,15 +443,17 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Reset
-	/*!
-	Reset values of currently edited attributes to the state they had when the editing started.
-	Must be called on editor owner.
-	\param telegraphChange True to update GUI when attribute value is changed
-	*/
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
+	//! Reset values of currently edited attributes to the state they had when the editing started.
+	//! Must be called on editor owner.
+	//! \param[in] telegraphChange True to update GUI when attribute value is changed
 	void Reset(bool telegraphChange)
 	{
 		//--- Not editing, ignore
-		if (!m_aEditedItems) return;
+		if (!m_aEditedItems)
+			return;
 				
 		//--- Restore original values
 		foreach (SCR_BaseEditorAttribute attribute: m_aEditedAttributes)
@@ -473,6 +504,9 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Support Funcions
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	protected void Clean()
 	{
 		if (m_aEditedAttributes)
@@ -486,14 +520,19 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 		m_aEditedItems = null;
 		m_aEditedAttributes = null;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected int GetVariables(bool onlyServer, notnull array<Managed> items, notnull out array<int> outIds, notnull out array<ref SCR_BaseEditorAttributeVar> outVars,  notnull out array<ref EEditorAttributeMultiSelect> outAttributesMultiSelect)
 	{		
 		SCR_BaseEditorAttribute attribute;
 		for (int i = 0, count = m_PrefabData.GetAttributesCount(); i < count; i++)
 		{
 			attribute = m_PrefabData.GetAttribute(i);
-			if (!attribute) continue;
-			if (attribute.IsServer() != onlyServer) continue;
+			if (!attribute)
+				continue;
+
+			if (attribute.IsServer() != onlyServer)
+				continue;
 			
 			SCR_BaseEditorAttributeVar var = null;
 			bool isCompatible = false;
@@ -506,10 +545,12 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 			
 			foreach (Managed item: items)
 			{				
-				if (!item) continue;
+				if (!item)
+					continue;
 				
 				SCR_BaseEditorAttributeVar checkVar = attribute.ReadVariable(item, this);
-				if (!checkVar) continue;
+				if (!checkVar)
+					continue;
 				
 				var = checkVar;
 				isCompatible = true;
@@ -549,22 +590,22 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 		}
 		return outVars.Count();
 	}
-	
-	
+
 	//~Todo: Make sure server and non-server actions are correctly checked. Currently if only has attributes that can only be checked on server the attributes cannot be opened!
-	/*!
-	Reset values of currently edited attributes to the state they had when the editing started.
-	Must be called on editor owner.
-	\param telegraphChange True to update GUI when attribute value is changed
-	*/
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] items
+	//! \return
 	bool CanOpenAttributeDialog(notnull array<Managed> items)
 	{		
 		SCR_BaseEditorAttribute attribute;
 		for (int i = 0, count = m_PrefabData.GetAttributesCount(); i < count; i++)
 		{
 			attribute = m_PrefabData.GetAttribute(i);
-			if (!attribute) continue;
-			//if (attribute.IsServer() != onlyServer) continue;
+			if (!attribute)
+				continue;
+			//if (attribute.IsServer() != onlyServer)
+			//	continue;
 			
 			foreach (Managed item: items)
 			{				
@@ -583,13 +624,13 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 		return false;
 		
 	}
-	/*!
-	Sets the value of an attribute in the atribute window
-	This is called seperetly from the UI and is for attributes to influence other attributes
-	\param type Class of attribute to set value
-	\param var value to set
-	\return bool if the class is succesfully found
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Sets the value of an attribute in the atribute window
+	//! This is called seperetly from the UI and is for attributes to influence other attributes
+	//! \param[in] type Class of attribute to set value
+	//! \param[in] var value to set
+	//! \return bool if the class is succesfully found
 	bool SetAttributeVariable(typename type, SCR_BaseEditorAttributeVar var)
 	{
 		SCR_BaseEditorAttribute attribute;
@@ -614,12 +655,11 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 		}
 	} 
 	
-	/*!
-	Gets the value of an attribute in the atribute window
-	\param type Class of attribute to set value
-	\para[out] var Value to get
-	\return bool if the class is succesfully found
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Gets the value of an attribute in the atribute window
+	//! \param[in] type Class of attribute to set value
+	//! \param[out] var Value to get
+	//! \return bool if the class is succesfully found
 	bool GetAttributeVariable(typename type, out SCR_BaseEditorAttributeVar var)
 	{		
 		if (!m_aEditedAttributes || m_aEditedAttributes.IsEmpty())
@@ -640,15 +680,14 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 		return false;
 	} 
 	
-	/*!
-	Get list of all attributes of given type (or inherents from type)
-	\param type Class of attribute
-	\param[out] list of attributes of type
-	\param includedInherent If true will also get inherent classes else will only get the attributes of given type
-	\param ignoreAttribute Add if a given attribute should be ignored
-	\return Count of the found attributes
-	*/
-	int GetActiveAttributesOfType(typename type, notnull out array<SCR_BaseEditorAttribute> attributes, bool includedInherent = true, SCR_BaseEditorAttribute ignoreAttribute = null)
+	//------------------------------------------------------------------------------------------------
+	//! Get list of all attributes of given type (or inherits from type)
+	//! \param[in] type Class of attribute
+	//! \param[out] attributes list of attributes of type
+	//! \param[in] includedInherit If true will also get inherent classes else will only get the attributes of given type
+	//! \param[in] ignoreAttribute Add if a given attribute should be ignored
+	//! \return Count of the found attributes
+	int GetActiveAttributesOfType(typename type, notnull out array<SCR_BaseEditorAttribute> attributes, bool includedInherit = true, SCR_BaseEditorAttribute ignoreAttribute = null)
 	{		
 		attributes.Clear();
 		
@@ -657,21 +696,18 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 		
 		foreach (SCR_BaseEditorAttribute attributeEntry: m_aEditedAttributes)
 		{
-			if (((includedInherent && attributeEntry.Type().IsInherited(type)) || (!includedInherent && attributeEntry.Type() == type)) && attributeEntry != ignoreAttribute)
-			{
+			if (((includedInherit && attributeEntry.Type().IsInherited(type)) || (!includedInherit && attributeEntry.Type() == type)) && attributeEntry != ignoreAttribute)
 				attributes.Insert(attributeEntry);
-			}
 		}
 		
 		return attributes.Count();
 	} 
 	
-	/*!
-	Gets the attribute in the atribute window
-	\param type Class of attribute
-	\param[out] attribute attribute to get
-	\return bool if the class is succesfully found
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Gets the attribute in the atribute window
+	//! \param[in] type Class of attribute
+	//! \param[out] attribute attribute to get
+	//! \return if the class is succesfully found
 	bool GetActiveAttribute(typename type, out SCR_BaseEditorAttribute attribute)
 	{		
 		if (!m_aEditedAttributes || m_aEditedAttributes.IsEmpty())
@@ -690,12 +726,12 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 		
 		return false;
 	}
-	/*!
-	Called to send out an event that the attribute is enabled or disabled
-	\param type Class of attribute to set value
-	\param enabled enable value to set
-	\return bool if the class is succesfully found
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Called to send out an event that the attribute is enabled or disabled
+	//! \param[in] type Class of attribute to set value
+	//! \param[in] enabled enable value to set
+	//! \return if the class is succesfully found
 	bool SetAttributeEnabled(typename type, bool enabled)
 	{
 		SCR_BaseEditorAttribute attribute;
@@ -721,14 +757,14 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 			return false;
 		}
 	}
-	/*!
-	Called to send out an event that the attribute should be selected. 
-	Think of a slider being used which is also set by presets
-	\param class of attribute to set value
-	\param selected value to set
-	\param optionally an index of a element that needs to be set selected
-	\return bool if the class is succesfully found
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Called to send out an event that the attribute should be selected.
+	//! Think of a slider being used which is also set by presets
+	//! \param[in] type class of attribute to set value
+	//! \param[in] selected value to set
+	//! \param[in] index optionally an index of a element that needs to be set selected
+	//! \return if the class is succesfully found
 	bool SetAttributeSelected(typename type, bool selected, int index = -1)
 	{
 		SCR_BaseEditorAttribute attribute;
@@ -753,11 +789,11 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 			return false;
 		}
 	}
-	/*!
-	Called to send out an event that makes sure the given attribute knows it is a sub attribute for another attribute which sets so visual diffrences
-	\param class of attribute
-	\return bool if the class is succesfully found
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Called to send out an event that makes sure the given attribute knows it is a sub attribute for another attribute which sets so visual differences
+	//! \param[in] type class of attribute
+	//! \return if the class is succesfully found
 	bool SetAttributeAsSubAttribute(typename type)
 	{
 		SCR_BaseEditorAttribute attribute;
@@ -782,6 +818,9 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] type
+	//! \return
 	SCR_BaseEditorAttribute GetAttributeRef(typename type)
 	{
 		foreach (SCR_BaseEditorAttribute attributeEntry: m_aEditedAttributes)
@@ -793,145 +832,129 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 		return null;
 	}
 	
-	
-	/*!
-	Get currently edited attributes
-	\param outAttributes Array to be filled with attributes
-	\return Number of attributes
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get currently edited attributes
+	//! \param[in] outAttributes Array to be filled with attributes
+	//! \return Number of attributes
 	int GetEditedAttributes(out notnull array<SCR_BaseEditorAttribute> outAttributes)
 	{
 		return outAttributes.Copy(m_aEditedAttributes);
 	}
-	/*!
-	Get currently edited items
-	\param outAttributes Array to be filled with items
-	\return Number of items
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get currently edited items
+	//! \param[in] outAttributes Array to be filled with items
+	//! \return Number of items
 	int GetEditedItems(out notnull array<Managed> outitems)
 	{
 		return outitems.Copy(m_aEditedItems);
 	}
-	/*!
-	Get event called when request for editing attributes is sent to server.
-	Called only for editor user.
-	\return Script invoker
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get event called when request for editing attributes is sent to server.
+	//! Called only for editor user.
+	//! \return Script invoker
 	ScriptInvoker GetOnAttributesRequest()
 	{
 		return Event_OnAttributesRequest;
 	}
-	/*!
-	Get event called when editing attributes is confirmed by server.
-	Called only for editor user.
-	\return Script invoker
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get event called when editing attributes is confirmed by server.
+	//! Called only for editor user.
+	//! \return Script invoker
 	ScriptInvoker GetOnAttributesStart()
 	{
 		return Event_OnAttributesStart;
 	}
-	/*!
-	Get event called when editing attributes is confirmed.
-	Called only for editor user.
-	\return Script invoker
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get event called when editing attributes is confirmed.
+	//! Called only for editor user.
+	//! \return Script invoker
 	ScriptInvoker GetOnAttributesConfirm()
 	{
 		return Event_OnAttributesConfirm;
 	}
-	/*!
-	Get event called when editing attributes is canceled.
-	Called only for editor user.
-	\return Script invoker
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get event called when editing attributes is canceled.
+	//! Called only for editor user.
+	//! \return Script invoker
 	ScriptInvoker GetOnAttributesCancel()
 	{
 		return Event_OnAttributesCancel;
 	}
 	
-	/*!
-	Get event called when attributes are reset.
-	\return Script invoker
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get event called when attributes are reset.
+	//! \return Script invoker
 	ScriptInvoker GetOnResetAttributes()
 	{
 		return Event_OnResetAttributes;
 	}
 	
-	/*!
-	Get event called when attribute changes are applied
-	\return Script invoker
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get event called when attribute changes are applied
+	//! \return Script invoker
 	ScriptInvoker GetOnAttributeChangesApplied()
 	{
 		return Event_OnAttributeChangesApplied;
 	}
 	
-	/*!
-	Get event called when attribute description changes and should be displayed in the attribute UI dailog
-	\return Script invoker Event_OnAttributeDescriptionChanged
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get event called when attribute description changes and should be displayed in the attribute UI dailog
+	//! \return Script invoker Event_OnAttributeDescriptionChanged
 	ScriptInvoker GetOnAttributeDescriptionChanged()
 	{
 		return Event_OnAttributeDescriptionChanged;
 	}
 	
-	/*!
-	Get script invoker that is called everytime category is changed
-	\return Script invoker OnAttributeCategoryChanged
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get script invoker that is called everytime category is changed
+	//! \return Script invoker OnAttributeCategoryChanged
 	ScriptInvoker GetOnAttributeCategoryChanged()
 	{
 		return Event_OnAttributeCategoryChanged;
 	}
 	
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////
-	/*!
-	Info displayed when attribute is locked if it is a conflicting attribute
-	\return The conflicting attribute UI info
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Info displayed when attribute is locked if it is a conflicting attribute
+	//! \return The conflicting attribute UI info
 	SCR_EditorAttributeUIInfo GetConflictingAttributeUIInfo()
 	{
 		return m_ConflictingAttributeUIInfo;
 	}
-	
 
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////
-	/*!
-	Set current category config.
-	\category Category config
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Set current category config.
+	//! \param[in] category Category config
 	void SetCurrentCategory(ResourceName category)
 	{
 		m_CurrentCategory = category;
 		Event_OnAttributeCategoryChanged.Invoke(m_CurrentCategory);
 	}
-	/*!
-	\return Get current category config.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return Get current category config.
 	ResourceName GetCurrentCategory()
 	{
 		return m_CurrentCategory;
 	}
 	
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////
-	/*!
-	Get if user has changed attributes once
-	\return m_bHasChangedAttributesOnce
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get if user has changed attributes once
+	//! \return m_bHasChangedAttributesOnce
 	bool GetChangedAttributesOnce()
 	{
 		return m_bHasChangedAttributesOnce;
 	}
 	
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////
-	/*!
-	Calls an event to set the attribute Description displayed in the Attributes dialog
-	\param content text displayed
-	\param icon icon displayed. Hidden if left empty
-	\param param1 param in text
-	\param param2 param in text
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Calls an event to set the attribute Description displayed in the Attributes dialog
+	//! \param[in] uiInfo
+	//! \param[in] customDescription
+	//! \param[in] param1 param in text
+	//! \param[in] param2 param in text
+	//! \param[in] param3 param in text
 	void SetAttributeDescription(SCR_EditorAttributeUIInfo uiInfo, string customDescription = string.Empty, string param1 = string.Empty, string param2 = string.Empty, string param3 = string.Empty)
 	{
 		Event_OnAttributeDescriptionChanged.Invoke(uiInfo, customDescription, param1, param2, param3);
@@ -939,14 +962,21 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Default Functions
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnEditorActivate()
 	{
 		m_StatesManager = SCR_StatesEditorComponent.Cast(SCR_StatesEditorComponent.GetInstance(SCR_StatesEditorComponent));
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnEditorDeactivate()
 	{
 		CancelEditing();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnEditorInit()
 	{
 		m_PrefabData = SCR_AttributesManagerEditorComponentClass.Cast(GetEditorComponentData());
@@ -962,8 +992,10 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 			}
 		}	
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnEditorInitServer()
 	{
 		m_PrefabData = SCR_AttributesManagerEditorComponentClass.Cast(GetEditorComponentData());
 	}
-};
+}

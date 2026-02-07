@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 //~ Incoming liters per minute
 enum EFuelFlowCapacityIn
 {
@@ -8,9 +7,8 @@ enum EFuelFlowCapacityIn
 	VEHICLE_BIG 		= 	1400,			//airplanes
 	VEHICLE_HELICOPTER 	= 	2500,			//helicopter
 	FUEL_CARGO 			= 	4500,			//Fuel Cargo like fuel tanks on truck
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //~ Outgoing liters per minute
 enum EFuelFlowCapacityOut
 {
@@ -20,9 +18,8 @@ enum EFuelFlowCapacityOut
 	VEHICLE_BIG 		= 	1400,			//airplanes
 	VEHICLE_HELICOPTER 	= 	2500,			//helicopter
 	FUEL_CARGO 			= 	4500,			//Fuel Cargo like fuel tanks on truck
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //~ Fuel node type flags
 enum SCR_EFuelNodeTypeFlag
 {
@@ -53,7 +50,7 @@ class SCR_FuelNode : BaseFuelNode
 	[Attribute( defvalue: "1", uiwidget: UIWidgets.EditBox, desc: "Fuel tank ID (user action and hitzone)" )]
 	protected int m_iFuelTankID;	//for pairing with the user action
 
-	static ref ScriptInvoker s_OnRefuelingFinished = new ref ScriptInvoker();
+	static ref ScriptInvoker s_OnRefuelingFinished = new ScriptInvoker();
 	protected ref ScriptInvokerFloat m_OnFuelChanged;
 
 	#ifndef DISABLE_FUEL
@@ -79,47 +76,41 @@ class SCR_FuelNode : BaseFuelNode
 	#endif
 	
 	//------------------------------------------------------------------------------------------------
-	//! True if fuel node can receive fuel
+	//! \return true if fuel node can receive fuel
 	bool CanReceiveFuel()
 	{
 		return SCR_Enum.HasFlag(m_eFuelNodeType, SCR_EFuelNodeTypeFlag.CAN_RECEIVE_FUEL);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! True if fuel node can provide fuel
+	//! \return true if fuel node can provide fuel
 	bool CanProvideFuel()
 	{
 		return SCR_Enum.HasFlag(m_eFuelNodeType, SCR_EFuelNodeTypeFlag.CAN_PROVIDE_FUEL);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check if FuelNodeType enum is exactly the same as the nodeType enum
-	\param typeFlag Queried flag types
-	\return True if FuelNode Type contains the exact same flags
-	*/
+	//! Check if FuelNodeType enum is exactly the same as the nodeType enum
+	//! \param typeFlag Queried flag types
+	//! \return true if FuelNode Type contains the exact same flags, false otherwise
 	bool HasExactTypeFlags(SCR_EFuelNodeTypeFlag typeFlag)
 	{
 		return typeFlag == m_eFuelNodeType;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check if FuelNodeType enum contains all the given fuel node type flags
-	\param typeFlag Queried flag types
-	\return True if FuelNode Type contains all required type flags
-	*/
+	//! Check if FuelNodeType enum contains all the given fuel node type flags
+	//! \param typeFlag Queried flag types
+	//! \return true if FuelNode Type contains all required type flags
 	bool HasAllTypeFlags(SCR_EFuelNodeTypeFlag typeFlag)
 	{
 		return SCR_Enum.HasFlag(m_eFuelNodeType, typeFlag);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check if FuelNodeType enum contains any of the given fuel node type flags
-	\param typeFlag Queried flag types
-	\return True if FuelNode Type contains any required type flag
-	*/
+	//! Check if FuelNodeType enum contains any of the given fuel node type flags
+	//! \param typeFlag Queried flag types
+	//! \return True if FuelNode Type contains any required type flag
 	bool HasAnyTypeFlag(SCR_EFuelNodeTypeFlag typeFlag)
 	{
 		return SCR_Enum.HasPartialFlag(m_eFuelNodeType, typeFlag);
@@ -140,6 +131,7 @@ class SCR_FuelNode : BaseFuelNode
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] health
 	void SetHealth(float health)
 	{
 		m_fHealth = Math.Clamp(health, 0, 1);
@@ -190,6 +182,7 @@ class SCR_FuelNode : BaseFuelNode
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ScriptInvokerFloat GetOnFuelChanged()
 	{
 		if (!m_OnFuelChanged)
@@ -199,24 +192,28 @@ class SCR_FuelNode : BaseFuelNode
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetHealth()
 	{
 		return m_fHealth;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetLeakableFuel()
 	{
 		return GetFuel() - GetMaxFuel() * m_fHealth;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	EFuelFlowCapacityOut GetMaxFlowCapacityOut()
 	{
 		return m_MaxFlowCapacityOut;
 	}
 		
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	EFuelFlowCapacityIn GetMaxFlowCapacityIn()
 	{
 		return m_MaxFlowCapacityIn;
@@ -246,15 +243,39 @@ class SCR_FuelNode : BaseFuelNode
 	}
 
 	#else
-	//Keeping just the declarations of function when the system is disabled
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	// Keeping just the declarations of function when the system is disabled
 	bool CanReceiveFuel();
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool CanProvideFuel();
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetFuelTankID();
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	IEntity GetOwner();
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] health
 	void SetHealth(float health);
+
+	//------------------------------------------------------------------------------------------------
 	override void OnFixedFrame(IEntity owner, float timeSlice);
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnFuelChanged();
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetLeakableFuel();
+
+	//------------------------------------------------------------------------------------------------
 	override void OnInit(IEntity owner);
 	#endif
-};
+}

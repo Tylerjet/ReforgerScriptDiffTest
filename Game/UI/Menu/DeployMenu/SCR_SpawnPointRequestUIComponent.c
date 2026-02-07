@@ -23,7 +23,8 @@ class SCR_SpawnPointRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		m_SpawnPointSelector.m_OnChanged.Insert(SelectSpawnPoint);
 		SCR_SpawnPoint.Event_SpawnPointFactionAssigned.Insert(OnSpawnPointFactionChange);
 		SCR_SpawnPoint.Event_SpawnPointAdded.Insert(OnSpawnPointAdded);
-		SCR_SpawnPoint.Event_SpawnPointRemoved.Insert(RemoveSpawnPoint);		
+		SCR_SpawnPoint.Event_SpawnPointRemoved.Insert(RemoveSpawnPoint);
+		SCR_SpawnPoint.OnSpawnPointNameChanged.Insert(UpdateSpawnPointName);
 	}
 
 	override void HandlerDeattached(Widget w)
@@ -34,6 +35,7 @@ class SCR_SpawnPointRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		SCR_SpawnPoint.Event_SpawnPointFactionAssigned.Remove(OnSpawnPointFactionChange);
 		SCR_SpawnPoint.Event_SpawnPointAdded.Remove(OnSpawnPointAdded);
 		SCR_SpawnPoint.Event_SpawnPointRemoved.Remove(RemoveSpawnPoint);		
+		SCR_SpawnPoint.OnSpawnPointNameChanged.Remove(UpdateSpawnPointName);
 	}
 	
 	protected void SelectSpawnPoint(SCR_SpawnPointSpinBox spinbox, int itemId)
@@ -105,6 +107,12 @@ class SCR_SpawnPointRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		}
 	}
 	
+	protected void UpdateSpawnPointName(RplId id, string name)
+	{
+		int itemId = m_SpawnPointSelector.GetItemId(id);
+		m_SpawnPointSelector.SetItemName(itemId, name);
+	}
+
 	protected void OnSpawnPointAdded(SCR_SpawnPoint spawnPoint)
 	{
 		Faction playerFaction = SCR_FactionManager.SGetLocalPlayerFaction();

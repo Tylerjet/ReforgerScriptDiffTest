@@ -1,10 +1,7 @@
-[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
-/** @ingroup ManualCamera
-*/
+//! @ingroup ManualCamera
 
-/*!
-Persistently save/load camera params.
-*/
+//! Persistently save/load camera params.
+[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
 class SCR_SaveManualCameraComponent: SCR_BaseManualCameraComponent
 {
 	[Attribute(params: "layout")]
@@ -28,6 +25,8 @@ class SCR_SaveManualCameraComponent: SCR_BaseManualCameraComponent
 	protected void SaveCamera7() { SaveCamera(7); }
 	protected void SaveCamera8() { SaveCamera(8); }
 	//protected void SaveCamera9() { SaveCamera(9); }
+
+	//------------------------------------------------------------------------------------------------
 	protected void SaveCamera(int index)
 	{
 		SCR_ManualCamera camera = GetCameraEntity();
@@ -85,6 +84,8 @@ class SCR_SaveManualCameraComponent: SCR_BaseManualCameraComponent
 	protected void LoadCamera7() { LoadCamera(7); }
 	protected void LoadCamera8() { LoadCamera(8); }
 	//protected void LoadCamera9() { LoadCamera(9); }
+
+	//------------------------------------------------------------------------------------------------
 	protected void LoadCamera(int index)
 	{
 		ResourceName worldPath = GetGame().GetWorldFile();// SCR_Global.GetRootWorld(); //--- Does not return ResourceName, TODO: use it again when it does
@@ -107,7 +108,7 @@ class SCR_SaveManualCameraComponent: SCR_BaseManualCameraComponent
 		SCR_ManualCamera camera = GetCameraEntity();
 		foreach (SCR_ManualCameraSave saveCandidate: settings.m_aSavedData)
 		{
-			PrintFormat("%1 == %2 && %3 == %4", saveCandidate.m_iIndex, index, saveCandidate.m_sWorldPath, worldPath);
+			Print(string.Format("%1 == %2 && %3 == %4", saveCandidate.m_iIndex, index, saveCandidate.m_sWorldPath, worldPath), LogLevel.NORMAL);
 			if (saveCandidate.m_iIndex == index && saveCandidate.m_sWorldPath == worldPath)
 			{
 				camera.LoadComponents(saveCandidate.m_aComponentData);
@@ -123,6 +124,7 @@ class SCR_SaveManualCameraComponent: SCR_BaseManualCameraComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override bool EOnCameraInit()
 	{
 		InputManager inputManager = GetGame().GetInputManager();
@@ -154,6 +156,7 @@ class SCR_SaveManualCameraComponent: SCR_BaseManualCameraComponent
 			m_WidgetSave = GetCameraEntity().CreateCameraWidget(m_LayoutSave);
 			m_WidgetSave.SetOpacity(0);
 		}
+
 		if (m_LayoutLoad)
 		{
 			m_WidgetLoad = GetCameraEntity().CreateCameraWidget(m_LayoutLoad);
@@ -162,6 +165,8 @@ class SCR_SaveManualCameraComponent: SCR_BaseManualCameraComponent
 		
 		return false;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void PlayAnimation(Widget widget)
 	{
 		if (widget)
@@ -170,7 +175,8 @@ class SCR_SaveManualCameraComponent: SCR_BaseManualCameraComponent
 			AnimateWidget.Opacity(widget, 0, m_fFadeInSpeed);
 		}
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraExit()
 	{
 		InputManager inputManager = GetGame().GetInputManager();
@@ -203,4 +209,4 @@ class SCR_SaveManualCameraComponent: SCR_BaseManualCameraComponent
 		if (m_WidgetLoad)
 			m_WidgetLoad.RemoveFromHierarchy();
 	}
-};
+}

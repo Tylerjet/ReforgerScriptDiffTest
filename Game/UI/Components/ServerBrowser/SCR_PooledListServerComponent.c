@@ -1,17 +1,9 @@
-/*
-Pooled scrollable list with server entries handling.
-*/
-
-//------------------------------------------------------------------------------------------------
+//! Pooled scrollable list with server entries handling.
 class SCR_PooledServerListComponent : SCR_PooledListComponent
 {
 	// Server arrays
 	protected ref array<SCR_ServerBrowserEntryComponent> m_aRoomEntries = {};
 	protected ref array<Room> m_aRooms = {};
-
-	// Invokers
-	ref ScriptInvoker m_OnServerFavorite = new ScriptInvoker();
-	ref ScriptInvoker m_OnServerDoubleClick = new ScriptInvoker();
 
 	protected int m_iLoadedPage;
 
@@ -44,6 +36,7 @@ class SCR_PooledServerListComponent : SCR_PooledListComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Set server entry it's room data to display server info
+	//! \param[in] w
 	override protected void FillEntry(Widget w)
 	{
 		int entryId = -1;
@@ -77,7 +70,6 @@ class SCR_PooledServerListComponent : SCR_PooledListComponent
 		ClientLobbyApi lobby = GetGame().GetBackendApi().GetClientLobby();
 
 		// Fill room
-
 
 		if (roomId < 0 || roomId >= m_aRooms.Count())
 			return;
@@ -195,10 +187,9 @@ class SCR_PooledServerListComponent : SCR_PooledListComponent
 	//------------------------------------------------------------------------------------------------
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Call this when focusing on server entry
-	Show data about server
-	*/
+	//! Call this when focusing on server entry
+	//! Show data about server
+	//! \param[in] entry
 	protected void OnServerEntryFocusEnter(SCR_ScriptedWidgetComponent entry)
 	{
 		SCR_ServerBrowserEntryComponent serverEntry = SCR_ServerBrowserEntryComponent.Cast(entry);
@@ -222,7 +213,9 @@ class SCR_PooledServerListComponent : SCR_PooledListComponent
 	//------------------------------------------------------------------------------------------------
 
 	//------------------------------------------------------------------------------------------------
-	//! Returns server entry owned by given entry widget root
+	//! \param[in] entryWidget
+	//! \param[out] id
+	//! \return server entry owned by given entry widget root
 	protected SCR_ServerBrowserEntryComponent ServerEntryByWidget(Widget entryWidget, out int id)
 	{
 		// Check widget
@@ -233,9 +226,7 @@ class SCR_PooledServerListComponent : SCR_PooledListComponent
 		id = m_aEntryWidgets.Find(entryWidget);
 
 		if (0 <= id && id < m_aRoomEntries.Count())
-		{
 			return m_aRoomEntries[id];
-		}
 
 		return null;
 	}
@@ -245,6 +236,9 @@ class SCR_PooledServerListComponent : SCR_PooledListComponent
 	//------------------------------------------------------------------------------------------------
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] rooms
+	//! \param[in] allRoomsCount
+	//! \param[in] animate
 	void SetRooms(array<Room> rooms, int allRoomsCount = -1, bool animate = false)
 	{
 		m_wRoot.SetVisible(true);
@@ -264,15 +258,17 @@ class SCR_PooledServerListComponent : SCR_PooledListComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void ShowEmptyRooms()
 	{
 		m_aRooms.Clear();
 		UpdateEntries(false);
 
 		// Hide entries
-		int count = m_aEntryWidgets.Count();
-		for (int i = 0; i < count; i++)
-			m_aEntryWidgets[i].SetVisible(false);
+		foreach (Widget widget : m_aEntryWidgets)
+		{
+			widget.SetVisible(false);
+		}
 
 		if (m_bIsMeasured)
 		{
@@ -289,10 +285,10 @@ class SCR_PooledServerListComponent : SCR_PooledListComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Return true if room of given entry is loaded
-	Base on widget and current id check if it's in loaded servers batch
-	*/
+	//! Return true if room of given entry is loaded
+	//! Base on widget and current id check if it's in loaded servers batch
+	//! \param[in] entry
+	//! \return
 	bool IsRoomLoaded(notnull SCR_ServerBrowserEntryComponent entry)
 	{
 		if (m_aRoomEntries.IsEmpty())
@@ -306,7 +302,8 @@ class SCR_PooledServerListComponent : SCR_PooledListComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Return true if entry not pass whole found server list
+	//! \param[in] entry
+	//! \return true if entry not pass whole found server list
 	protected bool IsEntryVisible(Widget entry)
 	{
 		// Current id - based on current page
@@ -321,15 +318,21 @@ class SCR_PooledServerListComponent : SCR_PooledListComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	array<SCR_ServerBrowserEntryComponent> GetRoomEntries() { return m_aRoomEntries; }
+	//! \return
+	array<SCR_ServerBrowserEntryComponent> GetRoomEntries()
+	{
+		return m_aRoomEntries;
+	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetLoadedPage()
 	{
 		return m_iLoadedPage;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	int GetCurrentPage()
 	{
 		return m_iCurrentPage;

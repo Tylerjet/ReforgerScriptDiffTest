@@ -1,5 +1,5 @@
 [EntityEditorProps(category: "GameScripted/ScriptWizard", description: "SCR_FuelConsumptionComponent", color: "0 0 255 255")]
-class SCR_FuelConsumptionComponentClass: ScriptGameComponentClass
+class SCR_FuelConsumptionComponentClass : ScriptGameComponentClass
 {
 	[Attribute( defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Automatic fuel tank switching. Automatically select next fuel tank upon depletion of current fuel tank." )]
 	bool m_bAutomaticFuelTankSwitching;
@@ -9,9 +9,8 @@ class SCR_FuelConsumptionComponentClass: ScriptGameComponentClass
 	
 	[Attribute( defvalue: "0.5", uiwidget: UIWidgets.Auto, desc: "Fuel consumption idle\n[liters/hour]" )]
 	float m_fFuelConsumptionIdle;
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_FuelConsumptionComponent : ScriptGameComponent
 {
 	protected const float							SECOND_TO_HOUR		= 1/3600;
@@ -28,15 +27,13 @@ class SCR_FuelConsumptionComponent : ScriptGameComponent
 	protected VehicleBaseSimulation					m_Simulation;
 	protected SCR_FuelConsumptionComponentClass		m_ComponentData;
 	
-	//~ Global Fuel consumption scale for vehicles (and other fuel consumers). x1 means the fuel consumption is roughly equal to real world fuel consumption
-	protected static float s_fGlobalFuelConsumptionScale = 4;
+	//! Global Fuel consumption scale for vehicles (and other fuel consumers). x1 means the fuel consumption is roughly equal to real world fuel consumption
+	protected static float s_fGlobalFuelConsumptionScale = 8;
 	
 	//------------------------------------------------------------------------------------------------
-	/*
-	Set Fuel consumption scale of vehicles (and other fuel consumers) (Server only)
-	\param globalFuelConsumptionScale New fuel consumption scale
-	\param playerThatChangedValue Optional, if value given then a notification is send on scale changed 
-	*/
+	//! Set Fuel consumption scale of vehicles (and other fuel consumers) (Server only)
+	//! \param[in] globalFuelConsumptionScale New fuel consumption scale
+	//! \param[in] playerThatChangedValue Optional, if value given then a notification is send on scale changed
 	static void SetGlobalFuelConsumptionScale(float globalFuelConsumptionScale, int playerThatChangedValue = -1)
 	{
 		if (s_fGlobalFuelConsumptionScale == globalFuelConsumptionScale || globalFuelConsumptionScale < 0)
@@ -54,22 +51,22 @@ class SCR_FuelConsumptionComponent : ScriptGameComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*
-	\return Global Fuel consumption Scale
-	*/
+	//! \return Global Fuel consumption Scale
 	static float GetGlobalFuelConsumptionScale()
 	{
 		return s_fGlobalFuelConsumptionScale;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! switch the actual fuel tank (i.e. by a switch on the dashboard)
+	//! Switch the actual fuel tank (i.e. by a switch on the dashboard)
+	//! \param[in] iFuelTankID
 	void SetCurrentFuelTank(int iFuelTankID)
 	{
 		m_CurrentFuelTank = FindFuelTankByID(iFuelTankID);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	BaseFuelNode GetCurrentFuelTank()
 	{
 		return m_CurrentFuelTank;
@@ -77,6 +74,8 @@ class SCR_FuelConsumptionComponent : ScriptGameComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! returns the fuel tank pointer by the given FuelTankID
+	//! \param[in] iFuelTankID
+	//! \return
 	protected BaseFuelNode FindFuelTankByID(int iFuelTankID)
 	{
 		FuelManagerComponent fuelManager = FuelManagerComponent.Cast(GetOwner().FindComponent(FuelManagerComponent));
@@ -97,9 +96,8 @@ class SCR_FuelConsumptionComponent : ScriptGameComponent
 		return null;
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
-	//! returns the pointer of the first fuel tank with enough fuel (the fuel tank which is dedicated to the vehicle, not its cistern, cargo...)
+	//! \return the pointer of the first fuel tank with enough fuel (the fuel tank which is dedicated to the vehicle, not its cistern, cargo...)
 	private BaseFuelNode FindNonEmptyFuelTank()
 	{
 		FuelManagerComponent fuelManager = FuelManagerComponent.Cast(GetOwner().FindComponent(FuelManagerComponent));
@@ -118,6 +116,7 @@ class SCR_FuelConsumptionComponent : ScriptGameComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] enabled
 	void SetEnabled(bool enabled)
 	{
 		if (!m_ComponentData)
@@ -270,19 +269,24 @@ class SCR_FuelConsumptionComponent : ScriptGameComponent
 			{
 				VehicleControllerComponent controller = VehicleControllerComponent.Cast(GetOwner().FindComponent(VehicleControllerComponent));
 				if (controller)
+				{
 					controller.StopEngine(false);
+				}
 			}
 			else
 			{
 				VehicleControllerComponent_SA controller = VehicleControllerComponent_SA.Cast(GetOwner().FindComponent(VehicleControllerComponent_SA));
 				if (controller)
+				{
 					controller.StopEngine(false);
+				}
 			}
 		}
 		
 		m_fTimeDelta = 0;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void ConnectToFuelConsumptionSystem()
 	{
 		World world = GetOwner().GetWorld();
@@ -294,6 +298,7 @@ class SCR_FuelConsumptionComponent : ScriptGameComponent
 		m_bConnectedToSystem = true;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void DisconnectFromFuelConsumptionSystem()
 	{
 		World world = GetOwner().GetWorld();
@@ -305,10 +310,11 @@ class SCR_FuelConsumptionComponent : ScriptGameComponent
 		m_bConnectedToSystem = false;
 	}
 	
-	//------------------------------------------------------------------------ COMMON METHODS ------------------------------------------------------------------------
-
+	//------------------------------------------------------------------------ COMMON METHODS ------------------------------------------------------------------------//
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] timeSlice
 	void Update(float timeSlice)
 	{
 		m_fTimeDelta += timeSlice;
@@ -369,10 +375,11 @@ class SCR_FuelConsumptionComponent : ScriptGameComponent
 #endif // ENABLE_DIAG
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnDelete(IEntity owner)
 	{
 		DisconnectFromFuelConsumptionSystem();
 		
 		super.OnDelete(owner);
 	}
-};
+}

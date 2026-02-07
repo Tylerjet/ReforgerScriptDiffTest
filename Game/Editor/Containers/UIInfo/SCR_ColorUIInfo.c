@@ -4,16 +4,16 @@ class SCR_ColorUIInfo : SCR_UIInfo
 	[Attribute("1.0 1.0 1.0 1.0")]
 	protected ref Color m_cColor;
 	
-	/*!
-	Get Color
-	\return UI Info Color
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get Color
+	//! \return UI Info colour
 	Color GetColor()
 	{
-		return m_cColor;
+		return Color.FromInt(m_cColor.PackToInt());
 	}
-	
-	//~ Protected, to be overriden and/or made public by inherited classes
+
+	//------------------------------------------------------------------------------------------------
+	//~ Protected, to be overridden and/or made public by inherited classes
 	override protected void CopyFrom(SCR_UIName source)
 	{
 		SCR_ColorUIInfo sourceInfo = SCR_ColorUIInfo.Cast(source);
@@ -26,4 +26,4 @@ class SCR_ColorUIInfo : SCR_UIInfo
 		
 		super.CopyFrom(source);
 	}
-};
+}

@@ -1,10 +1,11 @@
-/** @ingroup Editor_UI Editor_UI_Components
-*/
-class SCR_ActionTooltipEditorUIComponent: SCR_BaseTooltipEditorUIComponent
+//! @ingroup Editor_UI Editor_UI_Components
+
+class SCR_ActionTooltipEditorUIComponent : SCR_BaseTooltipEditorUIComponent
 {
 	[Attribute()]
 	protected string m_sShortcutWidgetName;
 	
+	//------------------------------------------------------------------------------------------------
 	override bool SetTooltip(SCR_UIInfo info, Managed instance = null)
 	{
 		TextWidget shortcutWidget = TextWidget.Cast(GetWidget().FindAnyWidget(m_sShortcutWidgetName));
@@ -38,4 +39,4 @@ class SCR_ActionTooltipEditorUIComponent: SCR_BaseTooltipEditorUIComponent
 		
 		return super.SetTooltip(info, instance);
 	}
-};
+}

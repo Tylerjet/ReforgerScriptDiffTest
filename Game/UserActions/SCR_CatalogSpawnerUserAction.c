@@ -198,6 +198,12 @@ class SCR_CatalogSpawnerUserAction : ScriptedUserAction
 		
 		switch (m_iRequestStatus)
 		{
+			case SCR_EEntityRequestStatus.AI_LIMIT_REACHED:
+			{
+				SetCannotPerformReason("#AR-Campaign_Action_BuildBlocked-UC");
+				break;
+			}
+			
 			case SCR_EEntityRequestStatus.GROUP_FULL:
 			{
 				SetCannotPerformReason("#AR-EntitySpawner_RequestDenied_GroupFull-UC");
@@ -270,6 +276,6 @@ class SCR_CatalogSpawnerUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	protected int GetActionIndex()
 	{
-		return (GetActionID() * 0.5) - 1;
+		return GetActionID();
 	}
 }

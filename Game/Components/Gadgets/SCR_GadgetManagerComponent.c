@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 //! Controls invoker resgistration for gadget manager
 class SCR_GadgetInvokersInitState
 {
@@ -10,6 +9,7 @@ class SCR_GadgetInvokersInitState
 	bool m_bIsControlledEnt = false;	// controlled entity flag
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsInit()
 	{
 		if (m_bIsControlledEnt)
@@ -20,6 +20,8 @@ class SCR_GadgetInvokersInitState
 	
 	//------------------------------------------------------------------------------------------------
 	//! Invokers for all characters
+	//! \param[in] character must not be null
+	//! \param[in] controller
 	void InitInvokers(IEntity character, SCR_CharacterControllerComponent controller)
 	{
 		if (m_bIsDefaultInit)
@@ -40,6 +42,8 @@ class SCR_GadgetInvokersInitState
 	
 	//------------------------------------------------------------------------------------------------
 	//! Invokers for controlled character only
+	//! \param[in] character unused
+	//! \param[in] controller
 	void InitControlledInvokers(IEntity character, SCR_CharacterControllerComponent controller)
 	{
 		if (m_bIsControlledInit)
@@ -59,6 +63,7 @@ class SCR_GadgetInvokersInitState
 	
 	//------------------------------------------------------------------------------------------------
 	//! Cleanup invokers when entity is destroyed
+	//! \param[in] character must not be null
 	void CleanupInvokers(GenericEntity character)
 	{	
 		if (m_Controller)
@@ -79,6 +84,7 @@ class SCR_GadgetInvokersInitState
 	
 	//------------------------------------------------------------------------------------------------
 	//! Cleanup local invokers when entity is no longer controlled
+	//! \param[in] character unused
 	void CleanupLocalInvokers(GenericEntity character)
 	{	
 		if (m_Controller)
@@ -96,6 +102,8 @@ class SCR_GadgetInvokersInitState
 	}
 				
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] entity
 	void Clear(GenericEntity entity)
 	{
 		if (!entity)
@@ -106,15 +114,16 @@ class SCR_GadgetInvokersInitState
 	}
 		
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] gadgetManager
 	void SCR_GadgetInvokersInitState(notnull SCR_GadgetManagerComponent gadgetManager)
 	{
 		m_GadgetManager = gadgetManager;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 [EntityEditorProps(category: "GameScripted/Gadgets", description: "Gadget manager", color: "0 0 255 255")]
-class SCR_GadgetManagerComponentClass: ScriptGameComponentClass
+class SCR_GadgetManagerComponentClass : ScriptGameComponentClass
 {
 	//------------------------------------------------------------------------------------------------
 	static override bool DependsOn(string className)
@@ -124,9 +133,8 @@ class SCR_GadgetManagerComponentClass: ScriptGameComponentClass
 		
 		return false;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_GadgetManagerComponent : ScriptGameComponent
 {			
 	int m_iRadiosFlags = EGadgetType.RADIO | EGadgetType.RADIO_BACKPACK;
@@ -143,7 +151,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	protected SCR_InventoryStorageManagerComponent m_InventoryStorageMgr;
 	protected SCR_CharacterControllerComponent m_Controller;
 	protected SCR_VONController m_VONController;
-	protected ref SCR_GadgetInvokersInitState m_pInvokersState = new ref SCR_GadgetInvokersInitState(this);
+	protected ref SCR_GadgetInvokersInitState m_pInvokersState = new SCR_GadgetInvokersInitState(this);
 	
 	protected ref array<ref array <SCR_GadgetComponent>> m_aInventoryGadgetTypes = {};	// array of gadget types > array of gadget components
 	protected ref map<EGadgetType, int> m_aGadgetArrayMap = new map<EGadgetType, int>; 	// map of gadget types -> gadget type array ID
@@ -154,7 +162,13 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	//------------------------------------------------------------------------------------------------
 	// GET/SET METHODS
 	//------------------------------------------------------------------------------------------------
-	static ScriptInvoker GetOnGadgetInitDoneInvoker() { return s_OnGadgetInitDone; }
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	static ScriptInvoker GetOnGadgetInitDoneInvoker()
+	{
+		return s_OnGadgetInitDone;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Get gadget manager of entity
@@ -205,9 +219,9 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	//------------------------------------------------------------------------------------------------
 	//! Set mode of a gadget
 	//! When changing mode FROM EGadgetMode.IN_HAND to inventory, target should be EGadgetMode.IN_STORAGE -> it will do EGadgetMode.IN_SLOT automatically if it is slotted
-	//! \param gadget is the subject
-	//! \param targetMode is the mode being switched into
-	//! \param doFocus determines whether the gadget will becomes focused straight away
+	//! \param[in] gadget is the subject
+	//! \param[in] targetMode is the mode being switched into
+	//! \param[in] doFocus determines whether the gadget will becomes focused straight away
 	void SetGadgetMode(IEntity gadget, EGadgetMode targetMode, bool doFocus = false)
 	{		
 		if (!gadget)
@@ -259,8 +273,8 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Static method for setting gadgets to ground/storage modes for containers such as vehicles which do not have gadget manager
-	//! \param gadgetComp is the subject component
-	//! \param targetMode is the mode being switched into
+	//! \param[in] gadgetComp is the subject component
+	//! \param[in] targetMode is the mode being switched into
 	static void SetGadgetModeStashed(SCR_GadgetComponent gadgetComp, EGadgetMode targetMode)
 	{
 		if (targetMode != EGadgetMode.ON_GROUND && targetMode != EGadgetMode.IN_STORAGE)
@@ -291,7 +305,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Toggle held gadget on/off
-	//! \param state true = ON / false = OFF
+	//! \param[in] state true = ON / false = OFF
 	void ToggleHeldGadget(bool state)
 	{
 		if (m_HeldGadgetComponent)
@@ -302,14 +316,14 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 						
 	//------------------------------------------------------------------------------------------------
 	//! Get all owned gadgets by type	
-	//! \param type is the type of gadget being searched
+	//! \param[in] type is the type of gadget being searched
 	//! \return Returns array of gadget of the given type or null if not found
 	array<SCR_GadgetComponent> GetGadgetsByType(EGadgetType type)
 	{
 		int gadgetArrayID = m_aGadgetArrayMap.Get(type);
 		if (gadgetArrayID != -1)
 		{
-			array<SCR_GadgetComponent> arr = new array<SCR_GadgetComponent>;
+			array<SCR_GadgetComponent> arr = {};
 			arr.Copy(m_aInventoryGadgetTypes[gadgetArrayID]);
 			
 			return arr;
@@ -320,7 +334,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		
 	//------------------------------------------------------------------------------------------------
 	//! Get first owned gadget by type
-	//! \param type is the type of gadget being searched
+	//! \param[in] type is the type of gadget being searched
 	//! \return Returns gadget of given type or null if not found
 	IEntity GetGadgetByType(EGadgetType type)
 	{
@@ -341,7 +355,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 			
 	//------------------------------------------------------------------------------------------------
 	//! Get first owned gadget assigned in quickslot by type
-	//! \param type is the type of gadget being searched
+	//! \param[in] type is the type of gadget being searched
 	//! \return Returns gadget of given type or null if not found
 	IEntity GetQuickslotGadgetByType(EGadgetType type)
 	{
@@ -366,6 +380,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Check whether gadget is owned by this entity
+	//! \param[in] gadgetComp
 	//! \return true if owned 
 	bool IsGadgetOwned(SCR_GadgetComponent gadgetComp)
 	{
@@ -381,10 +396,12 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	//------------------------------------------------------------------------------------------------
 	// MANAGER METHODS
 	//------------------------------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
 	//! Rules for gadget mode change
-	//! \param gadget is the subject
-	//! \param gadget is the subjects gadget component
-	//! \param targetMode is the wanted mode
+	//! \param[in] gadget is the subject
+	//! \param[in] gadgetComp is the subjects gadget component
+	//! \param[in] targetMode is the wanted mode
 	protected bool CanChangeGadgetMode(IEntity gadget, SCR_GadgetComponent gadgetComp, EGadgetMode targetMode)
 	{								
 		if ( targetMode == EGadgetMode.IN_HAND || gadgetComp.GetMode() == EGadgetMode.IN_HAND )	// If going TO or FROM mode1 -> anims need to happen first. Mode is synched from finish events instead of here 
@@ -410,7 +427,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 			
 	//------------------------------------------------------------------------------------------------
 	//! Update currently held(in hand) gadget
-	//! \param gadget is the subject
+	//! \param[in] gadget is the subject
 	protected void UpdateHeldGadget(IEntity gadget)
 	{
 		// no need ot update
@@ -461,8 +478,8 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Additonal pre SetGadgetMode logic for local player, modfying the behavior based on input used & current held gadget state 
-	//! \param gadget is the subject 
-	//! \param inputVal determines type of input we want to execute, click/hold version
+	//! \param[in] gadget is the subject
+	//! \param[in] inputVal determines type of input we want to execute, click/hold version
 	void HandleInput(IEntity gadget, float inputVal)
 	{
 		EGadgetMode targetMode = EGadgetMode.IN_HAND;
@@ -496,7 +513,11 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	//------------------------------------------------------------------------------------------------
 	// EVENTS
 	//------------------------------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
 	//! SCR_InventoryStorageManagerComponent, called on every add to slot, not only to inventory
+	//! \param[in] item
+	//! \param[in] storageOwner
 	void OnItemAdded(IEntity item, BaseInventoryStorageComponent storageOwner)
 	{		
 		SCR_GadgetComponent gadgetComp = SCR_GadgetComponent.Cast(item.FindComponent(SCR_GadgetComponent));
@@ -545,6 +566,8 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! SCR_InventoryStorageManagerComponent, called on every remove from slot, not only from inventory
+	//! \param[in] item
+	//! \param[in] storageOwner
 	void OnItemRemoved(IEntity item, BaseInventoryStorageComponent storageOwner)
 	{
 		SCR_GadgetComponent gadgetComp = SCR_GadgetComponent.Cast(item.FindComponent(SCR_GadgetComponent));
@@ -556,11 +579,6 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 			return;
 				
 		EGadgetType type = gadgetComp.GetType();
-		
-		if (invComp.GetParentSlot())
-			SetGadgetMode(item, EGadgetMode.IN_STORAGE);	
-		else
-			SetGadgetMode(item, EGadgetMode.ON_GROUND);
 		
 		int gadgetArrayID = m_aGadgetArrayMap.Get(gadgetComp.GetType());
 		if (gadgetArrayID == -1)
@@ -574,7 +592,8 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		
 		if (m_VONController && (type == EGadgetType.RADIO || type == EGadgetType.RADIO_BACKPACK))	// remove entries from VONController
 		{
-			array<ref SCR_VONEntry> entries = m_VONController.GetVONEntries();
+			array<ref SCR_VONEntry> entries = {}; 
+			m_VONController.GetVONEntries(entries);
 			
 			for (int i = entries.Count() - 1; i >= 0; --i)
 			{
@@ -587,6 +606,9 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 			
 	//------------------------------------------------------------------------------------------------
 	//! SCR_CharacterControllerComponent event
+	//! \param[in] charController
+	//! \param[in] instigatorEntity
+	//! \param[in] instigator
 	void OnPlayerDeath(SCR_CharacterControllerComponent charController, IEntity instigatorEntity, notnull Instigator instigator)
 	{		
 		if (!charController || charController != m_Controller)
@@ -601,6 +623,8 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		
 	//------------------------------------------------------------------------------------------------
 	//! SCR_CharacterControllerComponent event
+	//! \param[in] owner
+	//! \param[in] controlled
 	void OnControlledByPlayer(IEntity owner, bool controlled)
 	{		
 		if (System.IsConsoleApp())	// hotfix for this being called on DS when other players control their characters
@@ -627,6 +651,9 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! CharacterControllerComponent event
+	//! \param[in] gadget
+	//! \param[in] isInHand
+	//! \param[in] isOnGround
 	void OnGadgetStateChanged(IEntity gadget, bool isInHand, bool isOnGround)
 	{
 		SCR_GadgetComponent gadgetComp = SCR_GadgetComponent.Cast(gadget.FindComponent(SCR_GadgetComponent));
@@ -670,6 +697,8 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! CharacterControllerComponent event, used only for local character
+	//! \param[in] gadget
+	//! \param[in] isFocused
 	void OnGadgetFocusStateChanged(IEntity gadget, bool isFocused)
 	{
 		SCR_GadgetComponent gadgetComponent;
@@ -692,10 +721,6 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 			return;
 		
 		gadgetComponent.ToggleFocused(isFocused);
-		
-		SCR_PlayerController controller = SCR_PlayerController.Cast(GetGame().GetPlayerController());
-		if (controller)
-			controller.SetGadgetFocus(isFocused);
 	}
 			
 	//------------------------------------------------------------------------------------------------
@@ -708,7 +733,11 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	//------------------------------------------------------------------------------------------------
 	// INPUTS & INIT
 	//------------------------------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
 	//! Input action callback
+	//! \param[in] value
+	//! \param[in] reason
 	protected void OnGadgetInput(float value, EActionTrigger reason)
 	{
 		EGadgetType input = GetGadgetInputAction();	
@@ -728,6 +757,8 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Explicit flashlight toggle action
+	//! \param[in] value
+	//! \param[in] reason
 	protected void ActionFlashlightToggle(float value, EActionTrigger reason)
 	{
 		// Search quickslots first, then inventory
@@ -760,6 +791,8 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Input action callback
+	//! \param[in] value
+	//! \param[in] reason
 	protected void OnGadgetADSHold(float value, EActionTrigger reason)
 	{
 		SetGadgetADS(reason == EActionTrigger.DOWN);
@@ -767,6 +800,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! API for setting raised gadget mode
+	//! \param[in] gadgetADS
 	void SetGadgetADS(bool gadgetADS)
 	{
 		if (!m_Controller)
@@ -787,7 +821,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Gather initial gadgets
-	//! \param character is the query target
+	//! \param[in] character is the query target
 	protected void RegisterInitialGadgets(IEntity character)
 	{
 		array<IEntity> foundItems = {};
@@ -869,7 +903,9 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		array<SCR_GadgetComponent> radiosArray = {};
 		radiosArray.Copy(GetGadgetsByType(EGadgetType.RADIO)); 					// squad radios
 		radiosArray.InsertAll(GetGadgetsByType(EGadgetType.RADIO_BACKPACK)); 	// backpack radio
-		array<ref SCR_VONEntry> entries = m_VONController.GetVONEntries(); 
+		
+		array<ref SCR_VONEntry> entries = {};
+		m_VONController.GetVONEntries(entries); 
 			
 		foreach (SCR_GadgetComponent radio : radiosArray)
 		{
@@ -951,8 +987,8 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Initialize component
-	//! \param owner is the owner entity
+	//! Initialise component
+	//! \param[in] owner the owner entity
 	protected void InitComponent(IEntity owner)
 	{ 		
 		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast( owner.FindComponent(SCR_CharacterControllerComponent) );	
@@ -984,9 +1020,11 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	//------------------------------------------------------------------------------------------------
 	// RPC
 	//------------------------------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
 	//! Ask method for toggle synchronization called from individual gadgets
-	//! \param gadgetComp is gadget component
-	//! \param state is desired toggle state, true: active 
+	//! \param[in] gadgetComp is gadget component
+	//! \param[in] state is desired toggle state, true: active
 	void AskToggleGadget(SCR_GadgetComponent gadgetComp, bool state)
 	{				
 		RplId id = Replication.FindId(gadgetComp);
@@ -997,8 +1035,8 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Ask RPC to server for gadget toggle
-	//! \param id is unique Rpl id of the gadget 
-	//! \param state is desired toggle state, true: active 
+	//! \param[in] id is unique Rpl id of the gadget
+	//! \param[in] state is desired toggle state, true: active
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
     protected void RPC_AskToggleGadget(RplId id, bool state)
 	{	
@@ -1014,8 +1052,8 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Do RPC to clients for gadget toggle 
-	//! \param id is unique Rpl id of the gadget 
-	//! \param state is desired toggle state, true: active 
+	//! \param[in] id is unique Rpl id of the gadget
+	//! \param[in] state is desired toggle state, true: active
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast, RplCondition.NoOwner)]
     protected void RPC_DoToggleGadget(RplId id, bool state)
     {						
@@ -1028,6 +1066,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		gadgetComp.OnToggleActive(state);
     }
 	
+	//------------------------------------------------------------------------------------------------
 	protected void ConnectToGadgetsManagerSystem()
 	{
 		World world = GetOwner().GetWorld();
@@ -1038,6 +1077,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		gadgetManagersSystem.Register(this);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void DisconnectFromGadgetsManagerSystem()
 	{
 		World world = GetOwner().GetWorld();
@@ -1048,6 +1088,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		gadgetManagersSystem.Unregister(this);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnDelete(IEntity owner)
 	{
 		DisconnectFromGadgetsManagerSystem();
@@ -1057,7 +1098,8 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		
 	#ifndef DISABLE_GADGETS	
 		//------------------------------------------------------------------------------------------------	
-		//! runs only on local client
+		//! Runs only on local client
+		//! \param[in] timeSlice
 		void Update(float timeSlice)
 		{			
 			if (!m_pInvokersState.IsInit())
@@ -1109,12 +1151,13 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 			// init arrays
 			typename gadgetTypes = EGadgetType;
 			int count = gadgetTypes.GetVariableCount();
+			array <SCR_GadgetComponent> gadgets;
 			for ( int i = 0; i < count; i++ )
 			{
-				array <SCR_GadgetComponent> gadgets = new array <SCR_GadgetComponent>;
+				gadgets = {};
 				m_aInventoryGadgetTypes.Insert(gadgets);
 				m_aGadgetArrayMap.Insert( Math.Pow(2, i), i); // EGadgetType flag + array ID
 			}
 		}		
 	#endif
-};
+}

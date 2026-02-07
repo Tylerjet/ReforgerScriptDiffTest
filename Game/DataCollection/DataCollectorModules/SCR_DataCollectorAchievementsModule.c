@@ -8,12 +8,20 @@ class SCR_DataCollectorAchievementsModule : SCR_DataCollectorModule
 		// Achievement COMBAT_HYGIENE
 		SCR_FlushToilet.GetOnToiletFlushed().Insert(ToiletFlushed);
 		
-		// Achievement NUTCRACKER
 		RplComponent rplComp = RplComponent.Cast(GetGame().GetGameMode().FindComponent(RplComponent));
 		if (rplComp.IsMaster())
 		{
-			// Invoke this only as authority
+			// Invoke thhose only as authority
+			// Achievement NUTCRACKER
 			SCR_VehicleDamageManagerComponent.GetOnVehicleDestroyed().Insert(VehicleDestroyed);
+			// Achievement TRUCKER_JOE
+			SCR_CampaignNetworkComponent.GetOnSuppliesDelivered().Insert(SuppliesDelivered);
+			// Achievements HELPING_HAND, BATTLEFIELD_ANGEL (Support stations)
+			SCR_SupportStationManagerComponent supportStationManager = SCR_SupportStationManagerComponent.GetInstance();
+			if (supportStationManager)
+			{
+				supportStationManager.GetOnSupportStationExecutedSuccessfully().Insert(OnSupportStationUsed);
+			}
 		}
 		
 		// Achievement MAJOR_PROMOTION
@@ -24,13 +32,6 @@ class SCR_DataCollectorAchievementsModule : SCR_DataCollectorModule
 		
 		// Achievement IVORY_TICKLER || PIPING_UP
 		SCR_PlayInstrument.GetOnInstrumentPlayed().Insert(InstrumentPlayed);
-
-		// Achievement TRUCKER_JOE
-		if (rplComp.IsMaster())
-		{
-			// Invoke this only as authority
-			SCR_CampaignNetworkComponent.GetOnSuppliesDelivered().Insert(SuppliesDelivered);
-		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -71,6 +72,13 @@ class SCR_DataCollectorAchievementsModule : SCR_DataCollectorModule
 		SCR_CharacterRankComponent.s_OnRankChanged.Remove(RankedUp);	
 		SCR_MineInventoryItemComponent.GetOnMinePlaced().Remove(MinePlaced);
 		SCR_PlayInstrument.GetOnInstrumentPlayed().Remove(InstrumentPlayed);
+		SCR_CampaignNetworkComponent.GetOnSuppliesDelivered().Remove(SuppliesDelivered);
+
+		SCR_SupportStationManagerComponent supportStationManager = SCR_SupportStationManagerComponent.GetInstance();
+		if (supportStationManager)
+		{
+			supportStationManager.GetOnSupportStationExecutedSuccessfully().Remove(OnSupportStationUsed);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -152,7 +160,7 @@ class SCR_DataCollectorAchievementsModule : SCR_DataCollectorModule
 		{
 			/* Achievement CLEAN_SWEEP || PAPER_PUSHER */
 			
-			if (finishedTasks.Count() >= activeTasks.Count())
+			if (finishedTasks.Count() > activeTasks.Count())
 			{	
 				for(int i = 0; i < playerCount; i++)
 				{
@@ -222,7 +230,7 @@ class SCR_DataCollectorAchievementsModule : SCR_DataCollectorModule
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnItemUsed(IEntity item, bool actionCompleted, SCR_ConsumableEffectAnimationParameters animParams)
+	protected void OnItemUsed(IEntity item, bool actionCompleted, ItemUseParameters animParams)
 	{
 		// This is invoked for multiple items being used, including mines, but mines are handled separately
 		if (!item || !actionCompleted)
@@ -286,6 +294,39 @@ class SCR_DataCollectorAchievementsModule : SCR_DataCollectorModule
 		}
 
 		// Tracking for achievements HELPING_HAND, BATTLEFIELD_ANGEL
+		IncrementAchievementProgress(userPlayerId, AchievementStatId.MEDICAL_ASSISTS);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnSupportStationUsed(SCR_BaseSupportStationComponent supportStation, ESupportStationType supportStationType, IEntity actionTarget, IEntity actionUser, SCR_BaseUseSupportStationAction action)
+	{
+		// Achievements are interested only in HEAL type
+		if (supportStationType != ESupportStationType.HEAL)
+		{
+			return;
+		}
+		
+		// Not interested in self aplication
+		if (actionTarget == actionUser)
+		{
+			return;
+		}
+		
+		// Only player as a user is counted
+		int userPlayerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(actionUser);
+		if (userPlayerId == 0)
+		{
+			return;
+		}
+
+		// Only player as a target is counted
+		int targetPlayerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(actionTarget);
+		if (targetPlayerId == 0)
+		{
+			return;
+		}
+		
+		// Increment the stat of HELPING_HAND, BATTLEFIELD_ANGEL achievement
 		IncrementAchievementProgress(userPlayerId, AchievementStatId.MEDICAL_ASSISTS);
 	}
 	

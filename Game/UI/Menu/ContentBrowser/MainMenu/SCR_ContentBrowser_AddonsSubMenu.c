@@ -24,15 +24,15 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	bool m_bEnableFilter;
 
 	[Attribute("true", UIWidgets.CheckBox, "Enables opening details menu of currently selected tile.")]
-	bool m_bEnableOpenDetails;
+	protected bool m_bEnableOpenDetails;
 
 	// ---- Constants ----
 
-	protected const int GRID_N_COLUMNS = 5;
-	protected const int GRID_N_ROWS = 4;
+	protected const int GRID_N_COLUMNS = 4;
+	protected const int GRID_N_ROWS = 3;
 	protected const int LOAD_PAGE_DELAY = 500;
 
-	protected const ResourceName LAYOUT_GRID_TILE = "{9A08C4C52FACC45B}UI/layouts/Menus/ContentBrowser/Tile/ContentBrowserTile_5x4.layout";
+	protected const ResourceName LAYOUT_GRID_TILE = "{67B0EFBDF7EAFF27}UI/layouts/Menus/ContentBrowser/Tile/WorkshopTile.layout";
 
 	// Message tags
 	protected const string MESSAGE_TAG_NOTHING_FOUND = "nothing_found";
@@ -77,35 +77,16 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	protected int m_iOnlinePageCount;
 	
 	// Navigation buttons
+	protected SCR_InputButtonComponent m_NavDetails;
 	protected SCR_InputButtonComponent m_NavPrimary;
 	protected SCR_InputButtonComponent m_NavEnable;
 	protected SCR_InputButtonComponent m_NavFavourite;
 	protected SCR_InputButtonComponent m_NavFilter;
 
-	protected ref ScriptInvokerVoid m_OnRequestOpenOfflinePage;
-
 	// Items found message
 	protected int m_iItemsTotal;
 	protected int m_iOnlineFilteredItems;
 	protected ref array<ref SCR_WorkshopApiCallback_RequestPage> m_aSearchCallbacks = {};
-
-	//------------------------------------------------------------------------------------------------
-	ScriptInvokerVoid GetOnRequestOpenOfflinePage()
-	{
-		if (!m_OnRequestOpenOfflinePage)
-			m_OnRequestOpenOfflinePage = new ScriptInvokerVoid();
-
-		return m_OnRequestOpenOfflinePage;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void RequestOpenOfflinePage()
-	{
-		if (!m_OnRequestOpenOfflinePage)
-			m_OnRequestOpenOfflinePage = new ScriptInvokerVoid();
-
-		m_OnRequestOpenOfflinePage.Invoke();
-	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Sets the item array on which this tab operates. Only possible in external item array mode.
@@ -139,9 +120,9 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuOpen(SCR_SuperMenuBase parentMenu)
+	override void OnTabCreate(Widget menuRoot, ResourceName buttonsLayout, int index)
 	{
-		super.OnMenuOpen(parentMenu);
+		super.OnTabCreate(menuRoot, buttonsLayout, index);
 
 		InitWidgets();
 
@@ -191,9 +172,11 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		// Create nav buttons
 		if (m_bEnableFilter)
 			m_NavFilter = CreateNavigationButton("MenuFilter", "#AR-Editor_ContentBrowser_ButtonOpenFilter", false);
-		m_NavPrimary = CreateNavigationButton("WorkshopPrimary", "#AR-Workshop_ButtonDownload", true);
+		
+		m_NavDetails = CreateNavigationButton("MenuSelect", "#AR-Workshop_Details_MenuTitle", true, m_bEnableOpenDetails);
 		m_NavEnable = CreateNavigationButton("MenuEnable", "#AR-Workshop_ButtonEnable", true);
 		m_NavFavourite = CreateNavigationButton("MenuFavourite", UIConstants.FAVORITE_LABEL_ADD, true);
+		m_NavPrimary = CreateNavigationButton("MenuSelectHold", "#AR-Workshop_ButtonDownload", true);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -209,17 +192,20 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 
 		// Event handlers of nav buttons
 		m_NavEnable.m_OnActivated.Insert(OnEnableButton);
+		
 		if (m_NavFilter)
 			m_NavFilter.m_OnActivated.Insert(OnFilterButton);
+		
 		m_NavPrimary.m_OnActivated.Insert(OnPrimaryButton);
 		m_NavFavourite.m_OnActivated.Insert(OnFavouriteButton);
+		m_NavDetails.m_OnClicked.Insert(OnDetailsButton);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuShow(SCR_SuperMenuBase parentMenu)
+	override void OnTabShow()
 	{
 		// Check and show backend down
-		super.OnMenuShow(parentMenu);
+		super.OnTabShow();
 
 		// Init workshop API
 		// We do it on tab show becasue this tab and others persists when all other tabs are closed,
@@ -231,18 +217,18 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuHide(SCR_SuperMenuBase parentMenu)
+	override void OnTabHide()
 	{
-		super.OnMenuHide(parentMenu);
+		super.OnTabHide();
 
 		// Save configuration of filters
 		m_Widgets.m_FilterPanelComponent.Save();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuClose(SCR_SuperMenuBase parentMenu)
+	override void OnTabRemove()
 	{
-		super.OnMenuClose(parentMenu);
+		super.OnTabRemove();
 
 		// Unsubscribe from addon manager events
 		SCR_AddonManager.GetInstance().m_OnAddonOfflineStateChanged.Remove(Callback_OnAddonOfflineStateChanged);
@@ -254,8 +240,16 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override void OnMenuShow()
+	{
+		super.OnMenuShow();
+		
+		InitWorkshopApi();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Called on each frame
-	override void OnMenuUpdate(SCR_SuperMenuBase parentMenu, float tDelta)
+	override void OnMenuUpdate(float tDelta)
 	{
 		// Update connection state, check if we have reconnected
 		bool connectedOld = m_bConnected;
@@ -272,6 +266,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 				OnConnected();
 		}
 
+		// TODO: don't update on tick!
 		UpdatePagingWidgets();
 		UpdateButtons();
 	}
@@ -286,9 +281,9 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnTabChange(SCR_SuperMenuBase parentMenu)
+	override void OnTabChange()
 	{
-		super.OnTabChange(parentMenu);
+		super.OnTabChange();
 
 		if (GetShown())
 		{
@@ -676,7 +671,6 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		UpdateItemsFoundMessage(itemsSorted.Count(), rawWorkshopItems.Count());
 	}
 
-
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	// W I D G E T S
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -701,11 +695,10 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 			// Init the tile component
 			SCR_ContentBrowserTileComponent comp = SCR_ContentBrowserTileComponent.Cast(w.FindHandler(SCR_ContentBrowserTileComponent));
 			comp.SetWorkshopItem(null); // Widget will be hidden because of that
-			comp.SetRatingVisible(m_eMode == EContentBrowserAddonsSubMenuMode.MODE_ONLINE); // Rating is only visible in online mode
-
+	
 			// Tile event handlers
 			comp.m_OnClick.Insert(OnTileClick);
-			comp.m_OnFocus.Insert(OnTileFocus);
+			comp.GetOnFocus().Insert(OnTileFocus);
 
 			m_aTileComponents.Insert(comp);
 		}
@@ -728,13 +721,11 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		GridScreen_Clear();
 
 		int nItems = Math.ClampInt(items.Count(), 0, GRID_N_COLUMNS * GRID_N_ROWS);
-
-		bool showReportedAddons = GetShowReportedAddons();
-
+		
 		for (int i = 0; i < nItems; i++)
 		{
 			SCR_ContentBrowserTileComponent comp = m_aTileComponents[i];
-			comp.SetWorkshopItem(items[i], showReportedAddons);
+			comp.SetWorkshopItem(items[i]);
 		}
 	}
 
@@ -1051,6 +1042,9 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		// Item buttons
 		SCR_WorkshopItem item = GetSelectedItem();
 		
+		if (m_NavDetails && m_NavDetails.IsVisible())
+			m_NavDetails.SetEnabled(item != null);
+		
 		if (!item)
 		{
 			// Nothing is selected, disable all buttons
@@ -1066,6 +1060,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 			m_NavFavourite.SetEnabled(false);
 			m_NavEnable.SetEnabled(false);
 			m_NavPrimary.SetEnabled(false);
+			
 			return;
 		}
 
@@ -1260,9 +1255,12 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		GetGame().GetWorkspace().SetFocusedWidget(focusTarget);
 
 		// If we've focused a tile, we need to manually update the details panel (by switching page we focus the same widget, but the tile data is different)
+		if (!focusTarget)
+			return;
+		
 		SCR_ContentBrowserTileComponent comp = SCR_ContentBrowserTileComponent.FindComponent(focusTarget);
 		if (comp)
-			OnTileFocus(comp, GetSelectedItem())
+			OnTileFocus(comp)
 	}
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1300,18 +1298,15 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnTileFocus(SCR_ContentBrowserTileComponent tile, SCR_WorkshopItem item)
+	protected void OnTileFocus(ScriptedWidgetComponent comp)
 	{
-		if (!item)
-			return;
-		
-		if (m_Widgets.m_AddonDetailsPanelComponent.GetItem() == item)
-			return;
+		SCR_ContentBrowserTileComponent tile = SCR_ContentBrowserTileComponent.Cast(comp);
+		SCR_WorkshopItem item;
+		if (tile)
+			item = tile.GetWorkshopItem();
 
-		bool hide = item.GetRestricted();
-
-		if (hide)
-			item = null;
+		if (!item || m_Widgets.m_AddonDetailsPanelComponent.GetItem() == item)
+			return;
 
 		m_Widgets.m_AddonDetailsPanelComponent.SetWorkshopItem(item);
 
@@ -1363,6 +1358,13 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		item.SetFavourite(!fav);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	protected void OnDetailsButton(SCR_ButtonBaseComponent comp)
+	{
+		if (GetSelectedItem())
+			OnTileClick(m_LastFocusedTile);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	protected void Callback_OnRequestPageGetAllAssets(SCR_WorkshopApiCallback_RequestPage callback)
 	{
@@ -1459,7 +1461,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	{
 		// Set message
 		SetPanelsMode(m_bPanelsModeEmpty, messagePresetTag: MESSAGE_TAG_ERROR_CONNECTION);
-		RequestOpenOfflinePage();
+		RequestTabChange(EWorkshopTabId.OFFLINE);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1467,19 +1469,6 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	{
 		m_bClearCacheAtNextRequest = true;
 		RequestPage(m_iCurrentPage);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected bool CheckBackendDown()
-	{
-		if (!ContentBrowserUI.IsBackenRunning() && m_eMode == EContentBrowserAddonsSubMenuMode.MODE_ONLINE)
-		{
-			// Set message
-			SetPanelsMode(m_bPanelsModeEmpty, messagePresetTag: MESSAGE_TAG_ERROR_CONNECTION);
-			Callback_OnRequestPageTimeout(null);
-		}
-
-		return !ContentBrowserUI.IsBackenRunning();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1565,7 +1554,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	}
 }
 
-
+//------------------------------------------------------------------------------------------------
 class SCR_ContentBrowser_GetAssetListParams : PageParams
 {
 	// We will call back to submenu to perform packing of the JSON struct
@@ -1586,7 +1575,7 @@ class SCR_ContentBrowser_GetAssetListParams : PageParams
 	}
 }
 
-
+//------------------------------------------------------------------------------------------------
 class SCR_CompareWorkshopItemName : SCR_SortCompare<SCR_WorkshopItem>
 {
 	override static int Compare(SCR_WorkshopItem left, SCR_WorkshopItem right)
@@ -1601,6 +1590,7 @@ class SCR_CompareWorkshopItemName : SCR_SortCompare<SCR_WorkshopItem>
 	}
 }
 
+//------------------------------------------------------------------------------------------------
 class SCR_CompareWorkshopItemTimeSinceLastPlay : SCR_SortCompare<SCR_WorkshopItem>
 {
 	override static int Compare(SCR_WorkshopItem left, SCR_WorkshopItem right)
@@ -1616,7 +1606,7 @@ class SCR_CompareWorkshopItemTimeSinceLastPlay : SCR_SortCompare<SCR_WorkshopIte
 	}
 }
 
-
+//------------------------------------------------------------------------------------------------
 class SCR_CompareWorkshopItemTimeSinceFirstDownload : SCR_SortCompare<SCR_WorkshopItem>
 {
 	override static int Compare(SCR_WorkshopItem left, SCR_WorkshopItem right)
@@ -1632,7 +1622,6 @@ class SCR_CompareWorkshopItemTimeSinceFirstDownload : SCR_SortCompare<SCR_Worksh
 	}
 }
 
-
 //------------------------------------------------------------------------------------------------
 // Sort by time since last played
 class SCR_CompareWorkshopItemTargetSize : SCR_SortCompare<SCR_WorkshopItem>
@@ -1644,4 +1633,4 @@ class SCR_CompareWorkshopItemTargetSize : SCR_SortCompare<SCR_WorkshopItem>
 
 		return leftSize < rightSize;
 	}
-};
+}

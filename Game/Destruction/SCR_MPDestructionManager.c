@@ -113,9 +113,9 @@ class SCR_MPDestructionManager : GenericEntity
 	static private SCR_MPDestructionManager s_Instance = null;
 	static bool s_bInitialized = false;
 	
-	protected ref array<EntityID> m_ChangedDestructibles = new ref array<EntityID>();
-	protected ref array<EntityID> m_DeletedDestructibles = new ref array<EntityID>();
-	protected ref map<RplId, ref array<SCR_DestructionBaseComponent>> m_mDynamicallySpawnedDestructibles = new map<RplId, ref array<SCR_DestructionBaseComponent>>();
+	protected ref array<EntityID> m_ChangedDestructibles = new array<EntityID>();
+	protected ref array<EntityID> m_DeletedDestructibles = new array<EntityID>();
+	protected ref map<RplId, ref array<SCR_DestructionDamageManagerComponent>> m_mDynamicallySpawnedDestructibles = new map<RplId, ref array<SCR_DestructionDamageManagerComponent>>();
 	protected ref map<RplId, ref array<int>> m_mChangedDynamicallySpawnedDestructibles = new map<RplId, ref array<int>>();
 	protected ref map<RplId, ref array<int>> m_mDeletedDynamicallySpawnedDestructibles = new map<RplId, ref array<int>>();
 	protected ref array<SCR_DestructionBaseHandler> m_aDestroyInFrame = {};
@@ -184,7 +184,7 @@ class SCR_MPDestructionManager : GenericEntity
 	//! Called when Item is initialized from replication stream. Carries the data from Master.
 	override bool RplLoad(ScriptBitReader reader)
 	{
-		SCR_DestructionBaseComponent.SetReadingInit(true);
+		SCR_DestructionDamageManagerComponent.SetReadingInit(true);
 		
 		// First read IDs for deleted destructibles on the server and delete them locally
 		int numDeleted;
@@ -198,7 +198,7 @@ class SCR_MPDestructionManager : GenericEntity
 			if (!entity)
 				continue;
 			
-			SCR_DestructionBaseComponent destructible = SCR_DestructionBaseComponent.Cast(entity.FindComponent(SCR_DestructionBaseComponent));
+			SCR_DestructionDamageManagerComponent destructible = SCR_DestructionDamageManagerComponent.Cast(entity.FindComponent(SCR_DestructionDamageManagerComponent));
 			if (!destructible)
 				continue;
 			
@@ -217,14 +217,14 @@ class SCR_MPDestructionManager : GenericEntity
 			if (!entity)
 				continue;
 			
-			SCR_DestructionBaseComponent destructible = SCR_DestructionBaseComponent.Cast(entity.FindComponent(SCR_DestructionBaseComponent));
+			SCR_DestructionDamageManagerComponent destructible = SCR_DestructionDamageManagerComponent.Cast(entity.FindComponent(SCR_DestructionDamageManagerComponent));
 			if (!destructible)
 				continue;
 			
 			destructible.NetReadInit(reader);
 		}
 		
-		SCR_DestructionBaseComponent.SetReadingInit(false);
+		SCR_DestructionDamageManagerComponent.SetReadingInit(false);
 		return true;
 	}
 
@@ -250,7 +250,7 @@ class SCR_MPDestructionManager : GenericEntity
 			if (!entity)
 				continue;
 			
-			SCR_DestructionBaseComponent destructible = SCR_DestructionBaseComponent.Cast(entity.FindComponent(SCR_DestructionBaseComponent));
+			SCR_DestructionDamageManagerComponent destructible = SCR_DestructionDamageManagerComponent.Cast(entity.FindComponent(SCR_DestructionDamageManagerComponent));
 			if (!destructible)
 				continue;
 			
@@ -281,12 +281,12 @@ class SCR_MPDestructionManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	int RegisterDynamicallySpawnedDestructible(notnull SCR_DestructionBaseComponent destructible, RplId rplId)
+	int RegisterDynamicallySpawnedDestructible(notnull SCR_DestructionDamageManagerComponent destructible, RplId rplId)
 	{
-		array<SCR_DestructionBaseComponent> destructibles = m_mDynamicallySpawnedDestructibles.Get(rplId);
+		array<SCR_DestructionDamageManagerComponent> destructibles = m_mDynamicallySpawnedDestructibles.Get(rplId);
 		if (!destructibles)
 		{
-			destructibles = new array<SCR_DestructionBaseComponent>();
+			destructibles = new array<SCR_DestructionDamageManagerComponent>();
 			m_mDynamicallySpawnedDestructibles.Insert(rplId, destructibles);
 		}
 		
@@ -294,9 +294,9 @@ class SCR_MPDestructionManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	SCR_DestructionBaseComponent FindDynamicallySpawnedDestructibleByIndex(RplId rplId, int index)
+	SCR_DestructionDamageManagerComponent FindDynamicallySpawnedDestructibleByIndex(RplId rplId, int index)
 	{
-		array<SCR_DestructionBaseComponent> destructibles = m_mDynamicallySpawnedDestructibles.Get(rplId);
+		array<SCR_DestructionDamageManagerComponent> destructibles = m_mDynamicallySpawnedDestructibles.Get(rplId);
 		if (!destructibles)
 			return null;
 		
@@ -307,9 +307,9 @@ class SCR_MPDestructionManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	int FindDynamicallySpawnedDestructibleIndex(RplId rplId, SCR_DestructionBaseComponent destructible)
+	int FindDynamicallySpawnedDestructibleIndex(RplId rplId, SCR_DestructionDamageManagerComponent destructible)
 	{
-		array<SCR_DestructionBaseComponent> destructibles = m_mDynamicallySpawnedDestructibles.Get(rplId);
+		array<SCR_DestructionDamageManagerComponent> destructibles = m_mDynamicallySpawnedDestructibles.Get(rplId);
 		if (!destructibles)
 			return -1;
 		
@@ -317,7 +317,7 @@ class SCR_MPDestructionManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void RegisterDeletedDynamicallySpawnedDestructible(notnull SCR_DestructionBaseComponent destructible, RplId rplId)
+	void RegisterDeletedDynamicallySpawnedDestructible(notnull SCR_DestructionDamageManagerComponent destructible, RplId rplId)
 	{
 		int index = FindDynamicallySpawnedDestructibleIndex(rplId, destructible);
 		if (index != -1)
@@ -334,7 +334,7 @@ class SCR_MPDestructionManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void RegisterChangedDynamicallySpawnedDestructible(notnull SCR_DestructionBaseComponent destructible, RplId rplId)
+	void RegisterChangedDynamicallySpawnedDestructible(notnull SCR_DestructionDamageManagerComponent destructible, RplId rplId)
 	{
 		int index = FindDynamicallySpawnedDestructibleIndex(rplId, destructible);
 		if (index != -1)

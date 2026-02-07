@@ -10,16 +10,18 @@ class SCR_HeliCourse_stage11 : SCR_BaseCampaignTutorialArlandStage
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
 	{
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
 		m_fWaypointCompletionRadius = 10;
 		RegisterWaypoint("SpawnPos_UH1COURSE");
 		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
-	
 		Vehicle helicopter = Vehicle.Cast(GetGame().GetWorld().FindEntityByName("UH1COURSE"));
 		if (!helicopter)
 			return;
 		
 		m_SignalsManagerComponent = SignalsManagerComponent.Cast(helicopter.FindComponent(SignalsManagerComponent));
+		PlaySoundSystem("Heli_Landing");
+		HintOnVoiceOver();
 	}
 	
 	//------------------------------------------------------------------------------------------------

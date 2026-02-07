@@ -1,10 +1,9 @@
-[EntityEditorProps(category: "GameScripted/Campaign", description: "Makes a vehicle able to carry Campaign resources.", color: "0 0 255 255")]
-class SCR_CampaignSuppliesComponentClass: ScriptComponentClass
+[EntityEditorProps(category: "GameScripted/Campaign", description: "Makes a vehicle able to carry Conflict resources.", color: "0 0 255 255")]
+class SCR_CampaignSuppliesComponentClass : ScriptComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
-//! Makes a vehicle able to carry Campaign resources
+//! Makes a vehicle able to carry Conflict resources
 class SCR_CampaignSuppliesComponent : ScriptComponent
 {
 	// Member variables 
@@ -14,7 +13,7 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	protected bool m_bAwardUnloadXP = true;
 	protected bool m_bIsPlayerInRange;
 	
-	static const float SUPPLY_TRUCK_UNLOAD_RADIUS = 25;			//m: maximum distance from a supply depot a player can still (un)load their truck
+	protected static const float SUPPLY_TRUCK_UNLOAD_RADIUS = 25;	 //!< m: maximum distance from a supply depot a player can still (un)load their truck
 	
 	[RplProp()]
 	protected ref array<int> m_aLoadingPlayerIDs = {};
@@ -41,8 +40,8 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	bool m_bIsStandaloneDepot;
 	
 	//------------------------------------------------------------------------------------------------
-	// Returns first player from loading/unloading arrays 
-	// Use True parameters, to return from Unloading array. Otherwise, it will look in loading players
+	//! \param[in] unloading true to verify in Unloading array, otherwise it will look in loading array
+	//! \return first player from loading/unloading arrays
 	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	int GetLoadingPlayer(bool unloading = false)
 	{
@@ -60,7 +59,8 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 			return 0;
 	}
 	//------------------------------------------------------------------------------------------------
-	// Setter for Loading players array
+	//! Setter for Loading players array
+	//! \param[in] playerID
 	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	void SetSupplyLoadingPlayer(int playerID)
 	{
@@ -72,6 +72,8 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerID
 	// Deletes from loading players array
 	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	void DeleteSupplyLoadingPlayer(int playerID)
@@ -92,7 +94,8 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// Setter for Unloading players array
+	//! Setter for Unloading players array
+	//! \param[in] playerID
 	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	void SetSupplyUnloadingPlayer(int playerID)
 	{
@@ -104,7 +107,8 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// Deletes from Unloading players array
+	//! Deletes from Unloading players array
+	//! \param[in] playerID
 	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	void DeleteSupplyUnloadingPlayer(int playerID)
 	{
@@ -124,6 +128,7 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	int GetSupplies()
 	{
@@ -131,6 +136,7 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	int GetSuppliesMax()
 	{
@@ -138,6 +144,7 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] suppliesMax
 	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	void SetSuppliesMax(int suppliesMax)
 	{
@@ -150,7 +157,8 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// Get the load / unload radius. If set custom use this. if it's set to zero, use default.
+	//! Get the load / unload radius. If set custom use this. if it's set to zero, use default.
+	//! \return
 	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	float GetOperationalRadius()
 	{
@@ -161,6 +169,7 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] status
 	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	void SetIsPlayerInRange(bool status)
 	{
@@ -168,6 +177,7 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	bool GetIsPlayerInRange()
 	{
@@ -175,6 +185,7 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] base
 	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	void SetLastLoadedAt(SCR_CampaignMilitaryBaseComponent base)
 	{
@@ -187,6 +198,7 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] base
 	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	void SetLastUnloadedAt(SCR_CampaignMilitaryBaseComponent base)
 	{
@@ -199,6 +211,8 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	bool AwardXP()
 	{
@@ -206,6 +220,9 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 		
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] supplies
+	//! \param[in] replicate
 	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	void AddSupplies(int supplies, bool replicate = true)
 	{
@@ -225,11 +242,13 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	bool GetIsStandaloneDepot()
 	{
 		return m_bIsStandaloneDepot;
 	}
+
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
@@ -264,7 +283,8 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//~  Get supplies component on given entity. Returns null if no supplies can be found
+	//! \param[in] ent
+	//! \return supplies component on the provided entity or null if cannot be found
 	static SCR_CampaignSuppliesComponent GetSuppliesComponent(notnull IEntity ent)
 	{
 		SCR_CampaignSuppliesComponent suppliesComponent;
@@ -300,13 +320,16 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// Constructor
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_CampaignSuppliesComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Destructor
+	// destructor
 	void ~SCR_CampaignSuppliesComponent()
 	{
 		if (m_OnSuppliesTruckDeleted)
@@ -320,4 +343,4 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 		gamemode.GetOnPlayerDisconnected().Remove(DeleteSupplyUnloadingPlayer);
 		gamemode.GetOnPlayerKilled().Remove(OnPlayerKilled);
 	}
-};
+}

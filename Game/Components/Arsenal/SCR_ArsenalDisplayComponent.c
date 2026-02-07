@@ -1,6 +1,6 @@
 class SCR_ArsenalDisplayComponentClass : SCR_ArsenalComponentClass
 {
-};
+}
 
 class SCR_ArsenalDisplayComponent : SCR_ArsenalComponent
 {
@@ -10,7 +10,7 @@ class SCR_ArsenalDisplayComponent : SCR_ArsenalComponent
 	[Attribute("4", desc: "Refresh time in seconds. Every x time the arsenal will try to refresh")]
 	protected float m_fRefreshDelay;
 
-	protected ref array<SCR_WeaponRackSlotEntity> m_aSlots = new array<SCR_WeaponRackSlotEntity>();
+	protected ref array<SCR_WeaponRackSlotEntity> m_aSlots = {};
 
 	//------------------------------------------------------------------------------------------------
 	override void SetSupportedArsenalItemTypes(SCR_EArsenalItemType types)
@@ -45,6 +45,7 @@ class SCR_ArsenalDisplayComponent : SCR_ArsenalComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Remove every slot's item
 	override void ClearArsenal()
 	{
 		for (int i = 0; i < m_aSlots.Count(); i++)
@@ -54,7 +55,7 @@ class SCR_ArsenalDisplayComponent : SCR_ArsenalComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//~ Refreshes arsenal after x delay
+	//! Refresh arsenal after m_fRefreshDelay delay
 	protected void RefreshUpdate()
 	{
 		RefreshArsenal(GetAssignedFaction());
@@ -102,15 +103,12 @@ class SCR_ArsenalDisplayComponent : SCR_ArsenalComponent
 			{
 				itemToSpawn = filteredArsenalItems[index];
 				if (GetItemValidForSlot(itemToSpawn.GetItemType(), itemToSpawn.GetItemMode(), currentSlot.GetSlotSupportedItemTypes(), currentSlot.GetSlotSupportedItemModes()))
-				{
 					break;
-				}
+
 				itemToSpawn = null;
 				index++;
 				if (index >= availableItemCount)
-				{
 					index = 0;
-				}
 			}
 
 			if (!itemToSpawn)
@@ -129,10 +127,9 @@ class SCR_ArsenalDisplayComponent : SCR_ArsenalComponent
 		if (slotEntity.GetChildren() && slotEntity.GetChildren().GetPrefabData())
 		{
 			isEmpty = false;
-			ResourceName itemPrefab = slotEntity.GetChildren().GetPrefabData().GetPrefabName();
-
 			return GetItemValidForSlot(slotEntity.GetCurrentOccupiedItemType(), slotEntity.GetCurrentOccupiedItemMode(), slotEntity.GetSlotSupportedItemTypes(), slotEntity.GetSlotSupportedItemModes());
 		}
+
 		return false;
 	}
 
@@ -152,9 +149,8 @@ class SCR_ArsenalDisplayComponent : SCR_ArsenalComponent
 		{
 			SCR_WeaponRackSlotEntity slot = SCR_WeaponRackSlotEntity.Cast(child);
 			if (slot)
-			{
 				RegisterSlot(slot);
-			}
+
 			child = child.GetSibling();
 		}
 
@@ -172,9 +168,8 @@ class SCR_ArsenalDisplayComponent : SCR_ArsenalComponent
 	override void OnPostInit(IEntity owner)
 	{
 		if (SCR_Global.IsEditMode())
-		{
 			return;
-		}
+
 		super.OnPostInit(owner);
 
 		SetEventMask(owner, EntityEvent.INIT);
@@ -190,4 +185,4 @@ class SCR_ArsenalDisplayComponent : SCR_ArsenalComponent
 
 		GetGame().GetCallqueue().Remove(RefreshUpdate);
 	}
-};
+}

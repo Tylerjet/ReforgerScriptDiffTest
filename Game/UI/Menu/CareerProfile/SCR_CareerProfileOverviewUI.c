@@ -1,8 +1,6 @@
 //#define DEBUG_PLAYERPROFILE
-//------------------------------------------------------------------------------------------------
 class SCR_CareerProfileOverviewUI: SCR_SubMenuBase
 {
-	protected Widget m_wRootWidget;
 	protected Widget m_wFirstColumnWidget;
 	protected Widget m_wCareerSpecializationsWidget;
 	protected Widget m_wProfileNotFound;
@@ -27,16 +25,13 @@ class SCR_CareerProfileOverviewUI: SCR_SubMenuBase
 	protected ref SCR_PlayerData m_PlayerData;
 	
 	//------------------------------------------------------------------------------------------------
-	protected override void OnMenuOpen(SCR_SuperMenuBase parentMenu)
+	override void OnTabCreate(Widget menuRoot, ResourceName buttonsLayout, int index)
 	{
-		super.OnMenuOpen(parentMenu);
-		m_wRootWidget = GetRootWidget();
-		if (!m_wRootWidget)
-			return;
+		super.OnTabCreate(menuRoot, buttonsLayout, index);
 		
-		m_wFirstColumnWidget = m_wRootWidget.FindAnyWidget("FirstColumn");
-		m_wCareerSpecializationsWidget = m_wRootWidget.FindAnyWidget("CareerSpecializations0");
-		m_wProfileNotFound = m_wRootWidget.FindAnyWidget("ProfileNotFound");
+		m_wFirstColumnWidget = GetRootWidget().FindAnyWidget("FirstColumn");
+		m_wCareerSpecializationsWidget = GetRootWidget().FindAnyWidget("CareerSpecializations0");
+		m_wProfileNotFound = GetRootWidget().FindAnyWidget("ProfileNotFound");
 		
 		if (!m_wFirstColumnWidget || !m_wCareerSpecializationsWidget || !m_wProfileNotFound)
 			return;
@@ -70,12 +65,12 @@ class SCR_CareerProfileOverviewUI: SCR_SubMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuUpdate(SCR_SuperMenuBase parentMenu, float tDelta)
+	override void OnMenuUpdate(float tDelta)
 	{
+		super.OnMenuUpdate(tDelta);
+		
 		GetGame().GetInputManager().ActivateContext("CareerProfileContext");
 	}
-	
-	
 	
 	//------------------------------------------------------------------------------------------------
 	protected void FillFields()

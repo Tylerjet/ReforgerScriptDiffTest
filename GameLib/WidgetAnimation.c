@@ -157,8 +157,8 @@ class WidgetAnimationBase
 		return t;
 	}
 	
-	// Overriden by other animations
 	//------------------------------------------------------------------------------------------------
+	// Overridden by other animations
 	protected void ReverseDirection();
 
 	// Public API

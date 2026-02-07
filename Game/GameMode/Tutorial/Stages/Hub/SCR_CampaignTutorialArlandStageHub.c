@@ -42,7 +42,8 @@ class SCR_CampaignTutorialArlandStageHub : SCR_BaseCampaignTutorialArlandStage
 			GetGame().GetCallqueue().CallLater(DelayedPopup, 2000, false, "#AR-Tutorial_ScenarioName-UC", "#AR-Tutorial_Hint_Start", 15, "", "", "", "");
 			if (!m_TutorialHintList)
 				SetupHintConfig();
-			SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+			PlaySoundSystem("Hub", false);
+			HintOnVoiceOver();
 		}
 	}
 	

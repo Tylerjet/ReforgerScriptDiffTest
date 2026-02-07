@@ -53,39 +53,39 @@ class SCR_AIGetInVehicle : SCR_AIVehicleBehavior
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/GetInVehicle.bt";
 		SetPriority(priority);
 		m_fPriorityLevel.m_Value = priorityLevel;
-		if (vehicleEntity)
+		if (!vehicleEntity)
+			return;
+		
+		BaseCompartmentManagerComponent compManager = BaseCompartmentManagerComponent.Cast(vehicleEntity.FindComponent(BaseCompartmentManagerComponent));
+		if (!compManager)
 		{
-			BaseCompartmentManagerComponent compManager = BaseCompartmentManagerComponent.Cast(vehicleEntity.FindComponent(BaseCompartmentManagerComponent));
-			if (!compManager)
-			{
-				Fail();
-				return;
-			};
+			Fail();
+			return;
+		};
 			
-			IEntity agentEntity = m_Utility.m_OwnerEntity;
-			if (!agentEntity)
-			{
-				Fail();
-				return;
-			}
+		IEntity agentEntity = m_Utility.m_OwnerEntity;
+		if (!agentEntity)
+		{
+			Fail();
+			return;
+		}
 			
-			array<BaseCompartmentSlot> compartments = {};
-			compManager.GetCompartments(compartments);
+		array<BaseCompartmentSlot> compartments = {};
+		compManager.GetCompartments(compartments);
+		
+		foreach (BaseCompartmentSlot comp: compartments)
+		{
+			if (comp.IsReserved() || comp.IsCompartmentAccessible() || SCR_AICompartmentHandling.CompartmentClassToType(comp.Type()) != m_eRoleInVehicle.m_Value)
+				continue;
 			
-			foreach (BaseCompartmentSlot comp: compartments)
-			{
-				if (SCR_AICompartmentHandling.CompartmentClassToType(comp.Type()) == m_eRoleInVehicle.m_Value)
-				{
-					IEntity occupant = comp.GetOccupant();
-					if (!comp.IsReserved() && (!occupant || occupant == agentEntity))
-					{
-						comp.SetReserved(agentEntity);
-						comp.SetCompartmentAccessible(true);
-						m_CompartmentToGetIn.m_Value = comp;
-						break;
-					}
-				}
-			}
+			IEntity occupant = comp.GetOccupant();
+			if (occupant && occupant != agentEntity)
+				continue;
+			
+			comp.SetReserved(agentEntity);
+			comp.SetCompartmentAccessible(true);
+			m_CompartmentToGetIn.m_Value = comp;
+			break;
 		}
 	}
 	

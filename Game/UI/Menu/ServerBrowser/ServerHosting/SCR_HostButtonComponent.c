@@ -6,6 +6,7 @@ Not for viusals.
 class SCR_HostButtonComponent : ScriptedWidgetComponent
 {
 	SCR_ButtonBaseComponent m_Button;
+	MissionWorkshopItem m_Scenario;
 	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -20,6 +21,21 @@ class SCR_HostButtonComponent : ScriptedWidgetComponent
 	protected void OnClicked(SCR_ButtonBaseComponent button)
 	{
 		// Open hosting menu
-		GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.ServerHostingDialog);
+		ServerHostingUI dialog = SCR_CommonDialogs.CreateServerHostingDialog();
+		
+		if (m_Scenario && dialog)
+			dialog.SelectScenario(m_Scenario);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetScenario(MissionWorkshopItem scenario)
+	{
+		m_Scenario = scenario;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static SCR_HostButtonComponent FindComponent(Widget w)
+	{
+		return SCR_HostButtonComponent.Cast(w.FindHandler(SCR_HostButtonComponent));
 	}
 };

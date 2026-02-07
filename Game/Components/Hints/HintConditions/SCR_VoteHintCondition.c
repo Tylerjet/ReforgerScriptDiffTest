@@ -1,5 +1,5 @@
 [BaseContainerProps(), SCR_BaseContainerHintCondition()]
-class SCR_VoteGameMasterCondition: SCR_BaseEditorHintCondition
+class SCR_VoteGameMasterCondition : SCR_BaseEditorHintCondition
 {
 	[Attribute("0", UIWidgets.ComboBox, "Type of tracked vote.", enums: ParamEnumArray.FromEnum(EVotingType))]
 	protected EVotingType m_Type;
@@ -7,21 +7,28 @@ class SCR_VoteGameMasterCondition: SCR_BaseEditorHintCondition
 	[Attribute()]
 	protected bool m_bShowInPlayerList;
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnVotingStart(EVotingType type, int value)
 	{
 		if (type == m_Type && IsPlayerListMenu())
 			Activate();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnVotingEnd(EVotingType type, int value, int winner)
 	{
 		if (type == m_Type && IsPlayerListMenu())
 			Deactivate();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnVoteLocal(EVotingType type, int value)
 	{
 		if (type == m_Type && IsPlayerListMenu())
 			Deactivate();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnPlayerListMenu(bool isOpened)
 	{
 		if (!isOpened)
@@ -31,6 +38,8 @@ class SCR_VoteGameMasterCondition: SCR_BaseEditorHintCondition
 		if (votingManager && votingManager.IsVoting(m_Type))
 			Activate();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected bool IsPlayerListMenu()
 	{
 		if (!m_bShowInPlayerList)
@@ -40,6 +49,7 @@ class SCR_VoteGameMasterCondition: SCR_BaseEditorHintCondition
 		return !menuManager || menuManager.FindMenuByPreset(ChimeraMenuPreset.PlayerListMenu);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override protected void OnInitCondition(Managed owner)
 	{
 		SCR_VotingManagerComponent votingManager = SCR_VotingManagerComponent.GetInstance();
@@ -53,6 +63,8 @@ class SCR_VoteGameMasterCondition: SCR_BaseEditorHintCondition
 		
 		SCR_PlayerListMenu.GetOnPlayerListMenu().Insert(OnPlayerListMenu);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void OnExitCondition(Managed owner)
 	{
 		SCR_VotingManagerComponent votingManager = SCR_VotingManagerComponent.GetInstance();
@@ -66,4 +78,4 @@ class SCR_VoteGameMasterCondition: SCR_BaseEditorHintCondition
 		
 		SCR_PlayerListMenu.GetOnPlayerListMenu().Remove(OnPlayerListMenu);
 	}
-};
+}

@@ -1,16 +1,13 @@
-//------------------------------------------------------------------------------------------------
 [ComponentEditorProps(category: "GameScripted/GameMode/Components", description: "Debriefing screen shown after game ends")]
 class SCR_DebriefingScreenComponentClass : SCR_DeployMenuBaseScreenComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Debriefing screen component intended to be added to the GameMode.
 class SCR_DebriefingScreenComponent : SCR_DeployMenuBaseScreenComponent
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Class handling layout for UnevenFourTiles.
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_DebriefingScreenUnevenFourTiles : SCR_DeployMenuBaseScreenLayout
@@ -43,14 +40,13 @@ class SCR_DebriefingScreenUnevenFourTiles : SCR_DeployMenuBaseScreenLayout
 	protected const string BOTTOM_RIGHT_TILE_BUTTON = "BottomRightTileButton";
 
 	//------------------------------------------------------------------------------------------------
-	//! Initializes content for given menu.
 	override void InitContent(SCR_WelcomeScreenMenu menu)
 	{
 		Widget targetColumn = menu.GetRootWidget().FindAnyWidget(WELCOME_CONTENT);
 		if (!targetColumn)
 			return;
 
-		Widget fourUnevenTiles = GetGame().GetWorkspace().CreateWidgets(m_sFourUnevenTilesLayout, targetColumn);
+		GetGame().GetWorkspace().CreateWidgets(m_sFourUnevenTilesLayout, targetColumn);
 
 		if (m_TopLeftTile)
 		{
@@ -76,9 +72,8 @@ class SCR_DebriefingScreenUnevenFourTiles : SCR_DeployMenuBaseScreenLayout
 			m_BottomRightTile.InitContent(menu, BOTTOM_RIGHT_TILE, BOTTOM_RIGHT_TILE_BUTTON);
 		}
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Class handling big image content.
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_DebriefingScreenBigImageContent : SCR_WelcomeScreenBaseContent
@@ -90,7 +85,10 @@ class SCR_DebriefingScreenBigImageContent : SCR_WelcomeScreenBaseContent
 	protected ResourceName m_sBigImageLayout;
 
 	//------------------------------------------------------------------------------------------------
-	//! Initializes content for given column
+	//! Initialises content for given column
+	//! \param[in] menu
+	//! \param[in] column
+	//! \param[in] columnButton
 	override void InitContent(SCR_WelcomeScreenMenu menu, string column, string columnButton)
 	{
 		Widget targetTile = menu.GetRootWidget().FindAnyWidget(column);
@@ -103,21 +101,18 @@ class SCR_DebriefingScreenBigImageContent : SCR_WelcomeScreenBaseContent
 
 		ImageWidget imageWidget = ImageWidget.Cast(bigImageWidget.FindAnyWidget("ImageWidget"));
 		if (imageWidget && m_sContentImage)
-		imageWidget.LoadImageTexture(0, m_sContentImage, false, false);
+			imageWidget.LoadImageTexture(0, m_sContentImage, false, false);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get image
-	\return image
-	*/
+	//! Get image
+	//! \return image
 	ResourceName GetImage()
 	{
 		return m_sContentImage;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Class handling summary content.
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_DebriefingScreenSummaryContent : SCR_WelcomeScreenBaseContent
@@ -140,7 +135,10 @@ class SCR_DebriefingScreenSummaryContent : SCR_WelcomeScreenBaseContent
 	protected Widget m_wSummaryWidget;
 
 	//------------------------------------------------------------------------------------------------
-	//! Initializes content for given column
+	//! Initialises content for given column
+	//! \param[in] menu
+	//! \param[in] column
+	//! \param[in] columnButton
 	override void InitContent(SCR_WelcomeScreenMenu menu, string column, string columnButton)
 	{
 		m_sContentName = column;
@@ -208,7 +206,7 @@ class SCR_DebriefingScreenSummaryContent : SCR_WelcomeScreenBaseContent
 		
 		RichTextWidget subtitleText = RichTextWidget.Cast(m_wSummaryWidget.FindAnyWidget("SubtitleText"));
 		if (subtitleText)
-			subtitleText.SetTextFormat(subtitle, string.Format(WidgetManager.Translate("%1 <color rgba=\"226,168,80,255\">%2</color>", characterRank, GetGame().GetPlayerManager().GetPlayerName(GetGame().GetPlayerController().GetPlayerId()))), "");
+			subtitleText.SetTextFormat(subtitle, characterRank, string.Format("<color rgba=%1>%2</color>", UIColors.SRGBAFloatToInt(UIColors.CONTRAST_COLOR), GetGame().GetPlayerManager().GetPlayerName(GetGame().GetPlayerController().GetPlayerId())));
 
 		RichTextWidget descriptionText = RichTextWidget.Cast(m_wSummaryWidget.FindAnyWidget("DescriptionText"));
 		if (!descriptionText)
@@ -240,6 +238,7 @@ class SCR_DebriefingScreenSummaryContent : SCR_WelcomeScreenBaseContent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Updates summary subtitle - intended for runtime updates
+	//! \param[in] subtitle
 	void UpdateSummarySubtitle(string subtitle)
 	{
 		m_sSubtitleText = subtitle;
@@ -250,6 +249,7 @@ class SCR_DebriefingScreenSummaryContent : SCR_WelcomeScreenBaseContent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Updates summary description - intended for runtime updates
+	//! \param[in] description
 	void UpdateSummaryDescription(string description)
 	{
 		m_sDescriptionText = description;
@@ -259,47 +259,34 @@ class SCR_DebriefingScreenSummaryContent : SCR_WelcomeScreenBaseContent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get title
-	\return title
-	*/
+	//! \return title
 	string GetTitleText()
 	{
 		return m_sTitleText;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get subtitle
-	\return subtitle
-	*/
+	//! \return subtitle
 	string GetSubtitleText()
 	{
 		return m_sSubtitleText;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get subtitle lost
-	\return subtitle lost
-	*/
+	//! \return subtitle lost
 	string GetSubtitleLostText()
 	{
 		return m_sSubtitleLostText;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get description
-	\return description
-	*/
+	//! \return description
 	string GetDescriptionText()
 	{
 		return m_sDescriptionText;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Class handling finished mission objectives content.
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_DebriefingScreenFinishedObjectivesContent : SCR_WelcomeScreenBaseContent
@@ -321,7 +308,10 @@ class SCR_DebriefingScreenFinishedObjectivesContent : SCR_WelcomeScreenBaseConte
 	protected int m_iFinishedTasksCount;
 	
 	//------------------------------------------------------------------------------------------------
-	//! Initializes content for given column
+	//! Initialises content for given column
+	//! \param[in] menu
+	//! \param[in] column
+	//! \param[in] columnButton
 	override void InitContent(SCR_WelcomeScreenMenu menu, string column, string columnButton)
 	{
 		m_sContentName = column;
@@ -349,6 +339,7 @@ class SCR_DebriefingScreenFinishedObjectivesContent : SCR_WelcomeScreenBaseConte
 	
 	//------------------------------------------------------------------------------------------------
 	//! Toggles interactions for this content
+	//! \param[in] enabled
 	override void ToggleInteractions(bool enabled)
 	{
 		HandlePagination(enabled);
@@ -423,6 +414,7 @@ class SCR_DebriefingScreenFinishedObjectivesContent : SCR_WelcomeScreenBaseConte
 	
 	//------------------------------------------------------------------------------------------------
 	//! Fills content widget with finished objectives
+	//! \param[in] content
 	void FillFinishedObjectivesWidget(Widget content)
 	{
 		RichTextWidget titleText = RichTextWidget.Cast(m_wFinishedObjectivesWidget.FindAnyWidget("TitleText"));
@@ -474,7 +466,7 @@ class SCR_DebriefingScreenFinishedObjectivesContent : SCR_WelcomeScreenBaseConte
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Initializes pagination by registering button actions
+	//! Initialises pagination by registering button actions
 	protected void InitPagination()
 	{
 		Widget previousButtonWidget = m_wFinishedObjectivesWidget.FindAnyWidget("PrevButton");
@@ -503,6 +495,7 @@ class SCR_DebriefingScreenFinishedObjectivesContent : SCR_WelcomeScreenBaseConte
 	
 	//------------------------------------------------------------------------------------------------
 	//! Handles inputs of buttons
+	//! \param[in] enabled
 	protected void HandlePagination(bool enabled = false)
 	{
 		Widget previousButtonWidget = m_wFinishedObjectivesWidget.FindAnyWidget("PrevButton");
@@ -561,14 +554,16 @@ class SCR_DebriefingScreenFinishedObjectivesContent : SCR_WelcomeScreenBaseConte
 
 	//------------------------------------------------------------------------------------------------
 	//! Changes the content of current page based on the provided number
+	//! \param[in] currentPage
 	protected void FlipPage(int currentPage)
 	{
+		RichTextWidget name;
 		for (int i = 0; i < 6; ++i)
 		{
 			m_aFinishedObjectivesWidgets[i].SetOpacity(1);
 			if (currentPage == 0)
 			{
-				RichTextWidget name = RichTextWidget.Cast(m_aFinishedObjectivesWidgets[i].FindAnyWidget("ObjectiveText"));
+				name = RichTextWidget.Cast(m_aFinishedObjectivesWidgets[i].FindAnyWidget("ObjectiveText"));
 				if (i < m_iFinishedTasksCount)
 				{
 					SCR_EditorTask editorTask = SCR_EditorTask.Cast(m_aFinishedTasks[i]);
@@ -587,7 +582,7 @@ class SCR_DebriefingScreenFinishedObjectivesContent : SCR_WelcomeScreenBaseConte
 			}
 			else
 			{
-				RichTextWidget name = RichTextWidget.Cast(m_aFinishedObjectivesWidgets[i].FindAnyWidget("ObjectiveText"));
+				name = RichTextWidget.Cast(m_aFinishedObjectivesWidgets[i].FindAnyWidget("ObjectiveText"));
 				if ((currentPage * 6) + i < m_iFinishedTasksCount)
 				{
 					SCR_EditorTask editorTask = SCR_EditorTask.Cast(m_aFinishedTasks[(currentPage * 6) + i]);
@@ -622,10 +617,8 @@ class SCR_DebriefingScreenFinishedObjectivesContent : SCR_WelcomeScreenBaseConte
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get current page
-	\return current page
-	*/
+	//! Get current page
+	//! \return current page
 	int GetCurrentPage()
 	{
 		return m_iCurrentPage;
@@ -634,23 +627,20 @@ class SCR_DebriefingScreenFinishedObjectivesContent : SCR_WelcomeScreenBaseConte
 	//------------------------------------------------------------------------------------------------
 	//! Sets current page number which just changes the member variable and nothing more. 
 	//! Method FlipPage actually performs UI Changes based on this member variable.
+	//! \param[in] page
 	void SetCurrentPage(int page)
 	{
 		m_iCurrentPage = page;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get title
-	\return title
-	*/
+	//! \return title
 	string GetTitleText()
 	{
 		return m_sTitleText;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Class handling Statistics retrieved from the DataCollector
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_DebriefingScreenStatisticsContent : SCR_WelcomeScreenBaseContent
@@ -670,7 +660,10 @@ class SCR_DebriefingScreenStatisticsContent : SCR_WelcomeScreenBaseContent
 	protected Widget m_wStatisticsWidget;
 	
 	//------------------------------------------------------------------------------------------------
-	//! Initializes content for given column
+	//! Initialises content for given column
+	//! \param[in] menu
+	//! \param[in] column
+	//! \param[in] columnButton
 	override void InitContent(SCR_WelcomeScreenMenu menu, string column, string columnButton)
 	{
 		m_sContentName = column;
@@ -692,6 +685,7 @@ class SCR_DebriefingScreenStatisticsContent : SCR_WelcomeScreenBaseContent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Fills content widget with statistics
+	//! \param[in] content
 	void FillStatisticsWidget(Widget content)
 	{
 		RichTextWidget titleText = RichTextWidget.Cast(m_wStatisticsWidget.FindAnyWidget("TitleText"));
@@ -723,11 +717,9 @@ class SCR_DebriefingScreenStatisticsContent : SCR_WelcomeScreenBaseContent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get statistics
-	\param[out] statistics array of statistics
-	\return number of statistics
-	*/
+	//! Get statistics
+	//! \param[out] statistics array of statistics
+	//! \return number of statistics
 	int GetStatistics(out array<ref SCR_DebriefingScreenStatisticBaseClass> statistics)
 	{
 		statistics = m_aStatistics;
@@ -736,17 +728,13 @@ class SCR_DebriefingScreenStatisticsContent : SCR_WelcomeScreenBaseContent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get title
-	\return title
-	*/
+	//! \return title
 	string GetTitleText()
 	{
 		return m_sTitleText;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Base class that holds and handles information about statistic
 [BaseContainerProps()]
 class SCR_DebriefingScreenStatisticBaseClass
@@ -755,82 +743,69 @@ class SCR_DebriefingScreenStatisticBaseClass
 	
 	//------------------------------------------------------------------------------------------------
 	//! Initialises statistics and performs necessary data retrieval and assigment
-	void InitStatistic(notnull array<float> stats)
-	{
-	}
+	//! \param[in] stats
+	void InitStatistic(notnull array<float> stats);
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get statistic result
-	\return statistic result
-	*/
+	//! \return statistic result
 	string GetStatisticResult()
 	{
 		return m_sStatisticResult;
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Class that holds information and handles information about shots fired
 [BaseContainerProps()]
 class SCR_DebriefingScreenStatisticShotsFired : SCR_DebriefingScreenStatisticBaseClass
 {
 	//------------------------------------------------------------------------------------------------
-	//! Initialises statistics and performs necessary data retrieval and assigment
 	override void InitStatistic(notnull array<float> stats)
 	{
 		m_sStatisticResult = string.Format(WidgetManager.Translate("<b>#AR-DebriefingScreen_Statistics_Rounds</b>", Math.Floor(stats[SCR_EDataStats.SHOTS])));
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Class that holds information and handles information about kills
 [BaseContainerProps()]
 class SCR_DebriefingScreenStatisticKills : SCR_DebriefingScreenStatisticBaseClass
 {
 	//------------------------------------------------------------------------------------------------
-	//! Initialises statistics and performs necessary data retrieval and assigment
 	override void InitStatistic(notnull array<float> stats)
 	{
 		m_sStatisticResult = string.Format(WidgetManager.Translate("<b>#AR-DebriefingScreen_Statistics_Kills</b>", Math.Floor(stats[SCR_EDataStats.AI_KILLS] + stats[SCR_EDataStats.KILLS])));
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Class that holds information and handles information about deaths
 [BaseContainerProps()]
 class SCR_DebriefingScreenStatisticDeaths : SCR_DebriefingScreenStatisticBaseClass
 {
 	//------------------------------------------------------------------------------------------------
-	//! Initialises statistics and performs necessary data retrieval and assigment
+
 	override void InitStatistic(notnull array<float> stats)
 	{
 		m_sStatisticResult = string.Format(WidgetManager.Translate("<b>#AR-DebriefingScreen_Statistics_Deaths</b>", Math.Floor(stats[SCR_EDataStats.DEATHS])));
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Class that holds information and handles information about distance walked
 [BaseContainerProps()]
 class SCR_DebriefingScreenStatisticDistanceWalked : SCR_DebriefingScreenStatisticBaseClass
 {
 	//------------------------------------------------------------------------------------------------
-	//! Initialises statistics and performs necessary data retrieval and assigment
 	override void InitStatistic(notnull array<float> stats)
 	{
 		m_sStatisticResult = string.Format(WidgetManager.Translate("<b>#AR-DebriefingScreen_Statistics_DistanceWalked</b>", Math.Floor(stats[SCR_EDataStats.DISTANCE_WALKED]/1000)));
 	}
-};
+}
 
-//------------------------------------------------------------------------------------------------
 //! Class that holds information and handles information about distance driven
 [BaseContainerProps()]
 class SCR_DebriefingScreenStatisticDistanceDriven : SCR_DebriefingScreenStatisticBaseClass
 {
 	//------------------------------------------------------------------------------------------------
-	//! Initialises statistics and performs necessary data retrieval and assigment
 	override void InitStatistic(notnull array<float> stats)
 	{
 		m_sStatisticResult = string.Format(WidgetManager.Translate("<b>#AR-DebriefingScreen_Statistics_DistanceDriven</b>", Math.Floor(stats[SCR_EDataStats.DISTANCE_DRIVEN]/1000)));
 	}
-};
+}

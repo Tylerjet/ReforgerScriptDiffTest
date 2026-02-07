@@ -1,15 +1,12 @@
 [ComponentEditorProps(category: "GameScripted/Editor (Editables)", description: "", icon: "WBData/ComponentEditorProps/componentEditor.png")]
-class SCR_EditableMineComponentClass: SCR_EditableSystemComponentClass
+class SCR_EditableMineComponentClass : SCR_EditableSystemComponentClass
 {
-};
+}
 
-/** @ingroup Editable_Entities
-*/
+//! @ingroup Editable_Entities
 
-/*!
-Editable Mine
-*/
-class SCR_EditableMineComponent: SCR_EditableSystemComponent
+//! Editable Mine
+class SCR_EditableMineComponent : SCR_EditableSystemComponent
 {
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)

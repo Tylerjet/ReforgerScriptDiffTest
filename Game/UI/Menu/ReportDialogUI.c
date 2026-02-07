@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 class ReportDialogUI: DialogUI
 {
 	protected ContentBrowserDetailsMenu m_DetailsMenu;
@@ -16,7 +15,56 @@ class ReportDialogUI: DialogUI
 	
 	protected bool m_bShouldEnableConfirmButton;
 	
-	//! Available categories of feedback
+	protected ref ScriptInvokerBool m_OnReportSuccess;
+		
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuOpen()
+	{
+		super.OnMenuOpen();
+		Widget root = GetRootWidget();
+		
+		m_InputField = SCR_EditBoxComponent.GetEditBoxComponent("InputField", root);
+		if (m_InputField)
+			m_InputField.m_OnChanged.Insert(OnFieldChanged);
+		
+		m_ReasonCombo = SCR_ComboBoxComponent.GetComboBoxComponent("ReasonCombo", root);
+		if (m_ReasonCombo)
+		{
+			m_ReasonCombo.ClearAll();
+			string reportTypeStr = SCR_WorkshopUiCommon.GetReportTypeString(0);
+			int i = 1;
+			while (!reportTypeStr.IsEmpty())
+			{
+				m_ReasonCombo.AddItem(reportTypeStr);
+				reportTypeStr = SCR_WorkshopUiCommon.GetReportTypeString(i);
+				i++;
+			}
+			m_ReasonCombo.SetCurrentItem(0);
+		}
+		
+		m_wDialogWindow = root.FindAnyWidget("DialogBase0");
+		
+		// Disable the confirm button initially because text is empty
+		m_Confirm.SetEnabled(false);
+		
+		if(m_InputField)
+		{
+			m_InputField.m_OnWriteModeLeave.Insert(OnWriteModeLeave);
+			m_InputField.m_OnTextChange.Insert(OnTextChange);
+		}
+		
+		SCR_InputButtonComponent tos = SCR_InputButtonComponent.GetInputButtonComponent("ToS", GetRootWidget());
+		if (tos)
+			tos.m_OnActivated.Insert(OnTos);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuShow()
+	{
+		super.OnMenuShow();
+		if (m_InputField)
+			GetGame().GetWorkspace().SetFocusedWidget(m_InputField.GetRootWidget());
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuUpdate(float tDelta)
@@ -61,7 +109,7 @@ class ReportDialogUI: DialogUI
 		}
 		
 		// Report
-		m_ReportAction = m_DetailsMenu.m_WorkshopItem.Report(reason, content);
+		m_ReportAction = ContentBrowserDetailsMenu.GetWorkshopItem().Report(reason, content);
 		
 		m_ReportAction.m_OnCompleted.Insert(OnReportSuccess);
 		m_ReportAction.m_OnFailed.Insert(OnReportFailed);
@@ -72,15 +120,17 @@ class ReportDialogUI: DialogUI
 	//------------------------------------------------------------------------------------------------
 	protected void OnReportSuccess()
 	{
-		m_DetailsMenu.OnItemReportedSuccessfully();
-		m_DetailsMenu.m_WorkshopItem.DeleteLocally();
-		m_DetailsMenu.m_WorkshopItem.SetSubscribed(false);
+		if (m_OnReportSuccess)
+			m_OnReportSuccess.Invoke(false);
+		
+		ContentBrowserDetailsMenu.GetWorkshopItem().DeleteLocally();
+		ContentBrowserDetailsMenu.GetWorkshopItem().SetSubscribed(false);
 		
 		// Cancel download 
 		SCR_DownloadManager mgr = SCR_DownloadManager.GetInstance();
 		if (mgr)
 		{
-			SCR_WorkshopItemActionDownload action = mgr.GetActionOfItem(m_DetailsMenu.m_WorkshopItem);
+			SCR_WorkshopItemActionDownload action = mgr.GetActionOfItem(ContentBrowserDetailsMenu.GetWorkshopItem());
 			if (action)
 				action.Cancel();
 		}
@@ -118,57 +168,6 @@ class ReportDialogUI: DialogUI
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuShow()
-	{
-		super.OnMenuShow();
-		if (m_InputField)
-			GetGame().GetWorkspace().SetFocusedWidget(m_InputField.GetRootWidget());
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void OnMenuOpen()
-	{
-		super.OnMenuOpen();
-		Widget root = GetRootWidget();
-		
-		m_InputField = SCR_EditBoxComponent.GetEditBoxComponent("InputField", root);
-		if (m_InputField)
-		{
-			m_InputField.m_OnChanged.Insert(OnFieldChanged);
-		}
-		
-		m_ReasonCombo = SCR_ComboBoxComponent.GetComboBoxComponent("ReasonCombo", root);
-		if (m_ReasonCombo)
-		{
-			m_ReasonCombo.ClearAll();
-			string reportTypeStr = SCR_WorkshopUiCommon.GetReportTypeString(0);
-			int i = 1;
-			while (!reportTypeStr.IsEmpty())
-			{
-				m_ReasonCombo.AddItem(reportTypeStr);
-				reportTypeStr = SCR_WorkshopUiCommon.GetReportTypeString(i);
-				i++;
-			}
-			m_ReasonCombo.SetCurrentItem(0);
-		}
-		
-		m_wDialogWindow = root.FindAnyWidget("DialogBase0");
-		
-		// Disable the confirm button initially because text is empty
-		m_Confirm.SetEnabled(false);
-		
-		if(m_InputField)
-		{
-			m_InputField.m_OnWriteModeLeave.Insert(OnWriteModeLeave);
-			m_InputField.m_OnTextChange.Insert(OnTextChange);
-		}
-		
-		SCR_InputButtonComponent tos = SCR_InputButtonComponent.GetInputButtonComponent("ToS", GetRootWidget());
-		if (tos)
-			tos.m_OnActivated.Insert(OnTos);
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	protected void OnWriteModeLeave(string text)
 	{
 		OnTextChange(text);
@@ -190,16 +189,19 @@ class ReportDialogUI: DialogUI
 		if (m_Confirm)
 			m_Confirm.SetEnabled(text.Length() > 0);
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	void Init(ContentBrowserDetailsMenu parentMenu)
-	{
-		m_DetailsMenu = parentMenu;
-	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnTos()
 	{
 		GetGame().GetPlatformService().OpenBrowser(GetGame().GetBackendApi().GetLinkItem("Link_PrivacyPolicy"));
 	}
-};
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerBool GetOnReportSuccess()
+	{
+		if (!m_OnReportSuccess)
+			m_OnReportSuccess = new ScriptInvokerBool();
+		
+		return m_OnReportSuccess;
+	}
+}

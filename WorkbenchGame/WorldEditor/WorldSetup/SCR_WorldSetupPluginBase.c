@@ -1,10 +1,11 @@
 #ifdef WORKBENCH
-
 class SCR_WorldSetupPluginBasePlugin : WorkbenchPlugin
 {
 	//------------------------------------------------------------------------------------------------
-	//! \param 
-	//! \param fileName if provided, the desired file name (without extension) e.g "My_Prefab" -> "My_Prefab.et"
+	//! Create a child to the provided Prefab - uses the provided Prefab on error
+	//! \param[in] prefab the Prefab from which to create a child Prefab
+	//! \param[in] addon in which addon to create said child Prefab
+	//! \param[in] fileName if provided, the desired file name (without extension) e.g "My_Prefab" -> "My_Prefab.et"
 	//! \return the created ResourceName or empty if failed
 	protected ResourceName CreatePrefabChildInAddon(ResourceName prefab, int addon, string fileName = string.Empty)
 	{
@@ -40,5 +41,4 @@ class SCR_WorldSetupPluginBasePlugin : WorkbenchPlugin
 		return SCR_PrefabHelper.CreateChildPrefab(prefab, destinationAbsolutePath);
 	}
 }
-
-#endif
+#endif // WORKBENCH

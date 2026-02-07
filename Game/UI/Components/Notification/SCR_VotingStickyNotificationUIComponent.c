@@ -1,4 +1,4 @@
-class SCR_VotingStickyNotificationUIComponent: SCR_StickyNotificationUIComponent
+class SCR_VotingStickyNotificationUIComponent : SCR_StickyNotificationUIComponent
 {
 	[Attribute("#AR-Notification_Sticky_MultiplePlayerVotes", desc: "When there is more then 1 vote in progress", uiwidget: UIWidgets.LocaleEditBox)]
 	protected LocalizedString m_sMultipleVotesText;
@@ -91,6 +91,7 @@ class SCR_VotingStickyNotificationUIComponent: SCR_StickyNotificationUIComponent
 			
 			if (m_InstantVoteLayout)
 				m_InstantVoteLayout.SetVisible(true);
+
 			if (m_OptionalMessageLayout)
 				m_OptionalMessageLayout.SetVisible(false);
 			
@@ -102,7 +103,9 @@ class SCR_VotingStickyNotificationUIComponent: SCR_StickyNotificationUIComponent
 		SetStickyActive(true, !isInit);
 	}
 	
-	//~ When the UI is visible the player can use the instant vote actions (If there is only one vote active)
+	//------------------------------------------------------------------------------------------------
+	//! When the UI is visible the player can use the instant vote actions (If there is only one vote active)
+	//! \param[in] enable
 	protected void EnableContextAction(bool enable)
 	{
 		if (enable)
@@ -128,14 +131,15 @@ class SCR_VotingStickyNotificationUIComponent: SCR_StickyNotificationUIComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//~ Updates each frame to keep InstantVotingContext active
+	//! Updates each frame to keep InstantVotingContext active
 	protected void InstantVotingContextUpdate()
 	{
 		GetGame().GetInputManager().ActivateContext("InstantVotingContext");
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//~ Enable the voting timer UI
+	//! Enable the voting timer UI
+	//! \param[in] enable
 	protected void EnableVotingTimerUI(bool enable)
 	{
 		if (!m_RemainingVotingTime)
@@ -163,7 +167,7 @@ class SCR_VotingStickyNotificationUIComponent: SCR_StickyNotificationUIComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//~ Called when only 1 vote is active. Called every 1 second to update
+	//! Called when only 1 vote is active. Called every 1 second to update
 	protected void VotingTimeUpdate()
 	{
 		m_RemainingVotingTime.SetText(SCR_FormatHelper.GetTimeFormatting(Math.Clamp(m_VotingManagerComponent.GetRemainingDurationOfVote(m_eActiveSingularVoteType, m_eActiveSingularVoteValue), 0, float.MAX), ETimeFormatParam.DAYS | ETimeFormatParam.HOURS, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS | ETimeFormatParam.MINUTES));	
@@ -290,7 +294,8 @@ class SCR_VotingStickyNotificationUIComponent: SCR_StickyNotificationUIComponent
 			
 			GetGame().GetCallqueue().Remove(InstantVotingContextUpdate);
 		}
+
 		if (m_bIsUpdatingTime)
 			GetGame().GetCallqueue().Remove(VotingTimeUpdate);
 	}	
-};
+}

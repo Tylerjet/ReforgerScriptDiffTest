@@ -59,28 +59,32 @@ class SCR_FieldManualPiece_Image : SCR_FieldManualPiece
 		if (textWidget)
 			textWidget.SetText(m_sCaption);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetImagePath()
 	{
 		return m_ImagePath;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetSetName()
 	{
 		return m_sImageSetName;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	Color GetImageColor()
 	{
-		return m_ImageColor;
+		return Color.FromInt(m_ImageColor.PackToInt());
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetCaption()
 	{
 		return m_sCaption;
 	}
-};
+}

@@ -6,15 +6,11 @@ void OnDeployMenuCloseDelegate();
 typedef func OnDeployMenuCloseDelegate;
 typedef ScriptInvokerBase<OnDeployMenuCloseDelegate> OnDeployMenuCloseInvoker;
 
-//------------------------------------------------------------------------------------------------
 class SCR_PlayerDeployMenuHandlerComponentClass : ScriptComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
-/*!
-	Component responsible for deploy menu management.
-*/
+//! Component responsible for deploy menu management.
 class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 {
 	private SCR_RespawnComponent m_RespawnComponent;
@@ -74,6 +70,9 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 			SetWelcomeClosed();	
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] timeSlice
 	void Update(float timeSlice)
 	{
 #ifdef ENABLE_DIAG
@@ -84,6 +83,7 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 		{
 			if (!IsWelcomeScreenOpen())
 				GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.WelcomeScreenMenu);
+
 			return;
 
 		}
@@ -115,24 +115,30 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 			}
 		}
 		else if (IsMenuOpen())
+		{
 			CloseMenu();
+		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected bool IsMenuOpen()
 	{
 		return SCR_DeployMenuMain.GetDeployMenu() || SCR_RoleSelectionMenu.GetRoleSelectionMenu();
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected bool IsWelcomeScreenOpen()
 	{
 		return GetGame().GetMenuManager().FindMenuByPreset(ChimeraMenuPreset.WelcomeScreenMenu);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void CloseWelcomeScreen()
 	{
 		GetGame().GetMenuManager().CloseMenuByPreset(ChimeraMenuPreset.WelcomeScreenMenu);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void CloseMenu()
 	{
 		if (m_PlayerController.GetPlayerId() != GetGame().GetPlayerController().GetPlayerId())
@@ -146,6 +152,7 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 			s_OnMenuClose.Invoke();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected bool HasPlayableFaction()
 	{
 		if (!m_PlyFactionAffil)
@@ -156,6 +163,7 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 		return (faction && faction.IsPlayable());
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected bool CanOpenMenu()
 	{
 		if (!m_bWelcomeClosed)
@@ -176,6 +184,7 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 		return canOpen;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected bool CanOpenWelcomeScreen()
 	{
 		bool hasEntity = (m_PlayerController.IsPossessing() || m_PlayerController.GetControlledEntity());
@@ -197,6 +206,7 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 		return canOpen;		
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void OnRespawnReady()
 	{
 		if (m_bFirstOpen)
@@ -209,6 +219,7 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 		GetGame().GetCallqueue().Call(SetReadyDelayed);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void SetReadyDelayed()
 	{
 		IEntity controlledEntity = m_PlayerController.GetControlledEntity();
@@ -222,6 +233,7 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 		GetGame().GetCallqueue().CallLater(SetReady, delay, false);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void SetReady()
 	{
 		if (m_SpawnLogic)
@@ -229,11 +241,13 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 		m_DeployMenuSystem.SetReady(true);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	void SetWelcomeClosed()
 	{
 		m_bWelcomeClosed = true;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void OnPlayerReconnect(int state)
 	{
 		if (m_SpawnLogic)
@@ -242,6 +256,7 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 		SetWelcomeClosed();
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void SetNotReady(SCR_SpawnRequestComponent requestComponent, SCR_ESpawnResult response)
 	{
 		if (response == SCR_ESpawnResult.OK)
@@ -255,11 +270,18 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] dt
+	//! \return
 	bool UpdateLoadingPlaceholder(float dt)
 	{
 		return m_SpawnLogic.UpdateLoadingPlaceholder(dt);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	static OnDeployMenuCloseInvoker SGetOnMenuClosed()
 	{
 		if (!s_OnMenuClose)
@@ -268,6 +290,7 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 		return s_OnMenuClose;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override protected void OnDelete(IEntity owner)
 	{
 		if (s_OnMenuClose)
@@ -275,11 +298,14 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 		
 		if (m_DeployMenuSystem)
 			m_DeployMenuSystem.Unregister(this);
+
 		super.OnDelete(owner);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_PlayerController GetPlayerController()
 	{
 		return m_PlayerController;
 	}
-};
+}

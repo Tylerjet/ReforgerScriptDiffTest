@@ -21,11 +21,13 @@ class SCR_NameTagRulesetBase : Managed
 	[Attribute("0", UIWidgets.CheckBox, desc: "seconds \n how long it takes for the tag to start fading if LOS is obstructed")]
 	protected float m_fLOSFadeDelay;
 	
+	[Attribute("90", UIWidgets.CheckBox, desc: "degrees \n base angle from center of the screen to entity required to display nametag, automatically scales with distance")]
+	protected int m_iMaxAngle;						// degrees, no tags may be visible outside of this angle to screen center
+	
 	// Consts
 	const int DISABLE_FLAGS = ENameTagFlags.UPDATE_DISABLE | ENameTagFlags.DISABLED; // flags which mark the nametag for cleanup process
 	const int SECONDARY_FLAGS = ENameTagEntityState.VON; // tags with these entity states are eligible to be secondary tags
 	const int NEAR_TAG_ANGLE = 3;					// degrees, when multiple tags are within this value, the one which is closer will be prioritized as for primary tag to avoid nametag overlap 
-	const int MAX_ANGLE = 90;						// degrees, no tags may be visible outside of this angle to screen center
 	const int DISABLED_CLEANUP = 5.0;				// seconds, time it takes to cleanup disabled tag
 	const int POSITION_UPDATE = 0.1;				// seconds, how often position is updated
 	const float POS_TRANSITION_MULT = 2;			// multiplier of time it takes to transition between different tag positions (HEAD -> BODY), default is 1 second
@@ -53,7 +55,7 @@ class SCR_NameTagRulesetBase : Managed
 
 	protected ref array<ref SCR_NameTagData> m_aNameTags = {};		// basic nametag array from display
 	protected ref array<ref SCR_NameTagData> m_aCandidateTags = {};	// nametags who passed initial visibility rules
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Determine whether the tag passes basic conditions for visibility
 	//! \param data is the subject nametag
@@ -258,12 +260,12 @@ class SCR_NameTagRulesetBase : Managed
 		param.Exclude = m_CurrentPlayerTag.m_Entity;
 			
 		float percent = GetGame().GetWorld().TraceMove(param, null);
-		if (percent == 1)	// If trace travels the entire path, return true
+		if (percent == 1 || param.TraceEnt == data.m_Entity)	// If trace travels the entire path, return true
 			return true;
-				
+		
 		return false;
 	}
-		
+			
 	//------------------------------------------------------------------------------------------------
 	//! Evaluates if player is focusing a nametag entity or not, expands/collapses nametag after a set time
 	//! \param timeSlice is the OnFrame timeslice
@@ -347,7 +349,7 @@ class SCR_NameTagRulesetBase : Managed
 		// update screen pos while fading so it doesnt get stuck on screen side mid fade
 		data.UpdateTagPos();
 		data.m_fAngleToScreenCenter = GetCameraToEntityAngle(data.m_vEntWorldPos, VERT_ANGLE_ADJUST);
-		if (data. m_fAngleToScreenCenter > MAX_ANGLE) // player quickly turning 180 deg returns tag to screen space visibility if it has fade, this check removes it before that point
+		if (data. m_fAngleToScreenCenter > m_iMaxAngle) // player quickly turning 180 deg returns tag to screen space visibility if it has fade, this check removes it before that point
 			data.m_fTimeSliceVisibility = 0;
 		
 		CalculateScreenPos(data);
@@ -432,12 +434,20 @@ class SCR_NameTagRulesetBase : Managed
 					return;
 			}
 						
-			int camID = m_PIPSightsComp.GetPIPCameraIndex();
-			data.m_vTagScreenPos = m_Workspace.ProjWorldToScreen( data.m_vTagWorldPos, m_World, camID);
-			
-			if (!m_PIPSightsComp.IsScreenPositionInSights(data.m_vTagScreenPos))
+			if (m_CurrentPlayerTag.m_CharController.IsFreeLookEnabled())
 			{
-				data.m_vTagScreenPos = {0,0};
+				data.m_vTagScreenPos = m_Workspace.ProjWorldToScreen( data.m_vTagWorldPos, m_World );	// if PIP free look, draw tags standard way
+				if (m_PIPSightsComp.IsScreenPositionInSights(data.m_vTagScreenPos))
+					data.m_vTagScreenPos = {0,0};														// hide tags within scope area
+			}
+			else 
+			{
+				int camID = m_PIPSightsComp.GetPIPCameraIndex();
+				data.m_vTagScreenPos = m_Workspace.ProjWorldToScreen( data.m_vTagWorldPos, m_World, camID);
+				
+				if (!m_PIPSightsComp.IsScreenPositionInSights(data.m_vTagScreenPos))
+					data.m_vTagScreenPos = {0,0};		// hide tags outside of scope area
+				
 			}
 		}
 	}

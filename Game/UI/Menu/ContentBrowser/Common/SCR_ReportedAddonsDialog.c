@@ -372,7 +372,7 @@ class SCR_ReportedAddonsDialog : SCR_AddonListDialog
 		
 		if (entry)
 		{
-			entry.GetMessage().SetColor(UIColors.CONFIRM);
+			entry.GetMessage().SetColor(Color.FromInt(UIColors.CONFIRM.PackToInt()));
 			entry.SetMessages(entry.GetLeftText(), STR_FIXED_REPORT);
 		}
 		

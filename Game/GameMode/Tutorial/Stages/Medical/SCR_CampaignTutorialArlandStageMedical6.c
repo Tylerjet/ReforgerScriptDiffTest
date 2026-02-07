@@ -12,13 +12,16 @@ class SCR_CampaignTutorialArlandStageMedical6: SCR_BaseCampaignTutorialArlandSta
 	{
 		m_fWaypointCompletionRadius = 10;
 		m_fWaypointHeightOffset = 0;
-
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
 		
 		RegisterWaypoint("WP_MEDICAL_4");
 		
 		m_Ambulance = Vehicle.Cast(GetGame().GetWorld().FindEntityByName("Ambulance"));
 		m_TutorialComponent.SetWaypointMiscImage("GETOUT", true);
+		
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("FirstAid_Park", true);
+		HintOnVoiceOver();
 	}
 	
 	//------------------------------------------------------------------------------------------------

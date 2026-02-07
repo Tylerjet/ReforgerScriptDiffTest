@@ -1,15 +1,18 @@
 [EntityEditorProps(category: "GameScripted/Triggers", description: "")]
 class SCR_CharacterTriggerEntityClass : SCR_BaseTriggerEntityClass
 {
-};
+}
 
-enum TA_EActivationPresence
+enum TA_EActivationPresence // TODO: SCR_
 {
 	PLAYER = 0,
 	ANY_CHARACTER,
 	SPECIFIC_CLASS,
 	SPECIFIC_PREFAB_NAME,
-};
+}
+
+void ScriptInvokerTriggerUpdated(float activationCountdownTimer, float tempWaitTime, int playersCountByFactionInside, int playersCountByFaction, string playerActivationNotificationTitle, bool triggerConditionsStatus, float minimumPlayersNeededPercentage);
+typedef func ScriptInvokerTriggerUpdated;
 
 class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 {
@@ -58,7 +61,7 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 	[Attribute("", UIWidgets.EditBox, desc: "Audio sound that will be playing when countdown is active.", category: "Trigger")]
 	protected string 	m_sCountdownAudio;
 
-	protected ref set<BaseContainer> 	m_aPrefabContainerSet = new ref set<BaseContainer>();
+	protected ref set<BaseContainer> 	m_aPrefabContainerSet = new set<BaseContainer>();
 	
 	protected ref ScriptInvoker 	m_OnChange;
 	protected Faction 				m_OwnerFaction;
@@ -72,8 +75,8 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 	protected bool 					m_bTimerActive;
 	protected int 					m_iCountInsideTrigger;
 
-	static ref ScriptInvoker s_OnTriggerUpdated = new ScriptInvoker();
-	static ref ScriptInvoker s_OnTriggerUpdatedPlayerNotPresent = new ScriptInvoker();
+	static ref ScriptInvokerBase<ScriptInvokerTriggerUpdated> s_OnTriggerUpdated = new ScriptInvokerBase<ScriptInvokerTriggerUpdated>();
+	static ref ScriptInvokerInt s_OnTriggerUpdatedPlayerNotPresent = new ScriptInvokerInt();
 
 	//------------------------------------------------------------------------------------------------
 	//! Sets Activation Presence
@@ -851,10 +854,11 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 		{
 			condition.Init(this);
 		}
-		
+
+		PrefabFilter prefabFilter;
 		foreach (SCR_ScenarioFrameworkPrefabFilter prefabFilterInput : m_aPrefabFilter)
 		{
-			PrefabFilter prefabFilter = new PrefabFilter();
+			prefabFilter = new PrefabFilter();
 			prefabFilter.SetPrefab(prefabFilterInput.m_sSpecificPrefabName);
 			prefabFilter.SetCheckPrefabHierarchy(prefabFilterInput.m_bIncludeChildren);
 			AddPrefabFilter(prefabFilter);
@@ -881,24 +885,20 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 		if (world)
 			m_MusicManager = world.GetMusicManager();
 	}
-};
+}
 
 //Baseclass that is supposed to be extended and filled with custom conditions
 [BaseContainerProps()]
 class SCR_CustomTriggerConditions
 {
 	//------------------------------------------------------------------------------------------------
-	//! This method is supposed to be overriden in a new class that extends this class and it is used if some init actions are needed
-	void Init(SCR_CharacterTriggerEntity trigger)
-	{
-	}
+	//! This method is supposed to be overridden in a new class that extends this class and it is used if some init actions are needed
+	void Init(SCR_CharacterTriggerEntity trigger);
 
 	//------------------------------------------------------------------------------------------------
-	//! This method is supposed to be overriden in a new class that extends this class and it is used in evaluation afterwards
-	void CustomTriggerConditions(SCR_CharacterTriggerEntity trigger)
-	{
-	}
-};
+	//! This method is supposed to be overridden in a new class that extends this class and it is used in evaluation afterwards
+	void CustomTriggerConditions(SCR_CharacterTriggerEntity trigger);
+}
 
 [BaseContainerProps()]
 class SCR_CustomTriggerConditionsSpecificPrefabCount : SCR_CustomTriggerConditions
@@ -909,13 +909,22 @@ class SCR_CustomTriggerConditionsSpecificPrefabCount : SCR_CustomTriggerConditio
 	//------------------------------------------------------------------------------------------------
 	override void Init(SCR_CharacterTriggerEntity trigger)
 	{
+		Resource resource;
+		BaseContainer baseContainer;
+		PrefabFilter prefabFilter;
 		foreach (SCR_ScenarioFrameworkPrefabFilterCount prefabFilterCount : m_aPrefabFilter)
 		{
-			PrefabFilter prefabFilter = new PrefabFilter();
+			prefabFilter = new PrefabFilter();
 			prefabFilter.SetPrefab(prefabFilterCount.m_sSpecificPrefabName);
 			prefabFilter.SetCheckPrefabHierarchy(prefabFilterCount.m_bIncludeChildren);
 			trigger.AddPrefabFilter(prefabFilter);
-			prefabFilterCount.m_PrefabContainer = SCR_BaseContainerTools.GetBaseContainer(prefabFilterCount.m_sSpecificPrefabName);
+
+			resource = Resource.Load(prefabFilterCount.m_sSpecificPrefabName);
+			if (!resource.IsValid())
+				continue;
+
+			prefabFilterCount.m_Resource = resource;
+			prefabFilterCount.m_PrefabContainer = resource.GetResource().ToBaseContainer();
 		}
 	}
 	
@@ -926,9 +935,9 @@ class SCR_CustomTriggerConditionsSpecificPrefabCount : SCR_CustomTriggerConditio
 		bool triggerStatus;
 		foreach (SCR_ScenarioFrameworkPrefabFilterCount prefabFilter : m_aPrefabFilter)
 		{
-			if (trigger.GetSpecificPrefabCountInsideTrigger(prefabFilter.m_PrefabContainer,  prefabFilter.m_iPrefabCount, prefabFilter.m_bIncludeChildren) >= prefabFilter.m_iPrefabCount)
+			if (trigger.GetSpecificPrefabCountInsideTrigger(prefabFilter.m_PrefabContainer, prefabFilter.m_iPrefabCount, prefabFilter.m_bIncludeChildren) >= prefabFilter.m_iPrefabCount)
 			{
-				triggerStatus= true;
+				triggerStatus = true;
 			}
 			else
 			{
@@ -939,7 +948,7 @@ class SCR_CustomTriggerConditionsSpecificPrefabCount : SCR_CustomTriggerConditio
 
 		trigger.SetTriggerConditionsStatus(triggerStatus);
 	}
-};
+}
 
 [BaseContainerProps()]
 class SCR_CustomTriggerConditionsSpecificClassNameCount : SCR_CustomTriggerConditions
@@ -954,10 +963,13 @@ class SCR_CustomTriggerConditionsSpecificClassNameCount : SCR_CustomTriggerCondi
 	override void Init(SCR_CharacterTriggerEntity trigger)
 	{
 		trigger.SetSpecificClassName(m_aSpecificClassNames);
-		
-		foreach (ResourceName className : m_aSpecificClassNames)
+
+		typename type;
+		foreach (string className : m_aSpecificClassNames)
 		{
-			trigger.AddClassType(className.ToType());
+			type = className.ToType();
+			if (type)
+				trigger.AddClassType(type);
 		}
 	}
 
@@ -970,7 +982,7 @@ class SCR_CustomTriggerConditionsSpecificClassNameCount : SCR_CustomTriggerCondi
 		{
 			if (trigger.GetSpecificClassCountInsideTrigger(className) >= m_iClassnameCount)
 			{
-				triggerStatus= true;
+				triggerStatus = true;
 			}
 			else
 			{
@@ -981,4 +993,4 @@ class SCR_CustomTriggerConditionsSpecificClassNameCount : SCR_CustomTriggerCondi
 
 		trigger.SetTriggerConditionsStatus(triggerStatus);
 	}
-};
+}

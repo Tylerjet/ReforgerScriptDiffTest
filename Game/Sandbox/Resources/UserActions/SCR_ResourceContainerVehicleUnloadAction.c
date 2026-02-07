@@ -88,6 +88,18 @@ class SCR_ResourceContainerVehicleUnloadAction : SCR_ScriptedUserAction
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	/*override bool CanBeShownScript(IEntity user)
+	{	
+		if (!super.CanBeShownScript(user))
+			return false;
+		
+		if (!m_ResourceComponent || !m_ResourceComponent.AreSuppliesEnabled())
+			return false;
+		
+		return true;
+	}*/
+	
+	//------------------------------------------------------------------------------------------------
 	override event bool CanBePerformedScript(IEntity user)
 	{
 		m_bCanPerform = false;

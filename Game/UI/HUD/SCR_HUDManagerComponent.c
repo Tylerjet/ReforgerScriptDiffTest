@@ -5,7 +5,7 @@
 enum EHudLayers
 {
 	BACKGROUND = 1, 	// Only background textures like Screen effects
-	LOW = 2, 			// Read only informations, like weapon info
+	LOW = 2, 			// Read-only information, like weapon info
 	MEDIUM = 4,			//
 	HIGH = 8,			// Dialogue-like elements like weapon switching
 	OVERLAY = 16,		// Interactive elements that should always be on top
@@ -16,6 +16,9 @@ enum EHudLayers
 class SCR_HUDManagerComponentClass : HUDManagerComponentClass
 {
 }
+
+void OnScreenBrightnessChanged(float opacity, float sceneBrightness);			
+typedef func OnScreenBrightnessChanged;
 
 class SCR_HUDManagerComponent : HUDManagerComponent
 {
@@ -28,7 +31,10 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 	[Attribute()]
 	string m_sDefaultForegroundLayer;
 
-	private ref map<EHudLayers, Widget> m_aLayerWidgets = new ref map<EHudLayers, Widget>;
+	[Attribute("0 0 1 1", UIWidgets.GraphDialog, params: "0.1 0.6 0 0.4", desc: "Adaptive opacity (y) based on screen brightness (x).", category: "AdaptiveOpacity")]
+	private ref Curve m_AdaptiveOpacityCurve;	
+	
+	private ref map<EHudLayers, Widget> m_aLayerWidgets = new map<EHudLayers, Widget>;
 	private Widget m_wRoot;
 	private Widget m_wRootTop;
 
@@ -36,15 +42,14 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 
 	private bool m_MenuOpen;
 
-	protected ref ScriptInvoker<float, float, float> m_OnSceneBrightnessChanged = new ScriptInvoker();
+	protected ref ScriptInvokerBase<OnScreenBrightnessChanged> m_OnSceneBrightnessChanged = new ScriptInvokerBase<OnScreenBrightnessChanged>();
 
 	protected float m_fUpdateTime = -1;
-	const float UPDATE_DELAY = 100;
+	const float UPDATE_DELAY = 500;
 
-	const float ADAPTIVE_OPACITY_MIN = 0.6;
-	const float ADAPTIVE_OPACITY_MAX = 0.9;
+	const float ADAPTIVE_OPACITY_BRIGHTNESS_THROTTLE = 0.001;
+	const float ADAPTIVE_OPACITY_THROTTLE = 0.01;					// threshold opacity change to fire the AdaptiveOpacity invoker
 
-	protected float m_fSceneBrightnessRaw = -1;
 	protected float m_fSceneBrightness = -1;
 	protected float m_fOpacity = -1;
 
@@ -131,6 +136,7 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 			foreach (SCR_HUDManagerHandler handler : m_aHandlersToRemoveFromUpdate)
 			{
 				m_aUpdatableHandlers.RemoveItem(handler);
+				handler.SetCanUpdate(false);
 			}
 
 			m_aHandlersToRemoveFromUpdate.Clear();
@@ -151,33 +157,28 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 		//------------------------------------------------------------------------------------------------
 		// Adaptive opacity
 		//------------------------------------------------------------------------------------------------
-		float sceneBrightnessRaw = m_World.GetCameraSceneMiddleBrightness(0);
+
+		// We want to enforce full opacity for brightness > 0.1 (midday, good weather)
+		float sceneBrightness = Math.Clamp(m_World.GetCameraSceneMiddleBrightness(0), 0, 0.1);
 
 		// Throttle the opacity update if brightness change is not bigger than n%
-		if (Math.AbsFloat(m_fSceneBrightnessRaw - sceneBrightnessRaw) < 0.02)
+		if (Math.AbsFloat(m_fSceneBrightness - sceneBrightness) < ADAPTIVE_OPACITY_BRIGHTNESS_THROTTLE)
 			return;
 
-		// We are interested mostly about the lower spectrum of brightness levels; formulae is subject to change
-		float sceneBrightness = Math.Clamp(sceneBrightnessRaw * 3, 0, 1);
-
-		// Throttle the opacity update if brightness change is not bigger than n%
-		if (Math.AbsFloat(m_fSceneBrightness - sceneBrightness) < 0.02)
-			return;
-
-		// Linear opacity interpolation based on scene brightness
-		float opacity = Math.Round(100 * ((ADAPTIVE_OPACITY_MAX - ADAPTIVE_OPACITY_MIN) * sceneBrightness + ADAPTIVE_OPACITY_MIN)) * 0.01;
-
+		// Curve based opacity interpolation
+		float opacity = Math3D.Curve(ECurveType.CurveProperty2D, sceneBrightness, m_AdaptiveOpacityCurve)[1];
+		opacity = Math.Clamp(Math.Round(opacity * 100) / 100, 0, 1);
+		
 		// Invoke the opacity update only if change is greater than n%
-		if (Math.AbsFloat(m_fOpacity - opacity) >= 0.05)
+		if (Math.AbsFloat(m_fOpacity - opacity) >= ADAPTIVE_OPACITY_THROTTLE)
 		{
-			//PrintFormat("'Adaptive Opacity' recalculated %1 -> %2", m_fOpacity, opacity);
+			//PrintFormat("sceneBrightness: %1 -> opacity %2", sceneBrightness, opacity);
 
-			m_fSceneBrightnessRaw = sceneBrightnessRaw;
 			m_fSceneBrightness = sceneBrightness;
 			m_fOpacity = opacity;
 
 			if (m_OnSceneBrightnessChanged)
-				m_OnSceneBrightnessChanged.Invoke(opacity, sceneBrightness, sceneBrightnessRaw);
+				m_OnSceneBrightnessChanged.Invoke(opacity, sceneBrightness);
 		}
 	}
 
@@ -194,13 +195,7 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	float GetSceneBrightnessRaw()
-	{
-		return m_fSceneBrightnessRaw;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetSceneBrightnessChangedInvoker()
+	ScriptInvokerBase<OnScreenBrightnessChanged> GetSceneBrightnessChangedInvoker()
 	{
 		return m_OnSceneBrightnessChanged;
 	}
@@ -217,8 +212,8 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 	//------------------------------------------------------------------------------------------------
 	protected void CreateHUDLayers()
 	{
-		m_wRoot = GetGame().GetWorkspace().CreateWidget(WidgetType.FrameWidgetTypeID, WidgetFlags.VISIBLE, Color.White, 0);
-		m_wRootTop = GetGame().GetWorkspace().CreateWidget(WidgetType.FrameWidgetTypeID, WidgetFlags.VISIBLE, Color.White, 0);
+		m_wRoot = GetGame().GetWorkspace().CreateWidget(WidgetType.FrameWidgetTypeID, WidgetFlags.VISIBLE, Color.FromInt(Color.WHITE), 0);
+		m_wRootTop = GetGame().GetWorkspace().CreateWidget(WidgetType.FrameWidgetTypeID, WidgetFlags.VISIBLE, Color.FromInt(Color.WHITE), 0);
 		m_wRootTop.SetZOrder(100); //set high to be always on top, even above MenuManager layouts
 
 		if (m_wRoot && m_wRootTop)
@@ -236,7 +231,7 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 				if (bitValues[i] == EHudLayers.ALWAYS_TOP)
 					parent = m_wRootTop;
 
-				frame = GetGame().GetWorkspace().CreateWidget(WidgetType.FrameWidgetTypeID, WidgetFlags.VISIBLE, Color.White, 0, parent);
+				frame = GetGame().GetWorkspace().CreateWidget(WidgetType.FrameWidgetTypeID, WidgetFlags.VISIBLE, Color.FromInt(Color.WHITE), 0, parent);
 				FrameSlot.SetAnchorMin(frame, 0, 0);
 				FrameSlot.SetAnchorMax(frame, 1, 1);
 				FrameSlot.SetOffsets(frame, 0, 0, 0, 0);
@@ -450,7 +445,7 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 			// Create item option
 			if (SCR_AvailableActionsDisplay.Cast(element))
 			{
-				ref WB_UIMenuItem actionsContextItem = new ref WB_UIMenuItem("Add actions to AvailableActionsDisplay info", CONTEXT_GENERATE_AVAILABLE_INPUT_ACTION);
+				ref WB_UIMenuItem actionsContextItem = new WB_UIMenuItem("Add actions to AvailableActionsDisplay info", CONTEXT_GENERATE_AVAILABLE_INPUT_ACTION);
 				items.Insert(actionsContextItem);
 				break;
 			}

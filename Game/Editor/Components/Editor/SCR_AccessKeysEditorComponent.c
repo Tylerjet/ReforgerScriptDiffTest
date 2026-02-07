@@ -1,62 +1,67 @@
 //#define DISABLE_ADMIN_ACCESS //--- Enable this to prevent admin from seeing all entities
 
 [ComponentEditorProps(category: "GameScripted/Editor", description: "Attribute for managing access keys. Works only with SCR_EditorBaseEntity!", icon: "WBData/ComponentEditorProps/componentEditor.png")]
-class SCR_AccessKeysEditorComponentClass: SCR_BaseEditorComponentClass
+class SCR_AccessKeysEditorComponentClass : SCR_BaseEditorComponentClass
 {
-};
+}
 
-/** @ingroup Editor_Components
-*/
+//! @ingroup Editor_Components
 
-/*!
-Manager of editor access keys.
-
-Only entities with at least one matching key will be made available for the editor.
-*/
+//! Manager of editor access keys.
+//!
+//! Only entities with at least one matching key will be made available for the editor.
 class SCR_AccessKeysEditorComponent : SCR_BaseEditorComponent
 {	
 	[Attribute("1", UIWidgets.Flags, "", enums: ParamEnumArray.FromEnum(EEditableEntityAccessKey))]
 	private EEditableEntityAccessKey m_AccessKey;
 	
-	ref ScriptInvoker Event_OnChanged = new ScriptInvoker;
+	ref ScriptInvoker Event_OnChanged = new ScriptInvoker();
 	
 	#ifdef WORKBENCH
 		private bool m_bIsAdmin = true;
 	#endif
 	
-	/*!
-	Add access key.
-	\param accessKey Key to be added
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Add access key.
+	//! \param[in] accessKey Key to be added
 	void AddAccessKey(EEditableEntityAccessKey accessKey)
 	{
 		Rpc(AddAccessKeyServer, accessKey);
 	}
-	/*!
-	Remove access key.
-	\param accessKey Key to be removed
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Remove access key.
+	//! \param[in] accessKey Key to be removed
+	//!
 	void RemoveAccessKey(EEditableEntityAccessKey accessKey)
 	{
 		Rpc(RemoveAccessKeyServer, accessKey);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//--- Manipulate access keys of the editor
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void AddAccessKeyServer(EEditableEntityAccessKey accessKey)
 	{
-		if (HasAccess(accessKey) || IsAdmin()) return;
+		if (HasAccess(accessKey) || IsAdmin())
+			return;
+
 		m_AccessKey = m_AccessKey | accessKey;
 		Rpc(AccessKeyChangedOwner, m_AccessKey);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void RemoveAccessKeyServer(EEditableEntityAccessKey accessKey)
 	{
-		if (!HasAccess(accessKey) || IsAdmin()) return;
+		if (!HasAccess(accessKey) || IsAdmin())
+			return;
+
 		m_AccessKey = m_AccessKey &~ accessKey;
 		Rpc(AccessKeyChangedOwner, m_AccessKey);
 	}
-		
+
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void AccessKeyChangedOwner(EEditableEntityAccessKey accessKey)
 	{
@@ -64,58 +69,61 @@ class SCR_AccessKeysEditorComponent : SCR_BaseEditorComponent
 		Event_OnChanged.Invoke();
 	}
 	
-	/*!
-	Get access key.
-	\return Editor's access key
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get access key.
+	//! \return Editor's access key
 	EEditableEntityAccessKey GetAccessKey()
 	{
 		return m_AccessKey;
 	}
-	/*!
-	Has access to given key.
-	\accessKey Key to be checked
-	\return True when has access
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Has access to given key.
+	//! \accessKey Key to be checked
+	//! \return True when has access
 	bool HasAccess(EEditableEntityAccessKey accessKey)
 	{
 		return m_AccessKey & accessKey;
 	}
 	
 	//--- Manipulate access key of an entity
-	/*!
-	Add access key to an entity.
-	\param entity Affected entity
-	\param accessKey Key to be added
-	*/
-	void AddEntityAccessKey(SCR_EditableEntityComponent entity,EEditableEntityAccessKey accessKey)
+	//------------------------------------------------------------------------------------------------
+	//! Add access key to an entity.
+	//! \param[in] entity Affected entity
+	//! \param[in] accessKey Key to be added
+	void AddEntityAccessKey(SCR_EditableEntityComponent entity, EEditableEntityAccessKey accessKey)
 	{
 		Rpc(AddEntityAccessKeyServer, Replication.FindId(entity), accessKey);
 	}
-	/*!
-	Remove access key from an entity.
-	\param entity Affected entity
-	\param accessKey Key to be removed
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Remove access key from an entity.
+	//! \param[in] entity Affected entity
+	//! \param[in] accessKey Key to be removed
 	void RemoveEntityAccessKey(SCR_EditableEntityComponent entity, EEditableEntityAccessKey accessKey)
 	{
 		Rpc(RemoveEntityAccessKeyServer, Replication.FindId(entity), accessKey);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void AddEntityAccessKeyServer (int entityID, EEditableEntityAccessKey accessKey)
 	{
 		SCR_EditableEntityComponent entity = SCR_EditableEntityComponent.Cast(Replication.FindItem(entityID));
-		if (entity) entity.AddAccessKey(accessKey);
+		if (entity)
+			entity.AddAccessKey(accessKey);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void RemoveEntityAccessKeyServer (int entityID, EEditableEntityAccessKey accessKey)
 	{
 		SCR_EditableEntityComponent entity = SCR_EditableEntityComponent.Cast(Replication.FindItem(entityID));
-		if (entity) entity.RemoveAccessKey(accessKey);
+		if (entity)
+			entity.RemoveAccessKey(accessKey);
 	}
 	
 	//--- Debug
+	//------------------------------------------------------------------------------------------------
 	protected string GetKeyDebug()
 	{
 		string output = "";
@@ -134,7 +142,9 @@ class SCR_AccessKeysEditorComponent : SCR_BaseEditorComponent
 				{
 					if (HasAccess(val))
 					{
-						if (!output.IsEmpty()) output += ", ";
+						if (!output.IsEmpty())
+							output += ", ";
+
 						output += enumType.GetVariableName(i);
 					}
 				}
@@ -142,42 +152,48 @@ class SCR_AccessKeysEditorComponent : SCR_BaseEditorComponent
 		}
 		return string.Format("Editor access keys: %1", output);
 	}
-	/*!
-	Print out all entities with compatible access keys.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Print out all entities with compatible access keys.
 	void LogAvailableEntities()
 	{
 		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
-		if (!core) return;
+		if (!core)
+			return;
 		
 		Print("--------------------------------------------------", LogLevel.DEBUG);
-		set<SCR_EditableEntityComponent> entities = new set<SCR_EditableEntityComponent>;
+		set<SCR_EditableEntityComponent> entities = new set<SCR_EditableEntityComponent>();
 		core.GetAllEntities(entities, true);
 		foreach (SCR_EditableEntityComponent entity: entities)
 		{
-			if (entity.IsLayer()) entity.Log("", m_AccessKey);
+			if (entity.IsLayer())
+				entity.Log("", m_AccessKey);
 		}
 		Print("--------------------------------------------------", LogLevel.DEBUG);
 	}
-	/*!
-	Print out access keys.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Print out access keys.
 	void LogAccessKey()
 	{
 		Print(GetKeyDebug(), LogLevel.DEBUG);
 	}
 	
 	#ifdef WORKBENCH
+	//------------------------------------------------------------------------------------------------
 	override bool IsAdmin()
 	{
-		return super.IsAdmin() && m_bIsAdmin;
+		return m_bIsAdmin && super.IsAdmin();
 	}
 	#endif
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnEditorDebug(array<string> debugTexts)
 	{
 		debugTexts.Insert(GetKeyDebug());
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{		
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_LOG_AVAILABLE))
@@ -222,31 +238,41 @@ class SCR_AccessKeysEditorComponent : SCR_BaseEditorComponent
 			}
 		#endif
 	}
+
+	//------------------------------------------------------------------------------------------------
 	//--- JIP on server
 	override bool RplSave(ScriptBitWriter writer)
 	{
 		writer.Write(m_AccessKey, 32);
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	//--- JIP on client
 	override bool RplLoad(ScriptBitReader reader)
 	{
 		reader.Read(m_AccessKey, 32);
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void EOnEditorActivate()
 	{
 		SetEventMask(GetOwner(), EntityEvent.FRAME);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnEditorInit()
 	{
-		if (SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore) == null) return;
+		if (SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore) == null)
+			return;
 		
 		typename keysType = EEditableEntityAccessKey;
 		int keysCount = keysType.GetVariableCount();
 		
 		//--- Unlock everything for admin
-		if (IsAdmin()) m_AccessKey = int.MAX;
+		if (IsAdmin())
+			m_AccessKey = int.MAX;
 		
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_LOG_AVAILABLE, "", "Log Available", "Editable Entities");
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_LOG_ACCESS_KEYS, "", "Log Access Keys", "Editable Entities");
@@ -264,6 +290,8 @@ class SCR_AccessKeysEditorComponent : SCR_BaseEditorComponent
 		}
 #endif
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void EOnEditorDelete()
 	{
 		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_LOG_AVAILABLE);
@@ -273,4 +301,4 @@ class SCR_AccessKeysEditorComponent : SCR_BaseEditorComponent
 		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_ACCESS_KEY_ADMIN);
 		Event_OnChanged = null;
 	}
-};
+}

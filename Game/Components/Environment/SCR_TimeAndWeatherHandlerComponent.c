@@ -1,9 +1,7 @@
-//------------------------------------------------------------------------------------------------
 class SCR_TimeAndWeatherHandlerComponentClass : SCR_BaseGameModeComponentClass
 {
 }
 
-//------------------------------------------------------------------------------------------------
 class SCR_TimeAndWeatherHandlerComponent : SCR_BaseGameModeComponent
 {
 	[Attribute("8", UIWidgets.Slider, "Starting time of day (hours)", "0 23 1")]
@@ -12,7 +10,7 @@ class SCR_TimeAndWeatherHandlerComponent : SCR_BaseGameModeComponent
 	[Attribute("0", UIWidgets.Slider, "Starting time of day (minutes)", "0 59 1")]
 	protected int m_iStartingMinutes;
 
-	[Attribute("0")];
+	[Attribute("0")]
 	protected bool m_bRandomStartingDaytime;
 
 	[Attribute("1", UIWidgets.Slider, "Time acceleration during the day (1 = 100%, 2 = 200% etc)", "0.1 12 0.1")]
@@ -21,13 +19,13 @@ class SCR_TimeAndWeatherHandlerComponent : SCR_BaseGameModeComponent
 	[Attribute("1", UIWidgets.Slider, "Time acceleration during the night (1 = 100%, 2 = 200% etc)", "0.1 12 0.1")]
 	protected float m_fNightTimeAcceleration;
 
-	[Attribute("0")];
+	[Attribute("0")]
 	protected bool m_bRandomStartingWeather;
-	
-	[Attribute("0", desc: "Weather can change during gameplay")];
+
+	[Attribute("0", desc: "Weather can change during gameplay")]
 	protected bool m_bRandomWeatherChanges;
 
-	[Attribute("0", desc: "Scenario header setting will overwrite these values.")];
+	[Attribute("0", desc: "Scenario header setting will overwrite these values.")]
 	protected bool m_bAllowHeaderSettings;
 
 	const int DAYTIME_CHECK_PERIOD = 60000;	//ms
@@ -41,12 +39,18 @@ class SCR_TimeAndWeatherHandlerComponent : SCR_BaseGameModeComponent
 	protected static SCR_TimeAndWeatherHandlerComponent s_Instance;
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	static SCR_TimeAndWeatherHandlerComponent GetInstance()
 	{
 		return s_Instance;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] hours
+	//! \param[in] minutes
+	//! \param[in] seconds
+	//! \param[in] loadedWeatherState
+	//! \param[in] loadDone
 	void SetupDaytimeAndWeather(int hours, int minutes, int seconds = 0, string loadedWeatherState = "", bool loadDone = false)
 	{
 		if (m_bSavedSettingApplied)

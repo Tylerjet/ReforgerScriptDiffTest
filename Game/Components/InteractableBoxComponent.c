@@ -1,9 +1,8 @@
 [ComponentEditorProps(category: "GameScripted/Test", description: "This brief script description.")]
-class SCR_InteractableBoxComponentClass: ScriptComponentClass
+class SCR_InteractableBoxComponentClass : ScriptComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_InteractableBoxComponent : ScriptComponent
 {
 	private bool m_bIsDragging = false;
@@ -15,9 +14,10 @@ class SCR_InteractableBoxComponent : ScriptComponent
 	private float m_Lifetime = 10.0; // object can burn for 15 seconds before dying
 	private bool m_bIsDead = false;
 	
-	
-	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] particle
+	//! \param[in] offset
 	void ToggleIsOnFire(ResourceName particle, vector offset)
 	{
 		if (m_bIsDead)
@@ -49,17 +49,20 @@ class SCR_InteractableBoxComponent : ScriptComponent
 				m_Fire.Stop();
 				delete m_Fire;
 				m_Fire = null;
+			}
 		}
-	}
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	bool IsDragging()
 	{
 		return m_bIsDragging;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetActionName()
 	{
 		if (m_bIsDragging)
@@ -73,6 +76,7 @@ class SCR_InteractableBoxComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetActionDescription()
 	{
 		if (!m_bIsDragging)
@@ -86,6 +90,7 @@ class SCR_InteractableBoxComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetFireActionDescription()
 	{
 		if (!m_bIsOnFire)
@@ -99,6 +104,7 @@ class SCR_InteractableBoxComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetFireActionName()
 	{
 		if (!m_bIsOnFire)
@@ -112,6 +118,7 @@ class SCR_InteractableBoxComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool CanPerformDragAction()
 	{
 		if (m_bIsOnFire)
@@ -121,6 +128,7 @@ class SCR_InteractableBoxComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool CanPerformToggleFire()
 	{
 		if (m_bIsDragging)
@@ -130,6 +138,7 @@ class SCR_InteractableBoxComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void CancelDragAction()
 	{
 		m_bIsDragging = false;
@@ -137,6 +146,8 @@ class SCR_InteractableBoxComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] user
 	void PerformDragAction(IEntity user)
 	{	
 		if (!m_Owner)
@@ -235,14 +246,12 @@ class SCR_InteractableBoxComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_InteractableBoxComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		m_Owner = ent;
 	}
-
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_InteractableBoxComponent()
-	{
-	}
-
-};
+}

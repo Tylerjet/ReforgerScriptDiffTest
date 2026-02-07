@@ -1,10 +1,10 @@
-class SCR_UniversalInventoryStorageComponentClass: UniversalInventoryStorageComponentClass
+class SCR_UniversalInventoryStorageComponentClass : UniversalInventoryStorageComponentClass
 {
-};
+}
 
-// Current storage variant allows dynamic scaling of slots and handles Move/Insert/Remove operations
-// it will accept any entity for insertion and will remove/add it's visibility flag when inserted/removed from storage
-// see CharacterInventoryStorageComponent for example of custom storage inheritance from current class
+//! Current storage variant allows dynamic scaling of slots and handles Move/Insert/Remove operations
+//! it will accept any entity for insertion and will remove/add it's visibility flag when inserted/removed from storage
+//! \see CharacterInventoryStorageComponent for example of custom storage inheritance from current class
 class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponent
 {
 	[Attribute( "0", UIWidgets.EditBox, "How much weight it can carry")]
@@ -16,22 +16,23 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 	[Attribute(desc: "Dictates how the entity gets other storage and sets them as linked storage or how it itself sets it as a linked storage of another storage. Do not use base class!")]
 	protected ref SCR_BaseLinkedStorageLogic m_LinkedStorageLogic;
 	
-	//~ Storages that will be automaticly closed and opened when the parent (this) storage is closed or opened
+	//! Storages that will be automatically closed and opened when the parent (this) storage is closed or opened
 	protected ref array<BaseInventoryStorageComponent> m_aLinkedStorages;
 	
 	#ifndef DISABLE_INVENTORY
-	private SCR_ItemAttributeCollection 							pAttributes;
+	private SCR_ItemAttributeCollection 							m_Attributes;
 	protected float 												m_fWeight;
 	protected SCR_InventoryStorageManagerComponent					pInventoryManager;
-	protected const int												MIN_VOLUME_TO_SHOW_ITEM_IN_SLOT = 200000;	//cm^3
-	
-	//protected float										m_fWeightSum			= 0.0;
-	//protected float										m_fVolumeSum			= 0.0;
+	protected static const int										MIN_VOLUME_TO_SHOW_ITEM_IN_SLOT = 200000;	//!< in cm^3
 	
 	//------------------------------------------------------------------------ USER METHODS ------------------------------------------------------------------------
 	
+	//------------------------------------------------------------------------------------------------
 	//! Returns how much weight the component can carry
-	float GetMaxLoad() { return m_fMaxWeight; }
+	float GetMaxLoad()
+	{
+		return m_fMaxWeight;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	private SCR_ItemAttributeCollection GetAttributeCollection( IEntity item )
@@ -52,10 +53,10 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 	//------------------------------------------------------------------------------------------------
 	protected bool IsWeightOk( float fWeight ) 
 	{ 
-		if (!pAttributes)
+		if (!m_Attributes)
 			return false;
 		
-		fWeight += ( GetTotalWeight() - pAttributes.GetWeight() );
+		fWeight += GetTotalWeight() - m_Attributes.GetWeight();
 		
 		return m_fMaxWeight >= fWeight;		
 	}	
@@ -86,6 +87,30 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 		
 		bool bDimensionsOK = PerformDimensionValidation(item);
 		return bVolumeOK && bWeightOK && bDimensionsOK;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool CanStoreResource(ResourceName resourceName, int slotID)
+	{
+		if (!super.CanStoreResource(resourceName, slotID))
+			return false;
+		
+		bool bVolumeOK = PerformVolumeAndDimensionValidationForResource(resourceName, true);
+		if( !bVolumeOK )
+		{
+			if( pInventoryManager )	
+				pInventoryManager.SetReturnCode( EInventoryRetCode.RETCODE_ITEM_TOO_BIG );
+		}
+		
+		float fWeight = GetWeightFromResource(resourceName);
+		bool bWeightOK = IsWeightOk( fWeight );
+		if( !bWeightOK )
+		{
+			if( pInventoryManager )	
+				pInventoryManager.SetReturnCode( EInventoryRetCode.RETCODE_ITEM_TOO_HEAVY );
+		}
+		
+		return bVolumeOK && bWeightOK;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -140,7 +165,7 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 		super.OnRemovedFromSlot(item, slotID);
 		
 		GenericEntity pGenComp = GenericEntity.Cast( item );
-		auto pItemComponent = InventoryItemComponent.Cast( pGenComp.FindComponent( InventoryItemComponent ) );
+		InventoryItemComponent pItemComponent = InventoryItemComponent.Cast(pGenComp.FindComponent(InventoryItemComponent));
 		pItemComponent.ShowOwner();
 		pItemComponent.EnablePhysics();
 		
@@ -153,7 +178,7 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 		super.OnAddedToSlot(item, slotID);
 		
 		GenericEntity pGenComp = GenericEntity.Cast( item );
-		auto pItemComponent = InventoryItemComponent.Cast( pGenComp.FindComponent( InventoryItemComponent ) );
+		InventoryItemComponent pItemComponent = InventoryItemComponent.Cast(pGenComp.FindComponent(InventoryItemComponent));
 		if( !pItemComponent )
 			return;	
 	
@@ -167,6 +192,7 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 			if ( fVol >= MIN_VOLUME_TO_SHOW_ITEM_IN_SLOT )
 				pItemComponent.ShowOwner();
 		}
+
 		pItemComponent.DisablePhysics();
 		pItemComponent.ActivateOwner(false);
 				
@@ -174,12 +200,11 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 	}
 	
 	//------------------------------------------------------------------------ LINKED STORAGES ----------------------------------------------------------------------
+
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get a list of all linked storages of this storage
-	\param[out] linkedStorages Linked storages
-	\return Amount of linked storages
-	*/
+	//! Get a list of all linked storages of this storage
+	//! \param[out] linkedStorages Linked storages
+	//! \return Amount of linked storages
 	int GetLinkedStorages(notnull out array<BaseInventoryStorageComponent> linkedStorages)
 	{
 		if (!m_aLinkedStorages)
@@ -190,10 +215,8 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Add a linked storage to this storage
-	\param newLinkedStorage The storage to link
-	*/
+	//! Add a linked storage to this storage
+	//! \param[in] newLinkedStorage The storage to link
 	void AddLinkedStorage(BaseInventoryStorageComponent newLinkedStorage)
 	{
 		//~ Do not add self as linked storage
@@ -210,11 +233,9 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check if the given storage is a linked child storage
-	\param storage Storage to check
-	return True if the storage is a linked child of this storage
-	*/
+	//! Check if the given storage is a linked child storage
+	//! \param[in] storage Storage to check
+	//! return True if the storage is a linked child of this storage
 	bool IsStorageALinkedChild(notnull BaseInventoryStorageComponent storage)
 	{
 		return m_aLinkedStorages.Contains(storage);
@@ -231,13 +252,17 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_UniversalInventoryStorageComponent( IEntityComponentSource src, IEntity ent, IEntity parent )
 	{
-		pAttributes = SCR_ItemAttributeCollection.Cast( GetAttributes() );
-		if( !pAttributes )
+		m_Attributes = SCR_ItemAttributeCollection.Cast(GetAttributes());
+		if (!m_Attributes)
 			return;
 
-		m_fWeight = pAttributes.GetWeight();
+		m_fWeight = m_Attributes.GetWeight();
 		
 		if (m_LinkedStorageLogic)
 			m_LinkedStorageLogic.Init(this);
@@ -248,12 +273,12 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 	protected bool IsVolumeOk( float fVolume );	
 	protected bool IsWeightOk( float fWeight );
 	override bool CanStoreItem(IEntity item, int slotID);
+	override bool CanStoreResource(ResourceName resourceName, int slotID);
 	override bool CanRemoveItem(IEntity item);
 	override void OnRemovedFromSlot(IEntity item, int slotID);
 	protected override void OnAddedToSlot(IEntity item, int slotID);
 	override void OnManagerChanged(InventoryStorageManagerComponent manager);
 //	void SCR_UniversalInventoryStorageComponent( IEntityComponentSource src, IEntity ent, IEntity parent );
 
-	#endif
-	
-};
+	#endif	
+}

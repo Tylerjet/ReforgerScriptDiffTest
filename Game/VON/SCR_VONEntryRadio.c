@@ -4,8 +4,7 @@ class SCR_VONEntryRadio : SCR_VONEntry
 {	
 	const string LABEL_FREQUENCY_UNITS = "#AR-VON_FrequencyUnits_MHz";
 	
-	bool m_bIsLongRange;				// whether this is personal or backpack radio
-	protected int m_iFrequency;			// current frequency
+	protected int m_iFrequency;			
 	protected int m_iTransceiverNumber;
 	protected string m_sChannelText;
 	
@@ -51,7 +50,14 @@ class SCR_VONEntryRadio : SCR_VONEntry
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetRadioEntry(BaseTransceiver transceiver, int number, SCR_GadgetComponent gadgetComp)
+	//! Is long range backpack radio type
+	bool IsLongRange()
+	{
+		return m_GadgetComp.GetType() == EGadgetType.RADIO_BACKPACK;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetRadioEntry(notnull BaseTransceiver transceiver, int number, SCR_GadgetComponent gadgetComp)
 	{
 		m_RadioTransceiver = transceiver;
 		m_iTransceiverNumber = number;
@@ -69,20 +75,17 @@ class SCR_VONEntryRadio : SCR_VONEntry
 	{
 		SetCustomLayout("{033302D7C8158EF8}UI/layouts/HUD/VON/VONEntry.layout");
 		
-		m_bIsEnabled = m_RadioTransceiver.GetRadio().IsPowered();
+		SetUsable(m_RadioTransceiver.GetRadio().IsPowered());
 		
 		AdjustEntryModif(0);
-		
-		if (m_GadgetComp.GetType() == EGadgetType.RADIO_BACKPACK)
-			m_bIsLongRange = true;
-		
+				
 		SetChannelText(SCR_VONMenu.GetKnownChannel(m_RadioTransceiver.GetFrequency()));
 	}
 		
 	//------------------------------------------------------------------------------------------------ 
 	override void AdjustEntryModif(int modifier)
 	{		
-		if (!m_bIsEnabled && modifier != 0)
+		if (!IsUsable() && modifier != 0)
 			return;
 		
 		if (!m_RadioTransceiver)
@@ -204,12 +207,12 @@ class SCR_VONEntryRadio : SCR_VONEntry
 		
 		BaseRadioComponent radio = m_RadioTransceiver.GetRadio();
 
-		m_bIsEnabled = !radio.IsPowered();
-		radio.SetPower(m_bIsEnabled);
+		SetUsable(!radio.IsPowered());
+		radio.SetPower(IsUsable());
 		
 		AdjustEntryModif(0);	
 		
-		if (m_bIsEnabled)
+		if (IsUsable())
 			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_RADIO_TURN_OFF);
 		else
 			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_RADIO_TURN_ON);
@@ -256,31 +259,41 @@ class SCR_VONEntryRadio : SCR_VONEntry
 		if (!entryComp)	// first update procs when this is not fetchable yet
 			return;
 		
+		if (!m_RadioTransceiver)	// TODO can happen for unclear reasons, temp fix
+		{
+			SCR_VONController vonContr = SCR_VONController.Cast(GetGame().GetPlayerController().FindComponent(SCR_VONController));
+			if (vonContr)
+				vonContr.RemoveEntry(this);
+			
+			return;
+		}
+		
 		entryComp.SetTransceiverText("CH" + m_iTransceiverNumber.ToString());
 		entryComp.SetFrequencyText(m_sText);
 		entryComp.SetChannelText(m_sChannelText);
 		entryComp.SetActiveIcon(m_bIsActive);
 		
-		m_bIsEnabled = m_RadioTransceiver.GetRadio().IsPowered();	
-		entryComp.SetPowerIcon(m_bIsEnabled);
+		BaseRadioComponent radio = m_RadioTransceiver.GetRadio();
+		SetUsable(radio.IsPowered());	
+		entryComp.SetPowerIcon(IsUsable());
 		
 		if (m_bIsActive)
 		{
 			entryComp.SetTransceiverOpacity(1);
 			
 			if (m_bIsSelected)
-				entryComp.SetFrequencyColor(GUIColors.ORANGE_BRIGHT);
+				entryComp.SetFrequencyColor(Color.FromInt(GUIColors.ORANGE_BRIGHT.PackToInt()));
 			else 
-				entryComp.SetFrequencyColor(GUIColors.ORANGE);
+				entryComp.SetFrequencyColor(Color.FromInt(GUIColors.ORANGE.PackToInt()));
 		}
 		else 
 		{
 			entryComp.SetTransceiverOpacity(0.5);
 			
 			if (m_bIsSelected)
-				entryComp.SetFrequencyColor(GUIColors.ORANGE_BRIGHT);
+				entryComp.SetFrequencyColor(Color.FromInt(GUIColors.ORANGE_BRIGHT.PackToInt()));
 			else 
-				entryComp.SetFrequencyColor(Color.White);
+				entryComp.SetFrequencyColor(Color.FromInt(Color.WHITE));
 		}
 	}
 };

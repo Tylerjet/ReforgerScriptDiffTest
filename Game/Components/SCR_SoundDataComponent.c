@@ -3,15 +3,13 @@ class SCR_SoundDataComponentClass : ScriptComponentClass
 {
 	[Attribute("", UIWidgets.Auto, desc: "Audio Source Configuration)")]
 	ref array<ref SCR_AudioSourceConfiguration> m_aAudioSourceConfiguration;
-};
+}
 
 class SCR_SoundDataComponent : ScriptComponent
 {	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Returns audio project resource for coresponding sound event 
-	\eventName Sound event name used for seach for audio project resource
-	*/		
+	//! \param[in] eventName Sound event name used for seach for audio project resource
+	//! \return audio project resource for the corresponding sound event or null if not found or invalid
 	SCR_AudioSourceConfiguration GetAudioSourceConfiguration(string eventName)
 	{
 		SCR_SoundDataComponentClass prefabData = SCR_SoundDataComponentClass.Cast(GetComponentData(GetOwner()));
@@ -30,4 +28,4 @@ class SCR_SoundDataComponent : ScriptComponent
 		}		
 		return null;
 	}
-};
+}

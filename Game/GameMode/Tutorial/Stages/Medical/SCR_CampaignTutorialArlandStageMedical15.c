@@ -12,26 +12,20 @@ class SCR_CampaignTutorialArlandStageMedical15: SCR_BaseCampaignTutorialArlandSt
 	{
 		m_bCheckWaypoint = false;
 		m_fWaypointHeightOffset = 0.5;
-
+		m_bConditionPassCheck = true;
+		
 		RegisterWaypoint("ambulance");
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
 		
 		m_PlayerInventoryManager = SCR_CharacterInventoryStorageComponent.Cast(m_Player.FindComponent(SCR_CharacterInventoryStorageComponent));
+		
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("FirstAid_Saline");
 	}
 	
-	override protected bool GetIsFinished()
-	{	
-		if (!m_PlayerInventoryManager)
-			return false;
-		
-		IEntity ent = m_PlayerInventoryManager.GetCurrentItem();
-		if (!ent)
-			return false;
-		
-		SCR_ConsumableItemComponent consumItem = SCR_ConsumableItemComponent.Cast(ent.FindComponent(SCR_ConsumableItemComponent));
-		if (!consumItem)
-			return false;
-		
-		return consumItem.GetConsumableType() == SCR_EConsumableType.SALINE;
+	//------------------------------------------------------------------------------------------------
+	override bool GetIsFinished()
+	{
+		return !m_TutorialComponent.GetVoiceSystem().IsPlaying();
 	}
 };

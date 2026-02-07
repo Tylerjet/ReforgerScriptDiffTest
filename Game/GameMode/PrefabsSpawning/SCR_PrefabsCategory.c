@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 //! Categories of prefabs and/or nested categories of prefabs.
 [BaseContainerProps()]
 class SCR_PrefabsCategory : SCR_BasePrefabCategory
@@ -14,4 +13,4 @@ class SCR_PrefabsCategory : SCR_BasePrefabCategory
 	{
 		prefabsSpawner.SpawnPrefabsCategories(numberOfPrefabsToSpawn, m_aPrefabsCategories);
 	}
-};
+}

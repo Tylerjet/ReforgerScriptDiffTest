@@ -1,13 +1,9 @@
 [EntityEditorProps(category: "GameScripted/Camera", description: "Manager for camera shake.")]
 class SCR_CameraShakeManagerComponentClass : ScriptComponentClass
 {
-	// prefab properties here
-};
+}
 
-//------------------------------------------------------------------------------------------------
-/*!
-	This manager allows adding camera shake that is updated automatically and can be applied to any transform via provided API.
-*/
+//! This manager allows adding camera shake that is updated automatically and can be applied to any transform via provided API.
 class SCR_CameraShakeManagerComponent : ScriptComponent
 {
 	//! Immediate shake transformation matrix
@@ -24,14 +20,13 @@ class SCR_CameraShakeManagerComponent : ScriptComponent
 	// Current instance of manager or null if none
 	private static SCR_CameraShakeManagerComponent s_Instance;
 
-	/*!
-		Adds camera shake.
-		\param linearMagnitude Magnitude of linear (positional change) shake
-		\param angularMagnitude Magnitude of angular (rotational change) shake
-		\param inTime Blend in time duration before shake reached peak value (in seconds)
-		\param sustainTime Time duration for which the shake stays at peak value (in seconds)
-		\param outTime Blend out time duration before shake clears out from peak value (in seconds)
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Adds camera shake.
+	//! \param[in] linearMagnitude Magnitude of linear (positional change) shake
+	//! \param[in] angularMagnitude Magnitude of angular (rotational change) shake
+	//! \param[in] inTime Blend in time duration before shake reached peak value (in seconds)
+	//! \param[in] sustainTime Time duration for which the shake stays at peak value (in seconds)
+	//! \param[in] outTime Blend out time duration before shake clears out from peak value (in seconds)
 	static void AddCameraShake(float linearMagnitude = 1.0, float angularMagnitude = 1.0, float inTime = 0.01, float sustainTime = 0.1, float outTime = 0.24)
 	{
 		if (s_Instance)
@@ -39,14 +34,12 @@ class SCR_CameraShakeManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Adds camera shake.
-		\param linearMagnitude Magnitude of linear (positional change) shake
-		\param angularMagnitude Magnitude of angular (rotational change) shake
-		\param inTime Blend in time duration before shake reached peak value (in seconds)
-		\param sustainTime Time duration for which the shake stays at peak value (in seconds)
-		\param outTime Blend out time duration before shake clears out from peak value (in seconds)
-	*/
+	//! Adds camera shake.
+	//! \param[in] linearMagnitude Magnitude of linear (positional change) shake
+	//! \param[in] angularMagnitude Magnitude of angular (rotational change) shake
+	//! \param[in] inTime Blend in time duration before shake reached peak value (in seconds)
+	//! \param[in] sustainTime Time duration for which the shake stays at peak value (in seconds)
+	//! \param[in] outTime Blend out time duration before shake clears out from peak value (in seconds)
 	void DoAddCameraShake(float linearMagnitude = 1.0, float angularMagnitude = 1.0, float inTime = 0.01, float sustainTime = 0.1, float outTime = 0.24)
 	{
 		for (int i = 0; i < CAMERA_SHAKE_INSTANCES; i++)
@@ -62,20 +55,18 @@ class SCR_CameraShakeManagerComponent : ScriptComponent
 		}
 	}
 	
-	/*!
-		Adds custom scripted camera shake that will be progressed, applied and then withdrawn from the manager.
-		\param instance The shake to add
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Adds custom scripted camera shake that will be progressed, applied and then withdrawn from the manager.
+	//! \param[in] instance The shake to add
 	static void AddCameraShake(SCR_BaseCameraShakeProgress instance)
 	{
 		if (s_Instance)
 			s_Instance.DoAddCameraShake(instance);
 	}
 	
-	/*!
-		Adds custom scripted camera shake that will be progressed, applied and then withdrawn from the manager.
-		\param instance The shake to add
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Adds custom scripted camera shake that will be progressed, applied and then withdrawn from the manager.
+	//! \param[in] instance The shake to add
 	void DoAddCameraShake(SCR_BaseCameraShakeProgress instance)
 	{
 		if (!instance)
@@ -89,9 +80,7 @@ class SCR_CameraShakeManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Applies currently calculated shake to desired camera.
-	*/
+	//! Applies currently calculated shake to desired camera.
 	static void ApplyCameraShake(inout vector matrix[4], inout float fov)
 	{
 		if (s_Instance)
@@ -99,9 +88,9 @@ class SCR_CameraShakeManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Applies currently calculated shake to desired camera.
-	*/
+	//! Applies currently calculated shake to desired camera.
+	//! \param[in,out] matrix
+	//! \param[in,out] fov
 	void DoApplyCameraShake(inout vector matrix[4], inout float fov)
 	{
 		#ifdef ENABLE_DIAG
@@ -114,9 +103,7 @@ class SCR_CameraShakeManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Clears all existing camera shake progress(es).
-	*/
+	//! Clears all existing camera shake progress(es).
 	static void ClearCameraShake()
 	{
 		if (s_Instance)
@@ -124,9 +111,7 @@ class SCR_CameraShakeManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Clears all existing camera shake progress(es).
-	*/
+	//! Clears all existing camera shake progress(es).
 	void DoClearCameraShake()
 	{
 		for (int i = 0; i < CAMERA_SHAKE_INSTANCES; i++)
@@ -155,7 +140,9 @@ class SCR_CameraShakeManagerComponent : ScriptComponent
 		
 		// Pre-cache instances
 		for (int i = 0; i < CAMERA_SHAKE_INSTANCES; i++)
-			m_aShakeInstances[i] = new ref SCR_NoisyCameraShakeProgress();
+		{
+			m_aShakeInstances[i] = new SCR_NoisyCameraShakeProgress();
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -216,12 +203,11 @@ class SCR_CameraShakeManagerComponent : ScriptComponent
 				if (DbgUI.Button("Add custom shake"))
 				{
 					// Just for testing purposes
-					ref SCR_NoisyCameraShakeProgress progress = new SCR_NoisyCameraShakeProgress();
+					SCR_NoisyCameraShakeProgress progress = new SCR_NoisyCameraShakeProgress();
 					progress.SetParams(linear, angular, inTime, sustainTime, outTime);
 					
 					AddCameraShake(progress);
 				}
-
 
 				DbgUI.Spacer(16);
 
@@ -234,5 +220,4 @@ class SCR_CameraShakeManagerComponent : ScriptComponent
 		}
 		#endif
 	}
-
-};
+}

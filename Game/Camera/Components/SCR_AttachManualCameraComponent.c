@@ -1,9 +1,7 @@
+//! @ingroup ManualCamera
+
+//! Attach camera to a target
 [BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
-/** @ingroup ManualCamera
-*/
-/*!
-Attach camera to a target
-*/
 class SCR_AttachManualCameraComponent : SCR_BaseManualCameraComponent
 {
 	[Attribute(defvalue: "0")]
@@ -21,10 +19,10 @@ class SCR_AttachManualCameraComponent : SCR_BaseManualCameraComponent
 	private Widget m_Widget;
 	protected ref ScriptInvoker m_OnAttachChange = new ScriptInvoker();
 	
-	/*!
-	Attach camera to an entity.
-	\param parent Target entity
-	*/
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! Attach camera to an entity.
+	//! \param[in] parent Target entity
 	bool AttachTo(IEntity target)
 	{
 		//--- No target, already attached target or inactive target - ignore
@@ -32,10 +30,12 @@ class SCR_AttachManualCameraComponent : SCR_BaseManualCameraComponent
 			return false;
 
 		SCR_ManualCamera camera = GetCameraEntity();
-		if (!camera) return false;
+		if (!camera)
+			return false;
 		
 		//--- Already attached - detach first
-		if (m_AttachHelper) Detach();
+		if (m_AttachHelper)
+			Detach();
 		
 		m_Target = target;
 		
@@ -57,15 +57,17 @@ class SCR_AttachManualCameraComponent : SCR_BaseManualCameraComponent
 		
 		return true;
 	}
-	/*!
-	Detach camera from its parent entity.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Detach camera from its parent entity.
 	void Detach()
 	{
-		if (!m_AttachHelper) return;
+		if (!m_AttachHelper)
+			return;
 		
 		SCR_ManualCamera camera = GetCameraEntity();
-		if (!camera) return;
+		if (!camera)
+			return;
 		
 		m_OnAttachChange.Invoke(false, m_Target);
 		
@@ -79,15 +81,16 @@ class SCR_AttachManualCameraComponent : SCR_BaseManualCameraComponent
 		
 		//Print("Detach", LogLevel.DEBUG);
 	}
-	/*!
-	Get event called when camera is attached or detached.
-	\return Script invoker
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get event called when camera is attached or detached.
+	//! \return Script invoker
 	ScriptInvoker GetOnAttachChange()
 	{
 		return m_OnAttachChange;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraSave(SCR_ManualCameraComponentSave data)
 	{
 		if (m_Target)
@@ -96,16 +99,17 @@ class SCR_AttachManualCameraComponent : SCR_BaseManualCameraComponent
 			data.m_Target = m_Target;
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraLoad(SCR_ManualCameraComponentSave data)
 	{
 		if (data.m_Target && m_AttachType == data.m_aValues[0])
-		{
 			AttachTo(data.m_Target);
-		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraFrame(SCR_ManualCameraParam param)
 	{
-		
 		//--- Target deleted, detach
 		if (m_AttachHelper && !m_Target)
 			Detach();
@@ -126,25 +130,25 @@ class SCR_AttachManualCameraComponent : SCR_BaseManualCameraComponent
 				if (param.isManualInputEnabled && GetInputManager().GetActionTriggered("ManualCameraAttach"))
 				{
 					param.GetCursorWorldPos(); //--- Update entity under cursor
-					if (!AttachTo(param.target)) Detach();
+					if (!AttachTo(param.target))
+						Detach();
 				}
 				break;
 			}
+
 			case EAttachManualCameraType.PLAYER:
 			{
 				if (!m_AttachHelper)
-				{
 					AttachTo(SCR_PlayerController.GetLocalMainEntity());
-				}
+
 				break;
 			}
 			
 			case EAttachManualCameraType.ENTITY:
 			{
 				if (!m_AttachHelper)
-				{
 					AttachTo(SCR_PlayerController.GetLocalMainEntity());
-				}
+
 				break;
 			}
 		}
@@ -164,51 +168,67 @@ class SCR_AttachManualCameraComponent : SCR_BaseManualCameraComponent
 			
 			if (m_Widget)
 				m_Widget.SetVisible(m_Target != null);
-		};
+		}
 		
 		//--- Update GUI
 		if (m_Widget && m_Target)
 		{
 			m_Widget.SetVisible(true);
 			vector screenPos = m_Widget.GetWorkspace().ProjWorldToScreen(m_AttachHelper.GetOrigin(), param.world);
-			if (screenPos[2] > 0) FrameSlot.SetPos(m_Widget, screenPos[0], screenPos[1]);
+			if (screenPos[2] > 0)
+				FrameSlot.SetPos(m_Widget, screenPos[0], screenPos[1]);
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override bool EOnCameraInit()
 	{
 		m_Widget = GetCameraEntity().CreateCameraWidget(m_Layout, false);
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraExit()
 	{
-		if (m_Widget) m_Widget.RemoveFromHierarchy();
+		if (m_Widget)
+			m_Widget.RemoveFromHierarchy();
+
 		delete m_AttachHelper;
 	}
-};
+}
 
-class SCR_AttachEntityClass: GenericEntityClass
+class SCR_AttachEntityClass : GenericEntityClass
 {
-};
+}
 
-class SCR_AttachEntity: GenericEntity
+class SCR_AttachEntity : GenericEntity
 {
 	private IEntity m_Target;
 	private bool m_bRotateWithTarget;
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] rotate
 	void RotateWithTarget(bool rotate)
 	{
 		m_bRotateWithTarget = rotate;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] target
 	void AttachTo(IEntity target)
 	{
 		m_Target = target;
 		SetEventMask(EntityEvent.POSTFRAME);
 		SetFlags(EntityFlags.ACTIVE);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnPostFrame(IEntity owner, float timeSlice)
 	{
-		if (!m_Target) return;
+		if (!m_Target)
+			return;
 		
 		if (m_bRotateWithTarget)
 		{
@@ -221,7 +241,7 @@ class SCR_AttachEntity: GenericEntity
 			SetOrigin(m_Target.GetWorldTransformAxis(3));
 		}
 	}
-};
+}
 
 enum EAttachManualCameraType
 {
@@ -229,4 +249,4 @@ enum EAttachManualCameraType
 	INPUT,
 	PLAYER,
 	ENTITY
-};
+}

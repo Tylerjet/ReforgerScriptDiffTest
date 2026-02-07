@@ -29,7 +29,7 @@ class SCR_ScrollBarComponent : SCR_WLibComponentBase
 	
 	protected ref SCR_ScrollBarHandleComponent m_Handle;
 	
-	ref ScriptInvoker m_OnScroll = new ref ScriptInvoker;
+	ref ScriptInvoker m_OnScroll = new ScriptInvoker;
 	
 	//-------------------------------------
 	// ScriptedWidgetComponent override

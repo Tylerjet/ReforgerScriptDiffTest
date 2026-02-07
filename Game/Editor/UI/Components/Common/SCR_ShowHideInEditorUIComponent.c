@@ -1,21 +1,23 @@
-class SCR_ShowHideInEditorUIComponent: ScriptedWidgetComponent
+class SCR_ShowHideInEditorUIComponent : ScriptedWidgetComponent
 {
 	protected Widget m_Root;
 	
 	[Attribute("1")]
 	protected bool m_bShowInEditor;
 	
-	
+	//------------------------------------------------------------------------------------------------
 	protected void OnEditorOpen()
 	{
 		m_Root.SetVisible(m_bShowInEditor);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnEditorClosed()
 	{
 		m_Root.SetVisible(!m_bShowInEditor);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		m_Root = w;
@@ -29,6 +31,8 @@ class SCR_ShowHideInEditorUIComponent: ScriptedWidgetComponent
 		
 		m_Root.SetVisible(m_bShowInEditor == editorManagerEntity.IsOpened());
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		SCR_EditorManagerEntity editorManagerEntity = SCR_EditorManagerEntity.GetInstance();	
@@ -38,6 +42,5 @@ class SCR_ShowHideInEditorUIComponent: ScriptedWidgetComponent
 		
 		editorManagerEntity.GetOnOpened().Remove(OnEditorOpen);
 		editorManagerEntity.GetOnClosed().Remove(OnEditorClosed);
-		
 	}
-};
+}

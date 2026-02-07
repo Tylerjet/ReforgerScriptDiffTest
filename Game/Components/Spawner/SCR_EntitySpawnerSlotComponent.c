@@ -20,41 +20,47 @@ class SCR_EntitySpawnerSlotComponentClass : ScriptComponentClass
 	protected float m_fTeleportSearchSize;
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetMaxRallyPointDistance()
 	{
 		return m_fMaxRallyPointDistance;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	vector GetMinBoundsVector()
 	{
 		return m_vMinBounds;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	vector GetMaxBoundsVector()
 	{
 		return m_vMaxBounds;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_EEntitySpawnerSlotType GetSlotType()
 	{
 		return m_eSlotType;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetTeleportMaximumDistance()
 	{
 		return m_fTeleportMaxDistance;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetTeleportSearchSize()
 	{
 		return m_fTeleportSearchSize;
 	}
-};
+}
 
 //------------------------------------------------------------------------------------------------
 //! Specifies slot to be used with nearby Entity Spawner Components
@@ -77,6 +83,8 @@ class SCR_EntitySpawnerSlotComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Returns true, if SCR_EntityLabelPointComponent is in range defined by m_fMaxRallyPointDistance
+	//! \param[in] labelComp
+	//! \return
 	bool IsEntityLabelInRange(notnull SCR_EntityLabelPointComponent labelComp)
 	{
 		SCR_EntitySpawnerSlotComponentClass prefabData = SCR_EntitySpawnerSlotComponentClass.Cast(GetComponentData(GetOwner()));
@@ -90,6 +98,7 @@ class SCR_EntitySpawnerSlotComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Assign labelComponent to be used as Rally Point. If component owner isn't in range, Rally point won't be assigned
+	//! \param[in] labelComp
 	void SetRallyPoint(notnull SCR_EntityLabelPointComponent labelComp)
 	{
 		if (!labelComp.HasLabel(EEditableEntityLabel.GAMELOGIC_RALLYPOINT) && !IsEntityLabelInRange(labelComp))
@@ -101,6 +110,7 @@ class SCR_EntitySpawnerSlotComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Get Assigned Rally point. If there is none, Slot will try to find new one.
+	//! \return
 	SCR_EntityLabelPointComponent GetRallyPoint()
 	{
 		SCR_EntitySpawnerSlotComponentClass prefabData = SCR_EntitySpawnerSlotComponentClass.Cast(GetComponentData(GetOwner()));
@@ -114,6 +124,7 @@ class SCR_EntitySpawnerSlotComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_EEntitySpawnerSlotType GetSlotType()
 	{
 		SCR_EntitySpawnerSlotComponentClass prefabData = SCR_EntitySpawnerSlotComponentClass.Cast(GetComponentData(GetOwner()));
@@ -214,7 +225,7 @@ class SCR_EntitySpawnerSlotComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Get all ChimeraCharacters in slot. Returns count.
-	//! \param characterArray outs array containing all ChimeraCharacters in slot
+	//! \param[in] characterArray outs array containing all ChimeraCharacters in slot
 	int GetCharactersInSlot(out array<ChimeraCharacter> characterArray)
 	{
 		SCR_EntitySpawnerSlotComponentClass prefabData = SCR_EntitySpawnerSlotComponentClass.Cast(GetComponentData(GetOwner()));
@@ -261,6 +272,8 @@ class SCR_EntitySpawnerSlotComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Callback used in GetCharacterInSlot for query. Adds living ChimeraCharacters into array.
+	//! \param[in] ent
+	//! \return always true
 	protected bool CharacterFoundCallback(IEntity ent)
 	{
 		ChimeraCharacter character = ChimeraCharacter.Cast(ent);
@@ -274,7 +287,8 @@ class SCR_EntitySpawnerSlotComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Filtering used in GetCharacterInSlot for query.
+	//! Filtering used in GetCharacterInSlot for query
+	//! \return
 	protected bool FilterCharactersCallback(IEntity ent)
 	{
 		if (ent.IsInherited(ChimeraCharacter))
@@ -284,7 +298,8 @@ class SCR_EntitySpawnerSlotComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Callback for TracePosition in IsOccupied. Can be overriden to implement custom conditions for checks in traces
+	//! Callback for TracePosition in IsOccupied. Can be overridden to implement custom conditions for checks in traces
+	//! \param[in] ent
 	protected bool TraceCallback(IEntity ent)
 	{
 		// Return false if entity is not in desired simulation state, contains cloth component (prevent detection of pouches) or is a weapon
@@ -388,6 +403,7 @@ class SCR_EntitySpawnerSlotComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_EntitySpawnerSlotComponent()
 	{
 		if (m_SlotManager)
@@ -437,9 +453,8 @@ class SCR_EntitySpawnerSlotComponent : ScriptComponent
 		}
 	}
 #endif
-};
+}
 
-//------------------------------------------------------------------------------------------------
 enum SCR_EEntitySpawnerSlotType
 {
 	GROUP_SMALL = 1 << 0,
@@ -449,4 +464,4 @@ enum SCR_EEntitySpawnerSlotType
 	VEHICLE_SMALL = 1 << 3,
 	VEHICLE_MEDIUM = 1 << 4,
 	VEHICLE_LARGE = 1 << 5
-};
+}

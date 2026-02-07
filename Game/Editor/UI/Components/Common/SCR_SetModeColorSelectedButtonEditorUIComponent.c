@@ -1,7 +1,8 @@
-class SCR_SetModeColorSelectedButtonEditorUIComponent: SCR_SetModeColorEditorUIComponent
+class SCR_SetModeColorSelectedButtonEditorUIComponent : SCR_SetModeColorEditorUIComponent
 {
 	protected SCR_ButtonBaseComponent m_wButton;
 	
+	//------------------------------------------------------------------------------------------------
 	protected override void SetColor(Color color)
 	{
 		if (!m_wButton)
@@ -19,4 +20,4 @@ class SCR_SetModeColorSelectedButtonEditorUIComponent: SCR_SetModeColorEditorUIC
 		if (m_wButton.IsToggled())
 			m_wButton.ColorizeBackground(false);
 	}
-};
+}

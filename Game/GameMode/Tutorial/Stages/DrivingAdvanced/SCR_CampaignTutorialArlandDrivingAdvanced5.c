@@ -11,13 +11,8 @@ class SCR_CampaignTutorialArlandDrivingAdvanced5 : SCR_BaseCampaignTutorialArlan
 	{
 		RegisterWaypoint("WP_DRIVINGHEAVY_4");
 		m_fWaypointCompletionRadius = 10;
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
 		m_TutorialComponent.SetWaypointMiscImage("CHICANE", true);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override protected bool GetIsFinished()
-	{
-		return m_Player.IsInVehicle();
+		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+
 	}
 };

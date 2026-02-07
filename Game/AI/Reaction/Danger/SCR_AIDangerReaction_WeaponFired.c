@@ -1,6 +1,10 @@
 [BaseContainerProps()]
 class SCR_AIDangerReaction_WeaponFired : SCR_AIDangerReaction
 {
+	protected static const float PROJECTILE_FLYBY_RADIUS = 13;
+	protected static const float PROJECTILE_FLYBY_RADIUS_SQ = PROJECTILE_FLYBY_RADIUS * PROJECTILE_FLYBY_RADIUS;
+	protected static const float AI_WEAPONFIRED_REACTION_DISTANCE = 500;
+	
 	override bool PerformReaction(notnull SCR_AIUtilityComponent utility, notnull SCR_AIThreatSystem threatSystem, AIDangerEvent dangerEvent)
 	{
 		IEntity shooter = dangerEvent.GetObject();
@@ -9,20 +13,25 @@ class SCR_AIDangerReaction_WeaponFired : SCR_AIDangerReaction
 			return false;
 		
 		// Get root entity of shooter, in case it is turret in vehicle hierarchy
-		shooter = shooter.GetRootParent();
+		IEntity shooterRoot = shooter.GetRootParent();
 		
 		SCR_ChimeraAIAgent agent = SCR_ChimeraAIAgent.Cast(utility.GetOwner());
-		if (!agent || !agent.IsEnemy(shooter))
+		if (!agent || !agent.IsEnemy(shooterRoot))
 			return false;
 		
 		vector min, max;
 		shooter.GetBounds(min, max);
 		vector lookPosition = shooter.GetOrigin() + (min + max) * 0.5;
+		
 		vector myOrigin = utility.m_OwnerEntity.GetOrigin();
+		float distance = vector.Distance(myOrigin, shooter.GetOrigin());
 		
-		float distance = vector.Distance(lookPosition, utility.GetOrigin());
+		bool flyby = IsFlyby(myOrigin, distance, shooter);
 		
-		threatSystem.ThreatShotFired(distance, dangerEvent.GetCount());
+		if (flyby)
+			threatSystem.ThreatProjectileFlyby(dangerEvent.GetCount());
+		else
+			threatSystem.ThreatShotFired(distance, dangerEvent.GetCount());
 
 		// Look at shooting position. Even though we add an observe behavior, we can't guarantee that
 		// some other behavior doesn't override observe behavior, in which case we might want to look at shooter in parallel.
@@ -32,7 +41,7 @@ class SCR_AIDangerReaction_WeaponFired : SCR_AIDangerReaction
 		// ! Only if we are a leader
 		AIGroup myGroup = AIGroup.Cast(utility.GetOwner().GetParentGroup());
 		if (myGroup && myGroup.GetLeaderAgent() == agent)
-			NotifyGroup(myGroup, shooter, lookPosition);
+			NotifyGroup(myGroup, shooterRoot, lookPosition);
 		
 		// Ignore if we have selected a target
 		// Ignore if target is too far
@@ -69,8 +78,15 @@ class SCR_AIDangerReaction_WeaponFired : SCR_AIDangerReaction
 		{
 			// !!! It's important that priority of this is higher than priority of move and investigate,
 			// !!! So first we look at gunshot origin, then investigate it
-			SCR_AIObservePositionBehavior observeBehavior = new SCR_AIObserveUnknownFireBehavior(utility, null,	posWorld: lookPosition);
+			SCR_AIObserveUnknownFireBehavior observeBehavior = new SCR_AIObserveUnknownFireBehavior(utility, null,	posWorld: lookPosition, useMovement: flyby);
 			utility.AddAction(observeBehavior);
+		}
+		else if (oldObserveBehavior && flyby)
+		{
+			// Notify the existing observe behavior, make it execute movement from now on.
+			// Otherwise if first behavior was created without movement, and then a bullet flies by,
+			// the AI does not move.
+			oldObserveBehavior.SetUseMovement(true);
 		}
 		
 		return true;
@@ -88,5 +104,26 @@ class SCR_AIDangerReaction_WeaponFired : SCR_AIDangerReaction
 				groupUtilityComp.m_Perception.AddOrUpdateGunshot(shooter, posWorld, timestamp);
 			}
 		}
+	}
+	
+	bool IsFlyby(vector myPos, float distanceToShooter, IEntity shooter)
+	{
+		// !!! Important for turrets - WeaponMgr is on turret entity, not vehicle root
+		BaseWeaponManagerComponent weaponMgr = BaseWeaponManagerComponent.Cast(shooter.FindComponent(BaseWeaponManagerComponent));
+		if (!weaponMgr)
+			return false;
+		
+		vector muzzleTransform[4];
+		weaponMgr.GetCurrentMuzzleTransform(muzzleTransform); // todo Ideally this should come from danger event, together with muzzle dir.
+		vector muzzlePos = muzzleTransform[3];
+		bool flyby = false;
+		if ( distanceToShooter > PROJECTILE_FLYBY_RADIUS &&
+			Math3D.IntersectionPointCylinder(myPos, muzzleTransform[3], muzzleTransform[2], PROJECTILE_FLYBY_RADIUS) )
+		{
+			// Within cylinder, but far enough, react as if projectile flew by
+			return true;
+		}
+		
+		return false;
 	}
 };

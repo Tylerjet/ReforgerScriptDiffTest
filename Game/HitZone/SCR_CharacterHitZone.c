@@ -79,29 +79,29 @@ class SCR_CharacterHitZone : SCR_RegeneratingHitZone
 	This is also called when transmitting the damage to parent hitzones!
 	\param type Type of damage
 	\param damage Amount of damage received
-	\param pOriginalHitzone Original hitzone that got dealt damage, as this might be transmitted damage.
+	\param struckHitZone Original hitzone that got dealt damage, as this might be transmitted damage.
 	\param instigator Damage source instigator (soldier, vehicle, ...)
 	\param hitTransform [hitPosition, hitDirection, hitNormal]
 	\param speed Projectile speed in time of impact
 	\param colliderID ID of the collider receiving damage
 	\param nodeID ID of the node of the collider receiving damage
 	*/
-	override void OnDamage(EDamageType type, float damage, HitZone pOriginalHitzone, notnull Instigator instigator, inout vector hitTransform[3], float speed, int colliderID, int nodeID)
+	override void OnDamage(notnull BaseDamageContext damageContext)
 	{
-		super.OnDamage(type, damage, pOriginalHitzone, instigator, hitTransform, speed, colliderID, nodeID);
+		super.OnDamage(damageContext);
 		
-		if (this != pOriginalHitzone)
+		if (this != damageContext.struckHitZone)
 			return;
 				
 		// Request impact sound from damage manager
-		bool critical = type == EDamageType.FIRE || damage >= GetCriticalDamageThreshold() * GetMaxHealth();
+		bool critical = damageContext.damageType == EDamageType.FIRE || damageContext.damageValue >= GetCriticalDamageThreshold() * GetMaxHealth();
 		
 		SCR_CharacterDamageManagerComponent manager = SCR_CharacterDamageManagerComponent.Cast(GetHitZoneContainer());
 		if (manager)
-			manager.SoundHit(critical, type);
+			manager.SoundHit(critical, damageContext.damageType);
 
 		// FireDamage shouldn't start bleedings
-		if (type == EDamageType.FIRE)
+		if (damageContext.damageType == EDamageType.FIRE)
 			return;
 		
 		// Only serious hits should cause bleeding
@@ -109,7 +109,7 @@ class SCR_CharacterHitZone : SCR_RegeneratingHitZone
 			return;
 		
 		// Adding immediately some blood to the clothes - currently it's based on the damage dealt.
-		AddBloodToClothes(Math.Clamp(damage * DAMAGE_TO_BLOOD_MULTIPLIER, 0, 255));
+		AddBloodToClothes(Math.Clamp(damageContext.damageValue * DAMAGE_TO_BLOOD_MULTIPLIER, 0, 255));
 
 		if (IsProxy())
 			return;
@@ -117,7 +117,7 @@ class SCR_CharacterHitZone : SCR_RegeneratingHitZone
 		if (Math.RandomFloat(0,1) < 0.3)
 			return;
 		
-		AddBleeding(colliderID);
+		AddBleeding(damageContext.colliderID);
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------
@@ -137,15 +137,19 @@ class SCR_CharacterHitZone : SCR_RegeneratingHitZone
 	\param nodeID - bone index in mesh obj
 	\param isDOT - true if this is a calculation for DamageOverTime 
 	*/
-	override float ComputeEffectiveDamage(EDamageType damageType, float rawDamage, IEntity hitEntity, HitZone struckHitZone, IEntity damageSource, notnull Instigator instigator, const GameMaterial hitMaterial, int colliderID, inout vector hitTransform[3], const vector impactVelocity, int nodeID, bool isDOT)
+	override float ComputeEffectiveDamage(notnull BaseDamageContext damageContext, bool isDOT)
 	{
-		if (rawDamage > 0 && !isDOT)
+		float rawDamage = damageContext.damageValue;
+		if (damageContext.damageValue > 0 && !isDOT)
 		{
-			float protectionValue = GetArmorProtectionValue(damageType);
-			rawDamage = Math.Max(rawDamage - protectionValue, 0);
+			float protectionValue = GetArmorProtectionValue(damageContext.damageType);
+			rawDamage = Math.Max(damageContext.damageValue - protectionValue, 0);
 		}
 		
-		return super.ComputeEffectiveDamage(damageType, rawDamage, hitEntity, struckHitZone, damageSource, instigator, hitMaterial, colliderID, hitTransform, impactVelocity, nodeID, isDOT);
+		BaseDamageContext hack = BaseDamageContext.Cast(damageContext.Clone());
+		hack.damageValue = rawDamage;
+		
+		return super.ComputeEffectiveDamage(hack, isDOT);
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------
@@ -305,7 +309,7 @@ class SCR_CharacterHitZone : SCR_RegeneratingHitZone
 };
 
 //------------------------------------------------------------------------------------------------
-class SCR_RegeneratingHitZone : ScriptedHitZone
+class SCR_RegeneratingHitZone : SCR_HitZone
 {
 	[Attribute("10", UIWidgets.Auto, "Time without receiving damage or bleeding to start regeneration\n[s]")]
 	protected float m_fRegenerationDelay;
@@ -320,15 +324,15 @@ class SCR_RegeneratingHitZone : ScriptedHitZone
 	\param damage Amount of damage received
 	\param type Type of damage
 	\param pHitEntity Entity that was damaged
-	\param pOriginalHitzone Original hitzone that got dealt damage, as this might be transmitted damage.
+	\param struckHitZone Original hitzone that got dealt damage, as this might be transmitted damage.
 	\param instigator Damage instigator
 	\param hitTransform [hitPosition, hitDirection, hitNormal]
 	\param colliderID ID of the collider receiving damage
 	\param speed Projectile speed in time of impact
 	*/
-	override void OnDamage(EDamageType type, float damage, HitZone pOriginalHitzone, notnull Instigator instigator, inout vector hitTransform[3], float speed, int colliderID, int nodeID)
+	override void OnDamage(notnull BaseDamageContext damageContext)
 	{
-		super.OnDamage(type, damage, pOriginalHitzone, instigator, hitTransform, speed, colliderID, nodeID);
+		super.OnDamage(damageContext);
 		
 		if (IsProxy())
 			return;
@@ -405,6 +409,27 @@ class SCR_RegeneratingHitZone : ScriptedHitZone
 			RemovePassiveRegeneration();
 	}
 };
+
+//-----------------------------------------------------------------------------------------------------------
+//! health hitzone - Receives damage from physical hitzones
+class SCR_CharacterHealthHitZone : SCR_HitZone
+{
+	//-----------------------------------------------------------------------------------------------------------
+	override float ComputeEffectiveDamage(notnull BaseDamageContext damageContext, bool isDOT)
+	{
+		// Handle falldamage. Falldamage is applied to defaultHZ, so it's propegated down to physical hitzones manually, then back up to the health HZ like normal damage.
+		if (damageContext.damageType == EDamageType.COLLISION && damageContext.struckHitZone == this)
+		{
+			SCR_CharacterDamageManagerComponent damageManager = SCR_CharacterDamageManagerComponent.Cast(GetHitZoneContainer());
+			if (damageManager && damageContext.damageValue > GetDamageThreshold())
+				damageManager.HandleFallDamage(damageContext.damageValue);
+	
+			return 0;
+		}
+
+		return super.ComputeEffectiveDamage(damageContext, isDOT);
+	}
+}
 
 //-----------------------------------------------------------------------------------------------------------
 //! Resilience - incapacitation or death, depending on game mode settings

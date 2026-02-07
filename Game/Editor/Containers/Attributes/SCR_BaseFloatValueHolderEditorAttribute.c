@@ -1,12 +1,11 @@
-/**
-Attribute base for Name, icon and float value for other attributes to inherent from
-*/
+//! Attribute base for Name, icon and float value for other attributes to inherent from
 [BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
 class SCR_BaseFloatValueHolderEditorAttribute: SCR_BaseEditorAttribute
 {
 	[Attribute(desc: "Values")]
 	protected ref array<ref SCR_EditorAttributeFloatStringValueHolder> m_aValues;
 	
+	//------------------------------------------------------------------------------------------------
 	override int GetEntries(notnull array<ref SCR_BaseEditorAttributeEntry> outEntries)
 	{
 		outEntries.Insert(new SCR_BaseEditorAttributeFloatStringValues(m_aValues));
@@ -29,6 +28,7 @@ class SCR_EditorAttributeFloatStringValueHolder
 	[Attribute()]
 	protected float m_fEntryFloatValue;	
 	
+	//------------------------------------------------------------------------------------------------
 	void SetIcon(ResourceName newIcon)
 	{
 		m_Icon = newIcon;
@@ -82,4 +82,4 @@ class SCR_EditorAttributeFloatStringValueHolder
 		SetIcon(info.GetIconPath());
 		SetFloatValue(value);
 	}
-};
+}

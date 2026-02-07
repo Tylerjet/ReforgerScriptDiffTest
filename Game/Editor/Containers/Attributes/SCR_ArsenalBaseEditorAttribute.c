@@ -1,4 +1,3 @@
-//
 [BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
 class SCR_ArsenalBaseEditorAttribute : SCR_LoadoutBaseEditorAttribute
 {	
@@ -9,23 +8,16 @@ class SCR_ArsenalBaseEditorAttribute : SCR_LoadoutBaseEditorAttribute
 	[Attribute("0", desc: "Dictates if attribute can be shown for box, displays or both. All other settings are still checked so if an arsenal display cannot display outfits then it will still not show.", uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EArsenalType))]
 	protected EArsenalType m_iArsenalType;
 	
-	
+	//------------------------------------------------------------------------------------------------
 	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)
 	{
 		SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(item);
 		if (!editableEntity)
 			return null;
 		
-		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.Cast(editableEntity.GetOwner().FindComponent(SCR_ArsenalComponent));
+		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.FindArsenalComponent(editableEntity.GetOwner());
 		if (!arsenalComponent)
-		{
-			//~ If vehicle check if arsenal is on children
-			if (editableEntity.GetEntityType() == EEditableEntityType.VEHICLE)
-				arsenalComponent = SCR_ArsenalComponent.GetArsenalComponentFromChildren(editableEntity.GetOwner());
-			
-			if (!arsenalComponent)
-				return null;
-		}
+			return null;
 		
 		//~ Check if box or display
 		if (m_iArsenalType != EArsenalType.ANY)
@@ -43,6 +35,7 @@ class SCR_ArsenalBaseEditorAttribute : SCR_LoadoutBaseEditorAttribute
 		return SCR_BaseEditorAttributeVar.CreateInt(arsenalComponent.GetSupportedArsenalItemTypes());
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)
 	{
 		if (!var)
@@ -52,16 +45,9 @@ class SCR_ArsenalBaseEditorAttribute : SCR_LoadoutBaseEditorAttribute
 		if (!editableEntity)
 			return;
 		
-		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.Cast(editableEntity.GetOwner().FindComponent(SCR_ArsenalComponent));
+		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.FindArsenalComponent(editableEntity.GetOwner());
 		if (!arsenalComponent)
-		{
-			//~ If vehicle check if arsenal is on children
-			if (editableEntity.GetEntityType() == EEditableEntityType.VEHICLE)
-				arsenalComponent = SCR_ArsenalComponent.GetArsenalComponentFromChildren(editableEntity.GetOwner());
-				
-			if (!arsenalComponent)
-				return;
-		}
+			return;
 		
 		//~ Check if box or display
 		if (m_iArsenalType != EArsenalType.ANY)
@@ -92,11 +78,11 @@ class SCR_ArsenalBaseEditorAttribute : SCR_LoadoutBaseEditorAttribute
 		//Update the arsenal
 		arsenalComponent.SetSupportedArsenalItemTypes(arsenalFlags);
 	}
-};
+}
 
 enum EArsenalType
 {
 	ANY,
 	BOX_ONLY,
 	DISPLAY_ONLY,
-};
+}

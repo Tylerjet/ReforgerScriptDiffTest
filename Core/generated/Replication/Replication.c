@@ -34,13 +34,6 @@ sealed class Replication
 	returns its identity. Failure returns INVALID_ID constant.
 	*/
 	static proto RplIdentity FindOwner(RplId itemId);
-	/*!
-	Master time for all reaplication instances.
-	(Exponentialy smoothed, is dependent on connection quality)
-	\deprecated Use WorldTimestamp obtained from World instead.
-	*/
-	[Obsolete("Use WorldTimestamp obtained from World instead.")]
-	static proto float Time();
 	//! Tells whenever the replication is active.
 	static proto bool IsRunning();
 	/*!

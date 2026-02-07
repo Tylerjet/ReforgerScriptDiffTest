@@ -1,17 +1,16 @@
 [ComponentEditorProps(category: "GameScripted/Voting", description: "")]
-class SCR_VoterComponentClass: ScriptComponentClass
+class SCR_VoterComponentClass : ScriptComponentClass
 {
-};
-class SCR_VoterComponent: ScriptComponent
+}
+
+class SCR_VoterComponent : ScriptComponent
 {
 	protected PlayerController m_PlayerController;
 	
-	////////////////////////////////////////////////////////////////////////////////////////////////
+	//------------------------------------------------------------------------------------------------
 	//--- Public, anywhere
-	/*!
-	Get local instance of this component.
-	\return Local voter component
-	*/
+	//! Get local instance of this component.
+	//! \return Local voter component
 	static SCR_VoterComponent GetInstance()
 	{
 		if (GetGame().GetPlayerController())
@@ -21,10 +20,8 @@ class SCR_VoterComponent: ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Instantly cast vote to the only ongoing voting.
-	Ignored if number of votings is not exactly 1.
-	*/
+	//! Instantly cast vote to the only ongoing voting.
+	//! Ignored if number of votings is not exactly 1.
 	static void InstantVote()
 	{
 		SCR_VotingManagerComponent manager = SCR_VotingManagerComponent.GetInstance();
@@ -63,10 +60,8 @@ class SCR_VoterComponent: ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Instantly cast remove vote to the only ongoing voting and will set self to abstaining as well
-	Ignored if number of votings is not exactly 1.
-	*/
+	//! Instantly cast remove vote to the only ongoing voting and will set self to abstaining as well
+	//! Ignored if number of votings is not exactly 1.
 	static void InstantRemoveAndAbstainVote()
 	{
 		SCR_VotingManagerComponent manager = SCR_VotingManagerComponent.GetInstance();
@@ -103,13 +98,11 @@ class SCR_VoterComponent: ScriptComponent
 			voterComponent.RemoveVote(votingTypes[0], votingValues[0]);
 	}
 	
-	////////////////////////////////////////////////////////////////////////////////////////////////
+	//------------------------------------------------------------------------------------------------
 	//--- Public, owner
-	/*!
-	Vote!
-	\param type Type of the vote
-	\param value Voted value, depends on the type (e.g., for KICK it's player ID)
-	*/
+	//! Vote!
+	//! \param[in] type Type of the vote
+	//! \param[in] value Voted value, depends on the type (e.g., for KICK it's player ID)
 	void Vote(EVotingType type, int value)
 	{
 		SCR_VotingManagerComponent manager = SCR_VotingManagerComponent.GetInstance();
@@ -121,11 +114,9 @@ class SCR_VoterComponent: ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Remove previously cast vote.
-	\param type Type of the vote
-	\param value Voted value, depends on the type (e.g., for KICK it's player ID)
-	*/
+	//! Remove previously cast vote.
+	//! \param[in] type Type of the vote
+	//! \param[in] value Voted value, depends on the type (e.g., for KICK it's player ID)
 	void RemoveVote(EVotingType type, int value = SCR_VotingBase.DEFAULT_VALUE)
 	{
 		SCR_VotingManagerComponent manager = SCR_VotingManagerComponent.GetInstance();
@@ -140,11 +131,9 @@ class SCR_VoterComponent: ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Player abstained from voting. Eg: Did not vote yes or removes vote yes
-	\param type Type of the vote
-	\param value Voted value, depends on the type (e.g., for KICK it's player ID)
-	*/
+	//! Player abstained from voting. Eg: Did not vote yes or removes vote yes
+	//! \param[in] type Type of the vote
+	//! \param[in] value Voted value, depends on the type (e.g., for KICK it's player ID)
 	void AbstainVote(EVotingType type, int value = SCR_VotingBase.DEFAULT_VALUE)
 	{
 		SCR_VotingManagerComponent manager = SCR_VotingManagerComponent.GetInstance();
@@ -162,12 +151,10 @@ class SCR_VoterComponent: ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check if player did cast the vote.
-	\param type Type of the vote
-	\param value Voted value, depends on the type (e.g., for KICK it's player ID)
-	\return True if the vote was cast
-	*/
+	//! Check if player did cast the vote.
+	//! \param[in] type Type of the vote
+	//! \param[in] value Voted value, depends on the type (e.g., for KICK it's player ID)
+	//! \return True if the vote was cast
 	bool DidVote(EVotingType type, int value = SCR_VotingBase.DEFAULT_VALUE)
 	{
 		SCR_VotingManagerComponent manager = SCR_VotingManagerComponent.GetInstance();
@@ -178,12 +165,10 @@ class SCR_VoterComponent: ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check if player abstained from voting
-	\param type Type of the vote
-	\param value Voted value, depends on the type (e.g., for KICK it's player ID)
-	\return True if the player abstained
-	*/
+	//! Check if player abstained from voting
+	//! \param[in] type Type of the vote
+	//! \param[in] value Voted value, depends on the type (e.g., for KICK it's player ID)
+	//! \return True if the player abstained
 	bool HasAbstained(EVotingType type, int value = SCR_VotingBase.DEFAULT_VALUE)
 	{
 		SCR_VotingManagerComponent manager = SCR_VotingManagerComponent.GetInstance();
@@ -193,7 +178,7 @@ class SCR_VoterComponent: ScriptComponent
 			return false;
 	}
 	
-	////////////////////////////////////////////////////////////////////////////////////////////////
+	//------------------------------------------------------------------------------------------------
 	//--- Protected, server
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void VoteServer(EVotingType type, int value)
@@ -202,6 +187,8 @@ class SCR_VoterComponent: ScriptComponent
 		if (manager)
 			manager.Vote(m_PlayerController.GetPlayerId(), type, value);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void RemoveVoteServer(EVotingType type, int value)
 	{
@@ -210,7 +197,7 @@ class SCR_VoterComponent: ScriptComponent
 			manager.RemoveVote(m_PlayerController.GetPlayerId(), type, value);
 	}
 	
-	////////////////////////////////////////////////////////////////////////////////////////////////
+	//------------------------------------------------------------------------------------------------
 	//--- Overrides
 	override void OnPostInit(IEntity owner)
 	{
@@ -221,4 +208,4 @@ class SCR_VoterComponent: ScriptComponent
 			return;
 		}
 	}
-};
+}

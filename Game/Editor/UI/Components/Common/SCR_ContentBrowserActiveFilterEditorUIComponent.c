@@ -1,16 +1,13 @@
-class SCR_ContentBrowserActiveFilterEditorUIComponent: ScriptedWidgetComponent
+class SCR_ContentBrowserActiveFilterEditorUIComponent : ScriptedWidgetComponent
 {		
 	protected Widget m_wRoot;
 	protected Widget m_wBorder;
 	protected EEditableEntityLabel m_iLabelReference;
 	
-	
-	
-	/*!
-	Init button when to set icon and data when it is pressed
-	\param label EEditableEntityLabel filter for when it is pressed
-	\param uiInfo SCR_UIInfo to set icon
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Init button when to set icon and data when it is pressed
+	//! \param[in] label EEditableEntityLabel filter for when it is pressed
+	//! \param[in] uiInfo SCR_UIInfo to set icon
 	void InitFilterButton(EEditableEntityLabel label, SCR_UIInfo uiInfo)
 	{
 		if (!m_wRoot)
@@ -26,30 +23,32 @@ class SCR_ContentBrowserActiveFilterEditorUIComponent: ScriptedWidgetComponent
 			tooltip.SetInfo(uiInfo);
 	}
 	
-	/*!
-	Get EEditableEntityLabel reference
-	\return EEditableEntityLabel
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get EEditableEntityLabel reference
+	//! \return
 	EEditableEntityLabel GetLabelReference()
 	{
 		return m_iLabelReference;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override bool OnMouseEnter(Widget w, int x, int y)
 	{
 		AnimateWidget.Opacity(m_wBorder, 1, 5);
 		return false;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
 	{
 		AnimateWidget.Opacity(m_wBorder, 0, 5);
 		return false;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		m_wRoot = w;
 		m_wBorder = w.FindAnyWidget("Border");
 	}
-};
+}

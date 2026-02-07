@@ -4,7 +4,17 @@ const string MeshObjectCommon = "Common";
 //----------------------------------------------------------------------------------------------
 void ReportIssue(string resource, string issue)
 {
-	PrintFormat("@\"%1\" : %2", resource, issue);
+	string msg = string.Format("@\"%1\" : %2", resource, issue);
+	Print(string.ToString(msg, false, false, false), LogLevel.ERROR);
+}
+
+//----------------------------------------------------------------------------------------------
+void FixIssue(string resource, BaseContainer pc, BaseContainer platform, string prefix, string varName)
+{
+	string val;
+	pc.Get(varName, val);
+	platform.Set(varName, val);
+	ReportIssue(resource, "Property fixed: " + prefix + "." + varName);
 }
 
 //----------------------------------------------------------------------------------------------
@@ -27,7 +37,8 @@ bool FixMeshObjectMetaFile(MetaFile meta, string absFileName)
 		if( !IsSet )
 		{
 			Resource res = BaseContainerTools.CreateContainer("TXOCommonClass");
-			BaseContainer cont = BaseContainer.Cast( res.GetResource() );
+			BaseResourceObject root = res.GetResource();
+			BaseContainer cont = root.ToBaseContainer();
 			cfg.SetObject(MeshObjectCommon, cont);
 		}
 		
@@ -54,6 +65,9 @@ bool FixMeshObjectMetaFile(MetaFile meta, string absFileName)
 				break;
 			case "PS4":
 				ancestor = "{53EC476BC921D99A}configs/ResourceTypes/PS4/MeshObjectCommon.conf";
+				break;
+			case "PS5":
+				ancestor = "{F62AA8E7B8EA9D26}configs/ResourceTypes/PS5/MeshObjectCommon.conf";
 				break;
 			case "HEADLESS":
 				ancestor = "{3A5B3356978039E8}configs/ResourceTypes/HEADLESS/MeshObjectCommon.conf";
@@ -100,6 +114,9 @@ bool FixSoundMetaFile(MetaFile meta, string absFileName)
 			case "PS4":
 				ancestor = "{89EB939911B4C093}configs/ResourceTypes/PS4/Sound.conf";
 				break;
+			case "PS5":
+				ancestor = "{A584A3B556D4A981}configs/ResourceTypes/PS5/Sound.conf";
+				break;
 			case "HEADLESS":
 				ancestor = "{D63592CA950AF3A8}configs/ResourceTypes/HEADLESS/Sound.conf";
 				break;
@@ -144,6 +161,9 @@ bool FixParticleEffectMetaFile(MetaFile meta, string absFileName)
 				break;
 			case "PS4":
 				ancestor = "{B94602D6C3160C98}configs/ResourceTypes/PS4/ParticleEffect.conf";
+				break;
+			case "PS5":
+				ancestor = "{E8F9F77ECEB75947}configs/ResourceTypes/PS5/ParticleEffect.conf";
 				break;
 			case "HEADLESS":
 				ancestor = "{EED8908A9A55ED1C}configs/ResourceTypes/HEADLESS/ParticleEffect.conf";
@@ -231,6 +251,15 @@ class BatchMeshObjectProcessorPlugin: WorkbenchPlugin
 	[Attribute(uiwidget: UIWidgets.EditBox, desc: "Types (file extensions) to process")]
 	ref array<string> FileTypes;
 
+	[Attribute("", UIWidgets.FileNamePicker, "Check only textures whose path starts with given filter string.", params:"folders")]
+	string PathStartsWith;
+
+	[Attribute("", UIWidgets.EditBox, "Check only textures whose path contains given filter string.")]
+	string PathContains;
+
+	[Attribute("", UIWidgets.EditBox, "Check only textures whose path ends with given filter string.")]
+	string PathEndsWith;
+	
 	[Attribute("true", UIWidgets.CheckBox, "Change configuration inheritance etc")]
 	bool FixMetaFile;
 	
@@ -271,20 +300,171 @@ class BatchMeshObjectProcessorPlugin: WorkbenchPlugin
 	}
 
 	//----------------------------------------------------------------------------------------------
-	void Find(ResourceName resName, string filePath)
+	bool TestAgainstFilter(string resource)
 	{
-		m_Resources.Insert(filePath);
+		int resourceLength = resource.Length();
+
+		int prefixLength = PathStartsWith.Length();
+		if (resourceLength < prefixLength)
+			return false;
+
+		int suffixLength = PathEndsWith.Length();
+		if (resourceLength < suffixLength)
+			return false;
+
+		int subLength = PathContains.Length();
+		if (resourceLength < subLength)
+			return false;
+
+		resource.ToLower();
+		if (!resource.StartsWith(PathStartsWith))
+			return false;
+
+		if (!resource.EndsWith(PathEndsWith))
+			return false;
+
+		if (!resource.Contains(PathContains))
+			return false;
+
+		return true;
 	}
 	
 	//----------------------------------------------------------------------------------------------
-	override void Run()
+	void Find(ResourceName resName, string filePath)
 	{
-		if (!Workbench.ScriptDialog("Batch resource processor", "", this))
-			return;
+		if (TestAgainstFilter(filePath))
+			m_Resources.Insert(filePath);
+	}
+	
+	//----------------------------------------------------------------------------------------------
+	bool CheckContainersVar(string resource, notnull array<string> platformPrefixes, notnull array<BaseContainer> containers, string varName, DataVarType type)
+	{
+		BaseContainer pc = containers[0];
+		bool isSetOnPC = pc.IsVariableSetDirectly(varName);
+		bool bRes = true;
+		
+		if (type == DataVarType.OBJECT)
+		{
+			array<BaseContainer> subContainers	= {};
+			array<string> subPlatformPrefixes = {};
+			
+			for (int iPlatform = 0; iPlatform < containers.Count(); iPlatform++)
+			{
+				BaseContainer platform = containers[iPlatform];
+				subContainers.Insert(platform.GetObject(varName));
+				subPlatformPrefixes.Insert(platformPrefixes[iPlatform] + "." + varName);
+			}
+			
+			BaseContainer pcSubContainer = subContainers[0];
+			if (pcSubContainer)
+			{
+				int nVars = pcSubContainer.GetNumVars();
+				for (int iVar = 0; iVar < nVars; iVar++)
+				{
+					string subVarName = pcSubContainer.GetVarName(iVar);
+										
+					if (!CheckContainersVar(resource, subPlatformPrefixes, subContainers, subVarName, pcSubContainer.GetDataVarType(iVar)))
+					{
+						bRes = false;
+					}
+				}
+				return bRes;
+			}
+		}
 
+		for (int iPlatform = 1; iPlatform < containers.Count(); iPlatform++)
+		{
+			BaseContainer platform = containers[iPlatform];
+			bool isSet = platform.IsVariableSetDirectly(varName);
+			bool isInherited = false;
+			
+			if (platformPrefixes[iPlatform].StartsWith("HEADLESS"))
+				continue;
+			
+			if (platform.GetAncestor() && platform.GetAncestor().GetName() == pc.GetName())
+			{
+				isInherited = true;
+			}
+			
+			//--
+			
+			if (isSetOnPC)
+			{
+				if (isInherited)
+				{
+					if (isSet)
+					{
+						string valPC;
+						string valPlatform;
+						
+						if (type != DataVarType.OBJECT_ARRAY)
+						{
+							pc.Get(varName, valPC);						
+							pc.Get(varName, valPlatform);
+						}
+						
+						if (valPC != valPlatform)
+						{
+							if (FixCustomPropertyValues)
+							{
+								FixIssue(resource, pc, platform, platformPrefixes[iPlatform], varName);
+							}
+							else
+							{
+								ReportIssue(resource, "Property inherited from PC, but overridden on platform: " + platformPrefixes[iPlatform] + "." + varName);
+							}
+							bRes = false;
+						}
+					}
+				}
+				else
+				{
+					if (!isSet)
+					{
+						if (FixCustomPropertyValues)
+						{
+							FixIssue(resource, pc, platform, platformPrefixes[iPlatform], varName);
+						}
+						else
+						{
+							ReportIssue(resource, "Property set on PC, but not set on plarform: " + platformPrefixes[iPlatform] + "." + varName);
+						}
+						bRes = false;
+					}					
+				}
+			} 
+			else
+			{
+				if (isSet)
+				{
+					if (FixCustomPropertyValues)
+					{
+						FixIssue(resource, pc, platform, platformPrefixes[iPlatform], varName);
+					}
+					else
+					{
+						ReportIssue(resource, "Property not set on PC, but set on plarform: " + platformPrefixes[iPlatform] + "." + varName);
+					}
+					bRes = false;
+				}
+			}
+		}
+		
+		return bRes;
+	}
+	
+	//----------------------------------------------------------------------------------------------
+	bool Execute()
+	{
+		PathStartsWith.ToLower();
+		PathContains.ToLower();
+		PathEndsWith.ToLower();
+		
+		m_Resources.Clear();
 		Workbench.SearchResources(Find, FileTypes);
 		m_Resources.Sort();
 
+		bool bRes = true;
 		ResourceManager rb = Workbench.GetModule(ResourceManager);
 		WBProgressDialog progress = new WBProgressDialog("Processing...", rb);
 		
@@ -295,13 +475,14 @@ class BatchMeshObjectProcessorPlugin: WorkbenchPlugin
 		foreach (int resourceIdx, string resource : m_Resources)
 		{
 			progress.SetProgress(resourceIdx / count);
-
+				
 			MetaFile meta = rb.GetMetaFile(resource);
 			if (!meta)
 			{
 				if (ReportMissingMetaFile)
 				{
 					ReportIssue(resource, "meta-file is missing");
+					bRes = false;
 				}
 				continue;
 			}
@@ -312,6 +493,7 @@ class BatchMeshObjectProcessorPlugin: WorkbenchPlugin
 				if (ReportMissingConfigurations)
 				{
 					ReportIssue(resource, "meta-file is missing 'Configurations' property");
+					bRes = false;
 				}
 				meta.Release();
 				continue;
@@ -325,71 +507,30 @@ class BatchMeshObjectProcessorPlugin: WorkbenchPlugin
 				
 				ResourceName pcConfigName = configurations[0].GetResourceName();
 				array<string> pcConfigVarsChanged = {};
-				set<string> reportVarName = new set<string>;
+				BaseContainer pcPlatformConf = configurations.Get(0);
+				
 				//---
+				array<BaseContainer> containers = {};
+				array<string> platformPrefixes = {};
 				
 				for (int iPlatform = 0; iPlatform < nPlatforms; iPlatform++)
 				{
 					BaseContainer platformConf = configurations.Get(iPlatform);
-					BaseContainer platformConfAncestor = platformConf.GetAncestor();
-					
-					if (iPlatform)
-					{
-						if (platformConfAncestor && platformConfAncestor.GetResourceName() == pcConfigName)
-							continue;
-						
-						if (!FixCustomPropertyValues && platformConf.GetName() == "HEADLESS")
-							continue;
-						
-						if (FixCustomPropertyValues)
-						{
-							foreach (string varName: pcConfigVarsChanged)
-							{
-								//CopyVariable(configurations[0], platformConf, varName);
-								string val;
-								configurations[0].Get(varName, val);
-								platformConf.Set(varName, val);
-								anyChangeInMetaFile = true;
-							}
-						}
-						else
-						{
-							foreach (string varName: pcConfigVarsChanged)
-							{
-								if (!platformConf.IsVariableSetDirectly(varName))	
-								{
-									reportVarName.Insert(varName);
-									break;
-								}
-							}
-						}
-					}
-					else
-					{
-						int nVars = platformConf.GetNumVars();
-						for (int iVar = 0; iVar < nVars; iVar++)
-						{
-							string varName = platformConf.GetVarName(iVar);
-							if (platformConf.IsVariableSetDirectly(varName))	
-							{
-								pcConfigVarsChanged.Insert(varName);
-							}
-						}
-					}
-					
-					if (pcConfigVarsChanged.IsEmpty())
-						break;
+					containers.Insert(platformConf);
+					platformPrefixes.Insert(platformConf.GetName());
 				}
 				
-				if (FixCustomPropertyValues)
+				int nVars = pcPlatformConf.GetNumVars();
+				for (int iVar = 0; iVar < nVars; iVar++)
 				{
-					foreach (string varName: pcConfigVarsChanged)
-						ReportIssue(resource, "Custom property applied to all platforms: " + varName);
-				}
-				else
-				{
-					foreach (string varName: reportVarName)
-						ReportIssue(resource, "Custom property only for PC: " + varName);
+					string varName = pcPlatformConf.GetVarName(iVar);
+										
+					if (!CheckContainersVar(resource, platformPrefixes, containers, varName, pcPlatformConf.GetDataVarType(iVar)))
+					{
+						bRes = false;
+						if (FixCustomPropertyValues)
+							anyChangeInMetaFile = true;
+					}
 				}
 			}
 			
@@ -400,7 +541,10 @@ class BatchMeshObjectProcessorPlugin: WorkbenchPlugin
 				if( IsMeshObject(className) )
 				{
 					if( FixMeshObjectMetaFile(meta, resource) )
+					{
+						bRes = false;
 						anyChangeInMetaFile = true;
+					}
 				}
 				else if( IsSound(className) )
 				{
@@ -423,5 +567,55 @@ class BatchMeshObjectProcessorPlugin: WorkbenchPlugin
 		}
 		
 		Print("Batch resource processor - END");
+		
+		return bRes;
+	}
+	
+	//----------------------------------------------------------------------------------------------
+	override void Run()
+	{
+		if (!Workbench.ScriptDialog("Batch resource processor", "", this))
+			return;
+		
+		Execute();
+	}
+	
+	//----------------------------------------------------------------------------------------------
+	// CLI: -FileTypes="xob,edds" PathStartsWith="$ArmaReforger:Assets/Structures/Houses"
+	override void RunCommandline()
+	{
+		FixCustomPropertyValues = false;
+		FixMetaFile = false;
+		ForceResaveMetaFile = false;
+		
+		ReportMissingMetaFile = true;
+		ReportMissingConfigurations = true;
+		ReportCustomPropertyValues = true;
+		
+		FileTypes.Clear();
+		PathStartsWith = string.Empty;
+		PathContains = string.Empty;
+		PathEndsWith = string.Empty;
+		
+		ResourceManager rm = Workbench.GetModule(ResourceManager);
+		string cli;
+		
+		rm.GetCmdLine("-FileTypes", cli);
+		cli.Split(",", FileTypes, true);
+		
+		rm.GetCmdLine("-PathStartsWith", PathStartsWith);
+		rm.GetCmdLine("-PathContains", PathContains);
+		rm.GetCmdLine("-PathEndsWith", PathEndsWith);
+		
+		Print("BatchMeshObjectProcessorPlugin commandline:");
+		Print(PathStartsWith);
+		Print(PathContains);
+		Print(PathEndsWith);	
+		FileTypes.Debug();
+		
+		if (Execute())
+			Workbench.Exit(0);
+		else
+			Workbench.Exit(-1);
 	}
 }

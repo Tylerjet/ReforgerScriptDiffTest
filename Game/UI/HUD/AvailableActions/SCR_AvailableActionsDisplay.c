@@ -3,30 +3,29 @@ class SCR_AvailableActionsWidget
 {
 	protected Widget m_wRootWidget;
 	protected OverlayWidget m_wOverlayWidget;
-	protected RichTextWidget m_wRichTextWidget;
-	protected TextWidget m_hintText;
+	
+	protected ButtonWidget m_wButtonWidget;
+	protected SCR_InputButtonComponent m_NavigationButton;
+	
+	protected const string BUTTON_WIDGET_NAME = "NavigationButton1";
 
 	//------------------------------------------------------------------------------------------------
 	void SetText(string text, string name)
 	{
-		if (m_wRichTextWidget)
-			m_wRichTextWidget.SetText(text);
-
-
-		if (m_hintText)
-			m_hintText.SetText(name);
+		if (!m_NavigationButton)
+			return;
+		
+		m_NavigationButton.SetAction(text);
+		m_NavigationButton.SetLabel(name);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetTextSize(int size)
+	void SetSize(int size)
 	{
-		if (m_wRichTextWidget)
-			m_wRichTextWidget.SetDesiredFontSize(size);
-		
-		if (m_hintText)
-			m_hintText.SetDesiredFontSize(size);
+		if (m_NavigationButton)
+			m_NavigationButton.SetSize(size);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	void SetVisible(bool isVisible)
 	{
@@ -70,10 +69,12 @@ class SCR_AvailableActionsWidget
 		Widget root = GetGame().GetWorkspace().CreateWidgets(layout, parent);
 		instance.m_wRootWidget = root;
 		if (root)
-		{
-			instance.m_wRichTextWidget = RichTextWidget.Cast(root.FindAnyWidget("SlotRichText"));
-			instance.m_hintText = TextWidget.Cast(root.FindAnyWidget("Text"));
-			instance.m_wOverlayWidget = OverlayWidget.Cast(root.FindAnyWidget("Overlay0"));
+		{			
+			instance.m_wButtonWidget = ButtonWidget.Cast(root.FindAnyWidget(instance.BUTTON_WIDGET_NAME));
+			instance.m_NavigationButton = SCR_InputButtonComponent.FindComponent(instance.m_wButtonWidget);
+			
+			if (instance.m_NavigationButton)
+				instance.m_NavigationButton.SetClickSoundDisabled(true);
 		}
 		instance.SetText(text, name);
 
@@ -121,6 +122,7 @@ class SCR_AvailableActionContextTitle : BaseContainerCustomTitle
 
 		// Setup title string
 		title = "(" + title + ") " + tag + " - " + enabledStr;
+		
 		return true;
 	}
 };
@@ -190,6 +192,9 @@ class SCR_AvailableActionContext
 		bool isOk = true;
 		foreach (auto cond : m_aConditions)
 		{
+			if (!cond.IsEnabled())
+				continue;
+
 			if (!cond.IsAvailable(data))
 			{
 				if (m_bActivated)
@@ -238,9 +243,6 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 	[Attribute("", UIWidgets.ResourceNamePicker, "Layout used for individual action widgets", params: "layout")]
 	protected ResourceName m_sChildLayout;
 
-	[Attribute("1", UIWidgets.CheckBox, "Should the rich text widget show action as text only (no icons)?")]
-	protected bool m_bForceText;
-
 	[Attribute()]
 	protected float m_fDefaultOffsetY;
 
@@ -249,12 +251,21 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 
 	[Attribute("", UIWidgets.Object, "")]
 	protected ref array<ref AvailableActionLayoutBehaviorBase> m_aBehaviors;
+	
+	[Attribute("40", desc: "Size of the small button which will be used when there are too many bigger buttons. (Height in px)")]
+	protected int m_iButtonSizeSmall;
+	
+	[Attribute("44", desc: "Size of the medium button which will be used when there are too many bigger buttons. (Height in px)")]
+	protected int m_iButtonSizeMedium;
+	
+	[Attribute("48", desc: "Size of the large button. This is the maximum size of the shown button. If there are too many one of the above will be used instead. (Height in px)")]
+	protected int m_iButtonSizeLarge;
 
 	//! Count of maximum elements that will be pre-cached
 	protected const int PRELOADED_WIDGETS_COUNT = 16;
 
 	//! List of available action widget containers
-	protected ref array<ref SCR_AvailableActionsWidget> m_aWidgets = new ref array<ref SCR_AvailableActionsWidget>();
+	protected ref array<ref SCR_AvailableActionsWidget> m_aWidgets = new array<ref SCR_AvailableActionsWidget>();
 
 	//! Layout widget in root or null if new
 	protected Widget m_wLayoutWidget;
@@ -268,18 +279,22 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 	//!
 	protected ref SCR_AvailableActionsConditionData m_data;
 	protected SCR_InfoDisplaySlotHandler m_slotHandler;
+	protected SCR_HUDSlotUIComponent m_HUDSlotComponent;
 
 	//! Timer for fetching data limitation
 	protected float m_fDataFetchTimer;
 	
-	protected int m_iMaxActionsUntilResize = 5;
+	//! Default values for how many large / medium buttons will be displayed before they switch to a smaller one. (This gets overritten by the SlotSize calculation)
+	protected int m_iMaxActionsBig = 5;
+	protected int m_iMaxActionsMedium = 7;
 
-	const int HEIGHT_DEVIDER = 50;
+	//! This values are used to determine how many actions fit in the available space. (Space / devider = MaxActions)
+	const int HEIGHT_DIVIDER_BIG = 70;
+	const int HEIGHT_DIVIDER_MEDIUM = 50;	
+	
 	const int HINT_SIZE_Y = 34;
 	const int DEFAULT_FONT_SIZE = 20;
 	const int MIN_FONT_SIZE = 16;	
-	const float DEFAULT_OVERLAY_PADDING = 6;
-	const float MIN_OVERLAY_PADDING = 3;
 
 	//protected ref array<SCR_AvailableActionContext> availableActions;
 	//protected int actionsCount;
@@ -303,6 +318,7 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 		foreach (auto action : inActions)
 		{
 			auto actionName = action.GetActionName();
+			
 			if (actionName == string.Empty)
 				continue;
 
@@ -327,10 +343,14 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 			return false;
 
 		CharacterControllerComponent controller = character.GetCharacterController();
-		if (!controller || controller.IsUnconscious() || controller.IsDead())
+		if (!controller)
 			return false;
 
-		return true;
+		ECharacterLifeState lifeState = controller.GetLifeState();
+		if (lifeState == ECharacterLifeState.ALIVE)
+			return true;
+		
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -349,6 +369,19 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 	{
 		if (!m_wRoot)
 			return; // Mandatory
+		
+		//Check if the SlotUIComponent is still valid otherwise change to the new one
+		if (m_HUDSlotComponent != m_slotHandler.GetSlotUIComponent())
+		{
+			if (m_HUDSlotComponent)
+				m_HUDSlotComponent.GetOnResize().Remove(OnSlotUIResize);
+			
+			m_HUDSlotComponent = m_slotHandler.GetSlotUIComponent();
+			if (!m_HUDSlotComponent)
+				return;
+			
+			m_HUDSlotComponent.GetOnResize().Insert(OnSlotUIResize);
+		}
 
 		IEntity controlledEntity = SCR_PlayerController.GetLocalControlledEntity();
 		
@@ -416,20 +449,20 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 			if (i >= m_aWidgets.Count())
 				break;
 
-			m_bForceText = false;
-
 			if (m_aWidgets[i] && availableActions[i])
-				m_aWidgets[i].SetText(availableActions[i].ToString(m_bForceText), availableActions[i].GetUIName());
+				m_aWidgets[i].SetText(availableActions[i].GetActionName(), availableActions[i].GetUIName());
 			
-			if (actionsCount > m_iMaxActionsUntilResize)
+			if (actionsCount > m_iMaxActionsMedium)
 			{
-				m_aWidgets[i].SetTextSize(MIN_FONT_SIZE);
-				m_aWidgets[i].SetPadding(MIN_OVERLAY_PADDING);
-			}	
+				m_aWidgets[i].SetSize(m_iButtonSizeSmall);
+			} 
+			else if (actionsCount > m_iMaxActionsBig)
+			{
+				m_aWidgets[i].SetSize(m_iButtonSizeMedium);
+			} 
 			else
 			{
-				m_aWidgets[i].SetTextSize(DEFAULT_FONT_SIZE);
-				m_aWidgets[i].SetPadding(DEFAULT_OVERLAY_PADDING);
+				m_aWidgets[i].SetSize(m_iButtonSizeLarge);
 			}
 		}
 
@@ -545,8 +578,14 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 		}
 		
 		m_slotHandler = SCR_InfoDisplaySlotHandler.Cast(GetHandler(SCR_InfoDisplaySlotHandler));
-		if(m_slotHandler)
-			m_slotHandler.GetSlotUIComponent().GetOnResize().Insert(OnSlotUIResize);
+		if(!m_slotHandler)
+			return;
+		
+		m_HUDSlotComponent = m_slotHandler.GetSlotUIComponent();
+		if (!m_HUDSlotComponent)
+			return;
+		
+		m_HUDSlotComponent.GetOnResize().Insert(OnSlotUIResize);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -573,9 +612,17 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 	//------------------------------------------------------------------------------------------------
 	protected void OnSlotUIResize()
 	{
-		m_iMaxActionsUntilResize = (int)m_slotHandler.GetSlotUIComponent().GetHeight() / HEIGHT_DEVIDER;
-		if (m_iMaxActionsUntilResize < 1)
-			m_iMaxActionsUntilResize = 1;
+		// Assign it again in case the SlotUIComponent has changed
+		m_HUDSlotComponent = m_slotHandler.GetSlotUIComponent();
+		if (!m_HUDSlotComponent)
+			return;
+		
+		int height = m_HUDSlotComponent.GetHeight();
+		
+		m_iMaxActionsBig = (int)height / HEIGHT_DIVIDER_BIG;
+		m_iMaxActionsMedium =  (int)height / HEIGHT_DIVIDER_MEDIUM;
+		if (m_iMaxActionsMedium < 1)
+			m_iMaxActionsMedium = 1;
 	}
 	
 	//------------------------------------------------------------------------------------------------

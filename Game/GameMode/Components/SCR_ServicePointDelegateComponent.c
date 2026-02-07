@@ -17,18 +17,21 @@ class SCR_ServicePointDelegateComponent : ScriptComponent
 	protected int m_iParentBaseId;
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_EServicePointType GetType()
 	{
 		return m_eType;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	EEditableEntityLabel GetLabel()
 	{
 		return m_eBuildingLabel;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] id
 	void SetParentBaseId(RplId id)
 	{
 		m_iParentBaseId = id;

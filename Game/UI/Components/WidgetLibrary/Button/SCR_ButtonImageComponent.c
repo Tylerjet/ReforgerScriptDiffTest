@@ -9,8 +9,8 @@ class SCR_ButtonImageComponent : SCR_ButtonBaseComponent
 	
 	ImageWidget m_wImage;
 	
-	ref ScriptInvoker<Widget> m_OnMouseEnter = new ref ScriptInvoker();
-	ref ScriptInvoker<Widget> m_OnMouseLeave = new ref ScriptInvoker();
+	ref ScriptInvoker<Widget> m_OnMouseEnter = new ScriptInvoker();
+	ref ScriptInvoker<Widget> m_OnMouseLeave = new ScriptInvoker();
 	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)

@@ -7,8 +7,7 @@ class SCR_DeleteDestroyedToolbarAction: SCR_EditorToolbarAction
 	}
 	override bool CanBeShown(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition, int flags)
 	{
-		ChimeraWorld world = ChimeraWorld.CastFrom(GetGame().GetWorld());
-		return world && world.GetGarbageManager();
+		return true;
 	}
 	override bool CanBePerformed(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition, int flags)
 	{
@@ -19,6 +18,10 @@ class SCR_DeleteDestroyedToolbarAction: SCR_EditorToolbarAction
 	{
 		ChimeraWorld world = ChimeraWorld.CastFrom(GetGame().GetWorld());
 		if (world)
-			world.GetGarbageManager().Flush();
+		{
+			GarbageSystem garbageSystem = world.GetGarbageSystem();
+			if (garbageSystem)
+				garbageSystem.Flush();
+		}
 	}
 };

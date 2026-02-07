@@ -15,7 +15,6 @@ class SCR_VONMenu
 	protected float m_fAdjustCooldown;		// cooldown before you can cycle up/down by holding a button
 	protected float m_FrequencyListTimer;	// timer before frequency list is hidden 
 	
-	protected SCR_VONEntry m_ActiveEntry;
 	protected SCR_VONEntry m_SelectedEntry;				// entry which is hovered or selected by controller
 	protected SCR_VONEntryRadio m_LastSelectedEntry; 	// last selected entry, to check if item preview should be reloaded
 	protected SCR_VONRadialDisplay m_Display;			// cached display to allow external access
@@ -97,7 +96,8 @@ class SCR_VONMenu
 	{
 		// TODO support for more than 2 transceivers
 		
-		array<ref SCR_VONEntry> entries = m_VONController.GetVONEntries();
+		array<ref SCR_VONEntry> entries = {};
+		m_VONController.GetVONEntries(entries);
 		SCR_VONEntryRadio radioEntry;
 		BaseRadioComponent radioComp = entry.GetTransceiver().GetRadio();
 		
@@ -119,7 +119,8 @@ class SCR_VONMenu
 	protected array<SCR_VONEntryRadio> GetGroupedEntries(notnull SCR_VONEntryRadio entry)
 	{
 		array<SCR_VONEntryRadio> grouped = {};
-		array<ref SCR_VONEntry> entries = m_VONController.GetVONEntries();
+		array<ref SCR_VONEntry> entries = {};
+		m_VONController.GetVONEntries(entries);
 		SCR_VONEntryRadio radioEntry;
 		BaseRadioComponent radioComp = entry.GetTransceiver().GetRadio();
 		
@@ -181,13 +182,15 @@ class SCR_VONMenu
 		
 		m_RadialMenu.ClearEntries();
 		
-		array<ref SCR_VONEntry> entries = m_VONController.GetVONEntries();
+		array<ref SCR_VONEntry> entries = {};
+		m_VONController.GetVONEntries(entries);
+		
 		foreach (SCR_VONEntry entry : entries)
 		{
 			AddRadialEntry(entry);
 		}
 		
-		while (m_RadialMenu.GetEntryCount() < 4)
+		if (m_RadialMenu.GetEntryCount() < 8 && m_RadialMenu.GetEntryCount() % 2 != 0)
 		{
 			SCR_VONEntry dummy = new SCR_VONEntry();
 			dummy.Enable(false);
@@ -219,13 +222,7 @@ class SCR_VONMenu
 	//------------------------------------------------------------------------------------------------
 	//! SCR_RadialMenu event
 	protected void OnOpenMenu(SCR_SelectionMenu menu)
-	{
-		if (!m_ActiveEntry)
-		{
-			m_ActiveEntry = m_VONController.GetActiveEntry();
-			m_ActiveEntry.SetActive(true);
-		}
-				
+	{				
 		InputManager inputMgr = GetGame().GetInputManager();
 		inputMgr.AddActionListener("VONMenuTuneFrequency", EActionTrigger.VALUE, ActionTuneFrequency);
 		inputMgr.AddActionListener("VONMenuCycleChannel", EActionTrigger.VALUE, ActionCycleChannel);
@@ -246,14 +243,7 @@ class SCR_VONMenu
 	//! SCR_RadialMenu event
 	protected void OnEntryPerformed(SCR_SelectionMenu menu, SCR_SelectionMenuEntry entry)
 	{
-		m_VONController.SetEntryActive(SCR_VONEntry.Cast(entry), true);
-		if (m_ActiveEntry)
-			m_ActiveEntry.SetActive(false);
-		
-		m_ActiveEntry = SCR_VONEntry.Cast(entry);
-		m_ActiveEntry.SetActive(true);
-		
-		m_VONController.GetDisplay().ShowSelectedVONHint(m_ActiveEntry);
+		m_VONController.SetEntryActive(SCR_VONEntry.Cast(entry), true);				
 		
 		m_RadialMenu.UpdateEntries();
 	}
@@ -293,6 +283,13 @@ class SCR_VONMenu
 			m_LastSelectedEntry = null;
 		}
 		
+		m_RadialMenu.UpdateEntries();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! SCR_VONController event
+	protected void OnActiveEntriesChanged(SCR_VONEntry entry, bool isActive)
+	{
 		m_RadialMenu.UpdateEntries();
 	}
 		
@@ -405,6 +402,8 @@ class SCR_VONMenu
 	void Init(SCR_VONController controllerVON)
 	{
 		m_VONController = controllerVON;
+		
+		m_VONController.GetOnEntriesActiveChangedInvoker().Insert(OnActiveEntriesChanged);
 		
 		m_RadialController.GetOnInputOpen().Insert(OnInputOpenMenu);
 		m_RadialController.GetOnTakeControl().Insert(OnControllerTakeControl);

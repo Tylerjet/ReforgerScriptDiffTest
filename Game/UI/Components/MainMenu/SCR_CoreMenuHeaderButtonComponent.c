@@ -1,8 +1,4 @@
-/*
-Helper component for core menu header button prefabs
-*/
-
-//------------------------------------------------------------------------------------------------
+//! Helper component for core menu header button prefabs
 class SCR_CoreMenuHeaderButtonComponent : SCR_ScriptedWidgetComponent
 {
 	[Attribute()]
@@ -51,6 +47,7 @@ class SCR_CoreMenuHeaderButtonComponent : SCR_ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] name
 	void SetIcon(string name)
 	{
 		if (!m_wIcon)
@@ -71,6 +68,7 @@ class SCR_CoreMenuHeaderButtonComponent : SCR_ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] text
 	void SetCountText(string text)
 	{
 		if (!m_wCountText)
@@ -80,6 +78,7 @@ class SCR_CoreMenuHeaderButtonComponent : SCR_ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] visible
 	void SetCountVisible(bool visible)
 	{
 		if (!m_wCountIconFrame)
@@ -89,6 +88,7 @@ class SCR_CoreMenuHeaderButtonComponent : SCR_ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] text
 	void SetLabelText(string text)
 	{
 		if (!m_wLabel)
@@ -101,6 +101,7 @@ class SCR_CoreMenuHeaderButtonComponent : SCR_ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	string GetLabelText()
 	{
 		if (!m_wLabel)
@@ -110,6 +111,9 @@ class SCR_CoreMenuHeaderButtonComponent : SCR_ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] visible
+	//! \param[in] animate
+	//! \param[in] rate
 	void SetVisible(bool visible, bool animate = false, float rate = UIConstants.FADE_RATE_FAST)
 	{
 		if (!m_wRoot)
@@ -122,6 +126,7 @@ class SCR_CoreMenuHeaderButtonComponent : SCR_ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_ModularButtonComponent GetButton()
 	{
 		return m_ButtonComponent;

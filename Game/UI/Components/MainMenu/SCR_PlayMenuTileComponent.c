@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 class SCR_PlayMenuTileComponent : SCR_TileBaseComponent
 {
 	[Attribute("0", UIWidgets.CheckBox, "Is this a big vertical tile? E.g. will use hi-res thumb picture..")]
@@ -27,20 +26,26 @@ class SCR_PlayMenuTileComponent : SCR_TileBaseComponent
 	Widget m_wFindServer;
 
 	bool m_bIsMouseInteraction;
+	
+	protected ref array<SCR_ModularButtonComponent> m_aMouseButtonsError = {};
 
+	bool m_bFocused;
+	
 	// Button components
 	SCR_ModularButtonComponent m_Play;
 	SCR_ModularButtonComponent m_Continue;
 	SCR_ModularButtonComponent m_FindServer;
 	SCR_ModularButtonComponent m_Host;
 	SCR_ModularButtonComponent m_Restart;
+	
+	// Warning
+	SCR_SimpleWarningOverlayComponent m_WarningOverlay;
+	
+	// Tooltip
+	protected SCR_ScriptedWidgetTooltip m_CurrentTooltip;
 
 	// Script invokers for the mouse interact buttons
-	ref ScriptInvoker m_OnPlay = new ScriptInvoker();
-	ref ScriptInvoker m_OnContinue = new ScriptInvoker();
-	ref ScriptInvoker m_OnRestart = new ScriptInvoker();
-	ref ScriptInvoker m_OnHost = new ScriptInvoker();
-	ref ScriptInvoker m_OnFindServer = new ScriptInvoker();
+	protected ref ScriptInvokerString m_OnMouseInteractionButtonClicked;
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -59,11 +64,11 @@ class SCR_PlayMenuTileComponent : SCR_TileBaseComponent
 		m_wRecentlyPlayedText = TextWidget.Cast(m_wRecentlyPlayed.FindAnyWidget("Label"));
 
 		m_wMouseInteractButtons = w.FindAnyWidget("MouseInteractButtons");
-		m_wPlay = w.FindAnyWidget("Play");
-		m_wContinue = w.FindAnyWidget("Continue");
-		m_wRestart = w.FindAnyWidget("Restart");
-		m_wHost = w.FindAnyWidget("Host");
-		m_wFindServer = w.FindAnyWidget("FindServer");
+		m_wPlay = w.FindAnyWidget(SCR_ScenarioEntryHelper.BUTTON_PLAY);
+		m_wContinue = w.FindAnyWidget(SCR_ScenarioEntryHelper.BUTTON_CONTINUE);
+		m_wRestart = w.FindAnyWidget(SCR_ScenarioEntryHelper.BUTTON_RESTART);
+		m_wHost = w.FindAnyWidget(SCR_ScenarioEntryHelper.BUTTON_HOST);
+		m_wFindServer = w.FindAnyWidget(SCR_ScenarioEntryHelper.BUTTON_FIND_SERVERS);
 
 		m_Play = SCR_ModularButtonComponent.FindComponent(m_wPlay);
 		if (m_Play)
@@ -79,12 +84,18 @@ class SCR_PlayMenuTileComponent : SCR_TileBaseComponent
 
 		m_Host = SCR_ModularButtonComponent.FindComponent(m_wHost);
 		if (m_Host)
+		{
+			m_aMouseButtonsError.Insert(m_Host);
 			m_Host.m_OnClicked.Insert(OnHost);
+		}
 
 		m_FindServer = SCR_ModularButtonComponent.FindComponent(m_wFindServer);
 		if (m_FindServer)
-			m_FindServer.m_OnClicked.Insert(OnFindServer);
-
+		{
+			m_aMouseButtonsError.Insert(m_FindServer);
+			m_FindServer.m_OnClicked.Insert(OnFindServers);
+		}
+		
 		if (GetGame().InPlayMode())
 			Enable(false);
 
@@ -95,7 +106,7 @@ class SCR_PlayMenuTileComponent : SCR_TileBaseComponent
 
 		GetGame().OnInputDeviceUserChangedInvoker().Insert(OnInputDeviceUserChanged);
 		
-		UpdateConnectionButtons();
+		m_WarningOverlay = SCR_SimpleWarningOverlayComponent.Cast(SCR_SimpleWarningOverlayComponent.FindComponentInHierarchy(m_wRoot));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -103,58 +114,40 @@ class SCR_PlayMenuTileComponent : SCR_TileBaseComponent
 	{
 		super.HandlerDeattached(w);
 		SCR_ServicesStatusHelper.GetOnCommStatusCheckFinished().Remove(OnCommStatusCheckFinished);
+		SCR_ScriptedWidgetTooltip.GetOnTooltipShow().Remove(OnTooltipShow);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override bool OnFocus(Widget w, int x, int y)
-	{
-		//PrintFormat("[OnFocus] %1 | %2 | mouse interaction: %3", this, m_wName.GetText(), m_bIsMouseInteraction);
-
+	{	
 		super.OnFocus(w, x, y);
-		m_wMouseInteractButtons.SetVisible(/*m_bIsMouseInteraction*/ true);
-		UpdateRestartButtonColor(true);
-		//m_wDescription.SetVisible(true);
+		
+		m_bFocused = true;
+		UpdateModularButtons();
+
+		// Tooltips
+		SCR_ScriptedWidgetTooltip.GetOnTooltipShow().Insert(OnTooltipShow);
+		
 		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override bool OnFocusLost(Widget w, int x, int y)
 	{
-		//PrintFormat("[OnFocusLost] %1 | %2 | mouse interaction: %3", this, m_wName.GetText(), m_bIsMouseInteraction);
-
 		super.OnFocusLost(w, x, y);
-		m_wMouseInteractButtons.SetVisible(false);
-		UpdateRestartButtonColor(false);
-		//m_wDescription.SetVisible(false);
+		
+		m_bFocused = false;
+		UpdateModularButtons();
+	
+		// Tooltips
+		SCR_ScriptedWidgetTooltip.GetOnTooltipShow().Remove(OnTooltipShow);
+		
 		return false;
 	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void UpdateRestartButtonColor(bool focused)
-	{
-		Color color = UIColors.IDLE_DISABLED;
-		if (focused)
-			color = UIColors.NEUTRAL_ACTIVE_STANDBY;
-
-		SCR_ButtonEffectColor colorEffect = SCR_ButtonEffectColor.Cast(m_Restart.FindEffect("IconColor"));
-		if (!colorEffect)
-			return;
-		
-		colorEffect.m_cDefault = color;
-		m_Restart.InvokeAllEnabledEffects(false);
-	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void UpdateConnectionButtons()
-	{
-		if (m_Host)
-			m_Host.SetEnabled(SCR_ServicesStatusHelper.AreMultiplayerServicesAvailable());
-		
-		if (m_FindServer)
-			m_FindServer.SetEnabled(SCR_ServicesStatusHelper.AreMultiplayerServicesAvailable());
-	}
-	
-	//------------------------------------------------------------------------------------------------
+	//! \param[in] item
+	//! \param[in] contentType
 	void Setup(notnull MissionWorkshopItem item, EPlayMenuContentType contentType)
 	{
 		m_Item = item;
@@ -166,15 +159,18 @@ class SCR_PlayMenuTileComponent : SCR_TileBaseComponent
 		m_wName.SetText(item.Name());
 		m_wDescription.SetText(item.Description());
 
-		bool canContinue = m_Header && GetGame().GetSaveManager().HasLatestSave(m_Header);
+		bool canContinue = m_Header && SCR_ScenarioEntryHelper.HasSave(item);
+		bool mp = SCR_ScenarioEntryHelper.IsMultiplayer(item);
 
 		m_wPlay.SetVisible(!canContinue);
 		m_wContinue.SetVisible(canContinue);
 		m_wRestart.SetVisible(canContinue);
-		UpdateRestartButtonColor(false);
-		m_wHost.SetVisible(!GetGame().IsPlatformGameConsole() && item.GetPlayerCount() > 1);
-		m_wFindServer.SetVisible(item.GetPlayerCount() > 1);
+		m_wHost.SetVisible(mp && !GetGame().IsPlatformGameConsole());
+		m_wFindServer.SetVisible(mp);
 
+		UpdateModularButtons();
+		UpdateWarning();
+		
 		// Set image through SCR_ButtonImageComponent
 		SCR_ButtonImageComponent comp = SCR_ButtonImageComponent.Cast(m_wRoot.FindHandler(SCR_ButtonImageComponent));
 		if (comp)
@@ -188,12 +184,10 @@ class SCR_PlayMenuTileComponent : SCR_TileBaseComponent
 		}
 
 		//DEBUG
-		/*
-		string savefile_item = SCR_SaveLoadComponent.GetSaveFileName(item);
-		Print(savefile_item);
-		string savefile_header = SCR_SaveLoadComponent.GetSaveFileName(m_Header);
-		Print(savefile_header);
-		*/
+//		string savefile_item = SCR_SaveLoadComponent.GetSaveFileName(item);
+//		Print(savefile_item, LogLevel.NORMAL);
+//		string savefile_header = SCR_SaveLoadComponent.GetSaveFileName(m_Header);
+//		Print(savefile_header, LogLevel.NORMAL);
 
 		m_wFeatured.SetVisible(contentType == EPlayMenuContentType.FEATURED);
 		m_wRecentlyPlayed.SetVisible(contentType == EPlayMenuContentType.RECENT);
@@ -205,8 +199,9 @@ class SCR_PlayMenuTileComponent : SCR_TileBaseComponent
 
 			m_wRecentlyPlayedText.SetText(sLastPlayed);
 		}
-
-		m_wMouseInteractButtons.SetVisible(false);
+		
+		if (m_wMouseInteractButtons)
+			m_wMouseInteractButtons.SetVisible(false);
 
 		Enable();
 	}
@@ -219,6 +214,7 @@ class SCR_PlayMenuTileComponent : SCR_TileBaseComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	ResourceName GetTexture()
 	{
 		if (m_bBigTile && m_Header && !m_Header.m_sPreviewImage.IsEmpty())
@@ -232,24 +228,17 @@ class SCR_PlayMenuTileComponent : SCR_TileBaseComponent
 			BackendImage image = m_Item.Thumbnail();
 
 			// DEBUG problems with scenario addon thumbs
-			/*
-			array<ImageScale> scales = {};
-			int i = image.GetScales(scales);
-			*/
+//			array<ImageScale> scales = {};
+//			int i = image.GetScales(scales);
 
 			// Get optimal width for the thumb
 			float width = g_Game.GetWorkspace().DPIScale(m_fThumbnailWidth);
 			ImageScale scale = image.GetLocalScale((int)width);
-
-			if (!scale)
-				return "";
-
-			string path = scale.Path();
-
-			return path;
+			if (scale)
+				return scale.Path();
 		}
 
-		return "";
+		return string.Empty;
 	}
 
 	// React on switching between input methods
@@ -265,38 +254,93 @@ class SCR_PlayMenuTileComponent : SCR_TileBaseComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnPlay()
+	protected void OnPlay()
 	{
-		m_OnPlay.Invoke();
+		if (m_OnMouseInteractionButtonClicked)
+			m_OnMouseInteractionButtonClicked.Invoke(SCR_ScenarioEntryHelper.BUTTON_PLAY);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnContinue()
+	protected void OnContinue()
 	{
-		m_OnContinue.Invoke();
+		if (m_OnMouseInteractionButtonClicked)
+			m_OnMouseInteractionButtonClicked.Invoke(SCR_ScenarioEntryHelper.BUTTON_CONTINUE);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnRestart()
+	protected void OnRestart()
 	{
-		m_OnRestart.Invoke();
+		if (m_OnMouseInteractionButtonClicked)
+			m_OnMouseInteractionButtonClicked.Invoke(SCR_ScenarioEntryHelper.BUTTON_RESTART);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnHost()
+	protected void OnHost()
 	{
-		m_OnHost.Invoke();
+		if (SCR_ScenarioEntryHelper.IsInErrorState(m_Item))
+			return;
+		
+		if (m_OnMouseInteractionButtonClicked)
+			m_OnMouseInteractionButtonClicked.Invoke(SCR_ScenarioEntryHelper.BUTTON_HOST);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnFindServer()
+	protected void OnFindServers()
 	{
-		m_OnFindServer.Invoke();
+		if (SCR_ScenarioEntryHelper.IsInErrorState(m_Item))
+			return;
+		
+		if (m_OnMouseInteractionButtonClicked)
+			m_OnMouseInteractionButtonClicked.Invoke(SCR_ScenarioEntryHelper.BUTTON_FIND_SERVERS);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnCommStatusCheckFinished(SCR_ECommStatus status, float responseTime, float lastSuccessTime, float lastFailTime)
 	{
-		UpdateConnectionButtons();
+		UpdateModularButtons();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnTooltipShow(SCR_ScriptedWidgetTooltip tooltipClass, Widget tooltipWidget, Widget hoverWidget, SCR_ScriptedWidgetTooltipPreset preset, string tag)
+	{
+		m_CurrentTooltip = tooltipClass;
+		SCR_ScenarioEntryHelper.UpdateErrorMouseButtonsTooltip(tooltipClass, m_Item);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateModularButtons()
+	{
+		SCR_ScenarioEntryHelper.UpdateErrorMouseButtonsTooltip(m_CurrentTooltip, m_Item);
+		
+		if (m_wMouseInteractButtons)
+			m_wMouseInteractButtons.SetVisible(m_bFocused);
+
+		array<SCR_ModularButtonComponent> mouseButtons = {};
+		if (m_Restart)
+			mouseButtons.Insert(m_Restart);
+		
+		SCR_ScenarioEntryHelper.UpdateMouseButtons(mouseButtons, m_aMouseButtonsError, m_Item, m_bFocused);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateWarning()
+	{
+		if (!m_WarningOverlay)
+			return;
+		
+		m_bIsInErrorState = SCR_ScenarioEntryHelper.IsModInErrorState(m_Item);
+		
+		m_WarningOverlay.SetWarningVisible(m_bIsInErrorState, false);
+		m_WarningOverlay.SetWarning(SCR_ScenarioEntryHelper.GetErrorMessage(m_Item), SCR_ScenarioEntryHelper.GetErrorTexture(m_Item));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	ScriptInvokerString GetOnMouseInteractionButtonClicked()
+	{
+		if (!m_OnMouseInteractionButtonClicked)
+			m_OnMouseInteractionButtonClicked = new ScriptInvokerString();
+
+		return m_OnMouseInteractionButtonClicked;
 	}
 }

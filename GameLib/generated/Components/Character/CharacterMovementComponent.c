@@ -9,17 +9,20 @@ Do not modify, this script is generated
 \{
 */
 
-class CharacterMovementComponentClass: GenericComponentClass
+class CharacterMovementComponentClass: PawnMovementComponentClass
 {
 }
 
-class CharacterMovementComponent: GenericComponent
+class CharacterMovementComponent: PawnMovementComponent
 {
-	proto external void AddInputVector(vector inputVectorWS);
-	proto external void SetControlRotation(vector ypr);
-	proto external void ConsumeInputVector();
 	proto external vector GetVelocityWS();
 	proto external vector GetVelocityMS();
+	proto external vector GetAngularVelocity();
+	proto external void SetRotationMode(ECharacterRotationMode mode);
+	proto external void SetMovementMaxSpeed(float movementSpeed);
+	proto external float GetMovementMaxSpeed();
+	proto external IEntity GetFloorEntity();
+	proto external vector GetFloorNormal();
 }
 
 /*!

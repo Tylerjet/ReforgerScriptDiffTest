@@ -17,6 +17,8 @@ class CharacterCameraADS extends CharacterCameraBase
 	#endif
 	
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param pCameraHandler
 	void CharacterCameraADS(CameraHandlerComponent pCameraHandler)
 	{
 		m_iHandBoneIndex = m_OwnerCharacter.GetAnimation().GetBoneIndex("righthandprop");

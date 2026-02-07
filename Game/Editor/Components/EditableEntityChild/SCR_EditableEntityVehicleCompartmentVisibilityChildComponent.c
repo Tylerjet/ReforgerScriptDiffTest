@@ -11,4 +11,4 @@ class SCR_EditableEntityVehicleCompartmentVisibilityChildComponent : SCR_Editabl
 	{
 		UpdateFromCurrentState();
 	}
-};
+}

@@ -12,13 +12,22 @@ class SCR_CampaignTutorialArlandDrivingAdvanced2 : SCR_BaseCampaignTutorialArlan
 		RegisterWaypoint("Hummer");
 		m_TutorialComponent.SetWaypointMiscImage("GETIN", true);
 		
+		if (!m_TutorialComponent.GetVoiceSystem().IsPlaying())
+			PlaySoundSystem("GetInHmw", true);
+		else
+			GetGame().GetCallqueue().CallLater(PlaySoundSystem, 1000, false, "GetInHmw", true);
+		
 		m_fWaypointCompletionRadius = 10;
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override protected bool GetIsFinished()
 	{
-		return m_Player.IsInVehicle();
+		if (!m_TutorialComponent.GetVoiceSystem().IsPlaying())
+		{
+			SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		}
+		return m_Player.IsInVehicle() && !m_TutorialComponent.GetVoiceSystem().IsPlaying();
 	}
 };

@@ -3,13 +3,44 @@
 [BaseContainerProps(), SCR_MapMarkerTitle()]
 class SCR_MapMarkerEntryMilitary : SCR_MapMarkerEntryConfig
 {
-	[Attribute("", UIWidgets.Object, "Predefined marker factions")]
+	[Attribute("AR-MapMarker_Military", desc: "Description in selection menu")]
+	protected string m_sMenuDescription;
+	
+	[Attribute("{3262679C50EF4F01}UI/Textures/Icons/icons_wrapperUI.imageset", UIWidgets.ResourcePickerThumbnail, desc: "Imageset resource", params: "imageset")]
+	protected ResourceName m_sMenuImageset;
+	
+	[Attribute("unknown_faction", desc: "Imageset icon")]
+	protected string m_sMenuIcon;
+	
+	[Attribute(desc: "Predefined marker factions")]
 	protected ref array<ref SCR_MarkerMilitaryFactionEntry> m_aMilitaryFactionEntries;
 	
-	[Attribute("", UIWidgets.Object, "Predefined marker military entries")]
-	protected ref array<ref SCR_MarkerMilitaryEntry> m_aMilitaryEntries;
+	[Attribute(desc: "Military dimension defines")]
+	protected ref array<ref SCR_MarkerMilitaryDimension> m_aMilitaryDimensions;
 	
-	protected const float FACTION_DETERMINATOR = 0.001;
+	[Attribute(desc: "Military type defines")]
+	protected ref array<ref SCR_MarkerMilitaryType> m_aMilitaryTypes;
+	
+	const int FACTION_DETERMINATOR = 100;
+	const float DIMENSION_DETERMINATOR = 0.01;
+	
+	//------------------------------------------------------------------------------------------------
+	string GetMenuDescription()
+	{
+	 	return m_sMenuDescription;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ResourceName GetMenuImageset()
+	{
+	 	return m_sMenuImageset;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetMenuIcon()
+	{
+	 	return m_sMenuIcon;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	array<ref SCR_MarkerMilitaryFactionEntry> GetMilitaryFactionEntries()
@@ -18,9 +49,66 @@ class SCR_MapMarkerEntryMilitary : SCR_MapMarkerEntryConfig
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	array<ref SCR_MarkerMilitaryEntry> GetMilitaryEntries()
+	SCR_MarkerMilitaryFactionEntry GetFactionEntry(int i)
 	{
-		return m_aMilitaryEntries;
+		if (!m_aMilitaryFactionEntries.IsIndexValid(i))
+			return null;
+		
+		return m_aMilitaryFactionEntries[i];
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetFactionEntryID(EMilitarySymbolIdentity faction)
+	{
+		foreach (int id, SCR_MarkerMilitaryFactionEntry entry : m_aMilitaryFactionEntries)
+		{
+			if (entry.GetFactionIdentity() == faction)
+				return id;
+		}
+		
+		return -1;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	array<ref SCR_MarkerMilitaryDimension> GetMilitaryDimensions()
+	{
+		return m_aMilitaryDimensions;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_MarkerMilitaryDimension GetDimensionEntry(int i)
+	{
+		if (!m_aMilitaryDimensions.IsIndexValid(i))
+			return null;
+		
+		return m_aMilitaryDimensions[i];
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetDimensionEntryID(EMilitarySymbolDimension dimension)
+	{
+		foreach (int id, SCR_MarkerMilitaryDimension entry : m_aMilitaryDimensions)
+		{
+			if (entry.GetDimension() == dimension)
+				return id;
+		}
+		
+		return -1;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	array<ref SCR_MarkerMilitaryType> GetMilitaryTypes()
+	{
+		return m_aMilitaryTypes;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_MarkerMilitaryType GetTypeEntry(int i)
+	{
+		if (!m_aMilitaryTypes.IsIndexValid(i))
+			return null;
+		
+		return m_aMilitaryTypes[i];
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -35,129 +123,146 @@ class SCR_MapMarkerEntryMilitary : SCR_MapMarkerEntryConfig
 		super.InitClientSettings(marker, widgetComp);
 		
 		widgetComp.SetEventListening(true);
+		widgetComp.SetMilitarySymbolMode(true);
 		
 		array<ref SCR_MarkerMilitaryFactionEntry> milFactionEntries = GetMilitaryFactionEntries();
-		array<ref SCR_MarkerMilitaryEntry> milEntries = GetMilitaryEntries();
+		array<ref SCR_MarkerMilitaryDimension> milDimensions = GetMilitaryDimensions();
+		array<ref SCR_MarkerMilitaryType> milTypes = GetMilitaryTypes();	
+			
+		int factionID = marker.GetMarkerConfigID() % FACTION_DETERMINATOR;
+		int dimensionID = marker.GetMarkerConfigID() * DIMENSION_DETERMINATOR;
 		
-		int id = marker.GetMarkerConfigID() * FACTION_DETERMINATOR;	// faction determinator -> find faction id
-		if (!milFactionEntries.IsIndexValid(id))
+		if (!milFactionEntries.IsIndexValid(factionID) || !milDimensions.IsIndexValid(dimensionID))
 			return;
 		
-		SCR_MarkerMilitaryFactionEntry factionEntry = milFactionEntries[id];	
-		foreach (SCR_MarkerMilitaryEntry milEntry : milEntries)
+		SCR_MilitarySymbol milSymbol = new SCR_MilitarySymbol();
+		SCR_MarkerMilitaryFactionEntry factionEntry = milFactionEntries[factionID];
+		milSymbol.SetIdentity(factionEntry.GetFactionIdentity());
+		milSymbol.SetDimension(milDimensions[dimensionID].GetDimension());
+		milSymbol.SetIcons(marker.GetFlags());
+						
+		widgetComp.UpdateMilitarySymbol(milSymbol);
+		widgetComp.SetColor(factionEntry.GetColor());
+		widgetComp.SetText(marker.GetCustomText());
+		
+		
+		widgetComp.SetTypeIcon(1, milDimensions[dimensionID].GetTranslation());
+		
+		int typeFlags = marker.GetFlags();
+		if (typeFlags == 0)
+			return;
+		
+		bool secondType;	
+		foreach (SCR_MarkerMilitaryType type : milTypes)
 		{
-			if (milEntry.GetEntryID() != marker.GetMarkerConfigID() - (1000*id)) // subtract faction id to get entry id
-				continue;
-			
-			widgetComp.SetMilitarySymbolMode(true);
-			
-			SCR_MilitarySymbol milSymbol = new SCR_MilitarySymbol();
-			milSymbol.SetIdentity(factionEntry.GetFactionIdentity());
-			milSymbol.SetDimension(milEntry.GetDimension());
-			milSymbol.SetIcons(milEntry.GetIcons());
-			milSymbol.SetAmplifier(milEntry.GetAmplifier());
-							
-			widgetComp.UpdateMilitarySymbol(milSymbol);
-			widgetComp.SetText(milEntry.GetText());
-			widgetComp.SetColor(factionEntry.GetColor());
-
-			break;	
+			if (typeFlags & type.GetType())
+			{
+				if (secondType)
+				{
+					widgetComp.SetTypeIcon(3, type.GetTranslation());
+					return;
+				}
+				else 
+				{
+					widgetComp.SetTypeIcon(2, type.GetTranslation());					
+					if (typeFlags == type.GetType())	// return if singular flag
+						return;
+					
+					secondType = true;
+				}
+			}
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnMapLayerChanged(SCR_MapMarkerWidgetComponent widgetComp, int layerID)
+	override void OnMapLayerChanged(notnull SCR_MapMarkerWidgetComponent widgetComp, int layerID)
 	{
 		if (layerID > 1) 
 		{
 			widgetComp.SetTextVisible(false);
-			widgetComp.SetAuthorVisible(false);
 		}
 		else
 		{
 			widgetComp.SetTextVisible(true);	
-			widgetComp.SetAuthorVisible(true);
 		}	
 	}
 }
 
 //------------------------------------------------------------------------------------------------
-//! Marker predefined military entry 
-[BaseContainerProps(), SCR_MapMarkerMilitaryTitle()]
-class SCR_MarkerMilitaryEntry
+//! Marker military dimension
+[BaseContainerProps(), SCR_MapMarkerMilitaryDimensionTitle()]
+class SCR_MarkerMilitaryDimension
 {
-	[Attribute("0", desc: "Unique secondary ID (primary is EMarkerType) used to reduce toll on the network during synchronization by loading const data from config")]
-	protected int m_iEntryID;
-	
-	[Attribute("1", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(EMilitarySymbolDimension))]
-	protected EMilitarySymbolDimension m_Dimension;
-	
-	[Attribute("1", uiwidget: UIWidgets.Flags, enums: ParamEnumArray.FromEnum(EMilitarySymbolIcon))]
-	protected EMilitarySymbolIcon m_Icons;
-	
-	[Attribute("0", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(EMilitarySymbolAmplifier))]
-	protected EMilitarySymbolAmplifier m_Amplifier;
-	
-	[Attribute("", desc: "Description in selection menu")]
-	protected string m_sDescription;
-	
-	[Attribute("", desc: "Default text under the marker icon")]
-	protected string m_sMarkerText;
-	
-	//------------------------------------------------------------------------------------------------
-	int GetEntryID()
-	{
-		return m_iEntryID;
-	}
-	
+	[Attribute("", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(EMilitarySymbolDimension))]
+	protected EMilitarySymbolDimension m_eDimension;
+		
+	[Attribute("", desc: "Translation in UI")]
+	protected string m_sTranslation;
+		
 	//------------------------------------------------------------------------------------------------
 	EMilitarySymbolDimension GetDimension()
 	{
-		return m_Dimension;
+		return m_eDimension;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	EMilitarySymbolIcon GetIcons()
+	string GetTranslation()
 	{
-		return m_Icons;
+		return m_sTranslation;
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	EMilitarySymbolAmplifier GetAmplifier()
-	{
-		return m_Amplifier;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	string GetDescription()
-	{
-		return m_sDescription;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	string GetText()
-	{
-		return m_sMarkerText;
-	}
-
 }
 
 //------------------------------------------------------------------------------------------------
-class SCR_MapMarkerMilitaryTitle: BaseContainerCustomTitle
+class SCR_MapMarkerMilitaryDimensionTitle: BaseContainerCustomTitle
 {
 	//------------------------------------------------------------------------------------------------
 	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
 	{		
-		int id;
-		source.Get("m_iEntryID", id);
 		
-		EMilitarySymbolDimension dimension;
-		source.Get("m_Dimension", dimension);
-		
-		EMilitarySymbolIcon symbols;
-		source.Get("m_Icons", symbols);
+		EMilitarySymbolIcon symbol;
+		source.Get("m_eDimension", symbol);
 
-		title = id.ToString() + ": " + typename.EnumToString(EMilitarySymbolDimension, dimension) + " | " + SCR_Enum.FlagsToString(EMilitarySymbolIcon, symbols, " ");
+		title = typename.EnumToString(EMilitarySymbolDimension, symbol);
+		
+		return true;
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+//! Marker military type 
+[BaseContainerProps(), SCR_MapMarkerMilitaryTypeTitle()]
+class SCR_MarkerMilitaryType
+{
+	[Attribute("", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(EMilitarySymbolIcon))]
+	protected EMilitarySymbolIcon m_eType;
+		
+	[Attribute("", desc: "Translation in UI")]
+	protected string m_sTranslation;
+		
+	//------------------------------------------------------------------------------------------------
+	EMilitarySymbolIcon GetType()
+	{
+		return m_eType;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetTranslation()
+	{
+		return m_sTranslation;
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+class SCR_MapMarkerMilitaryTypeTitle: BaseContainerCustomTitle
+{
+	//------------------------------------------------------------------------------------------------
+	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
+	{		
+		
+		EMilitarySymbolIcon symbol;
+		source.Get("m_eType", symbol);
+
+		title = typename.EnumToString(EMilitarySymbolIcon, symbol);
 		
 		return true;
 	}
@@ -174,6 +279,15 @@ class SCR_MarkerMilitaryFactionEntry
 	[Attribute("1.0 1.0 1.0 1.0")]
 	protected ref Color m_FactionColor;
 	
+	[Attribute("{3262679C50EF4F01}UI/Textures/Icons/icons_wrapperUI.imageset", UIWidgets.ResourcePickerThumbnail, desc: "Imageset resource", params: "imageset")]
+	protected ResourceName m_sIconImageset;
+	
+	[Attribute("unknown_faction", desc: "Imageset quad")]
+	protected string m_sIconImagesetQuad;
+	
+	[Attribute("", desc: "Translation in UI")]
+	protected string m_sTranslation;
+	
 	//------------------------------------------------------------------------------------------------
 	EMilitarySymbolIdentity GetFactionIdentity()
 	{
@@ -183,7 +297,20 @@ class SCR_MarkerMilitaryFactionEntry
 	//------------------------------------------------------------------------------------------------
 	Color GetColor()
 	{
-		return new Color(m_FactionColor.R(), m_FactionColor.G(), m_FactionColor.B(), m_FactionColor.A());
+		return Color.FromInt(m_FactionColor.PackToInt());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void GetIconResource(out ResourceName imageset, out string imageQuad)
+	{
+		imageset = m_sIconImageset;
+		imageQuad = m_sIconImagesetQuad;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetTranslation()
+	{
+		return m_sTranslation;
 	}
 }
 

@@ -4,28 +4,29 @@ The overview tab of the details view
 
 class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSubMenuBase
 {
-	protected ContentBrowserDetailsMenu m_DetailsMenu;
 	protected ref SCR_WorkshopItem m_WorkshopItem;
 
-	protected ref SCR_ContentBrowserDetails_OverviewSubMenuWidgets m_Widgets;
+	protected ref SCR_ContentBrowserDetails_OverviewSubMenuWidgets m_Widgets = new SCR_ContentBrowserDetails_OverviewSubMenuWidgets;
 
 	protected ref SCR_WorkshopDownloadSequence m_DownloadRequest;
 
 	protected SCR_LoadingOverlayDialog m_LoadingOverlayDlg;
 
 	protected bool m_bGalleryUpdated = false; // Set true when we first time show images in gallery.
+	
+	protected SCR_ModReportDialogComponent m_ModReportDialog;
 
+	protected SCR_InputButtonComponent m_Downloads;
+	
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuOpen(SCR_SuperMenuBase parentMenu)
+	override void OnTabCreate(Widget menuRoot, ResourceName buttonsLayout, int index)
 	{
-		super.OnMenuOpen(parentMenu);
+		super.OnTabCreate(menuRoot, buttonsLayout, index);
 
-		m_DetailsMenu = ContentBrowserDetailsMenu.Cast(parentMenu);
-		m_WorkshopItem = m_DetailsMenu.m_WorkshopItem;
+		m_WorkshopItem = ContentBrowserDetailsMenu.GetWorkshopItem();
 
-		m_Widgets = new SCR_ContentBrowserDetails_OverviewSubMenuWidgets;
-		m_Widgets.Init(m_wRoot);
-
+		m_ScenarioDetailsPanel = m_Widgets.m_ScenarioDetailsPanelComponent;
+		
 		// Hide verrsion selection in release
 		#ifndef WORKSHOP_DEBUG
 			m_Widgets.m_VersionComboBoxComponent0.SetVisible(false, false);
@@ -35,24 +36,8 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 		m_Widgets.m_Gallery.SetVisible(false);
 		m_Widgets.m_ScenarioSection.SetVisible(false);
 
-		// Init details panel
-		m_Widgets.m_AddonDetailsPanelComponent.SetForceShowVersion(true); // Show version regardless of addon being downloaded or not
-
-		if (m_WorkshopItem)
-		{
-			if (SCR_WorkshopUiCommon.GetConnectionState())
-			{
-				m_WorkshopItem.m_OnGetAsset.Insert(Callback_OnGetAsset);
-				m_WorkshopItem.m_OnChanged.Insert(Callback_OnItemChanged);
-				m_WorkshopItem.m_OnScenariosLoaded.Insert(Callback_OnDownloadScenarios);
-				m_WorkshopItem.m_OnTimeout.Insert(Callback_OnTimeout);
-				m_WorkshopItem.LoadDetails();
-			}
-			else
-			{
-				Callback_OnDownloadScenarios();
-			}
-		}
+		// Load Item
+		LoadWorkshopDetails();
 
 		// Init event handlers last of all.
 		// We don't want event handlers to get called while we are still initializing UI.
@@ -70,25 +55,27 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 
 		// Init the addon details panel
 		m_Widgets.m_AddonDetailsPanelComponent.SetWorkshopItem(m_WorkshopItem);
+		
+		m_Downloads = m_DynamicFooter.FindButton("DownloadManager");
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuShow(SCR_SuperMenuBase parentMenu)
+	override void OnTabShow()
 	{
-		super.OnMenuShow(parentMenu);
+		super.OnTabShow();
 
 		UpdateAllWidgets();
 
 		// Set the default focused widget to one we're sure is always present
 		Widget defaultFocus = m_Widgets.m_FavoriteButton;
 
-		GetGame().GetCallqueue().CallLater(GetGame().GetWorkspace().SetFocusedWidget, 0, false, defaultFocus, false);
+		GetGame().GetCallqueue().Call(GetGame().GetWorkspace().SetFocusedWidget, defaultFocus);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuClose(SCR_SuperMenuBase parentMenu)
+	override void OnTabRemove()
 	{
-		super.OnMenuOpen(parentMenu);
+		super.OnTabRemove();
 
 		if (m_WorkshopItem)
 		{
@@ -102,10 +89,19 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override void OnTabHide()
+	{
+		super.OnTabHide();
+		
+		if (m_Downloads)
+			m_Downloads.SetVisible(true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void OnMenuFocusGained()
 	{
 		//Bring back focus to the last selected line after closing a pop-up dialog
-		if (!SCR_MenuHelper.IsAnyDialogOpen())
+		if (!GetGame().GetMenuManager().IsAnyDialogOpen())
 		{
 			Widget target;
 			
@@ -124,6 +120,24 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	override void OnLineFocus(SCR_ScriptedWidgetComponent entry)
+	{
+		super.OnLineFocus(entry);
+
+		if (m_Downloads)
+			m_Downloads.SetVisible(false, false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnLineFocusLost(SCR_ScriptedWidgetComponent entry)
+	{
+		super.OnLineFocusLost(entry);
+		
+		if (m_Downloads)
+			m_Downloads.SetVisible(true, false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void UpdateNavigationButtons(bool visible = true)
 	{
 		visible =
@@ -134,20 +148,6 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 			GetGame().GetInputManager().GetLastUsedInputDevice() != EInputDeviceType.MOUSE;
 
 		super.UpdateNavigationButtons(visible);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void OnLineFocus(SCR_ScriptedWidgetComponent entry)
-	{
-		super.OnLineFocus(entry);
-		UpdateSidePanel();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void OnLineFocusLost(SCR_ScriptedWidgetComponent entry)
-	{
-		super.OnLineFocusLost(entry);
-		UpdateSidePanel();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -196,6 +196,16 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override void Play(MissionWorkshopItem scenario)
+	{
+		if (!scenario)
+			return;
+
+		super.Play(scenario);
+		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.ScenarioMenu);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void Host(MissionWorkshopItem scenario)
 	{
 		if (!m_WorkshopItem || !m_WorkshopItem.GetOffline())
@@ -237,9 +247,27 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 	override void OnScenarioStateChanged(SCR_ContentBrowser_ScenarioLineComponent comp)
 	{
 		UpdateButtons();
-		UpdateSidePanel();
+		super.OnScenarioStateChanged(comp);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	override void InitWidgets()
+	{
+		super.InitWidgets();
+		m_Widgets.Init(m_wRoot);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void UpdateSidePanel()
+	{
+		super.UpdateSidePanel();
+		
+		SCR_ContentBrowser_ScenarioLineComponent lineComp = GetSelectedLine();
+		
+		m_Widgets.m_AddonDetailsPanel.SetVisible(!lineComp);
+		m_Widgets.m_ScenarioDetailsPanel.SetVisible(lineComp != null);
+	}
+	
 	// ---- CALLBACKS ----
 	//------------------------------------------------------------------------------------------------
 	void Callback_OnGetAsset()
@@ -250,7 +278,7 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 	//------------------------------------------------------------------------------------------------
 	void Callback_OnItemChanged()
 	{
-		this.UpdateAllWidgets();
+		UpdateAllWidgets();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -280,20 +308,14 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void Callback_OnTimeout()
+	protected void Callback_OnTimeout()
 	{
 		// Ignore if we are not connected to backend at all
 		if (!SCR_WorkshopUiCommon.GetConnectionState())
 			return;
 
 		SCR_ConfigurableDialogUi dlg = SCR_CommonDialogs.CreateTimeoutOkDialog();
-		dlg.m_OnClose.Insert(Callback_OnTimeOut_OnCloseDialog);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void Callback_OnTimeOut_OnCloseDialog()
-	{
-		m_ParentMenu.CloseMenu();
+		dlg.m_OnClose.Insert(RequestCloseMenu);
 	}
 
 	// ---- WIDGET CALLBACKS ----
@@ -315,15 +337,34 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 			string strSpecificVersion = m_Widgets.m_VersionComboBoxComponent0.GetCurrentItem();
 			specificVersion = m_WorkshopItem.FindRevision(strSpecificVersion);
 		#endif
-
+		
+		// Setup download request
 		if (specificVersion)
 			m_DownloadRequest = SCR_WorkshopDownloadSequence.Create(m_WorkshopItem, specificVersion, m_DownloadRequest);
 		else
 			m_DownloadRequest = SCR_WorkshopDownloadSequence.Create(m_WorkshopItem, m_WorkshopItem.GetLatestRevision(), m_DownloadRequest);
+		 
+		m_DownloadRequest.GetOnReady().Insert(OnClickDownloadRequestReady);
+		m_DownloadRequest.GetOnCancel().Insert(OnClickDownloadRequestCancel);
+		m_DownloadRequest.GetOnError().Insert(OnClickDownloadRequestCancel);
 		
-		GetGame().GetCallqueue().CallLater(SCR_DownloadManager_Dialog.Create);
+		// Disable button 
+		m_Widgets.m_DownloadButtonComponent.SetEnabled(false);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	protected void OnClickDownloadRequestReady(SCR_DownloadSequence sequence)
+	{
+		SCR_DownloadManager_Dialog.Create();
+		m_Widgets.m_DownloadButtonComponent.SetEnabled(true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnClickDownloadRequestCancel(SCR_DownloadSequence sequence)
+	{
+		m_Widgets.m_DownloadButtonComponent.SetEnabled(true);
+	} 
+	
 	//------------------------------------------------------------------------------------------------
 	protected void OnDownloadingButton()
 	{
@@ -348,14 +389,14 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 	protected void OnVoteUpButton()
 	{
 		bool newState = m_Widgets.m_VoteUpButtonComponent.GetToggled();
-		this.OnVoteButtons(newState, !newState);
+		OnVoteButtons(newState, !newState);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnVoteDownButton()
 	{
 		bool newState = m_Widgets.m_VoteDownButtonComponent.GetToggled();
-		this.OnVoteButtons(!newState, !newState);
+		OnVoteButtons(!newState, !newState);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -370,13 +411,9 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 		bdwn.SetToggled(!resetAll && !voteUp, false);
 
 		if (resetAll)
-		{
 			m_WorkshopItem.ResetMyRating();
-		}
 		else
-		{
 			m_WorkshopItem.SetMyRating(voteUp);
-		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -398,8 +435,6 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 		fav = !item.GetFavourite();
 		item.SetFavourite(fav);
 	}
-
-	protected SCR_ModReportDialogComponent m_ModReportDialog;
 
 	//------------------------------------------------------------------------------------------------
 	//! This button used in reported and not reported state. It either sends a report or cancels it.
@@ -426,25 +461,23 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 		}
 
 		m_ModReportDialog = SCR_ModReportDialogComponent.Cast(m_wRoot.FindHandler(SCR_ModReportDialogComponent));
-
+		if (!m_ModReportDialog)
+			return;
+		
+		m_ModReportDialog.GetOnItemReportSuccessDialogClose().Insert(RequestCloseMenu);
+		
 		// Mod with reported author
 		if (m_WorkshopItem.GetModAuthorReportedByMe())
 		{
-			if (m_ModReportDialog)
-			{
-				m_ModReportDialog.SetItem(m_WorkshopItem);
-				m_ModReportDialog.OnSelectReportAuthor();
-				m_WorkshopItem.m_OnReportStateChanged.Insert(OnAuthorBlockStateChanged);
-			}
-
+			m_ModReportDialog.SetItem(m_WorkshopItem);
+			m_ModReportDialog.OnSelectReportAuthor();
+			m_WorkshopItem.m_OnReportStateChanged.Insert(OnAuthorBlockStateChanged);
+			
 			return;
 		}
 
 		// Not reported
-		if (m_ModReportDialog)
-		{
-			m_ModReportDialog.OpenSelectReport(m_WorkshopItem);
-		}
+		m_ModReportDialog.OpenSelectReport(m_WorkshopItem);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -461,7 +494,7 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 
 		//GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.ServerBrowserMenu);
 		if (!GetGame().IsPlatformGameConsole())
-			GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.ServerHostingDialog);
+			SCR_CommonDialogs.CreateServerHostingDialog();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -534,8 +567,9 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 		if (!GetShown())
 			return;
 
-		m_WorkshopItem = m_DetailsMenu.m_WorkshopItem;
 		SCR_WorkshopItem item = m_WorkshopItem;
+		if (!item)
+			return;
 
 		SCR_WorkshopItemActionDownload actionThisItem = item.GetDownloadAction();
 		SCR_WorkshopItemActionComposite actionDependencies = item.GetDependencyCompositeAction();
@@ -599,7 +633,7 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 
 		//! Favourite button
 		m_Widgets.m_FavoriteButtonComponent.SetToggled(m_WorkshopItem.GetFavourite(), false);
-
+		
 		//! Navigation buttons
 		UpdateNavigationButtons();
 	}
@@ -627,7 +661,6 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 		avgRating = Math.Round(avgRating * 100.0);
 		m_Widgets.m_RatingText.SetText(string.Format("%1%% (%2x)", avgRating, ratingCount));
 	}
-
 
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateVersionComboBox()
@@ -681,21 +714,6 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 				scenarioLine.NotifyScenarioUpdate();
 			}
 		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void UpdateSidePanel()
-	{
-		SCR_ContentBrowser_ScenarioLineComponent lineComp = GetSelectedLine();
-		if (lineComp)
-		{
-			MissionWorkshopItem scenario = lineComp.GetScenario();
-			if (scenario)
-				m_Widgets.m_ScenarioDetailsPanelComponent.SetScenario(scenario);
-		}
-
-		m_Widgets.m_AddonDetailsPanel.SetVisible(!lineComp);
-		m_Widgets.m_ScenarioDetailsPanel.SetVisible(lineComp != null);
 	}
 
 	//------------------------------------------------------------------------------------------------

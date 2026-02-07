@@ -8,7 +8,6 @@ class SCR_ServerBrowserDialogManager
 {
 	// Resources
 	const ResourceName CONFIG_DIALOGS = "{471EFCF445C3E9C6}Configs/ServerBrowser/JoiningDialogs.conf";
-	const ResourceName CONFIG_DIALOGS_ERROR = "{D3BFEE28E7D5B6A1}Configs/ServerBrowser/KickDialogs.conf";
 	protected const string OFFICIAL_SERVER_SCOPE = "officialServer";
 
 	// Dialog tags references
@@ -23,12 +22,10 @@ class SCR_ServerBrowserDialogManager
 	protected const string TAG_QUEUE_WAITING 					= "QUEUE_WAITING";
 	protected const string TAG_PASSWORD_REQUIRED 				= "PASSWORD_REQUIRED";
 	protected const string TAG_BACKEND_TIMEOUT					= "BACKEND_TIMEOUT";
-	protected const string TAG_KICK_DEFAULT 					= "DEFAULT_ERROR";
 	protected const string TAG_BANNED							= "JOIN_FAILED_BAN";
 	protected const string TAG_HIGH_PING_SERVER					= "HIGH_PING_SERVER";
 	protected const string TAG_UNRELATED_DOWNLOADS_CANCELING	= "UNRELATED_DOWNLOADS_CANCELING";
 
-	protected const int MAX_AUTO_REJOINS = 3;
 	protected const string STR_LIGHT_BAN = "#AR-LightBan";
 	protected const string STR_HEAVY_BAN = "#AR-HeavyBan";
 
@@ -42,7 +39,6 @@ class SCR_ServerBrowserDialogManager
 	protected int m_iOpenDialogCount = 0;
 	protected EJoinDialogState m_iDisplayState;
 	protected SCR_ConfigurableDialogUi m_CurrentDialog;
-	protected SCR_ConfigurableDialogUi m_CurrentKickDialog;
 
 	// Join dialog widget handling
 	const string WIDGET_IMAGE_ICON = "ImgIcon";
@@ -66,7 +62,6 @@ class SCR_ServerBrowserDialogManager
 
 	protected ref ScriptInvokerRoom m_OnDownloadComplete;
 	protected ref ScriptInvokerRoom m_OnJoinRoomDemand;
-	protected ref ScriptInvokerVoid Event_OnRejoinTimerOver;
 	protected ref ScriptInvokerVoid Event_OnCloseAll;
 	protected ref ScriptInvokerVoid m_OnDownloadCancelDialogClose;
 
@@ -171,149 +166,6 @@ class SCR_ServerBrowserDialogManager
 				SetDialogByTag(TAG_UNRELATED_DOWNLOADS_CANCELING);
 				break;
 			}
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Create and setup error dialog when ending multiplayer game
-	void DisplayKickErrorDialog(string tag, string group, string strDetail)
-	{
-		SCR_ConfigurableDialogUi dialogUi = SCR_ConfigurableDialogUi.CreateFromPreset(CONFIG_DIALOGS_ERROR, tag);
-
-		// Use group as fallback if no dialog found
-		if (!dialogUi)
-		{
-			dialogUi = SCR_ConfigurableDialogUi.CreateFromPreset(CONFIG_DIALOGS_ERROR, group);
-		}
-
-		// Show default error if tag is not found
-		if (!dialogUi)
-		{
-			dialogUi = SCR_ConfigurableDialogUi.CreateFromPreset(CONFIG_DIALOGS_ERROR, TAG_KICK_DEFAULT);
-		}
-
-		m_CurrentKickDialog = dialogUi;
-
-		if (dialogUi)
-		{
-			// Set error details
-			SCR_ErrorDialog errorDialog = SCR_ErrorDialog.Cast(dialogUi.GetRootWidget().FindHandler(SCR_ErrorDialog));
-			if (errorDialog)
-			{
-				errorDialog.SetErrorDetail(strDetail);
-			}
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void DisplayReconnectDialog(Room roomToJoin, int time, string strDetail = "")
-	{
-		// Check dialog
-		if (!m_CurrentKickDialog)
-		{
-			//PrintDebug("No kick dialog", "DisplayReconnectDialog");
-			return;
-		}
-
-		// Check kick preset
-		SCR_KickDialogUiPreset kickPreset = SCR_KickDialogUiPreset.Cast(m_CurrentKickDialog.GetDialogPreset());
-		if (!kickPreset)
-		{
-			//PrintDebug("Missing dialog kick preset", "DisplayReconnectDialog");
-			return;
-		}
-
-		m_CurrentKickDialog.Close();
-
-		// Set reconnect
-		if (!kickPreset.m_ReconnectPreset)
-		{
-			//PrintDebug("Missing dialog reconnect preset", "DisplayReconnectDialog");
-			return;
-		}
-
-		SCR_ConfigurableDialogUi dialog = SCR_ConfigurableDialogUi.CreateByPreset(
-			kickPreset.m_ReconnectPreset);
-
-		m_CurrentKickDialog = dialog;
-
-		// Set Messages
-		dialog.SetMessage(kickPreset.m_sMessage);
-
-		SCR_RejoinDialog rejoinDialog = SCR_RejoinDialog.Cast(m_CurrentKickDialog.GetRootWidget().FindHandler(SCR_RejoinDialog));
-		if (rejoinDialog)
-		{
-			rejoinDialog.SetErrorDetail(strDetail);
-
-			string errorStr = kickPreset.m_sMessage;
-			rejoinDialog.SetErrorMessage(errorStr);
-
-			// Check rejoin attempt
-			string strAttempt = GameSessionStorage.s_Data["m_iRejoinAttempt"];
-			int attempt = strAttempt.ToInt();
-
-			if (attempt <= MAX_AUTO_REJOINS)
-			{
-				errorStr += "\n" + "#AR-ServerBrowser_JoinMessageDefault";
-				rejoinDialog.SetErrorMessage(errorStr);
-
-				dialog.SetMessage(errorStr + " " + rejoinDialog.GetTimer());
-
-				// Setup timer
-				rejoinDialog.GetEventOnTimerChanged().Insert(OnDialogTimerChange);
-
-				rejoinDialog.ShowLoading(true);
-				rejoinDialog.SetTimer(time);
-				rejoinDialog.RunTimer(true);
-			}
-			else
-			{
-				dialog.SetMessage(errorStr);
-
-				// Block rejoin
-				rejoinDialog.ShowLoading(false);
-				m_CurrentKickDialog.FindButton("confirm").SetEnabled(false);
-			}
-		}
-
-		// Setup dialog
-		if (dialog)
-		{
-			// Title
-			dialog.SetTitle(kickPreset.m_sTitle);
-
-			// Reconnect button
-			dialog.m_OnConfirm.Insert(OnDialogConfirm);
-			dialog.m_OnCancel.Insert(OnDialogCancel);
-			dialog.m_OnClose.Insert(OnDialogClose);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void InvokeEventOnRejoinTimerOver()
-	{
-		if (Event_OnRejoinTimerOver)
-			Event_OnRejoinTimerOver.Invoke();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	ScriptInvokerVoid GetEventOnRejoinTimerOver()
-	{
-		if (!Event_OnRejoinTimerOver)
-			Event_OnRejoinTimerOver = new ScriptInvokerVoid();
-
-		return Event_OnRejoinTimerOver;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnDialogTimerChange(SCR_RejoinDialog dialog, int time)
-	{
-		m_CurrentKickDialog.SetMessage(dialog.GetErrorMessage() + " " + time);
-
-		if (time == 0)
-		{
-			InvokeEventOnRejoinTimerOver();
-			m_CurrentKickDialog.Close();
 		}
 	}
 
@@ -736,13 +588,7 @@ class SCR_ServerBrowserDialogManager
 	{
 		return GetCurrentDialog();
 	}
-
-	//------------------------------------------------------------------------------------------------
-	SCR_ConfigurableDialogUi GetCurrentKickDialog()
-	{
-		return m_CurrentKickDialog;
-	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	bool IsOpen()
 	{

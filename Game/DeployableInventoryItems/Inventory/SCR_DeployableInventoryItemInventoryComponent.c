@@ -1,10 +1,8 @@
 [EntityEditorProps(category: "GameScripted/Components", description: "Mine inventory item component.")]
 class SCR_DeployableInventoryItemInventoryComponentClass : InventoryItemComponentClass
 {
-	
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_DeployableInventoryItemInventoryComponent : InventoryItemComponent
 {
 	//------------------------------------------------------------------------------------------------
@@ -16,4 +14,4 @@ class SCR_DeployableInventoryItemInventoryComponent : InventoryItemComponent
 		
 		return deployableItemComponent.IsDeployed();
 	}
-};
+}

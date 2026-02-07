@@ -1,7 +1,6 @@
-//------------------------------------------------------------------------------------------------
 class SCR_MapWatchUI : SCR_MapRTWBaseUI
 {
-	const string ICON_NAME = "watch";
+	protected static const string ICON_NAME = "watch";
 	
 	protected SCR_WristwatchComponent m_WristwatchComp;
 	protected string m_sPrefabResource;
@@ -57,7 +56,7 @@ class SCR_MapWatchUI : SCR_MapRTWBaseUI
 	
 	//------------------------------------------------------------------------------------------------
 	//! Set wristwatch visibility
-	//! \param visible is true/false switch
+	//! \param[in] visible is true/false switch
 	override void SetVisible(bool visible)
 	{
 		if (visible)
@@ -122,8 +121,9 @@ class SCR_MapWatchUI : SCR_MapRTWBaseUI
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_MapWatchUI()
 	{
 		m_eGadgetType = EGadgetType.WRISTWATCH;
 	}
-};
+}

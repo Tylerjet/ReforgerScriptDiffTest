@@ -1,8 +1,8 @@
 [BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
 class SCR_SupportStationEnableFuelEditorAttribute : SCR_BaseSupportStationEnableEditorAttribute
 {
-	protected override bool IsValidSupportStation(ESupportStationType supportStationType)
+	protected override SCR_ESupportStationResupplyType GetSupportStationType()
 	{
-		return supportStationType == ESupportStationType.FUEL;
+		return ESupportStationType.FUEL;
 	}
 };

@@ -1,10 +1,8 @@
-[EntityEditorProps(category: "GameScripted/ScriptWizard", description: "ScriptWizard generated script file.")]
+[EntityEditorProps(category: "GameScripted/ScenarioFramework/Slot", description: "")]
 class SCR_ScenarioFrameworkSlotTriggerClass : SCR_ScenarioFrameworkSlotBaseClass
 {
-	// prefab properties here
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_ScenarioFrameworkSlotTrigger : SCR_ScenarioFrameworkSlotBase
 {
 	[Attribute(desc: "Actions that will be performed after trigger conditions are true and the trigger itself activates (not the slot itself)", category: "OnActivation")];
@@ -26,14 +24,19 @@ class SCR_ScenarioFrameworkSlotTrigger : SCR_ScenarioFrameworkSlotBase
 		}
 	
 		if (!m_bDynamicallyDespawned && activation != m_eActivationType)
-			return;
+		{
+			if (m_ParentLayer)
+				m_ParentLayer.CheckAllChildrenSpawned(this);
+		}
 		
 		foreach (SCR_ScenarioFrameworkActivationConditionBase activationCondition : m_aActivationConditions)
 		{
 			//If just one condition is false, we don't continue and interrupt the init
 			if (!activationCondition.Init(GetOwner()))
 			{
-				InvokeAllChildrenSpawned();
+				if (m_ParentLayer)
+					m_ParentLayer.CheckAllChildrenSpawned(this);
+
 				return;
 			}
 		}
@@ -85,7 +88,7 @@ class SCR_ScenarioFrameworkSlotTrigger : SCR_ScenarioFrameworkSlotBase
 		if (!m_sID.IsEmpty())
 			m_Entity.SetName(m_sID);	
 		
-		ScriptedDamageManagerComponent objectDmgManager = ScriptedDamageManagerComponent.Cast(m_Entity.FindComponent(ScriptedDamageManagerComponent));
+		SCR_DamageManagerComponent objectDmgManager = SCR_DamageManagerComponent.GetDamageManager(m_Entity);
 		if (objectDmgManager)
 			objectDmgManager.GetOnDamageStateChanged().Insert(OnObjectDamage);
 		
@@ -108,7 +111,7 @@ class SCR_ScenarioFrameworkSlotTrigger : SCR_ScenarioFrameworkSlotBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void AfterAllChildrenSpawned()
+	override void AfterAllChildrenSpawned(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		m_bInitiated = true;
 		
@@ -128,7 +131,7 @@ class SCR_ScenarioFrameworkSlotTrigger : SCR_ScenarioFrameworkSlotBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void AfterParentAreaChildrenSpawned()
+	protected void AfterParentAreaChildrenSpawned(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		foreach (SCR_ScenarioFrameworkPlugin plugin : m_aPlugins)
 		{
@@ -158,5 +161,4 @@ class SCR_ScenarioFrameworkSlotTrigger : SCR_ScenarioFrameworkSlotBase
 				trigger.EnablePeriodicQueries(true);
 		}
 	}
-};
-
+}

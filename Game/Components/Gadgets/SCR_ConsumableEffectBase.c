@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 //! Type of consumable gadget
 enum SCR_EConsumableType
 {
@@ -9,10 +8,9 @@ enum SCR_EConsumableType
 	SALINE,
 	MORPHINE,
 	MED_KIT
-};
+}
 
-//------------------------------------------------------------------------------------------------
-//! Reason why consumable can't be applied
+//! Reason why consumable cannot be applied
 enum SCR_EConsumableFailReason
 {
 	NONE = 0,
@@ -22,41 +20,8 @@ enum SCR_EConsumableFailReason
 	ALREADY_APPLIED = 12,
 	DAMAGED = 13,
 	UNDAMAGED = 14
-};
-
-//------------------------------------------------------------------------------------------------
-//! Type of consumable gadget
-class SCR_ConsumableEffectAnimationParameters : Managed
-{
-	void SCR_ConsumableEffectAnimationParameters(
-		int itemUseCommandId,
-		int itemCmdIntArg,
-		float itemCmdFloatArg,
-		float animDuration,
-		int intParam,
-		float floatParam,
-		bool boolParam
-	)
-	{
-		m_itemUseCommandId = itemUseCommandId;
-		m_itemCmdIntArg = itemCmdIntArg;
-		m_itemCmdFloatArg = itemCmdFloatArg;
-		m_fAnimDuration = animDuration;
-		m_intParam = intParam;
-		m_floatParam = floatParam;
-		m_boolParam = boolParam;
-	}
-	
-	TAnimGraphCommand m_itemUseCommandId;
-	int m_itemCmdIntArg;
-	float m_itemCmdFloatArg;
-	float m_fAnimDuration;
-	int m_intParam;
-	float m_floatParam;
-	bool m_boolParam;
 }
 
-//------------------------------------------------------------------------------------------------
 //! Effect assigned to the consumable gadget
 [BaseContainerProps()]
 class SCR_ConsumableEffectBase : Managed
@@ -77,7 +42,13 @@ class SCR_ConsumableEffectBase : Managed
 	SCR_EConsumableType m_eConsumableType;
 	
 	//------------------------------------------------------------------------------------------------
-	bool ActivateEffect(IEntity target, IEntity user, IEntity item, SCR_ConsumableEffectAnimationParameters animParams = null)
+	//!
+	//! \param[in] target
+	//! \param[in] user
+	//! \param[in] item
+	//! \param[in] animParams
+	//! \return
+	bool ActivateEffect(IEntity target, IEntity user, IEntity item, ItemUseParameters animParams = null)
 	{
 		ChimeraCharacter character = ChimeraCharacter.Cast(user);
 		if (!character)
@@ -88,12 +59,11 @@ class SCR_ConsumableEffectBase : Managed
 			return false;
 		
 		bool activatedAction;
-		SCR_ConsumableEffectAnimationParameters localAnimParams;
-		if (animParams)
-			localAnimParams = animParams;
 
-		if (localAnimParams)
-			activatedAction = controller.TryUseItemOverrideParams(item, false, false, localAnimParams.m_itemUseCommandId, localAnimParams.m_itemCmdIntArg, localAnimParams.m_itemCmdFloatArg, localAnimParams.m_fAnimDuration, localAnimParams.m_intParam, localAnimParams.m_floatParam, localAnimParams.m_boolParam, null);
+		if (animParams)
+		{
+			activatedAction = controller.TryUseItemOverrideParams(animParams);
+		}
 		else
 			activatedAction = controller.TryUseItem(item);
 		
@@ -102,41 +72,60 @@ class SCR_ConsumableEffectBase : Managed
 	
 	//------------------------------------------------------------------------------------------------
 	//! Apply consumable effect
-	//! /param target is the character who is having the effect applied
-	void ApplyEffect(notnull IEntity target, notnull IEntity user, IEntity item, SCR_ConsumableEffectAnimationParameters animParams)
-	{}
+	//! \param[in] target is the character who is having the effect applied
+	//! \param[in] user
+	//! \param[in] item
+	//! \param[in] animParams
+	void ApplyEffect(notnull IEntity target, notnull IEntity user, IEntity item, ItemUseParameters animParams);
 	
 	//------------------------------------------------------------------------------------------------
 	//! Condition whether this effect can be applied
-	//! /param target is the character who is having the effect applied
-	//! /param failReason is reason why CanApplyEffect returned false
-	bool CanApplyEffect(notnull IEntity target, notnull IEntity user, out SCR_EConsumableFailReason failReason = SCR_EConsumableFailReason.NONE)
-	{}
+	//! \param[in] target is the character who is having the effect applied
+	//! \param[in] user
+	//! \param[in] failReason is reason why CanApplyEffect returned false
+	//! \return
+	bool CanApplyEffect(notnull IEntity target, notnull IEntity user, out SCR_EConsumableFailReason failReason = SCR_EConsumableFailReason.NONE);
 	
 	//------------------------------------------------------------------------------------------------
 	//! Update the animCommands for all animations related to consumable
-	bool UpdateAnimationCommands(IEntity user)
-	{}
+	bool UpdateAnimationCommands(IEntity user);
 	
 	//------------------------------------------------------------------------------------------------
-	SCR_ConsumableEffectAnimationParameters GetAnimationParameters(notnull IEntity target, ECharacterHitZoneGroup group = ECharacterHitZoneGroup.VIRTUAL)
+	//! \param[in] target
+	//! \param[in] group
+	//! \return
+	ItemUseParameters GetAnimationParameters(IEntity item, notnull IEntity target, ECharacterHitZoneGroup group = ECharacterHitZoneGroup.VIRTUAL)
 	{
-		return new SCR_ConsumableEffectAnimationParameters(GetApplyToSelfAnimCmnd(target), 1, 0, m_fApplyToSelfDuration, 0, 0, false);
+		ItemUseParameters params = ItemUseParameters();
+		params.SetEntity(item);
+		params.SetAllowMovementDuringAction(false);
+		params.SetKeepInHandAfterSuccess(false);
+		params.SetCommandID(GetApplyToSelfAnimCmnd(target));
+		params.SetCommandIntArg(1);
+		params.SetCommandFloatArg(0.0);
+		params.SetMaxAnimLength(m_fApplyToSelfDuration);
+		params.SetIntParam(0);
+			
+		return params;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool GetDeleteOnUse()
 	{
 		return m_bDeleteOnUse;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	float GetApplyToOtherDuraction()
 	{
 		return m_fApplyToOtherDuration;
 	}	
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] user
+	//! \return
 	TAnimGraphCommand GetApplyToSelfAnimCmnd(IEntity user)
 	{
 		UpdateAnimationCommands(user);
@@ -144,9 +133,11 @@ class SCR_ConsumableEffectBase : Managed
 	}	
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] user
+	//! \return
 	TAnimGraphCommand GetApplyToOtherAnimCmnd(IEntity user)
 	{
 		UpdateAnimationCommands(user);
 		return m_iPlayerApplyToOtherCmdId;
 	}
-};
+}

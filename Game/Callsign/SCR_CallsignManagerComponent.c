@@ -1,27 +1,23 @@
-
-/*!
-Manages availible callsigns for each faction
-*/
+//! Manages available callsigns for each faction
 [ComponentEditorProps(category: "GameScripted/Callsign", description: "")]
-class SCR_CallsignManagerComponentClass: SCR_BaseGameModeComponentClass
+class SCR_CallsignManagerComponentClass : SCR_BaseGameModeComponentClass
 {
-};
-
+}
 
 //~ ScriptInvokers
 //~ Called when callsign changed or is assigned
 void SCR_GroupsManagerComponent_OnPlayerCallsignChanged(int playerId, int companyCallsignIndex, int platoonCallsignIndex, int squadCallsignIndex, int characterCallsignNumber, ERoleCallsign characterRole);
 typedef func SCR_GroupsManagerComponent_OnPlayerCallsignChanged;
 
-class SCR_CallsignManagerComponent: SCR_BaseGameModeComponent
+class SCR_CallsignManagerComponent : SCR_BaseGameModeComponent
 {
-	//All availible callsigns are stored here
-	protected ref map<Faction, ref SCR_FactionCallsignData> m_mAvailibleCallsigns = new map<Faction, ref SCR_FactionCallsignData>;
+	//! All available callsigns are stored here
+	protected ref map<Faction, ref SCR_FactionCallsignData> m_mAvailableCallsigns = new map<Faction, ref SCR_FactionCallsignData>;
 	
-	//Assigned Duplicate callsigns. If all callsigns are assigned then this stores any assigned dupplicates.
-	protected ref array<ref array<int>> m_aDuplicateCallsigns = new ref array<ref array<int>>;
+	//! Assigned Duplicate callsigns. If all callsigns are assigned then this stores any assigned dupplicates.
+	protected ref array<ref array<int>> m_aDuplicateCallsigns = {};
 	
-	//Holds all the callsigns that are assigned to players
+	//! Holds all the callsigns that are assigned to players
 	protected ref map<int, ref SCR_PlayerCallsignData> m_mPlayerCallsignData = new map<int, ref SCR_PlayerCallsignData>;
 	
 	//~ Script invoker (Server only)
@@ -32,15 +28,15 @@ class SCR_CallsignManagerComponent: SCR_BaseGameModeComponent
 	
 	
 	//======================================== GET CALLSIGN ========================================\\
-	/*!
-	Get the callsign indexes assigned to entity
-	\param entity IEntity to get callsign off
-	\param[out] company index
-	\param[out] platoon index
-	\param[out] squad index
-	\param[out] character index, either role or character index, will return -1 if not a character
-	\return bool returns false if indexes are not assigned
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get the callsign indexes assigned to entity
+	//! \param[in] entity IEntity to get callsign off
+	//! \param[out] company index
+	//! \param[out] platoon index
+	//! \param[out] squad index
+	//! \param[out] character index, either role or character index, will return -1 if not a character
+	//! \return bool returns false if indexes are not assigned
+	//!
 	bool GetEntityCallsignIndexes(IEntity entity, out int companyCallsignIndex, out int platoonCallsignIndex, out int squadCallsignIndex, out int characterCallsignIndex)
 	{
 		SCR_CallsignBaseComponent callsignComponent = SCR_CallsignBaseComponent.Cast(entity.FindComponent(SCR_CallsignBaseComponent));
@@ -48,30 +44,30 @@ class SCR_CallsignManagerComponent: SCR_BaseGameModeComponent
 		return callsignComponent && callsignComponent.GetCallsignIndexes(companyCallsignIndex, platoonCallsignIndex, squadCallsignIndex, characterCallsignIndex);
 	}
 	
-	/*!
-	Get the callsign indexes assigned to entity
-	\param editableEntity SCR_EditableEntityComponent to get callsign off
-	\param[out] company index
-	\param[out] platoon index
-	\param[out] squad index
-	\param[out] character index, either role or character index, will return -1 if not a character
-	\return bool returns false if indexes are not assigned
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get the callsign indexes assigned to entity
+	//! \param[in] editableEntity SCR_EditableEntityComponent to get callsign off
+	//! \param[out] company index
+	//! \param[out] platoon index
+	//! \param[out] squad index
+	//! \param[out] character index, either role or character index, will return -1 if not a character
+	//! \return bool returns false if indexes are not assigned
+	//!
 	bool GetEntityCallsignIndexes(SCR_EditableEntityComponent editableEntity, out int companyCallsignIndex, out int platoonCallsignIndex, out int squadCallsignIndex, out int characterCallsignIndex)
 	{
 		return GetEntityCallsignIndexes(editableEntity.GetOwner(), companyCallsignIndex, platoonCallsignIndex, squadCallsignIndex, characterCallsignIndex);
 	}
 	
-	/*!
-	Get the callsign names assigned to entity
-	\param entity IEntity to get callsign off
-	\param[out] company name
-	\param[out] platoon name
-	\param[out] squad name
-	\param[out] character name (Optinal if callsign assigned to a character)
-	\param[out] format
-	\return bool returns true if names are succesfully found
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get the callsign names assigned to entity
+	//! \param[in] entity IEntity to get callsign off
+	//! \param[out] company name
+	//! \param[out] platoon name
+	//! \param[out] squad name
+	//! \param[out] character name (Optinal if callsign assigned to a character)
+	//! \param[out] format
+	//! \return bool returns true if names are succesfully found
+	//!
 	bool GetEntityCallsignNames(IEntity entity, out string companyCallsignName, out string platoonCallsignName, out string squadCallsignName, out string characterCallsignName, out string format)
 	{
 		SCR_CallsignBaseComponent callsignComponent = SCR_CallsignBaseComponent.Cast(entity.FindComponent(SCR_CallsignBaseComponent));
@@ -82,30 +78,27 @@ class SCR_CallsignManagerComponent: SCR_BaseGameModeComponent
 		return callsignComponent.GetCallsignNames(companyCallsignName, platoonCallsignName, squadCallsignName, characterCallsignName, format);
 	}
 	
-	/*!
-	Get the callsign names assigned to editableEntity
-	\param editableEntity SCR_EditableEntityComponent to get callsign off
-	\param[out] company name
-	\param[out] platoon name
-	\param[out] squad name
-	\param[out] character name (Optinal if callsign assigned to a character)
-	\param[out] format
-	\return bool returns true if names are succesfully found
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get the callsign names assigned to editableEntity
+	//! \param[in] editableEntity SCR_EditableEntityComponent to get callsign off
+	//! \param[out] company name
+	//! \param[out] platoon name
+	//! \param[out] squad name
+	//! \param[out] character name (Optinal if callsign assigned to a character)
+	//! \param[out] format
+	//! \return bool returns true if names are succesfully found
+	//!
 	bool GetEntityCallsignNames(SCR_EditableEntityComponent editableEntity, out string companyCallsignName, out string platoonCallsignName, out string squadCallsignName, out string characterCallsignName, out string format)
 	{
 		return GetEntityCallsignNames(editableEntity.GetOwner(), companyCallsignName, platoonCallsignName, squadCallsignName, characterCallsignName, format);
 	}
 	
-	
-	//======================================== ASSIGN GROUP CALLSIGN ========================================\\
-	/*!
-	Uses the faction to get a availible company, platoon and squad index. And makes these unavailible so they are not picked again until availible again
-	\param faction faction to assign callsigns
-	\param[out] companyIndex to assign
-	\param[out] platoonIndex to assign
-	\param[out] squadIndex to assign
-	*/ 
+	//------------------------------------------------------------------------------------------------
+	//! Uses the faction to get available company, platoon and squad index and makes these unavailable so they are not picked until available again
+	//! \param[in] faction faction to assign callsigns
+	//! \param[out] companyIndex to assign
+	//! \param[out] platoonIndex to assign
+	//! \param[out] squadIndex to assign
 	void AssignCallGroupCallsign(Faction faction, SCR_CallsignGroupComponent masterCallsignComponent, out int companyIndex, out int platoonIndex, out int squadIndex)
 	{
 		companyIndex = -1;
@@ -120,7 +113,7 @@ class SCR_CallsignManagerComponent: SCR_BaseGameModeComponent
 		}
 		
 		//Faction has no callsigns
-		if (!m_mAvailibleCallsigns.Contains(faction))
+		if (!m_mAvailableCallsigns.Contains(faction))
 			return;
 		
 		SCR_Faction ScrFaction = SCR_Faction.Cast(faction);
@@ -134,79 +127,82 @@ class SCR_CallsignManagerComponent: SCR_BaseGameModeComponent
 		
 		//~Todo: Add logic for assigning same company callsigns by getting closest (same faction) company
 		
-		//Assign the first availible callsign
+		//Assign the first available callsign
 		if (!callsignInfo.GetIsAssignedRandomly())
-			AssignFirstAvailibleGroupCallsign(faction, companyIndex, platoonIndex, squadIndex);
-		//Assign a random availible callsign
+			AssignFirstAvailableGroupCallsign(faction, companyIndex, platoonIndex, squadIndex);
+		//Assign a random available callsign
 		else 
 			AssignRandomGroupCallsigns(faction, companyIndex, platoonIndex, squadIndex);
 	}
 	
-	//---------------------------------------- Assign first availible callsign ----------------------------------------\\
-	protected void AssignFirstAvailibleGroupCallsign(Faction faction, out int companyIndex, out int platoonIndex, out int squadIndex)
+	//------------------------------------------------------------------------------------------------
+	protected void AssignFirstAvailableGroupCallsign(Faction faction, out int companyIndex, out int platoonIndex, out int squadIndex)
 	{
 		SCR_FactionCallsignData factionCallsign; 
-		if (m_mAvailibleCallsigns.Find(faction, factionCallsign))
+		if (m_mAvailableCallsigns.Find(faction, factionCallsign))
 		{
 			if (factionCallsign.GetFirstAvailibleCallsign(companyIndex, platoonIndex, squadIndex))
 			{
-				RemoveAvailibleGroupCallsign(faction, companyIndex, platoonIndex, squadIndex);
+				RemoveAvailableGroupCallsign(faction, companyIndex, platoonIndex, squadIndex);
 				return;
 			}	
 		}
 		
 		//Callsign was not assigned as all callsigns are taken
 		AssignRandomDuplicateCallsign(faction, companyIndex, platoonIndex, squadIndex);
-		Print(string.Format("All availible callsigns are taken for faction '%1', so a random duplicate is assigned instead. If this happenes a lot then more callsigns should be added for this faction!", faction.GetFactionName()), LogLevel.WARNING);
+		Print(string.Format("All available callsigns are taken for faction '%1', so a random duplicate is assigned instead. If this happenes a lot then more callsigns should be added for this faction!", faction.GetFactionName()), LogLevel.WARNING);
 	}
 	
-	//---------------------------------------- Assign specific company callsign ----------------------------------------\\
+	//------------------------------------------------------------------------------------------------
 	//~Todo: Not yet used. Should check neighbouring groups and assign the same company if close to same faction group
 	protected void AssignCompanySpecificGroupCallsign(Faction faction, out int specificCompanyIndex, out int platoonIndex, out int squadIndex)
 	{
 		SCR_FactionCallsignData factionCallsign; 
-		if (m_mAvailibleCallsigns.Find(faction, factionCallsign))
+		if (m_mAvailableCallsigns.Find(faction, factionCallsign))
 		{
 			if (factionCallsign.GetSpecificCompanyCallsign(specificCompanyIndex, platoonIndex, squadIndex))
 			{
-				RemoveAvailibleGroupCallsign(faction, specificCompanyIndex, platoonIndex, squadIndex);
+				RemoveAvailableGroupCallsign(faction, specificCompanyIndex, platoonIndex, squadIndex);
 				return;
 			}
 		}
 		
 		//Callsign was not assigned as all callsigns are taken
 		AssignRandomDuplicateCallsign(faction, specificCompanyIndex, platoonIndex, squadIndex);
-		Print(string.Format("All availible callsigns are taken for faction '%1', so a random duplicate is assigned instead. If this happenes a lot then more callsigns should be added for this faction!", faction.GetFactionName()), LogLevel.WARNING);
+		Print(string.Format("All available callsigns are taken for faction '%1', so a random duplicate is assigned instead. If this happenes a lot then more callsigns should be added for this faction!", faction.GetFactionName()), LogLevel.WARNING);
 	}
 	
-	//---------------------------------------- Assign random callsign ----------------------------------------\\
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] faction
+	//! \param[out] companyIndex
+	//! \param[out] platoonIndex
+	//! \param[out] squadIndex
 	void AssignRandomGroupCallsigns(Faction faction, out int companyIndex, out int platoonIndex, out int squadIndex)
 	{
 		SCR_FactionCallsignData factionCallsign; 
-		if (m_mAvailibleCallsigns.Find(faction, factionCallsign))
+		if (m_mAvailableCallsigns.Find(faction, factionCallsign))
 		{
 			if (factionCallsign.GetRandomCallsign(companyIndex, platoonIndex, squadIndex))
 			{
-				RemoveAvailibleGroupCallsign(faction, companyIndex, platoonIndex, squadIndex);
+				RemoveAvailableGroupCallsign(faction, companyIndex, platoonIndex, squadIndex);
 				return;
 			}	
 		}
 		
 		//Callsign was not assigned as all callsigns are taken
 		AssignRandomDuplicateCallsign(faction, companyIndex, platoonIndex, squadIndex);
-		Print(string.Format("All availible callsigns are taken for faction '%1', so a random duplicate is assigned instead. If this happenes a lot then more callsigns should be added for this faction!", faction.GetFactionName()), LogLevel.WARNING);
+		Print(string.Format("All available callsigns are taken for faction '%1', so a random duplicate is assigned instead. If this happenes a lot then more callsigns should be added for this faction!", faction.GetFactionName()), LogLevel.WARNING);
 	}
 	
-	//======================================== ADD/ REMOVE AVAILIBLE CALLSIGNs ========================================\\
-	//---------------------------------------- Add availible callsign ----------------------------------------\\
-	/*!
-	Makes the given callsign indexes availible again for the faction.
-	Called when the entity with the callsign is destroyed or switches factions
-	\param faction faction of callsigns
-	\param companyIndex to make availible
-	\param platoonIndex to make availible
-	\param squadIndex to make availible
-	*/ 
+	//------------------------------------------------------------------------------------------------
+	//! Makes the given callsign indexes available again for the faction.
+	//! Called when the entity with the callsign is destroyed or switches factions
+	//! \param[in] faction faction of callsigns
+	//! \param[in] companyIndex to make available
+	//! \param[in] platoonIndex to make available
+	//! \param[in] squadIndex to make available
+	// TODO: available -> available
 	void MakeGroupCallsignAvailible(Faction faction, int companyIndex, int platoonIndex, int squadIndex)
 	{		
 		//Check if callsign was assigned duplicate
@@ -216,7 +212,7 @@ class SCR_CallsignManagerComponent: SCR_BaseGameModeComponent
 			
 			for(int i = 0; i < count; i++)
 			{				
-				//The assigned callsign was a duplicate safty. So it is removed from the duplicate list instead of making it availible again
+				//The assigned callsign was a duplicate safty. So it is removed from the duplicate list instead of making it available again
 				if (m_aDuplicateCallsigns[i][0] == companyIndex && m_aDuplicateCallsigns[i][1] == platoonIndex && m_aDuplicateCallsigns[i][2] == squadIndex)
 				{
 					m_aDuplicateCallsigns.Remove(i);
@@ -227,23 +223,22 @@ class SCR_CallsignManagerComponent: SCR_BaseGameModeComponent
 		
 		SCR_FactionCallsignData factionCallsignData;
 		
-		if (m_mAvailibleCallsigns.Find(faction, factionCallsignData))
+		if (m_mAvailableCallsigns.Find(faction, factionCallsignData))
 			factionCallsignData.AddCallsign(companyIndex, platoonIndex, squadIndex);
 	}
 	
-	//---------------------------------------- Remove availible callsign ----------------------------------------\\
+	//------------------------------------------------------------------------------------------------
 	//A callsign is assigned
-	protected void RemoveAvailibleGroupCallsign(Faction faction, int companyIndex, int platoonIndex, int squadIndex)
+	protected void RemoveAvailableGroupCallsign(Faction faction, int companyIndex, int platoonIndex, int squadIndex)
 	{
 		SCR_FactionCallsignData factionCallsignData;
 		
-		if (m_mAvailibleCallsigns.Find(faction, factionCallsignData))
+		if (m_mAvailableCallsigns.Find(faction, factionCallsignData))
 			factionCallsignData.RemoveCallsign(companyIndex, platoonIndex, squadIndex);
 	}
 	
-	
-	//======================================== ASSIGN DUPLICATE CALLSIGN ========================================\\
-	//If all callsigns are taken then assign a random callsign. This is am edge case safty as otherwise entities will be without callsigns
+	//------------------------------------------------------------------------------------------------
+	//! If all callsigns are taken then assign a random callsign. This is an edge case safety as otherwise entities will be without callsigns
 	protected void AssignRandomDuplicateCallsign(Faction faction, out int company, out int platoon, out int squad)
 	{		
 		SCR_Faction ScrFaction = SCR_Faction.Cast(faction);
@@ -256,7 +251,7 @@ class SCR_CallsignManagerComponent: SCR_BaseGameModeComponent
 		
 		if (factionCallsignInfo.GetRandomCallsign(company, platoon, squad))
 		{
-			array<int> duplicateCallsign = new array<int>;
+			array<int> duplicateCallsign = {};
 			duplicateCallsign.Insert(company);
 			duplicateCallsign.Insert(platoon);
 			duplicateCallsign.Insert(squad);
@@ -265,10 +260,8 @@ class SCR_CallsignManagerComponent: SCR_BaseGameModeComponent
 		}
 	}
 	
-	
-	//======================================== PLAYER CALLSIGNS ========================================\\
-	//---------------------------------------- On Player Spawned ----------------------------------------\\
-	//~ Assign callsign for players when they are spawned (Server Only)
+	//------------------------------------------------------------------------------------------------
+	//! Assign callsign for players when they are spawned (Server Only)
 	protected void OnPlayerSpawn(int playerId, IEntity playerEntity)
 	{		
 		if (!m_GroupManager)
@@ -306,7 +299,13 @@ class SCR_CallsignManagerComponent: SCR_BaseGameModeComponent
 		characterCallsign.AssignCharacterCallsign(playerGroup.GetFaction(), companyIndex, platoonIndex, squadIndex, characterNumber, characterRole, playerGroup.GetPlayerAndAgentCount(true) <= 1);
 	}
 	
-	//---------------------------------------- Set Player Callsign ----------------------------------------\\
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] playerId
+	//! \param[in] companyIndex
+	//! \param[in] platoonIndex
+	//! \param[in] squadIndex
+	//! \param[in] characterNumber
+	//! \param[in] characterRole
 	void SetPlayerCallsign(int playerId, int companyIndex, int platoonIndex, int squadIndex, int characterNumber, ERoleCallsign characterRole = ERoleCallsign.NONE)
 	{
 		if (playerId <= 0)
@@ -329,14 +328,21 @@ class SCR_CallsignManagerComponent: SCR_BaseGameModeComponent
 		m_OnPlayerCallsignChanged.Invoke(playerId, companyIndex, platoonIndex, squadIndex, characterNumber, characterRole);
 	}
 	
-	//---------------------------------------- On player left ----------------------------------------\\
+	//------------------------------------------------------------------------------------------------
 	protected void OnPlayerLeftGame(int playerId)
 	{
 		if (m_mPlayerCallsignData.Contains(playerId))
 			m_mPlayerCallsignData.Remove(playerId);
 	}
 		
-	//---------------------------------------- Get Player Callsign ----------------------------------------\\
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] playerId
+	//! \param[out] companyIndex
+	//! \param[out] platoonIndex
+	//! \param[out] squadIndex
+	//! \param[out] characterNumber
+	//! \param[out] characterRole
+	//! \return success or failure in obtaining data
 	bool GetPlayerCallsign(int playerId, out int companyIndex, out int platoonIndex, out int squadIndex, out int characterNumber = -1, out ERoleCallsign characterRole = ERoleCallsign.NONE)
 	{
 		SCR_PlayerCallsignData playerCallsignData;
@@ -347,19 +353,16 @@ class SCR_CallsignManagerComponent: SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Returns ScriptInvoker on player callsign changed
-	*/
+	//! Returns ScriptInvoker on player callsign changed
 	ScriptInvokerBase<SCR_GroupsManagerComponent_OnPlayerCallsignChanged> GetOnPlayerCallsignChanged()
 	{
 		return m_OnPlayerCallsignChanged;
 	}
 	
-	//======================================== INIT ========================================\\
-	//---------------------------------------- Fill callsign list ----------------------------------------\\
-	protected void FillAvailibleCallsigns()
+	//------------------------------------------------------------------------------------------------
+	protected void FillAvailableCallsigns()
 	{
-		array<Faction> factions = new array<Faction>;
+		array<Faction> factions = {};
 		FactionManager factionManager = GetGame().GetFactionManager();
 		
 		if (!factionManager)
@@ -379,9 +382,9 @@ class SCR_CallsignManagerComponent: SCR_BaseGameModeComponent
 			if (!factionCallsignInfo)
 				continue;
 			
-			array<ref SCR_CallsignInfo> companyArray = new array<ref SCR_CallsignInfo>;
-			array<ref SCR_CallsignInfo> platoonArray = new array<ref SCR_CallsignInfo>;
-			array<ref SCR_CallsignInfo> squadArray = new array<ref SCR_CallsignInfo>;
+			array<ref SCR_CallsignInfo> companyArray = {};
+			array<ref SCR_CallsignInfo> platoonArray = {};
+			array<ref SCR_CallsignInfo> squadArray = {};
 			
 			factionCallsignInfo.GetCompanyArray(companyArray);
 			if (companyArray.IsEmpty())
@@ -397,16 +400,16 @@ class SCR_CallsignManagerComponent: SCR_BaseGameModeComponent
 			
 			SCR_FactionCallsignData factionCallsignData = new SCR_FactionCallsignData(factionCallsignInfo);
 			
-			m_mAvailibleCallsigns.Insert(faction, factionCallsignData);
+			m_mAvailableCallsigns.Insert(faction, factionCallsignData);
 		}
 	}
 
-	//---------------------------------------- On Init ----------------------------------------\\
+	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
 		super.EOnInit(owner);
 		
-		FillAvailibleCallsigns();
+		FillAvailableCallsigns();
 		
 		if (GetGameMode().IsMaster())
 		{
@@ -419,7 +422,7 @@ class SCR_CallsignManagerComponent: SCR_BaseGameModeComponent
 		}
 	}	
 	
-	//---------------------------------------- On Post Init ----------------------------------------\\
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{	
 		super.OnPostInit(owner);
@@ -430,6 +433,8 @@ class SCR_CallsignManagerComponent: SCR_BaseGameModeComponent
 		SetEventMask(owner, EntityEvent.INIT);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_CallsignManagerComponent()
 	{
 		if (!GetGameMode())
@@ -441,4 +446,4 @@ class SCR_CallsignManagerComponent: SCR_BaseGameModeComponent
 			GetGameMode().GetOnPlayerSpawned().Remove(OnPlayerSpawn);
 		}
 	}
-};
+}

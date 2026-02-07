@@ -16,36 +16,45 @@ enum EWidgetAnchor
 	BOTTOMLEFT,
 	BOTTOM,
 	BOTTOMRIGHT
-};
+}
 
 class SCR_InfoDisplay : GroupInfoDisplay
 {
 	// Attributes
 	[Attribute("", UIWidgets.ResourceNamePicker, "Layout", "layout")]
 	ResourceName m_LayoutPath;
+
 	[Attribute("2", UIWidgets.ComboBox, "HUD Layer for the UI element to be placed in. Ignored when InfoDisplay is nested under another InfoDisplay.", "", ParamEnumArray.FromEnum(EHudLayers))]
 	EHudLayers m_eLayer;
+
 	[Attribute("1", UIWidgets.CheckBox, "Make UI element visible when it is created.")]
 	private bool m_bShowWhenCreated;
 
 	[Attribute("0", UIWidgets.EditBox, "Override the hierarchy to show display in front or behind other displays.")]
 	int m_iOverrideZOrder;
+
 	[Attribute("", UIWidgets.EditBox, "Name of slot in parent widget, the UI element is going to be placed in. Used when InfoDisplay is nested under another InfoDisplay.")]
 	protected string m_sParentSlot;
 
 	// Dimensions and safezone
 	[Attribute("", UIWidgets.EditBox, "Name of widget containing the GUI element content. Uses the root widget, if empty.")]
 	protected string m_sContentWidget;
+
 	[Attribute("0", UIWidgets.Slider, "Adjustment to the content widget width. Can be used to provide a widget-specific padding.", "-200 200 1")]
 	protected int m_iContentWidthAdjustment;
+
 	[Attribute("0", UIWidgets.Slider, "Adjustment to the content height width. Can be used to provide a widget-specific padding.", "-200 200 1")]
 	protected int m_iContentHeightAdjustment;
 
 	// Attributes for adaptive opacity
 	[Attribute("1", UIWidgets.CheckBox, "Adjusts opacity of the widget based on level of ambient light.")]
 	private bool m_bAdaptiveOpacity;
+
 	[Attribute("", UIWidgets.EditBox, "Name of the widget in the layout the adaptive opacity is applied to. If empty, layout root is used.")]
 	protected string m_sAdaptiveOpacityWidgetName;
+
+	[Attribute()]
+	protected ref array<ref SCR_InfoDisplayHandler> m_aHandlers;
 
 	private Widget m_wAdaptiveOpacity;
 	private float m_fAdaptiveOpacity = 1;
@@ -57,14 +66,11 @@ class SCR_InfoDisplay : GroupInfoDisplay
 	protected SCR_HUDManagerComponent m_HUDManager;
 
 	protected int m_iChildDisplays = 0;
-	protected ref array<BaseInfoDisplay> m_aChildDisplays = new ref array<BaseInfoDisplay>;
+	protected ref array<BaseInfoDisplay> m_aChildDisplays = new array<BaseInfoDisplay>;
 	protected SCR_InfoDisplay m_pParentDisplay;
 	protected bool m_bRegistered = false;
 
 	protected IEntity m_OwnerEntity;
-
-	[Attribute()]
-	protected ref array<ref SCR_InfoDisplayHandler> m_aHandlers;
 	protected ref array<ref SCR_InfoDisplayHandler> m_aUpdatableHandlers = {};
 
 	protected ref SCR_InfoDisplayInvoker m_OnStart = new SCR_InfoDisplayInvoker();
@@ -125,10 +131,14 @@ class SCR_InfoDisplay : GroupInfoDisplay
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Show/hide InfoDisplay properly, not breaking other systems like AdaptiveOpacity or ConditionalVisibility. Use this method instead of SetVisible/SetOpacity.
+	//! \param show true to show, false to hide
+	//! \param speed fade rate, default 0
+	//! \param curve hiding interpolation, default linear
 	void Show(bool show, float speed = UIConstants.FADE_RATE_INSTANT, EAnimationCurve curve = EAnimationCurve.LINEAR)
 	{
-		#ifdef DEBUG_INFO_DISPLAY
-		if (this.Type() == SCR_NearbyContextDisplay)
+		#ifdef DEBUG_ADAPTIVE_OPACITY
+		if (this.Type() == SCR_AvailableActionsDisplay)
 			PrintFormat("%1 [Show] show: %2 | m_bShown: %3 | m_wSlot: %4", this, show, m_bShown, m_wSlot);
 		#endif
 
@@ -151,7 +161,7 @@ class SCR_InfoDisplay : GroupInfoDisplay
 		if (speed > 0)
 		{
 			#ifdef DEBUG_ADAPTIVE_OPACITY
-			if (this.Type() == SCR_GameVersion)
+			if (this.Type() == SCR_AvailableActionsDisplay)
 				PrintFormat("%1 [Show] Opacity animation started: %2 -> %3", this, w.GetOpacity(), targetOpacity);
 			#endif
 
@@ -172,7 +182,7 @@ class SCR_InfoDisplay : GroupInfoDisplay
 		else
 		{
 			#ifdef DEBUG_ADAPTIVE_OPACITY
-			if (this.Type() == SCR_GameVersion)
+			if (this.Type() == SCR_AvailableActionsDisplay)
 				PrintFormat("%1 [Show] Opacity insta-changed: %2 -> %3", this, w.GetOpacity(), targetOpacity);
 			#endif
 
@@ -194,8 +204,8 @@ class SCR_InfoDisplay : GroupInfoDisplay
 		OnShownFinished(w, targetOpacity, anim);
 	}
 
-	// Interface for overriding 'OnShownFinished'
 	//------------------------------------------------------------------------------------------------
+	// Interface for overriding 'OnShownFinished'
 	protected void OnShownFinished(Widget w, float targetOpacity, WidgetAnimationOpacity anim = null)
 	{
 		#ifdef DEBUG_INFO_DISPLAY
@@ -216,7 +226,11 @@ class SCR_InfoDisplay : GroupInfoDisplay
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Return width and height of the InfoDisplay element, optionally with safezones adjustments
+	//! Get width and height of the InfoDisplay element, optionally with safezones adjustments
+	//! \param[out] width
+	//! \param[out] height
+	//! \param addSafezones
+	//! \return false if content widget is null, true otherwise
 	bool GetDimensions(out float width, out float height, bool addSafezones = true)
 	{
 		if (!m_wContent)
@@ -242,7 +256,12 @@ class SCR_InfoDisplay : GroupInfoDisplay
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Return width and height of the InfoDisplay element, optionally with safezones adjustments
+	//! Get width and height of the InfoDisplay element, optionally with safezones adjustments
+	//! \param[out] x
+	//! \param[out] y
+	//! \param anchor
+	//! \param addSafezones
+	//! \return false if content widget is null, true otherwise
 	bool GetAnchorPosition(out float x, out float y, EWidgetAnchor anchor = EWidgetAnchor.TOPLEFT, bool addSafezones = true)
 	{
 		if (!m_wContent)
@@ -321,40 +340,12 @@ class SCR_InfoDisplay : GroupInfoDisplay
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void RegisterToHudManager()
 	{
 		m_bShown = false;
 		m_HUDManager.RegisterHUDElement(this);
 		m_bRegistered = true;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	private void InitializeAdaptiveOpacity()
-	{
-		/*
-		if (this.Type() == SCR_GameVersion)
-			PrintFormat(">> %1 >> InitializeAdaptiveOpacity", this);
-		*/
-		
-		// Safecheck for multiple adaptive opacity (parent & child display)
-		if (m_bAdaptiveOpacity && m_pParentDisplay && m_pParentDisplay.m_bAdaptiveOpacity)
-		{
-			m_bAdaptiveOpacity = false;
-			PrintFormat("[AdaptiveOpacity] Duplicate AO disabled on info display %1. Parent display %2 already has AO enabled.", this, m_pParentDisplay);
-		}
-
-		// Adaptive opacity initialization
-		if (m_bAdaptiveOpacity)
-		{
-			if (m_sAdaptiveOpacityWidgetName != string.Empty)
-				m_wAdaptiveOpacity = m_wRoot.FindAnyWidget(m_sAdaptiveOpacityWidgetName);
-
-			if (!m_wAdaptiveOpacity)
-				m_wAdaptiveOpacity = m_wRoot;
-
-			m_HUDManager.GetSceneBrightnessChangedInvoker().Insert(UpdateOpacity);
-			UpdateOpacity(m_HUDManager.GetAdaptiveOpacity(), m_HUDManager.GetSceneBrightness(), m_HUDManager.GetSceneBrightnessRaw())
-		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -406,7 +397,7 @@ class SCR_InfoDisplay : GroupInfoDisplay
 		if (!m_wContent)
 			m_wContent = m_wRoot;
 
-		InitializeAdaptiveOpacity();
+		AdaptiveOpacity_Initialize();
 
 		#ifdef DEBUG_INFO_DISPLAY
 		PrintFormat("%1 [OnStartDraw] m_wRoot: %2", this, m_wRoot);
@@ -438,26 +429,61 @@ class SCR_InfoDisplay : GroupInfoDisplay
 		if (!m_wContent)
 			m_wContent = m_wRoot;
 
-		InitializeAdaptiveOpacity();
+		AdaptiveOpacity_Initialize();
 		Show(m_bShowWhenCreated);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void UpdateOpacity(float opacity, float sceneBrightness, float sceneBrightnessRaw)
+	private void AdaptiveOpacity_Initialize()
+	{
+		#ifdef DEBUG_ADAPTIVE_OPACITY
+		if (this.Type() == SCR_AvailableActionsDisplay)
+			PrintFormat(">> %1 >> AdaptiveOpacity_Initialize", this);
+		#endif
+		
+		// Safecheck for multiple adaptive opacity (parent & child display)
+		if (m_bAdaptiveOpacity && m_pParentDisplay && m_pParentDisplay.m_bAdaptiveOpacity)
+		{
+			m_bAdaptiveOpacity = false;
+			PrintFormat("[AdaptiveOpacity] Duplicate AO disabled on info display %1. Parent display %2 already has AO enabled.", this, m_pParentDisplay);
+		}
+
+		// Adaptive opacity initialization
+		if (m_bAdaptiveOpacity)
+		{
+			if (m_sAdaptiveOpacityWidgetName != string.Empty)
+				m_wAdaptiveOpacity = m_wRoot.FindAnyWidget(m_sAdaptiveOpacityWidgetName);
+
+			if (!m_wAdaptiveOpacity)
+				m_wAdaptiveOpacity = m_wRoot;
+
+			m_HUDManager.GetSceneBrightnessChangedInvoker().Insert(AdaptiveOpacity_OnScreenBrightnessChange);
+			AdaptiveOpacity_Update(m_HUDManager.GetAdaptiveOpacity(), m_HUDManager.GetSceneBrightness(), true);
+		}
+	}	
+
+	//------------------------------------------------------------------------------------------------
+	private void AdaptiveOpacity_OnScreenBrightnessChange(float opacity, float sceneBrightness)
+	{
+		AdaptiveOpacity_Update(opacity, sceneBrightness, false);
+	}	
+		
+	//------------------------------------------------------------------------------------------------
+	protected void AdaptiveOpacity_Update(float opacity, float sceneBrightness, bool init = false)
 	{
 		if (!m_bAdaptiveOpacity)
 			return;
 		
-		/*
-		if (this.Type() == SCR_GameVersion)
-			PrintFormat(">> %1 >> UpdateOpacity | opacity: %2 | sceneBrightness: %3 | sceneBrightnessRaw: %4", this, opacity, sceneBrightness, sceneBrightnessRaw);
-		*/
+		#ifdef DEBUG_ADAPTIVE_OPACITY
+		if (this.Type() == SCR_AvailableActionsDisplay)
+			PrintFormat("%1 [AdaptiveOpacity_Update] opacity: %2 | sceneBrightness: %3", this, opacity, sceneBrightness);
+		#endif
 
 		// Store the calculated adaptive opacity value, so it can be used by other methods, like Show()
 		m_fAdaptiveOpacity = opacity;
 
 		// We can terminate if info display is not shown, as adaptive opacity is already stored ^^
-		if (!m_bShown)
+		if (!m_bShown && !init)
 			return;
 
 		// Detect running opacity animation
@@ -472,8 +498,8 @@ class SCR_InfoDisplay : GroupInfoDisplay
 				return;
 
 			#ifdef DEBUG_ADAPTIVE_OPACITY
-			if (this.Type() == SCR_GameVersion)
-				PrintFormat("%1 [UpdateOpacity] Updated running opacity animation; target opacity %2 -> %3", this, targetOpacity, opacity);
+			if (this.Type() == SCR_AvailableActionsDisplay)
+				PrintFormat("%1 [AdaptiveOpacity_Update] Updated running opacity animation; target opacity %2 -> %3", this, targetOpacity, opacity);
 			#endif
 
 			animation.SetTargetValue(opacity);
@@ -481,8 +507,8 @@ class SCR_InfoDisplay : GroupInfoDisplay
 		else
 		{
 			#ifdef DEBUG_ADAPTIVE_OPACITY
-			if (this.Type() == SCR_GameVersion)
-				PrintFormat("%1 [UpdateOpacity] %2 -> %3", this, m_wAdaptiveOpacity.GetOpacity(), opacity);
+			if (this.Type() == SCR_AvailableActionsDisplay)
+				PrintFormat("%1 [AdaptiveOpacity_Update] %2 -> %3", this, m_wAdaptiveOpacity.GetOpacity(), opacity);
 			#endif
 
 			if (m_wAdaptiveOpacity && m_wAdaptiveOpacity.GetOpacity())
@@ -502,7 +528,7 @@ class SCR_InfoDisplay : GroupInfoDisplay
 
 		// Adaptive opacity initialization
 		if (m_wRoot && m_HUDManager && m_bAdaptiveOpacity)
-			m_HUDManager.GetSceneBrightnessChangedInvoker().Remove(UpdateOpacity);
+			m_HUDManager.GetSceneBrightnessChangedInvoker().Remove(AdaptiveOpacity_OnScreenBrightnessChange);
 
 		if (m_wRoot)
 			m_wRoot.RemoveFromHierarchy();
@@ -543,4 +569,4 @@ class SCR_InfoDisplay : GroupInfoDisplay
 				pInfoDisplay.m_pParentDisplay = this;
 		}
 	}
-};
+}

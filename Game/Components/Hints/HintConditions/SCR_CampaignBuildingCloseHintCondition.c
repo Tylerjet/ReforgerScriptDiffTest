@@ -7,4 +7,4 @@ class SCR_CampaignBuildingCloseHintCondition: SCR_BaseEditorHintCondition
 		// Call later because closing editor might hide the hint.
 		GetGame().GetCallqueue().CallLater(Activate, 100, false);
 	}
-};
+}

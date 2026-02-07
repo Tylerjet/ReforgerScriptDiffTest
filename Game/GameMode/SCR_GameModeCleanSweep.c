@@ -31,7 +31,7 @@ class SCR_GameModeCleanSweep : SCR_BaseGameMode
 	Widget m_wAreaSelectionWidget;
 	TextWidget m_wText;
 	
-	ref array<IEntity> m_aEnemySoldiers = new ref array<IEntity>;
+	ref array<IEntity> m_aEnemySoldiers = new array<IEntity>;
 	ref array<SCR_AIGroup> m_aGroups;
 	ref array<SCR_SpawnPoint> m_aEnemySpawnPoints;
 	ref array<SCR_SpawnPoint> m_aPlayerSpawnPoints;
@@ -49,12 +49,12 @@ class SCR_GameModeCleanSweep : SCR_BaseGameMode
 			m_wAreaSelectionWidget.RemoveFromHierarchy();
 		
 		if (!m_aEnemySpawnPoints)
-			m_aEnemySpawnPoints = new ref array<SCR_SpawnPoint>();
+			m_aEnemySpawnPoints = new array<SCR_SpawnPoint>();
 		else
 			m_aEnemySpawnPoints.Clear();
 		
 		if (!m_aPlayerSpawnPoints)
-			m_aPlayerSpawnPoints = new ref array<SCR_SpawnPoint>();
+			m_aPlayerSpawnPoints = new array<SCR_SpawnPoint>();
 		else
 			m_aPlayerSpawnPoints.Clear();
 		
@@ -64,7 +64,7 @@ class SCR_GameModeCleanSweep : SCR_BaseGameMode
 		// Spawn setup:
 		// Select random spawn point
 		
-		ref array<SCR_CleanSweepArea> activeAreas = new ref array<SCR_CleanSweepArea>();
+		ref array<SCR_CleanSweepArea> activeAreas = new array<SCR_CleanSweepArea>();
 		
 		int activeAreasCount = GetActiveAreas(activeAreas);
 		
@@ -390,9 +390,9 @@ class SCR_GameModeCleanSweep : SCR_BaseGameMode
 	void InitializeServer()
 	{
 		m_AttackWP = AIWaypoint.Cast(GetWorld().FindEntityByName("WP1"));
-		m_aGroups = new ref array<SCR_AIGroup>;
-		m_aPlayerSpawnPoints = new ref array<SCR_SpawnPoint>;
-		m_aEnemySpawnPoints = new ref array<SCR_SpawnPoint>;
+		m_aGroups = new array<SCR_AIGroup>;
+		m_aPlayerSpawnPoints = new array<SCR_SpawnPoint>;
+		m_aEnemySpawnPoints = new array<SCR_SpawnPoint>;
 	}
 	
 	//------------------------------------------------------------------------------------------------

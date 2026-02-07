@@ -1,10 +1,10 @@
 class SCR_HitZoneStateSignal
 {
-	ref array<ref ScriptedHitZone> m_aScriptedHitZones = {};	
+	ref array<ref SCR_HitZone> m_aScriptedHitZones = {};	
 	int m_iSignalIdx;
 	
 	//------------------------------------------------------------------------------------------------
-	bool RegisterSignal(SCR_HitZoneContainerComponent hitZoneContainerComponent, SCR_HitZoneStateSignalData hitZoneStateSignalData, SignalsManagerComponent signalsManagerComponent)
+	bool RegisterSignal(SCR_DamageManagerComponent hitZoneContainerComponent, SCR_HitZoneStateSignalData hitZoneStateSignalData, SignalsManagerComponent signalsManagerComponent)
 	{	
 		array<string> hitZoneNames = hitZoneStateSignalData.m_aHitZoneNames;
 		if (!hitZoneNames || hitZoneNames.Count() == 0)
@@ -16,12 +16,12 @@ class SCR_HitZoneStateSignal
 		foreach (string hitZoneName : hitZoneNames) 
 		{
 			HitZone hitZone = hitZoneContainerComponent.GetHitZoneByName(hitZoneName);
-			ScriptedHitZone scriptedHitZone = ScriptedHitZone.Cast(hitZone);
-			if (!scriptedHitZone)
+			SCR_HitZone hitzone = SCR_HitZone.Cast(hitZone);
+			if (!hitzone)
 				continue;
 			
-			scriptedHitZone.GetOnDamageStateChanged().Insert(OnStateChanged);
-			m_aScriptedHitZones.Insert(scriptedHitZone);
+			hitzone.GetOnDamageStateChanged().Insert(OnStateChanged);
+			m_aScriptedHitZones.Insert(hitzone);
 		}
 		
 		if (m_aScriptedHitZones.Count() == 0)
@@ -45,9 +45,9 @@ class SCR_HitZoneStateSignal
 	//------------------------------------------------------------------------------------------------
 	void UnregisterSignal()
 	{		
-		foreach(ScriptedHitZone scriptedHitZone : m_aScriptedHitZones)
+		foreach(SCR_HitZone hitzone : m_aScriptedHitZones)
 		{
-			scriptedHitZone.GetOnDamageStateChanged().Remove(OnStateChanged);
+			hitzone.GetOnDamageStateChanged().Remove(OnStateChanged);
 		}
 	}
 	
@@ -56,9 +56,9 @@ class SCR_HitZoneStateSignal
 	{
 		int max;
 		
-		foreach(ScriptedHitZone scriptedHitZone : m_aScriptedHitZones)
+		foreach(SCR_HitZone hitzone : m_aScriptedHitZones)
 		{	
-			int state = DamageStateToSignalValue(scriptedHitZone.GetDamageState());
+			int state = DamageStateToSignalValue(hitzone.GetDamageState());
 			if (state > max)
 				max = state;
 		}

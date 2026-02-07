@@ -1,59 +1,77 @@
 [ComponentEditorProps(category: "GameScripted/Editor (Editables)", description: "", icon: "WBData/ComponentEditorProps/componentEditor.png")]
-class SCR_EditableGroupComponentClass: SCR_EditableEntityComponentClass
+class SCR_EditableGroupComponentClass : SCR_EditableEntityComponentClass
 {
+	//------------------------------------------------------------------------------------------------
 	static override bool GetEntitySourceBudgetCost(IEntityComponentSource editableEntitySource, out notnull array<ref SCR_EntityBudgetValue> budgetValues)
 	{
 		// Avoid fallback entityType cost
 		return true;
 	}
-};
+	
+	//------------------------------------------------------------------------------------------------
+	//! Use when you need to get a set budget values for the group and don't want to relay on default logic where AI budget is deducted by individually spawned AI.
+	static bool GetGroupSourceBudgetCost(IEntityComponentSource editableEntitySource, out notnull array<ref SCR_EntityBudgetValue> budgetValues)
+	{
+		if (!editableEntitySource)
+			return false;
+		
+		SCR_EditableGroupUIInfo editableEntityUIInfo = SCR_EditableGroupUIInfo.Cast(SCR_EditableGroupComponentClass.GetInfo(editableEntitySource));
+		if (editableEntityUIInfo)
+			return editableEntityUIInfo.GetGroupBudgetCost(budgetValues);
+		
+		return !budgetValues.IsEmpty();
+	}
+}
 
-/** @ingroup Editable_Entities
-*/
+//! @ingroup Editable_Entities
 
-/*!
-Special configuration for editable group.
-*/
+//! Special configuration for editable group.
 class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 {	
 	protected SCR_AIGroup m_Group;
 
 	[RplProp(onRplName: "OnLeaderIdChanged")]
 	protected RplId m_LeaderId;
+
 	protected SCR_EditableEntityComponent m_Leader;
 	protected ref SCR_EditableGroupUIInfo m_GroupInfo;
-	protected ref ScriptInvoker Event_OnUIRefresh = new ref ScriptInvoker;
-	
+	protected ref ScriptInvoker Event_OnUIRefresh = new ScriptInvoker;
+
 	//~ Authority only, Forces spawned characters to be added to a specific vehicle position and will delete it if failed
 	protected ref array<ECompartmentType> m_aForceSpawnVehicleCompartments;
-	
+
 	protected SCR_PlacingEditorComponent m_PlacedEditorComponent;
 
-	/*
-	protected void OnEmpty()
-	{
-	}
-	*/
+	//------------------------------------------------------------------------------------------------
+//	protected void OnEmpty()
+//	{
+//	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void OnAgentAdded(AIAgent child)
 	{
 		if (!child)
 			return;
-		
+
 		//--- Add newly joined soldier to group's layer
 		SCR_EditableEntityComponent editableChild = SCR_EditableEntityComponent.GetEditableEntity(child.GetControlledEntity());
 		if (editableChild)
 			editableChild.SetParentEntity(this);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnAgentRemoved(SCR_AIGroup group, AIAgent child)
 	{
 		if (!child)
 			return;
-		
+
 		//--- Remove the soldier who left from group's layer (only if the soldier is still this group's child)
 		SCR_EditableEntityComponent editableChild = SCR_EditableEntityComponent.GetEditableEntity(child.GetControlledEntity());
 		if (editableChild && editableChild.GetParentEntity() == this)
 			editableChild.SetParentEntity(null);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnLeaderChanged(AIAgent currentLeader, AIAgent prevLeader)
 	{
 		if (!currentLeader)
@@ -69,14 +87,20 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 			Refresh(); //--- Make the icon appear instantly
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnCurrentWaypointChanged(AIWaypoint currentWP, AIWaypoint prevWP)
 	{
 		ReindexWaypoints();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnWaypointCompleted(AIWaypoint wp)
 	{
 		ReindexWaypoints();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnWaypointAdded(AIWaypoint wp)
 	{
 		SCR_EditableWaypointComponent waypoint = SCR_EditableWaypointComponent.Cast(SCR_EditableEntityComponent.GetEditableEntity(wp));
@@ -86,17 +110,19 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 		}
 		ReindexWaypoints();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnWaypointRemoved(AIWaypoint wp)
 	{
 		//--- Delete waypoints which were not assigned to another group
 		SCR_EditableWaypointComponent waypoint = SCR_EditableWaypointComponent.Cast(SCR_EditableEntityComponent.GetEditableEntity(wp));
 		if (waypoint && waypoint.GetParentEntity() == this)
-		{
 			waypoint.Delete();
-		}
+
 		ReindexWaypoints();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void ReindexWaypoints()
 	{
 		int index = 1;
@@ -129,13 +155,9 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 		
 		//--- Show warning when the group mixes editable and non-editable waypoints. The latter will not be visible in the editor, potentially causing confusion.
 		if (hasNull)
-		{
 			Log("Group contains null waypoints!", true, LogLevel.WARNING);
-		}
 		else if (!waypoints.IsEmpty() && hasNonEditable)
-		{
 			Log("Group has a mix of editable and non-editable waypoints. Please use only one of those!", true, LogLevel.WARNING);
-		}
 		
 		SCR_EditableWaypointComponent prevWaypoint;
 		for (int i = 0, count = waypoints.Count(); i < count; i++)
@@ -146,11 +168,14 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 		}
 	}	
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnLeaderIdChanged()
 	{
 		//--- Retrieve new leader from RplID
 		SetLeader(SCR_EditableEntityComponent.Cast(Replication.FindItem(m_LeaderId)));
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void SetLeader(SCR_EditableEntityComponent leader)
 	{
 		if (leader)
@@ -160,6 +185,7 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnFactionChanged(Faction faction)
 	{
 		Event_OnUIRefresh.Invoke();
@@ -175,6 +201,8 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 			}
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnIdentityChange(SCR_MilitarySymbol symbol, LocalizedString name)
 	{
 		//--- Create UI info for group instance, so we can change its symbol
@@ -189,20 +217,22 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 		
 		Event_OnUIRefresh.Invoke();
 	}
-	/*!
-	Get ai group component, server only
-	\return m_Group
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get ai group component, server only
+	//! \return m_Group
 	SCR_AIGroup GetAIGroupComponent()
 	{
 		return m_Group;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override ScriptInvoker GetOnUIRefresh()
 	{
 		return Event_OnUIRefresh;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override Faction GetFaction()
 	{
 		Faction faction;
@@ -215,35 +245,33 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 		
 		return faction;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override SCR_EditableEntityComponent GetAIGroup()
 	{
 		return this;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override SCR_EditableEntityComponent GetAIEntity()
 	{
 		return m_Leader;
 	}	
-	/*!
-	Get number of group members.
-	\return Number of group members
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get number of group members.
+	//! \return Number of group members
 	int GetSize()
 	{
-		int size = 0;
-		if (m_Entities)
-		{
-			foreach (SCR_EditableEntityComponent child: m_Entities)
-			{
-				if (child.GetEntityType() == EEditableEntityType.CHARACTER)
-					size++;
-			}
-		}
-		return size;
+		if (!m_Group)
+			return 0;
+
+		return m_Group.GetPlayerAndAgentCount();
 	}
-	/*!
-	Get count of all waypoints of this group
-	\return Number of waypoints
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get count of all waypoints of this group
+	//! \return Number of waypoints
 	int GetWaypointCount()
 	{
 		int count = 0;
@@ -261,15 +289,15 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 		
 		return count;
 	}
-	/*!
-	Remove all waypoints from the group.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Remove all waypoints from the group.
 	void ClearWaypoints()
 	{
 		if (!m_Group)
 			return;
 		
-		array<AIWaypoint> aiWaypoints = new array<AIWaypoint>;
+		array<AIWaypoint> aiWaypoints = {};
 		for (int i = 0, count = m_Group.GetWaypoints(aiWaypoints); i < count; i++)
 		{
 			SCR_EditableWaypointComponent waypoint = SCR_EditableWaypointComponent.Cast(SCR_EditableEntityComponent.GetEditableEntity(aiWaypoints[i]));
@@ -285,17 +313,82 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override bool GetEntityBudgetCost(out notnull array<ref SCR_EntityBudgetValue> outBudgets, IEntity owner = null)
 	{
-		// Return empty cost array, avoid fallback entityType cost
 		return true;
 	}
 	
+	// Will have the correct value only on Authority
+	//------------------------------------------------------------------------------------------------
+	void GetRuntimeBudgetCost(out notnull array<ref SCR_EntityBudgetValue> outBudgets)
+	{
+		if (!m_Group)
+			return;
+
+		array<AIAgent> agentsInGroup = {};
+		SCR_EditableCharacterComponent editableCharacter;
+		m_Group.GetAgents(agentsInGroup);
+
+		foreach (AIAgent agent : agentsInGroup)
+		{
+			IEntity controlledEntity = agent.GetControlledEntity();
+
+			if (!controlledEntity)
+				continue;
+
+			editableCharacter = SCR_EditableCharacterComponent.Cast(controlledEntity.FindComponent(SCR_EditableCharacterComponent));
+
+			array<ref SCR_EntityBudgetValue> characterBudget = {};
+			editableCharacter.GetEntityBudgetCost(characterBudget);
+
+			SCR_EntityBudgetValue.MergeBudgetCosts(outBudgets, characterBudget);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void GetPrefabBudgetCost(out notnull array<ref SCR_EntityBudgetValue> outBudgets)
+	{
+		SCR_AIGroup aiGroup = SCR_AIGroup.Cast(GetOwner());
+		if (!aiGroup)
+			return;
+		
+		array<ref SCR_EntityBudgetValue> groupBudgetCosts = {};
+		ResourceName resName = GetOwner().GetPrefabData().GetPrefabName();
+		IEntityComponentSource componentSourceC;
+		
+		Resource prefabResource = Resource.Load(resName);
+		if (!prefabResource)
+			return;
+		
+		BaseResourceObject baseResourceC = prefabResource.GetResource();
+		if (!baseResourceC)
+			return;
+
+		IEntitySource entitySourceC = baseResourceC.ToEntitySource();
+		if (!entitySourceC)
+			return;
+
+		for (int i = 0, count = entitySourceC.GetComponentCount(); i < count; i++)
+		{
+			componentSourceC = entitySourceC.GetComponent(i);
+			if (componentSourceC.GetClassName() == ((typename)SCR_EditableGroupComponent).ToString())
+			{
+				array<ref SCR_EntityBudgetValue> gropBudgetCosts = {};
+				SCR_EditableGroupComponentClass.GetGroupSourceBudgetCost(componentSourceC, gropBudgetCosts);
+
+				SCR_EntityBudgetValue.MergeBudgetCosts(outBudgets, gropBudgetCosts);
+			}
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool CanDuplicate(out notnull set<SCR_EditableEntityComponent> outRecipients)
 	{
 		return false;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override SCR_EditableEntityComponent GetChild(int index)
 	{
 		if (!m_Leader)
@@ -308,6 +401,7 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 			return m_Entities[index]; //--- After leader, use default method
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override bool GetPos(out vector pos)
 	{
 		if (!m_Leader)
@@ -349,7 +443,19 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 		
 		return true;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	void HideIfEmpty()
+	{
+		RplComponent rpl = GetRplComponent();
+		if (!m_Group || !rpl || rpl.IsProxy()) // Only the Authority has the proper data needed to determine visibility
+			return;
+
+		bool isGroupEmpty = m_Group.GetAgentsCount() == 0;
+		SetVisible(!isGroupEmpty);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	override bool Destroy()
 	{
@@ -368,17 +474,18 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 		
 		return isDestroyed;
 	}
-	/*
-	override bool CanSetParent(SCR_EditableEntityComponent parentEntity)
-	{
-		if (!parentEntity)
-			return true;
-		
-		EEditableEntityType type = parentEntity.GetEntityType();
-		return super.CanSetParent(parentEntity) || type == EEditableEntityType.CHARACTER || type == EEditableEntityType.GROUP || type == EEditableEntityType.VEHICLE;             
-	}
-	*/
-	
+
+	//------------------------------------------------------------------------------------------------
+//	override bool CanSetParent(SCR_EditableEntityComponent parentEntity)
+//	{
+//		if (!parentEntity)
+//			return true;
+//
+//		EEditableEntityType type = parentEntity.GetEntityType();
+//		return super.CanSetParent(parentEntity) || type == EEditableEntityType.CHARACTER || type == EEditableEntityType.GROUP || type == EEditableEntityType.VEHICLE;
+//	}
+
+	//------------------------------------------------------------------------------------------------
 	//~ Authority Only. When spawned will force characters of group into vehicle position
 	override void ForceVehicleCompartments(notnull array<ECompartmentType> forceVehicleCompartments)
 	{
@@ -390,7 +497,8 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 		foreach (ECompartmentType compartment: forceVehicleCompartments)
 			m_aForceSpawnVehicleCompartments.Insert(compartment);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	override void OnParentEntityChanged(SCR_EditableEntityComponent parentEntity, SCR_EditableEntityComponent parentEntityPrev, bool changedByUser)
 	{
 		EEditableEntityType parentType;
@@ -466,6 +574,7 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] group
 	void OnAllMembersSpawned(SCR_AIGroup group)
 	{
 		if (!m_PlacedEditorComponent || !m_Group)
@@ -484,6 +593,7 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 			aiBudget.UnreserveBudget(m_Group.GetNumberOfMembersToSpawn() + 1);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void OnChildEntityChanged(SCR_EditableEntityComponent child, bool isAdded)
 	{
 		if (!IsServer())
@@ -528,6 +638,7 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 				
 				break;
 			}
+
 			case EEditableEntityType.WAYPOINT:
 			{
 				AIWaypoint waypoint = AIWaypoint.Cast(child.GetOwner());
@@ -551,13 +662,15 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 			}
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_DISABLE))
 			return;
-		
+
 		super.OnPostInit(owner);
-		
+
 		if (m_Group)
 		{
 			//--- Track group's events (no need to remove them, the group gets detsroyed when the component does)
@@ -572,15 +685,21 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 				m_Group.GetOnWaypointAdded().Insert(OnWaypointAdded);
 				m_Group.GetOnWaypointRemoved().Insert(OnWaypointRemoved);
 			}
-			
+
 			//On faction changed
 			m_Group.GetOnFactionChanged().Insert(OnFactionChanged);
-			
+
 			SCR_GroupIdentityComponent groupIdentity = SCR_GroupIdentityComponent.Cast(owner.FindComponent(SCR_GroupIdentityComponent));
 			if (groupIdentity)
 				groupIdentity.GetOnIdentityChange().Insert(OnIdentityChange);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_EditableGroupComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		m_Group = SCR_AIGroup.Cast(ent);
@@ -593,4 +712,4 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 		if (SCR_Global.IsEditMode(ent) && SCR_EditableGroupComponentClass.GetEntityType(src) != EEditableEntityType.GROUP)
 			Print("SCR_EditableGroupComponent entity type must be set to GROUP!", LogLevel.ERROR);
 	}
-};
+}

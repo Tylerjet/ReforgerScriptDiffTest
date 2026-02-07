@@ -41,14 +41,14 @@ class SCR_AIDebugVisualization : GenericEntity
 		
 		if (!inst || !entity || message == string.Empty)
 			return;
-		
+
 		if (!color)
-			color = Color.White;
+			color = Color.FromInt(Color.WHITE);
 
 		inst.RemoveVisualization(entity);
 		
 		// Create element
-		SCR_AIMessageVisualization visualization = new SCR_AIMessageVisualization(entity, message, showTime, color, fontSize);
+		SCR_AIMessageVisualization visualization = new SCR_AIMessageVisualization(entity, message, showTime, Color.FromInt(color.PackToInt()), fontSize);
 		inst.m_aElements.Insert(visualization);
 	}
 	

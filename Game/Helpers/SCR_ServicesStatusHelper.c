@@ -55,11 +55,6 @@ class SCR_ServicesStatusHelper
 	protected static ref ScriptInvokerCommStatus s_OnCommStatusCheckFinished;
 	protected static ref ScriptInvokerVoid s_OnCommStatusCheckStart;
 	
-	// Connection related icons
-	static const string ICON_SERVICES_ISSUES = "connection-issues";
-	static const string ICON_CONNECTION = "connection";
-	static const string ICON_DISCONNECTION = "disconnection";
-	
 	//------------------------------------------------------------------------------------------------
 	static bool IsBackendEnabled()
 	{
@@ -367,67 +362,6 @@ class SCR_ServicesStatusHelper
 	static bool IsBackendConnectionAvailable()
 	{
 		return s_eLastReceivedCommStatus != SCR_ECommStatus.NOT_EXECUTED && s_eLastReceivedCommStatus != SCR_ECommStatus.RUNNING && IsBackendReady();
-	}
-	
-	// Input Buttons helper methods
-	//------------------------------------------------------------------------------------------------
-	// Updates the button based on the state of services
-	static bool SetConnectionButtonEnabled(SCR_InputButtonComponent button, string serviceName, bool forceDisabled = false, bool animate = true)
-	{
-		if (!button)
-			return false;
-
-		bool serviceActive = IsServiceActive(serviceName);
-		bool enabled = serviceActive && !forceDisabled;
-		button.SetEnabled(enabled, animate);
-		
-		if (forceDisabled && serviceActive)
-		{
-			button.ResetTexture();
-			return true;
-		}
-		
-		SetConnectionButtonTexture(button, enabled);
-		
-		return true;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	// Forces the button into the desired state irrelevant of services
-	static bool ForceConnectionButtonEnabled(SCR_InputButtonComponent button, bool enabled, bool animate = true)
-	{
-		if (!button)
-			return false;
-		
-		button.SetEnabled(enabled, animate);
-		SetConnectionButtonTexture(button, enabled);
-		
-		return true;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	static void SetConnectionButtonTexture(SCR_InputButtonComponent button, bool enabled)
-	{
-		if (!button)
-			return;
-		
-		if (enabled)
-		{
-			button.ResetTexture();
-			return;
-		}
-
-		string icon = ICON_SERVICES_ISSUES;
-		Color color = UIColors.WARNING;
-		
-		// No connection
-		if (GetLastReceivedCommStatus() == SCR_ECommStatus.FAILED)
-		{
-			icon = ICON_DISCONNECTION;
-			color = UIColors.HIGHLIGHTED;
-		}
-		
-		button.SetTexture(UIConstants.ICONS_IMAGE_SET, icon, color);
 	}
 	
 	//------------------------------------------------------------------------------------------------

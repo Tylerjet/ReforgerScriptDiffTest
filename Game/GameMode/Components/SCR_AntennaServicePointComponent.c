@@ -1,6 +1,6 @@
 class SCR_AntennaServicePointComponentClass : SCR_ServicePointComponentClass
 {
-};
+}
 
 class SCR_AntennaServicePointComponent : SCR_ServicePointComponent
 {
@@ -20,13 +20,14 @@ class SCR_AntennaServicePointComponent : SCR_ServicePointComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] faction
 	void ChangeRadioSettings(notnull SCR_Faction faction)
 	{
 		if (!m_RadioControl || m_RadioControl.TransceiversCount() == 0)
 			return;
 		
 		BaseTransceiver tsv = BaseTransceiver.Cast(m_RadioControl.GetTransceiver(0));
-		
 		if (!tsv)
 			return;
 		
@@ -52,4 +53,4 @@ class SCR_AntennaServicePointComponent : SCR_ServicePointComponent
 		if (!m_RadioControl)
 			Print("SCR_AntennaServicePointComponent: Owner is missing BaseRadioComponent!", LogLevel.ERROR);
 	}
-};
+}

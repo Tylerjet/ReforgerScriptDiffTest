@@ -10,8 +10,10 @@ class SCR_TutorialNavigation4 : SCR_BaseCampaignTutorialArlandStage
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
 	{	
-		m_fDuration = 20;
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		
+		PlaySoundSystem("Navigation_MapTools");
 		
 		Widget toolMenu = GetGame().GetWorkspace().FindAnyWidget("ToolMenu");
 		
@@ -22,7 +24,7 @@ class SCR_TutorialNavigation4 : SCR_BaseCampaignTutorialArlandStage
 	//------------------------------------------------------------------------------------------------
 	override protected bool GetIsFinished()
 	{
-		return false;
+		return !m_TutorialComponent.GetVoiceSystem().IsPlaying();
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -1,14 +1,10 @@
-//------------------------------------------------------------------------------------------------
 class SCR_UITaskAssignComponent : ScriptedWidgetComponent
 {
 	protected int m_iTaskID = SCR_BaseTask.INVALID_TASK_ID;
 	protected SCR_ETaskButtonActions m_EAction;
 	
-	//*********************//
-	//PUBLIC MEMBER METHODS//
-	//*********************//
-	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] action
 	void SetAction(SCR_ETaskButtonActions action)
 	{
 		m_EAction = action;
@@ -37,7 +33,6 @@ class SCR_UITaskAssignComponent : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! An event called when the button, this component is attached to, is clicked
 	override bool OnClick(Widget w, int x, int y, int button)
 	{
 		if (m_iTaskID == -1)
@@ -55,16 +50,18 @@ class SCR_UITaskAssignComponent : ScriptedWidgetComponent
 		switch (m_EAction)
 		{
 			case SCR_ETaskButtonActions.ASSIGN_TASK:
-			taskNetworkComponent.RequestAssignment(m_iTaskID);
-			break;
+				taskNetworkComponent.RequestAssignment(m_iTaskID);
+				break;
+
 			case SCR_ETaskButtonActions.ABANDON_TASK:
-			taskNetworkComponent.AbandonTask(m_iTaskID);
-			break;
+				taskNetworkComponent.AbandonTask(m_iTaskID);
+				break;
+
 			case SCR_ETaskButtonActions.CANCEL_TASK:
-			taskNetworkComponent.CancelTask(m_iTaskID);
-			break;
+				taskNetworkComponent.CancelTask(m_iTaskID);
+				break;
 		}
 		
 		return false;
 	}
-};
+}

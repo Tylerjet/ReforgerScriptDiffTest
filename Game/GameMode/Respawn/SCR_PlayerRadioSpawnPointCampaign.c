@@ -1,8 +1,9 @@
 [EntityEditorProps(category: "GameScripted/GameMode", description: "")]
-class SCR_PlayerRadioSpawnPointCampaignClass: SCR_PlayerRadioSpawnPointClass
+class SCR_PlayerRadioSpawnPointCampaignClass : SCR_PlayerRadioSpawnPointClass
 {
-};
-class SCR_PlayerRadioSpawnPointCampaign: SCR_PlayerRadioSpawnPoint
+}
+
+class SCR_PlayerRadioSpawnPointCampaign : SCR_PlayerRadioSpawnPoint
 {
 	//------------------------------------------------------------------------------------------------
 	override void OnItemAdded(IEntity item,BaseInventoryStorageComponent storageOwner)
@@ -17,20 +18,23 @@ class SCR_PlayerRadioSpawnPointCampaign: SCR_PlayerRadioSpawnPoint
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	Faction GetCachedFaction()
 	{
 		return m_CachedFaction;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void ActivateSpawnPointPublic()
 	{
 		super.ActivateSpawnPoint();
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void DeactivateSpawnPointPublic()
 	{
 		super.DeactivateSpawnPoint();
 	}
-};
+}

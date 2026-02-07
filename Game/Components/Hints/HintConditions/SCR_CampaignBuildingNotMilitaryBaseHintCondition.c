@@ -1,5 +1,5 @@
 [BaseContainerProps(), SCR_BaseContainerHintCondition()]
-class SCR_CampaignBuildingNotMilitaryBaseHintCondition: SCR_BaseEditorHintCondition
+class SCR_CampaignBuildingNotMilitaryBaseHintCondition : SCR_BaseEditorHintCondition
 {	
 	//------------------------------------------------------------------------------------------------
 	override protected void OnInitConditionEditor(SCR_EditorManagerEntity editorManager)
@@ -34,6 +34,5 @@ class SCR_CampaignBuildingNotMilitaryBaseHintCondition: SCR_BaseEditorHintCondit
 			return false;
 		
 		return providerComponent.CanRegisterAtMilitaryBase();
-
 	}
-};
+}

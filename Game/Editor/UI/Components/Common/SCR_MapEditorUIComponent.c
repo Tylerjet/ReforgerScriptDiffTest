@@ -16,12 +16,14 @@ class SCR_MapEditorUIComponent : SCR_BaseEditorUIComponent
 	protected ref MapConfiguration m_MapConfigEditor;
 	protected bool m_bIsFirstTimeOpened = true;
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] show
+	//! \param[in] mapConfigPrefab
 	void ToggleMap(bool show, ResourceName mapConfigPrefab)
 	{
 		if (mapConfigPrefab.IsEmpty())
-		{
 			return;
-		}
 		
 		if (show)
 		{
@@ -34,11 +36,10 @@ class SCR_MapEditorUIComponent : SCR_BaseEditorUIComponent
 		}
 		
 		if (m_EditorCamera)
-		{
 			m_EditorCamera.SetInputEnabled(!show);
-		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnMapInit(MapConfiguration config)
 	{
 		if (IsConfigEditor(config))
@@ -47,6 +48,7 @@ class SCR_MapEditorUIComponent : SCR_BaseEditorUIComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnMapOpen(MapConfiguration config)
 	{
 		if (IsConfigEditor(config))
@@ -59,24 +61,28 @@ class SCR_MapEditorUIComponent : SCR_BaseEditorUIComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnMapClose(MapConfiguration config)
 	{
 		if (IsConfigEditor(config))
-		{
 			m_MapWidget.SetVisible(false);
-		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	bool IsEditorMapOpen()
 	{
 		return m_MapEntity && m_MapEntity.IsOpen() && IsConfigEditor(m_MapEntity.GetMapConfig());
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected bool IsConfigEditor(MapConfiguration config)
 	{
 		return config && config.MapEntityMode == EMapEntityMode.EDITOR;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnEditorModeChange(SCR_EditorModeEntity newModeEntity, SCR_EditorModeEntity oldModeEntity)
 	{
 		SCR_CameraEditorComponent cameraComponent;
@@ -84,10 +90,9 @@ class SCR_MapEditorUIComponent : SCR_BaseEditorUIComponent
 		{
 			cameraComponent = SCR_CameraEditorComponent.Cast(oldModeEntity.FindComponent(SCR_CameraEditorComponent));
 			if (cameraComponent)
-			{
 				cameraComponent.GetOnCameraCreate().Remove(OnEditorCameraCreate);
-			}
 		}
+
 		if (newModeEntity)
 		{
 			cameraComponent = SCR_CameraEditorComponent.Cast(newModeEntity.FindComponent(SCR_CameraEditorComponent));
@@ -96,49 +101,44 @@ class SCR_MapEditorUIComponent : SCR_BaseEditorUIComponent
 				cameraComponent.GetOnCameraCreate().Insert(OnEditorCameraCreate);
 				OnEditorCameraCreate(cameraComponent.GetCamera());
 			}
+
 			SetCameraIconColor(newModeEntity.GetModeType());
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void SetCameraIconColor(EEditorMode mode)
 	{
 		if (!m_EditorCore)
-		{
 			return;
-		}
 		
 		SCR_EditorModeUIInfo modeUiInfo = m_EditorCore.GetDefaultModeInfo(mode);
 		if (modeUiInfo)
-		{
 			m_CameraIconColor = modeUiInfo.GetModeColor();
-		}
 		else if (m_EditorCore.GetDefaultModeInfo(EEditorMode.EDIT))
-		{
 			m_CameraIconColor = m_EditorCore.GetDefaultModeInfo(EEditorMode.EDIT).GetModeColor();
-		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnEditorCameraCreate(SCR_ManualCamera editorCamera)
 	{
 		if (!m_MapEntity || !editorCamera)
-		{
 			return;
-		}
 		
 		m_EditorCamera = editorCamera;		
 		
 		if (m_EditorCamera)
-		{
 			m_EditorCamera.SetInputEnabled(!IsEditorMapOpen());
-		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnMenuUpdate()
 	{
 		if (IsEditorMapOpen())
 			m_InputManager.ActivateContext("MapContext");
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttachedScripted(Widget w)
 	{
 		super.HandlerAttachedScripted(w);
@@ -147,10 +147,12 @@ class SCR_MapEditorUIComponent : SCR_BaseEditorUIComponent
 			return;
 		
 		m_InputManager = GetGame().GetInputManager();
-		if (!m_InputManager) return;
+		if (!m_InputManager)
+			return;
 		
 		m_MapEntity = SCR_MapEntity.GetMapInstance();
-		if (!m_MapEntity) return;
+		if (!m_MapEntity)
+			return;
 		
 		m_MapEntity.GetOnMapInit().Insert(OnMapInit);
 		m_MapEntity.GetOnMapOpen().Insert(OnMapOpen);
@@ -178,20 +180,18 @@ class SCR_MapEditorUIComponent : SCR_BaseEditorUIComponent
 		OnEditorModeChange(m_EditorManager.GetCurrentModeEntity(), null);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		if (SCR_Global.IsEditMode())
 			return;
+
 		super.HandlerDeattached(w);
 		
 		if (IsEditorMapOpen())
-		{
 			ToggleMap(false, m_EditorMapConfigPrefab);
-		}
 		
 		if (GetMenu())
-		{
 			GetMenu().GetOnMenuUpdate().Remove(OnMenuUpdate);
-		}
 	}
-};
+}

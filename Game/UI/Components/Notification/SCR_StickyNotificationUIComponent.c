@@ -1,4 +1,4 @@
-class SCR_StickyNotificationUIComponent: ScriptedWidgetComponent
+class SCR_StickyNotificationUIComponent : ScriptedWidgetComponent
 {
 	[Attribute("StickyNotificationMessage")]
 	protected string m_sTextName;
@@ -19,8 +19,7 @@ class SCR_StickyNotificationUIComponent: ScriptedWidgetComponent
 	protected TextWidget m_Text;
 	protected Widget m_OptionalMessageLayout;
 	
-	protected ref ScriptInvoker Event_OnStickyActiveChanged = new ref ScriptInvoker;
-	
+	protected ref ScriptInvoker Event_OnStickyActiveChanged = new ScriptInvoker();
 	
 	protected void SetStickyActive(bool newActive, bool fade = true)
 	{
@@ -43,33 +42,34 @@ class SCR_StickyNotificationUIComponent: ScriptedWidgetComponent
 			SetVisible(newActive);
 	}
 	
-	/*!
-	Get if this sticky notification is active
-	\return is active or not
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get if this sticky notification is active
+	//! \return is active or not
+	//!
 	bool isStickyActive()
 	{
 		return m_bStickyNotificationActive;
 	}
 	
-	/*!
-	Get if sticky notification influences list size. If true then the Notification log message history will decrease if a sticky notification is active
-	\return if influences or not
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get if sticky notification influences list size. If true then the Notification log message history will decrease if a sticky notification is active
+	//! \return if influences or not
+	//!
 	bool InfluenceNotificationListSize()
 	{
 		return m_bInfluenceNotificationListSize;
 	}
 	
-	/*!
-	Returns scriptinvoker on sticky notification active changed
-	\return Event_OnStickyActiveChanged on notification active changed
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Returns scriptinvoker on sticky notification active changed
+	//! \return Event_OnStickyActiveChanged on notification active changed
+	//!
 	ScriptInvoker GetOnStickyActiveChanged()
 	{
 		return Event_OnStickyActiveChanged;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void SetVisible(bool visible)
 	{
 		if (visible)
@@ -80,6 +80,7 @@ class SCR_StickyNotificationUIComponent: ScriptedWidgetComponent
 		m_Root.SetVisible(visible);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void Fade(bool fadeIn)
 	{				
 		if (fadeIn)
@@ -94,10 +95,13 @@ class SCR_StickyNotificationUIComponent: ScriptedWidgetComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnButton()
 	{
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] notificationLog
 	void OnInit(SCR_NotificationsLogComponent notificationLog)
 	{		
 		if (SCR_Global.IsEditMode() || !m_Root) 
@@ -121,22 +125,26 @@ class SCR_StickyNotificationUIComponent: ScriptedWidgetComponent
 		editorManager.GetOnClosed().Insert(EditorClosed);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnDestroy()
 	{
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void EditorOpened()
 	{
 		if (m_Root)
 			m_Root.SetEnabled(true);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void EditorClosed()
 	{
 		if (m_Root)
 			m_Root.SetEnabled(false);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		if (SCR_Global.IsEditMode()) 
@@ -158,6 +166,7 @@ class SCR_StickyNotificationUIComponent: ScriptedWidgetComponent
 			onPressed.Insert(OnButton);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		OnDestroy();
@@ -165,7 +174,6 @@ class SCR_StickyNotificationUIComponent: ScriptedWidgetComponent
 		if (m_NotificationsLog)
 		{
 			SCR_EditorManagerEntity editorManager = m_NotificationsLog.GetEditorManager();
-			
 			if (editorManager)
 			{
 				editorManager.GetOnOpened().Remove(EditorOpened);
@@ -173,4 +181,4 @@ class SCR_StickyNotificationUIComponent: ScriptedWidgetComponent
 			}
 		}
 	}
-};
+}

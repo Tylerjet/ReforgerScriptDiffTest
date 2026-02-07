@@ -18,14 +18,13 @@ class SCR_MenuHelper
 	protected static ref ScriptInvokerDialog m_OnDialogOpen;
 	protected static ref ScriptInvokerDialog m_OnDialogClose;
 	protected static ref ScriptInvokerMenu m_OnMenuOpen;
+	protected static ref ScriptInvokerMenu m_OnMenuOpened;
 	protected static ref ScriptInvokerMenu m_OnMenuClose;
 	protected static ref ScriptInvokerMenu m_OnMenuFocusGained;
 	protected static ref ScriptInvokerMenu m_OnMenuFocusLost;
 	protected static ref ScriptInvokerMenu m_OnMenuShow;
 	protected static ref ScriptInvokerMenu m_OnMenuHide;
 	protected static ref ScriptInvokerMenu m_OnTabChange;
-	
-	protected static int s_iOpenedDialogs;
 
 	// ---- Invokers ----
 	//------------------------------------------------------------------------------------------------
@@ -62,6 +61,15 @@ class SCR_MenuHelper
 			m_OnMenuOpen = new ScriptInvokerMenu();
 
 		return m_OnMenuOpen;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static ScriptInvokerMenu GetOnMenuOpened()
+	{
+		if (!m_OnMenuOpened)
+			m_OnMenuOpened = new ScriptInvokerMenu();
+
+		return m_OnMenuOpened;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -127,7 +135,19 @@ class SCR_MenuHelper
 		if (m_OnActiveWidgetInteraction)
 			m_OnActiveWidgetInteraction.Invoke(isActive, delay);
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	//! NB: This will return false if the widget is in a DIALOG on top of the MENU!!!
+	static bool IsInTopMenu(notnull Widget componentRoot)
+	{
+		MenuManager menuManager = GetGame().GetMenuManager();
+		if (!menuManager)
+			return false;
+		
+		return menuManager.GetOwnerMenu(componentRoot) == menuManager.GetTopMenu();
+	}
+	
+	// -- Calls --
 	//------------------------------------------------------------------------------------------------
 	//! Methods to keep track of current dialogs.
 	//! The MenuManager does not keep track of dialogs: GetTopMenu() only returns the last menu opened with OpenMenu(), not those opened with OpenDialog()
@@ -135,8 +155,6 @@ class SCR_MenuHelper
 	//! Called by DialogUI
 	static void OnDialogOpen(DialogUI dialog)
 	{
-		s_iOpenedDialogs++;
-		
 		if (m_OnDialogOpen)
 			m_OnDialogOpen.Invoke(dialog);
 	}
@@ -145,8 +163,6 @@ class SCR_MenuHelper
 	//! Called by DialogUI.
 	static void OnDialogClose(DialogUI dialog)
 	{
-		s_iOpenedDialogs--;
-		
 		if (m_OnDialogClose)
 			m_OnDialogClose.Invoke(dialog);
 	}
@@ -158,6 +174,14 @@ class SCR_MenuHelper
 	{
 		if (m_OnMenuOpen)
 			m_OnMenuOpen.Invoke(menu);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Called by ChimeraMenuBase
+	static void OnMenuOpened(ChimeraMenuBase menu)
+	{
+		if (m_OnMenuOpened)
+			m_OnMenuOpened.Invoke(menu);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -206,12 +230,6 @@ class SCR_MenuHelper
 	{
 		if (m_OnTabChange)
 			m_OnTabChange.Invoke(menu);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	static bool IsAnyDialogOpen()
-	{
-		return s_iOpenedDialogs > 0;
 	}
 }
 

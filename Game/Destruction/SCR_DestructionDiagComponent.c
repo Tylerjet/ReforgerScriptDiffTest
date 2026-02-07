@@ -1,14 +1,12 @@
-//------------------------------------------------------------------------------------------------
 [EntityEditorProps(category: "GameScripted/Destruction")]
 class SCR_DestructionDiagComponentClass : ScriptComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_DestructionDiagComponent : ScriptComponent
 {
 #ifdef ENABLE_DIAG
-	protected const string DAMAGE_TYPE_NAMES[10] = {"TRUE", "COLLISION", "MELEE", "KINETIC", "FRAGMENTATION", "EXPLOSIVE", "INCENDIARY", "FIRE", "REGENERATION", "BLEEDING"};
+	protected const string DAMAGE_TYPE_NAMES[10] = { "TRUE", "COLLISION", "MELEE", "KINETIC", "FRAGMENTATION", "EXPLOSIVE", "INCENDIARY", "FIRE", "REGENERATION", "BLEEDING" };
 	protected ref array<IEntity> m_aToDamage = {};
 	
 	//------------------------------------------------------------------------------------------------
@@ -65,6 +63,8 @@ class SCR_DestructionDiagComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] params
 	void ShowDamageTypeMultipliers(TraceParam params)
 	{
 		SCR_DestructibleEntity destructibleEntity = SCR_DestructibleEntity.Cast(params.TraceEnt);
@@ -76,7 +76,7 @@ class SCR_DestructionDiagComponent : ScriptComponent
 			}
 		}
 		
-		SCR_DestructionBaseComponent destructionComponent = SCR_DestructionBaseComponent.Cast(params.TraceEnt.FindComponent(SCR_DestructionBaseComponent));
+		SCR_DestructionDamageManagerComponent destructionComponent = SCR_DestructionDamageManagerComponent.Cast(params.TraceEnt.FindComponent(SCR_DestructionDamageManagerComponent));
 		if (destructionComponent)
 		{
 			HitZone hitzone = destructionComponent.GetHitZone(params.ColliderName);
@@ -95,13 +95,15 @@ class SCR_DestructionDiagComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] params
+	//! \return
 	float GetDamageReduction(TraceParam params)
 	{
 		SCR_DestructibleEntity destructibleEntity = SCR_DestructibleEntity.Cast(params.TraceEnt);
 		if (destructibleEntity)
 			return destructibleEntity.GetDamageReduction();
 		
-		SCR_DestructionBaseComponent destructionComponent = SCR_DestructionBaseComponent.Cast(params.TraceEnt.FindComponent(SCR_DestructionBaseComponent));
+		SCR_DestructionDamageManagerComponent destructionComponent = SCR_DestructionDamageManagerComponent.Cast(params.TraceEnt.FindComponent(SCR_DestructionDamageManagerComponent));
 		if (destructionComponent)
 		{
 			HitZone hitZone = destructionComponent.GetHitZone(params.ColliderName);
@@ -118,13 +120,15 @@ class SCR_DestructionDiagComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] params
+	//! \return
 	float GetDamageThreshold(TraceParam params)
 	{
 		SCR_DestructibleEntity destructibleEntity = SCR_DestructibleEntity.Cast(params.TraceEnt);
 		if (destructibleEntity)
 			return destructibleEntity.GetDamageThreshold();
 		
-		SCR_DestructionBaseComponent destructionComponent = SCR_DestructionBaseComponent.Cast(params.TraceEnt.FindComponent(SCR_DestructionBaseComponent));
+		SCR_DestructionDamageManagerComponent destructionComponent = SCR_DestructionDamageManagerComponent.Cast(params.TraceEnt.FindComponent(SCR_DestructionDamageManagerComponent));
 		if (destructionComponent)
 		{
 			HitZone hitZone = destructionComponent.GetHitZone(params.ColliderName);
@@ -141,6 +145,7 @@ class SCR_DestructionDiagComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[out] mat
 	void GetCameraMat(out vector mat[4])
 	{
 		CameraManager cameraManager = GetGame().GetCameraManager();
@@ -155,6 +160,8 @@ class SCR_DestructionDiagComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] params
 	void TraceEntity(TraceParam params)
 	{
 		vector cameraMat[4];
@@ -170,6 +177,10 @@ class SCR_DestructionDiagComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] damageToDeal
+	//! \param[in] damageType
+	//! \param[in] params
 	void DealDamageUnderCursor(float damageToDeal, EDamageType damageType, notnull TraceParam params)
 	{
 		if (!params.TraceEnt)
@@ -179,13 +190,15 @@ class SCR_DestructionDiagComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] entity
+	//! \return
 	float GetHealth(IEntity entity)
 	{
 		SCR_DestructibleEntity destructibleEntity = SCR_DestructibleEntity.Cast(entity);
 		if (destructibleEntity)
 			return destructibleEntity.GetCurrentHealth();
 		
-		SCR_DestructionBaseComponent destructionComponent = SCR_DestructionBaseComponent.Cast(entity.FindComponent(SCR_DestructionBaseComponent));
+		SCR_DestructionDamageManagerComponent destructionComponent = SCR_DestructionDamageManagerComponent.Cast(entity.FindComponent(SCR_DestructionDamageManagerComponent));
 		if (destructionComponent)
 			return destructionComponent.GetHealth();
 		
@@ -193,6 +206,7 @@ class SCR_DestructionDiagComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] range
 	void SetOneHitPoint(float range)
 	{
 		vector cameraMat[4];
@@ -209,6 +223,11 @@ class SCR_DestructionDiagComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] entity
+	//! \param[in] damageToDeal
+	//! \param[in] damageType
+	//! \param[in] surfaceProperties
 	void DealDamage(IEntity entity, float damageToDeal, EDamageType damageType, SurfaceProperties surfaceProperties)
 	{
 		vector hitPosDirNorm[3];
@@ -217,12 +236,20 @@ class SCR_DestructionDiagComponent : ScriptComponent
 		if (destructibleEntity)
 			destructibleEntity.HandleDamage(damageType, damageToDeal, hitPosDirNorm);
 		
-		SCR_DestructionBaseComponent destructionComponent = SCR_DestructionBaseComponent.Cast(entity.FindComponent(SCR_DestructionBaseComponent));
+		SCR_DestructionDamageManagerComponent destructionComponent = SCR_DestructionDamageManagerComponent.Cast(entity.FindComponent(SCR_DestructionDamageManagerComponent));
 		if (destructionComponent)
-			destructionComponent.HandleDamage(damageType, damageToDeal, hitPosDirNorm, entity, null, null, surfaceProperties, -1, -1);
-	}
+		{
+			SCR_DamageContext damageContext = new SCR_DamageContext(damageType, damageToDeal, hitPosDirNorm, entity, null, null, surfaceProperties, -1, -1);
+			
+			destructionComponent.HandleDamage(damageContext);
+		}
+	}			
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] damageToDeal
+	//! \param[in] range
+	//! \param[in] damageType
 	void DealDamageRange(float damageToDeal, float range, EDamageType damageType)
 	{
 		vector cameraMat[4];
@@ -230,15 +257,18 @@ class SCR_DestructionDiagComponent : ScriptComponent
 		
 		GetGame().GetWorld().QueryEntitiesBySphere(cameraMat[3], range, AddEntity, FilterEntity);
 		
-		for (int i = m_aToDamage.Count() - 1; i >= 0; i--)
+		foreach (IEntity toDamage : m_aToDamage)
 		{
-			DealDamage(m_aToDamage[i], damageToDeal, damageType, null);
+			DealDamage(toDamage, damageToDeal, damageType, null);
 		}
 		
 		m_aToDamage.Clear();
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] e
+	//! \return
 	bool AddEntity(IEntity e)
 	{
 		m_aToDamage.Insert(e);
@@ -247,9 +277,12 @@ class SCR_DestructionDiagComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] e
+	//! \return
 	bool FilterEntity(IEntity e)
 	{
-		if (SCR_DestructibleEntity.Cast(e) || e.FindComponent(SCR_DestructionBaseComponent))
+		if (SCR_DestructibleEntity.Cast(e) || e.FindComponent(SCR_DestructionDamageManagerComponent))
 			return true;
 		
 		return false;

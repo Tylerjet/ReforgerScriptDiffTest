@@ -2,11 +2,6 @@ class MotorExhaustSystem: GameSystem
 {
 	protected ref array<SCR_MotorExhaustEffectGeneralComponent> m_MotorsComponents = {};
 	
-	protected override ESystemPoint GetSystemPoint()
-	{
-		return ESystemPoint.Frame;
-	}
-	
 	override protected void OnUpdate(ESystemPoint point)
 	{
 		float timeSlice = GetWorld().GetFixedTimeSlice();

@@ -1,9 +1,8 @@
 [EntityEditorProps(category: "GameScripted/ScriptWizard", description: "THIS IS THE SCRIPT DESCRIPTION.", color: "0 0 255 255")]
-class SCR_VehicleSpawnerClass: ScriptComponentClass
+class SCR_VehicleSpawnerClass : ScriptComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_VehicleSpawner : ScriptComponent
 {
 	static const float MIN_DISTANCE = 10;
@@ -23,6 +22,9 @@ class SCR_VehicleSpawner : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] resources
+	//! \return
 	ResourceName PickRandomResource(array<ResourceName> resources)
 	{
 		if (!resources)
@@ -37,6 +39,7 @@ class SCR_VehicleSpawner : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void PerformSpawn()
 	{
 		if (!m_owner)
@@ -76,11 +79,16 @@ class SCR_VehicleSpawner : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_VehicleSpawner(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_VehicleSpawner()
 	{
 		// server only
@@ -89,7 +97,7 @@ class SCR_VehicleSpawner : ScriptComponent
 		
 		if (m_pSpawnedEntity)
 			delete m_pSpawnedEntity;
+
 		m_pSpawnedEntity = null;
 	}
-
-};
+}

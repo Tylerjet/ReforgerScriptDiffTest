@@ -11,6 +11,9 @@ class SCR_TutorialNavigation16 : SCR_BaseCampaignTutorialArlandStage
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
 	{
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		
 		SCR_MapEntity mapEnt = SCR_MapEntity.GetMapInstance();
 		if (!mapEnt)
 			return;
@@ -21,16 +24,44 @@ class SCR_TutorialNavigation16 : SCR_BaseCampaignTutorialArlandStage
 		
 		mapMarkersUI.GetOnCustomMarkerPlaced().Insert(MarkerPlaced);
 		
-		UpdateHint("beginning")
+		PlaySoundSystem("Navigation_OrientationLocationMarker");
+		HintOnVoiceOver();
 	}
+	
 	//------------------------------------------------------------------------------------------------
-	void UpdateHint(string text)
+	protected void UpdateHint()
 	{
+		string text;
+		
+		if (m_iPlacedMarkers >= 5 && m_iPlacedMarkers < 10)
+		{
+			text = "5";
+			m_TutorialComponent.ShowMapDescriptor("LighthousePos", true);
+		}
+		
+		if (m_iPlacedMarkers >= 10 && m_iPlacedMarkers < 15)
+		{
+			text = "10";
+			m_TutorialComponent.ShowMapDescriptor("ChurchPos", true);
+		}
+		
+		if (m_iPlacedMarkers >= 15 && m_iPlacedMarkers < 20)
+		{
+			text = "15";
+			m_TutorialComponent.ShowMapDescriptor("TowerPos", true);
+		}
+		
+		if (m_iPlacedMarkers >= 20)
+		{
+			text = "20";
+			m_TutorialComponent.ShowMapDescriptor("NavigationPos", true)
+		}
+		
 		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage(), text));
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void MarkerPlaced(int posX, int posY, bool isPublic)
+	protected void MarkerPlaced(int posX, int posY, bool isLocal)
 	{
 		vector position = m_Player.GetOrigin();
 		
@@ -40,29 +71,25 @@ class SCR_TutorialNavigation16 : SCR_BaseCampaignTutorialArlandStage
 		m_iPlacedMarkers++;
 		
 		if (m_iPlacedMarkers == 5)
-		{
-			UpdateHint("5");
-			m_TutorialComponent.ShowMapDescriptor("LighthousePos", true);
-		}
+			UpdateHint();
 		
 		if (m_iPlacedMarkers == 10)
 		{
-			UpdateHint("10");
-			m_TutorialComponent.ShowMapDescriptor("ChurchPos", true);
+			ScriptInvokerVoid invoker =  m_System.GetOnFinished();
+			if (invoker)
+				invoker.Insert(UpdateHint);
+			
+			PlaySoundSystem("Navigation_OrientationStruggle2", true);
 		}
 		
 		if (m_iPlacedMarkers == 15)
-		{
-			UpdateHint("15");
-			m_TutorialComponent.ShowMapDescriptor("TowerPos", true);
-		}
+			PlaySoundSystem("Navigation_OrientationStruggle3");
 		
 		if (m_iPlacedMarkers == 20)
 		{
-			UpdateHint("20");
-			m_TutorialComponent.ShowMapDescriptor("NavigationPos", true);
+			PlaySoundSystem("Navigation_OrientationStruggle4", true);
 			
-			m_fDelay = 7;
+			m_fDelay = 14;
 			m_bPositionFound = true;
 		}
 				
@@ -79,5 +106,16 @@ class SCR_TutorialNavigation16 : SCR_BaseCampaignTutorialArlandStage
 	override protected bool GetIsFinished()
 	{	
 		return m_bPositionFound;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ~SCR_TutorialNavigation16()
+	{
+		if (!m_System)
+			return;
+		
+		ScriptInvokerVoid invoker =  m_System.GetOnFinished();
+		if (invoker)
+			invoker.Remove(UpdateHint);
 	}
 };

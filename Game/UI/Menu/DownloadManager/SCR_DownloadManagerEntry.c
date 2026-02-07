@@ -10,15 +10,37 @@ typedef func ScriptInvoker_DownloadManagerEntry;
 class SCR_DownloadManagerEntry : SCR_ScriptedWidgetComponent
 {
 	const int PAUSE_ENABLE_DELAY_MS = 1000; // delay used to prevent spamming pause/resume request
+	protected const int PROCESSING_MESSAGE_UPDATE_DELAY = 2000; // delay to prevent message flickering when downloading switched to copying fragments
 	
 	// State messages
-	protected const string STATE_DOWNLOADING_PERCENTAGE = "#AR-ValueUnit_Percentage";
-	protected const string STATE_CANCELED = "#AR-Workshop_Canceled";
-	protected const string STATE_NO_CONNECTION = "#AR-Workshop_WarningNoConnection";
-	protected const string STATE_DOWNLOAD_FAIL = "#AR-Workshop_DownloadFail";
+	protected const string PERCENTAGE = 			"#AR-SupportStation_ActionFormat_Percentage";
+	protected const string STATE_DOWNLOADING = 		"#AR-DownloadManager_State_Downloading";
+	protected const string STATE_PROCESSING = 		"#AR-DownloadManager_State_Processing";
+	protected const string STATE_PAUSED = 			"#AR-Workshop_ButtonPause";
+	protected const string STATE_CANCELED = 		"#AR-Workshop_Canceled";
+	protected const string STATE_NO_CONNECTION = 	"#AR-Workshop_WarningNoConnection";
+	protected const string STATE_DOWNLOAD_FAIL = 	"#AR-Workshop_DownloadFail";
+	protected const string STATE_COMPLETED = 		"#AR-Workshop_Details_Downloaded";
 	
-	[Attribute("{3262679C50EF4F01}UI/Textures/Icons/icons_wrapperUI.imageset", UIWidgets.ResourceNamePicker, desc: "Imageset for the icon", params: "imageset")]
+	// State icons
+	protected const string STATE_ICON_DOWNLOADING = 	"downloading";
+	protected const string STATE_ICON_PROCESSING = 		"update";
+	protected const string STATE_ICON_PAUSED = 			"download-pause";
+	protected const string STATE_ICON_CANCELED = 		"cancelCircle";
+	protected const string STATE_ICON_DOWNLOAD_FAIL = 	"warning";
+	protected const string STATE_ICON_COMPLETED = 		"okCircle";
+	
+	[Attribute(UIConstants.ICONS_IMAGE_SET, UIWidgets.ResourceNamePicker, desc: "Imageset for the icon", params: "imageset")]
 	protected ResourceName m_sIconImageset;
+	
+	[Attribute(UIConstants.PROCESSING_SPINNER_ANIMATION_SPEED.ToString())]
+	protected float m_fIconAnimationSpeed;
+	
+	[Attribute(defvalue: SCR_Enum.GetDefault(EAnimationCurve.EASE_IN_OUT_SINE), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EAnimationCurve))]
+	protected EAnimationCurve m_eIconAnimationCurve;
+	
+	[Attribute("0")]
+	protected bool m_bHideProgressBarOnComplete;
 	
 	protected ref SCR_DownloadManagerEntryWidgets m_Widgets = new SCR_DownloadManagerEntryWidgets();
 	protected ref SCR_BackendImageComponent m_BackendImage;
@@ -27,8 +49,11 @@ class SCR_DownloadManagerEntry : SCR_ScriptedWidgetComponent
 	protected ref SCR_WorkshopItem m_Item;
 	
 	protected bool m_bPauseEnabled = true;
-	protected bool m_bShowButtons = false;
+	protected bool m_bShowButtons;
+	protected bool m_bDelayedProcessingDisplay;
 	protected EDownloadManagerActionState m_iState = EDownloadManagerActionState.INACTIVE;
+	
+	protected WidgetAnimationImageRotation m_SpinnerAnimation;
 	
 	protected ref ScriptInvokerBase<ScriptInvoker_DownloadManagerEntry> m_OnUpdate;
 	
@@ -61,6 +86,15 @@ class SCR_DownloadManagerEntry : SCR_ScriptedWidgetComponent
 		m_Widgets.m_ResumeBtn.SetVisible(false);
 		m_Widgets.m_CancelBtn.SetVisible(false);
 		m_Widgets.m_RetryBtn.SetVisible(false);
+		
+		// Processing spinner animation
+		m_Widgets.m_ProcessingSpinner.SetRotation(360);
+		m_SpinnerAnimation = AnimateWidget.Rotation(m_Widgets.m_ProcessingSpinner, 0, m_fIconAnimationSpeed);
+		if (m_SpinnerAnimation)
+		{
+			m_SpinnerAnimation.GetOnCycleCompleted().Insert(AnimateIcon);
+			AnimateIcon(m_SpinnerAnimation);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -84,24 +118,6 @@ class SCR_DownloadManagerEntry : SCR_ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	// Custom
 	//------------------------------------------------------------------------------------------------
-	
-	//------------------------------------------------------------------------------------------------
-	//! Initializes the line in interactive mode.
-	//! It will be able to interact with the download action.
-	void InitForDownloadAction(SCR_WorkshopItem item, SCR_WorkshopItemActionDownload action)
-	{
-		m_Item = item;
-		m_Action = action;
-		
-		m_Action.m_OnChanged.Insert(UpdateProgressWidgets);
-		
-		m_BackendImage = SCR_BackendImageComponent.Cast(GetRootWidget().FindHandler(SCR_BackendImageComponent));
-		
-		// Setup static 
-		SetupWidgets();
-		
-		UpdateAllWidgets();
-	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void SetupWidgets()
@@ -154,8 +170,247 @@ class SCR_DownloadManagerEntry : SCR_ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Update all text displaying progress
+	protected void UpdateProgressWidgets(bool force = false)
+	{
+		m_iState = DownloadActionState(m_Action);
+		
+		// Progress bar
+		bool running = (m_iState == EDownloadManagerActionState.RUNNING); 
+		bool runningOrFailed = running || m_iState == EDownloadManagerActionState.FAILED;
+		
+		if (m_bHideProgressBarOnComplete)
+			m_Widgets.m_Progress.SetVisible(runningOrFailed);
+		
+		// Download size
+		string addonSize = SCR_ByteFormat.ContentDownloadFormat(m_Action.GetSizeBytes());
+		
+		if (runningOrFailed)
+		{
+			// Show progress
+			string downloadSize = SCR_ByteFormat.ContentDownloadFormat(m_Action.GetSizeBytes() * m_Action.GetProgress());
+			
+			m_Widgets.m_DownloadedText.SetText(string.Format("%1/%2", downloadSize, addonSize));
+			m_Widgets.m_ProgressComponent.SetValue(m_Action.GetProgress());
+		}
+		else
+		{
+			m_Widgets.m_DownloadedText.SetText(addonSize);
+			
+			if (m_Action.IsCompleted())
+				m_Widgets.m_ProgressComponent.SetValue(m_Action.GetProgress());
+		}
+		
+		// Update buttons 
+		UpdateButtons();
+		
+		bool processing = m_Action.IsProcessing() && !(m_Action.IsPaused() || m_Action.IsFailed() || m_Action.IsCanceled());
+		if (!processing || force)
+		{
+			UpdateMessage(processing);
+		}
+		// Delay to avoid flickering
+		else
+		{
+			m_bDelayedProcessingDisplay = true;
+			GetGame().GetCallqueue().CallLater(UpdateMessage, PROCESSING_MESSAGE_UPDATE_DELAY, false, processing);
+		}
+		
+		// Invoke
+		if (m_OnUpdate)
+			m_OnUpdate.Invoke(this);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateMessage(bool processing)
+	{
+		if (m_bDelayedProcessingDisplay)
+		{
+			GetGame().GetCallqueue().Remove(UpdateMessage);
+			m_bDelayedProcessingDisplay = false;
+		}
+		
+		// Show message 
+		string msg, imgName;
+		Color col;
+		StateMessage(msg, imgName, col);
+		
+		m_Widgets.m_DownloadStateText.SetText(msg);
+		m_Widgets.m_DownloadIcon.LoadImageFromSet(0, m_sIconImageset, imgName);
+		m_Widgets.m_DownloadIconShadow.LoadImageFromSet(0, m_sIconImageset, imgName);
+		
+		if (col)
+		{
+			m_Widgets.m_DownloadIcon.SetColor(col);
+			m_Widgets.m_DownloadStateText.SetColor(col);
+			m_Widgets.m_ProgressComponent.SetSliderColor(col);
+			m_Widgets.m_ProcessingSpinner.SetColor(col);	
+		}
+
+		m_Widgets.m_ProcessingSpinner.SetVisible(processing);
+		m_Widgets.m_DownloadIcon.SetVisible(!processing);
+		m_Widgets.m_DownloadIconShadow.SetVisible(!processing);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateButtons()
+	{
+		m_Widgets.m_HorizontalButtons.SetVisible(m_bShowButtons);
+
+		if (!m_bShowButtons)
+			return;
+		
+		bool pause, resume, cancel, retry;
+		CanDoActions(pause, resume, cancel, retry);
+		
+		// Buttons
+		m_Widgets.m_PauseBtn.SetVisible(pause);
+		m_Widgets.m_ResumeBtn.SetVisible(resume);
+		m_Widgets.m_CancelBtn.SetVisible(cancel);
+		m_Widgets.m_RetryBtn.SetVisible(retry);
+		
+		m_Widgets.m_PauseBtn.SetEnabled(m_Action.IsRunningAsyncSolved());
+		m_Widgets.m_ResumeBtn.SetEnabled(m_Action.IsPauseAsyncSolved());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Setup state message variables
+	protected void StateMessage(out string message, out string imageName, out Color color)
+	{
+		float progress;
+
+		// Downloading
+		if (m_Action.IsActive() && !m_Action.IsCompleted() && !m_Action.IsPaused())
+		{	
+			// Copying fragments
+			if (m_Action.IsProcessing())
+			{
+				progress = m_Action.GetProcessingProgress();
+
+				message = WidgetManager.Translate(PERCENTAGE, STATE_PROCESSING, Math.Round(progress * 100.0));
+				imageName = STATE_ICON_PROCESSING;
+				color = Color.FromInt(UIColors.ONLINE.PackToInt());
+				return;
+			}
+			
+			// Download running  
+			progress = m_Action.GetProgress();
+
+			message = WidgetManager.Translate(PERCENTAGE, STATE_DOWNLOADING, Math.Round(progress * 100.0));
+			imageName = STATE_ICON_DOWNLOADING;
+			color = Color.FromInt(UIColors.CONTRAST_COLOR.PackToInt());
+			return;
+		}
+		
+		// Paused 
+		if (m_Action.IsPaused())
+		{
+			progress = m_Action.GetProgress();
+
+			message = WidgetManager.Translate(PERCENTAGE, STATE_PAUSED, Math.Round(progress * 100.0));
+			imageName = STATE_ICON_PAUSED;
+			color = Color.FromInt(UIColors.CONTRAST_DEFAULT.PackToInt());
+			return;
+		}
+		
+		// Canceled 
+		if (m_Action.IsCanceled())
+		{
+			message = STATE_CANCELED;
+			imageName = STATE_ICON_CANCELED;
+			color = Color.FromInt(UIColors.WARNING.PackToInt());
+			return;
+		}
+		
+		// Failed 
+		if (m_Action.IsFailed())
+		{
+			FailReason(message, imageName);
+			color = Color.FromInt(UIColors.WARNING.PackToInt());
+			return;
+		}
+		
+		// Success
+		if (m_Action.IsCompleted())
+		{
+			message = STATE_COMPLETED;
+			imageName = STATE_ICON_COMPLETED;
+			color = Color.FromInt(UIColors.CONFIRM.PackToInt());
+			return;
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Return message with details why entry wasn't downloaded
+	protected void FailReason(out string message, out string icon)
+	{
+		// Addon specific fail
+		message = STATE_DOWNLOAD_FAIL;
+		icon = STATE_ICON_DOWNLOAD_FAIL;
+		
+		// Communication with server failed
+		if (!SCR_ServicesStatusHelper.IsBackendConnectionAvailable())
+		{
+			message = STATE_NO_CONNECTION;
+			icon = UIConstants.ICON_SERVICES_ISSUES;
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Return message with details why entry wasn't downloaded
+	protected void AnimateIcon(WidgetAnimationBase animation)
+	{
+		if (m_SpinnerAnimation)
+		{
+			m_SpinnerAnimation.GetOnCycleCompleted().Remove(AnimateIcon);
+			m_SpinnerAnimation.Stop();
+		}
+		
+		m_Widgets.m_ProcessingSpinner.SetRotation(360);
+		m_SpinnerAnimation = AnimateWidget.Rotation(m_Widgets.m_ProcessingSpinner, 0, m_fIconAnimationSpeed);
+		if (m_SpinnerAnimation)
+		{
+			m_SpinnerAnimation.SetRepeat(true);
+			m_SpinnerAnimation.SetCurve(m_eIconAnimationCurve);
+			m_SpinnerAnimation.GetOnCycleCompleted().Insert(AnimateIcon);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void DisablePauserResume(SCR_ModularButtonComponent button)
+	{
+		m_bPauseEnabled = false;
+		button.SetEnabled(false);
+		// Enable pause button later to prevent request spamming
+		GetGame().GetCallqueue().Remove(EnablePauserResume);
+		GetGame().GetCallqueue().CallLater(EnablePauserResume, PAUSE_ENABLE_DELAY_MS, false, button);
+		
+		if (m_OnUpdate)
+			m_OnUpdate.Invoke(this);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void EnablePauserResume(SCR_ModularButtonComponent button)
+	{
+		m_bPauseEnabled = true;
+		button.SetEnabled(true);
+		
+		if (m_OnUpdate)
+			m_OnUpdate.Invoke(this);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnActionChanged(SCR_WorkshopItemAction action)
+	{
+		UpdateProgressWidgets();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Public
+	//------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Based on current download action state setup state simplified for download manager UI grouping
-	//! Fucntion is static to compare download action state before entry is created
+	//! Function is static to compare download action state before entry is created
 	static EDownloadManagerActionState DownloadActionState(SCR_WorkshopItemActionDownload action)
 	{
 		if (!action)
@@ -181,87 +436,22 @@ class SCR_DownloadManagerEntry : SCR_ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Updates all widgets. Only relevant in the mode InitForDownloadAction
-	protected void UpdateAllWidgets()
+	//! Initializes the line in interactive mode.
+	//! It will be able to interact with the download action.
+	void InitForDownloadAction(SCR_WorkshopItem item, SCR_WorkshopItemActionDownload action)
 	{
-		if (!m_Action)
-			return;
+		m_Item = item;
+		m_Action = action;
 		
-		UpdateProgressWidgets();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Update all text displaying progress
-	protected void UpdateProgressWidgets()
-	{
-		m_iState = DownloadActionState(m_Action);
+		m_Action.m_OnChanged.Insert(OnActionChanged);
 		
-		// Progress bar
-		bool running = (m_iState == EDownloadManagerActionState.RUNNING); 
-		bool runningOrFailed = running || m_iState == EDownloadManagerActionState.FAILED;
+		m_BackendImage = SCR_BackendImageComponent.Cast(GetRootWidget().FindHandler(SCR_BackendImageComponent));
 		
-		m_Widgets.m_Progress.SetVisible(runningOrFailed);
+		// Setup static 
+		SetupWidgets();
 		
-		// Download size
-		string addonSize = SCR_ByteFormat.ContentDownloadFormat(m_Action.GetSizeBytes());
-		
-		if (runningOrFailed)
-		{
-			// Show progress
-			string downloadSize = SCR_ByteFormat.ContentDownloadFormat(m_Action.GetSizeBytes() * m_Action.GetProgress());
-			
-			m_Widgets.m_DownloadedText.SetText(string.Format("%1/%2", downloadSize, addonSize));
-			m_Widgets.m_ProgressComponent.SetValue(m_Action.GetProgress());
-		}
-		else
-		{
-			m_Widgets.m_DownloadedText.SetText(addonSize);
-		}
-		
-		// Update buttons 
-		UpdateButtons();
-		
-		// Show message 
-		string msg, imgName;
-		Color col;
-		bool colorText;
-		StateMessage(msg, imgName, col, colorText);
-		
-		m_Widgets.m_DownloadStateText.SetText(msg);
-		m_Widgets.m_DownloadIcon.LoadImageFromSet(0, m_sIconImageset, imgName);
-		m_Widgets.m_DownloadIconShadow.LoadImageFromSet(0, m_sIconImageset, imgName);
-		
-		if (col)
-		{
-			m_Widgets.m_DownloadIcon.SetColor(col);
-			m_Widgets.m_DownloadStateText.SetColor(col);
-			m_Widgets.m_ProgressComponent.SetSliderColor(col);
-		}
-		
-		// Invoke
-		if (m_OnUpdate)
-			m_OnUpdate.Invoke(this);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void UpdateButtons()
-	{
-		m_Widgets.m_HorizontalButtons.SetVisible(m_bShowButtons);
-
-		if (!m_bShowButtons)
-			return;
-		
-		bool pause, resume, cancel, retry;
-		CanDoActions(pause, resume, cancel, retry);
-		
-		// Buttons
-		m_Widgets.m_PauseBtn.SetVisible(pause);
-		m_Widgets.m_ResumeBtn.SetVisible(resume);
-		m_Widgets.m_CancelBtn.SetVisible(cancel);
-		m_Widgets.m_RetryBtn.SetVisible(retry);
-		
-		m_Widgets.m_PauseBtn.SetEnabled(m_Action.IsRunningAsyncSolved());
-		m_Widgets.m_ResumeBtn.SetEnabled(m_Action.IsPauseAsyncSolved());
+		if (m_Action)
+			UpdateProgressWidgets(true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -272,92 +462,6 @@ class SCR_DownloadManagerEntry : SCR_ScriptedWidgetComponent
 		canResume = m_iState == EDownloadManagerActionState.RUNNING && m_Action.IsPaused();
 		canCancel = m_iState == EDownloadManagerActionState.RUNNING;
 		canRetry = m_iState == EDownloadManagerActionState.FAILED;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Setup state message variables
-	protected void StateMessage(out string message, out string imageName, out Color color, out bool colorText)
-	{
-		// Downloading
-		if (m_Action.IsActive() && !m_Action.IsCompleted() && !m_Action.IsPaused())
-		{
-			if (m_Action.GetProgress() < 0.99)
-			{
-				// Download running  
-				float progress = m_Action.GetProgress();
-				string progressStr = WidgetManager.Translate(STATE_DOWNLOADING_PERCENTAGE, Math.Round(progress * 100.0));
-				
-				message = progressStr;
-				imageName = "downloading";
-				color = UIColors.CONTRAST_CLICKED_HOVERED;
-				colorText = false;
-			}
-			else
-			{
-				// Files processing 
-				message = "#AR-EditableEntity_AIWaypoint_Wait_Name...";
-				imageName = "systems";
-				color = UIColors.CONTRAST_CLICKED_HOVERED;
-				colorText = false;
-			}
-			
-			return;
-		}
-		
-		// Paused 
-		if (m_Action.IsPaused())
-		{
-			float progress = m_Action.GetProgress();
-			string progressStr = WidgetManager.Translate(STATE_DOWNLOADING_PERCENTAGE, Math.Round(progress * 100.0));
-			
-			message = progressStr;
-			imageName = "download-pause";
-			color = UIColors.CONTRAST_DEFAULT;
-			colorText = false;
-			return;
-		}
-		
-		// Canceled 
-		if (m_Action.IsCanceled())
-		{
-			message = STATE_CANCELED; // TODO:should be canceled
-			imageName = "cancelCircle";
-			color = UIColors.WARNING;
-			colorText = true;
-			return;
-		}
-		
-		// Failed 
-		if (m_Action.IsFailed())
-		{
-			message = FailReason();
-			imageName = "warning";
-			color = UIColors.WARNING;
-			colorText = true;
-			return;
-		}
-		
-		// Success
-		if (m_Action.IsCompleted())
-		{
-			message = "#AR-Workshop_Details_Downloaded";
-			imageName = "okCircle";
-			color = UIColors.CONFIRM;
-			colorText = true;
-			return;
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Return message with details why entry wasn't downloaded
-	protected string FailReason()
-	{
-		// Communication with server failed
-		if (!GetGame().GetBackendApi().IsActive())
-			return STATE_NO_CONNECTION;
-		
-		// Addon specific fail
-		return STATE_DOWNLOAD_FAIL;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -386,33 +490,10 @@ class SCR_DownloadManagerEntry : SCR_ScriptedWidgetComponent
 		else if (m_Action.IsInactive())
 			m_Action.Activate();
 		
-		UpdateProgressWidgets();
+		UpdateProgressWidgets(true);
 		
 		// Set disabled
 		//DisablePauserResume(m_Widgets.m_PauseBtnComponent);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void DisablePauserResume(SCR_ModularButtonComponent button)
-	{
-		m_bPauseEnabled = false;
-		button.SetEnabled(false);
-		// Enable pause button later to prevent request spamming
-		GetGame().GetCallqueue().Remove(EnablePauserResume);
-		GetGame().GetCallqueue().CallLater(EnablePauserResume, PAUSE_ENABLE_DELAY_MS, false, button);
-		
-		if (m_OnUpdate)
-			m_OnUpdate.Invoke(this);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void EnablePauserResume(SCR_ModularButtonComponent button)
-	{
-		m_bPauseEnabled = true;
-		button.SetEnabled(true);
-		
-		if (m_OnUpdate)
-			m_OnUpdate.Invoke(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -430,7 +511,8 @@ class SCR_DownloadManagerEntry : SCR_ScriptedWidgetComponent
 		if (m_Action)
 			m_Action.RetryDownload();
 
-		UpdateProgressWidgets();
+		if (m_wRoot)
+			UpdateProgressWidgets();
 	}
 	
 	//------------------------------------------------------------------------------------------------

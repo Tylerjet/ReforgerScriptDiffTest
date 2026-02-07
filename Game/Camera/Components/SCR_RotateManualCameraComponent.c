@@ -1,21 +1,20 @@
-[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
-/** @ingroup ManualCamera
-*/
+//! @ingroup ManualCamera
 
-/*!
-Basic camera rotation
-*/
+//! Basic camera rotation
+[BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
 class SCR_RotateManualCameraComponent : SCR_BaseManualCameraComponent
 {
-	[Attribute("1", UIWidgets.Auto, "")]	
+	[Attribute("1")]
 	private float m_fSpeed;
 	
 	private float m_fYaw;
 	private float m_fPitch;
 	
+	//------------------------------------------------------------------------------------------------
 	override void EOnCameraFrame(SCR_ManualCameraParam param)
 	{
-		if (!param.isManualInputEnabled) return;
+		if (!param.isManualInputEnabled)
+			return;
 		
 		float yaw = GetInputManager().GetActionValue("ManualCameraRotateYaw");
 		float pitch = GetInputManager().GetActionValue("ManualCameraRotatePitch");
@@ -32,14 +31,17 @@ class SCR_RotateManualCameraComponent : SCR_BaseManualCameraComponent
 			if (pitch == 0 && pitchPrev != 0) pitch = pitchPrev;
 		}
 
-		if (yaw == 0 && pitch == 0) return;
+		if (yaw == 0 && pitch == 0)
+			return;
 
 		param.rotDelta += Vector(yaw, pitch, 0) * m_fSpeed * param.fov / Math.Max(GetCameraEntity().GetDefaultFOV(), 1);
 		param.isManualInput = true;
 		param.isDirty = true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool EOnCameraInit()
 	{
 		return true;
 	}
-};
+}

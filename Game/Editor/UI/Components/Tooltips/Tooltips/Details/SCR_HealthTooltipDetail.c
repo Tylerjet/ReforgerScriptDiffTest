@@ -1,13 +1,15 @@
 [BaseContainerProps(), BaseContainerCustomTitleField("m_sDisplayName")]
-class SCR_HealthTooltipDetail: SCR_DpsConditionBarBaseTooltipDetail
-{	
-
+class SCR_HealthTooltipDetail : SCR_DpsConditionBarBaseTooltipDetail
+{
+	//------------------------------------------------------------------------------------------------
 	override void UpdateDetail(SCR_EditableEntityComponent entity)
 	{
 		super.UpdateDetail(entity);
 		
 		SetBarAndPercentageValue(m_DamageManager.GetHealthScaled());
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool InitDetail(SCR_EditableEntityComponent entity, Widget widget)
 	{
 		if (!super.InitDetail(entity, widget))
@@ -18,4 +20,4 @@ class SCR_HealthTooltipDetail: SCR_DpsConditionBarBaseTooltipDetail
 
 		return m_DamageManager.IsDamageHandlingEnabled();
 	}
-};
+}

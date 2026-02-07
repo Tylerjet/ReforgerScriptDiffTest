@@ -115,7 +115,7 @@ class SCR_ChatPanel : ScriptedWidgetComponent
 
 		if (count > m_iMessageLineCount)
 		{
-			for (int i = count - 1; i > m_iMessageLineCount; i--)
+			for (int i = count - 1; i >= m_iMessageLineCount; i--)
 			{
 				SCR_ChatMessageLineComponent w = m_aMessageLines[i];
 
@@ -172,7 +172,8 @@ class SCR_ChatPanel : ScriptedWidgetComponent
 	//! Don't call it yourself, use SCR_ChatPanelManager instead.
 	void Internal_Open()
 	{
-		if (m_bOpen)
+		// If m_OnChatOpen is not null we know it's used by the HudManager so we check if the parent (HudManager slot) is enabled (enabled = visible)
+		if (m_bOpen || m_OnChatOpen && !m_wRoot.GetParent().IsEnabled())
 			return;
 
 		SCR_ChatPanelManager mgr = SCR_ChatPanelManager.GetInstance();
@@ -612,7 +613,7 @@ class SCR_ChatPanel : ScriptedWidgetComponent
 					SCR_ChatMessageStyle style = GetChannelStyle(chatChannel);
 
 					// Resolve color of the channel icon
-					Color imageColor = Color.White;
+					Color imageColor = Color.FromInt(Color.WHITE);
 					if (style.m_bColoredIcon)
 						imageColor = style.m_Color;
 
@@ -705,7 +706,7 @@ class SCR_ChatPanel : ScriptedWidgetComponent
 		// Resolve style
 		style = GetChannelStyle(m_ActiveChannel);
 
-		Color color = Color.White;
+		Color color = Color.FromInt(Color.WHITE);
 		if (style.m_bColoredIcon)
 		{
 			color = style.m_Color;

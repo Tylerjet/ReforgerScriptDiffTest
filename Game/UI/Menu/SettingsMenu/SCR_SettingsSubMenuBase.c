@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 class SCR_SettingsSubMenuBase: SCR_SubMenuBase
 {
 	protected ref array<ref SCR_SettingsBindingBase> m_aSettingsBindings = {};
@@ -6,23 +5,23 @@ class SCR_SettingsSubMenuBase: SCR_SubMenuBase
 	protected bool m_bLoadingSettings;
 
 	//------------------------------------------------------------------------------------------------
-	protected override void OnMenuOpen(SCR_SuperMenuBase parentMenu)
+	override void OnTabCreate(Widget menuRoot, ResourceName buttonsLayout, int index)
 	{
-		super.OnMenuOpen(parentMenu);
+		super.OnTabCreate(menuRoot, buttonsLayout, index);
 		m_wScroll = ScrollLayoutWidget.Cast(m_wRoot.FindAnyWidget("ScrollLayout0"));
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected override void OnMenuHide(SCR_SuperMenuBase parentMenu)
+	override void OnTabHide()
 	{
-		super.OnMenuHide(parentMenu);
+		super.OnTabHide();
 		GetGame().SaveUserSettings();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected override void OnMenuShow(SCR_SuperMenuBase parentMenu)
+	override void OnTabShow()
 	{
-		super.OnMenuShow(parentMenu);
+		super.OnTabShow();
 
 		if (m_wScroll)
 			m_wScroll.SetSliderPos(0, 0);

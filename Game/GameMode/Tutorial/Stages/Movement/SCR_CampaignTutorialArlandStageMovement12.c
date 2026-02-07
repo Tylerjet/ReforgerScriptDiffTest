@@ -12,7 +12,10 @@ class SCR_CampaignTutorialArlandStageMovement12 : SCR_BaseCampaignTutorialArland
 		RegisterWaypoint("WP_LADDER_UP");
 		m_fWaypointCompletionRadius = 3;
 		m_fWaypointHeightOffset = 0;
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("LadderUp", false);
+		HintOnVoiceOver();
 		m_TutorialComponent.SetWaypointMiscImage("LADDER", true);
 	}
 	

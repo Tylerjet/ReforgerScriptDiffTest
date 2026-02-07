@@ -10,6 +10,7 @@ class SCR_CampaignTutorialArlandStageShooting1 : SCR_BaseCampaignTutorialArlandS
 	override protected void Setup()
 	{
 		RegisterWaypoint("WP_WEAPON_PICK");
+		m_TutorialComponent.ResetStage_ShootingRange();
 		m_fWaypointHeightOffset = 0;
 		m_bCheckWaypoint = false;
 		IEntity gun = GetGame().GetWorld().FindEntityByName("M16");
@@ -17,7 +18,10 @@ class SCR_CampaignTutorialArlandStageShooting1 : SCR_BaseCampaignTutorialArlandS
 		if (gun)
 			GetWaypoint().SetOrigin(gun.GetOrigin());
 		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));	
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		GetGame().GetCallqueue().CallLater(PlaySoundSystem, 1000, false, "Welcome", true);
+		GetGame().GetCallqueue().CallLater(HintOnVoiceOver, 1500, false);
 		m_TutorialComponent.SetWaypointMiscImage("GUNLOWER", true);
 	}
 	

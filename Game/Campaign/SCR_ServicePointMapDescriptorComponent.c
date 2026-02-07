@@ -1,9 +1,7 @@
-//------------------------------------------------------------------------------------------------
 class SCR_ServicePointMapDescriptorComponentClass : SCR_MapDescriptorComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_ServicePointMapDescriptorComponent : SCR_MapDescriptorComponent
 {
 	[Attribute("", desc: "Name of marker (service is active).")]
@@ -28,6 +26,8 @@ class SCR_ServicePointMapDescriptorComponent : SCR_MapDescriptorComponent
 	protected SCR_MilitaryBaseComponent m_Base;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] base
+	//! \param[in] duringInit
 	void SetParentBase(SCR_MilitaryBaseComponent base, bool duringInit = false)
 	{
 		m_Base = base;
@@ -37,6 +37,8 @@ class SCR_ServicePointMapDescriptorComponent : SCR_MapDescriptorComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] faction
+	//! \param[in] visible
 	void SetServiceMarker(Faction faction = null, bool visible = true)
 	{
 		MapItem item = Item();
@@ -70,6 +72,7 @@ class SCR_ServicePointMapDescriptorComponent : SCR_MapDescriptorComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] active
 	void SetServiceMarkerActive(bool active)
 	{
 		MapItem item = Item();
@@ -88,6 +91,7 @@ class SCR_ServicePointMapDescriptorComponent : SCR_MapDescriptorComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] layer
 	void SetVisible(int layer)
 	{
 		if (!m_Base)
@@ -122,7 +126,9 @@ class SCR_ServicePointMapDescriptorComponent : SCR_MapDescriptorComponent
 			Item().GetProps().SetVisible(layer < 3);
 	}
 	
-	//------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] show
 	void ShowServiceHint(MapItem show)
 	{	
 		MapItem item = Item();
@@ -167,10 +173,13 @@ class SCR_ServicePointMapDescriptorComponent : SCR_MapDescriptorComponent
 				}
 			}
 		}
+
 		m_wDescriptorServiceHint.SetVisible(true)
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] show
 	void HideServiceHint(MapItem show)
 	{
 		MapItem item = Item();
@@ -182,6 +191,10 @@ class SCR_ServicePointMapDescriptorComponent : SCR_MapDescriptorComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] ent
+	//! \param[in] parent
 	void SCR_ServicePointMapDescriptorComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		SCR_MapEntity.GetOnLayerChanged().Insert(SetVisible);
@@ -190,10 +203,11 @@ class SCR_ServicePointMapDescriptorComponent : SCR_MapDescriptorComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_ServicePointMapDescriptorComponent()
 	{
 		SCR_MapEntity.GetOnLayerChanged().Remove(SetVisible);
 		SCR_MapEntity.GetOnHoverItem().Remove(ShowServiceHint);
 		SCR_MapEntity.GetOnHoverEnd().Remove(HideServiceHint);
 	}
-};
+}

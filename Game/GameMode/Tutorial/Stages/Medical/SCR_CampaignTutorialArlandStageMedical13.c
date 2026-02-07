@@ -12,8 +12,10 @@ class SCR_CampaignTutorialArlandStageMedical13: SCR_BaseCampaignTutorialArlandSt
 		m_bCheckWaypoint = false;
 		m_fWaypointHeightOffset = 0.5;
 		
-		RegisterWaypoint("Figurant");
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		PlaySoundSystem("FirstAid_BandageChest", true);
+		HintOnVoiceOver();
 	}
 	
 	//------------------------------------------------------------------------------------------------

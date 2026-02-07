@@ -53,6 +53,9 @@ class SCR_AudioSettings : ModuleGameSettings
 {
 	[Attribute(defvalue: "100", uiwidget: UIWidgets.Slider, params: "0 200 5", desc: "Audio dynamic range.")]
 	float m_fDynamicRange;
+
+	[Attribute(defvalue: "true", uiwidget: UIWidgets.CheckBox, desc: "Enable/Disable Tinnitus Sound Playback")]
+	bool m_bGTinnitus;
 };
 
 class SCR_VideoSettings : ModuleGameSettings

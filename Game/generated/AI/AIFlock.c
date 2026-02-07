@@ -28,6 +28,8 @@ class AIFlock: AIAnimal
 	event void OnFlying();
 	//Function called when the flock starts landing
 	event void OnLanding();
+	//Function called when the flock finished landing
+	event void OnFinishedLanding();
 }
 
 /*!

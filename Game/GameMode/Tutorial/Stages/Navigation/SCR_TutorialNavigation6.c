@@ -11,17 +11,18 @@ class SCR_TutorialNavigation6 : SCR_BaseCampaignTutorialArlandStage
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
 	{	
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		
 		SCR_MapEntity.GetOnMapOpen().Remove(OnMapOpened);
 		SCR_MapEntity.GetOnMapClose().Remove(OnMapClosed);
 		SCR_MapEntity.GetOnMapOpen().Insert(OnMapOpened);
 		SCR_MapEntity.GetOnMapClose().Insert(OnMapClosed);
 		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
-		
 		HighlightIcon();
-		
-		m_fDuration = 40;
+		PlaySoundSystem("Navigation_CompassSelected");
 	}
+	
 	//------------------------------------------------------------------------------------------------
 	protected void SkipTimer()
 	{
@@ -80,7 +81,7 @@ class SCR_TutorialNavigation6 : SCR_BaseCampaignTutorialArlandStage
 		if (!m_TutorialComponent.GetIsMapOpen())
 			return true;
 		
-		return m_RulerTool.IsEntryActive();
+		return m_RulerTool.IsEntryActive() || !m_TutorialComponent.GetVoiceSystem().IsPlaying();
 	}
 	
 	//------------------------------------------------------------------------------------------------

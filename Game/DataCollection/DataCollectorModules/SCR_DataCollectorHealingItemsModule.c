@@ -71,7 +71,7 @@ class SCR_DataCollectorHealingItemsModule : SCR_DataCollectorModule
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void HealingItemUsed(IEntity item, bool ActionCompleted, SCR_ConsumableEffectAnimationParameters animParams)
+	protected void HealingItemUsed(IEntity item, bool ActionCompleted, ItemUseParameters animParams)
 	{
 		if (!item || !ActionCompleted)
 			return;

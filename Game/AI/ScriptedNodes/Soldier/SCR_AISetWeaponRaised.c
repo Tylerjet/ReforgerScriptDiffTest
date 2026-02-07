@@ -1,7 +1,7 @@
 class SCR_AISetWeaponRaised : SCR_AICharacterStats
 {
 	[Attribute("true", UIWidgets.CheckBox, "Raise weapon",)]
-	private bool m_bRaised;
+	private bool m_bWeaponRaised;
 
 	static const string RAISED_PORT = "Raised";
 	
@@ -15,7 +15,7 @@ class SCR_AISetWeaponRaised : SCR_AICharacterStats
 
 		int raiseWeapon;
 		if(!GetVariableIn(RAISED_PORT,raiseWeapon))
-			raiseWeapon = m_bRaised;
+			raiseWeapon = m_bWeaponRaised;
 			
 		m_AIInfo.SetWeaponRaised(raiseWeapon);
 		m_CharacterController.SetWeaponRaised(raiseWeapon);
@@ -24,17 +24,25 @@ class SCR_AISetWeaponRaised : SCR_AICharacterStats
 	}
 	
 	//------------------------------------------------------------------------------------------------
-    override bool VisibleInPalette() {return true;}
-
+	override bool VisibleInPalette() {return true;}
+	
 	//------------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsIn = {
 		RAISED_PORT
 	};
-    override array<string> GetVariablesIn()
-    {
-        return s_aVarsIn;
-    }
-
+	override array<string> GetVariablesIn()
+	{
+		return s_aVarsIn;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override string GetNodeMiddleText()
+	{
+		string s;
+		s = s + string.Format("m_bWeaponRaised: %1\n", m_bWeaponRaised);
+		return s;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(AIAgent owner)
 	{
@@ -45,6 +53,6 @@ class SCR_AISetWeaponRaised : SCR_AICharacterStats
 			m_CharacterController = SCR_CharacterControllerComponent.Cast(owner.GetControlledEntity().FindComponent(SCR_CharacterControllerComponent));
 			if (!m_CharacterController)
 				NodeError(this, owner, "Can't find SCR_CharacterControllerComponent.");
-		}	
+		}
 	}
 };

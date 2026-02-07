@@ -9,9 +9,20 @@ class SCR_CampaignTutorialArlandStageMedical1 : SCR_BaseCampaignTutorialArlandSt
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
 	{
-		m_fDuration = 10;
+		m_fDuration = 5;
+		m_bConditionPassCheck = true;
 		
-		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
 		m_TutorialComponent.ResetStage_Medical();
+		
+		SCR_HintManagerComponent.HideHint();
+		SCR_HintManagerComponent.ClearLatestHint();
+		GetGame().GetCallqueue().CallLater(PlaySoundSystem, 2000, false, "FirstAid_Start", false);
+	}
+	
+	
+	//------------------------------------------------------------------------------------------------
+	override bool GetIsFinished()
+	{
+		return !m_TutorialComponent.GetVoiceSystem().IsPlaying();
 	}
 };

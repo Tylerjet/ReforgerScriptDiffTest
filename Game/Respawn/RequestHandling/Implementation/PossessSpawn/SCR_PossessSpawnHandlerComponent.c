@@ -1,22 +1,21 @@
-//------------------------------------------------------------------------------------------------
 [ComponentEditorProps(category: "GameScripted/Respawn/Handlers", description: "Allows the respawn system to utilize spawning on AI(s). Requires a SCR_OnAIRespawnComponent attached to PlayerController.")]
 class SCR_PossessSpawnHandlerComponentClass : SCR_SpawnHandlerComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
 class SCR_PossessSpawnHandlerComponent : SCR_SpawnHandlerComponent
 {
 	[Attribute("1", desc: "When enabled, conditions like respawn time will not be checked.")]
 	protected bool m_bIgnoreConditions;
 	
+	//------------------------------------------------------------------------------------------------
 	protected override SCR_ESpawnResult SpawnEntity_S(SCR_SpawnRequestComponent requestComponent, notnull SCR_SpawnData data, out IEntity spawnedEntity)
 	{
 		int playerId = requestComponent.GetPlayerController().GetPlayerId();
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::SpawnEntity(playerId: %2, data: %3)", Type().ToString(),
+		Print(string.Format("%1::SpawnEntity(playerId: %2, data: %3)", Type().ToString(),
 					playerId,
-					data);
+					data), LogLevel.NORMAL);
 		#endif
 
 		// We simply use the entity without spawning it
@@ -30,6 +29,7 @@ class SCR_PossessSpawnHandlerComponent : SCR_SpawnHandlerComponent
 		return SCR_ESpawnResult.OK;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override SCR_ESpawnResult CanHandleRequest_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data)
 	{
 		SCR_ESpawnResult result = super.CanHandleRequest_S(requestComponent, data);
@@ -57,6 +57,7 @@ class SCR_PossessSpawnHandlerComponent : SCR_SpawnHandlerComponent
 		return SCR_ESpawnResult.OK;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected IEntity GetEntity(SCR_SpawnData data)
 	{
 		SCR_PossessSpawnData possessData = SCR_PossessSpawnData.Cast(data);
@@ -76,9 +77,10 @@ class SCR_PossessSpawnHandlerComponent : SCR_SpawnHandlerComponent
 		return false;
 	}
 
-	/*!
-		Ensures that entity to possess is valid, if anything.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Ensures that entity to possess is valid, if anything.
+	//! \param[in] requestComponent
+	//! \param[in] data
 	protected override bool ValidateData_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data)
 	{
 		if (!super.ValidateData_S(requestComponent, data))
@@ -91,11 +93,14 @@ class SCR_PossessSpawnHandlerComponent : SCR_SpawnHandlerComponent
 		Managed rplComponent = Replication.FindItem(possessData.GetRplId());
 		return rplComponent != null;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool CanRequestSpawn_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data, out SCR_ESpawnResult result)
 	{
 		return m_bIgnoreConditions || super.CanRequestSpawn_S(requestComponent, data, result);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnFinalizeDone_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data, IEntity entity)
 	{
 		// Assign possessed entity's faction to the player
@@ -116,6 +121,7 @@ class SCR_PossessSpawnHandlerComponent : SCR_SpawnHandlerComponent
 		gameMode.OnPlayerFactionSet_S(playerFactionComp, targetFaction);	
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected Faction GetFactionFromPrefab(ResourceName prefab)
 	{
 		Resource res = Resource.Load(prefab);
@@ -128,4 +134,4 @@ class SCR_PossessSpawnHandlerComponent : SCR_SpawnHandlerComponent
 
 		return GetGame().GetFactionManager().GetFactionByKey(factionKey);
 	}	
-};
+}

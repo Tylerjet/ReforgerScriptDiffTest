@@ -27,13 +27,15 @@ class SCR_MapEntity: MapEntity
 	protected bool m_bDoReload;								// mark whether map config changed in order to reload modules/components
 	protected bool m_bDoUpdate;								// mark whether user setting changed, update zoom & position
 	protected bool m_bIsDebugMode;							// variable debug mode
-	protected int m_iMapSize[2];							// map size in meters/units
+	protected int m_iMapSizeX;								// map size X in meters/units
+	protected int m_iMapSizeY;								// map size Y in meters/units 
+	protected vector m_vVisibleFrameMin;					// cache visible frame min point for use elsewhere
+	protected vector m_vVisibleFrameMax;					// cache visible frame max point for use elsewhere
 	protected EMapEntityMode m_eLastMapMode;				// cached mode of last map for reload check
 	protected Widget m_wMapRoot;							// map menu root widget
 	protected CanvasWidget m_MapWidget;						// map widget
 	protected WorkspaceWidget m_Workspace;
 	protected ref MapConfiguration m_ActiveMapCfg; 			// map config
-	protected ref SCR_MapDescriptorDefaults m_DefaultsCfg;	// descriptor defaults
 	protected static SCR_MapEntity s_MapInstance;			// map entity instance
 	
 	protected MapItem m_HoveredMapItem;						// currently hovered map item
@@ -50,10 +52,10 @@ class SCR_MapEntity: MapEntity
 	
 	// pan
 	protected bool m_bIsPanInterp;		// is currently pan animating
-	protected float m_fPanX = 0;		// current horizontal pan offset - UNSCALED value in px
-	protected float m_fPanY = 0;		// current vertical pan offset - UNSCALED value in px
-	protected float m_aStartPan[2];		// pan start coords - UNSCALED value in px
-	protected float m_aTargetPan[2];	// pan target coords - UNSCALED value in px
+	protected int m_iPanX = 0;			// current horizontal pan offset - UNSCALED value in px
+	protected int m_iPanY = 0;			// current vertical pan offset - UNSCALED value in px
+	protected int m_aStartPan[2];		// pan start coords - UNSCALED value in px
+	protected int m_aTargetPan[2];		// pan target coords - UNSCALED value in px
 	protected float m_fPanTimeModif;	// pan anim speed modifier
 	protected float m_fPanSlice;		// pan anim timeslce
 	
@@ -76,11 +78,7 @@ class SCR_MapEntity: MapEntity
 	protected static ref ScriptInvokerBase<MapItemInvoker> s_OnSelectionChanged = new ScriptInvokerBase<MapItemInvoker>();			// map items de/selected
 	protected static ref ScriptInvokerBase<MapItemInvoker> s_OnHoverItem 		= new ScriptInvokerBase<MapItemInvoker>();			// map item hovered
 	protected static ref ScriptInvokerBase<MapItemInvoker> s_OnHoverEnd 		= new ScriptInvokerBase<MapItemInvoker>();			// map item hover end
-	
-	//TEMP & TODOs
-	protected int m_iLayerIndex = 0;	// current layer (switch to getter from gamecode)	
-	ref array<int> imagesetIndices = new array<int>();
-	
+		
 	//------------------------------------------------------------------------------------------------
 	// GETTERS / SETTERS
 	//------------------------------------------------------------------------------------------------
@@ -111,33 +109,104 @@ class SCR_MapEntity: MapEntity
 	//! Get map entity instance
 	static SCR_MapEntity GetMapInstance() { return s_MapInstance; }
 	
+	//------------------------------------------------------------------------------------------------
 	//! Get map config
-	MapConfiguration GetMapConfig() { return m_ActiveMapCfg; }
+	MapConfiguration GetMapConfig() 
+	{ 
+		return m_ActiveMapCfg; 
+	}
 	
+	//------------------------------------------------------------------------------------------------
 	//! Check if the map is opened
-	bool IsOpen() { return m_bIsOpen; }
+	bool IsOpen() 
+	{ 
+		return m_bIsOpen; 
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Get map sizeX in meters
-	int GetMapSizeX() { return m_iMapSize[0]; }
+	int GetMapSizeX() 
+	{ 
+		return m_iMapSizeX; 
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Get map sizeY in meters
-	int GetMapSizeY() { return m_iMapSize[1]; }
+	int GetMapSizeY() 
+	{ 
+		return m_iMapSizeY; 
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Get maximal zoom
-	float GetMaxZoom() { return m_fMaxZoom; }
+	float GetMaxZoom() 
+	{ 
+		return m_fMaxZoom; 
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Get minimal zoom
-	float GetMinZoom() { return m_fMinZoom; }
+	float GetMinZoom() 
+	{ 
+		return m_fMinZoom; 
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Get target zoom in the form of PixelPerUnit value, which is different from current zoom if interpolation is ongoing
-	float GetTargetZoomPPU() { return m_fTargetPPU; }
+	float GetTargetZoomPPU() 
+	{
+		return m_fTargetPPU; 
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Get whether zoom interpolation is ongoing
-	bool IsZooming() { return m_bIsZoomInterp;	}
+	bool IsZooming() 
+	{
+		return m_bIsZoomInterp;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Get current DPIScaled pan offsets 
-	vector GetCurrentPan() { return Vector(m_Workspace.DPIScale(m_fPanX), m_Workspace.DPIScale(m_fPanY), 0); }
+	vector GetCurrentPan() 
+	{
+		return { m_Workspace.DPIScale(m_iPanX), m_Workspace.DPIScale(m_iPanY), 0 }; 
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Get map widget
-	CanvasWidget GetMapWidget() { return m_MapWidget; }
+	CanvasWidget GetMapWidget() 
+	{
+		return m_MapWidget; 
+	}
+		
+	//------------------------------------------------------------------------------------------------
 	//! Get map menu root widget
-	Widget GetMapMenuRoot() { return m_wMapRoot; }
+	Widget GetMapMenuRoot() 
+	{ 
+		return m_wMapRoot;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Set map widget
-	void SetMapWidget(Widget mapW) { m_MapWidget = CanvasWidget.Cast(mapW); }
+	void SetMapWidget(Widget mapW) 
+	{ 
+		m_MapWidget = CanvasWidget.Cast(mapW);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Get hovered item
-	MapItem GetHoveredItem() { return m_HoveredMapItem; }
+	MapItem GetHoveredItem() 
+	{ 
+		return m_HoveredMapItem; 
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Return visible frame in the form of min and max point, used to ignore update of f.e. icons when they are not visible
+	void GetMapVisibleFrame(out vector min, out vector max)
+	{
+		min = m_vVisibleFrameMin;
+		max = m_vVisibleFrameMax;
+	}
 		
 	//------------------------------------------------------------------------------------------------
 	//! Get how much pixels per unit(meter) are currently visible on screen. If this value is 1 and resolution is 1920x1080, then 1920 units(meters) of map will be visible
@@ -228,14 +297,14 @@ class SCR_MapEntity: MapEntity
 		{			
 			ChimeraCharacter char = ChimeraCharacter.Cast(GetGame().GetPlayerController().GetControlledEntity());
 			if (char)
-				SCR_CharacterControllerComponent.Cast(char.GetCharacterController()).GetOnPlayerDeath().Insert(OnPlayerDeath);
-			
+				SCR_CharacterControllerComponent.Cast(char.GetCharacterController()).m_OnLifeStateChanged.Insert(OnLifeStateChanged);
+
 			SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 			if (gameMode)
 				gameMode.GetOnPlayerDeleted().Insert(OnPlayerDeleted);
 		}
 		
-		InitLayers(config.LayerCount, config.LayerConfigs);
+		InitLayers(config);
 				
 		SetFrame(Vector(0, 0, 0), Vector(0, 0, 0)); // Gamecode starts rendering stuff like descriptors straight away instead of waiting a frame - this is a hack to display nothing, avoiding the "blink" of icons
 		
@@ -257,9 +326,7 @@ class SCR_MapEntity: MapEntity
 		
 		OnMapClose();
 		
-		m_iLayerIndex = -1;
 		m_bIsOpen = false;
-		m_DefaultsCfg = null;
 		m_iDelayCounter = FRAME_DELAY;
 		auto plc = GetGame().GetPlayerController();
 		if (plc)
@@ -272,14 +339,13 @@ class SCR_MapEntity: MapEntity
 	protected void OnMapOpen(MapConfiguration config)
 	{						
 		// init zoom & layers
-		vector mapSize = {m_iMapSize[0], m_iMapSize[1], 0};		
-		m_MapWidget.SetSizeInUnits(mapSize);				// unit size to meters
+		m_MapWidget.SetSizeInUnits(Vector(m_iMapSizeX, m_iMapSizeY, 0));	// unit size to meters
 		UpdateZoomBounds();
-		AssignViewLayer();
+		AssignViewLayer(true);
 		
 		if (m_bDoUpdate)	// when resolution changes, zoom to the same PPU to update zoom and pos
 		{
-			ZoomSmooth(m_fZoomPPU);
+			ZoomSmooth(m_fZoomPPU, reinitZoom: true);
 			m_bDoUpdate = false;
 		}
 		
@@ -315,7 +381,7 @@ class SCR_MapEntity: MapEntity
 			{
 				ChimeraCharacter char = ChimeraCharacter.Cast(controller.GetControlledEntity());
 				if (char)
-					SCR_CharacterControllerComponent.Cast(char.GetCharacterController()).GetOnPlayerDeath().Remove(OnPlayerDeath);
+					SCR_CharacterControllerComponent.Cast(char.GetCharacterController()).m_OnLifeStateChanged.Insert(OnLifeStateChanged);
 			}
 			
 			SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
@@ -334,8 +400,11 @@ class SCR_MapEntity: MapEntity
 	//------------------------------------------------------------------------------------------------
 	//! SCR_CharacterControllerComponent event
 	//! Called only in case of a fullscreen map
-	protected void OnPlayerDeath()
-	{		
+	protected void OnLifeStateChanged(ECharacterLifeState previousLifeState, ECharacterLifeState newLifeState)
+	{
+		if (newLifeState == ECharacterLifeState.ALIVE)
+			return;
+		
 		SCR_GadgetManagerComponent gadgetMgr = SCR_GadgetManagerComponent.GetGadgetManager(GetGame().GetPlayerController().GetControlledEntity());
 		if (!gadgetMgr)
 			return;
@@ -364,8 +433,13 @@ class SCR_MapEntity: MapEntity
 	//! Game event
 	protected void OnUserSettingsChanged()
 	{
+		UpdateTexts();
+		
 		if (m_bIsOpen)
-			ZoomSmooth(m_fZoomPPU);
+		{
+			UpdateZoomBounds();
+			ZoomSmooth(m_fZoomPPU, reinitZoom: true);
+		}
 		else
 			m_bDoUpdate = true;
 	}
@@ -389,7 +463,6 @@ class SCR_MapEntity: MapEntity
 		if (mapMode == m_eLastMapMode)
 		{
 			m_ActiveMapCfg.RootWidgetRef = rootWidget;
-			SetupDescriptorTypes(m_ActiveMapCfg, null, true);	// TODO this is here until the cached cfg is properly implemented, descriptors need to be reloaded
 			return m_ActiveMapCfg;
 		}
 		
@@ -419,112 +492,77 @@ class SCR_MapEntity: MapEntity
 		if (mapConfig.m_bEnableGrid == true)
 			configObject.OtherComponents |= EMapOtherComponents.GRID;
 			
-		SetupLayers(configObject, mapConfig);
-		SetupMapProps(configObject, mapConfig);
-		SetupDescriptorTypes(configObject, mapConfig);
+		SetupLayersAndProps(configObject, mapConfig);
+		SetupDescriptorTypes(mapConfig.m_DescriptorDefaultsConfig);
 					
 		return configObject;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Layer config setup
+	//! Layer and map properties config setup, if missing creates a default one
 	//! \param configObject is a config object created for map init
 	//! \param mapCfg is the provided map config
-	protected void SetupLayers(inout MapConfiguration configObject, SCR_MapConfig mapCfg)
+	protected void SetupLayersAndProps(inout MapConfiguration configObject, SCR_MapConfig mapCfg)
 	{
-		SCR_MapLayersBase layersCfg = mapCfg.m_LayersConfig;
+		SCR_MapLayersBase layersCfg = mapCfg.m_LayersConfig;	// layers
 		if (!layersCfg)	// use default if above fails
 		{
 			Resource containerDefs = BaseContainerTools.LoadContainer(SCR_MapConstants.CFG_LAYERS_DEFAULT);
-			if (!containerDefs)
-				return;
-			
 			layersCfg = SCR_MapLayersBase.Cast( BaseContainerTools.CreateInstanceFromContainer( containerDefs.GetResource().ToBaseContainer() ) );	
 		}
 				
+		configObject.LayerConfig = layersCfg;
+		
 		if (layersCfg.m_aLayers.IsEmpty())
 			configObject.LayerCount = 0;
 		else 
 			configObject.LayerCount = layersCfg.m_aLayers.Count();
 		
-		SCR_MapDescriptorVisibilityBase descriptorViewCfg = mapCfg.m_DescriptorVisibilityConfig;
-		if (!descriptorViewCfg)	// use default if above fails
-		{
-			Resource containerDefs = BaseContainerTools.LoadContainer(SCR_MapConstants.CFG_DESCVIEW_DEFAULT);
-			if (!containerDefs)
-				return;
-			
-			layersCfg = SCR_MapLayersBase.Cast( BaseContainerTools.CreateInstanceFromContainer( containerDefs.GetResource().ToBaseContainer() ) );	
-		}
-		
-		if (descriptorViewCfg.m_aDescriptorViewLayers.IsEmpty())
-			return;
-		
-		configObject.LayerConfigs = new array<ref LayerConfiguration>;
-		for (int i = 0; i < configObject.LayerCount; i++)
-		{
-			configObject.LayerConfigs.Insert(new LayerConfiguration());
-			configObject.LayerConfigs[i].LayerProps = layersCfg.m_aLayers[i];
-			
-			foreach (SCR_DescriptorViewLayer descriptorCfg : descriptorViewCfg.m_aDescriptorViewLayers)
-			{
-				// Add only if set up to this layer
-				if (descriptorCfg.m_iViewLayer >= i + 1) // offset by 1 as first layer has ID = 1 in config
-					configObject.LayerConfigs[i].DescriptorConfigs.Insert(new MapDescriptorConfiguration(descriptorCfg.m_iDescriptorType));
-		
-			}
-		}	
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Map properties config setup
-	//! \param configObject is a config object created for map init
-	//! \param mapCfg is the provided map config
-	protected void SetupMapProps(inout MapConfiguration configObject, SCR_MapConfig mapCfg)
-	{
-		// props configs
-		SCR_MapPropsBase propsCfg = mapCfg.m_MapPropsConfig;
+		SCR_MapPropsBase propsCfg = mapCfg.m_MapPropsConfig;	// map properties
 		if (!propsCfg)	// use default if above fails
 		{
 			Resource containerDefs = BaseContainerTools.LoadContainer(SCR_MapConstants.CFG_PROPS_DEFAULT);
-			if (!containerDefs)
-				return;
-			
 			propsCfg = SCR_MapPropsBase.Cast( BaseContainerTools.CreateInstanceFromContainer( containerDefs.GetResource().ToBaseContainer() ) );	
 		}
 		
-		configObject.MapPropsConfigs = propsCfg.m_aMapPropConfigs;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Map properties config setup
-	//! \param configObject is a config object created for map init
-	//! \param mapCfg is the provided map config
-	protected void SetupDescriptorTypes(inout MapConfiguration configObject, SCR_MapConfig mapCfg, bool cached = false)
-	{
-		if (cached)
-			m_DefaultsCfg = configObject.DescriptorDefsConfig;
-		else
-			m_DefaultsCfg = mapCfg.m_DescriptorDefaultsConfig;
-		if (!m_DefaultsCfg)
+		configObject.MapPropsConfig = propsCfg;
+		
+		SCR_MapDescriptorVisibilityBase descriptorViewCfg = mapCfg.m_DescriptorVisibilityConfig; // descriptors visibility within layers
+		if (!descriptorViewCfg)	// use default if above fails
 		{
-			Resource containerDefs = BaseContainerTools.LoadContainer(SCR_MapConstants.CFG_DESCTYPES_DEFAULT);
-			if (!containerDefs)
-				return;
-			
-			m_DefaultsCfg = SCR_MapDescriptorDefaults.Cast( BaseContainerTools.CreateInstanceFromContainer( containerDefs.GetResource().ToBaseContainer() ) );	
+			Resource containerDefs = BaseContainerTools.LoadContainer(SCR_MapConstants.CFG_DESCVIEW_DEFAULT);
+			descriptorViewCfg = SCR_MapDescriptorVisibilityBase.Cast( BaseContainerTools.CreateInstanceFromContainer( containerDefs.GetResource().ToBaseContainer() ) );	
 		}
 		
-		configObject.DescriptorDefsConfig = m_DefaultsCfg;
-		if (!m_DefaultsCfg.m_aDescriptorDefaults.IsEmpty())
+		configObject.DescriptorVisibilityConfig = descriptorViewCfg;
+		
+		
+		SCR_MapDescriptorDefaults descriptorDefaults = mapCfg.m_DescriptorDefaultsConfig;
+		if (!descriptorDefaults)
 		{
-			// The constructor guarantees the size matching with EMapDescriptorType.MDT_COUNT
-			for (int ii = 0; ii < EMapDescriptorType.MDT_COUNT; ++ii)
+			Resource containerDefs = BaseContainerTools.LoadContainer(SCR_MapConstants.CFG_DESCTYPES_DEFAULT);
+			descriptorDefaults = SCR_MapDescriptorDefaults.Cast( BaseContainerTools.CreateInstanceFromContainer( containerDefs.GetResource().ToBaseContainer() ) );	
+		}
+		
+		configObject.DescriptorDefsConfig = descriptorDefaults;
+	}
+		
+	//------------------------------------------------------------------------------------------------
+	//! Map properties config setup, matches imageset indices defined in map layout (MapWidget) to descriptor types
+	//! \param configObject is a config object created for map init
+	//! \param mapCfg is the provided map config
+	protected void SetupDescriptorTypes(SCR_MapDescriptorDefaults descriptorDefaultsConfig)
+	{
+		array<int> imagesetIndices = {};
+		
+		if (!descriptorDefaultsConfig.m_aDescriptorDefaults.IsEmpty())
+		{
+			for (int i = 0; i < EMapDescriptorType.MDT_COUNT; ++i)
 			{
-				imagesetIndices[ii] = -1;
+				imagesetIndices.Insert(-1);
 			}
 			
-			foreach (SCR_DescriptorDefaultsBase descriptorDefs : m_DefaultsCfg.m_aDescriptorDefaults)
+			foreach (SCR_DescriptorDefaultsBase descriptorDefs : descriptorDefaultsConfig.m_aDescriptorDefaults)
 			{
 				imagesetIndices[descriptorDefs.m_iDescriptorType] = descriptorDefs.m_iImageSetIndex;
 			}
@@ -579,12 +617,10 @@ class SCR_MapEntity: MapEntity
 			return;
 		}
 		
-		UpdateZoomBounds(); // TODO call this somewhere on reso/settings changed
-		
 		targetPPU = Math.Clamp(targetPPU, m_fMinZoom, m_fMaxZoom); 
 		
 		m_fZoomPPU = targetPPU;
-		AssignViewLayer();
+		AssignViewLayer(false);
 		ZoomChange(targetPPU / m_MapWidget.PixelPerUnit());	// contours
 		
 		if (instant)
@@ -598,7 +634,8 @@ class SCR_MapEntity: MapEntity
 	//! \param targetPixPerUnit is the target pixel per unit value
 	//! \param zoomTime is interpolation duration
 	//! \param zoomToCenter determines whether zoom target is screen center (true) or relative position of mouse within window (false)
-	void ZoomSmooth(float targetPixPerUnit, float zoomTime = 0.25, bool zoomToCenter = true)
+	//! \param reinitZoom determines whether the condition blocking zooming to the same PPU value is ignored (f.e. when changing resolution)
+	void ZoomSmooth(float targetPixPerUnit, float zoomTime = 0.25, bool zoomToCenter = true, bool reinitZoom = false)
 	{
 		if (m_iDelayCounter > 0)
 		{
@@ -610,6 +647,8 @@ class SCR_MapEntity: MapEntity
 			zoomTime = 0.1;
 
 		targetPixPerUnit = Math.Clamp(targetPixPerUnit, m_fMinZoom, m_fMaxZoom);
+		if (!reinitZoom && targetPixPerUnit == m_fZoomPPU)
+			return;
 		
 		m_fStartPPU = m_fZoomPPU;
 		m_fTargetPPU = targetPixPerUnit;
@@ -624,7 +663,7 @@ class SCR_MapEntity: MapEntity
 		{
 			// zoom according to the current screen center
 			GetMapCenterWorldPosition(worldX, worldY);
-			WorldToScreen( worldX, worldY, targetScreenX, targetScreenY, false, targetPixPerUnit );
+			WorldToScreenCustom( worldX, worldY, targetScreenX, targetScreenY, targetPixPerUnit, false );
 			PanSmooth( targetScreenX, targetScreenY, zoomTime ); 
 		}
 		else
@@ -634,7 +673,7 @@ class SCR_MapEntity: MapEntity
 			float diffY = screenY/2 - m_Workspace.DPIScale(SCR_MapCursorInfo.y);
 
 			GetMapCursorWorldPosition(worldX, worldY); // current cursor world pos, relative anchor of zoom
-			WorldToScreen( worldX, worldY, targetScreenX, targetScreenY, false, targetPixPerUnit ); // target screen pos of cursor with zoom applied
+			WorldToScreenCustom( worldX, worldY, targetScreenX, targetScreenY, targetPixPerUnit, false ); // target screen pos of cursor with zoom applied
 			PanSmooth( targetScreenX + diffX, targetScreenY + diffY, zoomTime );  // offset the target position by the pix diference from screen center
 		}
 	}
@@ -670,7 +709,7 @@ class SCR_MapEntity: MapEntity
 		float screenX, screenY, targetScreenX, targetScreenY;
 		m_MapWidget.GetScreenSize(screenX, screenY);
 		
-		WorldToScreen( worldX, worldY, targetScreenX, targetScreenY, false, targetPixPerUnit ); // target pos with zoom applied
+		WorldToScreenCustom( worldX, worldY, targetScreenX, targetScreenY, targetPixPerUnit, false ); // target pos with zoom applied
 		PanSmooth( targetScreenX, targetScreenY, zoomTime );
 	}
 		
@@ -695,15 +734,15 @@ class SCR_MapEntity: MapEntity
 			adjustedPan = true;
 		
 		// save current pan
-		m_fPanX = x;
-		m_fPanY = y;
+		m_iPanX = x;
+		m_iPanY = y;
 		
-		PosChange(m_Workspace.DPIScale(m_fPanX), m_Workspace.DPIScale(m_fPanY));
+		PosChange(m_Workspace.DPIScale(m_iPanX), m_Workspace.DPIScale(m_iPanY));
 		
 		if (isPanEnd)
 			SCR_MapCursorInfo.startPos = {0, 0};
 		
-		s_OnMapPan.Invoke(m_fPanX, m_fPanY, adjustedPan);
+		s_OnMapPan.Invoke(m_iPanX, m_iPanY, adjustedPan);
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -731,25 +770,26 @@ class SCR_MapEntity: MapEntity
 			int diffX = SCR_MapCursorInfo.x - SCR_MapCursorInfo.startPos[0]; 
 			int diffY = SCR_MapCursorInfo.y - SCR_MapCursorInfo.startPos[1];
 			
-			panX = m_fPanX + diffX;
-			panY = m_fPanY + diffY;
+			panX = m_iPanX + diffX;
+			panY = m_iPanY + diffY;
 			
 			SCR_MapCursorInfo.startPos[0] = SCR_MapCursorInfo.x;
 			SCR_MapCursorInfo.startPos[1] = SCR_MapCursorInfo.y;
 		}
 		else if (panMode == EMapPanMode.HORIZONTAL)
 		{
-			panX = m_fPanX + panValue;
-			panY = m_fPanY;
+			panX = m_iPanX + panValue;
+			panY = m_iPanY;
 		}
 		else if (panMode == EMapPanMode.VERTICAL)
 		{
-			panX = m_fPanX;
-			panY = m_fPanY + panValue;
+			panX = m_iPanX;
+			panY = m_iPanY + panValue;
 		}
 		
 		// Pan
 		SetPan(panX, panY, false, false);
+		s_OnMapPanEnd.Invoke(panX, panY);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -772,7 +812,7 @@ class SCR_MapEntity: MapEntity
 			panTime = 0.1;
 		
 		// un-center to get direct pan pos
-		m_aStartPan = { m_Workspace.DPIUnscale(screenWidth/2) - m_fPanX, m_Workspace.DPIUnscale(screenHeight/2) - m_fPanY };
+		m_aStartPan = { m_Workspace.DPIUnscale(screenWidth/2) - m_iPanX, m_Workspace.DPIUnscale(screenHeight/2) - m_iPanY };
 		m_aTargetPan = { m_Workspace.DPIUnscale(panX), m_Workspace.DPIUnscale(panY) };
 		m_fPanTimeModif = 1/panTime;
 		m_fPanSlice = 1.0;
@@ -838,26 +878,43 @@ class SCR_MapEntity: MapEntity
 	// \param screenPosX is screen x
 	// \param screenPosY is screen y
 	// \param withPan determines whether current pan is added to the result
-	// \param targetPPU determines whether the calculation uses current PixelPerUnit (when 0) or one supplied to it (fur future zoom calculation)
-	void WorldToScreen(float worldX, float worldY, out int screenPosX, out int screenPosY, bool withPan = false, float targetPPU = 0)
+	void WorldToScreen(float worldX, float worldY, out int screenPosX, out int screenPosY, bool withPan = false)
 	{
-		vector mapSizeUnits = m_MapWidget.GetSizeInUnits();
-		float pixPerUnit = m_fZoomPPU;
-		
-		if (targetPPU > 0)
-			pixPerUnit = targetPPU;
-		
-		worldY = mapSizeUnits[1] - worldY; // fix Y axis which is reversed between screen and world
+		worldY = m_iMapSizeY - worldY; // fix Y axis which is reversed between screen and world
 	
 		if (withPan)
 		{
-			screenPosX = (worldX * pixPerUnit) + m_Workspace.DPIScale(m_fPanX);
-			screenPosY = (worldY * pixPerUnit) + m_Workspace.DPIScale(m_fPanY);
+			screenPosX = (worldX * m_fZoomPPU) + m_Workspace.DPIScale(m_iPanX);
+			screenPosY = (worldY * m_fZoomPPU) + m_Workspace.DPIScale(m_iPanY);
 		}
 		else
 		{
-			screenPosX = worldX * pixPerUnit;
-			screenPosY = worldY * pixPerUnit;		
+			screenPosX = worldX * m_fZoomPPU;
+			screenPosY = worldY * m_fZoomPPU;		
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Use canvas world coords and defined pixel per unit to get DPIscaled screen coords, flips the y-axis
+	// \param worldX is world x
+	// \param worldY is world y
+	// \param screenPosX is screen x
+	// \param screenPosY is screen y
+	// \param withPan determines whether current pan is added to the result
+	// \param targetPPU sets PixelPerUnit used for the calculation (useful for precalculating)
+	void WorldToScreenCustom(float worldX, float worldY, out int screenPosX, out int screenPosY, float targetPPU, bool withPan = false)
+	{
+		worldY = m_iMapSizeY - worldY;
+		
+		if (withPan)
+		{
+			screenPosX = (worldX * targetPPU) + m_Workspace.DPIScale(m_iPanX);
+			screenPosY = (worldY * targetPPU) + m_Workspace.DPIScale(m_iPanY);
+		}
+		else
+		{
+			screenPosX = worldX * targetPPU;
+			screenPosY = worldY * targetPPU;		
 		}
 	}
 
@@ -868,12 +925,10 @@ class SCR_MapEntity: MapEntity
 	// \param worldX is world x
 	// \param worldY is world y
 	void ScreenToWorld(int screenPosX, int screenPosY, out float worldX, out float worldY)
-	{
-		vector mapSizeUnits = m_MapWidget.GetSizeInUnits();
-				
-		worldX = (screenPosX - m_Workspace.DPIScale(m_fPanX)) / m_fZoomPPU;
-		worldY = (screenPosY - m_Workspace.DPIScale(m_fPanY)) / m_fZoomPPU;
-		worldY =  mapSizeUnits[1] - worldY;	// fix Y axis which is reversed between screen and world
+	{				
+		worldX = (screenPosX - m_Workspace.DPIScale(m_iPanX)) / m_fZoomPPU;
+		worldY = (screenPosY - m_Workspace.DPIScale(m_iPanY)) / m_fZoomPPU;
+		worldY =  m_iMapSizeY - worldY;	// fix Y axis which is reversed between screen and world
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -884,8 +939,8 @@ class SCR_MapEntity: MapEntity
 	// \param worldY is world y
 	void ScreenToWorldNoFlip(int screenPosX, int screenPosY, out float worldX, out float worldY)
 	{		
-		worldX = (screenPosX - m_Workspace.DPIScale(m_fPanX)) / m_fZoomPPU;
-		worldY = (screenPosY - m_Workspace.DPIScale(m_fPanY)) / m_fZoomPPU;
+		worldX = (screenPosX - m_Workspace.DPIScale(m_iPanX)) / m_fZoomPPU;
+		worldY = (screenPosY - m_Workspace.DPIScale(m_iPanY)) / m_fZoomPPU;
 	}
 		
 	/*!
@@ -951,12 +1006,8 @@ class SCR_MapEntity: MapEntity
 			panY = windowHeight/2 - panY;
 		}
 		
-		// map size in px
-		vector size = m_MapWidget.GetSizeInUnits();
-		float pixPerUnit = m_fZoomPPU;	
-			
-		int width 	= size[0] * pixPerUnit;
-		int height 	= size[1] * pixPerUnit;
+		int width 	= m_iMapSizeX * m_fZoomPPU;
+		int height 	= m_iMapSizeY * m_fZoomPPU;
 		
 		// center of the screen can travel everywhere within map
 		int minCoordX = windowWidth/2 - m_Workspace.DPIUnscale(width);
@@ -1011,9 +1062,8 @@ class SCR_MapEntity: MapEntity
 		float screenWidth, screenHeight;
 		m_MapWidget.GetScreenSize(screenWidth, screenHeight);
 
-		vector size = m_MapWidget.GetSizeInUnits();	
 		float maxUnitsPerScreen = screenHeight / m_MapWidget.PixelPerUnit();	
-		m_fMinZoom = (maxUnitsPerScreen / size[1]) * m_MapWidget.PixelPerUnit();
+		m_fMinZoom = (maxUnitsPerScreen / m_iMapSizeY) * m_MapWidget.PixelPerUnit();
 		m_fMaxZoom = SCR_MapConstants.MAX_PIX_PER_METER;
 		
 		return true;
@@ -1021,70 +1071,57 @@ class SCR_MapEntity: MapEntity
 		
 	//------------------------------------------------------------------------------------------------
 	//! Checks whether layer should change based on current zoom
-	protected void AssignViewLayer()
+	protected void AssignViewLayer(bool isInit)
 	{
 		int count = LayerCount();
-		// No layers to change to
-		if (count == 0)
+		if (count == 0) // No layers to change to
 			return;
 		
-		for ( int layer = 0; layer < count; layer++ )
+		for ( int layerID = 0; layerID < count; layerID++ )
 		{
-			if ( GetCurrentZoom() >= GetLayer(layer).GetCeiling() )
+			if ( GetCurrentZoom() >= GetLayer(layerID).GetCeiling() )
 			{
-				ChangeLayer(layer);
+				if (isInit || layerID != GetLayerIndex())
+				{
+					SetLayer(layerID);
+					s_OnLayerChanged.Invoke(layerID);
+				}
+				
 				break;
 			}
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Set new layer
-	protected void ChangeLayer(int newIndex)
-	{
-		// if not the current layer
-		if (newIndex != m_iLayerIndex)
-		{
-			m_iLayerIndex = newIndex;
-			SetLayer(m_iLayerIndex);
-			
-			s_OnLayerChanged.Invoke(m_iLayerIndex);
-		}
-	}
-		
-	//------------------------------------------------------------------------------------------------
 	// INIT / CLEANUP METHODS
 	//------------------------------------------------------------------------------------------------
 	//! Initialize layers from config
-	//! \param layerCount is total count of layers
-	//! \param layerConfigs is array of individual layer configs
-	protected void InitLayers(int layerCount, array<ref LayerConfiguration> layerConfigs)
+	protected void InitLayers(MapConfiguration mapConfig)
 	{		
-		// set count
+		SCR_MapLayersBase layerConfig = mapConfig.LayerConfig;
+		
+		int layerCount = mapConfig.LayerCount;
 		InitializeLayers(layerCount);
 		
-		if (layerConfigs.Count() < 1)
+		if (layerCount < 1)
 			return;
 		
-		
-		// per layer configuration
-		for (int i = 0; i < layerCount; i++)
+		for (int i = 0; i < layerCount; i++)	// per layer configuration
 		{
 			MapLayer layer = GetLayer(i);
-			if (layer && layerConfigs[i].DescriptorConfigs.Count() > 0)
+			if (layer)
 			{
 				// setr ceiling vals
-				layerConfigs[i].LayerProps.SetLayerProps(layer);
+				layerConfig.m_aLayers[i].SetLayerProps(layer);
 									
 				// props configs
-				foreach ( SCR_MapPropsConfig propsCfg : m_ActiveMapCfg.MapPropsConfigs)
+				foreach ( SCR_MapPropsConfig propsCfg : mapConfig.MapPropsConfig.m_aMapPropConfigs)
 				{
 					propsCfg.SetDefaults(layer);
 				}
 				
 				// descriptor configuration init
-				InitDescriptors(i, layer, layerConfigs[i]);
-	
+				InitDescriptors(i, layer, layerConfig.m_aLayers[i], mapConfig);
 			}
 		}
 	}
@@ -1094,21 +1131,19 @@ class SCR_MapEntity: MapEntity
 	//! \param layerID is id of the layer
 	//! \param layer is the map layer
 	//! \param layerConfig is the config for the layer
-	protected void InitDescriptors(int layerID, MapLayer layer, LayerConfiguration layerConfig)
+	protected void InitDescriptors(int layerID, MapLayer layer, SCR_LayerConfiguration layerConfig, MapConfiguration mapConfig)
 	{
 		// create descriptor visiiblity map
 		map<int, int> descriptorVisibility = new map<int, int>;
 		
 		// descriptor visibility configuration
-		foreach (MapDescriptorConfiguration descConfig : layerConfig.DescriptorConfigs)
+		foreach (SCR_DescriptorViewLayer descConfig : mapConfig.DescriptorVisibilityConfig.m_aDescriptorViewLayers)
 		{
-			descriptorVisibility.Set(descConfig.Type, layerID); // match descriptor type with visibility
+			if (descConfig.m_iViewLayer >= layerID + 1)
+				descriptorVisibility.Set(descConfig.m_iDescriptorType, layerID); // match descriptor type with visibility
 		}
 		
-		if (!m_DefaultsCfg)
-			return;
-		
-		foreach (SCR_DescriptorDefaultsBase descriptorType : m_DefaultsCfg.m_aDescriptorDefaults)
+		foreach (SCR_DescriptorDefaultsBase descriptorType : mapConfig.DescriptorDefsConfig.m_aDescriptorDefaults)
 		{
 			// visible in the current layer
 			if ( descriptorVisibility.Get(descriptorType.m_iDescriptorType) >= layerID )
@@ -1118,7 +1153,7 @@ class SCR_MapEntity: MapEntity
 				// is using faction based configuration
 				if (descriptorType.m_bUseFactionColors)
 				{
-					foreach (SCR_FactionColorDefaults factionDefaults : m_DefaultsCfg.m_aFactionColors)
+					foreach (SCR_FactionColorDefaults factionDefaults : mapConfig.DescriptorDefsConfig.m_aFactionColors)
 					{
 						props = layer.GetPropsFor(factionDefaults.m_iFaction, descriptorType.m_iDescriptorType);
 						if (props)
@@ -1146,7 +1181,7 @@ class SCR_MapEntity: MapEntity
 				// is using faction based configuration
 				if (descriptorType.m_bUseFactionColors)
 				{
-					foreach (SCR_FactionColorDefaults factionDefaults : m_DefaultsCfg.m_aFactionColors)
+					foreach (SCR_FactionColorDefaults factionDefaults : mapConfig.DescriptorDefsConfig.m_aFactionColors)
 					{
 						props = layer.GetPropsFor(factionDefaults.m_iFaction, descriptorType.m_iDescriptorType);
 						if (props)
@@ -1179,6 +1214,9 @@ class SCR_MapEntity: MapEntity
 			// load new module
 			if (m_bDoReload)
 			{
+				if (module.IsConfigDisabled())
+					continue;
+				
 				m_aLoadedModules.Insert(module);
 				modulesToInit.Insert(module);
 				m_aActiveModules.Insert(module);
@@ -1225,6 +1263,9 @@ class SCR_MapEntity: MapEntity
 			// load new component
 			if (m_bDoReload)
 			{
+				if (component.IsConfigDisabled())
+					continue;
+				
 				m_aLoadedComponents.Insert(component);
 				componentsToInit.Insert(component);
 				m_aActiveComponents.Insert(component);
@@ -1324,7 +1365,9 @@ class SCR_MapEntity: MapEntity
 		ScreenToWorld(screenWidth, 0, maxCoordX, maxCoordY);
 		ScreenToWorld(0, screenHeight, minCoordX, minCoordY);
 			
-		SetFrame(Vector(minCoordX, 0, minCoordY), Vector(maxCoordX, 0, maxCoordY));
+		m_vVisibleFrameMin = Vector(minCoordX, 0, minCoordY);
+		m_vVisibleFrameMax = Vector(maxCoordX, 0, maxCoordY);
+		SetFrame(m_vVisibleFrameMin, m_vVisibleFrameMax);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1343,8 +1386,8 @@ class SCR_MapEntity: MapEntity
 		}
 		else
 		{
-			float panX = Math.Lerp(m_aStartPan[0], m_aTargetPan[0], 1 - m_fPanSlice);
-			float panY = Math.Lerp(m_aStartPan[1], m_aTargetPan[1], 1 - m_fPanSlice);
+			int panX = Math.Lerp(m_aStartPan[0], m_aTargetPan[0], 1 - m_fPanSlice);
+			int panY = Math.Lerp(m_aStartPan[1], m_aTargetPan[1], 1 - m_fPanSlice);
 			SetPan(panX, panY, false);
 		}
 	}
@@ -1393,7 +1436,7 @@ class SCR_MapEntity: MapEntity
 		string dbg4 = "ZOOM: min: %1 max: %2 | pixPerUnit: %3";
 		DbgUI.Text( string.Format( dbg4, GetMinZoom(), GetMaxZoom(), GetCurrentZoom() ) );
 		string dbg5 = "LAYER: current: %1 | pixPerUnit ceiling: %2";
-		DbgUI.Text( string.Format( dbg5, m_iLayerIndex, GetLayer(m_iLayerIndex).GetCeiling() ) );
+		DbgUI.Text( string.Format( dbg5, GetLayerIndex(), GetLayer(GetLayerIndex()).GetCeiling() ) );
 		string dbg6 = "MODULES: loaded: %1 | active: %2 | list: %3 ";
 		DbgUI.Text( string.Format( dbg6, m_aLoadedModules.Count(), m_aActiveModules.Count(), m_aActiveModules ) );
 		string dbg7 = "COMPONENTS: loaded: %1 | active: %2 | list: %3 ";
@@ -1462,14 +1505,14 @@ class SCR_MapEntity: MapEntity
 	override void EOnInit(IEntity owner)
 	{
 		// Save size
-		m_iMapSize[0] = Size()[0];
-		m_iMapSize[1] = Size()[2];
+		m_iMapSizeX = Size()[0];
+		m_iMapSizeY = Size()[2];
 		
-		if (m_iMapSize[0] == 0 || m_iMapSize[1] == 0)
+		if (m_iMapSizeX == 0 || m_iMapSizeY == 0)
 		{
 			Print("SCR_MapEntity: Cannot get the size from terrain. Using default.", LogLevel.WARNING);
-			m_iMapSize[0] = 1024;
-			m_iMapSize[1] = 1024;
+			m_iMapSizeX = 1024;
+			m_iMapSizeY = 1024;
 		}
 		
 		ChimeraWorld world = GetGame().GetWorld();
@@ -1483,12 +1526,7 @@ class SCR_MapEntity: MapEntity
 		SetEventMask(EntityEvent.INIT | EntityEvent.FRAME);
 
 		s_MapInstance = this;
-		
-		for(int ii = 0; ii < EMapDescriptorType.MDT_COUNT; ++ii)
-		{
-			imagesetIndices.Insert(-1);
-		}
-		
+				
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_UI_MAP_DEBUG_OPTIONS, "", "Enable map debug menu", "UI");
 		
 		GetGame().OnUserSettingsChangedInvoker().Insert(OnUserSettingsChanged);

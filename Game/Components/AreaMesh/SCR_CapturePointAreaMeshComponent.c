@@ -1,11 +1,9 @@
-//------------------------------------------------------------------------------------------------
 [ComponentEditorProps(category: "GameScripted/Area Mesh", description: "")]
-class SCR_CapturePointAreaMeshComponentClass: SCR_BaseAreaMeshComponentClass
+class SCR_CapturePointAreaMeshComponentClass : SCR_BaseAreaMeshComponentClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
-class SCR_CapturePointAreaMeshComponent: SCR_BaseAreaMeshComponent
+class SCR_CapturePointAreaMeshComponent : SCR_BaseAreaMeshComponent
 {
 	SCR_SeizingComponent m_SeizingComponent;
 	
@@ -32,4 +30,4 @@ class SCR_CapturePointAreaMeshComponent: SCR_BaseAreaMeshComponent
 		
 		GenerateAreaMesh();
 	}
-};
+}

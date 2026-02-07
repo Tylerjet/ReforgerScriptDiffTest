@@ -22,7 +22,13 @@ class SCR_LoadoutArea
 class SCR_InventoryConfig
 {
 	[Attribute( desc: "Loadout Areas" )]
-	private ref array<ref SCR_LoadoutArea> m_aLoadoutAreas;
+	protected ref array<ref SCR_LoadoutArea> m_aLoadoutAreas;
+	
+	//------------------------------------------------------------------------
+	int GetLoadoutAreaCount()
+	{
+		return m_aLoadoutAreas.Count();
+	}
 	
 	int GetRowByArea( LoadoutAreaType pArea )
 	{ 
